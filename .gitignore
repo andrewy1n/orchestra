@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Operational store state, never record data.
+.write.lock
+
+# Machine-local store binding override (committed default is store-binding.json).
+.artifacts/store-binding.local.json
+
+# Tier-2 background suite logs (phase worktree).
+.tier2/
+.suite/
