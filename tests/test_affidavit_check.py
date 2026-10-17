@@ -516,6 +516,18 @@ def test_bin_affidavit_entry_exists_and_is_executable():
     assert "check" in result.stdout
 
 
+def test_orchestra_subcommand_help():
+    for subcommand in ("check", "close-batch"):
+        result = subprocess.run(
+            [sys.executable, str(BIN), subcommand, "--help"],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            env=_cli_env(),
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_readme_documents_bin_affidavit_entry():
     text = (REPO_ROOT / "README.md").read_text()
     assert "bin/aff" in text
