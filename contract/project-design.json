@@ -1,6 +1,6 @@
 {
   "format": "adaptive-artifacts/project-design@0.3.0",
-  "project": "affidavit",
+  "project": "orchestra",
   "kind": "software_engineering",
   "assessment": {
     "discontinuity": "high",

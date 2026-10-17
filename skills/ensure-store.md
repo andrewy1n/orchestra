@@ -37,26 +37,40 @@ via step 3.
 
 ## First run in a work repo
 
-If `.artifacts/project-design.json` exists and `"project"` is
-`affidavit`, check that the design lists a `phase` record, a
-`constraint` record, an `assignment` record, and an `execution-report`
-record, and that `work-item` has `required_sections`. A design is
-   current only when it also lists `specification`, `design`,
-`assessment`, `integration-report`, `release`, `feedback`, and
-`backlog-item`. If those are missing, the bundled contract is newer
-(it predates staged task lifecycle, phase records, dependency edges,
-the assignment/execution-report dispatch loop, the evidence-loop
-records, or backlog capture): show the user and replace
-`.artifacts/project-design.json` only if they approve, then
-`adaptive-artifacts resolve`. Do not replace on a no. This is a
+The current project id is `orchestra`.
+
+If `.artifacts/project-design.json` exists, align its `"project"` field
+with `rewrite_project_field` in `<plugin>/orchestra/project_field.py`
+before any overlay. From the plugin root, with cwd the work repo:
+
+```bash
+PYTHONPATH="<plugin>" python3 -c 'from orchestra.project_field import rewrite_project_field; print(rewrite_project_field(".artifacts/project-design.json"))'
+```
+
+The function does not ask. It returns one of three outcomes:
+
+- `current` — `"project"` is already `orchestra`. The file is unchanged.
+- `rewritten` — `"project"` was `affidavit` and is now `orchestra` in
+  place. Do not ask again. Continue.
+- `stopped` — `"project"` is any other value. The file is unchanged.
+  **Stop.** Do not overlay or replace the design.
+
+When the outcome is `current` or `rewritten`, check that the design
+lists a `phase` record, a `constraint` record, an `assignment` record,
+and an `execution-report` record, and that `work-item` has
+`required_sections`. A design is current only when it also lists
+`specification`, `design`, `assessment`, `integration-report`,
+`release`, `feedback`, and `backlog-item`. If those are missing, the
+bundled contract is newer (it predates staged task lifecycle, phase
+records, dependency edges, the assignment/execution-report dispatch
+loop, the evidence-loop records, or backlog capture): show the user
+and replace `.artifacts/project-design.json` only if they approve,
+then `adaptive-artifacts resolve`. Do not replace on a no. This is a
 one-time upgrade check at first touch, not a standing gate — once the
 design is current, nothing in the other skills re-checks it before
 dispatching.
 
-If `.artifacts/project-design.json` exists and `"project"` is something
-else, **stop**. Do not overlay a foreign contract.
-
-Otherwise:
+If the design file does not exist yet:
 
 ```bash
 mkdir -p .artifacts
