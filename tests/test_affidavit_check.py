@@ -519,4 +519,4 @@ def test_bin_affidavit_entry_exists_and_is_executable():
 def test_readme_documents_bin_affidavit_entry():
     text = (REPO_ROOT / "README.md").read_text()
     assert "bin/aff" in text
-    assert "aff check" in text or "bin/aff check" in text
+    assert "bin/orchestra check" in text or "orchestra check" in text
