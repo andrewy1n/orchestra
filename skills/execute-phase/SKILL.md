@@ -177,7 +177,7 @@ adaptive-artifacts update --type project:work-item --id <id> \
    the executor from editing those files. Frozen oracle hashes are
    close authority; the executor may change production code, not the
    frozen oracle files. If the executor needs a different oracle
-   (pushback), stop editing and use the **oracle-amendment** path
+   (pushback), stop editing and use the **oracle amendment** path
    below — do not silently rewrite a frozen oracle file.
 
 ```bash
@@ -220,7 +220,7 @@ adaptive-artifacts create --type project:assignment \
 ### Frozen oracle (do not edit)
 
 Files listed in acceptance oracle_hashes for this task are frozen.
-Do not edit them. Pushback → oracle-amendment (parent approves)."
+Do not edit them. An oracle hash or test-id change is a signed amendment in `.affidavit/manifest.json`. aff verdict accepts or rejects it. A non-zero exit means the acceptance is not done."
 ```
 
    Omit the Frozen oracle section when no acceptance on this task is
@@ -230,37 +230,22 @@ Do not edit them. Pushback → oracle-amendment (parent approves)."
 
 When an executor (or this session on `inline`) cannot satisfy a
 requirement without changing a frozen oracle file: do not edit that
-file. Create a `project:oracle-amendment` with `status` `requested`,
-then the parent alone approves or rejects.
+file. An oracle hash or test-id change is a signed amendment in
+`.affidavit/manifest.json`. Do not `create` or `supersede` a
+`project:oracle-amendment`, and do not update acceptance
+`oracle_hashes` or `test_ids` in the store to carry the change. The
+parent adds the signed amendment to `.affidavit/manifest.json`.
+`aff verdict` accepts or rejects it.
+
+`<claim-id>` is that claim's `id` in `.affidavit/manifest.json`.
 
 ```bash
-adaptive-artifacts create --type project:oracle-amendment \
-  --subject "<task-slug>" \
-  --payload '{"acceptance":"<acceptance-record-id>","effort":"<focus>","phase":"<current-phase-slug>","old_hashes":"<relpath:sha256:hex from acceptance oracle_hashes>","new_hashes":"<relpath:sha256:hex after proposed oracle edit>","status":"requested"}' \
-  --body "## Reason
-
-<why the frozen oracle must change>
-
-## Change
-
-<what changes in the oracle file(s) and why it still witnesses the requirement>"
+aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 ```
 
-   On parent approval, supersede to `status` `approved` and update the
-   acceptance freeze fields (`oracle_hashes`, and `test_ids` /
-   `verify_command` when those change). On reject, supersede to
-   `status` `rejected` and leave freeze fields unchanged. Only the
-   parent writes freeze fields and amendments.
-
-```bash
-adaptive-artifacts supersede --type project:oracle-amendment --id <amendment-id> \
-  --expected-revision <revision> \
-  --payload '{"status":"approved"}'
-
-adaptive-artifacts update --type project:acceptance --id <acceptance-id> \
-  --expected-revision <revision> \
-  --payload '{"oracle_hashes":"<new_hashes matching the approved amendment>","test_ids":"<updated node ids if any>","verify_command":"python3 -m pytest <updated-node-ids> -q"}'
-```
+   Exit 0 accepts the amendment and the claim. A non-zero exit means
+   the acceptance is not done. Leave the work-item `in_progress`.
+   Only the parent writes the signed amendment.
 
 5. Dispatch the wave by that shared `payload.executor`.
 
@@ -375,7 +360,26 @@ adaptive-artifacts create --type project:execution-report \
    `investigation-observation` / `finding` / `check-run` records from
    this execution-report — not from this session's memory of the chat
    — and transitions the work-item to `done` or `withdrawn`, or leaves
-   it `in_progress` on fail/blocked. Do not supersede or re-derive
+   it `in_progress` on fail/blocked. A `tdd` or `check` result comes
+   from `aff check`, not from creating the `project:check-run`.
+   `verify-work` runs that command. Manual and review check-runs stay
+   parent writes. The suite check-run stays the parent write from
+   `orchestra.suite.record_suite_check_run` (subject
+   `<phase-slug>-suite`).
+
+   When verifying or closing an acceptance whose claim is in
+   `.affidavit/manifest.json`, run `aff verdict` on that claim before
+   the work-item can go `done`:
+
+```bash
+aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
+```
+
+   `<claim-id>` is that claim's `id` in `.affidavit/manifest.json`.
+   Exit 0 accepts it. A non-zero exit means the acceptance is not done.
+   Leave the work-item `in_progress`.
+
+   Do not supersede or re-derive
    anything yourself — a dependent task's `derived.ready` flips to
    `true` automatically the moment its dependency's lifecycle reaches
    its terminal success state; the next wave's `list` in step 3 will
@@ -900,8 +904,13 @@ Never transition a `done` work-item back to `in_progress` or
   checks stay scoped; the suite is the phase-level
   `phase_gate.suite` run
 - Let an executor edit a frozen oracle file listed in
-  `oracle_hashes`. Pushback uses `project:oracle-amendment`
-  (`requested` → parent `approved` / `rejected`); parent alone
-  updates freeze fields
-- Let a subagent create or approve oracle-amendments, or write
-  `test_ids` / `oracle_hashes` — parent only
+  `oracle_hashes`. An oracle hash or test-id change is a signed
+  amendment in `.affidavit/manifest.json`. `aff verdict` accepts or
+  rejects it. A non-zero exit means the acceptance is not done
+- `create` or `supersede` `project:oracle-amendment`, or `create` /
+  `correct` a task `project:check-run` whose method is `tdd` or
+  `check` — that result comes from `aff check`. The suite check-run
+  (`orchestra.suite.record_suite_check_run`) and `manual` / `review`
+  check-runs stay
+- Let a subagent sign an amendment or write `test_ids` /
+  `oracle_hashes` — parent only

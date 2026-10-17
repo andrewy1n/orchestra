@@ -50,17 +50,19 @@ are both non-empty. For oracle-backed `tdd`, verification is
 - There is a green check-run at head whose `revision` equals or is a
   git descendant of that red (same red-first ancestry rules).
 - At the green revision, oracle file contents match frozen
-  `oracle_hashes`, **or** an active `project:oracle-amendment` for
-  that acceptance has `status` `approved` and `new_hashes` matching
-  the tree.
+  `oracle_hashes`, or the hash or test-id change is a signed
+  amendment that `aff verdict` accepts.
+  An oracle hash or test-id change is a signed amendment in `.affidavit/manifest.json`.
 
 Treat the requirement as verified only when those hold. Frozen
 hashes are close authority; do not mark `verified` from narrative
-alone. Parent alone writes assessments and freeze / amendment
-records. Wire the close-request (below) so `aff close-batch` receives
-the green `check_run_id`, request-carried red fields, and the
-acceptance id whose freeze / amendment state close-batch enforces —
-do not invent hash or red fields.
+alone. Parent alone writes assessments. Do not `create` or
+`supersede` `project:oracle-amendment`. Wire the close-request
+(below) so `aff close-batch` receives the green `check_run_id`,
+request-carried red fields, and the acceptance id — do not invent
+hash or red fields. When the acceptance's claim is in
+`.affidavit/manifest.json`, run `aff verdict` on that claim (below).
+A non-zero exit means the acceptance is not done.
 
 Verify and assess are two steps. Verify asks what happened. Assess
 asks what that evidence means and what happens next. A check-run has
@@ -176,6 +178,20 @@ aff check --acceptance <acceptance-record-id> \
   --cwd <repo-or-worktree> \
   --execution-report <execution-report-record-id>
 ```
+
+     When that acceptance's claim is in `.affidavit/manifest.json`,
+     also run `aff verdict` on that claim. `<claim-id>` is the
+     claim's `id` in `.affidavit/manifest.json`. An oracle hash or
+     test-id change is a signed amendment in `.affidavit/manifest.json`.
+     `aff verdict` accepts or rejects it.
+
+```bash
+aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
+```
+
+     Exit 0 accepts the claim. A non-zero exit means the acceptance
+     is not done. Leave the work-item `in_progress`. Do not transition
+     it to `done`.
 
      Resolve `affidavit` from the plugin root (`bin/aff`)
      the same way [ensure-store.md](../ensure-store.md) resolves
@@ -588,10 +604,14 @@ criteria are unmet and writes nothing — when `transition` is `done`, a
 criterion is unmet or was never checked, and no `finding` was given.
 It also refuses a pass-only `tdd` `done` close that lacks valid
 request-carried red evidence (and has no `finding`). For
-oracle-backed `tdd`, close-batch also refuses when frozen
-`oracle_hashes` drift without an approved `project:oracle-amendment`,
-or when there is no qualifying assertion-level red for the frozen
-tests. Do not hand-write the batch to route around a refusal.
+oracle-backed `tdd`, do not close when the claim is in
+`.affidavit/manifest.json` and `aff verdict` exits non-zero. A
+non-zero exit means the acceptance is not done. An oracle hash or
+test-id change is a signed amendment in `.affidavit/manifest.json`;
+`aff verdict` accepts or rejects it. Do not `create` or `supersede`
+`project:oracle-amendment` to authorize the change. Close-batch still
+refuses when there is no qualifying assertion-level red for the
+frozen tests. Do not hand-write the batch to route around a refusal.
 
 For `tdd`/`check`, `aff close-batch` does **not** invent pass/fail or
 create check-runs. It only references runner-produced `check_run_id`s
@@ -805,7 +825,10 @@ adaptive-artifacts apply /tmp/close-batch.ndjson
   `in_progress` and use assessment `next` `execute` for that failure
 - Route `manual` criteria through `aff check`
 - Mark an oracle-backed requirement `verified` without mechanical
-  oracle verify (assertion-level red at base, green at head, hashes
-  match or approved amendment)
-- Invent `oracle_hashes` / amendment status in prose instead of
-  reading the acceptance and `project:oracle-amendment` records
+  oracle verify (assertion-level red at base, green at head, and
+  `aff verdict` exit 0 when the claim is in `.affidavit/manifest.json`)
+- Invent `oracle_hashes` or a signed amendment instead of reading
+  `.affidavit/manifest.json` and the `aff verdict` result
+- `create` or `supersede` `project:oracle-amendment`
+- Treat a non-zero `aff verdict` exit as done. A non-zero exit means
+  the acceptance is not done
