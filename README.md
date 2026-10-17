@@ -35,7 +35,7 @@ materialized as `work-item` + `acceptance`.
 
 A Claude Code plugin install alone does not give you the tmux keys. Use TPM or a clone for step 3.
 Without tmux, run `dashboard/bin/dashboard` from inside your repo.
-Run acceptance checks with `bin/aff check` (same plugin root as `dashboard/bin`).
+Run acceptance checks with `bin/orchestra check` (same plugin root as `dashboard/bin`).
 
 ## Kinds
 
@@ -264,15 +264,16 @@ Shared first-run steps: [skills/ensure-store.md](skills/ensure-store.md).
 
 ## CLI
 
-`bin/aff` is the plugin CLI entry (installed next to
+`bin/orchestra` is check and close-batch (installed next to
 `dashboard/bin` by `scripts/sync-plugin.sh`). It dispatches subcommands
 and shells to `adaptive-artifacts` for store reads/writes.
+`bin/aff` is the verdict binary from `~/affidavit`.
 
 ```bash
 # From a clone or a sync-plugin install root, inside the project with the store:
-bin/aff check --acceptance <acceptance-id>
-bin/aff check --acceptance <id> --cwd /path/to/phase-worktree
-bin/aff check --acceptance <id> --allow-dirty   # pass on dirty tree
+bin/orchestra check --acceptance <acceptance-id>
+bin/orchestra check --acceptance <id> --cwd /path/to/phase-worktree
+bin/orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 ```
 
 `check` runs the acceptance's `verify_command` (methods `tdd` / `check`

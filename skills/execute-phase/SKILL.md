@@ -369,7 +369,7 @@ adaptive-artifacts create --type project:execution-report \
    this execution-report — not from this session's memory of the chat
    — and transitions the work-item to `done` or `withdrawn`, or leaves
    it `in_progress` on fail/blocked. A `tdd` or `check` result comes
-   from `aff check`, not from creating the `project:check-run`.
+   from `orchestra check`, not from creating the `project:check-run`.
    `verify-work` runs that command. Manual and review check-runs stay
    parent writes. The suite check-run stays the parent write from
    `orchestra.suite.record_suite_check_run` (subject
@@ -511,7 +511,7 @@ adaptive-artifacts create --type project:integration-report \
    `output_sha256`, and `failing_node_ids` when failed). Use
    `orchestra.suite` (`start_suite_background`, `poll_suite` /
    `collect_suite`, `record_suite_check_run`). Dirty-only pass is
-   refused the same way as `aff check` (commit first, or
+   refused the same way as `orchestra check` (commit first, or
    `--allow-dirty` → `revision=dirty` + `diff_sha256`). The phase
    suite is never red-first (red-first stays `method: tdd` only).
 
@@ -933,7 +933,7 @@ Never transition a `done` work-item back to `in_progress` or
   rejects it. A non-zero exit means the acceptance is not done
 - `create` or `supersede` `project:oracle-amendment`, or `create` /
   `correct` a task `project:check-run` whose method is `tdd` or
-  `check` — that result comes from `aff check`. The suite check-run
+  `check` — that result comes from `orchestra check`. The suite check-run
   (`orchestra.suite.record_suite_check_run`) and `manual` / `review`
   check-runs stay
 - Let a subagent sign an amendment or write `test_ids` /

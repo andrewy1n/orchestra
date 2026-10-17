@@ -128,12 +128,12 @@ kind/focus are unset).
 - Parent writes records. Do not spawn subagents here, **except** the
   one phase-scoped **oracle-author** subagent in step 8 (deliver /
   repair only). That subagent writes test files only; it does not
-  call `adaptive-artifacts`. The parent alone runs `aff check`,
+  call `adaptive-artifacts`. The parent alone runs `orchestra check`,
   freezes `test_ids` / `oracle_hashes`, and derives `verify_command`.
 - Oracle author ≠ executor: never hand the oracle-author Approach,
   implementation recipes, or code-under-test hints — original
   requirement / specification text only.
-- Freeze only after an **assertion-level** red (`aff check` fail whose
+- Freeze only after an **assertion-level** red (`orchestra check` fail whose
   check-run is assertion-level, not import/collection noise). An
   acceptance with non-empty `test_ids` and `oracle_hashes` is
   **oracle-backed**. `test_ids` is comma-separated pytest node ids;
@@ -414,9 +414,9 @@ adaptive-artifacts create --type project:acceptance \
    Parent then, for each such acceptance:
 
    1. Set a provisional `verify_command` from the proposed `test_ids`
-      (e.g. `python3 -m pytest <node-id> … -q`) if needed so `aff
-      check` can run.
-   2. Run `aff check --acceptance <acceptance-id> --cwd <repo-or-worktree>`
+      (e.g. `python3 -m pytest <node-id> … -q`) if needed so
+      `orchestra check` can run.
+   2. Run `orchestra check --acceptance <acceptance-id> --cwd <repo-or-worktree>`
       (expect fail).
    3. Freeze **only** when that fail is assertion-level (use
       `affidavit.oracle_red.is_assertion_level_red` on the check-run,

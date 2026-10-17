@@ -26,7 +26,7 @@ work-item Description when there is no spec) — not acceptance
 `live` field.
 
 Red-first (fail before you fix) for `method` `tdd` on a `done` close
-is **enforced** by `aff close-batch`. A pass-only `tdd` close-request
+is **enforced** by `orchestra close-batch`. A pass-only `tdd` close-request
 without request-carried red evidence is refused (exit 2), the same
 way unmet criteria without a finding are refused. The gate is
 request-carried: the close-request must name a runner-produced fail
@@ -58,7 +58,7 @@ Treat the requirement as verified only when those hold. Frozen
 hashes are close authority; do not mark `verified` from narrative
 alone. Parent alone writes assessments. Do not `create` or
 `supersede` `project:oracle-amendment`. Wire the close-request
-(below) so `aff close-batch` receives the green `check_run_id`,
+(below) so `orchestra close-batch` receives the green `check_run_id`,
 request-carried red fields, and the acceptance id — do not invent
 hash or red fields. When the acceptance's claim is in
 `.affidavit/manifest.json`, run `aff verdict` on that claim (below).
@@ -174,7 +174,7 @@ skill. Do not write `level` or `next` on a check-run.
      pass (fails may be dirty without it).
 
 ```bash
-aff check --acceptance <acceptance-record-id> \
+orchestra check --acceptance <acceptance-record-id> \
   --cwd <repo-or-worktree> \
   --execution-report <execution-report-record-id>
 ```
@@ -193,9 +193,10 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
      is not done. Leave the work-item `in_progress`. Do not transition
      it to `done`.
 
-     Resolve `affidavit` from the plugin root (`bin/aff`)
+     Resolve check and close-batch from the plugin root (`bin/orchestra`)
      the same way [ensure-store.md](../ensure-store.md) resolves
-     `<plugin>`. Do **not** `adaptive-artifacts create --type
+     `<plugin>`. `bin/aff` is the verdict binary from `~/affidavit`.
+     Do **not** `adaptive-artifacts create --type
      project:check-run` for `method` `tdd` or `check`. Read the
      runner's JSON (or `list` the new check-run) and keep its `id`
      and `result` for Assess and for `close`.
@@ -237,7 +238,7 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
-   `tdd`/`check` results (from `aff check`) don't need a
+   `tdd`/`check` results (from `orchestra check`) don't need a
    signer; their `signed_by` stays `""`.
 
    On every path, `result` is `pass`, `fail`, `blocked`, or
@@ -590,7 +591,7 @@ adaptive-artifacts update --type project:work-item --id <id> \
 specification, and incidental work). It skips assessment and release.
 A result other than `pass` is already unmet there; do not route
 `blocked` or `insufficient` through `close`. Structured work gets
-check-runs from `aff check` (or a `manual` create) with
+check-runs from `orchestra check` (or a `manual` create) with
 `requirement` and `evidence_kind`, then Assess. `close` does not copy
 those fields. Use the simple-work batch once every active acceptance
 for this work-item has a runner-produced check-run (`tdd`/`check`) or
@@ -613,16 +614,16 @@ test-id change is a signed amendment in `.affidavit/manifest.json`;
 refuses when there is no qualifying assertion-level red for the
 frozen tests. Do not hand-write the batch to route around a refusal.
 
-For `tdd`/`check`, `aff close-batch` does **not** invent pass/fail or
+For `tdd`/`check`, `orchestra close-batch` does **not** invent pass/fail or
 create check-runs. It only references runner-produced `check_run_id`s
-(from `aff check`) and copies each run's `result` for the
+(from `orchestra check`) and copies each run's `result` for the
 refusal gate. For `tdd` on `done`, also carry red-first fields from a
 prior runner fail (below) — for oracle-backed acceptances that red
 must be assertion-level. `manual` criteria still carry `result` /
 `revision` / `signed_by` so the batch can create those check-runs.
 `check` and `manual` do not require `red_check_run_id`.
 
-CLI: `aff close-batch` (or `<plugin>/bin/aff close-batch`
+CLI: `orchestra close-batch` (or `<plugin>/bin/orchestra close-batch`
 after resolving `<plugin>` per [ensure-store.md](../ensure-store.md)).
 
 1. Fetch the active acceptances — superseded ones are retired
@@ -761,7 +762,7 @@ EOF
    (default: process cwd):
 
 ```bash
-aff close-batch \
+orchestra close-batch \
   --input /tmp/close-request.json \
   --out /tmp/close-batch.ndjson \
   --cwd <repo-or-worktree>
@@ -777,7 +778,7 @@ aff close-batch \
 5. Only after a `0` exit, apply the batch — one `project:check-run`
    create per `manual` criterion (each `informed_by` both its
    acceptance and the execution-report); `tdd`/`check` check-runs are
-   already in the store from `aff check` and are not
+   already in the store from `orchestra check` and are not
    re-created. Then the `finding` if one was given, then the
    work-item transition, all in one process:
 
@@ -791,10 +792,10 @@ adaptive-artifacts apply /tmp/close-batch.ndjson
 
 - Dual-write CI as records if CI already owns the result
 - `create --type project:check-run` for `method` `tdd` or `check` —
-  only `aff check` (or an already runner-produced id) may
+  only `orchestra check` (or an already runner-produced id) may
   supply those binary results
 - Invent pass/fail in a close-request for `tdd`/`check` without a
-  runner `check_run_id` — `aff close-batch` must reference that id
+  runner `check_run_id` — `orchestra close-batch` must reference that id
 - Treat a checklist tick as pass without a `check-run` (binary) or
   a `finding` (comparative)
 - Transition a work-item to `done` on an unmet or unverified criterion
@@ -805,10 +806,10 @@ adaptive-artifacts apply /tmp/close-batch.ndjson
   reviewed it — sign it, or it lingers under Unsigned Manual Check
 - Invent `red_*` fields or close a pass-only `tdd` criterion without
   a runner-produced fail preceding the green (or a finding escape) —
-  `aff close-batch` refuses that close; verify the actual command
+  `orchestra close-batch` refuses that close; verify the actual command
   output and copy ids/fields from real check-runs
 - Close another focus's work-item
-- Skip `aff close-batch` and hand-assemble the `apply` NDJSON for a
+- Skip `orchestra close-batch` and hand-assemble the `apply` NDJSON for a
   multi-criterion close — that is exactly the ad-hoc path that let a
   `done` work-item carry a failing check-run with no `finding` before
 - Put `level` or `next` on a check-run
@@ -823,7 +824,7 @@ adaptive-artifacts apply /tmp/close-batch.ndjson
 - Edit the tree from a verification task when its check fails. The
   verification executor returns `fail`; leave the work-item
   `in_progress` and use assessment `next` `execute` for that failure
-- Route `manual` criteria through `aff check`
+- Route `manual` criteria through `orchestra check`
 - Mark an oracle-backed requirement `verified` without mechanical
   oracle verify (assertion-level red at base, green at head, and
   `aff verdict` exit 0 when the claim is in `.affidavit/manifest.json`)

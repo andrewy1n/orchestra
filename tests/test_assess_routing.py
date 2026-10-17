@@ -71,14 +71,14 @@ def test_verify_and_assess_are_separate_steps():
         assert "next" not in inv["payload"]
         for field in ("criterion_id", "revision", "result", "effort", "method", "signed_by"):
             assert field in inv["payload"]
-        # tdd/check check-runs are produced by aff check, not by hand.
+        # tdd/check check-runs are produced by orchestra check, not by hand.
         assert inv["payload"]["method"] == "manual"
     bearing = [inv for inv in check_runs if "requirement" in inv["payload"]]
     plain = [inv for inv in check_runs if "requirement" not in inv["payload"]]
     assert len(bearing) == 1 and len(plain) == 1
     assert bearing[0]["payload"]["evidence_kind"]
     assert "evidence_kind" not in plain[0]["payload"]
-    assert "aff check" in _text("verify-work")
+    assert "orchestra check" in _text("verify-work")
 
 
 def test_routing_table_chooses_next_from_the_evidence():

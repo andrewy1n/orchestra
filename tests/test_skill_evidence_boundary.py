@@ -1,6 +1,6 @@
 """Skill markdown must not write tdd/check check-runs or oracle-amendments.
 
-A tdd or check result comes from ``aff check``. An oracle hash or test-id
+A tdd or check result comes from ``orchestra check``. An oracle hash or test-id
 change is a signed amendment in ``.affidavit/manifest.json``. ``aff verdict``
 accepts or rejects that claim. Manual, review, and the suite module's
 check-run write stay allowed.

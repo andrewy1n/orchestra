@@ -1,7 +1,7 @@
 """Fail closed if verify-work or close_batch invent binary check-runs for tdd/check.
 
 R5 / check-run-authority: tdd/check check-runs come only from
-`aff check` (or an already runner-produced id). Agents write
+`orchestra check` (or an already runner-produced id). Agents write
 assessments, not invented pass/fail.
 """
 
@@ -31,7 +31,7 @@ def _normalized(text: str) -> str:
 def test_skill_documents_affidavit_check_for_tdd_and_check():
     text = _skill()
     flat = _normalized(text)
-    assert "aff check" in text
+    assert "orchestra check" in text
     assert "--acceptance" in text
     assert "Do **not** `adaptive-artifacts create --type" in text
     assert "project:check-run` for `method` `tdd` or `check`" in flat or (
@@ -53,7 +53,7 @@ def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
         method = inv["payload"].get("method")
         assert method == "manual", (
             f"verify-work must not document create with method={method!r}; "
-            "tdd/check check-runs come from aff check"
+            "tdd/check check-runs come from orchestra check"
         )
 
 
