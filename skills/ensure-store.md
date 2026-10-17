@@ -90,10 +90,19 @@ its own op log, so an `update`, `supersede`, or `close` batch does not
 have to be committed before validating or before `hook-stop` runs.
 
 Still commit store writes as part of the work they belong to — the
-record diff is what shows a reader what changed and why:
+record diff is what shows a reader what changed and why. The subject
+is `type(scope): summary`, where type is `feat`, `fix`, `docs`,
+`refactor`, `test`, or `chore`, and the body is one or two sentences
+on why:
 
 ```bash
-git add .artifacts && git commit -m "records: <what changed>"
+git add .artifacts && git commit -m "$(cat <<'EOF'
+chore(records): <what changed>
+
+Commit the store write so a reader can see what changed and why.
+
+EOF
+)"
 ```
 
 A record edited by hand, outside the runtime, fails validation:

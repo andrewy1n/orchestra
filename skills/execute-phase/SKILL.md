@@ -298,11 +298,19 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    Put the resulting SHA in the evidence `revision`. Skip the
    per-task commit when there is nothing to commit, when `## Landing`
    is absent, or when the task is the verification task (it does not
-   edit the tree).
+   edit the tree). The subject is `type(scope): summary`, where type
+   is `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`. The body
+   is one or two sentences on why and names the task slug.
 
 ```bash
 git -C <repo-parent>/<repo-name>--<phase-slug> add -A -- . ':!.artifacts'
-git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "<task-slug>"
+git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "$(cat <<'EOF'
+feat(<scope>): <summary>
+
+Land <task-slug> so a passing check-run can cite this revision.
+
+EOF
+)"
 ```
 
    Evidence block (what a subagent returns, or what this session
@@ -620,11 +628,20 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
    close below. When Landing names push as a human stop, stop before
    pushing and ask. Push only as a human stop: push only when it is a
    human stop. Otherwise do not push. When `## Landing` is absent,
-   skip the branch commit, the merge, and the store commit.
+   skip the branch commit, the merge, and the store commit. The
+   phase-branch commit uses a subject `type(scope): summary`, where
+   type is `feat`, `fix`, `docs`, `refactor`, `test`, or `chore`, and
+   a body of one or two sentences on why.
 
 ```bash
 git -C <repo-parent>/<repo-name>--<phase-slug> add -A -- . ':!.artifacts'
-git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "<phase-slug>"
+git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "$(cat <<'EOF'
+feat(<phase-slug>): <summary>
+
+Commit the phase branch so the merge onto main has a revision to land.
+
+EOF
+)"
 git -C <primary-checkout> merge phase/<phase-slug>
 ```
 
@@ -653,11 +670,18 @@ adaptive-artifacts supersede --type project:current-position --id <effort-positi
 ```
 
    Then commit the store on `main` from the primary checkout, only
-   when `## Landing` was present:
+   when `## Landing` was present. Same subject shape,
+   `type(scope): summary`, and a body of one or two sentences on why.
 
 ```bash
 git -C <primary-checkout> add -- .artifacts
-git -C <primary-checkout> commit -m "<phase-slug> store"
+git -C <primary-checkout> commit -m "$(cat <<'EOF'
+chore(<phase-slug>): record the store
+
+Commit the store on main so the record diff shows what changed and why.
+
+EOF
+)"
 ```
 
    Skip all three for incidental. Also skip the phase-branch commit,
