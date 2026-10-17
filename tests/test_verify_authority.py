@@ -14,10 +14,10 @@ import pytest
 
 from conftest import REPO_ROOT
 from skill_extraction import extract_invocations
-from affidavit import close_batch
+from orchestra import close_batch
 
 SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"
-SCRIPT = REPO_ROOT / "affidavit" / "close_batch.py"
+SCRIPT = REPO_ROOT / "orchestra" / "close_batch.py"
 
 
 def _skill() -> str:

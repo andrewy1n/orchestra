@@ -153,7 +153,7 @@ def resolve(directory: Path, env: dict[str, str] | None = None) -> Target:
 
 def aa_command() -> list[str]:
     """Full argv for adaptive-artifacts (shared resolve order)."""
-    from affidavit.aa_resolve import resolve_aa_command
+    from orchestra.aa_resolve import resolve_aa_command
 
     return resolve_aa_command()
 

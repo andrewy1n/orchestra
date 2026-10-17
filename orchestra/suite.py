@@ -19,15 +19,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from affidavit import aa
-from affidavit.check import (
+from orchestra import aa
+from orchestra.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
     git_diff_sha256,
     git_head,
     git_is_dirty,
 )
-from affidavit.policy import dirty_pass_decision, map_process_outcome
+from orchestra.policy import dirty_pass_decision, map_process_outcome
 from orchestra.reviewer import _revision_matches
 
 EVIDENCE_KIND = "integration"

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from affidavit.aa_resolve import resolve_aa_command
-from affidavit import aa
+from orchestra.aa_resolve import resolve_aa_command
+from orchestra import aa
 from dashboard import artifact_store
 
 

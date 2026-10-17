@@ -1,4 +1,7 @@
-"""Orchestration plugin. Evidence gates stay in the affidavit package."""
+"""Orchestration plugin.
+
+Puts the affidavit checkout on ``sys.path`` so ``affidavit.oracle_red`` imports.
+"""
 
 from __future__ import annotations
 
@@ -27,8 +30,8 @@ def ensure_affidavit_importable() -> None:
     """Put the affidavit checkout on sys.path when cwd is not that checkout.
 
     ``import affidavit`` succeeds there because the empty path entry is the
-    cwd. Orchestra still imports ``affidavit.aa``, ``affidavit.check``, and
-    ``affidavit.policy`` from other working directories.
+    cwd. Orchestra imports ``affidavit.oracle_red`` from other working
+    directories.
     """
     try:
         import affidavit  # noqa: F401
