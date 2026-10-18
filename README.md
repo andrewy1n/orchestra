@@ -153,7 +153,7 @@ parallel tasks share) before plan review.
 
 The phase body includes a `## Landing` section with branch
 `phase/<phase-slug>`, worktree
-`<repo-parent>/<repo-name>--<phase-slug>`, base `main`, and these
+`<repo>/.worktrees/<phase-slug>`, base `main`, and these
 close actions: commit code on the phase branch, merge that branch
 into `main`, then commit the store on the primary checkout. Push
 appears only when it is one of the human stops. Incidental work has

@@ -10,7 +10,7 @@ SKILLS = REPO_ROOT / "skills"
 
 SHARED = (
     "branch `phase/<phase-slug>`",
-    "worktree `<repo-parent>/<repo-name>--<phase-slug>`",
+    "worktree `<repo>/.worktrees/<phase-slug>`",
     "base `main`",
     "into `main`",
     "the primary checkout",

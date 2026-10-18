@@ -10,7 +10,7 @@ SKILLS = REPO_ROOT / "skills"
 
 LANDING_PHRASES = (
     "branch `phase/<phase-slug>`",
-    "worktree `<repo-parent>/<repo-name>--<phase-slug>`",
+    "worktree `<repo>/.worktrees/<phase-slug>`",
     "base `main`",
     "commit code on the phase branch",
     "merge that branch into `main`",

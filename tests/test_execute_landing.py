@@ -16,7 +16,7 @@ def _text(name: str) -> str:
 
 def test_landing_worktree_confines_code_and_keeps_the_store_on_the_primary_checkout():
     text = _text("execute-phase")
-    assert "<repo-parent>/<repo-name>--<phase-slug>" in text
+    assert "<repo>/.worktrees/<phase-slug>" in text
     assert "code writes only under the worktree" in text
     assert "store writes on the primary checkout" in text
 

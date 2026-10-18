@@ -94,13 +94,14 @@ adaptive-artifacts get --type project:phase --id <phase-id>
 
    When `## Landing` is present, create branch `phase/<phase-slug>`
    from base `main` if that branch is missing, and add the worktree
-   `<repo-parent>/<repo-name>--<phase-slug>` if that path is missing.
+   `<repo>/.worktrees/<phase-slug>` if that path is missing.
    The primary checkout is the checkout that stays on `main` and
    receives store writes; it is not the phase worktree.
 
 ```bash
 git branch phase/<phase-slug> main
-git worktree add <repo-parent>/<repo-name>--<phase-slug> phase/<phase-slug>
+mkdir -p <repo>/.worktrees
+git worktree add <repo>/.worktrees/<phase-slug> phase/<phase-slug>
 ```
 
    Inline work runs in that directory. Each subagent is given the
@@ -254,7 +255,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    `generalPurpose`). Give each only:
 
    - repo path — the worktree absolute path
-     `<repo-parent>/<repo-name>--<phase-slug>` when `## Landing` is
+     `<repo>/.worktrees/<phase-slug>` when `## Landing` is
      present, otherwise the current checkout — task `subject` /
      title, `kind`, focus `effort`
    - the `## <task-slug>` section of `views/brief.md` (work-item body,
@@ -303,8 +304,8 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    is one or two sentences on why and names the task slug.
 
 ```bash
-git -C <repo-parent>/<repo-name>--<phase-slug> add -A -- . ':!.artifacts'
-git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "$(cat <<'EOF'
+git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.artifacts'
+git -C <repo>/.worktrees/<phase-slug> commit -m "$(cat <<'EOF'
 feat(<scope>): <summary>
 
 Land <task-slug> so a passing check-run can cite this revision.
@@ -634,8 +635,8 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
    a body of one or two sentences on why.
 
 ```bash
-git -C <repo-parent>/<repo-name>--<phase-slug> add -A -- . ':!.artifacts'
-git -C <repo-parent>/<repo-name>--<phase-slug> commit -m "$(cat <<'EOF'
+git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.artifacts'
+git -C <repo>/.worktrees/<phase-slug> commit -m "$(cat <<'EOF'
 feat(<phase-slug>): <summary>
 
 Commit the phase branch so the merge onto main has a revision to land.
