@@ -1,4 +1,4 @@
-# affidavit
+# orchestra
 
 Agent skills for a software-engineering loop on adaptive-artifacts:
 classify the ask, plan only the focused effort, execute independent
@@ -15,19 +15,19 @@ materialized as `work-item` + `acceptance`.
 
 ## Quick start
 
-1. Install the **adaptive-artifacts** and **affidavit** plugins (see Install).
+1. Install the **adaptive-artifacts** and **orchestra** plugins (see Install).
 2. Install [uv](https://docs.astral.sh/uv/getting-started/installation/). It runs the dashboard and fetches Textual.
 3. Add the dashboard keys to tmux. Pick one:
    - With [TPM](https://github.com/tmux-plugins/tpm), add this to `~/.tmux.conf`, then press prefix + `I`:
 
      ```tmux
-     set -g @plugin 'andrewy1n/affidavit'
+     set -g @plugin 'andrewy1n/orchestra'
      ```
 
    - Without TPM, clone the repo and add this to `~/.tmux.conf`:
 
      ```tmux
-     run-shell ~/affidavit/affidavit.tmux
+     run-shell ~/orchestra/affidavit.tmux
      ```
 
 4. In your project, run the `init` skill once. It creates the store the dashboard reads.
@@ -74,19 +74,19 @@ settles and outsiders use it.
 
 ### Claude Code
 
-The affidavit marketplace lists both plugins. Installing affidavit
+The orchestra marketplace lists both plugins. Installing orchestra
 pulls `adaptive-artifacts` as a declared dependency (same marketplace):
 
 ```bash
-claude plugin marketplace add andrewy1n/affidavit
-claude plugin install affidavit@affidavit -y
+claude plugin marketplace add andrewy1n/orchestra
+claude plugin install orchestra@orchestra -y
 ```
 
-Install id is `affidavit@affidavit`. If a marketplace with that name
-already points elsewhere: `claude plugin marketplace remove affidavit`
+Install id is `orchestra@orchestra`. If a marketplace with that name
+already points elsewhere: `claude plugin marketplace remove orchestra`
 then add again.
 
-To install only the runtime (without affidavit), use its own
+To install only the runtime (without orchestra), use its own
 marketplace: `claude plugin marketplace add andrewy1n/adaptive-artifacts`
 then `claude plugin install adaptive-artifacts@adaptive-artifacts -y`.
 
@@ -99,11 +99,11 @@ or sync **both** repos and put `adaptive-artifacts` on PATH:
 git clone https://github.com/andrewy1n/adaptive-artifacts.git
 # put adaptive-artifacts/bin on PATH (see that repo's README)
 
-git clone https://github.com/andrewy1n/affidavit.git
-./se-workflow/scripts/sync-plugin.sh
+git clone https://github.com/andrewy1n/orchestra.git
+./scripts/sync-plugin.sh
 ```
 
-Then reload Cursor so it picks up `~/.cursor/plugins/local/affidavit`.
+Then reload Cursor so it picks up `~/.cursor/plugins/local/orchestra`.
 Or install from the repository URL in the Cursor plugin flow.
 
 #### Codex / other Agent Skills hosts
@@ -375,7 +375,7 @@ It needs `uv`. The first run downloads `textual`.
 `dashboard/bin/dashboard --interval S` sets the seconds between change checks
 (default 2).
 
-The launcher (and `affidavit.aa`) pick **one** store for the git
+The launcher (and `orchestra.aa`) pick **one** store for the git
 toplevel — local (`<toplevel>/.artifacts`) or global
 (`~/.artifacts/<toplevel name>`), never both.
 
@@ -395,7 +395,7 @@ not fall through to the other store. This repository pins local in
 If a personal shell function wraps `adaptive-artifacts` and forces
 `--store ~/.artifacts/<name>`, it bypasses this binding for bare CLI
 calls. Prefer `command adaptive-artifacts`, or pass `--store` /
-`--contract` from the resolved target (as `affidavit.aa.run_aa`
+`--contract` from the resolved target (as `orchestra.aa.run_aa`
 does).
 
 It runs the app from the toplevel. The app finds the runtime binary in
@@ -456,7 +456,7 @@ It reads Claude Code status JSON on stdin (`workspace.current_dir`, else
 line script that has the status JSON in `$input`, append:
 
 ```bash
-echo "$input" | ~/affidavit/dashboard/bin/dashboard-status
+echo "$input" | ~/orchestra/dashboard/bin/dashboard-status
 ```
 
 ## Testing

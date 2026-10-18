@@ -5,7 +5,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="${1:-${HOME}/.cursor/plugins/local/affidavit}"
+DEST="${1:-${HOME}/.cursor/plugins/local/orchestra}"
 
 mkdir -p "$(dirname "$DEST")"
 rm -rf "$DEST"
@@ -15,7 +15,7 @@ mkdir -p \
   "$DEST/scripts" \
   "$DEST/dashboard" \
   "$DEST/bin" \
-  "$DEST/affidavit" \
+  "$DEST/orchestra" \
   "$DEST/agents" \
   "$DEST/.claude-plugin" \
   "$DEST/.cursor-plugin"
@@ -29,7 +29,7 @@ cp -a "$ROOT/scripts/." "$DEST/scripts/"
 rm -f "$DEST/scripts/sync-plugin.sh"
 cp -a "$ROOT/dashboard/." "$DEST/dashboard/"
 cp -a "$ROOT/bin/." "$DEST/bin/"
-cp -a "$ROOT/affidavit/." "$DEST/affidavit/"
+cp -a "$ROOT/orchestra/." "$DEST/orchestra/"
 cp -a "$ROOT/agents/." "$DEST/agents/"
 cp -a "$ROOT/affidavit.tmux" "$DEST/"
 find "$DEST" -name '__pycache__' -type d -prune -exec rm -rf {} +

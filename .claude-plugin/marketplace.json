@@ -1,13 +1,13 @@
 {
-  "name": "affidavit",
+  "name": "orchestra",
   "owner": {
     "name": "andrewy1n",
     "email": "andrewyingo@gmail.com"
   },
-  "description": "Software-engineering loop on adaptive-artifacts: classify, plan focused effort, execute, verify. Lists both affidavit and adaptive-artifacts.",
+  "description": "Software-engineering loop on adaptive-artifacts: classify, plan focused effort, execute, verify. Lists both orchestra and adaptive-artifacts.",
   "plugins": [
     {
-      "name": "affidavit",
+      "name": "orchestra",
       "source": "./",
       "description": "Classify work, plan a focused effort as records, execute with parallel subagents, verify with checks or findings. Requires adaptive-artifacts."
     },

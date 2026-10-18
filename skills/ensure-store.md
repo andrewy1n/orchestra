@@ -1,4 +1,4 @@
-# Ensure the current project has an affidavit store
+# Ensure the current project has an orchestra store
 
 This plugin is installed once. Do **not** copy skills, rules, or this
 repo into the work project. The store is created in the **current
@@ -9,11 +9,11 @@ Requires `adaptive-artifacts` on PATH.
 
 ## Which store
 
-Dashboard and `affidavit.aa` resolve **one** store: `local`
+Dashboard and `orchestra.aa` resolve **one** store: `local`
 (`<repo>/.artifacts`) or `global` (`~/.artifacts/<repo-name>`). See
 the README (store binding). Skills that shell out to
 `adaptive-artifacts` should use the resolved store — pass `--store`
-and `--contract` explicitly, or call through `affidavit.aa` — so a
+and `--contract` explicitly, or call through `orchestra.aa` — so a
 personal shell function that forces `--store ~/.artifacts/$proj`
 cannot redirect writes. For a new work repo, `init` creates the
 **local** store under `<repo>/.artifacts`; pin it with
@@ -31,7 +31,7 @@ Resolve `<plugin>` in order:
 2. `$CURSOR_PLUGIN_ROOT` if that path contains `contract/project-design.json`
 3. Directory two levels above this `SKILL.md` (skill-relative layout)
 
-Do not hardcode `~/.cursor/plugins/local/affidavit` as a primary
+Do not hardcode `~/.cursor/plugins/local/orchestra` as a primary
 path. Local sync installs still work when skills run from that tree
 via step 3.
 

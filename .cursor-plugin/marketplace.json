@@ -1,5 +1,5 @@
 {
-  "name": "affidavit",
+  "name": "orchestra",
   "owner": {
     "name": "andrewy1n",
     "email": "andrewyingo@gmail.com"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "affidavit",
+      "name": "orchestra",
       "source": ".",
       "skills": "skills",
       "description": "Classify work, plan a focused effort as records, execute with parallel subagents, verify with checks or findings."
