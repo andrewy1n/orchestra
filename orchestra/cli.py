@@ -69,6 +69,50 @@ def _build_parser() -> argparse.ArgumentParser:
         help="git cwd for red-first ancestry checks (default: process cwd)",
     )
 
+    install = sub.add_parser(
+        "install",
+        help="Install orchestra payload for one or more agent hosts",
+    )
+    install.add_argument(
+        "--only",
+        action="append",
+        metavar="HOST",
+        default=[],
+        help="Install only this provider id; repeat for more (default: all)",
+    )
+    install.add_argument(
+        "--all",
+        action="store_true",
+        help="Select every provider in the matrix",
+    )
+    install.add_argument(
+        "--global",
+        dest="global_",
+        action="store_true",
+        help="Install into user directories instead of the project",
+    )
+    install.add_argument(
+        "--copy",
+        action="store_true",
+        help="Copy payload instead of symlinking to this checkout",
+    )
+    install.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the plan and write nothing",
+    )
+    install.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="Remove exactly what the adapter registered",
+    )
+    install.add_argument(
+        "--home",
+        default=None,
+        metavar="DIR",
+        help="Redirect the whole install under DIR (tests, throwaway homes)",
+    )
+
     contract = sub.add_parser(
         "contract",
         help="Print the bundled project-design contract",
@@ -156,6 +200,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.cwd is not None:
             argv.extend(["--cwd", args.cwd])
         return close_batch_main(argv)
+    if args.command == "install":
+        from orchestra.install import main as install_main
+
+        return install_main(args)
     if args.command == "contract":
         try:
             path = contract_path()

@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "kind": "native",
+      "project_root": ".claude",
+      "global_root": ".claude",
+      "skills_subdir": "skills",
+      "detect": [".claude", ".claude-plugin"]
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "kind": "native",
+      "project_root": ".cursor",
+      "global_root": ".cursor",
+      "skills_subdir": "skills",
+      "detect": [".cursor", ".cursor-plugin"]
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "kind": "native",
+      "project_root": ".opencode",
+      "global_root": ".config/opencode",
+      "skills_subdir": "skills",
+      "detect": [".opencode", ".config/opencode"]
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "kind": "skills",
+      "profile": "codex",
+      "project_root": ".codex",
+      "global_root": ".codex",
+      "skills_subdir": "skills",
+      "detect": [".codex"]
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "kind": "skills",
+      "profile": "gemini-cli",
+      "project_root": ".gemini",
+      "global_root": ".gemini",
+      "skills_subdir": "skills",
+      "detect": [".gemini"]
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot",
+      "kind": "skills",
+      "profile": "github-copilot",
+      "project_root": ".github",
+      "global_root": ".copilot",
+      "skills_subdir": "skills",
+      "detect": [".github/skills", ".copilot"]
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "kind": "skills",
+      "profile": "cline",
+      "project_root": ".cline",
+      "global_root": ".cline",
+      "skills_subdir": "skills",
+      "detect": [".cline"]
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "kind": "skills",
+      "profile": "windsurf",
+      "project_root": ".windsurf",
+      "global_root": ".codeium/windsurf",
+      "skills_subdir": "skills",
+      "detect": [".windsurf", ".codeium/windsurf"]
+    }
+  ]
+}
