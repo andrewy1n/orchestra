@@ -438,7 +438,7 @@ def start_suite_background(
             f"suite skipped (mode={resolved_policy.mode}, gate={resolved_policy.gate})"
         )
         return SuiteStart(
-            session_name=session_name or f"se-suite-{phase_slug.strip()}",
+            session_name=session_name or f"orchestra-suite-{phase_slug.strip()}",
             worktree=work,
             phase_slug=phase_slug.strip(),
             phase_head=head,
@@ -468,7 +468,7 @@ def start_suite_background(
         )
 
     slug = phase_slug.strip()
-    name = session_name or f"se-suite-{slug}"
+    name = session_name or f"orchestra-suite-{slug}"
     out_dir = (log_dir or (work / ".suite")).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / f"{name}.log"

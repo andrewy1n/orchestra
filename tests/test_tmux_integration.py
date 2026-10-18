@@ -1,4 +1,4 @@
-"""Drive affidavit.tmux in an isolated tmux server with a client attached in a pty."""
+"""Drive orchestra.tmux in an isolated tmux server with a client attached in a pty."""
 
 from __future__ import annotations
 

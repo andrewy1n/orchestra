@@ -35,7 +35,7 @@ def test_root_env_uses_tools_py(tmp_path, monkeypatch):
 
 def test_plugin_root_sibling_before_path(tmp_path, monkeypatch):
     plugins = tmp_path / "plugins"
-    se = plugins / "affidavit"
+    se = plugins / "orchestra"
     aa_plugin = plugins / "adaptive-artifacts"
     se.mkdir(parents=True)
     bin_path = aa_plugin / "bin" / "adaptive-artifacts"

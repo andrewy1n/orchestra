@@ -187,7 +187,7 @@ def _run(target: Target, *args: str) -> dict[str, Any]:
 def _declared_record_types(target: Target) -> frozenset[str] | None:
     """Record type ids from the bound contract, or None if the contract is unreadable.
 
-    Used so list calls for se-workflow types (phase, work-item, …) are no-ops on
+    Used so list calls for orchestra types (phase, work-item, …) are no-ops on
     foreign stores whose contract does not declare them, instead of failing with
     adaptive-artifacts unknown_type.
     """

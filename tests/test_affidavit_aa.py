@@ -1,4 +1,4 @@
-"""affidavit.aa passes --store/--contract from store binding resolve."""
+"""orchestra.aa passes --store/--contract from store binding resolve."""
 
 from __future__ import annotations
 

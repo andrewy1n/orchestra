@@ -9,7 +9,7 @@ description: >-
 
 # Verify work
 
-Requires `artifact-runtime` and a live affidavit store. If missing,
+Requires `artifact-runtime` and a live orchestra store. If missing,
 follow [ensure-store.md](../ensure-store.md). Follow
 [kinds-and-focus.md](../kinds-and-focus.md). Parent session writes
 records. Git/tests own the code; this skill owns the occurrence that
@@ -654,7 +654,7 @@ adaptive-artifacts list --type project:check-run --subject "<task-slug>" --full 
 
    Copy from the red check-run into the criteria entry:
    `red_check_run_id` (the red run's `id`), `red_result` (must be
-   `fail`), `red_revision`, `red_runner` (must be `affidavit`), and
+   `fail`), `red_revision`, `red_runner` (must be `aff`), and
    when `red_revision` is `dirty`, non-empty `red_diff_sha256` from
    that run's `diff_sha256`. Copy the green run's `revision` onto the
    criteria entry too — ancestry requires it when red is a SHA (green
@@ -689,7 +689,7 @@ cat > /tmp/close-request.json <<'EOF'
       "red_check_run_id": "<red-runner-check-run-id>",
       "red_result": "fail",
       "red_revision": "<red-sha>",
-      "red_runner": "affidavit"
+      "red_runner": "aff"
     },
     {"criterion_id": "<acceptance-id-2>", "method": "check", "check_run_id": "<runner-check-run-id-2>", "result": "pass"}
   ],
@@ -721,7 +721,7 @@ cat > /tmp/close-request.json <<'EOF'
       "red_check_run_id": "<red-runner-check-run-id>",
       "red_result": "fail",
       "red_revision": "dirty",
-      "red_runner": "affidavit",
+      "red_runner": "aff",
       "red_diff_sha256": "<digest-from-red-check-run-diff_sha256>"
     }
   ],

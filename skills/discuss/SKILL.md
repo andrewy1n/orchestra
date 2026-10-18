@@ -12,7 +12,7 @@ description: >-
 
 # Discuss the approach
 
-Requires `artifact-runtime` and a live affidavit store. If missing,
+Requires `artifact-runtime` and a live orchestra store. If missing,
 follow [ensure-store.md](../ensure-store.md). Follow
 [kinds-and-focus.md](../kinds-and-focus.md). Parent session writes
 records.

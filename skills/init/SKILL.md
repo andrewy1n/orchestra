@@ -1,7 +1,7 @@
 ---
 name: init
 description: >-
-  Adopts the current git repo into the affidavit store: contract,
+  Adopts the current git repo into the orchestra store: contract,
   live goal, and a project:phase record for every phase you can
   currently name. Does not write work-items or a plan document.
   Specification and design are written by `discuss`, not `init`. Use

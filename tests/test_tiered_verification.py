@@ -119,7 +119,7 @@ def test_background_tmux_start_is_non_blocking(tmp_path: Path):
     assert calls, "tmux must be invoked"
     assert "-d" in calls[0], "tmux session must be detached (non-blocking)"
     assert "new-session" in calls[0]
-    assert started.session_name.startswith("se-suite-")
+    assert started.session_name.startswith("orchestra-suite-")
     assert not started.exit_path.exists()
 
 
@@ -174,12 +174,12 @@ def test_tmux_poll_collects_check_run_ready_result(tmp_path: Path):
     log_dir = tmp_path / "logs"
     log_dir.mkdir()
     job = SuiteStart(
-        session_name="se-suite-demo",
+        session_name="orchestra-suite-demo",
         worktree=work,
         phase_slug="demo",
         phase_head=HEAD,
-        log_path=log_dir / "se-suite-demo.log",
-        exit_path=log_dir / "se-suite-demo.exit",
+        log_path=log_dir / "orchestra-suite-demo.log",
+        exit_path=log_dir / "orchestra-suite-demo.exit",
         started_monotonic=0.0,
         blocking=False,
     )
@@ -525,7 +525,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     assert "orphan" in flat or "reattach" in flat
     assert orphan_recovery_hint(
         SuiteStart(
-            session_name="se-suite-x",
+            session_name="orchestra-suite-x",
             worktree=Path("/tmp"),
             phase_slug="x",
             phase_head=HEAD,

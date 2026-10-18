@@ -27,7 +27,7 @@ materialized as `work-item` + `acceptance`.
    - Without TPM, clone the repo and add this to `~/.tmux.conf`:
 
      ```tmux
-     run-shell ~/orchestra/affidavit.tmux
+     run-shell ~/orchestra/orchestra.tmux
      ```
 
 4. In your project, run the `init` skill once. It creates the store the dashboard reads.
@@ -162,7 +162,7 @@ records. An interrupt or a chore that may span chats gets
 `kind=incidental` on its **own** subject. Subagents must not call
 `adaptive-artifacts` (single-writer store).
 
-Existing affidavit stores created before staged task lifecycle,
+Existing stores created before staged task lifecycle,
 phase records, and dependency edges existed need a human-approved
 contract replace (`ensure-store.md`).
 
@@ -418,7 +418,7 @@ tmux popups run a non-interactive shell, so shell functions and aliases
 do not apply there. If the launcher finds no store or no `uv`, it prints
 the reason and waits for a key.
 
-The keys come from `affidavit.tmux` at the repo root. TPM runs it
+The keys come from `orchestra.tmux` at the repo root. TPM runs it
 by itself, and `run-shell` runs it without TPM (see Quick start). It adds:
 
 | Keys | Opens |

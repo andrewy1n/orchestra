@@ -1375,7 +1375,7 @@ def test_snapshot_loads_against_adaptive_artifacts_store():
     if not (root / ".artifacts" / "meta.json").is_file():
         pytest.skip("adaptive-artifacts store not present")
     target = artifact_store.resolve(root)
-    # AA may use the se-workflow/affidavit design (has project:phase) or an older
+    # AA may use the orchestra design (has project:phase) or an older
     # foreign design without it. Either way load_snapshot must not die.
     _ = model._declared_record_types(target)
     snapshot = model.load_snapshot(target)

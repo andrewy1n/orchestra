@@ -19,10 +19,10 @@ def tool_use(name, **inp):
 EVENTS = [
     {"type": "mode", "mode": "normal"},
     base("user", "2026-09-22T06:00:00.000Z", message={"role": "user", "content": "do it"}),
-    base("assistant", "2026-09-22T06:00:05.000Z", **tool_use("Skill", skill="affidavit:init")),
+    base("assistant", "2026-09-22T06:00:05.000Z", **tool_use("Skill", skill="orchestra:init")),
     base("user", "2026-09-22T06:00:06.000Z", message={"role": "user", "content": [{"type": "tool_result", "content": "ok"}]}),
     base("user", "2026-09-22T06:00:07.000Z", isMeta=True, message={"role": "user", "content": "caveat"}),
-    base("assistant", "2026-09-22T06:00:10.000Z", **tool_use("Skill", skill="affidavit:init")),
+    base("assistant", "2026-09-22T06:00:10.000Z", **tool_use("Skill", skill="orchestra:init")),
     base("user", "2026-09-22T06:01:00.000Z", message={"role": "user", "content": [{"type": "text", "text": "again"}]}),
     base("assistant", "2026-09-22T06:01:30.000Z", **tool_use("Skill", skill="simplify"), attributionSkill="simplify"),
     base("assistant", "2026-09-22T06:01:31.000Z", **tool_use("Bash", command="ls")),
@@ -39,7 +39,7 @@ EXPECTED = {
     "duration_seconds": 91.0,
     "turns": 2,
     "cost_usd": 0.75,
-    "skills": {"affidavit:init": 2, "simplify": 1},
+    "skills": {"orchestra:init": 2, "simplify": 1},
 }
 
 

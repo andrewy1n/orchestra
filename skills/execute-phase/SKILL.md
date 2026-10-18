@@ -1,7 +1,7 @@
 ---
 name: execute-phase
 description: >-
-  Dispatches affidavit work-items whose derived.ready is true, in
+  Dispatches orchestra work-items whose derived.ready is true, in
   dependency order, each wave inline in this session or as one
   subagent per task, recording an assignment and execution-report
   per dispatch. Parent session writes records; subagents return
@@ -11,7 +11,7 @@ description: >-
 
 # Execute the focused effort
 
-Requires `artifact-runtime` and a live affidavit store. If missing,
+Requires `artifact-runtime` and a live orchestra store. If missing,
 follow [ensure-store.md](../ensure-store.md) then `init` (if no goal
 for the focus) and `plan-phase`. Follow
 [kinds-and-focus.md](../kinds-and-focus.md). Follow `verify-work`
@@ -530,7 +530,7 @@ adaptive-artifacts create --type project:integration-report \
    - `gate=deferred` — no local run; Landing human stop.
 
    If the tmux job is orphaned, reattach with
-   `tmux attach -t se-suite-<phase-slug>` (or inspect the log / exit
+   `tmux attach -t orchestra-suite-<phase-slug>` (or inspect the log / exit
    files under the worktree `.suite/`), then re-start the suite in
    the phase worktree if the session is gone. Do **not** fix-and-rerun
    inside this verification step.
@@ -538,7 +538,7 @@ adaptive-artifacts create --type project:integration-report \
 ```bash
 adaptive-artifacts create --type project:check-run \
   --subject "<phase-slug>-suite" \
-  --payload '{"criterion_id":"<phase-slug>-suite","revision":"<phase-head-sha>","result":"<pass|fail|blocked>","effort":"<focus>","method":"check","signed_by":"","evidence_kind":"integration","runner":"affidavit","exit_code":0,"duration_s":0,"output_sha256":"<digest>","failing_node_ids":"[]"}' \
+  --payload '{"criterion_id":"<phase-slug>-suite","revision":"<phase-head-sha>","result":"<pass|fail|blocked>","effort":"<focus>","method":"check","signed_by":"","evidence_kind":"integration","runner":"aff","exit_code":0,"duration_s":0,"output_sha256":"<digest>","failing_node_ids":"[]"}' \
   --body "<suite output tail; failing node ids when failed>"
 ```
 
