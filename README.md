@@ -117,6 +117,102 @@ directory. Keep `contract/project-design.json` and
 `skills/kinds-and-focus.md` / `skills/ensure-store.md` next to
 `skills/` as in this repo (two levels above each `SKILL.md`).
 
+## Install with the CLI
+
+The installer writes one host payload per provider. Native hosts get
+`skills/`, `contract/`, and their host-shaped files; `kind: skills` hosts
+delegate to `npx skills add`. It is idempotent: one registration per host
+per install scope, and a second run changes nothing.
+
+### CLI install
+
+Put the `orchestra` console script on PATH:
+
+```bash
+uv tool install "git+https://github.com/andrewy1n/orchestra.git@<ref>"
+```
+
+Replace `<ref>` with a branch, tag, or commit. The console script serves
+`check`, `contract`, `project-field`, and `sessions`. Host installs run from
+a checkout as `./bin/orchestra install`, because the installer reads
+`skills/`, `contract/`, `agents/`, and `hosts/` from that tree.
+
+### Host matrix
+
+This table matches `installer/providers.json`. `Provider id` is the `--only`
+value. A native host installs at the project root by default and at the
+global root with `--global`. A `kind: skills` host delegates to the
+`npx skills add` profile in the last column; native hosts have no profile.
+
+| Host | Provider id | Kind | Project root | Global root | Skills profile |
+|---|---|---|---|---|---|
+| Claude Code | `claude` | native | `.claude` | `.claude` | — |
+| Cursor | `cursor` | native | `.cursor` | `.cursor` | — |
+| OpenCode | `opencode` | native | `.opencode` | `.config/opencode` | — |
+| Codex | `codex` | skills | `.codex` | `.codex` | `codex` |
+| Gemini CLI | `gemini` | skills | `.gemini` | `.gemini` | `gemini-cli` |
+| GitHub Copilot | `copilot` | skills | `.github` | `.copilot` | `github-copilot` |
+| Cline | `cline` | skills | `.cline` | `.cline` | `cline` |
+| Windsurf | `windsurf` | skills | `.windsurf` | `.codeium/windsurf` | `windsurf` |
+
+### Dry run first
+
+Run a dry run before touching a host. It prints the plan and writes nothing:
+
+```bash
+./bin/orchestra install --all --dry-run
+```
+
+Then install one host, or every host with `--all`:
+
+```bash
+./bin/orchestra install --only claude
+./bin/orchestra install --only cursor
+./bin/orchestra install --only opencode
+./bin/orchestra install --only codex
+./bin/orchestra install --only gemini
+./bin/orchestra install --only copilot
+./bin/orchestra install --only cline
+./bin/orchestra install --only windsurf
+```
+
+A `kind: skills` row runs its `npx skills add` tail instead:
+
+```bash
+npx skills add -a codex
+npx skills add -a gemini-cli
+npx skills add -a github-copilot
+npx skills add -a cline
+npx skills add -a windsurf
+```
+
+If `npx` is unavailable or exits non-zero, the adapter falls back to a plain
+skills-directory install and says so. The registration records the profile;
+`--uninstall` removes the registration and leaves the profile managed by
+`npx skills`.
+
+### Scope and flags
+
+| Flag | Effect |
+|---|---|
+| `--only <id>` | Install one provider; repeat for more. Default is every provider. |
+| `--all` | Select every provider in the matrix. |
+| `--dry-run` | Print the plan and write nothing. |
+| `--global` | Install into user directories instead of the project. |
+| `--copy` | Copy the payload instead of symlinking to the checkout. |
+| `--uninstall` | Remove exactly what the adapter registered. |
+| `--home <dir>` | Redirect the whole install under DIR (tests, throwaway homes). |
+
+The default is a project install with symlinks, so keep the checkout. Use
+`--copy` for a standalone snapshot, `--global` for the user directories in
+the matrix, and `--uninstall` to remove what the registration recorded:
+
+```bash
+./bin/orchestra install --only claude --copy
+./bin/orchestra install --only claude --global
+./bin/orchestra install --only claude --uninstall
+```
+
 ## Use
 
 In whatever repo you are building:
