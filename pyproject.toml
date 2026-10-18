@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orchestra"
+version = "0.1.0"
+description = "Orchestra CLI: acceptance checks, bundled contract, project field, and session metrics"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.scripts]
+orchestra = "orchestra.cli:main"
+
+[tool.setuptools]
+# The package lives at the repo root; `bin/orchestra` and skills import it
+# with the checkout on PYTHONPATH in the source layout.
+packages = ["orchestra"]
+
+[tool.setuptools.package-data]
+# `data/project-design.json` and `_scripts/` are symlinks in the checkout so
+# the contract and the session scripts keep one source of truth. The wheel
+# builder dereferences them into real files.
+orchestra = ["data/*.json", "_scripts/*.py"]
