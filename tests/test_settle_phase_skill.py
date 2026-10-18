@@ -1,4 +1,4 @@
-"""The discuss skill settles the approach before planning, and plan review gates dispatch."""
+"""The settle-phase skill settles the approach before planning, and plan review gates dispatch."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ def _kinds() -> str:
     return (SKILLS / "kinds-and-focus.md").read_text()
 
 
-def test_discuss_skill_is_discoverable():
-    text = _text("discuss")
-    assert text.startswith("---\nname: discuss\n")
+def test_settle_phase_skill_is_discoverable():
+    text = _text("settle-phase")
+    assert text.startswith("---\nname: settle-phase\n")
     assert "description:" in text.split("---")[1]
 
 
-def test_discuss_writes_specification_design_decisions_phase_and_questions():
-    written = {inv["type"] for inv in extract_invocations(_text("discuss")) if inv["subcommand"] in WRITES}
+def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
+    written = {inv["type"] for inv in extract_invocations(_text("settle-phase")) if inv["subcommand"] in WRITES}
     assert written == {
         "project:specification",
         "project:design",
@@ -34,8 +34,8 @@ def test_discuss_writes_specification_design_decisions_phase_and_questions():
     }
 
 
-def test_engage_routes_new_phases_through_discuss():
-    assert "`discuss`" in _text("engage")
+def test_engage_routes_new_phases_through_settle_phase():
+    assert "`settle-phase`" in _text("engage")
 
 
 def test_plan_phase_opens_a_blocking_plan_review_question():
@@ -93,12 +93,12 @@ def test_engage_lists_human_dismissible_needs_you_without_blocking_route():
 
 
 def test_skills_that_open_human_gates_document_matching_clears():
-    discuss = extract_invocations(_text("discuss"))
+    settle = extract_invocations(_text("settle-phase"))
     assert any(
         inv["subcommand"] == "update"
         and inv["type"] == "project:continuity-question"
         and inv["transition"] == "answered"
-        for inv in discuss
+        for inv in settle
     )
     plan = extract_invocations(_text("plan-phase"))
     assert any(
@@ -139,3 +139,9 @@ def test_skills_that_open_human_gates_document_matching_clears():
         and (inv.get("payload") or {}).get("signed_by")
         for inv in execute
     )
+
+
+def test_kinds_documents_milestone_hierarchy():
+    text = _kinds()
+    assert "project:milestone" in text
+    assert "milestone" in text.lower()

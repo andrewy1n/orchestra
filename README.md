@@ -49,10 +49,13 @@ Run acceptance checks with `bin/orchestra check` (same plugin root as `dashboard
 | `incidental` | One-off; no records if it fits this chat |
 
 Focus is a subject string (which effort this chat is on). An effort
-is a product area; new work in it is a new phase. Other live goals
-stay live; a finished effort closes with `status: closed`. A merged effort lists the old slugs in `merged_from`. Each
-running phase keeps its own position, so chats on different phases of
-one effort do not collide. Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
+is a product area; new work in it is a new phase. Optional
+`project:milestone` records group phases under a time-bounded
+outcome; focus stays the effort. Other live goals stay live; a
+finished effort closes with `status: closed`. A merged effort lists
+the old slugs in `merged_from`. Each running phase keeps its own
+position, so chats on different phases of one effort do not collide.
+Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
 
 ## Install
 
@@ -122,7 +125,7 @@ In whatever repo you are building:
 |---|---|
 | `engage` | Classify kind + focus, then hand off |
 | `init` | First time on a repo, or a new effort subject |
-| `discuss` | Settle the approach for a phase with the user before planning |
+| `settle-phase` | Settle the approach for a phase (spec + design when structured) before planning |
 | `plan-phase` | Approach settled; write tasks, then wait for plan review |
 | `execute-phase` | Dispatch ready work in waves to subagents |
 | `verify-work` | Show a task is done (check-run and/or finding) |
@@ -172,9 +175,9 @@ Decision two-modes is the rule. Structured work is a phase with a
 specification. It runs specify, design, plan, execute, integrate when a
 wave is parallel, verify, assess, and release `ready`. Simple work is
 incidental, or a phase with no specification. It runs execute, then
-verify as pass or fail. `discuss` writes a specification and a design
-only for structured work; simple work skips both. A phase with no
-specification, and incidental work, skip assessment and release and
+verify as pass or fail. `settle-phase` writes a specification and a
+design only for structured work; simple work skips both. A phase with
+no specification, and incidental work, skip assessment and release and
 keep pass/fail check-runs. `kind` `incidental` stays on that path even
 when a specification exists for some other phase.
 
@@ -215,15 +218,15 @@ merged or deployed. Do not write `merged`, `deployed`, or any other
 state. Do not deploy.
 
 A `project:feedback` record is new intent `engage` can route, with no
-collector. Route it through `discuss` (specify), even when tasks for
-that effort already exist. Do not collect feedback. Do not create
+collector. Route it through `settle-phase` (specify), even when tasks
+for that effort already exist. Do not collect feedback. Do not create
 `project:feedback`. Feedback is not a standing backlog.
 
 A `project:backlog-item` parks deferred work on an effort until it is
 promoted or dismissed. `engage` lists open items (`status=open`) after
 naming focus. Park = create; promote = supersede to `promoted` then
-`discuss` with a new phase (or an incidental work-item when that kind
-fits); dismiss = supersede to `dismissed`.
+`settle-phase` with a new phase (or an incidental work-item when that
+kind fits); dismiss = supersede to `dismissed`.
 
 ```bash
 adaptive-artifacts create --type project:backlog-item \
@@ -254,7 +257,7 @@ the structured path integrates.
 
 - `engage`
 - `init`
-- `discuss`
+- `settle-phase`
 - `plan-phase`
 - `execute-phase`
 - `verify-work`

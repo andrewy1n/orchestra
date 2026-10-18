@@ -92,6 +92,18 @@ an area a live goal already covers is a new phase of that effort. A
 new effort is a new subject only when no live goal covers the area.
 Create its goal/position. Leave the others active.
 
+Hierarchy inside an effort:
+
+- **milestone** (`project:milestone`) — optional time-bounded outcome
+  that groups phases (e.g. cutover, harden). Payload: `title`,
+  `ordinal`, `effort`. Not a focus subject; focus stays the effort.
+- **phase** (`project:phase`) — one settle → plan → execute → verify
+  loop. Optional payload `milestone` references a milestone subject.
+  Phase `ordinal` is effort-scoped (not reset per milestone).
+
+Skills stay phase-scoped. A milestone is a grouping and done-gate for
+its phases, not a second chat focus.
+
 ## Incidental
 
 - Fits this chat and is not an interrupt of another live effort: **no

@@ -196,7 +196,7 @@ adaptive-artifacts update --type project:continuity-question --id <question-id> 
    plus one.
    Check that the approach is settled: at least one
    `project:decision` with `payload.phase` = this phase, or the user
-   fixed the approach in this chat. If neither, run `discuss` first,
+   fixed the approach in this chat. If neither, run `settle-phase` first,
    or ask the user whether to skip it. Skip this check for incidental.
 
 ```bash
@@ -472,7 +472,7 @@ adaptive-artifacts create --type project:continuity-question \
 ```
 
    Ask the user to approve, change, or send the phase back to
-   `discuss`. Change tasks on request. On approval, answer the
+   `settle-phase`. Change tasks on request. On approval, answer the
    question; only then may `execute-phase` run:
 
 ```bash

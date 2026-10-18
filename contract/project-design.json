@@ -73,6 +73,23 @@
       }
     },
     {
+      "name": "milestone",
+      "pattern": "phase",
+      "purpose": "A time-bounded outcome that groups phases within an effort",
+      "canonical_for": "the milestone for this subject",
+      "capture": "explicit",
+      "read": "if_relevant",
+      "payload": [
+        "title",
+        "ordinal",
+        "effort"
+      ],
+      "required_sections": [
+        "Outcome",
+        "Exit criteria"
+      ]
+    },
+    {
       "name": "phase",
       "pattern": "phase",
       "purpose": "The plan for one phase of the project: problem, approach, and exit criteria",
@@ -82,8 +99,15 @@
       "payload": [
         "title",
         "ordinal",
-        "effort"
+        "effort",
+        "milestone"
       ],
+      "optional_payload": [
+        "milestone"
+      ],
+      "payload_references": {
+        "milestone": "project:milestone"
+      },
       "required_sections": [
         "Problem",
         "Approach",

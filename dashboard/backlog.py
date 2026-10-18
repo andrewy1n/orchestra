@@ -32,11 +32,11 @@ def is_backlog(item: BacklogItem) -> bool:
 
 
 def prompt(item: BacklogItem, effort: str | None = None) -> str:
-    """Agent prompt to continue with discuss (or incidental) after promote."""
+    """Agent prompt to continue with settle-phase (or incidental) after promote."""
     named = effort or item.effort
     return (
         f"Promote backlog item {item.subject} (effort {named}): "
-        f"start discuss for a new phase, or an incidental work-item if that fits."
+        f"start settle-phase for a new phase, or an incidental work-item if that fits."
     )
 
 

@@ -26,8 +26,9 @@ from dashboard.display import (
 from dashboard.phase_screen import PhaseScreen
 from dashboard.task_detail import TaskDetailScreen
 from dashboard.tasks import (
-    FOLD_KEY, PHASE_PREFIX, STATUS_TABS, SectionRow, TaskFilter, TaskTable, counts, empty_text, phase_progress,
-    section_cells, section_rows, task_cells, task_columns, tasks_title, tab_tasks, title_width, visible_tasks,
+    FOLD_KEY, MILESTONE_PREFIX, PHASE_PREFIX, STATUS_TABS, SectionRow, TaskFilter, TaskTable, counts,
+    empty_text, phase_progress, section_cells, section_rows, task_cells, task_columns, tasks_title,
+    tab_tasks, title_width, visible_tasks,
 )
 from rich.console import Console, Group
 from rich.table import Table
@@ -898,16 +899,33 @@ class PhasePickerScreen(Screen[str | None]):
         if view is None:
             return
         needle = needle.lower()
-        choices: list[tuple[str | None, str]] = [(None, "All phases")]
-        for phase in sorted(view.phases, key=lambda p: (p.ordinal, p.subject)):
+        options.add_option(Option("All phases", id="__all__"))
+        matched: list[tuple[model.PhaseRow, str]] = []
+        for phase in view.phases:
             line = f"{phase.ordinal} {PHASE_GLYPH[phase.state]} {phase.title or phase.subject} {phase.done}/{phase.total}"
-            if needle and needle not in line.lower() and needle not in phase.subject.lower():
+            haystack = f"{line} {phase.subject} {phase.milestone_title}"
+            if needle and needle not in haystack.lower():
                 continue
-            choices.append((phase.subject, line))
-        for subject, line in choices:
-            options.add_option(Option(line, id=subject if subject is not None else "__all__"))
+            matched.append((phase, line))
+        show_headers = bool(view.milestones) or any(phase.milestone for phase, _ in matched)
+        last_milestone: str | None = None
+        for phase, line in matched:
+            if show_headers and phase.milestone != last_milestone:
+                last_milestone = phase.milestone
+                header = phase.milestone_title or "Ungrouped"
+                if phase.milestone:
+                    match = next((row for row in view.milestones if row.subject == phase.milestone), None)
+                    if match is not None and match.total:
+                        header = f"{match.title} {match.done}/{match.total}"
+                    elif match is not None:
+                        header = match.title
+                options.add_option(Option(Text(header, style="bold"), id=f"ms:{phase.milestone or '_'}", disabled=True))
+            options.add_option(Option(line, id=phase.subject))
         if options.option_count:
-            options.highlighted = 0
+            for index in range(options.option_count):
+                if not options.get_option_at_index(index).disabled:
+                    options.highlighted = index
+                    break
 
     def _view(self) -> model.EffortView | None:
         app = self.app
@@ -1508,7 +1526,7 @@ class DashboardApp(App[None]):
         pane.query_one("#tasks", DataTable).focus()
 
     def activate(self, key: str | None) -> None:
-        if key is None:
+        if key is None or key.startswith(MILESTONE_PREFIX):
             return
         if key == FOLD_KEY or key.startswith(PHASE_PREFIX):
             self.toggle_section(key)
@@ -1541,7 +1559,7 @@ class DashboardApp(App[None]):
         subject = selected
         if subject is None:
             key = self.cursor_key()
-            if key is None or key == FOLD_KEY:
+            if key is None or key == FOLD_KEY or key.startswith(MILESTONE_PREFIX):
                 return
             if key.startswith(PHASE_PREFIX):
                 subject = key[len(PHASE_PREFIX):]

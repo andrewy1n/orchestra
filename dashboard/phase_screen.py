@@ -820,6 +820,8 @@ class PhaseScreen(Screen[None]):
             self._trimmed = True
         bar = Text(no_wrap=True, overflow="ellipsis")
         bar.append(detail.title or detail.subject, style="bold")
+        if detail.milestone_title:
+            bar.append(f"  {detail.milestone_title}", style=colors["muted"])
         bar.append(f"  {detail.effort}", style=colors["muted"])
         self.query_one("#phase-bar", Static).update(bar)
         width = max(self.size.width - 4, 20)

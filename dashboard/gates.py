@@ -12,8 +12,8 @@ from dashboard.model import NEEDS_ORDER, EffortView, NeedsYouItem, PhaseRow, Sna
 PLAN_REVIEW_PREFIX = "plan-review:"
 
 _LOOP_SKILL = {
-    "specify": "discuss",
-    "design": "discuss",
+    "specify": "settle-phase",
+    "design": "settle-phase",
     "plan": "plan-phase",
     "execute": "execute-phase",
     "integrate": "execute-phase",
@@ -173,7 +173,7 @@ def next_step(view: EffortView, landing: dict[str, Landing]) -> str:
             continue
         if _has_decisions(phase):
             return f"plan-phase {phase.subject}"
-        return f"discuss {phase.subject}"
+        return f"settle-phase {phase.subject}"
 
     if view.phases and all(phase.state == "done" for phase in view.phases):
         return "close the effort or add a phase"

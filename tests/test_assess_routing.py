@@ -181,10 +181,10 @@ def test_assessment_examples_carry_required_fields_and_sections():
             assert section in inv["raw"]
 
 
-def test_engage_routes_feedback_through_discuss():
+def test_engage_routes_feedback_through_settle_phase():
     text = _text("engage")
     assert "A `project:feedback` record is new intent for the effort it names" in text
-    assert "Route it through `discuss` (specify)" in text
+    assert "Route it through `settle-phase` (specify)" in text
     assert "Do not collect feedback." in text
     lists = [
         inv for inv in extract_invocations(text)

@@ -3884,7 +3884,7 @@ def test_approval_reject_creates_needs_human_finding_and_does_not_answer():
     payload = json.loads(args[args.index("--payload") + 1])
     assert payload["needs"] == "human"
     assert "rejected" in payload["claim"].lower() or "plan rejected" in payload["claim"].lower()
-    assert "discuss" in payload["claim"].lower() or "plan-phase" in payload["claim"].lower()
+    assert "settle-phase" in payload["claim"].lower() or "plan-phase" in payload["claim"].lower()
     assert "rework approach" in payload["basis"]
     body = args[args.index("--body") + 1]
     assert "rework approach" in body

@@ -30,7 +30,7 @@ FULL_TYPES = (
 )
 SOFT_TYPES = frozenset({
     "project:specification", "project:design", "project:assessment", "project:integration-report",
-    "project:release", "project:current-position", "project:backlog-item",
+    "project:release", "project:current-position", "project:backlog-item", "project:milestone",
 })
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
 LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
@@ -56,6 +56,19 @@ class PhaseRow:
     elapsed_minutes: int | None = None
     unset_estimates: int = 0
     suite: str = ""
+    milestone: str = ""
+    milestone_title: str = ""
+
+
+@dataclass(frozen=True)
+class MilestoneRow:
+    subject: str
+    title: str
+    ordinal: int
+    state: str
+    done: int
+    total: int
+    id: str = ""
 
 
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -125,6 +138,7 @@ class EffortView:
     effort: str
     goal: str
     phases: list[PhaseRow] = field(default_factory=list)
+    milestones: list[MilestoneRow] = field(default_factory=list)
     tasks: list[TaskRow] = field(default_factory=list)
     needs_you: list[NeedsYouItem] = field(default_factory=list)
     activity: list[ActivityItem] = field(default_factory=list)
@@ -236,7 +250,8 @@ def _list(
 
 
 _SNAPSHOT_TYPES = (
-    "project:active-goal", "project:phase", "project:work-item", "project:continuity-question",
+    "project:active-goal", "project:phase", "project:milestone", "project:work-item",
+    "project:continuity-question",
     "project:finding", "project:check-run", "project:assignment", "project:assignment-amendment",
     "project:execution-report",
     "project:specification", "project:design", "project:assessment", "project:integration-report", "project:release",
@@ -729,9 +744,65 @@ def _phase_rows(
             sitting=sitting_phrase(body), body=body,
             elapsed_minutes=elapsed_minutes, unset_estimates=unset_estimates,
             suite=suite_status_label(record["subject"], checks or []),
+            milestone=payload.get("milestone") or "",
         ))
     rows.sort(key=lambda row: (row.ordinal, row.subject))
     return rows
+
+
+def _milestone_state(members: list[PhaseRow]) -> str:
+    if any(phase.state == "in_progress" for phase in members):
+        return "in_progress"
+    if members and all(phase.state == "done" for phase in members):
+        return "done"
+    return "planned"
+
+
+def _milestone_rows(records: list[dict[str, Any]], phases: list[PhaseRow]) -> list[MilestoneRow]:
+    by_slug: dict[str, list[PhaseRow]] = {}
+    for phase in phases:
+        if phase.milestone:
+            by_slug.setdefault(phase.milestone, []).append(phase)
+    rows: list[MilestoneRow] = []
+    for record in records:
+        if record["lifecycle_state"] not in LIVE_PHASE_STATES:
+            continue
+        payload = _payload(record)
+        members = by_slug.get(record["subject"], [])
+        rows.append(MilestoneRow(
+            subject=record["subject"],
+            title=payload.get("title") or record["subject"],
+            ordinal=payload.get("ordinal", 0),
+            state=_milestone_state(members),
+            done=sum(phase.state == "done" for phase in members),
+            total=len(members),
+            id=record["id"],
+        ))
+    rows.sort(key=lambda row: (row.ordinal, row.subject))
+    return rows
+
+
+def attach_milestones(phases: list[PhaseRow], milestones: list[MilestoneRow]) -> list[PhaseRow]:
+    """Copy milestone titles onto phases and sort ungrouped first, then by milestone ordinal."""
+    from dataclasses import replace
+
+    titles = {row.subject: row.title for row in milestones}
+    ordinals = {row.subject: row.ordinal for row in milestones}
+    attached = [
+        replace(
+            phase,
+            milestone_title=titles.get(phase.milestone, "") if phase.milestone else "",
+        )
+        for phase in phases
+    ]
+
+    def sort_key(phase: PhaseRow) -> tuple:
+        if not phase.milestone:
+            return (0, 0, phase.ordinal, phase.subject)
+        return (1, ordinals.get(phase.milestone, 10**6), phase.ordinal, phase.subject)
+
+    attached.sort(key=sort_key)
+    return attached
 
 
 def _task_for(subject: str, tasks: list[dict[str, Any]]) -> str:
@@ -1080,6 +1151,7 @@ def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
         if r["lifecycle_state"] == "active" and _payload(r).get("status") != "closed"
     ]
     phases = _by_effort(listed["project:phase"])
+    milestones = _by_effort(listed.get("project:milestone") or [])
     all_tasks = listed["project:work-item"]
     tasks = _by_effort(all_tasks)
     questions = _by_effort(listed["project:continuity-question"], "subject")
@@ -1142,6 +1214,8 @@ def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
         phase_rows = _phase_rows(
             phases.get(effort, []), effort_tasks, effort_acceptances, effort_checks, evidence_by_phase,
         )
+        milestone_rows = _milestone_rows(milestones.get(effort, []), phase_rows)
+        phase_rows = attach_milestones(phase_rows, milestone_rows)
         kind = _payload(goal).get("kind") or ""
         journal_open = []
         if kind in KIND_JOURNAL:
@@ -1151,6 +1225,7 @@ def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
             effort=effort,
             goal=_payload(goal).get("goal", ""),
             phases=phase_rows,
+            milestones=milestone_rows,
             tasks=_task_rows(
                 effort_tasks,
                 listed["project:assignment"],
@@ -1491,6 +1566,8 @@ class PhaseDetail:
     spec_body: str = ""
     design_body: str = ""
     structured: bool = False
+    milestone: str = ""
+    milestone_title: str = ""
 
 
 def tabs_for(detail: PhaseDetail) -> tuple[str, ...]:
@@ -1631,6 +1708,20 @@ def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseD
         if _payload(r).get("applies_to") == phase_subject and r["lifecycle_state"] not in INACTIVE_STATES
     ]
     payload = _payload(record)
+    milestone_slug = payload.get("milestone") or ""
+    milestone_title = ""
+    if milestone_slug:
+        milestone_record = next(
+            (
+                r for r in by_effort("project:milestone").get(effort, [])
+                if r["subject"] == milestone_slug and r["lifecycle_state"] in LIVE_PHASE_STATES
+            ),
+            None,
+        )
+        if milestone_record is not None:
+            milestone_title = _payload(milestone_record).get("title") or milestone_slug
+        else:
+            milestone_title = milestone_slug
     return PhaseDetail(
         subject=phase_subject, effort=effort, title=payload.get("title", ""), state=record["lifecycle_state"],
         awaiting_signoff=bool(row and row.awaiting_signoff), body=item.get("body") or "",
@@ -1640,6 +1731,8 @@ def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseD
         spec_body=(spec.get("body") or "") if spec else "",
         design_body=(design.get("body") or "") if design else "",
         structured=spec is not None,
+        milestone=milestone_slug,
+        milestone_title=milestone_title,
     )
 
 

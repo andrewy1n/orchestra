@@ -1,16 +1,16 @@
 ---
-name: discuss
+name: settle-phase
 description: >-
   Settles how a phase will be built before any tasks exist: reads the
   phase and the code it touches, presents two or three approaches with
   trade-offs and a recommendation, and records the user's choice as
   decisions and in the phase body. Structured work also gets one
   specification and one design. Use when engage hands off a new
-  deliver, repair, or evaluate phase, or when the user wants to talk
-  through an approach before plan-phase.
+  deliver, repair, or evaluate phase, or when the user wants to settle
+  an approach before plan-phase.
 ---
 
-# Discuss the approach
+# Settle the phase
 
 Requires `artifact-runtime` and a live orchestra store. If missing,
 follow [ensure-store.md](../ensure-store.md). Follow
@@ -22,13 +22,13 @@ Do not write work-items, acceptance, or code in this skill. That is
 
 ## Rules
 
-- One phase per discussion. Resolve focus and phase from `engage` or
+- One phase per settle. Resolve focus and phase from `engage` or
   the user; if several phases fit, ask.
 - **Two-modes rule.** Structured work is a phase that will have a
   specification. Simple work is incidental, or a phase the user is
-  leaving on pass/fail. `discuss` writes specification and design only
-  for structured work. Simple work skips both records.
-- Read before proposing: the phase body, live decisions and
+  leaving on pass/fail. `settle-phase` writes specification and design
+  only for structured work. Simple work skips both records.
+- Read before proposing: the phase body, live milestones, decisions and
   constraints for this effort, assessments for this phase, and the
   code the phase touches. Read-only search subagents are fine; they
   return text and write nothing.
@@ -48,13 +48,17 @@ Do not write work-items, acceptance, or code in this skill. That is
    **focus**, **kind**, and the **phase** slug. If `engage` handed off
    `phase: new`, create the phase now (`init` step 7 shape) with
    `ordinal` = highest existing ordinal for this effort plus one, and
-   a placeholder body.
-2. Read context: the phase record, `project:decision` and
-   `project:constraint` records with `payload.effort` = focus,
-   assessments for this phase, and the code paths the phase names or
-   implies.
+   a placeholder body. When the effort has milestones, ask which
+   milestone the new phase belongs to (or none); set optional payload
+   `milestone` to that subject. Create a milestone first only when the
+   user wants a new time-bounded group for several phases.
+2. Read context: the phase record, milestones for this effort,
+   `project:decision` and `project:constraint` records with
+   `payload.effort` = focus, assessments for this phase, and the code
+   paths the phase names or implies.
 
 ```bash
+adaptive-artifacts list --type project:milestone --where payload.effort=<focus> --state active --full
 adaptive-artifacts list --type project:decision --where payload.effort=<focus> --state active --full
 adaptive-artifacts list --type project:constraint --where payload.effort=<focus> --state active --full
 adaptive-artifacts list --type project:assessment --where payload.phase=<phase-slug> --state active --full
@@ -194,5 +198,5 @@ adaptive-artifacts update --type project:continuity-question --id <question-id> 
 - Write a specification or a design for simple work
 - Record a choice the user did not make
 - Promote the phase to `in_progress` (`plan-phase` does that)
-- Discuss another effort's phases
+- Settle another effort's phases
 - Let subagents write records

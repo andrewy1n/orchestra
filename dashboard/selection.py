@@ -114,6 +114,7 @@ def scoped(view: model.EffortView, subject: str | None) -> model.EffortView:
         effort=view.effort,
         goal=view.goal,
         phases=view.phases[:],
+        milestones=list(getattr(view, "milestones", []) or []),
         tasks=[task for task in view.tasks if task.phase == subject],
         needs_you=view.needs_you[:],
         activity=view.activity[:],
@@ -135,6 +136,8 @@ def _phase_segment(
     if phase.state == "in_progress":
         head += f" {phase.done}/{phase.total}"
     text = Text(head)
+    if phase.milestone_title and phase.subject == selected:
+        text.append(f" · {phase.milestone_title}", style=colors["muted"])
     if phase.state == "in_progress" and phase.evidence is not None and not planned:
         text.append(f" · {phase.evidence.stage}")
     is_selected = phase.subject == selected

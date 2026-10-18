@@ -1859,7 +1859,7 @@ def test_gates_next_step_loop_route_and_unsigned():
             requirement="R1", next="design",
         ),
     ])
-    assert gates.next_step(route_view, {}) == "design for R1 (discuss)"
+    assert gates.next_step(route_view, {}) == "design for R1 (settle-phase)"
     unsigned_view = _gates_view(needs_you=[
         model.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass"),
     ])
@@ -1879,17 +1879,17 @@ def test_gates_next_step_running_and_ready():
     assert gates.next_step(ready, {}) == "execute-phase wave 3"
 
 
-def test_gates_next_step_close_in_progress_and_discuss_or_plan_phase():
+def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
     close_view = _gates_view(
         phases=[_gates_phase("human-gates", "Human gates", 1, "in_progress")],
         tasks=[_gates_task("a", "human-gates", "done"), _gates_task("b", "human-gates", "done")],
     )
     assert gates.next_step(close_view, {}) == "close human-gates (verify-work)"
 
-    discuss_view = _gates_view(phases=[
+    settle_view = _gates_view(phases=[
         _gates_phase("human-gates", "Human gates", 1, "planned", decisions=()),
     ])
-    assert gates.next_step(discuss_view, {}) == "discuss human-gates"
+    assert gates.next_step(settle_view, {}) == "settle-phase human-gates"
 
     plan_view = _gates_view(phases=[
         _gates_phase(

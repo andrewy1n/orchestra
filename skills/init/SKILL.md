@@ -4,7 +4,7 @@ description: >-
   Adopts the current git repo into the orchestra store: contract,
   live goal, and a project:phase record for every phase you can
   currently name. Does not write work-items or a plan document.
-  Specification and design are written by `discuss`, not `init`. Use
+  Specification and design are written by `settle-phase`, not `init`. Use
   when starting this workflow on an existing or empty project, when
   adding a new effort subject, or when handoff has no goal or
   position.
@@ -25,7 +25,7 @@ If the user already has this focus's tasks, use `plan-phase`.
 
 - Records plus derived views are the authority. Do not write a plan
   or roadmap file as authority.
-- Specification and design are written by `discuss`, not `init`.
+- Specification and design are written by `settle-phase`, not `init`.
 - Interview for orientation, not an executable multi-phase plan. A
   phase record's body must have real content in every required
   section, but "not yet scoped" is real content for a phase that
@@ -74,10 +74,14 @@ If the user already has this focus's tasks, use `plan-phase`.
    - **focus** — effort slug
    - **kind** — `deliver` | `repair` | `evaluate` | `incidental`
    - **goal** — live outcome of this effort
-   - **phases** — ordered list of `{slug, title}`, current phase
-     first; empty for incidental. Add a final end-to-end
-     verification phase when the pieces only prove themselves
-     together.
+   - **milestones** — optional ordered list of `{slug, title}` when
+     the effort is long enough to group phases (time-bounded
+     outcomes). Omit when every phase stands alone.
+   - **phases** — ordered list of `{slug, title, milestone?}`,
+     current phase first; empty for incidental. `milestone` is a
+     milestone slug from the list above, or omit. Add a final
+     end-to-end verification phase when the pieces only prove
+     themselves together.
    - **blocking unknown** — only if dispatch or resume cannot proceed
    - **durable decisions / constraints** — already-made choices or
      confirmed non-negotiables; skip trivia
@@ -94,20 +98,36 @@ adaptive-artifacts create --type project:active-goal \
 
    `kind` is the effort kind from step 5.
 
-7. For each phase in step 5's list (skip entirely for incidental),
-   `create --type project:phase`, `ordinal` starting at 1. Give a
-   later phase's Approach/Exit-criteria a short honest placeholder
-   ("decide at plan-phase") rather than guessing detail — a plan-phase
-   run for that phase will overwrite it. Use `--body-file` once the
-   text is more than a couple of lines:
+7. For each milestone in step 5 (skip when none), `create --type
+   project:milestone`, `ordinal` starting at 1:
+
+```bash
+adaptive-artifacts create --type project:milestone \
+  --subject "<milestone-slug>" \
+  --payload '{"title":"<milestone title>","ordinal":1,"effort":"<effort-slug>"}' \
+  --body-file "<milestone-body.md>"
+```
+
+   `<milestone-body.md>` has `## Outcome` and `## Exit criteria`;
+   every section needs non-empty text.
+
+   Then for each phase in step 5's list (skip entirely for
+   incidental), `create --type project:phase`, `ordinal` starting at
+   1 across the effort (not per milestone). Include optional
+   `milestone` when the phase belongs to one. Give a later phase's
+   Approach/Exit-criteria a short honest placeholder ("decide at
+   plan-phase") rather than guessing detail — a plan-phase run for
+   that phase will overwrite it. Use `--body-file` once the text is
+   more than a couple of lines:
 
 ```bash
 adaptive-artifacts create --type project:phase \
   --subject "<phase-slug>" \
-  --payload '{"title":"<phase title>","ordinal":1,"effort":"<effort-slug>"}' \
+  --payload '{"title":"<phase title>","ordinal":1,"effort":"<effort-slug>","milestone":"<milestone-slug>"}' \
   --body-file "<phase-body.md>"
 ```
 
+   Omit `milestone` from the payload when the phase is ungrouped.
    `<phase-body.md>` has `## Problem`, `## Approach`, `## Exit
    criteria` headings; every section needs non-empty text or the
    record is rejected. Write each exit criterion with how it is
@@ -170,8 +190,8 @@ adaptive-artifacts create --type project:constraint \
 10. For each confirmed blocker: `create --type project:continuity-question`
     with `subject` = focus, `owner`, `blocking` true/false, `scope`.
 11. Do **not** capture `work-item`, `acceptance`, `specification`, or
-    `design`. Specification and design are written by `discuss`, not
-    `init`.
+    `design`. Specification and design are written by `settle-phase`,
+    not `init`.
 12. Regenerate views; validate:
 
 ```bash
@@ -180,16 +200,17 @@ adaptive-artifacts view --id project:plan --out views/plan.md
 adaptive-artifacts validate
 ```
 
-13. Show the user: focus, kind, goal, phase list (slug + title +
-    lifecycle), any blockers. Next is `plan-phase` when they want tasks
-    for the current phase.
+13. Show the user: focus, kind, goal, milestones (if any), phase list
+    (slug + title + lifecycle + milestone), any blockers. Next is
+    `settle-phase` then `plan-phase` when they want the current phase
+    settled and tasked.
 
 ## Do not
 
 - Materialize future phases as work-items or full plans — a
   placeholder Problem/Approach/Exit-criteria body is enough
-- Write `project:specification` or `project:design` — `discuss` writes
-  those
+- Write `project:specification` or `project:design` — `settle-phase`
+  writes those
 - Write a roadmap document
 - Run research or planner subagents
 - Overlay a foreign `.artifacts/` contract

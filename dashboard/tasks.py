@@ -61,6 +61,8 @@ def visible_tasks(tasks: list[model.TaskRow], task_filter: TaskFilter) -> list[m
 
 FOLD_KEY = "fold"
 PHASE_PREFIX = "phase:"
+MILESTONE_PREFIX = "milestone:"
+UNGROUPED_KEY = MILESTONE_PREFIX + "_"
 FOLD_AFTER = 2
 
 
@@ -74,6 +76,8 @@ class SectionRow:
     phase: model.PhaseRow | None = None
     task: model.TaskRow | None = None
     hidden: int = 0
+    milestone: model.MilestoneRow | None = None
+    milestone_title: str = ""
 
 
 def phase_key(phase: model.PhaseRow) -> str:
@@ -82,6 +86,19 @@ def phase_key(phase: model.PhaseRow) -> str:
 
 def opens_by_default(phase: model.PhaseRow) -> bool:
     return phase.state == "in_progress" or phase.awaiting_signoff
+
+
+def _show_milestone_headers(view: model.EffortView, shown: list[model.PhaseRow]) -> bool:
+    return bool(getattr(view, "milestones", None)) or any(phase.milestone for phase in shown)
+
+
+def _milestone_header(view: model.EffortView, slug: str) -> SectionRow:
+    if not slug:
+        return SectionRow(UNGROUPED_KEY, "milestone", milestone_title="Ungrouped")
+    match = next((row for row in getattr(view, "milestones", []) or [] if row.subject == slug), None)
+    if match is not None:
+        return SectionRow(MILESTONE_PREFIX + slug, "milestone", milestone=match, milestone_title=match.title)
+    return SectionRow(MILESTONE_PREFIX + slug, "milestone", milestone_title=slug)
 
 
 def section_rows(
@@ -97,8 +114,13 @@ def section_rows(
     done = [phase for phase in shown if phase.state == "done"]
     folded = {phase.subject for phase in done[:-FOLD_AFTER]} if len(done) > FOLD_AFTER else set()
     fold_open = sections.get(FOLD_KEY, False)
+    show_headers = _show_milestone_headers(view, shown)
     rows: list[SectionRow] = []
+    last_milestone: str | None = None
     for phase in shown:
+        if show_headers and phase.milestone != last_milestone:
+            last_milestone = phase.milestone
+            rows.append(_milestone_header(view, phase.milestone))
         if phase.subject in folded:
             if not any(row.key == FOLD_KEY for row in rows):
                 rows.append(SectionRow(FOLD_KEY, "fold", fold_open, hidden=len(folded)))
@@ -206,11 +228,28 @@ def phase_label(phase: model.PhaseRow, title_width: int) -> str:
     return clip(title, room) + tail
 
 
+def milestone_label(row: SectionRow, title_width: int) -> str:
+    title = row.milestone_title or (row.milestone.title if row.milestone else "Milestone")
+    milestone = row.milestone
+    if milestone is not None and milestone.total:
+        tail = f" {milestone.done}/{milestone.total}"
+        room = title_width - len(tail)
+        if room < 1:
+            return "…" + tail
+        return clip(title, room) + tail
+    return clip(title, title_width)
+
+
 def section_cells(row: SectionRow, columns: list[str], title_width: int, colors: dict[str, str]) -> list[Text | str]:
     marker = "▾" if row.expanded else "▸"
-    if row.phase is None:
-        noun = "phase" if row.hidden == 1 else "phases"
+    if row.kind == "milestone":
         values: dict[str, Text | str] = {
+            "status": Text("", style=colors["muted"]),
+            "task": Text(milestone_label(row, title_width), style="bold " + colors["muted"]),
+        }
+    elif row.phase is None:
+        noun = "phase" if row.hidden == 1 else "phases"
+        values = {
             "status": Text(marker, style=colors["muted"]),
             "task": Text(clip(f"{row.hidden} earlier {noun} done", title_width), style=colors["muted"]),
         }

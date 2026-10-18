@@ -27,9 +27,17 @@ def test_work_item_size_enum_is_optional():
 
 def test_phase_record_does_not_gain_size():
     phase = _record("phase")
-    assert phase["payload"] == ["title", "ordinal", "effort"]
+    assert phase["payload"] == ["title", "ordinal", "effort", "milestone"]
+    assert "milestone" in (phase.get("optional_payload") or [])
     assert "size" not in _fields(phase)
     assert "size" not in (phase.get("payload_enum") or {})
+
+
+def test_milestone_record_exists():
+    milestone = _record("milestone")
+    assert milestone["payload"] == ["title", "ordinal", "effort"]
+    assert milestone["required_sections"] == ["Outcome", "Exit criteria"]
+    assert "size" not in _fields(milestone)
 
 
 def test_estimate_minutes_is_optional_and_not_an_enum():

@@ -3,9 +3,9 @@ name: engage
 description: >-
   Classifies a software-engineering ask as deliver, repair, evaluate,
   or incidental, names the focus subject, and hands off to init,
-  discuss, plan-phase, execute-phase, or verify-work. Use when the
-  user has work but has not named a phase skill, when the work is a
-  bug, one-off, integration test, or metric comparison, or when a
+  settle-phase, plan-phase, execute-phase, or verify-work. Use when
+  the user has work but has not named a phase skill, when the work is
+  a bug, one-off, integration test, or metric comparison, or when a
   project:feedback record names an effort to specify.
 ---
 
@@ -73,10 +73,10 @@ adaptive-artifacts list --type project:backlog-item \
    - **Park** — user defers work for later: create a backlog-item
      (parent writer). Do not create `project:feedback` for parking.
    - **Promote** — user starts a parked item: supersede to
-     `promoted` (optional `phase`), then route to `discuss` with
+     `promoted` (optional `phase`), then route to `settle-phase` with
      `phase: new` for structured work, or an incidental work-item
-     when that kind fits. Structured promote never skips `discuss`
-     for a new phase.
+     when that kind fits. Structured promote never skips
+     `settle-phase` for a new phase.
    - **Dismiss** — user drops a parked item: supersede to `dismissed`.
 
 ```bash
@@ -97,10 +97,10 @@ adaptive-artifacts supersede --type project:backlog-item --id <id> \
 4. Records?
 
    A `project:feedback` record is new intent for the effort it names
-   (`payload.effort`). Route it through `discuss` (specify), even when
-   tasks for that effort already exist. Do not collect feedback. Do
-   not create `project:feedback`. Feedback is not a standing backlog;
-   use `project:backlog-item` to park deferred work.
+   (`payload.effort`). Route it through `settle-phase` (specify), even
+   when tasks for that effort already exist. Do not collect feedback.
+   Do not create `project:feedback`. Feedback is not a standing
+   backlog; use `project:backlog-item` to park deferred work.
 
 ```bash
 adaptive-artifacts list --type project:feedback
@@ -112,17 +112,17 @@ adaptive-artifacts list --type project:feedback
    - `incidental` + may span chats or interrupts a live phase → records
      on the **new** focus subject. Next: `plan-phase`.
    - `deliver` / `repair` / `evaluate` and no store or no goal for
-     this focus → `init` (new subject), then `discuss`, then
+     this focus → `init` (new subject), then `settle-phase`, then
      `plan-phase`.
-   - Existing effort and no phase covers the ask → `discuss` with
-     `phase: new`, then `plan-phase`.
+   - Existing effort and no phase covers the ask → `settle-phase`
+     with `phase: new`, then `plan-phase`.
    - Tasks for this focus already exist → `execute-phase` or
      `verify-work` if they only need a done-check.
-   - Otherwise → `discuss` if the phase has no decisions yet, else
-     `plan-phase`.
+   - Otherwise → `settle-phase` if the phase has no decisions yet,
+     else `plan-phase`.
 
-   Skip `discuss` (go straight to `plan-phase`) when the user already
-   fixed the approach in this ask, or for `incidental`.
+   Skip `settle-phase` (go straight to `plan-phase`) when the user
+   already fixed the approach in this ask, or for `incidental`.
 5. Show the routing line, then follow that skill with focus and kind
    in context:
 
