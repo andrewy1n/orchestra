@@ -28,17 +28,20 @@ class Provider:
 class Action:
     """One filesystem step in a plan."""
 
-    kind: str  # link | copy | remove | register
+    kind: str  # link | copy | write | remove | register | delegate
     destination: Path
     source: Path | None = None
     unchanged: bool = False
+    content: str | None = None
 
     def render(self) -> str:
         prefix = {
             "link": "link",
             "copy": "copy",
+            "write": "write",
             "remove": "remove",
             "register": "register",
+            "delegate": "delegate",
         }.get(self.kind, self.kind)
         if self.unchanged:
             prefix = f"{prefix} (unchanged)"
@@ -72,6 +75,7 @@ class ApplyResult:
     applied: tuple[str, ...] = ()
     unchanged: tuple[str, ...] = ()
     removed: tuple[str, ...] = ()
+    note: str = ""
 
 
 @dataclass(frozen=True)
@@ -88,6 +92,7 @@ class RemoveResult:
     root: Path
     removed: tuple[str, ...] = ()
     skipped: bool = False
+    note: str = ""
 
 
 @dataclass(frozen=True)

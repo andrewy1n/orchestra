@@ -16,12 +16,41 @@ from pathlib import Path
 
 import pytest
 
-from installer.adapters import Adapter, GenericSkillsAdapter
+from installer.adapters import (
+    Adapter,
+    ClaudeAdapter,
+    CursorAdapter,
+    GenericSkillsAdapter,
+    OpenCodeAdapter,
+    SkillsCliAdapter,
+    build_adapter,
+    registered_adapters,
+)
+from installer.agents import load as load_agent
+from installer.agents import render as render_agent
 from installer.allowlist import COPY_ALLOWLIST, DENY_ROOTS, is_allowed
 from installer.matrix import load_matrix
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKER = ".orchestra-install.json"
+
+NPX_STUB = """#!/bin/sh
+printf '%s\\n' "$*" >> "$ORCHESTRA_NPX_LOG"
+exit "${ORCHESTRA_NPX_EXIT:-0}"
+"""
+
+CANONICAL_AGENT = """---
+name: se-reviewer
+description: >-
+  Fixture phase-end reviewer with one restriction set.
+mode: subagent
+tools: Read, Grep, Glob, Bash
+deny: Write, Edit, NotebookEdit
+store_writes: false
+---
+
+Fixture reviewer body. Read-only and no store writes.
+"""
 
 
 @pytest.fixture()
@@ -41,12 +70,25 @@ def source(tmp_path: Path) -> Path:
     (root / "contract" / "project-design.json").write_text("{}\n", encoding="utf-8")
     (root / "agents").mkdir()
     (root / "agents" / "se-reviewer.md").write_text("reviewer\n", encoding="utf-8")
-    for host in ("claude", "cursor"):
-        host_dir = root / "hosts" / host
-        host_dir.mkdir(parents=True)
-        (host_dir / "plugin.json").write_text(
-            json.dumps({"name": host}) + "\n", encoding="utf-8"
-        )
+    (root / "agents" / "reviewer.prompt.md").write_text(
+        CANONICAL_AGENT, encoding="utf-8"
+    )
+    hooks = root / "hosts" / "claude" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "hooks.json").write_text(
+        json.dumps({"hooks": {"SessionStart": []}}) + "\n", encoding="utf-8"
+    )
+    cursor = root / "hosts" / "cursor"
+    cursor.mkdir(parents=True)
+    (cursor / "hooks.json").write_text(
+        json.dumps({"version": 1, "hooks": {}}) + "\n", encoding="utf-8"
+    )
+    opencode = root / "hosts" / "opencode"
+    opencode.mkdir(parents=True)
+    (opencode / "plugin.js").write_text("export const Hooks = {}\n", encoding="utf-8")
+    (opencode / "opencode.json").write_text(
+        json.dumps({"skills": ["./skills"]}) + "\n", encoding="utf-8"
+    )
     # Forbidden state: never copied, never linked.
     for name in (".artifacts", ".worktrees", "dashboard", "orchestra", "bin", "scripts"):
         forbidden = root / name
@@ -67,17 +109,39 @@ def home(tmp_path: Path) -> Path:
     return tmp_path / "home"
 
 
+def npx_paths(project: Path) -> tuple[Path, Path]:
+    """A fake ``npx`` plus the log it appends each argument line to."""
+    bin_dir = project.parent / "fake-bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    stub = bin_dir / "npx"
+    stub.write_text(NPX_STUB, encoding="utf-8")
+    stub.chmod(0o755)
+    return stub, project.parent / "npx.log"
+
+
+def npx_calls(project: Path) -> list[str]:
+    log = project.parent / "npx.log"
+    if not log.is_file():
+        return []
+    return [line for line in log.read_text(encoding="utf-8").splitlines() if line]
+
+
 def run_install(
     *args: str,
     project: Path,
     source: Path,
     home: Path | None = None,
+    npx_exit: int = 0,
 ) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
         [str(REPO_ROOT), env.get("PYTHONPATH", "")]
     ).strip(os.pathsep)
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
+    stub, log = npx_paths(project)
+    env["ORCHESTRA_NPX"] = str(stub)
+    env["ORCHESTRA_NPX_LOG"] = str(log)
+    env["ORCHESTRA_NPX_EXIT"] = str(npx_exit)
     # orchestra/__init__ resolves the sibling affidavit checkout through HOME.
     # Tests redirect HOME, so point it at the real checkout explicitly.
     affidavit_checkout = Path(os.environ.get("AFFIDAVIT_ROOT", Path.home() / "affidavit"))
@@ -270,9 +334,9 @@ def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, proje
 
     assert (home / ".claude" / "contract" / "project-design.json").is_file()
     assert (home / ".claude" / "agents" / "se-reviewer.md").is_file()
-    assert (home / ".claude" / "hosts" / "claude" / "plugin.json").is_file()
+    assert (home / ".claude" / "hooks" / "hooks.json").is_file()
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
-    assert not (home / ".claude" / "hosts" / "cursor").exists()
+    assert not (home / ".claude" / "hosts").exists()
     assert not (home / ".claude" / "dashboard").exists()
     assert not (home / ".claude" / ".artifacts").exists()
     assert not (home / ".claude" / ".worktrees").exists()
@@ -378,3 +442,200 @@ def test_matrix_has_native_three_and_a_generic_tail():
     tail = [provider for provider in providers if provider.kind == "skills"]
     assert {provider.id for provider in native} >= {"claude", "cursor", "opencode"}
     assert tail and all(provider.profile for provider in tail)
+
+
+# -- native adapters -----------------------------------------------------
+
+
+def frontmatter(path: Path) -> tuple[dict[str, str], str]:
+    """Top-level frontmatter keys plus the body, ignoring nested host maps."""
+    text = path.read_text(encoding="utf-8")
+    header, _, body = text.removeprefix("---\n").partition("\n---\n")
+    meta: dict[str, str] = {}
+    for line in header.splitlines():
+        if not line.strip() or line.startswith((" ", "\t")):
+            continue
+        key, _, value = line.partition(":")
+        meta[key.strip()] = value.strip()
+    return meta, body.lstrip("\n")
+
+
+def test_native_adapters_registered_for_claude_cursor_and_opencode(project, source):
+    assert {"claude", "cursor", "opencode"} <= set(registered_adapters())
+    expected = {
+        "claude": ClaudeAdapter,
+        "cursor": CursorAdapter,
+        "opencode": OpenCodeAdapter,
+    }
+    providers = {provider.id: provider for provider in load_matrix()}
+    for provider_id, adapter_class in expected.items():
+        adapter = build_adapter(
+            providers[provider_id],
+            base=project,
+            scope="project",
+            mode="copy",
+            source_root=source,
+        )
+        assert isinstance(adapter, adapter_class), provider_id
+        assert isinstance(adapter, Adapter), provider_id
+
+
+def test_native_claude_installs_skills_agent_and_hooks(source, project, home):
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    root = home / ".claude"
+    assert (root / "skills" / "init" / "SKILL.md").is_file()
+    assert (root / "contract" / "project-design.json").is_file()
+    assert (root / "hooks" / "hooks.json").is_file()
+    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
+    canonical = load_agent(source)
+    assert meta["tools"].split(", ") == list(canonical.tools)
+    assert body == canonical.body
+    assert not (root / "hosts").exists()
+
+
+def test_native_cursor_installs_read_only_agent_and_hooks(source, project, home):
+    proc = run_install("--only", "cursor", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    root = home / ".cursor"
+    assert (root / "skills" / "init" / "SKILL.md").is_file()
+    assert (root / "hooks.json").is_file()
+    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
+    assert meta["readonly"] == "true"
+    assert body == load_agent(source).body
+    assert "tools" not in meta
+    assert not (root / "plugin.js").exists()
+
+
+def test_native_opencode_installs_skills_source_plugin_and_subagent(
+    source, project, home
+):
+    proc = run_install("--only", "opencode", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    root = home / ".opencode"
+    assert (root / "skills" / "init" / "SKILL.md").is_file()
+    config = json.loads((root / "opencode.json").read_text())
+    assert config["skills"] == ["./skills"]
+    assert (root / "plugin.js").is_file()
+    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
+    text = (root / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
+    assert meta["mode"] == "subagent"
+    assert "permissions:" in text
+    assert "  edit: deny" in text
+    assert "  write: deny" in text
+    assert body == load_agent(source).body
+
+
+def test_native_agent_matches_the_generated_rendering(source, project, home):
+    for provider in ("claude", "cursor", "opencode"):
+        proc = run_install("--only", provider, "--home", str(home), "--copy",
+                           project=project, source=source)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        installed = home / f".{provider}" / "agents" / "se-reviewer.md"
+        expected = render_agent(provider, load_agent(source))
+        assert installed.read_text(encoding="utf-8") == expected, provider
+
+
+# -- hooks are optional --------------------------------------------------
+
+
+def test_hooks_are_installed_for_every_supported_native_host(source, project, home):
+    proc = run_install(
+        "--only", "claude", "--only", "cursor", "--only", "opencode",
+        "--home", str(home), "--copy", project=project, source=source,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert (home / ".claude" / "hooks" / "hooks.json").is_file()
+    assert (home / ".cursor" / "hooks.json").is_file()
+    assert (home / ".opencode" / "plugin.js").is_file()
+
+
+def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
+    shutil.rmtree(source / "hosts" / "claude")
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    root = home / ".claude"
+    assert (root / "skills" / "init" / "SKILL.md").is_file()
+    assert (root / "agents" / "se-reviewer.md").is_file()
+    assert not (root / "hooks").exists()
+    assert "verified: ok" in proc.stdout
+
+
+def test_hooks_absent_from_every_host_still_installs(source, project, home):
+    shutil.rmtree(source / "hosts")
+    proc = run_install(
+        "--only", "claude", "--only", "cursor", "--only", "opencode",
+        "--home", str(home), "--copy", project=project, source=source,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert len(markers(home)) == 3
+    assert not (home / ".claude" / "hooks").exists()
+    assert not (home / ".cursor" / "hooks.json").exists()
+    assert not (home / ".opencode" / "plugin.js").exists()
+
+
+# -- skills-CLI tail -----------------------------------------------------
+
+
+def test_tail_delegates_to_npx_skills_add_and_reports_the_profile(
+    source, project, home
+):
+    proc = run_install("--only", "codex", "--home", str(home),
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert npx_calls(project) == ["skills add -a codex"]
+    assert "npx skills add -a codex" in proc.stdout
+    assert "profile: codex" in proc.stdout
+    payload = json.loads((home / ".codex" / MARKER).read_text())
+    assert payload["profile"] == "codex"
+    assert payload["entries"] == []
+    assert "verified: ok" in proc.stdout
+
+
+def test_tail_dry_run_reports_the_profile_without_delegating(
+    source, project, home
+):
+    proc = run_install("--only", "gemini", "--home", str(home), "--dry-run",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "delegate npx skills add -a gemini-cli" in proc.stdout
+    assert "profile: gemini-cli" in proc.stdout
+    assert npx_calls(project) == []
+    assert not home.exists()
+
+
+def test_tail_falls_back_when_npx_fails(source, project, home):
+    proc = run_install("--only", "codex", "--home", str(home),
+                       project=project, source=source, npx_exit=1)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "fell back" in proc.stdout
+    assert "profile: codex" in proc.stdout
+    assert (home / ".codex" / "skills" / "init" / "SKILL.md").is_file()
+    assert "verified: ok" in proc.stdout
+
+
+def test_tail_uninstall_names_the_profile_it_leaves_behind(source, project, home):
+    assert run_install("--only", "codex", "--home", str(home),
+                       project=project, source=source).returncode == 0
+    proc = run_install("--only", "codex", "--home", str(home), "--uninstall",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "profile codex stays managed by npx skills" in proc.stdout
+    assert markers(home) == []
+
+
+def test_tail_adapter_is_selected_by_matrix_kind(source, project):
+    providers = {provider.id: provider for provider in load_matrix()}
+    adapter = build_adapter(
+        providers["codex"],
+        base=project,
+        scope="project",
+        mode="copy",
+        source_root=source,
+    )
+    assert isinstance(adapter, SkillsCliAdapter)
+    assert adapter.profile == "codex"

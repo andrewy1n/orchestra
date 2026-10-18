@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "adaptive-artifacts hook-start"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "adaptive-artifacts hook-stop"
+      }
+    ]
+  }
+}

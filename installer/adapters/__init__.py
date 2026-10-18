@@ -6,8 +6,9 @@ Native adapters register by provider id:
     class ClaudeAdapter(BaseAdapter):
         ...
 
-Everything not registered keeps :class:`GenericSkillsAdapter`, so a new
-matrix row works before its native adapter exists.
+A ``kind: skills`` matrix row uses :class:`SkillsCliAdapter` without a
+registration line. Everything else keeps :class:`GenericSkillsAdapter`, so a
+new matrix row works before its native adapter exists.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from installer.adapters.base import Adapter, BaseAdapter
+from installer.adapters.tail import SkillsCliAdapter
 from installer.model import Provider
 
 AdapterFactory = Callable[..., Adapter]
@@ -47,8 +49,17 @@ def build_adapter(
     mode: str,
     source_root: Path,
 ) -> Adapter:
-    """Instantiate the registered adapter, or the generic one."""
-    factory = _REGISTRY.get(provider.id, GenericSkillsAdapter)
+    """Instantiate the registered adapter, the skills-CLI tail, or the generic one.
+
+    Native rows win by id. A ``kind: skills`` row delegates to
+    :class:`SkillsCliAdapter` without needing a registration line, so adding a
+    tail host is a matrix edit. Anything else keeps the generic behaviour.
+    """
+    factory = _REGISTRY.get(provider.id)
+    if factory is None:
+        factory = (
+            SkillsCliAdapter if provider.kind == "skills" else GenericSkillsAdapter
+        )
     return factory(
         provider,
         base=base,
@@ -62,10 +73,26 @@ class GenericSkillsAdapter(BaseAdapter):
     """Copy or symlink the allowlisted payload into a host skills directory."""
 
 
+# Importing the native module runs its @register_adapter decorators. It comes
+# last because those modules import the registry above.
+from installer.adapters import native as _native  # noqa: E402,F401
+from installer.adapters.native import (  # noqa: E402
+    ClaudeAdapter,
+    CursorAdapter,
+    NativeAdapter,
+    OpenCodeAdapter,
+)
+
+
 __all__ = [
     "Adapter",
     "BaseAdapter",
+    "ClaudeAdapter",
+    "CursorAdapter",
     "GenericSkillsAdapter",
+    "NativeAdapter",
+    "OpenCodeAdapter",
+    "SkillsCliAdapter",
     "build_adapter",
     "register_adapter",
     "registered_adapters",

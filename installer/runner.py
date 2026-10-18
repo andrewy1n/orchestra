@@ -73,6 +73,8 @@ def _print_apply(result) -> None:
         print(f"  unchanged: {', '.join(result.unchanged)}")
     if result.removed:
         print(f"  removed: {', '.join(result.removed)}")
+    if result.note:
+        print(f"  {result.note}")
 
 
 def _print_remove(result) -> None:
@@ -82,6 +84,8 @@ def _print_remove(result) -> None:
     print(f"uninstalled {result.provider.id} -> {result.root}")
     if result.removed:
         print(f"  removed: {', '.join(result.removed)}")
+    if result.note:
+        print(f"  {result.note}")
 
 
 def run(request: InstallRequest) -> int:

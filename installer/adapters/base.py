@@ -1,9 +1,10 @@
-"""Adapter protocol and the generic skills-directory implementation.
+"""Adapter protocol plus the generic skills-directory implementation.
 
-Native adapters (Claude, Cursor, OpenCode) arrive in a later wave. They
-subclass :class:`BaseAdapter`, override the lifecycle methods they need, and
-register themselves with :func:`installer.adapters.register_adapter`. Anything
-not registered keeps the generic behaviour here.
+Native adapters for Claude Code, Cursor, and OpenCode live in
+:mod:`installer.adapters.native` and register themselves with
+:func:`installer.adapters.register_adapter`. Non-native matrix rows delegate to
+:class:`installer.adapters.tail.SkillsCliAdapter`; anything else keeps the
+generic behaviour here.
 """
 
 from __future__ import annotations
@@ -136,6 +137,13 @@ class BaseAdapter:
             )
 
         desired = self.desired_entries()
+        generated = self.generated_entries()
+        overlap = set(desired) & set(generated)
+        if overlap:
+            raise ValueError(
+                "generated entries collide with source entries: "
+                + ", ".join(sorted(overlap))
+            )
         actions: list[Action] = []
         for entry, source in desired.items():
             destination = self.root / entry
@@ -148,6 +156,16 @@ class BaseAdapter:
                     unchanged=unchanged,
                 )
             )
+        for entry, text in generated.items():
+            destination = self.root / entry
+            actions.append(
+                Action(
+                    kind="write",
+                    destination=destination,
+                    unchanged=self._text_matches(destination, text),
+                    content=text,
+                )
+            )
         actions.append(Action(kind="register", destination=self.marker))
         return Plan(
             provider=self.provider,
@@ -155,7 +173,7 @@ class BaseAdapter:
             mode=self.mode,
             root=self.root,
             actions=tuple(actions),
-            entries=tuple(desired),
+            entries=tuple((*desired, *generated)),
         )
 
     def apply(self, plan: Plan) -> ApplyResult:
@@ -178,6 +196,15 @@ class BaseAdapter:
             if action.kind == "register":
                 continue
             entry = action.destination.relative_to(self.root).as_posix()
+            if action.kind == "write":
+                text = action.content or ""
+                if action.unchanged and self._text_matches(action.destination, text):
+                    unchanged.append(entry)
+                    continue
+                self._remove_entry(action.destination)
+                self._write_text(action.destination, text)
+                applied.append(entry)
+                continue
             if action.unchanged and action.source is not None and self._matches(
                 action.destination, action.source
             ):
@@ -222,9 +249,11 @@ class BaseAdapter:
             )
 
         desired = self.desired_entries()
+        generated = self.generated_entries()
+        wanted = set(desired) | set(generated)
         recorded = marker["entries"]
-        missing = [entry for entry in desired if entry not in recorded]
-        stale = [entry for entry in recorded if entry not in desired]
+        missing = [entry for entry in wanted if entry not in recorded]
+        stale = [entry for entry in recorded if entry not in wanted]
         if missing:
             problems.append(f"unregistered payload: {', '.join(sorted(missing))}")
         if stale:
@@ -234,6 +263,12 @@ class BaseAdapter:
             if not (destination.exists() or destination.is_symlink()):
                 problems.append(f"missing {entry}")
             elif not self._matches(destination, source):
+                problems.append(f"modified {entry}")
+        for entry, text in generated.items():
+            destination = self.root / entry
+            if not (destination.exists() or destination.is_symlink()):
+                problems.append(f"missing {entry}")
+            elif not self._text_matches(destination, text):
                 problems.append(f"modified {entry}")
         return VerifyResult(
             provider=self.provider,
@@ -294,6 +329,18 @@ class BaseAdapter:
             entries[relative_host] = host
         return entries
 
+    def generated_entries(self) -> dict[str, str]:
+        """Destination-relative path -> text the adapter renders itself.
+
+        Native adapters use this for host-shaped files (the reviewer agent)
+        that cannot be a plain copy of one source file.
+        """
+        return {}
+
+    def registration_extra(self) -> dict:
+        """Extra marker fields an adapter needs for verify/remove."""
+        return {}
+
     def _matches(self, destination: Path, source: Path) -> bool:
         if self.mode == "symlink":
             if not destination.is_symlink():
@@ -313,6 +360,18 @@ class BaseAdapter:
             shutil.copytree(source, destination, ignore=_ignore, symlinks=False)
         else:
             shutil.copy2(source, destination)
+
+    def _write_text(self, destination: Path, text: str) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(text, encoding="utf-8")
+
+    def _text_matches(self, destination: Path, text: str) -> bool:
+        if destination.is_symlink() or not destination.is_file():
+            return False
+        try:
+            return destination.read_text(encoding="utf-8") == text
+        except OSError:
+            return False
 
     def _remove_entry(self, destination: Path) -> None:
         relative = destination.relative_to(self.root)
@@ -348,6 +407,7 @@ class BaseAdapter:
             "mode": self.mode,
             "source": str(self.source_root),
             "entries": sorted(set(entries)),
+            **self.registration_extra(),
         }
         temporary = self.marker.with_name(self.marker.name + ".tmp")
         temporary.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
