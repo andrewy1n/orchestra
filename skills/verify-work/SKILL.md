@@ -9,9 +9,10 @@ description: >-
 
 # Verify work
 
-Requires `artifact-runtime` and a live orchestra store. If missing,
-follow [ensure-store.md](../ensure-store.md). Follow
-[kinds-and-focus.md](../kinds-and-focus.md). Parent session writes
+Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+orchestra store. If missing,
+follow [ensure-store.md](references/ensure-store.md). Follow
+[kinds-and-focus.md](references/kinds-and-focus.md). Parent session writes
 records. Git/tests own the code; this skill owns the occurrence that
 a requirement was checked (via its acceptance's `verify_command`)
 and any diagnose/eval conclusion. The claim text is the requirement
@@ -193,10 +194,10 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
      is not done. Leave the work-item `in_progress`. Do not transition
      it to `done`.
 
-     Resolve check and close-batch from the plugin root (`bin/orchestra`)
-     the same way [ensure-store.md](../ensure-store.md) resolves
-     `<plugin>`. `bin/aff` is the verdict binary from `~/affidavit`.
-     Do **not** `adaptive-artifacts create --type
+     Run `orchestra check` and `orchestra close-batch` by name. `aff`
+     is the verdict command on PATH. See
+     [ensure-store.md](references/ensure-store.md) for the runtime
+     commands. Do **not** `adaptive-artifacts create --type
      project:check-run` for `method` `tdd` or `check`. Read the
      runner's JSON (or `list` the new check-run) and keep its `id`
      and `result` for Assess and for `close`.
@@ -623,8 +624,8 @@ must be assertion-level. `manual` criteria still carry `result` /
 `revision` / `signed_by` so the batch can create those check-runs.
 `check` and `manual` do not require `red_check_run_id`.
 
-CLI: `orchestra close-batch` (or `<plugin>/bin/orchestra close-batch`
-after resolving `<plugin>` per [ensure-store.md](../ensure-store.md)).
+CLI: `orchestra close-batch` (see
+[ensure-store.md](references/ensure-store.md) for the runtime commands).
 
 1. Fetch the active acceptances — superseded ones are retired
    definitions and must not be re-checked:

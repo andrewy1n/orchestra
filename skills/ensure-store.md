@@ -5,7 +5,8 @@ repo into the work project. The store is created in the **current
 working tree** the first time `init`, `plan-phase`, or `engage` needs
 records.
 
-Requires `adaptive-artifacts` on PATH.
+Requires `adaptive-artifacts` and `orchestra` on PATH. Call both by
+name. Never resolve a checkout path or a plugin root to run them.
 
 ## Which store
 
@@ -20,34 +21,35 @@ cannot redirect writes. For a new work repo, `init` creates the
 `.artifacts/store-binding.json` `{"store":"local"}` when you want that
 choice shared across clones.
 
-## Plugin root
+## Runtime commands
 
-This skill file lives at `<plugin>/skills/<name>/SKILL.md`. The bundled
-design is `<plugin>/contract/project-design.json`.
+The bundled design and the runtime entry points are named commands,
+not files inside a checkout:
 
-Resolve `<plugin>` in order:
+- `orchestra contract` prints the bundled design. Add `--write <path>`
+  to write it.
+- `orchestra project-field rewrite <design.json>` aligns the design's
+  `"project"` field.
+- `orchestra check` and `orchestra close-batch` run acceptance and
+  close work.
+- `adaptive-artifacts` writes and reads store records.
+- `aff` judges a claim in `.affidavit/manifest.json`.
 
-1. `$CLAUDE_PLUGIN_ROOT` if that path contains `contract/project-design.json`
-2. `$CURSOR_PLUGIN_ROOT` if that path contains `contract/project-design.json`
-3. Directory two levels above this `SKILL.md` (skill-relative layout)
-
-Do not hardcode `~/.cursor/plugins/local/orchestra` as a primary
-path. Local sync installs still work when skills run from that tree
-via step 3.
+Do not hardcode a plugin directory or a home checkout in a command.
 
 ## First run in a work repo
 
 The current project id is `orchestra`.
 
 If `.artifacts/project-design.json` exists, align its `"project"` field
-with `rewrite_project_field` in `<plugin>/orchestra/project_field.py`
-before any overlay. From the plugin root, with cwd the work repo:
+with `orchestra project-field rewrite .artifacts/project-design.json`
+from the work repo:
 
 ```bash
-PYTHONPATH="<plugin>" python3 -c 'from orchestra.project_field import rewrite_project_field; print(rewrite_project_field(".artifacts/project-design.json"))'
+orchestra project-field rewrite .artifacts/project-design.json
 ```
 
-The function does not ask. It returns one of three outcomes:
+The command does not ask. It returns one of three outcomes:
 
 - `current` — `"project"` is already `orchestra`. The file is unchanged.
 - `rewritten` — `"project"` was `affidavit` and is now `orchestra` in
@@ -75,7 +77,7 @@ If the design file does not exist yet:
 
 ```bash
 mkdir -p .artifacts
-cp "<plugin>/contract/project-design.json" .artifacts/project-design.json
+orchestra contract --write .artifacts/project-design.json
 adaptive-artifacts resolve
 adaptive-artifacts init
 ```

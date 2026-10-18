@@ -12,8 +12,8 @@ description: >-
 # Engage
 
 Thin router. Classify, name focus, stop. Follow
-[kinds-and-focus.md](../kinds-and-focus.md). Follow
-[ensure-store.md](../ensure-store.md) if a store will be needed.
+[kinds-and-focus.md](references/kinds-and-focus.md). Follow
+[ensure-store.md](references/ensure-store.md) if a store will be needed.
 
 Do not plan, implement, or verify in this skill.
 

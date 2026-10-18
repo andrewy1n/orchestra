@@ -11,9 +11,9 @@ description: >-
 
 # Plan the current effort
 
-Requires `artifact-runtime` and `adaptive-artifacts` on PATH. Follow
-[ensure-store.md](../ensure-store.md) in the **current work repo**
-before writing records. Follow [kinds-and-focus.md](../kinds-and-focus.md).
+Requires `adaptive-artifacts` and `orchestra` on PATH. Follow
+[ensure-store.md](references/ensure-store.md) in the **current work repo**
+before writing records. Follow [kinds-and-focus.md](references/kinds-and-focus.md).
 Do not copy this plugin into the project.
 
 Skip this skill for incidental work that fits in the current chat and

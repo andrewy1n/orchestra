@@ -12,9 +12,10 @@ description: >-
 
 # Settle the phase
 
-Requires `artifact-runtime` and a live orchestra store. If missing,
-follow [ensure-store.md](../ensure-store.md). Follow
-[kinds-and-focus.md](../kinds-and-focus.md). Parent session writes
+Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+orchestra store. If missing,
+follow [ensure-store.md](references/ensure-store.md). Follow
+[kinds-and-focus.md](references/kinds-and-focus.md). Parent session writes
 records.
 
 Do not write work-items, acceptance, or code in this skill. That is

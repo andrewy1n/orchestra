@@ -8,17 +8,17 @@ disable-model-invocation: true
 
 Read session metrics, find patterns, and propose fixes. Propose only. Edit nothing until the user picks a candidate.
 
-The plugin root `<plugin>` is two directories above this file. The scripts live in `<plugin>/scripts`.
-
 ## Steps
 
-1. Run both scripts. Create the temp directory first and write the report into it.
+1. Run both report steps. Create the temp directory first and write the report into it.
 
    ```
    TMP=$(mktemp -d)
-   python3 <plugin>/scripts/session_report.py --records > "$TMP/report.jsonl"
-   python3 <plugin>/scripts/session_aggregate.py "$TMP/report.jsonl" > "$TMP/aggregate.json"
+   orchestra sessions report --records > "$TMP/report.jsonl"
+   orchestra sessions aggregate "$TMP/report.jsonl" > "$TMP/aggregate.json"
    ```
+
+   `orchestra sessions` is the named command for both steps.
 
    Done when `aggregate.json` parses and `sessions` is greater than 0.
 

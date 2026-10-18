@@ -11,10 +11,11 @@ description: >-
 
 # Execute the focused effort
 
-Requires `artifact-runtime` and a live orchestra store. If missing,
-follow [ensure-store.md](../ensure-store.md) then `init` (if no goal
+Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+orchestra store. If missing,
+follow [ensure-store.md](references/ensure-store.md) then `init` (if no goal
 for the focus) and `plan-phase`. Follow
-[kinds-and-focus.md](../kinds-and-focus.md). Follow `verify-work`
+[kinds-and-focus.md](references/kinds-and-focus.md). Follow `verify-work`
 after each task finishes, whether a subagent returned or this
 session just implemented it inline.
 

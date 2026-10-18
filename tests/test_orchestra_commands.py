@@ -54,9 +54,9 @@ def test_fixture_old_aff_commands_fail_and_record_names_do_not():
     ok = (
         "Captures aff check-run evidence.\n"
         "Run `orchestra check` and `orchestra close-batch`.\n"
-        "bin/orchestra check --acceptance <id>\n"
+        "orchestra check --acceptance <id>\n"
         "aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>\n"
-        "`bin/aff` is the verdict binary from `~/affidavit`.\n"
+        "`aff` is the verdict command on PATH.\n"
     )
     assert command_violations(ok) == []
 
@@ -69,8 +69,7 @@ def test_skills_run_orchestra_check_and_close_batch():
         assert "orchestra check" in text, path
     verify = VERIFY.read_text()
     assert "orchestra close-batch" in verify
-    assert "bin/orchestra" in verify
-    assert "`bin/aff` is the verdict binary from `~/affidavit`" in verify
+    assert "is the verdict command on PATH" in verify
 
 
 def test_execute_phase_and_verify_work_run_aff_verdict_for_a_manifest_claim():

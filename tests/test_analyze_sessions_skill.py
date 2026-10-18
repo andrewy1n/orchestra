@@ -27,11 +27,10 @@ def test_frontmatter_names_skill_and_is_user_invoked():
     assert meta["disable-model-invocation"] == "true"
 
 
-def test_body_names_both_scripts_that_exist():
+def test_body_names_both_session_subcommands():
     _, body = _split()
-    for script in ("scripts/session_report.py", "scripts/session_aggregate.py"):
-        assert script in body
-        assert (REPO_ROOT / script).is_file()
+    for subcommand in ("orchestra sessions report", "orchestra sessions aggregate"):
+        assert subcommand in body
 
 
 def test_body_links_existing_targets_md():
