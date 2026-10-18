@@ -788,6 +788,28 @@ adaptive-artifacts apply /tmp/close-batch.ndjson
 
 6. Regenerate views and validate as step 8 above.
 
+## Record versus bind
+
+Techniques and audit may record an unbound evidence-observation.
+Recording that observation does not earn a manifest claim. Earning
+the claim requires `aff bind` (and `aff recheck` when the binding
+must be judged again) before treating that manifest claim as earned.
+Inspect what was recorded with `aff trail`.
+
+The worked path is claim id → evidence-binding → evidence-observation.
+`aff bind` writes the evidence-binding that attaches the
+evidence-observation to the claim. `aff recheck` re-judges that claim
+under the binding's pins. A non-zero `aff recheck` means the claim is
+not earned.
+
+```bash
+aff trail --cwd <repo-or-worktree>
+aff bind --cwd <repo-or-worktree> \
+  --observation <evidence-observation-id> \
+  --claim <claim-id> --base <base-rev> --head <head-rev>
+aff recheck --cwd <repo-or-worktree> --claim <claim-id>
+```
+
 ## Do not
 
 - Dual-write CI as records if CI already owns the result

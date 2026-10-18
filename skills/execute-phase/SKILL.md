@@ -868,6 +868,25 @@ adaptive-artifacts update --type project:work-item --id <verification-work-item-
 Never transition a `done` work-item back to `in_progress` or
 `planned`. Fix tasks stay in the current phase.
 
+## Record versus bind
+
+Techniques and audit may record an unbound evidence-observation.
+Do not treat a manifest claim as earned from that observation alone.
+`aff bind` and `aff recheck` are required before treating a manifest
+claim as earned. Inspect what was recorded with `aff trail`.
+
+The worked path is claim id → evidence-binding → evidence-observation.
+`aff bind` writes the evidence-binding. `aff recheck` re-judges the
+claim under that binding before the claim is earned.
+
+```bash
+aff trail --cwd <repo-or-worktree>
+aff bind --cwd <repo-or-worktree> \
+  --observation <evidence-observation-id> \
+  --claim <claim-id> --base <base-rev> --head <head-rev>
+aff recheck --cwd <repo-or-worktree> --claim <claim-id>
+```
+
 ## Do not
 
 - Write a plan document as authority
