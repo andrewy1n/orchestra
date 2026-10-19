@@ -1,0 +1,27 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-a717c4b4-ce8e-4fc2-b60e-6bddfebc9d4d",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "packaging",
+    "position": "backlog parked; no phase started",
+    "scope": "effort",
+    "status": "open"
+  },
+  "record_type": "project:current-position",
+  "recorded_at": "2026-10-11T06:28:28+00:00",
+  "relationships": {},
+  "revision": "sha256:17d8db18fd888bb15dc73d48533b651d78e1aee495933b5d0b420a4b1d1f7d42",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "packaging",
+  "time": {
+    "as_of": "2026-10-11T06:28:28+00:00"
+  }
+}
+---
+

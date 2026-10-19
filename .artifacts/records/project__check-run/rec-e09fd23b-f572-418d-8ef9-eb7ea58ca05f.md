@@ -1,0 +1,42 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-e09fd23b-f572-418d-8ef9-eb7ea58ca05f",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-54e6aa7d-586f-48a3-851d-afdbffe6d4ec",
+    "duration_s": 0.75263,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "a71df3ef716cabe43ead70bd8311cda3aeadcb986bea501da0ea9262f31c3925",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "c9c2d6a70719285637ba08662d4772f661e88a74",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "proof-skills-execute"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-19T04:00:26+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-54e6aa7d-586f-48a3-851d-afdbffe6d4ec"
+    ]
+  },
+  "revision": "sha256:3ec7769d2efe14c8b02e174a5b427214a77524b0c0b869bdea4e9c650f66b42d",
+  "subject": "proof-skills-execute",
+  "time": {
+    "observed": "2026-10-19T04:00:26+00:00",
+    "recorded": "2026-10-19T04:00:26+00:00"
+  }
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.02s

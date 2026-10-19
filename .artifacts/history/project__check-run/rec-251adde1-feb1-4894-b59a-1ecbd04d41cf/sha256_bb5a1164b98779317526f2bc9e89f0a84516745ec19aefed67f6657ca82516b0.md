@@ -1,0 +1,65 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-251adde1-feb1-4894-b59a-1ecbd04d41cf",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-53cde3fc-6823-4f72-a863-861b55a3bf11",
+    "duration_s": 0.007164,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "254c3144910a77a4a979a8f903552178b863bd674d9204255b976a51ada82693",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "e04bc30552d35b83b19337abee8df4c26cb55b61",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "oracle-skills-execute-amend"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-16T21:03:43+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-53cde3fc-6823-4f72-a863-861b55a3bf11"
+    ]
+  },
+  "revision": "sha256:bb5a1164b98779317526f2bc9e89f0a84516745ec19aefed67f6657ca82516b0",
+  "subject": "oracle-skills-execute-amend",
+  "time": {
+    "observed": "2026-10-16T21:03:43+00:00",
+    "recorded": "2026-10-16T21:03:43+00:00"
+  }
+}
+---
+
+skills/verify-work/SKILL.md:43:An acceptance is **oracle-backed** when `test_ids` and `oracle_hashes`
+skills/verify-work/SKILL.md:53:  `oracle_hashes`, **or** an active `project:oracle-amendment` for
+skills/verify-work/SKILL.md:389:<the passing check-runs for this requirement; for oracle-backed: assertion-level red id, green id, hash match or approved oracle-amendment id>
+skills/verify-work/SKILL.md:592:`oracle_hashes` drift without an approved `project:oracle-amendment`,
+skills/verify-work/SKILL.md:810:- Invent `oracle_hashes` / amendment status in prose instead of
+skills/verify-work/SKILL.md:811:  reading the acceptance and `project:oracle-amendment` records
+skills/execute-phase/SKILL.md:175:   (non-empty `test_ids` and `oracle_hashes`), the Orientation must
+skills/execute-phase/SKILL.md:176:   list the frozen oracle file paths from `oracle_hashes` and forbid
+skills/execute-phase/SKILL.md:179:   frozen oracle files. If the executor needs a different oracle
+skills/execute-phase/SKILL.md:180:   (pushback), stop editing and use the **oracle-amendment** path
+skills/execute-phase/SKILL.md:181:   below — do not silently rewrite a frozen oracle file.
+skills/execute-phase/SKILL.md:222:Files listed in acceptance oracle_hashes for this task are frozen.
+skills/execute-phase/SKILL.md:223:Do not edit them. Pushback → oracle-amendment (parent approves)."
+skills/execute-phase/SKILL.md:232:requirement without changing a frozen oracle file: do not edit that
+skills/execute-phase/SKILL.md:233:file. Create a `project:oracle-amendment` with `status` `requested`,
+skills/execute-phase/SKILL.md:237:adaptive-artifacts create --type project:oracle-amendment \
+skills/execute-phase/SKILL.md:239:  --payload '{"acceptance":"<acceptance-record-id>","effort":"<focus>","phase":"<current-phase-slug>","old_hashes":"<relpath:sha256:hex from acceptance oracle_hashes>","new_hashes":"<relpath:sha256:hex after proposed oracle edit>","status":"requested"}' \
+skills/execute-phase/SKILL.md:242:<why the frozen oracle must change>
+skills/execute-phase/SKILL.md:250:   acceptance freeze fields (`oracle_hashes`, and `test_ids` /
+skills/execute-phase/SKILL.md:256:adaptive-artifacts supersede --type project:oracle-amendment --id <amendment-id> \
+skills/execute-phase/SKILL.md:262:  --payload '{"oracle_hashes":"<new_hashes matching the approved amendment>","test_ids":"<updated node ids if any>","verify_command":"python3 -m pytest <updated-node-ids> -q"}'
+skills/execute-phase/SKILL.md:902:- Let an executor edit a frozen oracle file listed in
+skills/execute-phase/SKILL.md:903:  `oracle_hashes`. Pushback uses `project:oracle-amendment`
+skills/execute-phase/SKILL.md:906:- Let a subagent create or approve oracle-amendments, or write
+skills/execute-phase/SKILL.md:907:  `test_ids` / `oracle_hashes` — parent only

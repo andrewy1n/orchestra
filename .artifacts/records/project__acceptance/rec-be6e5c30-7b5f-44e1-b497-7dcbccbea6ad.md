@@ -1,0 +1,29 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-be6e5c30-7b5f-44e1-b497-7dcbccbea6ad",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "close_batch validates request-carried red_check_run_id and copied red fields; it does not query the store for prior check-runs",
+    "effort": "workflow-loop",
+    "method": "tdd",
+    "phase": "red-first",
+    "requirement": "R2",
+    "verify_command": "uv run --with pytest python -m pytest tests/test_close_batch.py -q -k red_first_request"
+  },
+  "record_type": "project:acceptance",
+  "recorded_at": "2026-10-10T23:44:06+00:00",
+  "relationships": {},
+  "revision": "sha256:870358c39548c39ea1a4a7b0e03e47fcc4768315bc79ae4e12a694d7b31a7c7c",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "close-red-first-request",
+  "time": {
+    "as_of": "2026-10-10T23:44:06+00:00"
+  }
+}
+---
+

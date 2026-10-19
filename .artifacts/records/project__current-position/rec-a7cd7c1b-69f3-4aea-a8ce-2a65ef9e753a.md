@@ -1,0 +1,27 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-a7cd7c1b-69f3-4aea-a8ce-2a65ef9e753a",
+  "identity": "unknown",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "effort": "workflow-loop",
+    "phase": "oracle-witnesses",
+    "position": "planning oracle-witnesses tasks",
+    "scope": "phase"
+  },
+  "record_type": "project:current-position",
+  "recorded_at": "2026-10-16T20:22:11+00:00",
+  "relationships": {},
+  "revision": "sha256:e3096f9e22c9141291b43c231d77c21df7c3a402119683e4bb4549f96c462e74",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "oracle-witnesses",
+  "time": {
+    "as_of": "2026-10-16T20:21:40+00:00"
+  }
+}
+---
+

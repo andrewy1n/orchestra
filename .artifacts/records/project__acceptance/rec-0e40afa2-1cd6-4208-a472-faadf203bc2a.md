@@ -1,0 +1,29 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-0e40afa2-1cd6-4208-a472-faadf203bc2a",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "installer-wizard",
+    "requirement": "R4",
+    "verify_command": "python3 -m pytest tests/test_installer_wizard.py -q -k blank_selection_uses_detected"
+  },
+  "record_type": "project:acceptance",
+  "recorded_at": "2026-10-19T03:16:01+00:00",
+  "relationships": {},
+  "revision": "sha256:59224f21d57980863b86c0843f3038a2d717b766811091f8b50ac0cfd82d5094",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "installer-wizard-primitives-defaults",
+  "time": {
+    "as_of": "2026-10-19T03:16:01+00:00"
+  }
+}
+---
+

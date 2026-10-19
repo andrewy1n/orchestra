@@ -1,0 +1,29 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-064ae8ac-d426-4a95-a9a5-71cd77ec4dfd",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Exit 2: plugin bin/adaptive-artifacts and tools/artifacts.py still run the CLI",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "pyproject-pypi",
+    "requirement": "R4",
+    "verify_command": "~/adaptive-artifacts/bin/adaptive-artifacts --help >/dev/null && python3 ~/adaptive-artifacts/tools/artifacts.py --help >/dev/null"
+  },
+  "record_type": "project:acceptance",
+  "recorded_at": "2026-10-15T20:58:02+00:00",
+  "relationships": {},
+  "revision": "sha256:15eaf5cf9804c7c42ddf3be5677e31db917701c727bb3939a65e8168e2f84465",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "verify-pyproject-pypi-shims",
+  "time": {
+    "as_of": "2026-10-15T20:58:02+00:00"
+  }
+}
+---
+

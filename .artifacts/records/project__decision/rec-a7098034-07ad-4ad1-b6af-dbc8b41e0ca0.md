@@ -1,0 +1,34 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-a7098034-07ad-4ad1-b6af-dbc8b41e0ca0",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "alternatives": "Full #10; soft unrestricted review",
+    "choice": "Phase-end core reviewer; defer per-task review and pre-dispatch coverage check",
+    "effort": "workflow-loop",
+    "phase": "phase-reviewer"
+  },
+  "record_type": "project:decision",
+  "recorded_at": "2026-10-11T06:26:05+00:00",
+  "relationships": {},
+  "revision": "sha256:62358f0a4173e7dfce717c174089545e6803718460a3bf9cca24fd339f773651",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "phase-reviewer-scope",
+  "time": {
+    "as_of": "2026-10-11T06:26:05+00:00"
+  }
+}
+---
+
+## Rationale
+
+The independence win that would have caught `status-tabs` is a single phase-end review with restricted inputs and fix-task routing. Per-task review and pre-dispatch coverage checks add cost and plan-phase complexity without being required for that gate. Deferring them keeps the Landing reviewable and still feeds #9's ordering (reviewer before tier-2).
+
+## Counter-argument
+
+Shipping full #10 now would catch description/acceptance gaps earlier and grade checkable-spec tasks before close. The cost is a larger phase and more invocation points before the core gate is proven.

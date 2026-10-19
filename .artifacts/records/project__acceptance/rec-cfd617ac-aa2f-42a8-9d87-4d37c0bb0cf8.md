@@ -1,0 +1,29 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-cfd617ac-aa2f-42a8-9d87-4d37c0bb0cf8",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "phase-proof-packet",
+    "requirement": "R7",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_proof_dashboard.py -q"
+  },
+  "record_type": "project:acceptance",
+  "recorded_at": "2026-10-19T03:59:29+00:00",
+  "relationships": {},
+  "revision": "sha256:b2930f69688b106d00230e8e71483b432077c28412efe4cfa5845e931b4224c9",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "proof-dashboard-ui",
+  "time": {
+    "as_of": "2026-10-19T03:54:19+00:00"
+  }
+}
+---
+

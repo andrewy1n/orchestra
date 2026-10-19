@@ -1,0 +1,43 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-83dc1ca1-0dda-4af0-a93b-db44f156fbb4",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-84698b95-b79b-442a-9166-f2e168797d33",
+    "duration_s": 0.876138,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "method": "tdd",
+    "output_sha256": "9e9e322c0f4154b7ddda3ecdf8b9792d94d45eb0d181085a0beb156f605f1c2c",
+    "requirement": "R5",
+    "result": "pass",
+    "revision": "977750c3c4f05015bcf03d4b82c77d25c8f039d3",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "oracle-freeze-close"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-16T20:39:37+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-84698b95-b79b-442a-9166-f2e168797d33",
+      "rec-1771a7b7-d363-4d18-96f6-a029a1a6f2dd"
+    ]
+  },
+  "revision": "sha256:62cef6e2e5dbf98470692bbdfdb0fee9fedc14e172854acb243fff03b4205c8e",
+  "subject": "oracle-freeze-close",
+  "time": {
+    "observed": "2026-10-16T20:39:37+00:00",
+    "recorded": "2026-10-16T20:39:37+00:00"
+  }
+}
+---
+
+......                                                                   [100%]
+6 passed, 47 deselected in 0.19s

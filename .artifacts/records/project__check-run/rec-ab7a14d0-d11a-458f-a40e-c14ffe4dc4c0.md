@@ -1,0 +1,42 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-ab7a14d0-d11a-458f-a40e-c14ffe4dc4c0",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-f0ad8c81-df6e-457c-8553-9dd57d03f91e",
+    "duration_s": 0.233481,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "method": "tdd",
+    "output_sha256": "3cf2a80979f1c93f9e7984458f0a8092a8c85893de20501caae01270c94458d2",
+    "requirement": "R5",
+    "result": "pass",
+    "revision": "2f7404eab494720b703ffd0e2e01078236a876ab",
+    "runner": "se-workflow",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "fix-test_plan_wave_rules"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-11T10:13:21+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-f0ad8c81-df6e-457c-8553-9dd57d03f91e"
+    ]
+  },
+  "revision": "sha256:d4280ad0da8d2ea118207c0720f16243021a5fd9ce8a4deef128eb9e4f0d7bf6",
+  "subject": "fix-test_plan_wave_rules",
+  "time": {
+    "observed": "2026-10-11T10:13:21+00:00",
+    "recorded": "2026-10-11T10:13:21+00:00"
+  }
+}
+---
+
+.                                                                        [100%]
+1 passed, 3 deselected in 0.02s

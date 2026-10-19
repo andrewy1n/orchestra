@@ -1,0 +1,43 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-41ab3a72-19f6-4cec-b5ef-fe2131eb90ce",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-a0a942d1-9498-4c85-be22-ed91224e3c51",
+    "duration_s": 4.10409,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "b13095cb26bc991dba9d454da924596d63192a96be22044fa73bc4b333478dba",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "db84ee9ef00088870c2ac53a685f08dfbc15512a",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-web-dashboard"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-19T08:00:53+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-a0a942d1-9498-4c85-be22-ed91224e3c51",
+      "rec-cadaa6a1-b194-40b2-b8f7-566a77aa9cbd"
+    ]
+  },
+  "revision": "sha256:7bc495d9b2d1325477b09d9da5fd18c8ee52c06f5867f8f4366ebeb719353fa6",
+  "subject": "verify-web-dashboard",
+  "time": {
+    "observed": "2026-10-19T08:00:53+00:00",
+    "recorded": "2026-10-19T08:00:53+00:00"
+  }
+}
+---
+
+.                                                                        [100%]
+1 passed in 3.91s

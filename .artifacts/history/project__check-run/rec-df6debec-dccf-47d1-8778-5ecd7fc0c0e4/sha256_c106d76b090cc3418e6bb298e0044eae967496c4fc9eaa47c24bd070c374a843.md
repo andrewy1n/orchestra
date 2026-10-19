@@ -1,0 +1,43 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-df6debec-dccf-47d1-8778-5ecd7fc0c0e4",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-928c5ad9-2a76-42cc-8403-9947807d381f",
+    "duration_s": 0.753934,
+    "effort": "packaging",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "0be7428786bb2b1b4bbf8bc76b7fd4a048960e57c5df85a67f2660eade6729a7",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "b4fc77a1a125f0526d9941a374d0c633886a6b96",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "portable-skill-refs"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-18T22:55:36+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-928c5ad9-2a76-42cc-8403-9947807d381f",
+      "rec-7bf28d31-ef8c-4e79-8daa-d759a2dae538"
+    ]
+  },
+  "revision": "sha256:c106d76b090cc3418e6bb298e0044eae967496c4fc9eaa47c24bd070c374a843",
+  "subject": "portable-skill-refs",
+  "time": {
+    "observed": "2026-10-18T22:55:36+00:00",
+    "recorded": "2026-10-18T22:55:36+00:00"
+  }
+}
+---
+
+..........................                                               [100%]
+26 passed in 0.17s

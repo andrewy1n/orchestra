@@ -1,0 +1,41 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-78e62280-8d1d-4f1d-95ba-eabd70e4efeb",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-c30aaca7-94df-4c02-a6f3-fcce0c8d6b00",
+    "duration_s": 0.004571,
+    "effort": "packaging",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "40db2970236ac7ff04afd9eaf08292f072a912a2",
+    "runner": "se-workflow",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-plugin-dep-marketplace-readme"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-11T06:52:37+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-c30aaca7-94df-4c02-a6f3-fcce0c8d6b00",
+      "rec-4ee5cd41-5dfc-4cc9-a85c-092c49b6306a"
+    ]
+  },
+  "revision": "sha256:f93a9ba92e0958e8b5acd71cca3d57476b0ae6df5c2a89f72bbdf08cb93a0296",
+  "subject": "verify-plugin-dep-marketplace-readme",
+  "time": {
+    "observed": "2026-10-11T06:52:37+00:00",
+    "recorded": "2026-10-11T06:52:37+00:00"
+  }
+}
+---
+

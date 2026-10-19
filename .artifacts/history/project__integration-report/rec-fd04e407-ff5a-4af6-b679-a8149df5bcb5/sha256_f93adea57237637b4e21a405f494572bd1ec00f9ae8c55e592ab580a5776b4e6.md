@@ -1,0 +1,44 @@
+---
+{
+  "base_kind": "observation",
+  "id": "rec-fd04e407-ff5a-4af6-b679-a8149df5bcb5",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "effort": "dashboard",
+    "phase": "web-dashboard",
+    "result": "pass",
+    "revision": "db84ee9ef00088870c2ac53a685f08dfbc15512a"
+  },
+  "provenance": {
+    "sources": [
+      "web-dashboard"
+    ]
+  },
+  "record_type": "project:integration-report",
+  "recorded_at": "2026-10-19T08:06:29+00:00",
+  "relationships": {},
+  "revision": "sha256:f93adea57237637b4e21a405f494572bd1ec00f9ae8c55e592ab580a5776b4e6",
+  "subject": "web-dashboard",
+  "time": {
+    "observed": "2026-10-19T08:06:29+00:00",
+    "recorded": "2026-10-19T08:06:29+00:00"
+  }
+}
+---
+
+## Interfaces
+
+dashboard/bin/web → dashboard/web/__main__.py (PEP 723 fastapi/uvicorn) → create_app(Reader) on 127.0.0.1; GET /api/{token,snapshot,phase,task,journal,record,requirement,needs,backlog} and POST /api/{needs,backlog} via shared dashboard.web.service.Reader (stdlib serve for oracles; FastAPI for launcher); Vite ui under dashboard/web/ui with /api proxy and hash overlays; dist served at GET / when present
+
+## Assumptions
+
+focused brief path /tmp/web-dashboard-reviewer-packet.md missing; used /tmp/web-dashboard-review-brief.md and ignored non-web-dashboard work items plus any execution-report/check-run/assessment/assignment content; R3/R4/R21–R29/R34 proven via stdlib web.serve + shared Reader (not FastAPI TestClient wording); launch path covers FastAPI for R1/R2/R30
+
+## Invariants
+
+store reads only through dashboard.model (Cache/Reader); writes only dismiss.dismiss_item / backlog.dismiss|promote_item; HOST forced to 127.0.0.1 (--host ignored); signer always default_signer() and request signer ignored; no CORSMiddleware / Access-Control-Allow-Origin; layout under dashboard/ with separate ui PEP/npm deps — all hold in the phase diff
+
+## Conflicts
+
+none

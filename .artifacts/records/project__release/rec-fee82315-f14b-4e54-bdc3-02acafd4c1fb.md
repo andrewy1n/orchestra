@@ -1,0 +1,30 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-fee82315-f14b-4e54-bdc3-02acafd4c1fb",
+  "identity": "unknown",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "effort": "workflow-loop",
+    "phase": "tiered-verification",
+    "state": "ready"
+  },
+  "record_type": "project:release",
+  "recorded_at": "2026-10-17T08:23:18+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-8597722c-fa29-4a49-aa1f-bfcb30e9a6bd"
+    ]
+  },
+  "revision": "sha256:d1a55ced431872b5223f5e74a4b2efb21663b9d6dc2e7c12aac6070939af9fb3",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "tiered-verification",
+  "time": {
+    "as_of": "2026-10-14T08:03:45+00:00"
+  }
+}
+---
+

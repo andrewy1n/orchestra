@@ -1,0 +1,41 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-ece00df8-c1cf-42d3-b2ff-5c84c0746d96",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "packaging",
+    "missing": "",
+    "next": "release",
+    "phase": "plugin-dep-marketplace",
+    "requirement": "R5",
+    "status": "verified"
+  },
+  "record_type": "project:assessment",
+  "recorded_at": "2026-10-11T06:52:18+00:00",
+  "relationships": {},
+  "revision": "sha256:3e2121b7a02838052f0cc791d4f6e5a40c70c7f6edf9a697b315da55e8d77f79",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "plugin-dep-marketplace-R5",
+  "time": {
+    "as_of": "2026-10-11T06:52:18+00:00"
+  }
+}
+---
+
+## Evidence
+
+check-run rec-afd46d92-057c-4b40-8961-34c19871e95d pass on 40db2970236ac7ff04afd9eaf08292f072a912a2: README has single Claude marketplace add for se-workflow; Cursor section present without claiming dependency auto-install.
+
+## Missing
+
+none
+
+## Reason
+
+README Claude install matches the shared-marketplace path; Cursor remains manual clone/sync + PATH.
