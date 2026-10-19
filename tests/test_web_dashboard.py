@@ -332,7 +332,17 @@ def test_r24_signer(store, cli, defs, monkeypatch):
     assert calls[0]["item"].revision == page["revision"]
     assert calls[0]["signer"] in (None, "oracle-signer")
     assert calls[0]["signer"] != "intruder"
-    signed = _stored(cli, check.record_type, check.id)
+    # Sign uses adaptive-artifacts `correct`: signed_by lands on the correction
+    # successor, not the predecessor id returned by get --id <original>.
+    listed = cli("list", "--type", check.record_type, "--subject", check.subject, "--full")
+    assert listed.returncode == 0, listed.stdout + listed.stderr
+    rows = json.loads(listed.stdout).get("records", [])
+    tips = [
+        row for row in rows
+        if check.id in (row.get("relationships") or {}).get("corrects", [])
+    ]
+    assert len(tips) == 1, [(row.get("id"), row.get("relationships")) for row in rows]
+    signed = tips[0]
     assert signed["payload"]["signed_by"] == dismiss_module.default_signer()
     assert signed["payload"]["signed_by"] != "intruder"
 
