@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+/* Tailwind v4 class-based dark mode: `dark:` utilities apply when an
+   ancestor carries the `dark` class. The app sets it on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light tokens are the default; dark tokens come from the design spike's
+   `html[data-theme="dark"]` set. The `dark` class and `data-theme` attribute
+   are toggled together by `src/theme.ts`. */
+:root {
+  --bg: #fbfbfc;
+  --panel: #ffffff;
+  --sunken: #f4f4f6;
+  --line: #e5e5e9;
+  --line-2: #d3d3d9;
+  --ink: #1b1b1f;
+  --ink-2: #3f3f46;
+  --muted: #6b6b74;
+  --faint: #9a9aa3;
+  --accent: #2f56c8;
+  --running: #a8560a;
+  --ready: #2f56c8;
+  --waiting: #6b6b74;
+  --done: #2f7d4f;
+  --fail: #b3312b;
+  --warn: #a8560a;
+  --ok-bg: #eef6f0;
+  --warn-bg: #fbf3e8;
+  --fail-bg: #fbeeed;
+  --accent-bg: #eef1fb;
+  --radius: 6px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+html.dark,
+html[data-theme="dark"] {
+  --bg: #131316;
+  --panel: #1b1b20;
+  --sunken: #18181c;
+  --line: #2c2c33;
+  --line-2: #3b3b44;
+  --ink: #f0f0f3;
+  --ink-2: #cdcdd4;
+  --muted: #9d9da6;
+  --faint: #72727c;
+  --accent: #85aaff;
+  --running: #e0a45e;
+  --ready: #85aaff;
+  --waiting: #9d9da6;
+  --done: #6cc78c;
+  --fail: #ec7b72;
+  --warn: #e0a45e;
+  --ok-bg: #17281e;
+  --warn-bg: #2a2214;
+  --fail-bg: #2a1817;
+  --accent-bg: #1a2136;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  height: 46px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  color: var(--faint);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.crumbs {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+}
+
+.top-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ghost {
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ghost:hover {
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+.ghost[aria-pressed="true"] {
+  border-color: var(--line-2);
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 224px 1fr 320px;
+  min-height: 0;
+}
+
+.rail,
+.side {
+  overflow-y: auto;
+}
+
+.rail {
+  border-right: 1px solid var(--line);
+  padding: 12px 10px;
+}
+
+.side {
+  border-left: 1px solid var(--line);
+  padding: 16px 14px;
+}
+
+.main {
+  overflow-y: auto;
+  padding: 16px 22px 40px;
+  min-width: 0;
+}
+
+.statusbar {
+  border-top: 1px solid var(--line);
+  padding: 4px 16px;
+  color: var(--faint);
+  font-size: 11.5px;
+  min-height: 26px;
+}
