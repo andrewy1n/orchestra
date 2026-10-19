@@ -374,8 +374,7 @@ adaptive-artifacts create --type project:execution-report \
    from `orchestra check`, not from creating the `project:check-run`.
    `verify-work` runs that command. Manual and review check-runs stay
    parent writes. The suite check-run stays the parent write from
-   `orchestra.suite.record_suite_check_run` (subject
-   `<phase-slug>-suite`).
+   `orchestra suite record` (subject `<phase-slug>-suite`).
 
    When verifying or closing an acceptance whose claim is in
    `.affidavit/manifest.json`, run `aff verdict` on that claim before
@@ -415,7 +414,8 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 
    Parent only — the reviewer writes no store records:
 
-   1. Build the restricted brief with `orchestra.reviewer.build_reviewer_brief`
+   1. Build the restricted brief with
+      `orchestra review-brief --base <base> --phase-head <phase-head>`
       (work-item descriptions/Approach, acceptances, requirements/
       invariants, and `git diff <base>..<phase-head>` only — no
       execution-report, check-run, assessment, or assignment text).
@@ -501,7 +501,7 @@ adaptive-artifacts create --type project:integration-report \
    honor the contracted **suite** policy once before the merge gate.
    Parent only. Agents must **not** waive suite policy — do not skip,
    soften, or override `phase_gate.suite`; change the project design
-   (contract) instead. Load policy with `orchestra.suite.load_suite_policy`
+   (contract) instead. Load policy with `orchestra suite policy`
    (same project-design path resolution as other project metadata).
    Missing `phase_gate.suite` or `mode=none` → skip the suite step.
    `mode=external` or `gate=deferred` → do **not** run locally.
@@ -514,9 +514,9 @@ adaptive-artifacts create --type project:integration-report \
    `<phase-slug>-suite`; `evidence_kind` is `integration`; include
    runner metadata (`revision`, `exit_code`, `duration_s`,
    `output_sha256`, and `failing_node_ids` when failed). Use
-   `orchestra.suite` (`start_suite_background`, `poll_suite` /
-   `collect_suite`, `record_suite_check_run`). Dirty-only pass is
-   refused the same way as `orchestra check` (commit first, or
+   `orchestra suite start`, `orchestra suite poll` /
+   `orchestra suite collect`, and `orchestra suite record`. Dirty-only
+   pass is refused the same way as `orchestra check` (commit first, or
    `--allow-dirty` → `revision=dirty` + `diff_sha256`). The phase
    suite is never red-first (red-first stays `method: tdd` only).
 
@@ -958,7 +958,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - `create` or `supersede` `project:oracle-amendment`, or `create` /
   `correct` a task `project:check-run` whose method is `tdd` or
   `check` — that result comes from `orchestra check`. The suite check-run
-  (`orchestra.suite.record_suite_check_run`) and `manual` / `review`
+  (`orchestra suite record`) and `manual` / `review`
   check-runs stay
 - Let a subagent sign an amendment or write `test_ids` /
   `oracle_hashes` — parent only

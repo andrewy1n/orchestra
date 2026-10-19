@@ -501,7 +501,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     assert "suite" in flat
     assert "phase_gate.suite" in flat or "phase_gate" in flat
     assert "background" in flat or "detached tmux" in flat
-    assert "orchestra.suite" in text or "start_suite_background" in text
+    assert "orchestra suite" in text or "start_suite_background" in text
     assert "waive" in flat
     order = text.index("Phase-end order")
     segment = text[order : order + 500]

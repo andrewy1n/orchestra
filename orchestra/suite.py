@@ -144,7 +144,8 @@ def normalize_suite_policy(
 
 def iter_project_design_paths(start: Path) -> list[Path]:
     """Candidate project-design paths (same roots as other project metadata)."""
-    from dashboard.artifact_store import resolve
+    # aa_resolve is part of the installed package; dashboard is not.
+    from orchestra.aa_resolve import resolve
 
     target = resolve(start)
     ordered: list[Path] = []

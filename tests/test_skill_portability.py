@@ -46,6 +46,9 @@ _CHECKOUT_PATH = re.compile(
 _CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/(?:orchestra|aff)\b")
 _AFFIDAVIT_HOME = re.compile(r"~/affidavit\b")
 _PLUGIN_ROOT = re.compile(r"<plugin>")
+#: Importable module APIs (`orchestra.reviewer`, `orchestra.suite.poll_suite`,
+#: `orchestra.aa`) are not a runtime surface an installed CLI exposes.
+_MODULE_API = re.compile(r"`?\borchestra\.([a-z_][A-Za-z0-9_]*)")
 
 
 def advertised_skills(root: Path = ROOT) -> list[Path]:
@@ -123,6 +126,21 @@ def runtime_call_errors(text: str) -> list[str]:
         errors.append("names a path-qualified runtime command")
     if _CHECKOUT_RELATIVE.search(text):
         errors.append("names a checkout-relative runtime command")
+    return errors
+
+
+def module_api_errors(text: str) -> list[str]:
+    """Module names a skill tells the agent to import instead of a command."""
+    errors: list[str] = []
+    seen: set[str] = set()
+    for match in _MODULE_API.finditer(text):
+        module = match.group(1)
+        if module in seen:
+            continue
+        seen.add(module)
+        errors.append(
+            f"names the module API orchestra.{module} instead of a CLI command"
+        )
     return errors
 
 
@@ -219,6 +237,35 @@ def test_paths_named_runtime_commands_are_allowed():
         "`adaptive-artifacts resolve`, and `aff verdict`.\n"
     )
     assert runtime_call_errors(text) == []
+
+
+def test_runtime_references_name_cli_commands_not_module_apis():
+    errors: list[str] = []
+    paths = [*sorted(SKILLS.rglob("*.md")), *sorted(SHARED.glob("*.md"))]
+    for path in paths:
+        for error in module_api_errors(path.read_text()):
+            errors.append(f"{path.relative_to(ROOT)}: {error}")
+    assert not errors, "\n".join(errors)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Build the brief with `orchestra.reviewer.build_reviewer_brief`.\n",
+        "Poll with `orchestra.suite.poll_suite`.\n",
+        "Call through `orchestra.aa`.\n",
+    ],
+)
+def test_runtime_module_api_references_are_rejected(text: str):
+    assert module_api_errors(text), text
+
+
+def test_runtime_cli_subcommands_are_allowed():
+    text = (
+        "Run `orchestra review-brief`, `orchestra suite poll`, "
+        "`orchestra store path`, and `orchestra store run -- list`.\n"
+    )
+    assert module_api_errors(text) == []
 
 
 @pytest.mark.parametrize("doc", SHARED_DOCS)

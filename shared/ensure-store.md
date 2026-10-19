@@ -10,12 +10,13 @@ name. Never resolve a checkout path or a plugin root to run them.
 
 ## Which store
 
-Dashboard and `orchestra.aa` resolve **one** store: `local`
+Dashboard and `orchestra store` resolve **one** store: `local`
 (`<repo>/.artifacts`) or `global` (`~/.artifacts/<repo-name>`). See
 the README (store binding). Skills that shell out to
 `adaptive-artifacts` should use the resolved store — pass `--store`
-and `--contract` explicitly, or call through `orchestra.aa` — so a
-personal shell function that forces `--store ~/.artifacts/$proj`
+and `--contract` explicitly, or call through `orchestra store run --
+<args>` — so a personal shell function that forces
+`--store ~/.artifacts/$proj`
 cannot redirect writes. For a new work repo, `init` creates the
 **local** store under `<repo>/.artifacts`; pin it with
 `.artifacts/store-binding.json` `{"store":"local"}` when you want that
@@ -32,6 +33,13 @@ not files inside a checkout:
   `"project"` field.
 - `orchestra check` and `orchestra close-batch` run acceptance and
   close work.
+- `orchestra review-brief` builds the phase-end reviewer brief.
+  `orchestra suite policy`, `orchestra suite start`,
+  `orchestra suite poll`, `orchestra suite collect`, and
+  `orchestra suite record` run the contracted phase suite and write
+  its check-run.
+- `orchestra store path` prints the resolved store;
+  `orchestra store run -- <args>` runs `adaptive-artifacts` against it.
 - `adaptive-artifacts` writes and reads store records.
 - `aff` judges a claim in `.affidavit/manifest.json`.
 
@@ -76,15 +84,16 @@ dispatching.
 If the design file does not exist yet:
 
 ```bash
-mkdir -p .artifacts
-orchestra contract --write .artifacts/project-design.json
+orchestra store ensure
 adaptive-artifacts resolve
 adaptive-artifacts init
 ```
 
-`adaptive-artifacts init` needs a git repo. If cwd is not git, leave
-design-only and tell the user. Do not write a plan document or extra
-skill copies.
+`orchestra store ensure` creates `.artifacts/` in the current
+worktree and writes the bundled design there when it is missing. It
+does not overwrite an existing design. `adaptive-artifacts init`
+needs a git repo. If cwd is not git, leave design-only and tell the
+user. Do not write a plan document or extra skill copies.
 
 ## Committing store writes
 
