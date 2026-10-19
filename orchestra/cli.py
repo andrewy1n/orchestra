@@ -87,18 +87,36 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         metavar="HOST",
         default=[],
-        help="Install only this provider id; repeat for more (default: all)",
+        help=(
+            "Install only this provider id; repeat for more "
+            "(default: detected hosts)"
+        ),
     )
     install.add_argument(
         "--all",
         action="store_true",
         help="Select every provider in the matrix",
     )
-    install.add_argument(
+    scope = install.add_mutually_exclusive_group()
+    scope.add_argument(
+        "--scope",
+        choices=("project", "global"),
+        default=None,
+        help="Install into the project or the user directories",
+    )
+    scope.add_argument(
         "--global",
-        dest="global_",
+        dest="scope",
+        action="store_const",
+        const="global",
+        help="Alias for --scope global",
+    )
+    install.add_argument(
+        "--list",
+        "-l",
+        dest="list_only",
         action="store_true",
-        help="Install into user directories instead of the project",
+        help="Print the provider matrix with project/global detection",
     )
     install.add_argument(
         "--copy",
@@ -114,6 +132,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--uninstall",
         action="store_true",
         help="Remove exactly what the adapter registered",
+    )
+    interactive = install.add_mutually_exclusive_group()
+    interactive.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Force the host wizard even when standard input is not a TTY",
+    )
+    interactive.add_argument(
+        "--non-interactive",
+        "--yes",
+        "-y",
+        dest="non_interactive",
+        action="store_true",
+        help="Never prompt; use --only/--all or detected hosts",
     )
     install.add_argument(
         "--home",

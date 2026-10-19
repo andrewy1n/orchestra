@@ -99,13 +99,16 @@ class RemoveResult:
 class InstallRequest:
     only: tuple[str, ...] = ()
     all_providers: bool = False
-    global_scope: bool = False
+    scope: str | None = None
     copy: bool = False
     dry_run: bool = False
     uninstall: bool = False
     home: Path | None = None
     source_root: Path | None = None
     cwd: Path | None = None
+    list_only: bool = False
+    interactive: bool = False
+    non_interactive: bool = False
 
 
 @dataclass

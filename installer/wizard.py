@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TextIO
 
 from installer.detect import HostStatus
+from installer.model import InstallRequest
 
 InputFn = Callable[[str], str]
 
@@ -18,6 +19,25 @@ class WizardCancelled(Exception):
 
 class WizardSelectionError(ValueError):
     """A host selection token could not be resolved."""
+
+
+def _stdin_isatty() -> bool:
+    return sys.stdin.isatty()
+
+
+def _stdout_isatty() -> bool:
+    return sys.stdout.isatty()
+
+
+def wants_wizard(request: InstallRequest) -> bool:
+    """Whether this request should run the interactive install wizard."""
+    if request.list_only or request.uninstall:
+        return False
+    if request.non_interactive:
+        return False
+    if request.interactive:
+        return True
+    return _stdin_isatty() and _stdout_isatty()
 
 
 def _ask(prompt: str, input_fn: InputFn) -> str:

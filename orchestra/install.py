@@ -24,10 +24,13 @@ def main(args) -> int:
     request = InstallRequest(
         only=tuple(args.only or ()),
         all_providers=bool(args.all),
-        global_scope=bool(args.global_),
+        scope=args.scope,
         copy=bool(args.copy),
         dry_run=bool(args.dry_run),
         uninstall=bool(args.uninstall),
         home=Path(args.home).expanduser() if args.home else None,
+        list_only=bool(args.list_only),
+        interactive=bool(args.interactive),
+        non_interactive=bool(args.non_interactive),
     )
     return run(request)

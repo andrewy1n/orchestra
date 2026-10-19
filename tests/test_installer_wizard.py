@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import io
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from installer import wizard as wizard_module
 from installer.detect import detected_ids, detect_hosts, installed_ids
 from installer.matrix import load_matrix
+from installer.model import InstallRequest
 from installer.wizard import (
     WizardCancelled,
     WizardSelectionError,
@@ -17,6 +22,7 @@ from installer.wizard import (
     prompt_hosts,
     prompt_mode,
     prompt_scope,
+    wants_wizard,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -174,4 +180,356 @@ def test_prompt_mode_defaults_symlink():
 def test_confirm_blank_uses_default_and_accepts_no():
     assert confirm("Proceed?", input_fn=_input_from(""), output=io.StringIO())
     assert not confirm("Proceed?", input_fn=_input_from("n"), output=io.StringIO())
+
+
+CANONICAL_AGENT = """---
+name: se-reviewer
+description: Fixture reviewer
+---
+Fixture reviewer body.
+"""
+
+
+def _project(tmp_path: Path) -> Path:
+    project = tmp_path / "project"
+    project.mkdir()
+    return project
+
+
+def _make_source(tmp_path: Path) -> Path:
+    source = tmp_path / "source"
+    skill = source / "skills" / "init"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: init\ndescription: fixture\n---\n", encoding="utf-8"
+    )
+    agents = source / "agents"
+    agents.mkdir()
+    (agents / "reviewer.prompt.md").write_text(CANONICAL_AGENT, encoding="utf-8")
+    return source
+
+
+def _run_install(
+    *args: str,
+    project: Path,
+    source: Path,
+    home: Path,
+    stdin: str | None = None,
+) -> subprocess.CompletedProcess:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
+    ).strip(os.pathsep)
+    env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
+    env["HOME"] = str(home)
+    affidavit_checkout = Path(
+        os.environ.get("AFFIDAVIT_ROOT", Path.home() / "affidavit")
+    )
+    if (affidavit_checkout / "affidavit" / "__init__.py").is_file():
+        env.setdefault("AFFIDAVIT_ROOT", str(affidavit_checkout))
+    return subprocess.run(
+        [sys.executable, "-m", "orchestra.cli", "install", *args],
+        cwd=str(project),
+        env=env,
+        capture_output=True,
+        text=True,
+        input=stdin,
+    )
+
+
+def _markers(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
+    return sorted(root.rglob(".orchestra-install.json"))
+
+
+def test_tty_launches_wizard(monkeypatch):
+    monkeypatch.setattr(wizard_module, "_stdin_isatty", lambda: True)
+    monkeypatch.setattr(wizard_module, "_stdout_isatty", lambda: True)
+    assert wants_wizard(InstallRequest()) is True
+
+    monkeypatch.setattr(wizard_module, "_stdin_isatty", lambda: False)
+    assert wants_wizard(InstallRequest()) is False
+    assert wants_wizard(InstallRequest(interactive=True)) is True
+    assert wants_wizard(InstallRequest(non_interactive=True)) is False
+    assert wants_wizard(InstallRequest(list_only=True)) is False
+    assert wants_wizard(InstallRequest(uninstall=True)) is False
+
+
+def test_plan_confirmation(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--interactive",
+        "--copy",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+        stdin="1\n\n\n\n",
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "install claude [copy/project]" in proc.stdout
+    assert "Proceed? [Y/n]:" in proc.stdout
+    assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
+    assert _markers(home) == [home / ".claude" / ".orchestra-install.json"]
+
+
+def test_decline_writes_nothing(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--interactive",
+        "--copy",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+        stdin="1\n\nn\n",
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "cancelled" in proc.stderr
+    assert not (home / ".claude").exists()
+    assert _markers(home) == []
+
+
+def test_list_prints_matrix(tmp_path):
+    project = _project(tmp_path)
+    (project / ".claude").mkdir()
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    (home / ".config" / "opencode").mkdir(parents=True)
+
+    proc = _run_install("--list", project=project, source=source, home=home)
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "ID" in proc.stdout
+    assert "HOST" in proc.stdout
+    assert "PROJECT" in proc.stdout
+    assert "GLOBAL" in proc.stdout
+    assert "Claude Code" in proc.stdout
+    assert "OpenCode" in proc.stdout
+    assert "yes" in proc.stdout
+    assert not (home / ".claude").exists()
+    assert not (home / ".opencode").exists()
+    assert _markers(home) == []
+
+
+def test_scope_flag_global_writes_under_home(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--only",
+        "claude",
+        "--scope",
+        "global",
+        "--copy",
+        project=project,
+        source=source,
+        home=home,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
+    assert not (project / ".claude").exists()
+
+    conflict = _run_install(
+        "--only",
+        "claude",
+        "--scope",
+        "global",
+        "--global",
+        project=project,
+        source=source,
+        home=home,
+    )
+    assert conflict.returncode == 2
+    assert "not allowed" in conflict.stderr
+
+
+def test_interactive_flag_forces_wizard(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--interactive",
+        "--copy",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+        stdin="cursor\n\n\n\n",
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "Select hosts" in proc.stdout
+    assert (home / ".cursor" / "skills" / "init" / "SKILL.md").is_file()
+    assert not (home / ".claude").exists()
+
+
+def test_non_interactive_uses_detected(tmp_path):
+    project = _project(tmp_path)
+    (project / ".claude").mkdir()
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--yes",
+        "--copy",
+        project=project,
+        source=source,
+        home=home,
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "Select hosts" not in proc.stdout
+    assert (project / ".claude" / "skills" / "init" / "SKILL.md").is_file()
+
+
+def test_no_detection_no_tty(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(project=project, source=source, home=home)
+    assert proc.returncode == 2
+    assert "no host footprints" in proc.stderr
+    assert not (project / ".claude").exists()
+
+    yes = _run_install(
+        "--yes", project=project, source=source, home=home
+    )
+    assert yes.returncode == 2
+    assert "no host footprints" in yes.stderr
+    assert not (project / ".claude").exists()
+
+
+def test_home_redirect_never_reads_real_home(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    redirect = tmp_path / "redirect"
+    redirect.mkdir()
+
+    proc = _run_install(
+        "--yes",
+        "--home",
+        str(redirect),
+        project=project,
+        source=source,
+        home=home,
+    )
+
+    assert proc.returncode == 2
+    assert "no host footprints" in proc.stderr
+    assert not (redirect / ".claude").exists()
+
+
+def test_explicit_flags(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    only = _run_install(
+        "--only",
+        "claude",
+        "--copy",
+        project=project,
+        source=source,
+        home=home,
+    )
+    assert only.returncode == 0, only.stdout + only.stderr
+    assert "Select hosts" not in only.stdout
+    assert (project / ".claude" / "skills" / "init" / "SKILL.md").is_file()
+
+    every = _run_install(
+        "--all",
+        "--dry-run",
+        project=project,
+        source=source,
+        home=home,
+    )
+    assert every.returncode == 0, every.stdout + every.stderr
+    assert "Select hosts" not in every.stdout
+    assert "install claude" in every.stdout
+    assert "install cursor" in every.stdout
+
+
+def test_dry_run_skips_confirmation(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    proc = _run_install(
+        "--interactive",
+        "--dry-run",
+        "--copy",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+        stdin="1\n\n\n",
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "Proceed?" not in proc.stdout
+    assert "(dry run; nothing written)" in proc.stdout
+    assert not (home / ".claude").exists()
+    assert _markers(home) == []
+
+
+def test_uninstall_never_prompts(tmp_path):
+    project = _project(tmp_path)
+    source = _make_source(tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+
+    installed = _run_install(
+        "--only",
+        "claude",
+        "--copy",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+    )
+    assert installed.returncode == 0, installed.stdout + installed.stderr
+
+    removed = _run_install(
+        "--uninstall",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        home=home,
+    )
+
+    assert removed.returncode == 0, removed.stdout + removed.stderr
+    assert "Select hosts" not in removed.stdout
+    assert "uninstalled claude" in removed.stdout
+    assert _markers(home) == []
+
 
