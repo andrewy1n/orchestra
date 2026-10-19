@@ -9,20 +9,49 @@
  * support) and the skills still work; `adaptive-artifacts hook-stop` just
  * runs later or from the skill.
  */
-export const OrchestraHooks = async ({ $, directory }) => {
-  let started = false
 
-  return {
-    event: async ({ event }) => {
-      if (event.type === "session.created" && !started) {
-        started = true
-        await $`adaptive-artifacts hook-start`.cwd(directory).catch(() => {})
-        return
-      }
-      if (event.type === "session.idle" || event.type === "session.deleted") {
-        started = false
-        await $`adaptive-artifacts hook-stop`.cwd(directory).catch(() => {})
-      }
-    },
-  }
+import { spawn } from "node:child_process"
+import { Plugin } from "@opencode/plugin"
+
+function runHook(command, cwd) {
+  return new Promise((resolve) => {
+    const child = spawn("adaptive-artifacts", [command], {
+      cwd,
+      stdio: "ignore",
+    })
+    child.on("error", resolve)
+    child.on("close", resolve)
+  })
 }
+
+export default Plugin.define({
+  id: "orchestra-hooks",
+  setup(ctx) {
+    const controller = new AbortController()
+    let started = false
+
+    void (async () => {
+      try {
+        for await (const event of ctx.event.subscribe({
+          signal: controller.signal,
+        })) {
+          if (event.type === "session.created" && !started) {
+            started = true
+            await runHook("hook-start", ctx.location.directory)
+            continue
+          }
+          if (event.type === "session.idle" || event.type === "session.deleted") {
+            started = false
+            await runHook("hook-stop", ctx.location.directory)
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("orchestra: hook event stream failed", error)
+        }
+      }
+    })()
+
+    return () => controller.abort()
+  },
+})

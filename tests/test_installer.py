@@ -558,6 +558,15 @@ def test_native_opencode_installs_skills_source_plugin_and_subagent(
     assert body == load_agent(source).body
 
 
+def test_opencode_plugin_uses_the_v2_default_definition():
+    plugin = (
+        Path(__file__).resolve().parents[1] / "hosts" / "opencode" / "plugin.js"
+    ).read_text(encoding="utf-8")
+    assert "export default Plugin.define" in plugin
+    assert 'id: "orchestra-hooks"' in plugin
+    assert "export const OrchestraHooks" not in plugin
+
+
 def test_opencode_reinstall_moves_the_legacy_root_plugin(source, project, home):
     args = ("--only", "opencode", "--home", str(home), "--copy")
     assert run_install(*args, project=project, source=source).returncode == 0
