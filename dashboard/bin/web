@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Run the web dashboard (dashboard/web/__main__.py, through uv) for the current directory's repo.
+
+Extra arguments go to the app, e.g. `web --port 8765`.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from dashboard.artifact_store import StoreBindingError, resolve  # noqa: E402
+
+APP = Path(__file__).resolve().parent.parent / "web" / "__main__.py"
+
+
+def fail(message: str) -> int:
+    print(message, flush=True)
+    return 1
+
+
+def find_uv() -> str | None:
+    override = os.environ.get("SE_WORKFLOW_UV")
+    if override:
+        return override
+    local = Path.home() / ".local" / "bin" / "uv"
+    return shutil.which("uv") or (str(local) if os.access(local, os.X_OK) else None)
+
+
+def main(argv: list[str]) -> int:
+    try:
+        target = resolve(Path.cwd())
+    except StoreBindingError as exc:
+        return fail(str(exc))
+    if target.store is None:
+        return fail(
+            f"No artifact store for {target.root}.\n"
+            f"No store binding and no meta.json in:\n"
+            f"  {target.repo_store()} (local)\n"
+            f"  {target.home_store()} (global)\n"
+            f"Set SE_WORKFLOW_STORE or add .artifacts/store-binding.json "
+            f'with {{"store":"local"}} or {{"store":"global"}}.'
+        )
+    uv = find_uv()
+    if uv is None:
+        return fail(
+            "Cannot find uv, which runs the web dashboard.\n"
+            "Install it: https://docs.astral.sh/uv/getting-started/installation/\n"
+            "Or set SE_WORKFLOW_UV to its path."
+        )
+    command = [uv, "run", "--script", str(APP), *argv]
+    try:
+        os.chdir(target.root)
+        os.execv(command[0], command)
+    except OSError as exc:
+        return fail(f"Cannot run {command[0]}: {exc}")
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
