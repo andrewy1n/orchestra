@@ -626,6 +626,36 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
    `phase_gate.suite.gate` is `required`. Skip the gate for incidental
    work. Do not waive suite policy to force a close.
 
+   When the gate holds, assemble a **proof packet** before Landing
+   merge or any "phase done" language. Skip only when there was
+   nothing to inspect (no code or claim change). Incidental and
+   no-Landing work still get a packet when code or claims changed.
+   Read `## Proof` on the phase body for `kind` (default `claims`).
+   `base` is the Landing base (or merge-base with main); `revision` is
+   the phase-head SHA. Pointers only in Machine — do not invent
+   verdict prose.
+
+   When the work repo has `.affidavit/manifest.json`, also run
+   `aff trail` and `aff audit --base <base> --head <revision>` and put
+   claim ids / unclaimed counts into Machine and Attention.
+
+```bash
+adaptive-artifacts create --type project:proof-packet \
+  --subject "<phase-slug>" \
+  --payload '{"phase":"<phase-slug>","effort":"<focus>","revision":"<phase-head-sha>","base":"<base-sha>","kind":"<demo|commands|claims|audit-triage|mixed>"}' \
+  --body-file "<proof-packet-body.md>"
+```
+
+   `<proof-packet-body.md>` has `## Look`, `## Machine`, `## Attention`,
+   and `## Diff`. Look is concrete commands or paths; Machine lists
+   check-run / claim ids and re-run commands; Attention is unclaimed
+   leftovers, risk paths, or `none`; Diff is `git diff --stat
+   <base>..<revision>` (or `no tree change`). Print Look and Attention
+   in chat. Refuse to say the phase is complete without a
+   `project:proof-packet` whose `payload.revision` is this phase-head
+   SHA. When the head moves after a fix pass, create a new packet for
+   the new revision (same subject).
+
    When the gate holds and `## Landing` is present, commit the phase
    branch from the worktree. That commit excludes `.artifacts`. From
    the primary checkout, merge into `main`, then commit the store on
@@ -918,6 +948,9 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Write the integration-report before closing verification / the
   reviewer, or invent its body instead of copying the reviewer's
   `integration` section
+- Call the phase complete (or merge) without a `project:proof-packet`
+  whose `payload.revision` is the phase-head SHA when code or claims
+  changed
 - Merge (or close the phase) without a passing `method: review`
   check-run at the phase-head SHA
 - Merge (or close the phase) without a passing suite check-run

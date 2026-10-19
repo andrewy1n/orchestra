@@ -1,4 +1,4 @@
-"""Tabbed phase screen: Overview, Spec, Design, Decisions, Evidence, Tasks."""
+"""Tabbed phase screen: Overview, Spec, Design, Decisions, Evidence, Proof, Tasks."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ TAB_LABELS = {
     "design": "Design",
     "decisions": "Decisions",
     "evidence": "Evidence",
+    "proof": "Proof",
     "tasks": "Tasks",
 }
 
@@ -86,6 +87,9 @@ def phase_chips(detail: model.PhaseDetail, colors: dict[str, str]) -> Text:
     if detail.awaiting_signoff:
         text.append(" · ", style=colors["muted"])
         text.append("awaiting sign-off", style=colors["warning"])
+    if detail.proof is not None:
+        text.append(" · ", style=colors["muted"])
+        text.append("proof ready", style=colors["muted"])
     text.append(f" · {done}/{total} tasks", style=colors["muted"])
     return text
 
@@ -677,12 +681,81 @@ class TasksPane(VerticalScroll):
         return "\n".join(lines).strip() + "\n"
 
 
+class ProofPane(VerticalScroll):
+    def compose(self):
+        meta = Static(id="proof-meta", classes="phase-panel")
+        meta.border_title = "Packet"
+        yield meta
+        look = Vertical(Markdown(), id="proof-look", classes="phase-panel")
+        look.border_title = "Look"
+        yield look
+        attention = Vertical(Markdown(), id="proof-attention", classes="phase-panel")
+        attention.border_title = "Attention"
+        yield attention
+        machine = Vertical(Markdown(), id="proof-machine", classes="phase-panel")
+        machine.border_title = "Machine"
+        yield machine
+        diff = Vertical(Markdown(), id="proof-diff", classes="phase-panel")
+        diff.border_title = "Diff"
+        yield diff
+
+    async def show(self, detail: model.PhaseDetail, colors: dict[str, str], width: int) -> None:
+        proof = detail.proof
+        meta = self.query_one("#proof-meta", Static)
+        for pane_id in ("proof-look", "proof-attention", "proof-machine", "proof-diff"):
+            self.query_one(f"#{pane_id}").display = proof is not None
+        meta.display = proof is not None
+        if proof is None:
+            meta.update(Text("No proof packet for this phase.", style=colors["muted"]))
+            meta.display = True
+            return
+        meta.update(Text(
+            f"{proof.kind} · rev {proof.revision[:12] if proof.revision else '—'} · base {proof.base[:12] if proof.base else '—'}",
+            style=colors["muted"],
+        ))
+        await self.query_one("#proof-look Markdown", Markdown).update(proof.look.strip() or "_none_")
+        await self.query_one("#proof-attention Markdown", Markdown).update(proof.attention.strip() or "_none_")
+        await self.query_one("#proof-machine Markdown", Markdown).update(proof.machine.strip() or "_none_")
+        await self.query_one("#proof-diff Markdown", Markdown).update(proof.diff.strip() or "_none_")
+
+    def pager_text(self) -> str:
+        detail = self.screen.detail if isinstance(self.screen, PhaseScreen) else None
+        if detail is None or detail.proof is None:
+            return "# Proof\n\nnone\n"
+        proof = detail.proof
+        return "\n".join([
+            "# Proof",
+            "",
+            f"kind: {proof.kind}",
+            f"revision: {proof.revision}",
+            f"base: {proof.base}",
+            "",
+            "## Look",
+            "",
+            proof.look or "none",
+            "",
+            "## Attention",
+            "",
+            proof.attention or "none",
+            "",
+            "## Machine",
+            "",
+            proof.machine or "none",
+            "",
+            "## Diff",
+            "",
+            proof.diff or "none",
+            "",
+        ])
+
+
 PANE_TYPES = {
     "overview": OverviewPane,
     "spec": SpecPane,
     "design": DesignPane,
     "decisions": DecisionsPane,
     "evidence": EvidencePane,
+    "proof": ProofPane,
     "tasks": TasksPane,
 }
 

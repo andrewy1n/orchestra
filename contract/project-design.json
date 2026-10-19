@@ -505,6 +505,39 @@
       ]
     },
     {
+      "name": "proof-packet",
+      "pattern": "observation",
+      "purpose": "Human-facing phase-end proof: how to look, machine pointers, attention leftovers, and diff summary",
+      "canonical_for": "the human proof packet for this phase at a revision",
+      "capture": "at_event",
+      "read": "query",
+      "payload": [
+        "phase",
+        "effort",
+        "revision",
+        "base",
+        "kind"
+      ],
+      "payload_enum": {
+        "kind": [
+          "demo",
+          "commands",
+          "claims",
+          "audit-triage",
+          "mixed"
+        ]
+      },
+      "payload_references": {
+        "phase": "project:phase"
+      },
+      "required_sections": [
+        "Look",
+        "Machine",
+        "Attention",
+        "Diff"
+      ]
+    },
+    {
       "name": "assessment",
       "pattern": "current-status",
       "purpose": "Given the check-runs, what the requirement's evidence means and which stage is next. A check-run does not carry this.",
@@ -711,6 +744,24 @@
               {
                 "field": "payload.status",
                 "not_equals": "closed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "latest-proof",
+          "occupant": "proof-packet",
+          "requires_payload": [
+            "phase",
+            "effort",
+            "revision",
+            "kind"
+          ],
+          "selection": {
+            "all": [
+              {
+                "field": "lifecycle_state",
+                "equals": "recorded"
               }
             ]
           }

@@ -70,12 +70,12 @@ lists a `phase` record, a `constraint` record, an `assignment` record,
 and an `execution-report` record, and that `work-item` has
 `required_sections`. A design is current only when it also lists
 `specification`, `design`, `assessment`, `integration-report`,
-`release`, `feedback`, `backlog-item`, and `milestone`. If those are
-missing, the bundled contract is newer (it predates staged task
-lifecycle, phase records, dependency edges, the
+`proof-packet`, `release`, `feedback`, `backlog-item`, and
+`milestone`. If those are missing, the bundled contract is newer (it
+predates staged task lifecycle, phase records, dependency edges, the
 assignment/execution-report dispatch loop, the evidence-loop records,
-backlog capture, or milestones): show the user and replace
-`.artifacts/project-design.json` only if they approve,
+backlog capture, milestones, or phase-end proof packets): show the
+user and replace `.artifacts/project-design.json` only if they approve,
 then `adaptive-artifacts resolve`. Do not replace on a no. This is a
 one-time upgrade check at first touch, not a standing gate — once the
 design is current, nothing in the other skills re-checks it before
