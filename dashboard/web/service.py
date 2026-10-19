@@ -13,13 +13,13 @@ from __future__ import annotations
 import json
 import sys
 import threading
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, is_dataclass, replace
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-from dashboard import approval, journal, model
+from dashboard import approval, backlog, dismiss, journal, model
 from dashboard.artifact_store import Target
 
 
@@ -156,6 +156,13 @@ class Cache:
                 self.token = token
             return self.token
 
+    def drop(self) -> None:
+        """Clear snapshot and detail cache after a successful write."""
+        with self.lock:
+            self.snapshot = None
+            self.details.clear()
+            self.token = ""
+
     def snapshot_payload(self) -> dict:
         snapshot = self._current()
         return {
@@ -249,6 +256,99 @@ class Reader:
                 return {"item": jsonable(item)}
         raise model.ModelError(f"backlog item {item_id} not found")
 
+    def _find_needs(self, item_id: str, effort: str | None = None) -> model.NeedsYouItem:
+        if effort:
+            view = self.cache.effort(effort)
+            for item in view.needs_you:
+                if item.id == item_id:
+                    return item
+            raise model.ModelError(f"needs-you item {item_id} not found")
+        for view in self.cache._current().efforts:
+            for item in view.needs_you:
+                if item.id == item_id:
+                    return item
+        raise model.ModelError(f"needs-you item {item_id} not found")
+
+    def _find_backlog(self, item_id: str, effort: str | None = None) -> model.BacklogItem:
+        if effort:
+            view = self.cache.effort(effort)
+            for item in view.backlog:
+                if item.id == item_id:
+                    return item
+            raise model.ModelError(f"backlog item {item_id} not found")
+        for view in self.cache._current().efforts:
+            for item in view.backlog:
+                if item.id == item_id:
+                    return item
+        raise model.ModelError(f"backlog item {item_id} not found")
+
+    def write_needs(self, body: dict) -> dict:
+        """POST /api/needs — clear a human Needs-you item through dismiss."""
+        item_id = str(body.get("id") or "").strip()
+        action = str(body.get("action") or "").strip().lower()
+        if not item_id or not action:
+            raise WriteError("missing id or action", 400)
+        effort = str(body.get("effort") or "").strip() or None
+        note_raw = body.get("note")
+        note = None if note_raw is None else str(note_raw).strip() or None
+        if approval.note_required_for(action) and not note:
+            raise WriteError("note required", 400)
+        item = self._find_needs(item_id, effort)
+        if not dismiss.is_dismissible(item.kind):
+            raise WriteError(f"cannot dismiss {item.kind}", 400)
+        revision = body.get("revision")
+        if revision is not None:
+            item = replace(item, revision=str(revision))
+        try:
+            # Always the process default; ignore any signer field on the body.
+            dismiss.dismiss_item(
+                self.target,
+                item,
+                action=action,
+                note=note,
+                signer=dismiss.default_signer(),
+            )
+        except dismiss.DismissRefused as exc:
+            raise WriteError(str(exc), 400) from exc
+        except dismiss.DismissError as exc:
+            message = str(exc)
+            if message == dismiss.STALE_MESSAGE or "changed since opened" in message.lower():
+                raise WriteError(message, 409) from exc
+            raise WriteError(message, 400) from exc
+        self.cache.drop()
+        return {"ok": True}
+
+    def write_backlog(self, body: dict) -> dict:
+        """POST /api/backlog — dismiss or promote an open backlog item."""
+        item_id = str(body.get("id") or "").strip()
+        action = str(body.get("action") or "").strip().lower()
+        if not item_id or not action:
+            raise WriteError("missing id or action", 400)
+        effort = str(body.get("effort") or "").strip() or None
+        item = self._find_backlog(item_id, effort)
+        try:
+            if action == "dismiss":
+                backlog.dismiss_item(self.target, item)
+            elif action == "promote":
+                backlog.promote_item(self.target, item)
+            else:
+                raise WriteError(f"unsupported action {action!r}", 400)
+        except backlog.BacklogRefused as exc:
+            raise WriteError(str(exc), 400) from exc
+        except backlog.BacklogError as exc:
+            raise WriteError(str(exc), 400) from exc
+        self.cache.drop()
+        return {"ok": True}
+
+
+class WriteError(Exception):
+    """HTTP-mapped failure for a Needs-you or backlog write."""
+
+    def __init__(self, message: str, status: int) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
 
 def _query(qs: dict, name: str) -> str:
     value = (qs.get(name) or [""])[0]
@@ -294,6 +394,35 @@ def build_handler(reader: Reader):
                 self._json({"error": str(exc)}, status=404)
             except Exception as exc:  # noqa: BLE001 — surface a failed read
                 self._json({"error": str(exc)}, status=500)
+
+        def do_POST(self) -> None:  # noqa: N802 — stdlib spelling
+            parsed = urlparse(self.path)
+            try:
+                body = self._read_json()
+                if parsed.path == "/api/needs":
+                    self._json(reader.write_needs(body))
+                elif parsed.path == "/api/backlog":
+                    self._json(reader.write_backlog(body))
+                else:
+                    self._json({"error": "not found"}, status=404)
+            except WriteError as exc:
+                self._json({"error": exc.message}, status=exc.status)
+            except model.ModelError as exc:
+                self._json({"error": str(exc)}, status=404)
+            except json.JSONDecodeError as exc:
+                self._json({"error": f"invalid json: {exc}"}, status=400)
+            except Exception as exc:  # noqa: BLE001 — surface a failed write
+                self._json({"error": str(exc)}, status=500)
+
+        def _read_json(self) -> dict:
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            if not raw:
+                return {}
+            data = json.loads(raw.decode())
+            if not isinstance(data, dict):
+                raise WriteError("JSON body must be an object", 400)
+            return data
 
         def _json(self, payload: dict, status: int = 200) -> None:
             data = json.dumps(payload).encode()

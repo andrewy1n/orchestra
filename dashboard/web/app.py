@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dashboard import model
 from dashboard.artifact_store import Target
-from dashboard.web.service import Reader
+from dashboard.web.service import Reader, WriteError
 
 DIST = Path(__file__).resolve().parent / "ui" / "dist"
 MISSING_BUILD = (
@@ -26,8 +26,8 @@ MISSING_BUILD = (
 
 
 def create_app(target: Target):
-    """Return a FastAPI app serving the read API (and built UI) for ``target``."""
-    from fastapi import FastAPI, Query
+    """Return a FastAPI app serving the read/write API (and built UI) for ``target``."""
+    from fastapi import FastAPI, Query, Request
     from fastapi.responses import HTMLResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
 
@@ -37,6 +37,10 @@ def create_app(target: Target):
     @app.exception_handler(model.ModelError)
     async def _model_error(_request, exc: model.ModelError) -> JSONResponse:
         return JSONResponse({"error": str(exc)}, status_code=404)
+
+    @app.exception_handler(WriteError)
+    async def _write_error(_request, exc: WriteError) -> JSONResponse:
+        return JSONResponse({"error": exc.message}, status_code=exc.status)
 
     @app.get("/api/token")
     def token() -> dict:
@@ -73,6 +77,20 @@ def create_app(target: Target):
     @app.get("/api/backlog")
     def backlog(effort: str = Query(...), id: str = Query(...)) -> dict:
         return reader.backlog(effort, id)
+
+    @app.post("/api/needs")
+    async def write_needs(request: Request) -> dict:
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise WriteError("JSON body must be an object", 400)
+        return reader.write_needs(body)
+
+    @app.post("/api/backlog")
+    async def write_backlog(request: Request) -> dict:
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise WriteError("JSON body must be an object", 400)
+        return reader.write_backlog(body)
 
     if DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(DIST), html=True), name="ui")
