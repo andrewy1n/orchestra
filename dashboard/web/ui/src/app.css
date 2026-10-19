@@ -464,3 +464,94 @@ button {
   color: var(--faint);
   font-size: 11.5px;
 }
+
+.lrow.clickable {
+  cursor: pointer;
+}
+
+.lrow.clickable:hover {
+  background: var(--sunken);
+}
+
+.trow.task.clickable {
+  cursor: pointer;
+}
+
+.trow.task.clickable:hover {
+  background: var(--sunken);
+}
+
+/* ---- detail overlays ---- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 40;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.overlay-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 18px;
+  height: 46px;
+  border-bottom: 1px solid var(--line);
+}
+
+.overlay-bar .back {
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  padding: 3px 9px;
+  font-size: 12px;
+}
+
+.overlay-bar .back:hover {
+  color: var(--ink);
+}
+
+.overlay-bar .who {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.overlay-body {
+  overflow-y: auto;
+  padding: 18px 22px 40px;
+}
+
+.overlay-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.overlay-tabs .tab {
+  padding: 6px 10px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.overlay-tabs .tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.overlay-payload {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink-2);
+}

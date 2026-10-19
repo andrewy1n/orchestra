@@ -2,6 +2,17 @@
   import { onMount } from "svelte";
   import { getJson } from "./api";
   import {
+    backlogHref,
+    closeDetail,
+    detailTarget,
+    needsHref,
+    openHash,
+    phaseHref,
+    recordHref,
+    taskHref,
+    type DetailTarget,
+  } from "./detail";
+  import {
     defaultPhase,
     filteredTasks,
     resolvedPhase,
@@ -36,6 +47,10 @@
 
   let journal: JournalResponse | null = $state(null);
   let journalError = $state("");
+
+  let detailPayload: unknown = $state(null);
+  let detailError = $state("");
+  let detailLoading = $state(false);
 
   $effect(() => {
     applyTheme(theme);
@@ -76,6 +91,21 @@
 
   const journalItems = $derived(orderedJournal(journal));
 
+  const target: DetailTarget | null = $derived(detailTarget(route));
+
+  const phaseTabs: string[] = $derived.by(() => {
+    if (!target || target.kind !== "phase") return [];
+    if (!detailPayload || typeof detailPayload !== "object") return [];
+    const tabs = (detailPayload as { tabs?: unknown }).tabs;
+    return Array.isArray(tabs) ? tabs.map(String) : [];
+  });
+
+  const activePhaseTab = $derived.by(() => {
+    if (!target || target.kind !== "phase") return "";
+    if (target.tab && phaseTabs.includes(target.tab)) return target.tab;
+    return phaseTabs[0] ?? "";
+  });
+
   $effect(() => {
     const name = effort?.effort ?? "";
     if (!name) {
@@ -106,19 +136,64 @@
     };
   });
 
+  $effect(() => {
+    const next = target;
+    if (!next) {
+      detailPayload = null;
+      detailError = "";
+      detailLoading = false;
+      return;
+    }
+    let cancelled = false;
+    detailPayload = null;
+    detailError = "";
+    detailLoading = true;
+    void getJson<unknown>(next.apiPath)
+      .then((data) => {
+        if (!cancelled) {
+          detailPayload = data;
+          detailError = "";
+          detailLoading = false;
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          detailPayload = null;
+          detailError = err instanceof Error ? err.message : String(err);
+          detailLoading = false;
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+
   function selectEffort(name: string) {
     selectedEffort = name;
     pinnedPhase = null;
     statusTab = "active";
   }
 
-  function selectPhase(target: string) {
+  function selectPhase(targetPhase: string) {
     if (!effort) return;
-    if (target === "all") {
+    if (targetPhase === "all") {
       pinnedPhase = "all";
       return;
     }
-    pinnedPhase = target === defaultPhase(effort) ? null : target;
+    pinnedPhase = targetPhase === defaultPhase(effort) ? null : targetPhase;
+  }
+
+  function openPhase(subject: string) {
+    if (!effort) return;
+    openHash(phaseHref(effort.effort, subject));
+  }
+
+  function selectPhaseTab(tab: string) {
+    if (!effort || !target || target.kind !== "phase") return;
+    const effortName = route.parts[1];
+    const phaseName = route.parts[2];
+    if (!effortName || !phaseName) return;
+    openHash(phaseHref(effortName, phaseName, tab));
   }
 
   function applySnapshot(data: Snapshot) {
@@ -135,6 +210,13 @@
     const sync = () => (route = currentRoute());
     window.addEventListener("hashchange", sync);
 
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && detailTarget(currentRoute())) {
+        closeDetail();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+
     const poller = startTokenPoller({
       onSnapshot: applySnapshot,
       onError: (message) => {
@@ -150,6 +232,7 @@
     return () => {
       poller.stop();
       window.removeEventListener("hashchange", sync);
+      window.removeEventListener("keydown", onKey);
     };
   });
 </script>
@@ -238,7 +321,13 @@
                 class:on={phaseSubject === phase.subject}
                 class:live={phase.state === "in_progress"}
                 data-phase={phase.subject}
-                onclick={() => selectPhase(phase.subject)}
+                onclick={() => {
+                  if (phaseSubject === phase.subject) {
+                    openPhase(phase.subject);
+                  } else {
+                    selectPhase(phase.subject);
+                  }
+                }}
               >
                 {phase.title || phase.subject}
                 <span class="cnt">{phase.done}/{phase.total}</span>
@@ -282,14 +371,16 @@
             <p class="empty-note">No tasks in this tab</p>
           {:else}
             {#each tasks as task (task.id)}
-              <div
-                class="trow task"
+              <button
+                type="button"
+                class="trow task clickable"
                 data-task={task.id}
                 data-phase-of={task.phase}
+                onclick={() => openHash(taskHref(task.id))}
               >
                 <span class="st {task.status}">{task.status}</span>
                 <span class="title">{task.title || task.subject}</span>
-              </div>
+              </button>
             {/each}
           {/if}
         </div>
@@ -310,11 +401,16 @@
             <p class="empty-note">Nothing needs you</p>
           {:else}
             {#each effort.needs_you as item (item.id)}
-              <div class="lrow" data-needs={item.id}>
+              <button
+                type="button"
+                class="lrow clickable"
+                data-needs={item.id}
+                onclick={() => openHash(needsHref(effort.effort, item.id))}
+              >
                 <span class="kind warn">{item.kind}</span>
                 <span class="text">{item.text || item.subject}</span>
                 <span class="meta">{item.subject}</span>
-              </div>
+              </button>
             {/each}
           {/if}
         </section>
@@ -329,15 +425,17 @@
             <p class="empty-note">No journal entries</p>
           {:else}
             {#each journalItems as item (item.id)}
-              <div
-                class="lrow"
+              <button
+                type="button"
+                class="lrow clickable"
                 data-journal={item.id}
                 data-record-type={item.record_type}
+                onclick={() => openHash(recordHref(item.id))}
               >
                 <span class="kind">{item.record_type}</span>
                 <span class="text">{item.subject}</span>
                 <span class="meta">{item.subject}</span>
-              </div>
+              </button>
             {/each}
           {/if}
         </section>
@@ -348,11 +446,16 @@
             <p class="empty-note">No backlog</p>
           {:else}
             {#each backlogItems as item (item.id)}
-              <div class="lrow" data-backlog={item.id}>
+              <button
+                type="button"
+                class="lrow clickable"
+                data-backlog={item.id}
+                onclick={() => openHash(backlogHref(effort.effort, item.id))}
+              >
                 <span class="kind accent">open</span>
                 <span class="text">{item.text || item.subject}</span>
                 <span class="meta">{item.subject}</span>
-              </div>
+              </button>
             {/each}
           {/if}
         </section>
@@ -368,3 +471,40 @@
     {/if}
   </footer>
 </div>
+
+{#if target}
+  <div class="overlay" data-detail={target.kind} role="dialog" aria-modal="true">
+    <header class="overlay-bar">
+      <button type="button" class="back" data-act="close-detail" onclick={closeDetail}>
+        esc ← back
+      </button>
+      <span class="who">{target.kind}</span>
+    </header>
+    <div class="overlay-body">
+      {#if detailLoading}
+        <p class="empty-note">Loading…</p>
+      {:else if detailError}
+        <p class="empty-note">{detailError}</p>
+      {:else if detailPayload}
+        {#if target.kind === "phase" && phaseTabs.length}
+          <div class="overlay-tabs" data-phase-tabs>
+            {#each phaseTabs as tab (tab)}
+              <button
+                type="button"
+                class="tab"
+                class:on={activePhaseTab === tab}
+                data-phase-tab={tab}
+                onclick={() => selectPhaseTab(tab)}
+              >
+                {tab}
+              </button>
+            {/each}
+          </div>
+        {/if}
+        <pre data-detail-payload class="overlay-payload"
+          >{JSON.stringify(detailPayload, null, 2)}</pre
+        >
+      {/if}
+    </div>
+  </div>
+{/if}
