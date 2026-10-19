@@ -183,3 +183,219 @@ button {
   font-size: 11.5px;
   min-height: 26px;
 }
+
+.ghost.on {
+  border-color: var(--line-2);
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* ---- effort rail ---- */
+.kicker {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 6px 8px;
+}
+
+.effort {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.effort:hover {
+  background: var(--sunken);
+}
+
+.effort.on {
+  background: var(--sunken);
+  border-color: var(--line-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.effort.on .name {
+  font-weight: 600;
+}
+
+.effort .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+
+.effort.finished {
+  color: var(--muted);
+}
+
+.effort .name {
+  display: block;
+  font-weight: 500;
+}
+
+.effort .sub {
+  display: block;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.effort .sub.warn {
+  color: var(--warn);
+}
+
+/* ---- main ---- */
+.goal {
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 88ch;
+  margin: 0 0 10px;
+  color: var(--ink-2);
+}
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.seg {
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 3px 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.seg:hover {
+  border-color: var(--line-2);
+}
+
+.seg.on {
+  background: var(--sunken);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+.seg.live {
+  color: var(--accent);
+}
+
+.seg .cnt {
+  color: var(--faint);
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin: 12px 0 10px;
+}
+
+.tab {
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab.on {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.tab b {
+  font-weight: 500;
+}
+
+.tab .n {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-left: 5px;
+}
+
+.tab.on .n {
+  color: var(--accent);
+}
+
+.table {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.trow {
+  display: grid;
+  grid-template-columns: var(--cols, 120px 1fr);
+  align-items: center;
+}
+
+.trow > * {
+  padding: 6px 10px;
+  min-width: 0;
+}
+
+.thead {
+  background: var(--sunken);
+  color: var(--faint);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+
+.task {
+  border-top: 1px solid var(--line);
+}
+
+.task .st {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.task .st.running {
+  color: var(--running);
+}
+
+.task .st.ready {
+  color: var(--ready);
+}
+
+.task .st.waiting {
+  color: var(--waiting);
+}
+
+.task .st.done {
+  color: var(--done);
+}
+
+.task .title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-note {
+  padding: 14px;
+  color: var(--muted);
+}
