@@ -28,6 +28,11 @@ EXPECTED_HEADER = (
 DOCUMENTED_FLAGS = (
     "--only",
     "--all",
+    "--list",
+    "--scope",
+    "--interactive",
+    "--non-interactive",
+    "--yes",
     "--dry-run",
     "--global",
     "--copy",
@@ -167,6 +172,20 @@ def test_scope_and_flags_are_documented():
         assert flag in section, flag
     for example in ("--copy", "--global", "--uninstall"):
         assert f"./bin/orchestra install --only claude {example}" in section, example
+
+
+def test_readme_documents_wizard_flags():
+    section = _section()
+    assert "host-selection wizard" in section
+    assert "detected hosts" in section
+    for flag in (
+        "--list",
+        "--scope",
+        "--interactive",
+        "--non-interactive",
+        "--yes",
+    ):
+        assert flag in section, flag
 
 
 def test_documented_flags_exist_in_the_cli():

@@ -133,6 +133,13 @@ The installer writes one host payload per provider. Native hosts get
 delegate to `npx skills add`. It is idempotent: one registration per host
 per install scope, and a second run changes nothing.
 
+With no host flags on an interactive terminal, `install` opens a
+host-selection wizard. It lists every provider with project and global
+detection, defaults to the detected hosts, and asks for scope and mode
+before printing the plan and asking for confirmation. In a script or CI
+run it selects the detected hosts instead. If no host is detected, it
+exits 2 and asks for `--all`, `--only`, or `--interactive`.
+
 ### CLI install
 
 Put the `orchestra` console script on PATH:
@@ -150,8 +157,10 @@ subcommands listed under [CLI](#cli). Host installs run from a checkout as
 
 This table matches `installer/providers.json`. `Provider id` is the `--only`
 value. A native host installs at the project root by default and at the
-global root with `--global`. A `kind: skills` host delegates to the
-`npx skills add` profile in the last column; native hosts have no profile.
+global root with `--global` or `--scope global`. A `kind: skills` host
+delegates to the `npx skills add` profile in the last column; native hosts
+have no profile. Run `./bin/orchestra install --list` to print the same
+matrix with current project and global detection.
 
 | Host | Provider id | Kind | Project root | Global root | Skills profile |
 |---|---|---|---|---|---|
@@ -174,6 +183,30 @@ writes `plugins/plugin.js` under its root (`.opencode/plugins/plugin.js` for
 a project install, `~/.config/opencode/plugins/plugin.js` with `--global`).
 A host payload that omits hooks still installs cleanly: the skills call
 `adaptive-artifacts hook-start` themselves when views were not injected.
+
+### Detect and choose
+
+`--list` prints every provider with its project and global detection status
+and writes nothing:
+
+```bash
+./bin/orchestra install --list
+```
+
+`install` with no host flags on a TTY launches the host-selection wizard. It
+accepts provider numbers, ids, ranges, comma- or space-separated values,
+`all`, or `quit`; a blank answer selects the detected hosts. It then asks
+for project or global scope (default project) and symlink or copy mode
+(default symlink), prints the full plan, and asks before writing.
+`--interactive` forces the wizard without a TTY, and
+`--non-interactive`/`--yes` suppresses prompts. With no host flags and no
+TTY, the installer uses detected hosts; if none are detected it exits 2
+with guidance and writes nothing.
+
+```bash
+./bin/orchestra install --interactive
+./bin/orchestra install --yes --only claude
+```
 
 ### Dry run first
 
@@ -215,17 +248,22 @@ skills-directory install and says so. The registration records the profile;
 
 | Flag | Effect |
 |---|---|
-| `--only <id>` | Install one provider; repeat for more. Default is every provider. |
+| `--only <id>` | Install one provider; repeat for more. Default is the detected hosts. |
 | `--all` | Select every provider in the matrix. |
+| `--list` | Print the matrix with project/global detection and write nothing. |
+| `--scope <scope>` | Install into `project` (default) or `global` user directories. |
+| `--global` | Alias for `--scope global`; cannot be combined with `--scope`. |
+| `--interactive` | Force the wizard even when standard input is not a TTY. |
+| `--non-interactive`, `--yes` | Never prompt; use explicit flags or detected hosts. |
 | `--dry-run` | Print the plan and write nothing. |
-| `--global` | Install into user directories instead of the project. |
 | `--copy` | Copy the payload instead of symlinking to the checkout. |
 | `--uninstall` | Remove exactly what the adapter registered. |
 | `--home <dir>` | Redirect the whole install under DIR (tests, throwaway homes). |
 
 The default is a project install with symlinks, so keep the checkout. Use
-`--copy` for a standalone snapshot, `--global` for the user directories in
-the matrix, and `--uninstall` to remove what the registration recorded:
+`--copy` for a standalone snapshot, `--scope global` or `--global` for the
+user directories in the matrix, and `--uninstall` to remove what the
+registration recorded:
 
 ```bash
 ./bin/orchestra install --only claude --copy
