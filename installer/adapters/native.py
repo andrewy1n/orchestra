@@ -93,9 +93,11 @@ class ClaudeAdapter(NativeAdapter):
 
     def _read_settings(self) -> dict:
         path = self._settings_path()
+        if path.is_symlink() and not path.exists():
+            raise ValueError(f"{path} is a broken symlink")
         if not path.exists():
             return {}
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise ValueError(f"{path} is not a regular settings file")
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -235,6 +237,10 @@ class ClaudeAdapter(NativeAdapter):
                 remainder = self._unmerge_settings(settings, fragment)
                 if remainder:
                     self._write_settings(remainder)
+                elif self._settings_path().is_symlink():
+                    # The link is user-owned; keep it and clear the installed
+                    # fragment through the link instead of deleting the link.
+                    self._write_settings({})
                 else:
                     self._settings_path().unlink()
                 touched_settings = True

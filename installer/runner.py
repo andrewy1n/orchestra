@@ -241,7 +241,11 @@ def run(request: InstallRequest) -> int:
             mode=mode,
             source_root=source,
         )
-        plan = adapter.plan(uninstall=request.uninstall)
+        try:
+            plan = adapter.plan(uninstall=request.uninstall)
+        except (ValueError, OSError) as exc:
+            print(f"orchestra install: {provider.id}: {exc}", file=sys.stderr)
+            return 2
         pairs.append((adapter, plan))
         report.plans.append(plan)
 
@@ -260,15 +264,24 @@ def run(request: InstallRequest) -> int:
     for adapter, plan in pairs:
         if request.dry_run:
             continue
+        try:
+            if request.uninstall:
+                removed = adapter.remove()
+            else:
+                applied = adapter.apply(plan)
+                verified = adapter.verify()
+        except (ValueError, OSError) as exc:
+            print(
+                f"orchestra install: {adapter.provider.id}: {exc}",
+                file=sys.stderr,
+            )
+            return 2
         if request.uninstall:
-            removed = adapter.remove()
             report.removed.append(removed)
             _print_remove(removed)
             continue
-        applied = adapter.apply(plan)
         report.applied.append(applied)
         _print_apply(applied)
-        verified = adapter.verify()
         report.verified.append(verified)
         if verified.ok:
             print("  verified: ok")

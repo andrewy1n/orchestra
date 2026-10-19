@@ -669,6 +669,77 @@ def test_claude_hooks_uninstall_restores_preexisting_settings(source, project, h
     assert markers(home) == []
 
 
+def test_claude_hooks_merge_through_a_symlinked_settings_file(source, project, home):
+    target = home / "dotfiles" / "claude" / "settings.json"
+    target.parent.mkdir(parents=True)
+    preexisting = {"permissions": {"allow": ["Bash(git status)"]}}
+    target.write_text(json.dumps(preexisting) + "\n", encoding="utf-8")
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    link = root / "settings.json"
+    link.symlink_to(target)
+
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert link.is_symlink()
+    settings = json.loads(link.read_text(encoding="utf-8"))
+    assert settings["permissions"] == preexisting["permissions"]
+    assert settings["hooks"] == HOOKS_PAYLOAD["hooks"]
+
+
+def test_claude_uninstall_preserves_a_symlinked_settings_file(source, project, home):
+    target = home / "dotfiles" / "claude" / "settings.json"
+    target.parent.mkdir(parents=True)
+    preexisting = {
+        "permissions": {"allow": ["Bash(git status)"]},
+        "env": {"ORCHESTRA_TEST": "1"},
+    }
+    target.write_text(json.dumps(preexisting) + "\n", encoding="utf-8")
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    link = root / "settings.json"
+    link.symlink_to(target)
+
+    assert run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source).returncode == 0
+    removed = run_install("--only", "claude", "--home", str(home), "--uninstall",
+                          project=project, source=source)
+    assert removed.returncode == 0, removed.stdout + removed.stderr
+    assert link.is_symlink()
+    assert json.loads(target.read_text(encoding="utf-8")) == preexisting
+    assert markers(home) == []
+
+
+def test_claude_invalid_settings_fails_cleanly(source, project, home):
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    (root / "settings.json").write_text("{not json", encoding="utf-8")
+
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 2
+    assert "not valid JSON" in proc.stderr
+    assert "Traceback" not in proc.stderr
+    assert not (root / "skills").exists()
+    assert markers(home) == []
+
+
+def test_claude_broken_settings_symlink_fails_cleanly(source, project, home):
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    link = root / "settings.json"
+    link.symlink_to(home / "missing-settings.json")
+
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 2
+    assert "broken symlink" in proc.stderr
+    assert "Traceback" not in proc.stderr
+    assert not (root / "skills").exists()
+    assert markers(home) == []
+
+
 def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
     shutil.rmtree(source / "hosts" / "claude")
     proc = run_install("--only", "claude", "--home", str(home), "--copy",
