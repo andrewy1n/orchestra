@@ -169,7 +169,14 @@ adaptive-artifacts update --type project:phase --id <phase-id> \
 ```
 
    `<phase-body.md>` keeps `## Problem`, `## Approach` (now the chosen
-   approach, naming its decisions), and `## Exit criteria`.
+   approach, naming its decisions), and `## Exit criteria`. For
+   structured work (and any phase that will use Landing), also include
+   a short `## Proof` section: declare `kind` as one of `demo`,
+   `commands`, `claims`, `audit-triage`, or `mixed`, plus one sentence
+   on what looking means for a human. Default `kind` from the change
+   shape when obvious (`claims` for library/evidence work; `demo` only
+   when UI/user-visible). `plan-phase` refuses plan review without
+   `## Proof` on structured phases.
 
 9. For each question the user could not answer yet and that blocks
    planning, open a continuity-question on the focus:

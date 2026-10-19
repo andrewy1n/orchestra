@@ -26,11 +26,12 @@ TOKEN_DIRS = ("records", "history")
 FULL_TYPES = (
     "project:continuity-question", "project:finding", "project:check-run", "project:work-item",
     "project:phase", "project:specification", "project:assessment", "project:integration-report",
-    "project:backlog-item",
+    "project:proof-packet", "project:backlog-item",
 )
 SOFT_TYPES = frozenset({
     "project:specification", "project:design", "project:assessment", "project:integration-report",
-    "project:release", "project:current-position", "project:backlog-item", "project:milestone",
+    "project:proof-packet", "project:release", "project:current-position", "project:backlog-item",
+    "project:milestone",
 })
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
 LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
@@ -1531,8 +1532,20 @@ def load_task_detail(target: Target, work_item_id: str) -> TaskDetail:
     )
 
 
-TABS = ("overview", "spec", "design", "decisions", "evidence", "tasks")
-SIMPLE_TABS = ("overview", "spec", "decisions", "tasks")
+TABS = ("overview", "spec", "design", "decisions", "evidence", "proof", "tasks")
+SIMPLE_TABS = ("overview", "proof", "spec", "decisions", "tasks")
+
+
+@dataclass(frozen=True)
+class ProofView:
+    id: str
+    kind: str
+    revision: str
+    base: str
+    look: str
+    attention: str
+    machine: str
+    diff: str
 
 
 @dataclass(frozen=True)
@@ -1568,11 +1581,15 @@ class PhaseDetail:
     structured: bool = False
     milestone: str = ""
     milestone_title: str = ""
+    proof: ProofView | None = None
 
 
 def tabs_for(detail: PhaseDetail) -> tuple[str, ...]:
     """Full tab set for a structured phase; simple set otherwise (R1)."""
-    return TABS if detail.structured else SIMPLE_TABS
+    base = TABS if detail.structured else SIMPLE_TABS
+    if detail.proof is None:
+        return tuple(name for name in base if name != "proof")
+    return base
 
 
 def _decision_entry(
@@ -1722,6 +1739,31 @@ def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseD
             milestone_title = _payload(milestone_record).get("title") or milestone_slug
         else:
             milestone_title = milestone_slug
+    proof_records = [
+        r for r in _remapped(
+            _list(
+                target, "project:proof-packet",
+                where=(f"payload.phase={phase_subject}",), full=True,
+            ),
+            aliases,
+        )
+        if _payload(r).get("effort") in (None, "", effort)
+    ]
+    proof_record = _newest(proof_records)
+    proof = None
+    if proof_record is not None:
+        proof_body = proof_record.get("body") or ""
+        proof_payload = _payload(proof_record)
+        proof = ProofView(
+            id=proof_record["id"],
+            kind=proof_payload.get("kind") or "",
+            revision=proof_payload.get("revision") or "",
+            base=proof_payload.get("base") or "",
+            look=_section(proof_body, "Look"),
+            attention=_section(proof_body, "Attention"),
+            machine=_section(proof_body, "Machine"),
+            diff=_section(proof_body, "Diff"),
+        )
     return PhaseDetail(
         subject=phase_subject, effort=effort, title=payload.get("title", ""), state=record["lifecycle_state"],
         awaiting_signoff=bool(row and row.awaiting_signoff), body=item.get("body") or "",
@@ -1733,6 +1775,7 @@ def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseD
         structured=spec is not None,
         milestone=milestone_slug,
         milestone_title=milestone_title,
+        proof=proof,
     )
 
 

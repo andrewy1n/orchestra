@@ -221,11 +221,14 @@ adaptive-artifacts update --type project:phase --id <phase-id> \
 ```
 
    `<phase-plan.md>` has real `## Problem`, `## Approach`, `## Exit
-   criteria`, and `## Landing` sections now — this body is the phase's
-   plan of record. In that body, record size as `one sitting` or
-   `more than one`, the human stops, and the areas parallel tasks
-   share (collision notes). The `## Landing` section names branch
-   `phase/<phase-slug>`, worktree
+   criteria`, `## Proof`, and `## Landing` sections now — this body is
+   the phase's plan of record. In that body, record size as `one
+   sitting` or `more than one`, the human stops, and the areas
+   parallel tasks share (collision notes). `## Proof` declares `kind`
+   (`demo` | `commands` | `claims` | `audit-triage` | `mixed`) and one
+   sentence on what looking means; carry it forward from settle-phase
+   or write it here before plan review. The `## Landing` section names
+   branch `phase/<phase-slug>`, worktree
    `<repo>/.worktrees/<phase-slug>`, base `main`, and these
    close actions: commit code on the phase branch, merge that branch
    into `main`, then commit the store on the primary checkout. Push
@@ -460,9 +463,10 @@ adaptive-artifacts list --type project:work-item \
     `## Approach` (the implementation recipe), every task in a wave
     uses the same executor (`inline` or `subagent`), and the phase
     body records size as `one sitting` or `more than one`, the human
-    stops, the areas parallel tasks share, and a `## Landing` section.
-    Skip the Landing check for incidental work. For deliver / repair,
-    also require that each intended oracle-backed tdd acceptance has
+    stops, the areas parallel tasks share, a `## Proof` section (kind
+    + look intent), and a `## Landing` section. Skip the Landing and
+    Proof checks for incidental work. For deliver / repair, also
+    require that each intended oracle-backed tdd acceptance has
     non-empty `test_ids` and `oracle_hashes` from step 8.
 
 ```bash
