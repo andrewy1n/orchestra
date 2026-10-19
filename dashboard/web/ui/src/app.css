@@ -555,3 +555,92 @@ button {
   word-break: break-word;
   color: var(--ink-2);
 }
+
+.overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.write-error {
+  color: var(--fail);
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+/* ---- confirm modal ---- */
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 18, 0.35);
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+
+.modal {
+  width: min(520px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 18px 18px 14px;
+}
+
+.modal h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.modal .hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+.modal .field {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--sunken);
+  color: var(--ink);
+  font: inherit;
+}
+
+.modal .err {
+  color: var(--fail);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.modal .row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.btn {
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12.5px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.btn:hover {
+  background: var(--sunken);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html.dark .btn.primary,
+html[data-theme="dark"] .btn.primary {
+  color: #0e0e10;
+}

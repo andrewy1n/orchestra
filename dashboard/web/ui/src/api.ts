@@ -31,6 +31,28 @@ export async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** Read `{error}` from a failed write response when present. */
+async function errorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const data: unknown = await response.json();
+    if (
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof (data as { error: unknown }).error === "string" &&
+      (data as { error: string }).error
+    ) {
+      return (data as { error: string }).error;
+    }
+  } catch {
+    /* keep fallback */
+  }
+  return fallback;
+}
+
 /** POST a JSON body to the API. */
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(apiUrl(path), {
@@ -39,7 +61,11 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`POST ${apiUrl(path)} failed: ${response.status}`);
+    const message = await errorMessage(
+      response,
+      `POST ${apiUrl(path)} failed: ${response.status}`,
+    );
+    throw new Error(message);
   }
   return (await response.json()) as T;
 }

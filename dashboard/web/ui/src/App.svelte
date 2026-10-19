@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getJson } from "./api";
+  import {
+    beginWrite,
+    writeBody,
+    writeChoices,
+    writePath,
+    type ConfirmChoice,
+    type PendingWrite,
+  } from "./actions";
+  import { getJson, postJson } from "./api";
   import {
     backlogHref,
     closeDetail,
@@ -51,6 +59,12 @@
   let detailPayload: unknown = $state(null);
   let detailError = $state("");
   let detailLoading = $state(false);
+
+  let pendingWrite: PendingWrite | null = $state(null);
+  let confirmNote = $state("");
+  let confirmLocalError = $state("");
+  let writeError = $state("");
+  let writeBusy = $state(false);
 
   $effect(() => {
     applyTheme(theme);
@@ -106,6 +120,22 @@
     return phaseTabs[0] ?? "";
   });
 
+  const overlayChoices: ConfirmChoice[] = $derived.by(() => {
+    if (!target || !detailPayload) return [];
+    if (target.kind === "needs" || target.kind === "backlog") {
+      return writeChoices(target.kind, detailPayload);
+    }
+    return [];
+  });
+
+  const overlayEffort = $derived.by(() => {
+    if (!target) return "";
+    if (target.kind === "needs" || target.kind === "backlog") {
+      return route.parts[1] ?? "";
+    }
+    return "";
+  });
+
   $effect(() => {
     const name = effort?.effort ?? "";
     if (!name) {
@@ -142,12 +172,16 @@
       detailPayload = null;
       detailError = "";
       detailLoading = false;
+      cancelConfirm();
+      writeError = "";
       return;
     }
     let cancelled = false;
     detailPayload = null;
     detailError = "";
     detailLoading = true;
+    cancelConfirm();
+    writeError = "";
     void getJson<unknown>(next.apiPath)
       .then((data) => {
         if (!cancelled) {
@@ -167,6 +201,54 @@
       cancelled = true;
     };
   });
+
+  function cancelConfirm() {
+    pendingWrite = null;
+    confirmNote = "";
+    confirmLocalError = "";
+    writeBusy = false;
+  }
+
+  function openConfirm(choice: ConfirmChoice) {
+    if (!target || (target.kind !== "needs" && target.kind !== "backlog")) {
+      return;
+    }
+    const effortName = overlayEffort;
+    if (!effortName || !detailPayload) return;
+    const pending = beginWrite(target.kind, effortName, detailPayload, choice);
+    if (!pending) return;
+    pendingWrite = pending;
+    confirmNote = "";
+    confirmLocalError = "";
+    writeError = "";
+  }
+
+  async function submitConfirm() {
+    if (!pendingWrite || writeBusy) return;
+    if (pendingWrite.noteRequired && !confirmNote.trim()) {
+      confirmLocalError = "Note required for this action";
+      return;
+    }
+    confirmLocalError = "";
+    writeBusy = true;
+    const body = writeBody(pendingWrite, confirmNote);
+    const path = writePath(pendingWrite);
+    try {
+      await postJson<{ ok: boolean }>(path, body);
+      cancelConfirm();
+      writeError = "";
+      closeDetail();
+      try {
+        const next = await getJson<Snapshot>("snapshot");
+        applySnapshot(next);
+      } catch {
+        /* poller will catch up */
+      }
+    } catch (err: unknown) {
+      writeError = err instanceof Error ? err.message : String(err);
+      writeBusy = false;
+    }
+  }
 
   function selectEffort(name: string) {
     selectedEffort = name;
@@ -211,7 +293,12 @@
     window.addEventListener("hashchange", sync);
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && detailTarget(currentRoute())) {
+      if (event.key !== "Escape") return;
+      if (pendingWrite) {
+        cancelConfirm();
+        return;
+      }
+      if (detailTarget(currentRoute())) {
         closeDetail();
       }
     };
@@ -501,10 +588,82 @@
             {/each}
           </div>
         {/if}
+        {#if overlayChoices.length}
+          <div class="overlay-actions" data-write-actions>
+            {#each overlayChoices as choice (choice.action)}
+              <button
+                type="button"
+                class="btn"
+                data-write-action={choice.action}
+                onclick={() => openConfirm(choice)}
+              >
+                {choice.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
+        {#if writeError && !pendingWrite}
+          <p class="write-error" data-write-error>{writeError}</p>
+        {/if}
         <pre data-detail-payload class="overlay-payload"
           >{JSON.stringify(detailPayload, null, 2)}</pre
         >
       {/if}
+    </div>
+  </div>
+{/if}
+
+{#if pendingWrite}
+  <div
+    class="modal-layer"
+    data-confirm
+    role="dialog"
+    aria-modal="true"
+    onclick={(event) => {
+      if (event.target === event.currentTarget) cancelConfirm();
+    }}
+  >
+    <div class="modal">
+      <h3>{pendingWrite.label} this {pendingWrite.kind === "needs" ? "Needs-you" : "backlog"} item?</h3>
+      <p class="hint">
+        Confirm sends the write · Esc cancels · note
+        {pendingWrite.noteRequired ? "required" : "optional"}
+      </p>
+      {#if pendingWrite.kind === "needs"}
+        <input
+          class="field"
+          type="text"
+          data-confirm-note
+          placeholder="one-line note"
+          bind:value={confirmNote}
+          onkeydown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void submitConfirm();
+            }
+          }}
+        />
+      {/if}
+      {#if confirmLocalError}
+        <p class="err" data-confirm-local-error>{confirmLocalError}</p>
+      {/if}
+      {#if writeError}
+        <p class="err" data-write-error>{writeError}</p>
+      {/if}
+      <div class="row">
+        <button type="button" class="btn" data-confirm-cancel onclick={cancelConfirm}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          data-confirm-submit
+          disabled={writeBusy}
+          onclick={() => void submitConfirm()}
+        >
+          {pendingWrite.label}
+        </button>
+      </div>
     </div>
   </div>
 {/if}
