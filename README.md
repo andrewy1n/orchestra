@@ -35,7 +35,8 @@ materialized as `work-item` + `acceptance`.
 
 A Claude Code plugin install alone does not give you the tmux keys. Use TPM or a clone for step 3.
 Without tmux, run `dashboard/bin/dashboard` from inside your repo.
-Run acceptance checks with `bin/orchestra check` (same plugin root as `dashboard/bin`).
+Run acceptance checks with `orchestra check --acceptance <id>` (see
+[Install with the CLI](#install-with-the-cli)).
 
 ## Kinds
 
@@ -111,11 +112,19 @@ Or install from the repository URL in the Cursor plugin flow.
 
 #### Codex / other Agent Skills hosts
 
-Copy or symlink `skills/init`, `skills/plan-phase`, `skills/execute-phase`,
-`skills/verify-work`, and `skills/engage` into the host's skills
-directory. Keep `contract/project-design.json` and
-`skills/kinds-and-focus.md` / `skills/ensure-store.md` next to
-`skills/` as in this repo (two levels above each `SKILL.md`).
+Use the installer's skills profile when one exists: `npx skills add -a codex`
+(or `-a gemini-cli`, `-a github-copilot`, `-a cline`, `-a windsurf`), as listed
+under [Install with the CLI](#install-with-the-cli). The installer runs that
+tail for a `kind: skills` row and records the profile in the registration.
+
+To install by hand, copy or symlink each generated skill directory into the
+host's skills directory: `engage`, `init`, `settle-phase`, `plan-phase`,
+`execute-phase`, `verify-work`, and `analyze-sessions`. Every directory is
+self-contained: its `SKILL.md` and its `references/` folder travel together.
+The generated `references/` copies already contain `kinds-and-focus.md`,
+`ensure-store.md`, and `se-reviewer.md`, so no shared file needs to sit two
+levels above a `SKILL.md`. Keep `contract/project-design.json` next to the
+`skills/` directory (the installer writes it at the host root).
 
 ## Install with the CLI
 
@@ -132,10 +141,10 @@ Put the `orchestra` console script on PATH:
 uv tool install "git+https://github.com/andrewy1n/orchestra.git@<ref>"
 ```
 
-Replace `<ref>` with a branch, tag, or commit. The console script serves
-`check`, `contract`, `project-field`, and `sessions`. Host installs run from
-a checkout as `./bin/orchestra install`, because the installer reads
-`skills/`, `contract/`, `agents/`, and `hosts/` from that tree.
+Replace `<ref>` with a branch, tag, or commit. The console script serves the
+subcommands listed under [CLI](#cli). Host installs run from a checkout as
+`./bin/orchestra install`, because the installer reads `skills/`, `contract/`,
+`agents/`, and `hosts/` from that tree.
 
 ### Host matrix
 
@@ -154,6 +163,16 @@ global root with `--global`. A `kind: skills` host delegates to the
 | GitHub Copilot | `copilot` | skills | `.github` | `.copilot` | `github-copilot` |
 | Cline | `cline` | skills | `.cline` | `.cline` | `cline` |
 | Windsurf | `windsurf` | skills | `.windsurf` | `.codeium/windsurf` | `windsurf` |
+
+### Hooks
+
+Native hosts get optional session hooks when their payload declares them.
+Claude merges `SessionStart` and `Stop` hooks into `.claude/settings.json`
+(or `~/.claude/settings.json` with `--global`), which is where Claude reads
+project and user hooks. Cursor writes `.cursor/hooks.json`, and OpenCode
+writes `plugin.js`. A host payload that omits hooks still installs cleanly:
+the skills call `adaptive-artifacts hook-start` themselves when views were
+not injected.
 
 ### Dry run first
 
@@ -357,22 +376,37 @@ the structured path integrates.
 - `plan-phase`
 - `execute-phase`
 - `verify-work`
+- `analyze-sessions`
 
 Shared rules: [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
 Shared first-run steps: [skills/ensure-store.md](skills/ensure-store.md).
+The installer ships a byte-identical copy of each shared file inside every
+skill's `references/` directory, so an installed skill is self-contained.
 
 ## CLI
 
-`bin/orchestra` is check and close-batch (installed next to
-`dashboard/bin` by `scripts/sync-plugin.sh`). It dispatches subcommands
-and shells to `adaptive-artifacts` for store reads/writes.
+The `orchestra` console script (and `bin/orchestra` in a checkout) dispatches
+subcommands and shells to `adaptive-artifacts` for store reads/writes:
+
+| Command | Effect |
+|---|---|
+| `check` | Run an acceptance's `verify_command` and write a `project:check-run`. |
+| `close-batch` | Build the NDJSON apply batch that closes a work-item. |
+| `install` | Install the payload for one or more agent hosts. |
+| `contract` | Print or write the bundled `project-design.json`. |
+| `project-field` | Align a design file's `project` field with orchestra. |
+| `sessions` | Summarize Claude Code session transcripts. |
+| `review-brief` | Build the phase-end reviewer brief from records and a diff. |
+| `suite` | Read, run, collect, and record the contracted phase suite. |
+| `store` | Resolve the bound store and run `adaptive-artifacts` through it. |
+
 `bin/aff` is the verdict binary from `~/affidavit`.
 
 ```bash
-# From a clone or a sync-plugin install root, inside the project with the store:
-bin/orchestra check --acceptance <acceptance-id>
-bin/orchestra check --acceptance <id> --cwd /path/to/phase-worktree
-bin/orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
+# From a clone or a console-script install, inside the project with the store:
+orchestra check --acceptance <acceptance-id>
+orchestra check --acceptance <id> --cwd /path/to/phase-worktree
+orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 ```
 
 `check` runs the acceptance's `verify_command` (methods `tdd` / `check`

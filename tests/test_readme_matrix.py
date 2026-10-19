@@ -16,6 +16,7 @@ from conftest import REPO_ROOT
 from installer.matrix import load_matrix
 
 HEADING = "## Install with the CLI"
+AGENT_SKILLS_HEADING = "#### Codex / other Agent Skills hosts"
 EXPECTED_HEADER = (
     "Host",
     "Provider id",
@@ -33,15 +34,51 @@ DOCUMENTED_FLAGS = (
     "--uninstall",
     "--home",
 )
+DOCUMENTED_COMMANDS = (
+    "check",
+    "close-batch",
+    "install",
+    "contract",
+    "project-field",
+    "sessions",
+    "review-brief",
+    "suite",
+    "store",
+)
 SEPARATOR = re.compile(r":?-{3,}:?")
 
 
-def _section() -> str:
-    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    start = text.index(HEADING)
-    rest = text[start + len(HEADING) :]
+def _readme() -> str:
+    return (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def _section_of(heading: str) -> str:
+    text = _readme()
+    marker = f"\n{heading}\n"
+    start = text.index(marker) + 1
+    rest = text[start + len(heading) :]
     end = rest.find("\n## ")
     return rest if end < 0 else rest[:end]
+
+
+def _section() -> str:
+    return _section_of(HEADING)
+
+
+def _agent_skills_section() -> str:
+    text = _readme()
+    start = text.index(AGENT_SKILLS_HEADING)
+    rest = text[start + len(AGENT_SKILLS_HEADING) :]
+    end = rest.find("\n## ")
+    return rest if end < 0 else rest[:end]
+
+
+def _generated_skills() -> list[str]:
+    return sorted(
+        child.name
+        for child in (REPO_ROOT / "skills").iterdir()
+        if (child / "SKILL.md").is_file()
+    )
 
 
 def _plain(cell: str) -> str:
@@ -142,3 +179,41 @@ def test_documented_flags_exist_in_the_cli():
     assert proc.returncode == 0, proc.stderr
     for flag in DOCUMENTED_FLAGS:
         assert flag in proc.stdout, flag
+
+
+def test_agent_skills_section_documents_every_generated_skill():
+    section = _agent_skills_section()
+    skills = _generated_skills()
+    for skill in skills:
+        assert f"`{skill}`" in section, skill
+    assert "references/" in section
+    assert "two levels above" not in section
+
+
+def test_agent_skills_section_points_at_the_cli_install():
+    section = _agent_skills_section()
+    assert "npx skills add -a" in section
+    assert "Install with the CLI" in section
+
+
+def test_quick_start_uses_the_console_script_for_checks():
+    text = _readme()
+    quick_start = text[: text.index("## Kinds")]
+    assert "orchestra check --acceptance" in quick_start
+    assert "bin/orchestra check" not in text
+
+
+def test_cli_section_lists_the_current_subcommands():
+    section = _section_of("## CLI")
+    for command in DOCUMENTED_COMMANDS:
+        assert f"`{command}`" in section, command
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "orchestra.cli", "--help"],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    for command in DOCUMENTED_COMMANDS:
+        assert command in proc.stdout, command

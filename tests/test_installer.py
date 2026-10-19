@@ -39,6 +39,33 @@ printf '%s\\n' "$*" >> "$ORCHESTRA_NPX_LOG"
 exit "${ORCHESTRA_NPX_EXIT:-0}"
 """
 
+HOOKS_PAYLOAD = {
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "adaptive-artifacts hook-start",
+                        "timeout": 30,
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "adaptive-artifacts hook-stop",
+                        "timeout": 30,
+                    }
+                ]
+            }
+        ],
+    }
+}
+
 CANONICAL_AGENT = """---
 name: se-reviewer
 description: >-
@@ -76,7 +103,7 @@ def source(tmp_path: Path) -> Path:
     hooks = root / "hosts" / "claude" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "hooks.json").write_text(
-        json.dumps({"hooks": {"SessionStart": []}}) + "\n", encoding="utf-8"
+        json.dumps(HOOKS_PAYLOAD) + "\n", encoding="utf-8"
     )
     cursor = root / "hosts" / "cursor"
     cursor.mkdir(parents=True)
@@ -542,15 +569,80 @@ def test_native_agent_matches_the_generated_rendering(source, project, home):
 # -- hooks are optional --------------------------------------------------
 
 
+def hook_commands(settings: dict) -> list[str]:
+    return [
+        hook.get("command")
+        for groups in settings.get("hooks", {}).values()
+        for group in groups
+        for hook in group.get("hooks", [])
+    ]
+
+
 def test_hooks_are_installed_for_every_supported_native_host(source, project, home):
     proc = run_install(
         "--only", "claude", "--only", "cursor", "--only", "opencode",
         "--home", str(home), "--copy", project=project, source=source,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert (home / ".claude" / "hooks" / "hooks.json").is_file()
+    settings = json.loads((home / ".claude" / "settings.json").read_text())
+    assert hook_commands(settings) == [
+        "adaptive-artifacts hook-start",
+        "adaptive-artifacts hook-stop",
+    ]
     assert (home / ".cursor" / "hooks.json").is_file()
     assert (home / ".opencode" / "plugin.js").is_file()
+
+
+def test_claude_hooks_merge_into_the_settings_read_path(source, project, home):
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    preexisting = {
+        "permissions": {"allow": ["Bash(git status)"]},
+        "env": {"ORCHESTRA_TEST": "1"},
+    }
+    (root / "settings.json").write_text(
+        json.dumps(preexisting) + "\n", encoding="utf-8"
+    )
+
+    proc = run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+    settings = json.loads((root / "settings.json").read_text())
+    assert set(settings) == {"permissions", "env", "hooks"}
+    assert settings["permissions"] == preexisting["permissions"]
+    assert settings["env"] == preexisting["env"]
+    assert settings["hooks"] == HOOKS_PAYLOAD["hooks"]
+
+
+def test_claude_hooks_merge_is_idempotent(source, project, home):
+    args = ("--only", "claude", "--home", str(home), "--copy")
+    assert run_install(*args, project=project, source=source).returncode == 0
+    first = snapshot(home)
+
+    assert run_install(*args, project=project, source=source).returncode == 0
+    assert snapshot(home) == first
+
+    settings = json.loads((home / ".claude" / "settings.json").read_text())
+    for groups in settings["hooks"].values():
+        assert len(groups) == 1
+
+
+def test_claude_hooks_uninstall_restores_preexisting_settings(source, project, home):
+    root = home / ".claude"
+    root.mkdir(parents=True)
+    preexisting = {"permissions": {"allow": ["Bash(git status)"]}}
+    (root / "settings.json").write_text(
+        json.dumps(preexisting) + "\n", encoding="utf-8"
+    )
+
+    assert run_install("--only", "claude", "--home", str(home), "--copy",
+                       project=project, source=source).returncode == 0
+    removed = run_install("--only", "claude", "--home", str(home), "--uninstall",
+                          project=project, source=source)
+    assert removed.returncode == 0, removed.stdout + removed.stderr
+    assert json.loads((root / "settings.json").read_text()) == preexisting
+    assert markers(home) == []
 
 
 def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
@@ -562,6 +654,7 @@ def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
     assert (root / "skills" / "init" / "SKILL.md").is_file()
     assert (root / "agents" / "se-reviewer.md").is_file()
     assert not (root / "hooks").exists()
+    assert not (root / "settings.json").exists()
     assert "verified: ok" in proc.stdout
 
 
@@ -574,6 +667,7 @@ def test_hooks_absent_from_every_host_still_installs(source, project, home):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert len(markers(home)) == 3
     assert not (home / ".claude" / "hooks").exists()
+    assert not (home / ".claude" / "settings.json").exists()
     assert not (home / ".cursor" / "hooks.json").exists()
     assert not (home / ".opencode" / "plugin.js").exists()
 
