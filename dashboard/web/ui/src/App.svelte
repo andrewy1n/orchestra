@@ -20,6 +20,8 @@
     taskHref,
     type DetailTarget,
   } from "./detail";
+  import { detailView } from "./detailView";
+  import { renderMarkdown } from "./markdown";
   import {
     defaultPhase,
     filteredTasks,
@@ -134,6 +136,11 @@
       return route.parts[1] ?? "";
     }
     return "";
+  });
+
+  const overlayView = $derived.by(() => {
+    if (!target || !detailPayload) return null;
+    return detailView(target.kind, detailPayload, activePhaseTab);
   });
 
   $effect(() => {
@@ -563,16 +570,35 @@
   <div class="overlay" data-detail={target.kind} role="dialog" aria-modal="true">
     <header class="overlay-bar">
       <button type="button" class="back" data-act="close-detail" onclick={closeDetail}>
-        esc ← back
+        ←
       </button>
-      <span class="who">{target.kind}</span>
+      <div class="overlay-title">
+        <span class="who">{overlayView?.who ?? target.kind}</span>
+        {#if overlayView?.ctx}
+          <span class="ctx">{overlayView.ctx}</span>
+        {/if}
+      </div>
+      {#if overlayChoices.length}
+        <div class="overlay-bar-actions" data-write-actions>
+          {#each overlayChoices as choice (choice.action)}
+            <button
+              type="button"
+              class="btn ghost"
+              data-write-action={choice.action}
+              onclick={() => openConfirm(choice)}
+            >
+              {choice.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </header>
     <div class="overlay-body">
       {#if detailLoading}
         <p class="empty-note">Loading…</p>
       {:else if detailError}
         <p class="empty-note">{detailError}</p>
-      {:else if detailPayload}
+      {:else if detailPayload && overlayView}
         {#if target.kind === "phase" && phaseTabs.length}
           <div class="overlay-tabs" data-phase-tabs>
             {#each phaseTabs as tab (tab)}
@@ -588,28 +614,30 @@
             {/each}
           </div>
         {/if}
-        {#if overlayChoices.length}
-          <div class="overlay-actions" data-write-actions>
-            {#each overlayChoices as choice (choice.action)}
-              <button
-                type="button"
-                class="btn"
-                data-write-action={choice.action}
-                onclick={() => openConfirm(choice)}
-              >
-                {choice.label}
-              </button>
+        {#if overlayView.chips.length}
+          <div class="chips" data-detail-chips>
+            {#each overlayView.chips as chip (chip.label)}
+              <span class="chip {chip.tone || ''}">{chip.label}</span>
             {/each}
           </div>
         {/if}
         {#if writeError && !pendingWrite}
           <p class="write-error" data-write-error>{writeError}</p>
         {/if}
-        <pre data-detail-payload class="overlay-payload"
-          >{JSON.stringify(detailPayload, null, 2)}</pre
-        >
+        {#each overlayView.sections as section (section.title)}
+          <div class="section-title">{section.title}</div>
+          <div
+            class="md"
+            data-detail-section={section.title}
+          >{@html renderMarkdown(section.body)}</div>
+        {/each}
+        <!-- Probe text for acceptances; not shown as a JSON dump. -->
+        <pre data-detail-payload class="sr-only">{overlayView.probe}</pre>
       {/if}
     </div>
+    <footer class="overlay-keys">
+      <span><b>esc</b> back</span>
+    </footer>
   </div>
 {/if}
 
