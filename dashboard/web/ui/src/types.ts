@@ -44,6 +44,33 @@ export interface PhaseRow {
   milestone_title?: string;
 }
 
+export interface BacklogItem {
+  id: string;
+  subject: string;
+  text: string;
+  source?: string;
+  phase?: string;
+  status: string;
+}
+
+/** One row from GET /api/journal (`open` or `rest`). */
+export interface JournalItem {
+  id: string;
+  record_type: string;
+  subject: string;
+  phase?: string | null;
+  recorded_at?: string;
+  text?: string;
+  open?: boolean;
+  task_id?: string;
+}
+
+/** GET /api/journal?effort=… — open then rest = dashboard.journal.ordered. */
+export interface JournalResponse {
+  open: JournalItem[];
+  rest: JournalItem[];
+}
+
 export interface EffortView {
   effort: string;
   goal: string;
@@ -55,7 +82,7 @@ export interface EffortView {
   tasks: TaskRow[];
   needs_you: NeedsYouItem[];
   milestones?: unknown[];
-  backlog?: unknown[];
+  backlog?: BacklogItem[];
 }
 
 export interface Snapshot {

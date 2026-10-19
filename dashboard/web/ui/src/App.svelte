@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { getJson } from "./api";
   import {
     defaultPhase,
     filteredTasks,
@@ -10,8 +11,14 @@
   } from "./efforts";
   import { startTokenPoller } from "./poll";
   import { currentRoute, routeLabel, type Route } from "./router";
+  import { openBacklog, orderedJournal } from "./side";
   import { applyTheme, DEFAULT_THEME, toggle, type Theme } from "./theme";
-  import type { EffortView, Snapshot, StatusTab } from "./types";
+  import type {
+    EffortView,
+    JournalResponse,
+    Snapshot,
+    StatusTab,
+  } from "./types";
 
   let theme: Theme = $state(DEFAULT_THEME);
   let route: Route = $state(currentRoute());
@@ -26,6 +33,9 @@
   let pinnedPhase: string | null = $state(null);
   let statusTab: StatusTab = $state("active");
   let showFinished = $state(false);
+
+  let journal: JournalResponse | null = $state(null);
+  let journalError = $state("");
 
   $effect(() => {
     applyTheme(theme);
@@ -61,6 +71,40 @@
   );
 
   const counts = $derived(effort ? tabCounts(effort, phaseSubject) : null);
+
+  const backlogItems = $derived(openBacklog(effort));
+
+  const journalItems = $derived(orderedJournal(journal));
+
+  $effect(() => {
+    const name = effort?.effort ?? "";
+    if (!name) {
+      journal = null;
+      journalError = "";
+      return;
+    }
+    let cancelled = false;
+    journal = null;
+    journalError = "";
+    void getJson<JournalResponse>(
+      `journal?effort=${encodeURIComponent(name)}`,
+    )
+      .then((data) => {
+        if (!cancelled) {
+          journal = data;
+          journalError = "";
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          journal = null;
+          journalError = err instanceof Error ? err.message : String(err);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
 
   function selectEffort(name: string) {
     selectedEffort = name;
@@ -254,7 +298,66 @@
       {/if}
     </main>
 
-    <aside class="side" aria-label="Details"></aside>
+    <aside class="side" aria-label="Details">
+      {#if effort}
+        <section
+          class="panel"
+          class:warn={effort.needs_you.length > 0}
+          data-side-needs
+        >
+          <span class="ptitle">Needs you {effort.needs_you.length || ""}</span>
+          {#if effort.needs_you.length === 0}
+            <p class="empty-note">Nothing needs you</p>
+          {:else}
+            {#each effort.needs_you as item (item.id)}
+              <div class="lrow" data-needs={item.id}>
+                <span class="kind warn">{item.kind}</span>
+                <span class="text">{item.text || item.subject}</span>
+                <span class="meta">{item.subject}</span>
+              </div>
+            {/each}
+          {/if}
+        </section>
+
+        <section class="panel" data-side-journal>
+          <span class="ptitle">Journal</span>
+          {#if journalError}
+            <p class="empty-note">{journalError}</p>
+          {:else if !journal}
+            <p class="empty-note">Loading journal…</p>
+          {:else if journalItems.length === 0}
+            <p class="empty-note">No journal entries</p>
+          {:else}
+            {#each journalItems as item (item.id)}
+              <div
+                class="lrow"
+                data-journal={item.id}
+                data-record-type={item.record_type}
+              >
+                <span class="kind">{item.record_type}</span>
+                <span class="text">{item.subject}</span>
+                <span class="meta">{item.subject}</span>
+              </div>
+            {/each}
+          {/if}
+        </section>
+
+        <section class="panel" data-side-backlog>
+          <span class="ptitle">Backlog {backlogItems.length || ""}</span>
+          {#if backlogItems.length === 0}
+            <p class="empty-note">No backlog</p>
+          {:else}
+            {#each backlogItems as item (item.id)}
+              <div class="lrow" data-backlog={item.id}>
+                <span class="kind accent">open</span>
+                <span class="text">{item.text || item.subject}</span>
+                <span class="meta">{item.subject}</span>
+              </div>
+            {/each}
+          {/if}
+        </section>
+      {/if}
+    </aside>
   </div>
 
   <footer class="statusbar">
