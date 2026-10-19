@@ -96,7 +96,8 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
 
     assert (opencode / "contract" / "project-design.json").is_file()
     assert (opencode / "agents" / "se-reviewer.md").is_file()
-    assert (opencode / "plugin.js").is_file()
+    assert (opencode / "plugins" / "plugin.js").is_file()
+    assert not (opencode / "plugin.js").exists()
     config = json.loads((opencode / "opencode.json").read_text(encoding="utf-8"))
     assert config["skills"] == ["./skills"]
 
@@ -107,6 +108,7 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
     )
     assert "mode: subagent" in opencode_reviewer
     assert "  edit: deny" in opencode_reviewer
+    assert "write:" not in opencode_reviewer
 
     before = {path: snapshot(path) for path in (claude, opencode)}
     again = install(

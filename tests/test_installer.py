@@ -546,14 +546,37 @@ def test_native_opencode_installs_skills_source_plugin_and_subagent(
     assert (root / "skills" / "init" / "SKILL.md").is_file()
     config = json.loads((root / "opencode.json").read_text())
     assert config["skills"] == ["./skills"]
-    assert (root / "plugin.js").is_file()
+    assert (root / "plugins" / "plugin.js").is_file()
+    assert not (root / "plugin.js").exists()
     meta, body = frontmatter(root / "agents" / "se-reviewer.md")
     text = (root / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
     assert meta["mode"] == "subagent"
     assert "permissions:" in text
     assert "  edit: deny" in text
-    assert "  write: deny" in text
+    assert "write:" not in text
+    assert "apply_patch:" not in text
     assert body == load_agent(source).body
+
+
+def test_opencode_reinstall_moves_the_legacy_root_plugin(source, project, home):
+    args = ("--only", "opencode", "--home", str(home), "--copy")
+    assert run_install(*args, project=project, source=source).returncode == 0
+    root = home / ".opencode"
+    legacy = root / "plugin.js"
+    (root / "plugins" / "plugin.js").rename(legacy)
+    marker_path = root / MARKER
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker["entries"] = [
+        "plugin.js" if entry == "plugins/plugin.js" else entry
+        for entry in marker["entries"]
+    ]
+    marker_path.write_text(json.dumps(marker) + "\n", encoding="utf-8")
+
+    proc = run_install(*args, project=project, source=source)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert not legacy.exists()
+    assert (root / "plugins" / "plugin.js").is_file()
+    assert "verified: ok" in proc.stdout
 
 
 def test_native_agent_matches_the_generated_rendering(source, project, home):
@@ -590,7 +613,8 @@ def test_hooks_are_installed_for_every_supported_native_host(source, project, ho
         "adaptive-artifacts hook-stop",
     ]
     assert (home / ".cursor" / "hooks.json").is_file()
-    assert (home / ".opencode" / "plugin.js").is_file()
+    assert (home / ".opencode" / "plugins" / "plugin.js").is_file()
+    assert not (home / ".opencode" / "plugin.js").exists()
 
 
 def test_claude_hooks_merge_into_the_settings_read_path(source, project, home):
@@ -669,6 +693,7 @@ def test_hooks_absent_from_every_host_still_installs(source, project, home):
     assert not (home / ".claude" / "hooks").exists()
     assert not (home / ".claude" / "settings.json").exists()
     assert not (home / ".cursor" / "hooks.json").exists()
+    assert not (home / ".opencode" / "plugins" / "plugin.js").exists()
     assert not (home / ".opencode" / "plugin.js").exists()
 
 

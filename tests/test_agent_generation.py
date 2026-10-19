@@ -80,7 +80,8 @@ def test_opencode_rendering_is_a_subagent_with_denied_writes():
     assert "permissions:" in header
     assert "  read: allow" in header
     assert "  edit: deny" in header
-    assert "  write: deny" in header
+    assert "  write:" not in header
+    assert "  apply_patch:" not in header
     assert body == agents.load(REPO_ROOT).body
 
 

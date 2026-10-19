@@ -35,6 +35,15 @@ HOST_DESTINATIONS = {
 DEFAULT_TOOLS = ("Read", "Grep", "Glob", "Bash")
 DEFAULT_DENY = ("Write", "Edit", "NotebookEdit")
 
+#: OpenCode gates write and apply_patch through ``edit``. Emitting a separate
+#: ``write`` key is inert, so every write-shaped tool maps to ``edit``.
+OPENCODE_DENY_KEYS = {
+    "edit": "edit",
+    "notebookedit": "edit",
+    "write": "edit",
+    "apply_patch": "edit",
+}
+
 
 @dataclass(frozen=True)
 class CanonicalAgent:
@@ -159,8 +168,7 @@ def render(provider_id: str, agent: CanonicalAgent) -> str:
         lines.append("permissions:")
         permissions = {tool.lower(): "allow" for tool in agent.tools}
         for tool in agent.deny:
-            key = "edit" if tool.lower() in ("edit", "notebookedit") else tool.lower()
-            permissions[key] = "deny"
+            permissions[OPENCODE_DENY_KEYS.get(tool.lower(), tool.lower())] = "deny"
         permissions.setdefault("webfetch", "deny")
         for key, value in permissions.items():
             lines.append(f"  {key}: {value}")

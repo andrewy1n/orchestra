@@ -6,8 +6,8 @@ generic adapter, plus two host-shaped additions:
 * files under ``hosts/<provider>/`` are merged at the install root instead of
   being copied as a nested ``hosts/<provider>`` directory. Claude gets its
   hooks merged into ``settings.json`` (plus a legacy ``hooks/hooks.json``
-  copy), Cursor gets ``hooks.json``, and OpenCode gets ``plugin.js`` and its
-  ``opencode.json`` skills source.
+  copy), Cursor gets ``hooks.json``, and OpenCode gets ``plugins/plugin.js``
+  and its ``opencode.json`` skills source.
 * the reviewer agent is generated from ``agents/reviewer.prompt.md`` with
   frontmatter the host understands.
 
@@ -261,4 +261,17 @@ class CursorAdapter(NativeAdapter):
 
 @register_adapter("opencode")
 class OpenCodeAdapter(NativeAdapter):
-    """OpenCode: ``skills`` source, ``agents/``, and ``plugin.js`` hooks."""
+    """OpenCode: ``skills`` source, ``agents/``, and ``plugins/`` hooks.
+
+    OpenCode auto-loads plugins from ``plugins/<file>`` under its project or
+    global config root; a root-level ``plugin.js`` is not discovered. The
+    source payload keeps its flat shape and the adapter moves it into
+    ``plugins/`` at the destination.
+    """
+
+    def desired_entries(self) -> dict[str, Path]:
+        entries = super().desired_entries()
+        plugin = entries.pop("plugin.js", None)
+        if plugin is not None:
+            entries["plugins/plugin.js"] = plugin
+        return entries

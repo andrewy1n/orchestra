@@ -170,9 +170,10 @@ Native hosts get optional session hooks when their payload declares them.
 Claude merges `SessionStart` and `Stop` hooks into `.claude/settings.json`
 (or `~/.claude/settings.json` with `--global`), which is where Claude reads
 project and user hooks. Cursor writes `.cursor/hooks.json`, and OpenCode
-writes `plugin.js`. A host payload that omits hooks still installs cleanly:
-the skills call `adaptive-artifacts hook-start` themselves when views were
-not injected.
+writes `plugins/plugin.js` under its root (`.opencode/plugins/plugin.js` for
+a project install, `~/.config/opencode/plugins/plugin.js` with `--global`).
+A host payload that omits hooks still installs cleanly: the skills call
+`adaptive-artifacts hook-start` themselves when views were not injected.
 
 ### Dry run first
 
