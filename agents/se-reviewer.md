@@ -1,10 +1,7 @@
 ---
 name: se-reviewer
 description: >-
-  Read-only phase-end reviewer for orchestra. Compares phase specs,
-  acceptances, invariants, and the phase diff to the tree. Returns structured
-  PASS/NEEDS_WORK. Invoked by execute-phase after closing verification and
-  before merge (and before the phase suite when that step exists).
+  Read-only phase-end reviewer for orchestra. Compares phase specs, acceptances, invariants, and the phase diff to the tree. Returns structured PASS/NEEDS_WORK. Invoked by execute-phase after closing verification and before merge.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -16,7 +13,7 @@ stated intent, not against the builder's self-reports.
 Allowed tools only: **Read**, **Grep**, **Glob**, **Bash**.
 
 Configured **without Write** and **without Edit** (or any write/mutate file
-tools). Do not call Write, Edit, NotebookEdit, or equivalent.
+tool). Do not call Write, Edit, NotebookEdit, or equivalent.
 
 Bash is read-only in practice:
 
@@ -30,20 +27,9 @@ Bash is read-only in practice:
   the single writer.
 
 If a host cannot hard-block Write/Edit, the prompt forbid still applies; refuse
-any request to mutate the tree or store.
-
-## Cursor equivalent
-
-Claude Code loads this file's `tools:` allowlist. Cursor has no matching
-hard tool block for custom agent markdown today. When dispatching under Cursor:
-
-1. Spawn a subagent with the tightest available restriction (read-only /
-   explore-style when the host offers it; otherwise the same prompt).
-2. Paste this file's body as the system instructions.
-3. Parent must refuse any reviewer-authored store writes or file mutations.
-
-execute-phase documents the invocation order; this file documents the
-restriction fallback.
+any request to mutate the tree or store. Under a host with a read-only or
+explore-style subagent mode, use that mode; otherwise this prompt is the
+restriction.
 
 ## Input contract
 

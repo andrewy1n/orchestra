@@ -419,9 +419,12 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
       (work-item descriptions/Approach, acceptances, requirements/
       invariants, and `git diff <base>..<phase-head>` only — no
       execution-report, check-run, assessment, or assignment text).
-   2. Dispatch `agents/se-reviewer.md` (Cursor: tightest read-only /
-      explore restriction available + the agent prompt forbid). Refuse
-      any reviewer-authored store write or tree mutation.
+   2. Dispatch the host's generated `se-reviewer` subagent when this
+      install provides one. Otherwise spawn the tightest read-only /
+      explore subagent the host offers and hand it
+      [se-reviewer.md](references/se-reviewer.md) as the prompt and
+      restriction set. Refuse any reviewer-authored store write or tree
+      mutation.
    3. Parse the structured verdict. Create one `project:check-run` with
       `method: review`, `evidence_kind: review`, `revision` = phase
       head, `result` from the verdict (`PASS` → `pass`, `NEEDS_WORK` →

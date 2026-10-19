@@ -2,12 +2,15 @@
 
 ``agents/reviewer.prompt.md`` carries the prompt and the restriction set.
 These tests prove the per-host files keep that body byte-for-byte and only
-change the frontmatter keys their harness understands (R13).
+change the frontmatter keys their harness understands (R13). The checkout's
+``agents/se-reviewer.md`` is a generated copy of the Claude rendering, not a
+second authored prompt, and a drift check keeps it that way.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +19,8 @@ from installer import agents
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKER = ".orchestra-install.json"
+BUILD = REPO_ROOT / "scripts" / "build_skills.py"
+GENERATED_AGENT = REPO_ROOT / "agents" / "se-reviewer.md"
 
 
 def split_frontmatter(text: str) -> tuple[str, str]:
@@ -94,6 +99,85 @@ def test_every_host_body_is_the_canonical_body():
     for provider_id, text in rendered.items():
         _, body = split_frontmatter(text)
         assert body == canonical.body, provider_id
+
+
+def test_checkout_agent_file_is_the_claude_rendering():
+    """The tracked ``agents/se-reviewer.md`` is generated, not authored."""
+    assert GENERATED_AGENT.is_file(), f"{GENERATED_AGENT} is missing"
+    assert GENERATED_AGENT.read_text(encoding="utf-8") == agents.render(
+        "claude", agents.load(REPO_ROOT)
+    )
+
+
+def test_checkout_agent_file_carries_the_canonical_body():
+    canonical = agents.load(REPO_ROOT)
+    header, body = split_frontmatter(GENERATED_AGENT.read_text(encoding="utf-8"))
+    assert body == canonical.body
+    assert "name: se-reviewer" in header
+    assert "tools: Read, Grep, Glob, Bash" in header
+    assert "mode:" not in header
+
+
+def run_build(root: Path) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(BUILD), "--root", str(root)],
+        capture_output=True,
+        text=True,
+    )
+
+
+def authored_tree(tmp_path: Path) -> Path:
+    for name in ("agents", "shared", "skills"):
+        shutil.copytree(REPO_ROOT / name, tmp_path / name)
+    return tmp_path
+
+
+def test_generated_agent_drift_is_detected(tmp_path):
+    root = authored_tree(tmp_path)
+    built = run_build(root)
+    assert built.returncode == 0, built.stdout + built.stderr
+
+    clean = subprocess.run(
+        [sys.executable, str(BUILD), "--root", str(root), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    assert clean.returncode == 0, clean.stdout + clean.stderr
+
+    target = root / "agents" / "se-reviewer.md"
+    target.write_text(target.read_text(encoding="utf-8") + "\nhand edit\n")
+    drifted = subprocess.run(
+        [sys.executable, str(BUILD), "--root", str(root), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    assert drifted.returncode != 0
+    assert "drift" in (drifted.stdout + drifted.stderr).lower()
+    assert "se-reviewer.md" in (drifted.stdout + drifted.stderr)
+
+
+def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
+    root = authored_tree(tmp_path)
+    canonical = root / "agents" / "reviewer.prompt.md"
+    canonical.write_text(
+        canonical.read_text(encoding="utf-8").replace(
+            "tools: Read, Grep, Glob, Bash", "tools: Read, Grep, Glob"
+        ),
+        encoding="utf-8",
+    )
+    stale = subprocess.run(
+        [sys.executable, str(BUILD), "--root", str(root), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    assert stale.returncode != 0
+    built = run_build(root)
+    assert built.returncode == 0, built.stdout + built.stderr
+    header, _ = split_frontmatter(
+        (root / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
+    )
+    assert "tools: Read, Grep, Glob" in header
+    assert "Bash" not in header
 
 
 def test_generated_agent_is_installed_for_each_native_host(tmp_path):

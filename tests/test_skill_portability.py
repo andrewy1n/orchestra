@@ -1,9 +1,12 @@
 """Every advertised skill installs as a self-contained Agent Skills directory.
 
 R1: a skill directory contains every file its instructions reference, and no
-reference leaves the directory.
+reference leaves the directory. A bare ``agents/...`` or ``shared/...`` path
+is an authored source outside the skill; it must be generated into
+``references/`` instead.
 R2: the shared ``ensure-store.md`` and ``kinds-and-focus.md`` text is generated
-into each skill's ``references/`` from one source.
+into each skill's ``references/`` from one source, as is the canonical
+reviewer prompt (``agents/reviewer.prompt.md``).
 R3: the generated-copy drift check fails when a copy differs from its source.
 R4: every ``SKILL.md`` has frontmatter whose ``name`` equals its directory and
 whose ``description`` is non-empty.
@@ -30,6 +33,12 @@ SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md")
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
 _LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
 _INLINE_PATH = re.compile(r"`((?:\.\.?/|references/)[^`\s]+)`")
+#: Authored sources that must be generated into the skill's ``references/``.
+#: A skill that names one directly would break once it is installed alone.
+_OUTSIDE_SKILL_DIRS = ("agents", "shared")
+_BARE_OUTSIDE_PATH = re.compile(
+    r"`((?:" + "|".join(_OUTSIDE_SKILL_DIRS) + r")/[^`\s]+)`"
+)
 
 _CHECKOUT_PATH = re.compile(
     r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|adaptive-artifacts)\b"
@@ -79,15 +88,22 @@ def referenced_paths(text: str) -> list[str]:
         if target.startswith(("http://", "https://", "mailto:", "#", "data:")):
             continue
         targets.append(target.split("#", 1)[0])
-    for match in _INLINE_PATH.finditer(text):
-        targets.append(match.group(1).split("#", 1)[0])
+    for pattern in (_INLINE_PATH, _BARE_OUTSIDE_PATH):
+        for match in pattern.finditer(text):
+            targets.append(match.group(1).split("#", 1)[0])
     return [target for target in targets if target]
 
 
 def path_errors(skill_dir: Path, text: str) -> list[str]:
     errors: list[str] = []
     for target in referenced_paths(text):
-        if target.startswith(("/", "~")) or ".." in Path(target).parts:
+        parts = Path(target).parts
+        leaves = (
+            target.startswith(("/", "~"))
+            or ".." in parts
+            or (parts and parts[0] in _OUTSIDE_SKILL_DIRS)
+        )
+        if leaves:
             errors.append(
                 f"{skill_dir.name}: referenced path leaves the skill directory: {target}"
             )
@@ -142,6 +158,39 @@ def test_paths_planted_missing_reference_is_rejected(tmp_path: Path):
     assert any("missing" in error for error in errors), errors
 
 
+def test_paths_planted_bare_agents_reference_is_rejected(tmp_path: Path):
+    skill = tmp_path / "skills" / "bad"
+    skill.mkdir(parents=True)
+    text = (
+        "---\nname: bad\ndescription: bad skill\n---\n\n"
+        "Dispatch `agents/se-reviewer.md`.\n"
+    )
+    errors = path_errors(skill, text)
+    assert any("leaves the skill directory" in error for error in errors), errors
+
+
+def test_paths_planted_bare_shared_link_is_rejected(tmp_path: Path):
+    skill = tmp_path / "skills" / "bad"
+    skill.mkdir(parents=True)
+    text = (
+        "---\nname: bad\ndescription: bad skill\n---\n\n"
+        "Follow [ensure-store](shared/ensure-store.md).\n"
+    )
+    errors = path_errors(skill, text)
+    assert any("leaves the skill directory" in error for error in errors), errors
+
+
+def test_paths_examples_naming_other_roots_are_not_skill_references(tmp_path: Path):
+    """Prose may name e.g. ``contract/project-design.json`` as a fix target."""
+    skill = tmp_path / "skills" / "bad"
+    skill.mkdir(parents=True)
+    text = (
+        "---\nname: bad\ndescription: bad skill\n---\n\n"
+        "Fix goes in `contract/project-design.json`.\n"
+    )
+    assert path_errors(skill, text) == []
+
+
 def test_paths_runtime_calls_use_named_commands_only():
     errors: list[str] = []
     for skill_dir in advertised_skills():
@@ -189,9 +238,19 @@ def test_generated_check_passes_for_the_repository():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_execute_phase_carries_the_canonical_reviewer_prompt():
+    prompt = ROOT / "agents" / "reviewer.prompt.md"
+    reference = SKILLS / "execute-phase" / "references" / "se-reviewer.md"
+    assert reference.is_file(), f"{reference} is missing"
+    assert reference.read_bytes() == prompt.read_bytes(), (
+        f"{reference} drifted from {prompt}"
+    )
+
+
 def test_generated_references_drift_is_detected(tmp_path: Path):
     shutil.copytree(SHARED, tmp_path / "shared")
     shutil.copytree(SKILLS, tmp_path / "skills")
+    shutil.copytree(ROOT / "agents", tmp_path / "agents")
 
     built = run_build(tmp_path)
     assert built.returncode == 0, built.stdout + built.stderr
@@ -204,6 +263,22 @@ def test_generated_references_drift_is_detected(tmp_path: Path):
     assert drifted.returncode != 0
     assert "drift" in (drifted.stdout + drifted.stderr).lower()
     assert "ensure-store.md" in (drifted.stdout + drifted.stderr)
+
+
+def test_generated_reviewer_drift_is_detected(tmp_path: Path):
+    shutil.copytree(SHARED, tmp_path / "shared")
+    shutil.copytree(SKILLS, tmp_path / "skills")
+    shutil.copytree(ROOT / "agents", tmp_path / "agents")
+
+    built = run_build(tmp_path)
+    assert built.returncode == 0, built.stdout + built.stderr
+
+    target = tmp_path / "agents" / "se-reviewer.md"
+    target.write_text(target.read_text() + "\nhand edit\n")
+    drifted = run_build(tmp_path, "--check")
+    assert drifted.returncode != 0
+    assert "drift" in (drifted.stdout + drifted.stderr).lower()
+    assert "se-reviewer.md" in (drifted.stdout + drifted.stderr)
 
 
 @pytest.mark.parametrize("skill_dir", advertised_skills(), ids=lambda path: path.name)
