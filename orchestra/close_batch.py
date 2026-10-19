@@ -46,7 +46,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 from orchestra import aa
-from affidavit.oracle_red import is_assertion_level_red
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "aff"
@@ -63,6 +62,14 @@ class CloseRequestError(Exception):
 
 class CloseRefused(Exception):
     """Policy refusal -- exit 2, distinct from a malformed request."""
+
+
+class OracleAdapterUnavailable(Exception):
+    """Oracle-backed close needs ``affidavit.oracle_red``, which is absent.
+
+    An installed CLI serves every other subcommand without an affidavit
+    checkout, so the import is deferred to the one gate that reads it.
+    """
 
 
 def _entry_passed(entry: dict[str, Any]) -> bool:
@@ -427,6 +434,22 @@ def _enforce_red_first_from_store(
         )
 
 
+def _assertion_level_red(record: dict[str, Any]) -> bool:
+    """Ask the affidavit oracle adapter whether red failed at assertion level.
+
+    The import is deferred: only oracle-backed closes need the affidavit
+    checkout, and an installed CLI must start without one.
+    """
+    try:
+        from affidavit.oracle_red import is_assertion_level_red
+    except ModuleNotFoundError as exc:
+        raise OracleAdapterUnavailable(
+            "affidavit is not importable; close-batch needs the affidavit "
+            "checkout (affidavit.oracle_red) for oracle-backed acceptances"
+        ) from exc
+    return is_assertion_level_red(record)
+
+
 def _approved_amendment_covers_tree(
     amendments: list[dict[str, Any]],
     tree_hashes: dict[str, str],
@@ -465,7 +488,7 @@ def _enforce_oracle_gates(
     if not is_oracle_backed(acceptance_payload):
         return
 
-    if not is_assertion_level_red(red_record):
+    if not _assertion_level_red(red_record):
         raise CloseRefused(
             f"criterion {criterion_id!r}: oracle-backed tdd requires "
             "assertion-level red (fail with assertion failure); "
@@ -771,6 +794,9 @@ def main(argv: list[str] | None = None) -> int:
         ops = build_batch(request, cwd=args.cwd)
     except CloseRefused as exc:
         print(f"close refused: {exc}", file=sys.stderr)
+        return 2
+    except OracleAdapterUnavailable as exc:
+        print(f"close-batch: {exc}", file=sys.stderr)
         return 2
     except CloseRequestError as exc:
         print(f"close-request malformed: {exc}", file=sys.stderr)

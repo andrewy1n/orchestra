@@ -208,3 +208,137 @@ def test_installed_subcommands_run_from_unrelated_cwd(installed, tmp_path):
     document = json.loads(aggregate.stdout)
     assert document["sessions"] == 2
     assert document["tools"][0]["name"] == "Bash"
+
+
+def _installed_prefix(script: Path) -> Path:
+    return script.parent.parent if script.parent.name == "bin" else script.parent
+
+
+def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, str]:
+    """Strip the checkout and any affidavit install from the CLI environment."""
+    scrubbed = dict(env)
+    scrubbed["HOME"] = str(home)
+    for name in (
+        "AFFIDAVIT_ROOT",
+        "ADAPTIVE_ARTIFACTS_BIN",
+        "ADAPTIVE_ARTIFACTS_ROOT",
+        "CLAUDE_PLUGIN_ROOT",
+        "CURSOR_PLUGIN_ROOT",
+        "SE_WORKFLOW_STORE",
+    ):
+        scrubbed.pop(name, None)
+
+    checkout = str(REPO_ROOT)
+
+    def keep(entry: str) -> bool:
+        if not entry:
+            return False
+        # The `aff` binary and the checkout are the two ways to reach affidavit.
+        if "affidavit" in entry.lower() or entry.startswith(checkout):
+            return False
+        return not (Path(entry) / "aff").exists()
+
+    site_dirs = [str(d) for d in _site_dirs(prefix)]
+    for key in ("PATH", "PYTHONPATH"):
+        parts = [p for p in scrubbed.get(key, "").split(os.pathsep) if keep(p)]
+        if parts:
+            scrubbed[key] = os.pathsep.join(parts)
+        else:
+            scrubbed.pop(key, None)
+    # Ensure the installed prefix supplies the package and the script.
+    script_dirs = [str(prefix / "bin"), str(prefix / "local" / "bin"), str(prefix / "Scripts")]
+    scrubbed["PATH"] = os.pathsep.join([*script_dirs, scrubbed.get("PATH", "")]).strip(
+        os.pathsep
+    )
+    scrubbed["PYTHONPATH"] = os.pathsep.join(
+        [*site_dirs, scrubbed.get("PYTHONPATH", "")]
+    ).strip(os.pathsep)
+    return scrubbed
+
+
+def test_cli_standalone_without_affidavit_checkout(installed, tmp_path):
+    """The installed CLI starts with an empty HOME and no affidavit checkout.
+
+    Every subcommand except ``close-batch`` must answer from the installed
+    prefix alone; ``close-batch`` only needs affidavit for oracle-backed
+    closes and says so instead of failing at import.
+    """
+    script, base_env = installed
+    prefix = _installed_prefix(script)
+    home = tmp_path / "empty-home"
+    home.mkdir()
+    env = _standalone_env(base_env, prefix, home)
+    elsewhere = tmp_path / "unrelated-standalone"
+    elsewhere.mkdir()
+
+    # The environment really has no affidavit import path.
+    probe = subprocess.run(
+        [sys.executable, "-c", "import affidavit"],
+        cwd=str(elsewhere),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert probe.returncode != 0
+
+    helped = run_cli(env, elsewhere, "--help")
+    assert helped.returncode == 0, helped.stderr
+    for command in ("check", "install", "contract", "project-field", "sessions"):
+        assert command in helped.stdout
+
+    for command in ("check", "install", "contract", "project-field", "sessions"):
+        proc = run_cli(env, elsewhere, command, "--help")
+        assert proc.returncode == 0, (command, proc.stdout + proc.stderr)
+
+    contract = run_cli(env, elsewhere, "contract", "--path")
+    assert contract.returncode == 0, contract.stderr
+    assert Path(contract.stdout.strip()).is_file()
+
+    design = elsewhere / "project-design.json"
+    design.write_text(json.dumps({"project": "affidavit"}))
+    rewritten = run_cli(env, elsewhere, "project-field", "rewrite", str(design))
+    assert rewritten.returncode == 0, rewritten.stderr
+    assert rewritten.stdout.strip() == "rewritten"
+
+    transcripts = elsewhere / "transcripts"
+    _write_session(transcripts, "projA", "s1", "s1")
+    rows = run_cli(env, elsewhere, "sessions", "report", str(transcripts))
+    assert rows.returncode == 0, rows.stderr
+    assert len([line for line in rows.stdout.splitlines() if line.strip()]) == 1
+
+    # install is checkout-side; standalone it must explain, not traceback.
+    install = run_cli(env, elsewhere, "install", "--dry-run")
+    assert install.returncode == 2
+    assert "installer" in install.stderr
+    assert "Traceback" not in install.stderr
+
+    module = subprocess.run(
+        [sys.executable, "-c", "import orchestra.cli, orchestra.close_batch"],
+        cwd=str(elsewhere),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert module.returncode == 0, module.stderr
+
+    helper = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import orchestra.close_batch as cb\n"
+                "try:\n"
+                "    cb._assertion_level_red({})\n"
+                "except cb.OracleAdapterUnavailable as exc:\n"
+                "    print(exc)\n"
+                "else:\n"
+                "    raise SystemExit('expected OracleAdapterUnavailable')\n"
+            ),
+        ],
+        cwd=str(elsewhere),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert helper.returncode == 0, helper.stdout + helper.stderr
+    assert "affidavit" in helper.stdout

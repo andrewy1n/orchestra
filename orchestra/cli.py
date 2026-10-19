@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 from orchestra.check import DEFAULT_TIMEOUT_S, run_check
-from orchestra.close_batch import main as close_batch_main
 from orchestra.contract import contract_path
 from orchestra.project_field import STOPPED, rewrite_project_field
 from orchestra.sessions import aggregate as aggregate_sessions
@@ -196,6 +195,10 @@ def main(argv: list[str] | None = None) -> int:
             print(outcome.message, file=sys.stderr)
         return outcome.exit_code
     if args.command == "close-batch":
+        # Lazy: close-batch is the only command that may need the affidavit
+        # checkout, so an installed CLI without one still starts.
+        from orchestra.close_batch import main as close_batch_main
+
         argv = ["--input", args.input, "--out", args.out]
         if args.cwd is not None:
             argv.extend(["--cwd", args.cwd])
