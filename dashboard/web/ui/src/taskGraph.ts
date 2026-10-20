@@ -38,8 +38,8 @@ export interface WaveGraph {
   show: boolean;
 }
 
-export const NODE_W = 168;
-export const NODE_H = 52;
+export const NODE_W = 232;
+export const NODE_H = 84;
 const COL_GAP = 80;
 const ROW_GAP = 24;
 

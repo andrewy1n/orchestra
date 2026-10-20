@@ -52,6 +52,15 @@ function lines(...parts: unknown[]): string {
     .join("\n");
 }
 
+/** Human label for a dependency that may be a string or a record. */
+function refText(value: unknown): string {
+  if (value && typeof value === "object") {
+    const item = obj(value);
+    return str(item.title) || str(item.subject) || str(item.id) || "";
+  }
+  return str(value);
+}
+
 function phaseDetail(payload: unknown, tab: string): DetailViewModel {
   const root = obj(payload);
   const detail = obj(root.detail);
@@ -131,31 +140,7 @@ function phaseDetail(payload: unknown, tab: string): DetailViewModel {
       body: rows.length ? rows.join("\n") : "No decisions recorded.",
     });
   } else if (active === "evidence") {
-    const evidence = obj(detail.evidence);
-    const bits = [
-      evidence.stage ? `stage: ${evidence.stage}` : "",
-      evidence.weight ? `weight: ${evidence.weight}` : "",
-      evidence.release_state ? `release: ${evidence.release_state}` : "",
-    ].filter(Boolean);
-    const reqs = Array.isArray(evidence.requirements)
-      ? (evidence.requirements as unknown[])
-      : [];
-    const reqLines = reqs.map((row) => {
-      const item = obj(row);
-      const check = obj(item.latest_check);
-      const result = str(check.result) || str(item.status) || "—";
-      return `${str(item.id)}  ${result}  ${str(item.text)}`;
-    });
-    const body = [
-      bits.length ? bits.join(" · ") : "",
-      reqLines.length ? reqLines.join("\n") : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-    sections.push({
-      title: "Evidence",
-      body: body || "No evidence summary.",
-    });
+    // Requirements render as the evidence board, not a markdown list.
   } else if (active === "proof") {
     const proof = obj(detail.proof);
     if (!Object.keys(proof).length) {
@@ -179,19 +164,7 @@ function phaseDetail(payload: unknown, tab: string): DetailViewModel {
       }
     }
   } else if (active === "tasks") {
-    const list = Array.isArray(tasks) ? tasks : [];
-    const rows = list.map((row) => {
-      const item = obj(row);
-      const status = str(item.status) || "—";
-      const name = str(item.title) || str(item.subject) || str(item.id);
-      const wave =
-        item.wave == null || item.wave === "" ? "" : ` · w${item.wave}`;
-      return `- **${status}** ${name}${wave}`;
-    });
-    sections.push({
-      title: "Tasks",
-      body: rows.length ? rows.join("\n") : "No tasks on this phase.",
-    });
+    // Tasks render as the task board, not a markdown list.
   } else {
     // Unknown tab: show overview body as fallback.
     if (body) sections.push({ title: active, body });
@@ -232,12 +205,12 @@ function taskDetail(payload: unknown): DetailViewModel {
     });
   }
   if (detail.phase) chips.push({ label: str(detail.phase) });
-  if (detail.wave != null) chips.push({ label: `w${detail.wave}` });
+  if (detail.wave != null) chips.push({ label: `wave ${detail.wave}` });
   if (detail.size) chips.push({ label: str(detail.size) });
   if (detail.estimate_minutes != null) {
-    chips.push({ label: `${detail.estimate_minutes}m` });
+    chips.push({ label: `${detail.estimate_minutes} min` });
   }
-  if (detail.executor) chips.push({ label: `executor ${detail.executor}` });
+  if (detail.executor) chips.push({ label: str(detail.executor) });
 
   const sections: DetailSection[] = [];
   if (description) sections.push({ title: "Description", body: description });
@@ -245,14 +218,14 @@ function taskDetail(payload: unknown): DetailViewModel {
   const blocks = Array.isArray(detail.blocks) ? detail.blocks : [];
   const reqs = Array.isArray(detail.requirements) ? detail.requirements : [];
   const links = [
-    ...deps.map((dep) => `Depends on: ${dep}`),
-    ...blocks.map((dep) => `Blocks: ${dep}`),
-    ...reqs.map((req) => `Requirement: ${req}`),
+    ...deps.map((dep) => `Depends on: ${refText(dep)}`),
+    ...blocks.map((dep) => `Blocks: ${refText(dep)}`),
+    ...reqs.map((req) => `Requirement: ${refText(req)}`),
   ];
   if (links.length) sections.push({ title: "Links", body: links.join("\n") });
 
   return {
-    who: subject || title,
+    who: title,
     ctx: [str(detail.effort), str(detail.phase)].filter(Boolean).join(" · "),
     chips,
     sections: sections.length
@@ -290,11 +263,71 @@ function recordDetail(payload: unknown): DetailViewModel {
   };
 }
 
+const KIND_LABELS: Record<string, string> = {
+  "needs-human": "Review",
+  "behavior-bug": "Bug",
+  "invariant-violation": "Invariant",
+  "missing-test": "Missing test",
+  "blocking-question": "Question",
+  "unsigned-check": "Unsigned check",
+};
+
+/** Short label for a needs-you kind or the kind prefix inside its text. */
+export function humanKind(kind: string): string {
+  const key = kind.trim().toLowerCase();
+  return KIND_LABELS[key] ?? kind.replace(/[-_]/g, " ");
+}
+
+export interface NeedsScan {
+  kind: string;
+  place: string;
+  claim: string;
+}
+
+/** One scan line: kind, where it sits, and the claim after the colon. */
+export function scanNeeds(item: {
+  kind: string;
+  text?: string;
+  phase?: string;
+  subject?: string;
+}): NeedsScan {
+  const text = (item.text || "").trim();
+  const match = text.match(/^(.+?)\s+on\s+([^:]+):\s*([\s\S]+)$/);
+  if (match) {
+    const kindBit = match[1].replace(/\s*\([^)]*\)\s*$/, "").trim();
+    return {
+      kind: humanKind(kindBit),
+      place: match[2].trim(),
+      claim: match[3].trim().replace(/\s+/g, " "),
+    };
+  }
+  return {
+    kind: humanKind(item.kind),
+    place: (item.phase || "").trim(),
+    claim: text || item.subject || "",
+  };
+}
+
+function decisionEffect(kind: string): string {
+  if (kind === "needs-human") {
+    return "Accepting risk records that you saw this and clears it from Needs you. The note is stored with that decision.";
+  }
+  if (kind === "unsigned-check") {
+    return "Signing records that you accept this check and clears it from Needs you.";
+  }
+  if (kind === "blocking-question" || kind === "open-question") {
+    return "Approving records your answer and clears this question from Needs you. Rejecting keeps it open.";
+  }
+  return "This records your decision and clears the item from Needs you.";
+}
+
 function needsDetail(payload: unknown): DetailViewModel {
   const item = obj(obj(payload).item);
   const kind = str(item.kind);
   const subject = str(item.subject);
   const text = str(item.text);
+  const body = str(item.body);
+  const phase = str(item.phase);
   const revision = str(item.revision);
   const approval = obj(item.approval);
   const choices = Array.isArray(approval.confirm_choices)
@@ -303,17 +336,19 @@ function needsDetail(payload: unknown): DetailViewModel {
   const choiceLabels = choices
     .map((row) => str(obj(row).label) || str(obj(row).action))
     .filter(Boolean);
-  const sections: DetailSection[] = [
-    { title: "Needs you", body: lines(text, subject) },
-  ];
-  if (revision) sections.push({ title: "Revision", body: revision });
-  if (choiceLabels.length) {
-    sections.push({ title: "confirm_choices", body: choiceLabels.join(" · ") });
+  const scan = scanNeeds({ kind, text, phase, subject });
+  const sections: DetailSection[] = [];
+  if (body && body !== scan.claim) {
+    sections.push({ title: "", body });
   }
+  if (phase && phase !== scan.place) {
+    sections.push({ title: "Phase", body: phase });
+  }
+  sections.push({ title: "Decision", body: decisionEffect(kind) });
   return {
-    who: subject || kind || "needs",
-    ctx: kind,
-    chips: kind ? [{ label: kind }] : [],
+    who: scan.claim || subject || "Needs you",
+    ctx: [scan.kind, scan.place].filter(Boolean).join(" · "),
+    chips: [],
     sections,
     probe: lines(kind, subject, text, revision, "confirm_choices", ...choiceLabels),
   };
@@ -337,6 +372,97 @@ function backlogDetail(payload: unknown): DetailViewModel {
     ],
     probe: lines(subject, text, status, `"status": "${status}"`, source),
   };
+}
+
+export interface EvidenceFact {
+  label: string;
+  value: string;
+}
+
+export interface EvidenceReq {
+  id: string;
+  status: string;
+  tasks: string;
+  text: string;
+  next: string;
+  tone: "ok" | "warn" | "";
+}
+
+export interface EvidenceBoard {
+  facts: EvidenceFact[];
+  rows: EvidenceReq[];
+}
+
+function reqTone(status: string): EvidenceReq["tone"] {
+  if (status === "verified" || status === "pass") return "ok";
+  if (status === "fail" || status === "blocked") return "warn";
+  return "";
+}
+
+export interface TaskBoardRow {
+  id: string;
+  title: string;
+  status: string;
+  wave: string;
+  tone: "ok" | "warn" | "accent" | "";
+}
+
+function taskTone(status: string): TaskBoardRow["tone"] {
+  if (status === "done") return "ok";
+  if (status === "running" || status === "ready") return "accent";
+  if (status === "waiting" || status === "blocked" || status === "fail") return "warn";
+  return "";
+}
+
+/** Tasks tab: one row per task, not a markdown list. */
+export function taskBoard(payload: unknown): TaskBoardRow[] {
+  const tasks = obj(obj(payload).detail).tasks;
+  const list = Array.isArray(tasks) ? tasks : [];
+  return list
+    .map((row) => {
+      const item = obj(row);
+      const status = str(item.status);
+      return {
+        id: str(item.id),
+        title: str(item.title) || str(item.subject) || str(item.id),
+        status: status || "—",
+        wave: item.wave == null || item.wave === "" ? "" : `w${item.wave}`,
+        tone: taskTone(status),
+      };
+    })
+    .filter((row) => row.id || row.title);
+}
+
+/** Evidence tab: facts and requirement rows for the board, not a text dump. */
+export function evidenceBoard(payload: unknown): EvidenceBoard {
+  const evidence = obj(obj(obj(payload).detail).evidence);
+  const facts: EvidenceFact[] = [];
+  if (evidence.stage) facts.push({ label: "stage", value: str(evidence.stage) });
+  if (evidence.weight) facts.push({ label: "weight", value: str(evidence.weight) });
+  if (evidence.release_state) {
+    facts.push({ label: "release", value: str(evidence.release_state) });
+  }
+  const reqs = Array.isArray(evidence.requirements)
+    ? (evidence.requirements as unknown[])
+    : [];
+  const rows = reqs
+    .map((row) => {
+      const item = obj(row);
+      const id = str(item.id);
+      const status = str(item.status) || str(obj(item.latest_check).result);
+      const tasks =
+        item.tasks == null ? "" : `${item.tasks_done ?? 0}/${item.tasks}`;
+      return {
+        id,
+        status,
+        tasks,
+        text: str(item.text),
+        next: str(item.next),
+        tone: reqTone(status),
+      };
+    })
+    .filter((row) => row.id || row.text);
+  return { facts, rows };
 }
 
 /** Build the overlay view model for a detail kind + optional phase tab. */

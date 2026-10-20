@@ -26,6 +26,7 @@ import {
   requirementHref,
   taskHref,
 } from "./detail";
+import { evidenceBoard } from "./detailView";
 import { parseRoute } from "./router";
 import type { EffortView, Snapshot } from "./types";
 
@@ -402,5 +403,41 @@ describe("web-dashboard detail", () => {
       expect(text).toContain("parked work");
       expect(text).toContain('"status": "open"');
     }
+  });
+});
+
+describe("evidence tab", () => {
+  it("lists every requirement on the evidence tab", () => {
+    const board = evidenceBoard({
+      detail: {
+        evidence: {
+          stage: "release",
+          weight: "full",
+          requirements: [
+            {
+              id: "R1",
+              text: "Skills stay inside their directory.",
+              status: "verified",
+              tasks: 3,
+              tasks_done: 3,
+              next: "",
+            },
+            {
+              id: "R2",
+              text: "The installer covers the host matrix.",
+              status: "verified",
+              tasks: 1,
+              tasks_done: 1,
+            },
+          ],
+        },
+      },
+    });
+    expect(board.facts.map((fact) => fact.value)).toEqual(["release", "full"]);
+    expect(board.rows.map((row) => row.id)).toEqual(["R1", "R2"]);
+    expect(board.rows[0]?.text).toBe("Skills stay inside their directory.");
+    expect(board.rows[0]?.tasks).toBe("3/3");
+    expect(board.rows[0]?.tone).toBe("ok");
+    expect(board.rows[1]?.text).toBe("The installer covers the host matrix.");
   });
 });

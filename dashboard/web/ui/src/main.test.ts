@@ -240,6 +240,9 @@ describe("web-dashboard main", () => {
       }),
     );
     if (await tryMountApp()) {
+      expect(document.querySelector("[data-effort-title]")?.textContent).toBe(
+        "alpha",
+      );
       expect(document.querySelector("[data-goal]")?.textContent).toBe(
         "Alpha goal text",
       );

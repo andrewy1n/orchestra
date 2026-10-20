@@ -217,6 +217,7 @@ describe("web-dashboard scaffold", () => {
         "[data-act='theme']",
       );
       expect(control, "the theme control must render").toBeTruthy();
+      expect(control?.getAttribute("role")).toBe("switch");
       expect(document.documentElement.classList.contains("dark")).toBe(false);
 
       control!.click();

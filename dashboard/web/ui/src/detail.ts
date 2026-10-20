@@ -5,7 +5,7 @@
  * `tabs` list from `dashboard.model.tabs_for`.
  */
 
-import type { Route, RouteName } from "./router";
+import { parseRoute, type Route, type RouteName } from "./router";
 
 export type DetailKind =
   | "phase"
@@ -154,15 +154,46 @@ export function backlogHref(effort: string, id: string): string {
   return `#/backlog/${enc(effort)}/${enc(id)}`;
 }
 
+/** Screens left behind by in-app navigation. Back pops this, not the dashboard. */
+const backStack: string[] = [];
+let rewinding = false;
+
+function hashPath(hash: string): string {
+  return hash.replace(/^#/, "");
+}
+
+/** Same phase with a different tab is one screen, not a back step. */
+function sameScreen(current: string, next: string): boolean {
+  const left = detailTarget(parseRoute(current));
+  const right = detailTarget(parseRoute(next));
+  return !!left && !!right && left.kind === "phase" && left.apiPath === right.apiPath;
+}
+
 /** Navigate to a hash without leaving the SPA document. */
 export function openHash(hash: string): void {
   if (typeof window === "undefined") return;
-  window.location.hash = hash.replace(/^#/, "");
+  const next = hashPath(hash);
+  const current = hashPath(window.location.hash);
+  if (current === next) {
+    if (!next) backStack.length = 0;
+    return;
+  }
+  if (!rewinding) {
+    if (!next) backStack.length = 0;
+    else if (current && !sameScreen(current, next)) backStack.push(current);
+  }
+  window.location.hash = next;
 }
 
-/** Close the detail overlay (return to the home shell). */
+/**
+ * Overlay Back / Esc. Step to the previous in-app screen.
+ * With no in-app history, return to the dashboard.
+ */
 export function closeDetail(): void {
-  openHash("");
+  const prev = backStack.pop();
+  rewinding = true;
+  openHash(prev ?? "");
+  rewinding = false;
 }
 
 export function isDetailKind(name: RouteName): name is DetailKind {

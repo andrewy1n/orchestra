@@ -304,6 +304,11 @@ describe("task graph UI", () => {
       document.querySelector('[data-graph-node="t-a"]')?.getAttribute("data-signal"),
     ).toBe("done");
     expect(document.querySelector(".svelte-flow")).toBeTruthy();
+    expect(document.querySelector(".svelte-flow__pane.draggable")).toBeTruthy();
+    expect(document.querySelector(".svelte-flow__controls-zoomin")).toBeTruthy();
+    expect(document.querySelector(".svelte-flow__controls-zoomout")).toBeTruthy();
+    expect(document.querySelector(".svelte-flow__controls-fitview")).toBeTruthy();
+    expect(document.querySelector(".svelte-flow__controls-interactive")).toBeNull();
   });
 
   it("R4: activating a node opens the task overlay", async () => {

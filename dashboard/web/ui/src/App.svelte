@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import {
     beginWrite,
     writeBody,
@@ -22,7 +22,7 @@
     taskHref,
     type DetailTarget,
   } from "./detail";
-  import { detailView } from "./detailView";
+  import { detailView, evidenceBoard, scanNeeds, taskBoard } from "./detailView";
   import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
   import { buildPhaseChrome } from "./phaseChrome";
@@ -51,6 +51,17 @@
     StatusTab,
   } from "./types";
 
+  function statusLabel(status: string): string {
+    const known: Record<string, string> = {
+      done: "Done",
+      running: "Running",
+      ready: "Ready",
+      waiting: "Waiting",
+      withdrawn: "Withdrawn",
+    };
+    return known[status] ?? status.replace(/_/g, " ");
+  }
+
   function escHtml(value: string): string {
     return value
       .replace(/&/g, "&amp;")
@@ -73,6 +84,8 @@
   /** null = follow default; "all" = every phase; else a phase subject. */
   let pinnedPhase: string | null = $state(null);
   let statusTab: StatusTab = $state("active");
+  /** Effort whose status tab the user picked. Empty follows the default. */
+  let tabPinnedFor = $state("");
   let showFinished = $state(false);
   /** Milestone subjects currently expanded in the Phases block. */
   let expandedMilestones: Set<string> = $state(new Set());
@@ -126,7 +139,28 @@
     effort ? filteredTasks(effort, phaseSubject, statusTab) : [],
   );
 
+  const showNeedsInMain = $derived(
+    !!effort && route.name !== "journal" && effort.needs_you.length > 0,
+  );
+
   const counts = $derived(effort ? tabCounts(effort, phaseSubject) : null);
+
+  $effect(() => {
+    const current = effort;
+    if (!current || tabPinnedFor === current.effort) return;
+    const nextCounts = tabCounts(current, phaseSubject);
+    if (
+      current.needs_you.length > 0 &&
+      nextCounts.active === 0 &&
+      statusTab === "active"
+    ) {
+      const fallback =
+        (["done", "waiting", "ready", "running", "all"] as StatusTab[]).find(
+          (name) => nextCounts[name] > 0,
+        ) ?? "all";
+      statusTab = fallback;
+    }
+  });
 
   const hasMilestones = $derived((effort?.milestones?.length ?? 0) > 0);
 
@@ -204,15 +238,17 @@
     const effortName = route.parts[1] ?? "";
     const milestoneKey = route.parts[2] ?? "";
     if (!effortName || !milestoneKey || !snapshot) return;
-    selectedEffort = effortName;
+    if (selectedEffort !== effortName) selectedEffort = effortName;
     const view = snapshot.efforts.find((row) => row.effort === effortName);
     if (!view) return;
-    expandedForEffort = effortName;
-    const next = new Set(expandedMilestones);
-    next.add(milestoneKey);
-    expandedMilestones = next;
+    if (expandedForEffort !== effortName || !expandedMilestones.has(milestoneKey)) {
+      expandedForEffort = effortName;
+      const next = new Set(expandedMilestones);
+      next.add(milestoneKey);
+      expandedMilestones = next;
+    }
     const phases = view.phases.filter((row) => row.milestone === milestoneKey);
-    if (phases.length === 1 && phases[0]) {
+    if (phases.length === 1 && phases[0] && pinnedPhase !== phases[0].subject) {
       pinnedPhase = phases[0].subject;
     }
   });
@@ -249,6 +285,20 @@
   const overlayView = $derived.by(() => {
     if (!target || !detailPayload) return null;
     return detailView(target.kind, detailPayload, activePhaseTab);
+  });
+
+  const taskView = $derived.by(() => {
+    if (!target || target.kind !== "phase" || activePhaseTab !== "tasks" || !detailPayload) {
+      return null;
+    }
+    return taskBoard(detailPayload);
+  });
+
+  const evidenceView = $derived.by(() => {
+    if (!target || target.kind !== "phase" || activePhaseTab !== "evidence" || !detailPayload) {
+      return null;
+    }
+    return evidenceBoard(detailPayload);
   });
 
   const phaseChrome = $derived.by(() => {
@@ -424,6 +474,12 @@
     selectedEffort = name;
     pinnedPhase = null;
     statusTab = "active";
+    tabPinnedFor = "";
+  }
+
+  function chooseTab(name: StatusTab) {
+    statusTab = name;
+    tabPinnedFor = effort?.effort ?? "";
   }
 
   function selectPhase(targetPhase: string) {
@@ -469,6 +525,7 @@
     snapshot = data;
     loading = false;
     error = "";
+    pollError = "";
     if (!selectedEffort) {
       const { shown } = visibleEfforts(data.efforts, showFinished);
       if (shown[0]) selectedEffort = shown[0].effort;
@@ -480,6 +537,19 @@
     window.addEventListener("hashchange", sync);
 
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === "t" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const el = event.target;
+        if (
+          el instanceof HTMLElement &&
+          el.closest("input, textarea, select, [contenteditable='true']")
+        ) {
+          return;
+        }
+        if (pendingWrite || detailTarget(currentRoute())) return;
+        event.preventDefault();
+        onToggleTheme();
+        return;
+      }
       if (event.key !== "Escape") return;
       if (pendingWrite) {
         cancelConfirm();
@@ -514,47 +584,88 @@
       window.removeEventListener("keydown", onKey);
     };
   });
+
+  let restoreFocus: HTMLElement | null = null;
+  let focusLock = "";
+
+  $effect(() => {
+    const key = pendingWrite ? "confirm" : target ? `detail:${target.kind}` : "";
+    if (key === focusLock) return;
+    const prev = focusLock;
+    focusLock = key;
+    if (!key) {
+      const back = restoreFocus;
+      restoreFocus = null;
+      if (prev) queueMicrotask(() => back?.focus());
+      return;
+    }
+    if (!prev) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) restoreFocus = active;
+    }
+    void tick().then(() => {
+      const selector = pendingWrite
+        ? "[data-confirm-note], [data-confirm-cancel]"
+        : '[data-act="close-detail"]';
+      document.querySelector<HTMLElement>(selector)?.focus();
+    });
+  });
 </script>
 
-<div class="app">
+{#snippet needsRows(view: EffortView)}
+  {#each view.needs_you as item (item.id)}
+    {@const scan = scanNeeds(item)}
+    <button
+      type="button"
+      class="lrow needs-row clickable"
+      class:has-place={scan.place.length > 0}
+      data-needs={item.id}
+      onclick={(e) => {
+        const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]");
+        if (anchor) {
+          e.preventDefault();
+          e.stopPropagation();
+          openHash(anchor.getAttribute("href") || "");
+          return;
+        }
+        openHash(needsHref(view.effort, item.id));
+      }}
+    >
+      <span class="kind">{scan.kind}</span>
+      {#if scan.place}<span class="where">{scan.place}</span>{/if}
+      <span class="text">{@html linkify(scan.claim)}</span>
+    </button>
+  {/each}
+{/snippet}
+
+<div class="app" inert={target || pendingWrite ? true : undefined}>
   <header class="topbar">
     <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
     <div class="crumbs" aria-live="polite">{routeLabel(route)}</div>
     <div class="top-actions">
-      {#if rail.hidden > 0 || showFinished}
-        <button
-          type="button"
-          class="ghost"
-          class:on={showFinished}
-          data-act="show-finished"
-          aria-pressed={showFinished}
-          title="Show finished efforts"
-          onclick={() => (showFinished = !showFinished)}
-        >
-          {rail.hidden > 0 ? `+${rail.hidden} finished` : "finished"}
-        </button>
-      {/if}
       <button
         type="button"
-        class="ghost"
+        class="theme-switch"
         data-act="theme"
-        aria-label="Theme"
-        aria-pressed={theme === "dark"}
+        role="switch"
+        aria-checked={theme === "dark"}
         title="Theme (t)"
         onclick={onToggleTheme}
       >
-        ◐
+        <span class="theme-track" aria-hidden="true"><span class="theme-thumb"></span></span>
+        Dark
       </button>
     </div>
   </header>
 
   <div class="layout">
+    <input class="rail-toggle" id="rail-toggle" type="checkbox" />
     <nav class="rail" aria-label="Efforts">
-      <p class="kicker">Efforts</p>
+      <h2 class="rail-heading">Efforts</h2>
       {#if loading}
         <p class="empty-note">Loading…</p>
       {:else if error}
-        <p class="empty-note">{error}</p>
+        <p class="error-note">{error}</p>
       {:else}
         {#each rail.shown as view (view.effort)}
           <button
@@ -576,12 +687,25 @@
             <span>
               <span class="name">{view.effort}</span>
               <span class="sub" class:warn={view.needs_you.length > 0}>
-                {view.kind}{#if view.needs_you.length}
+                {view.kind}{#if view.finished} · finished{/if}{#if view.needs_you.length}
                   · {view.needs_you.length} needs you{/if}
               </span>
             </span>
           </button>
         {/each}
+        {#if rail.hidden > 0 || showFinished}
+          <button
+            type="button"
+            class="show-finished"
+            class:on={showFinished}
+            data-act="show-finished"
+            aria-pressed={showFinished}
+            title="Show finished efforts"
+            onclick={() => (showFinished = !showFinished)}
+          >
+            {showFinished ? "Hide finished" : `${rail.hidden} finished`}
+          </button>
+        {/if}
       {/if}
     </nav>
 
@@ -595,7 +719,7 @@
               data-act="close-journal"
               onclick={() => openHash("")}
             >
-              ←
+              Back
             </button>
             <span class="journal-title">
               Journal{#if journalEffort}
@@ -606,11 +730,12 @@
             class="field"
             type="search"
             data-journal-filter
+            aria-label="Filter journal"
             placeholder="Filter by subject or text"
             bind:value={journalFilter}
           />
           {#if journalError}
-            <p class="empty-note">{journalError}</p>
+            <p class="error-note">{journalError}</p>
           {:else if !journal}
             <p class="empty-note">Loading journal…</p>
           {:else if journalItems.length === 0}
@@ -621,7 +746,7 @@
                 <button
                   type="button"
                   class="lrow clickable"
-                  data-journal={item.id}
+                  data-journal="{item.id}"
                   data-record-type={item.record_type}
                   onclick={() => openHash(recordHref(item.id))}
                 >
@@ -636,7 +761,19 @@
           {/if}
         </section>
       {:else if effort}
-        <p class="goal" data-goal>{effort.goal}</p>
+        <header class="effort-head">
+          <h1 class="effort-title" data-effort-title>{effort.effort}</h1>
+          <p class="goal" data-goal>{effort.goal}</p>
+        </header>
+
+        {#if showNeedsInMain}
+          <section class="needs-block" data-side-needs>
+            <h2 class="ptitle">
+              Needs you <span class="count">{effort.needs_you.length}</span>
+            </h2>
+            {@render needsRows(effort)}
+          </section>
+        {/if}
 
         {#if effort.phases.length}
           {#if hasMilestones}
@@ -685,6 +822,10 @@
                           class:done={phase.state === "done"}
                           class:live={phase.state === "in_progress"}
                           data-phase={phase.subject}
+                          aria-current={phaseSubject === phase.subject ? "true" : undefined}
+                          title={phaseSubject === phase.subject
+                            ? "Selected. Press again to open."
+                            : "Show this phase"}
                           onclick={() => activatePhase(phase.subject)}
                         >
                           <span class="name"
@@ -718,6 +859,10 @@
                   class:on={phaseSubject === phase.subject}
                   class:live={phase.state === "in_progress"}
                   data-phase={phase.subject}
+                  aria-current={phaseSubject === phase.subject ? "true" : undefined}
+                  title={phaseSubject === phase.subject
+                    ? "Selected. Press again to open."
+                    : "Show this phase"}
                   onclick={() => activatePhase(phase.subject)}
                 >
                   {phase.title || phase.subject}
@@ -744,7 +889,8 @@
               class="tab"
               class:on={statusTab === tab.name}
               data-tab={tab.name}
-              onclick={() => (statusTab = tab.name)}
+              aria-current={statusTab === tab.name ? "true" : undefined}
+              onclick={() => chooseTab(tab.name)}
             >
               <b>{tab.label}</b>
               {#if counts}
@@ -756,11 +902,11 @@
 
         <div class="table" data-task-table style="--cols: 118px 1fr">
           <div class="trow thead">
-            <span>status</span>
-            <span>task</span>
+            <span>Status</span>
+            <span>Task</span>
           </div>
           {#if tasks.length === 0}
-            <p class="empty-note">No tasks in this tab</p>
+            <p class="empty-note">No tasks in this tab.</p>
           {:else}
             {#each tasks as task (task.id)}
               <button
@@ -770,7 +916,7 @@
                 data-phase-of={task.phase}
                 onclick={() => openHash(taskHref(task.id))}
               >
-                <span class="st {task.status}">{task.status}</span>
+                <span class="st {task.status}">{statusLabel(task.status)}</span>
                 <span class="title">{task.title || task.subject}</span>
               </button>
             {/each}
@@ -783,42 +929,25 @@
 
     <aside class="side" aria-label="Details">
       {#if effort}
-        <section
-          class="panel"
-          class:warn={effort.needs_you.length > 0}
-          data-side-needs
-        >
-          <span class="ptitle">Needs you {effort.needs_you.length || ""}</span>
-          {#if effort.needs_you.length === 0}
-            <p class="empty-note">Nothing needs you</p>
-          {:else}
-            {#each effort.needs_you as item (item.id)}
-              <button
-                type="button"
-                class="lrow clickable"
-                data-needs={item.id}
-                onclick={(e) => {
-                  const anchor = (e.target as HTMLElement | null)?.closest?.(
-                    "a[href]",
-                  );
-                  if (anchor) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openHash(anchor.getAttribute("href") || "");
-                    return;
-                  }
-                  openHash(needsHref(effort.effort, item.id));
-                }}
-              >
-                <span class="kind warn">{item.kind}</span>
-                <span class="text"
-                  >{@html linkify(item.text || item.subject)}</span
-                >
-                <span class="meta">{@html linkify(item.subject)}</span>
-              </button>
-            {/each}
-          {/if}
-        </section>
+        {#if !showNeedsInMain}
+          <section
+            class="panel"
+            class:warn={effort.needs_you.length > 0}
+            data-side-needs
+          >
+            <h2 class="ptitle">
+              Needs you
+              {#if effort.needs_you.length}
+                <span class="count">{effort.needs_you.length}</span>
+              {/if}
+            </h2>
+            {#if effort.needs_you.length === 0}
+              <p class="empty-note">Nothing needs you</p>
+            {:else}
+              {@render needsRows(effort)}
+            {/if}
+          </section>
+        {/if}
 
         {#if showJournalTeaser}
           <section class="panel" data-side-journal-teaser>
@@ -844,7 +973,12 @@
         {/if}
 
         <section class="panel" data-side-backlog>
-          <span class="ptitle">Backlog {backlogItems.length || ""}</span>
+          <h2 class="ptitle">
+            Backlog
+            {#if backlogItems.length}
+              <span class="count">{backlogItems.length}</span>
+            {/if}
+          </h2>
           {#if backlogItems.length === 0}
             <p class="empty-note">No backlog</p>
           {:else}
@@ -855,58 +989,54 @@
                 data-backlog={item.id}
                 onclick={() => openHash(backlogHref(effort.effort, item.id))}
               >
-                <span class="kind accent">open</span>
                 <span class="text">{item.text || item.subject}</span>
-                <span class="meta">{item.subject}</span>
+                {#if item.subject && item.subject !== item.text}
+                  <span class="meta">{item.subject}</span>
+                {/if}
               </button>
             {/each}
           {/if}
         </section>
       {/if}
     </aside>
+    <label class="rail-toggle-label" for="rail-toggle">Efforts</label>
   </div>
 
   <footer class="statusbar">
     {#if pollError}
       {pollError}
     {:else if snapshot}
-      live
+      Live
     {/if}
   </footer>
 </div>
 
 {#if target}
-  <div class="overlay" data-detail={target.kind} role="dialog" aria-modal="true">
+  <div
+    class="overlay"
+    data-detail={target.kind}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="overlay-who"
+    tabindex="-1"
+    inert={pendingWrite ? true : undefined}
+  >
     <header class="overlay-bar">
       <button type="button" class="back" data-act="close-detail" onclick={closeDetail}>
-        ←
+        Back
       </button>
       <div class="overlay-title">
-        <span class="who">{overlayView?.who ?? target.kind}</span>
+        <span class="who" id="overlay-who">{overlayView?.who ?? target.kind}</span>
         {#if overlayView?.ctx}
           <span class="ctx">{overlayView.ctx}</span>
         {/if}
       </div>
-      {#if overlayChoices.length}
-        <div class="overlay-bar-actions" data-write-actions>
-          {#each overlayChoices as choice (choice.action)}
-            <button
-              type="button"
-              class="btn ghost"
-              data-write-action={choice.action}
-              onclick={() => openConfirm(choice)}
-            >
-              {choice.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
     </header>
     <div class="overlay-body">
       {#if detailLoading}
         <p class="empty-note">Loading…</p>
       {:else if detailError}
-        <p class="empty-note">{detailError}</p>
+        <p class="error-note">{detailError}</p>
       {:else if detailPayload && overlayView}
         {#if target.kind === "phase" && phaseTabs.length}
           <div class="overlay-tabs" data-phase-tabs>
@@ -923,9 +1053,6 @@
             {/each}
           </div>
         {/if}
-        {#if phaseTaskGraph?.show}
-          <TaskGraphBoard graph={phaseTaskGraph} onselect={openGraphTask} />
-        {/if}
         {#if phaseChrome}
           <div class="phase-chrome" data-phase-chrome>
             <div class="chips" data-detail-chips data-phase-chips>
@@ -933,10 +1060,7 @@
                 <span class="chip {chip.tone || ''}">{chip.label}</span>
               {/each}
             </div>
-            <p class="phase-progress" data-phase-progress>
-              {phaseChrome.progressLabel}
-            </p>
-            <p class="phase-next" data-phase-next>
+            <p class="phase-next" data-phase-next title={phaseChrome.nextAction}>
               <span class="phase-next-label">Next</span>
               {phaseChrome.nextAction}
             </p>
@@ -953,7 +1077,7 @@
                     onclick={() => openRequirement(req.id)}
                   >
                     <span class="req-id">{req.id}</span>
-                    <span class="req-status">{req.status}</span>
+                    <span class="req-meta">{req.status}</span>
                   </button>
                 {/each}
               </div>
@@ -961,7 +1085,80 @@
               <p class="phase-reqs-empty" data-phase-reqs-empty>No requirements yet</p>
             {/if}
           </div>
-        {:else if overlayView.chips.length}
+        {/if}
+        {#if phaseTaskGraph?.show}
+          <TaskGraphBoard
+            graph={phaseTaskGraph}
+            onselect={openGraphTask}
+            colorMode={theme}
+          />
+        {/if}
+        {#if taskView}
+          <div class="task-board" data-task-board data-detail-section="Tasks">
+            {#if taskView.length}
+              <div class="task-rows">
+                {#each taskView as row (row.id)}
+                  <button
+                    type="button"
+                    class="task-row"
+                    class:ok={row.tone === "ok"}
+                    class:warn={row.tone === "warn"}
+                    class:accent={row.tone === "accent"}
+                    data-phase-task={row.id}
+                    onclick={() => openGraphTask(row.id)}
+                  >
+                    <span class="task-status">{row.status}</span>
+                    <span class="task-wave">{row.wave}</span>
+                    <span class="task-title">{row.title}</span>
+                  </button>
+                {/each}
+              </div>
+            {:else}
+              <p class="empty-note">No tasks on this phase.</p>
+            {/if}
+          </div>
+        {/if}
+        {#if evidenceView}
+          <div class="evidence-board" data-evidence-board>
+            {#if evidenceView.facts.length}
+              <div class="chips" data-evidence-facts>
+                {#each evidenceView.facts as fact (fact.label)}
+                  <span class="chip">
+                    <span class="fact-k">{fact.label}</span>
+                    {fact.value}
+                  </span>
+                {/each}
+              </div>
+            {/if}
+            {#if evidenceView.rows.length}
+              <div class="evidence-reqs" data-evidence-reqs>
+                {#each evidenceView.rows as row (row.id)}
+                  <button
+                    type="button"
+                    class="evidence-req"
+                    class:ok={row.tone === "ok"}
+                    class:warn={row.tone === "warn"}
+                    data-evidence-req={row.id}
+                    onclick={() => openRequirement(row.id)}
+                  >
+                    <span class="evidence-id">{row.id}</span>
+                    <span class="evidence-status">{row.status}</span>
+                    <span class="evidence-tasks">{row.tasks}</span>
+                    <span class="evidence-copy">
+                      <span class="evidence-text">{row.text}</span>
+                      {#if row.next}
+                        <span class="evidence-next">next {row.next}</span>
+                      {/if}
+                    </span>
+                  </button>
+                {/each}
+              </div>
+            {:else if !evidenceView.facts.length}
+              <p class="empty-note">No evidence summary.</p>
+            {/if}
+          </div>
+        {/if}
+        {#if !phaseChrome && overlayView.chips.length}
           <div class="chips" data-detail-chips>
             {#each overlayView.chips as chip (chip.label)}
               <span class="chip {chip.tone || ''}">{chip.label}</span>
@@ -971,19 +1168,36 @@
         {#if writeError && !pendingWrite}
           <p class="write-error" data-write-error>{writeError}</p>
         {/if}
-        {#each overlayView.sections as section (section.title)}
-          <div class="section-title" data-section-card>{section.title}</div>
+        {#each overlayView.sections as section, index (section.title + index)}
+          {#if section.title}
+            <div class="section-title" data-section-card>{section.title}</div>
+          {/if}
           <div
             class="md section-card"
-            data-detail-section={section.title}
+            data-detail-section={section.title || "body"}
           >{@html md(section.body)}</div>
         {/each}
+        {#if overlayChoices.length}
+          <div class="overlay-actions" data-write-actions>
+            {#each overlayChoices as choice (choice.action)}
+              <button
+                type="button"
+                class="btn"
+                class:primary={choice.action === "accept"}
+                data-write-action={choice.action}
+                onclick={() => openConfirm(choice)}
+              >
+                {choice.label}
+              </button>
+            {/each}
+          </div>
+        {/if}
         <!-- Probe text for acceptances; not shown as a JSON dump. -->
         <pre data-detail-payload class="sr-only">{overlayView.probe}</pre>
       {/if}
     </div>
     <footer class="overlay-keys">
-      <span><b>esc</b> back</span>
+      <span><b>Esc</b> back</span>
     </footer>
   </div>
 {/if}
@@ -992,24 +1206,33 @@
   <div
     class="modal-layer"
     data-confirm
-    role="dialog"
-    aria-modal="true"
-    onclick={(event) => {
-      if (event.target === event.currentTarget) cancelConfirm();
-    }}
+    role="presentation"
   >
-    <div class="modal">
-      <h3>{pendingWrite.label} this {pendingWrite.kind === "needs" ? "Needs-you" : "backlog"} item?</h3>
+    <button
+      type="button"
+      class="modal-scrim"
+      aria-label="Cancel"
+      onclick={cancelConfirm}
+    ></button>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" tabindex="-1">
+      <h3 id="confirm-title">{pendingWrite.label}?</h3>
       <p class="hint">
-        Confirm sends the write · Esc cancels · note
-        {pendingWrite.noteRequired ? "required" : "optional"}
+        {#if pendingWrite.action === "accept"}
+          Accepting risk records that you saw this and clears it from Needs you.
+        {:else}
+          This records your decision on this item.
+        {/if}
+        {pendingWrite.noteRequired ? "A note is required." : "A note is optional."}
+        Esc cancels.
       </p>
       {#if pendingWrite.kind === "needs"}
+        <label class="field-label" for="confirm-note">Note</label>
         <input
+          id="confirm-note"
           class="field"
           type="text"
           data-confirm-note
-          placeholder="one-line note"
+          placeholder="What should the record say?"
           bind:value={confirmNote}
           onkeydown={(event) => {
             if (event.key === "Enter") {
@@ -1033,7 +1256,8 @@
           type="button"
           class="btn primary"
           data-confirm-submit
-          disabled={writeBusy}
+          disabled={writeBusy ||
+            (pendingWrite.noteRequired && confirmNote.trim().length === 0)}
           onclick={() => void submitConfirm()}
         >
           {pendingWrite.label}

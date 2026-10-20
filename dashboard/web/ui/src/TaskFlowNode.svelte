@@ -4,11 +4,13 @@
   let { id, data }: NodeProps = $props();
 </script>
 
-<div
+<button
+  type="button"
   class="graph-node signal-{data.signal}"
   data-graph-node={id}
   data-status={data.status}
   data-signal={data.signal}
+  aria-label={String(data.label ?? "")}
 >
   <Handle
     id="in"
@@ -27,13 +29,27 @@
   />
   <span class="graph-signal" aria-hidden="true"></span>
   <span class="graph-node-body">
-    <span class="graph-node-title" title={data.label}>{data.label}</span>
-    <span class="graph-node-meta">{data.signal}</span>
+    <span class="graph-node-title">{data.label}</span>
+    <span class="graph-node-meta">{data.status}</span>
   </span>
+  <Handle
+    id="up"
+    type="target"
+    position={Position.Top}
+    class="task-handle"
+    aria-hidden="true"
+  />
   <Handle
     id="out"
     type="source"
     position={Position.Right}
+    class="task-handle"
+    aria-hidden="true"
+  />
+  <Handle
+    id="down"
+    type="source"
+    position={Position.Bottom}
     class="task-handle"
     aria-hidden="true"
   />
@@ -45,4 +61,4 @@
     style="left: 28%;"
     aria-hidden="true"
   />
-</div>
+</button>

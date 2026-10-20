@@ -45,48 +45,89 @@ export function renderMarkdown(
 ): string {
   const lines = (src || "").split("\n");
   const parts: string[] = [];
-  let listOpen = false;
+  let listTag: "ul" | "ol" | null = null;
+  let item: string[] = [];
+
+  const closeItem = () => {
+    if (!item.length) return;
+    parts.push(`<li>${inline(item.join(" "), ctx)}</li>`);
+    item = [];
+  };
 
   const closeList = () => {
-    if (listOpen) {
-      parts.push("</ul>");
-      listOpen = false;
+    closeItem();
+    if (listTag) {
+      parts.push(`</${listTag}>`);
+      listTag = null;
     }
+  };
+
+  const openList = (tag: "ul" | "ol") => {
+    if (listTag && listTag !== tag) closeList();
+    if (!listTag) {
+      parts.push(`<${tag}>`);
+      listTag = tag;
+    }
+  };
+
+  const paragraph: string[] = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    parts.push(`<p>${inline(paragraph.join(" "), ctx)}</p>`);
+    paragraph.length = 0;
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
     if (/^\s*```/.test(line)) {
       closeList();
+      flushParagraph();
       const code: string[] = [];
       i += 1;
       while (i < lines.length && !/^\s*```/.test(lines[i] ?? "")) {
         code.push(lines[i] ?? "");
         i += 1;
       }
-      parts.push(`<pre>${esc(code.join("\n"))}</pre>`);
+      parts.push(`<pre><code>${esc(code.join("\n"))}</code></pre>`);
       continue;
     }
-    if (/^##\s+/.test(line)) {
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
       closeList();
-      parts.push(`<h4>${esc(line.replace(/^##\s+/, ""))}</h4>`);
+      flushParagraph();
+      const tag = heading[1].length === 1 ? "h3" : "h4";
+      parts.push(`<${tag}>${esc(heading[2])}</${tag}>`);
       continue;
     }
-    if (/^[-*]\s+/.test(line)) {
-      if (!listOpen) {
-        parts.push("<ul>");
-        listOpen = true;
-      }
-      parts.push(`<li>${inline(line.replace(/^[-*]\s+/, ""), ctx)}</li>`);
+    const bullet = /^[-*]\s+(.+)$/.exec(line);
+    if (bullet) {
+      flushParagraph();
+      openList("ul");
+      closeItem();
+      item.push(bullet[1] ?? "");
+      continue;
+    }
+    const numbered = /^\d+[.)]\s+(.+)$/.exec(line);
+    if (numbered) {
+      flushParagraph();
+      openList("ol");
+      closeItem();
+      item.push(numbered[1] ?? "");
+      continue;
+    }
+    if (listTag && /^\s+\S/.test(line)) {
+      item.push(line.trim());
       continue;
     }
     if (!line.trim()) {
       closeList();
+      flushParagraph();
       continue;
     }
     closeList();
-    parts.push(`<p>${inline(line, ctx)}</p>`);
+    paragraph.push(line.trim());
   }
   closeList();
+  flushParagraph();
   return parts.join("");
 }

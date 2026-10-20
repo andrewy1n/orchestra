@@ -240,9 +240,10 @@ describe("phase overlay UI", () => {
     expect(document.querySelector("[data-phase-chips]")?.textContent).toMatch(
       /in progress/i,
     );
-    expect(document.querySelector("[data-phase-progress]")?.textContent).toMatch(
-      /1 of 3/,
+    expect(document.querySelector("[data-phase-chips]")?.textContent).toMatch(
+      /1\/3 tasks/,
     );
+    expect(document.querySelector("[data-phase-progress]")).toBeNull();
     expect(document.querySelector("[data-phase-next]")?.textContent).toContain(
       "Ship shared chrome",
     );
@@ -285,9 +286,10 @@ describe("phase overlay UI", () => {
     if (!(await tryMountApp())) return;
     await openPhase("tasks");
     expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
-    const body = document.querySelector("[data-detail-section=\"Tasks\"]");
-    expect(body?.classList.contains("section-card")).toBe(true);
-    expect(body?.textContent).toMatch(/Chrome|Tabs/);
+    const body = document.querySelector("[data-task-board]");
+    expect(body?.querySelector("[data-phase-task]")).toBeTruthy();
+    expect(body?.textContent).toMatch(/Chrome/);
+    expect(body?.textContent).toMatch(/Tabs/);
   });
 
   it("R9: tab-specific content remains under shared chrome", async () => {
