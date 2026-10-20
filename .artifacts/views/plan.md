@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:c84d1c02860711d6bfe39c03541f46df8a094d21f17c4b17a946eba6d6e94ceb
+> Store state: sha256:6df6da4270f691993963681d1c21d99b919d26c7a14178ff051acda62cfe9f19
 
 ## dashboard-view
 
@@ -792,20 +792,6 @@ print("phase checks only")
 
 ## web-dashboard
 
-### Phase
-- **web-dashboard**: Web dashboard; 31; dashboard _(id: [rec-3c679f20-d25f-4448-9d59-6f2b35a94c32](.artifacts/records/project__phase/rec-3c679f20-d25f-4448-9d59-6f2b35a94c32.md))_
-
-### Work
-- **verify-web-dashboard**: Verify the web dashboard; web-dashboard; deliver; dashboard _(id: [rec-db6cd2f0-8da1-4f62-a933-f01076471169](.artifacts/records/project__work-item/rec-db6cd2f0-8da1-4f62-a933-f01076471169.md))_
-- **web-launcher**: Launch the server on loopback for the resolved store; web-dashboard; deliver; dashboard _(id: [rec-6dee2920-ed43-410c-af60-b7cf452aed32](.artifacts/records/project__work-item/rec-6dee2920-ed43-410c-af60-b7cf452aed32.md))_
-- **web-read-api**: Serve the read API from dashboard.model; web-dashboard; deliver; dashboard _(id: [rec-f81c5962-37e5-452a-b480-aa4da206b58a](.artifacts/records/project__work-item/rec-f81c5962-37e5-452a-b480-aa4da206b58a.md))_
-- **web-ui-actions**: Confirm writes and show dismiss errors; web-dashboard; deliver; dashboard _(id: [rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1](.artifacts/records/project__work-item/rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1.md))_
-- **web-ui-detail**: Open phase, task, requirement, record, and item details; web-dashboard; deliver; dashboard _(id: [rec-866d19de-9eca-443d-bc24-17cb15dbcdc4](.artifacts/records/project__work-item/rec-866d19de-9eca-443d-bc24-17cb15dbcdc4.md))_
-- **web-ui-main**: Render the rail, goal, phases, and task rows; web-dashboard; deliver; dashboard _(id: [rec-7102f038-1cb1-4752-99f1-2ed73eec9f25](.artifacts/records/project__work-item/rec-7102f038-1cb1-4752-99f1-2ed73eec9f25.md))_
-- **web-ui-scaffold**: Scaffold the Vite Svelte app; web-dashboard; deliver; dashboard _(id: [rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb](.artifacts/records/project__work-item/rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb.md))_
-- **web-ui-side**: Show Needs you, journal, and backlog; web-dashboard; deliver; dashboard _(id: [rec-a6a8056f-9dee-4efb-a387-c15e653a75be](.artifacts/records/project__work-item/rec-a6a8056f-9dee-4efb-a387-c15e653a75be.md))_
-- **web-write-api**: Write Needs you and backlog through the existing helpers; web-dashboard; deliver; dashboard _(id: [rec-4474072a-2ef4-487a-afd8-73d4482094c2](.artifacts/records/project__work-item/rec-4474072a-2ef4-487a-afd8-73d4482094c2.md))_
-
 ### Acceptance
 - **verify-web-dashboard**: R1; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r1_loopback -q _(id: [rec-a0a942d1-9498-4c85-be22-ed91224e3c51](.artifacts/records/project__acceptance/rec-a0a942d1-9498-4c85-be22-ed91224e3c51.md))_
 - **verify-web-dashboard-api**: R21; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py -q -k 'snapshot or token or approve or reject or sign or signer or accept_note or refused or backlog or stale' _(id: [rec-9a2e2a15-7ba6-4893-a2ae-9b818d4d101b](.artifacts/records/project__acceptance/rec-9a2e2a15-7ba6-4893-a2ae-9b818d4d101b.md))_
@@ -847,6 +833,77 @@ print("phase checks only")
 - **web-write-api-r28**: R28; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r28_backlog_dismiss -q _(id: [rec-a9fc00b5-7ae8-4396-9013-c753ce9da519](.artifacts/records/project__acceptance/rec-a9fc00b5-7ae8-4396-9013-c753ce9da519.md))_
 - **web-write-api-r29**: R29; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r29_backlog_promote -q _(id: [rec-85c4cf39-fd64-41fa-8e03-3aa46331d06f](.artifacts/records/project__acceptance/rec-85c4cf39-fd64-41fa-8e03-3aa46331d06f.md))_
 - **web-write-api-r34**: R34; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r34_stale -q _(id: [rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26](.artifacts/records/project__acceptance/rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26.md))_
+
+## milestone-nav
+
+### Acceptance
+- **milestone-nav-helpers**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R3 _(id: [rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc](.artifacts/records/project__acceptance/rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc.md))_
+- **milestone-nav-helpers-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-cec6c732-e285-4853-a8e7-01f94ee49425](.artifacts/records/project__acceptance/rec-cec6c732-e285-4853-a8e7-01f94ee49425.md))_
+- **milestone-nav-helpers-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R8 _(id: [rec-b2803a64-6aa8-4749-b1ef-44d099372bb4](.artifacts/records/project__acceptance/rec-b2803a64-6aa8-4749-b1ef-44d099372bb4.md))_
+- **milestone-nav-ui**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R1 _(id: [rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab](.artifacts/records/project__acceptance/rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab.md))_
+- **milestone-nav-ui-r10**: R10; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R10 _(id: [rec-863722d6-7ee4-430b-93a9-32919d31fcdc](.artifacts/records/project__acceptance/rec-863722d6-7ee4-430b-93a9-32919d31fcdc.md))_
+- **milestone-nav-ui-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R2 _(id: [rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1](.artifacts/records/project__acceptance/rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1.md))_
+- **milestone-nav-ui-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-ce00f555-db82-4549-a6c8-4598b2274f57](.artifacts/records/project__acceptance/rec-ce00f555-db82-4549-a6c8-4598b2274f57.md))_
+- **milestone-nav-ui-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-cbca727e-806c-4ace-b5f0-19afd144744d](.artifacts/records/project__acceptance/rec-cbca727e-806c-4ace-b5f0-19afd144744d.md))_
+- **milestone-nav-ui-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R6 _(id: [rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341](.artifacts/records/project__acceptance/rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341.md))_
+- **milestone-nav-ui-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R9 _(id: [rec-5f055263-a2ec-4551-9943-004890bb130e](.artifacts/records/project__acceptance/rec-5f055263-a2ec-4551-9943-004890bb130e.md))_
+- **verify-milestone-nav**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts src/milestoneNav.test.ts _(id: [rec-2bc35113-9f94-41d8-966d-6f05da4eb36e](.artifacts/records/project__acceptance/rec-2bc35113-9f94-41d8-966d-6f05da4eb36e.md))_
+- **verify-milestone-nav-collapse**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2](.artifacts/records/project__acceptance/rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2.md))_
+- **verify-milestone-nav-demo**: R2; manual; dashboard _(id: [rec-d0e08589-06f0-495e-8d77-b6847225d2bc](.artifacts/records/project__acceptance/rec-d0e08589-06f0-495e-8d77-b6847225d2bc.md))_
+- **verify-milestone-nav-flat**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-0b22571b-615f-4ee7-9dcc-9010f606b323](.artifacts/records/project__acceptance/rec-0b22571b-615f-4ee7-9dcc-9010f606b323.md))_
+- **verify-milestone-nav-scope**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c](.artifacts/records/project__acceptance/rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c.md))_
+
+## side-rail-calm
+
+### Acceptance
+- **side-rail-home**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R1 _(id: [rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631](.artifacts/records/project__acceptance/rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631.md))_
+- **side-rail-home-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R2 _(id: [rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5](.artifacts/records/project__acceptance/rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5.md))_
+- **side-rail-home-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-2bbcde12-f78c-4b03-abbb-0fd59939efed](.artifacts/records/project__acceptance/rec-2bbcde12-f78c-4b03-abbb-0fd59939efed.md))_
+- **side-rail-home-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R4 _(id: [rec-049b56c1-fc81-42c4-944e-7431cd88dc5c](.artifacts/records/project__acceptance/rec-049b56c1-fc81-42c4-944e-7431cd88dc5c.md))_
+- **side-rail-journal-screen**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9f91c834-c5b5-4585-b668-7352942d7739](.artifacts/records/project__acceptance/rec-9f91c834-c5b5-4585-b668-7352942d7739.md))_
+- **side-rail-journal-screen-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R6 _(id: [rec-783c3195-93d2-4203-863b-26c681a0db7f](.artifacts/records/project__acceptance/rec-783c3195-93d2-4203-863b-26c681a0db7f.md))_
+- **side-rail-journal-screen-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R7 _(id: [rec-92004460-e379-480b-8da4-3efc6c2369fa](.artifacts/records/project__acceptance/rec-92004460-e379-480b-8da4-3efc6c2369fa.md))_
+- **side-rail-journal-screen-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-0a5812b1-56a2-446d-96df-a719a84264c7](.artifacts/records/project__acceptance/rec-0a5812b1-56a2-446d-96df-a719a84264c7.md))_
+- **side-rail-journal-screen-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R9 _(id: [rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0](.artifacts/records/project__acceptance/rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0.md))_
+- **verify-side-rail-calm**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts _(id: [rec-a9846788-5dff-47fa-9846-c377b3a877fa](.artifacts/records/project__acceptance/rec-a9846788-5dff-47fa-9846-c377b3a877fa.md))_
+- **verify-side-rail-calm-demo**: R2; manual; dashboard _(id: [rec-01b90989-ee7e-4df1-b446-676d3674695f](.artifacts/records/project__acceptance/rec-01b90989-ee7e-4df1-b446-676d3674695f.md))_
+- **verify-side-rail-calm-overlay**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc](.artifacts/records/project__acceptance/rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc.md))_
+- **verify-side-rail-calm-route**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9bcd444d-4c5f-4668-bd26-f96097527713](.artifacts/records/project__acceptance/rec-9bcd444d-4c5f-4668-bd26-f96097527713.md))_
+- **verify-side-rail-calm-teaser**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2](.artifacts/records/project__acceptance/rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2.md))_
+
+## deep-links
+
+### Phase
+- **deep-links**: Deep links; 34; dashboard _(id: [rec-cbdd05be-a310-47b3-be75-5ac1d2fb6a3a](.artifacts/records/project__phase/rec-cbdd05be-a310-47b3-be75-5ac1d2fb6a3a.md))_
+
+### Work
+- **deep-links-resolve**: Reference resolve helper; deep-links; deliver; dashboard _(id: [rec-966f0550-8372-4227-827a-84c4aecb5634](.artifacts/records/project__work-item/rec-966f0550-8372-4227-827a-84c4aecb5634.md))_
+- **deep-links-wire**: Wire linkify into meta and markdown; deep-links; deliver; dashboard _(id: [rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8](.artifacts/records/project__work-item/rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8.md))_
+- **verify-deep-links**: Verify deep links; deep-links; deliver; dashboard _(id: [rec-750cba61-f182-42ff-9b69-52b3c1c33f8e](.artifacts/records/project__work-item/rec-750cba61-f182-42ff-9b69-52b3c1c33f8e.md))_
+
+### Acceptance
+- **deep-links-resolve**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R4 _(id: [rec-d41c2986-ef5c-480a-971d-18377b39c1ad](.artifacts/records/project__acceptance/rec-d41c2986-ef5c-480a-971d-18377b39c1ad.md))_
+- **deep-links-resolve-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-a3b4511b-eab7-48e1-b9f2-379030867ef0](.artifacts/records/project__acceptance/rec-a3b4511b-eab7-48e1-b9f2-379030867ef0.md))_
+- **deep-links-resolve-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe](.artifacts/records/project__acceptance/rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe.md))_
+- **deep-links-wire**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R1 _(id: [rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a](.artifacts/records/project__acceptance/rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a.md))_
+- **deep-links-wire-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R2 _(id: [rec-1ad98619-b61f-49c3-a0e2-2159185565b7](.artifacts/records/project__acceptance/rec-1ad98619-b61f-49c3-a0e2-2159185565b7.md))_
+- **deep-links-wire-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R3 _(id: [rec-b8ce4135-e40e-4ece-910a-781e5b30e30c](.artifacts/records/project__acceptance/rec-b8ce4135-e40e-4ece-910a-781e5b30e30c.md))_
+- **deep-links-wire-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R5 _(id: [rec-882aa357-a17d-41cc-a762-e75f493ea634](.artifacts/records/project__acceptance/rec-882aa357-a17d-41cc-a762-e75f493ea634.md))_
+- **deep-links-wire-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R6 _(id: [rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d](.artifacts/records/project__acceptance/rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d.md))_
+- **verify-deep-links**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts src/deepLinks.test.ts _(id: [rec-958aa792-491a-4872-ab24-f443c5842736](.artifacts/records/project__acceptance/rec-958aa792-491a-4872-ab24-f443c5842736.md))_
+- **verify-deep-links-demo**: R1; manual; dashboard _(id: [rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746](.artifacts/records/project__acceptance/rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746.md))_
+- **verify-deep-links-labels**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-1e1557cd-967c-47c4-acbe-6bc916c297f2](.artifacts/records/project__acceptance/rec-1e1557cd-967c-47c4-acbe-6bc916c297f2.md))_
+- **verify-deep-links-plain**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-a2b0a193-5ddc-4681-850d-74299b46b1a6](.artifacts/records/project__acceptance/rec-a2b0a193-5ddc-4681-850d-74299b46b1a6.md))_
+
+## phase-overview
+
+### Phase
+- **phase-overview**: Phase overview UI; 35; dashboard _(id: [rec-64f72a2c-484d-442b-9aae-b46de4e13371](.artifacts/records/project__phase/rec-64f72a2c-484d-442b-9aae-b46de4e13371.md))_
+
+## task-graph
+
+### Phase
+- **task-graph**: Task dependency graph; 36; dashboard _(id: [rec-0d0b1acb-0e18-4da8-8697-02e652c7a9c8](.artifacts/records/project__phase/rec-0d0b1acb-0e18-4da8-8697-02e652c7a9c8.md))_
 
 ## 
 

@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:9c1daef694d9fcb5062d9c72ce55a924a50be627b0698f38051fff163b8f2a28
+> Store state: sha256:c8e2c7a67bafd2d6e2f7261f20c0553127c4b0dee3e676533853648d620272cb
 
 ## aa-installable-package
 
@@ -322,7 +322,7 @@
 ## dashboard
 
 ### Position
-- **dashboard**: store-binding done; repo pinned local via store-binding.json; effort _(id: [rec-2956e86d-f425-45d9-9415-1ebec4be7272](.artifacts/records/project__current-position/rec-2956e86d-f425-45d9-9415-1ebec4be7272.md))_
+- **dashboard**: side-rail-calm done; next up: deep-links (web-calm); effort _(id: [rec-6517f13f-3a82-4daa-b88e-96c018fd35fd](.artifacts/records/project__current-position/rec-6517f13f-3a82-4daa-b88e-96c018fd35fd.md))_
 
 ## dashboard-app
 
@@ -427,6 +427,57 @@
 
 ### Constraint
 - **dashboard-ux-plan-before-execute**: Do not execute any of the five dashboard UX phases until all five have been discussed and planned; phase-selector,human-gates,spec-view,evidence-matrix,journal-view; dashboard _(id: [rec-9c441f5e-4313-4d89-9ec2-1d2df485e1ea](.artifacts/records/project__constraint/rec-9c441f5e-4313-4d89-9ec2-1d2df485e1ea.md))_
+
+## deep-links
+
+### Position
+- **deep-links**: Planning deep-links work-items (web-calm); phase _(id: [rec-e9dc2270-4412-4f88-a474-13190fe0ffc0](.artifacts/records/project__current-position/rec-e9dc2270-4412-4f88-a474-13190fe0ffc0.md))_
+
+## deep-links-resolve
+
+### Work
+- **deep-links-resolve**: Reference resolve helper; deep-links; deliver; dashboard _(id: [rec-966f0550-8372-4227-827a-84c4aecb5634](.artifacts/records/project__work-item/rec-966f0550-8372-4227-827a-84c4aecb5634.md))_
+
+### Acceptance
+- **deep-links-resolve**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R4 _(id: [rec-d41c2986-ef5c-480a-971d-18377b39c1ad](.artifacts/records/project__acceptance/rec-d41c2986-ef5c-480a-971d-18377b39c1ad.md))_
+
+## deep-links-resolve-r7
+
+### Acceptance
+- **deep-links-resolve-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-a3b4511b-eab7-48e1-b9f2-379030867ef0](.artifacts/records/project__acceptance/rec-a3b4511b-eab7-48e1-b9f2-379030867ef0.md))_
+
+## deep-links-resolve-r8
+
+### Acceptance
+- **deep-links-resolve-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe](.artifacts/records/project__acceptance/rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe.md))_
+
+## deep-links-wire
+
+### Work
+- **deep-links-wire**: Wire linkify into meta and markdown; deep-links; deliver; dashboard _(id: [rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8](.artifacts/records/project__work-item/rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8.md))_
+
+### Acceptance
+- **deep-links-wire**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R1 _(id: [rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a](.artifacts/records/project__acceptance/rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a.md))_
+
+## deep-links-wire-r2
+
+### Acceptance
+- **deep-links-wire-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R2 _(id: [rec-1ad98619-b61f-49c3-a0e2-2159185565b7](.artifacts/records/project__acceptance/rec-1ad98619-b61f-49c3-a0e2-2159185565b7.md))_
+
+## deep-links-wire-r3
+
+### Acceptance
+- **deep-links-wire-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R3 _(id: [rec-b8ce4135-e40e-4ece-910a-781e5b30e30c](.artifacts/records/project__acceptance/rec-b8ce4135-e40e-4ece-910a-781e5b30e30c.md))_
+
+## deep-links-wire-r5
+
+### Acceptance
+- **deep-links-wire-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R5 _(id: [rec-882aa357-a17d-41cc-a762-e75f493ea634](.artifacts/records/project__acceptance/rec-882aa357-a17d-41cc-a762-e75f493ea634.md))_
+
+## deep-links-wire-r6
+
+### Acceptance
+- **deep-links-wire-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R6 _(id: [rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d](.artifacts/records/project__acceptance/rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d.md))_
 
 ## detail-redraw-race
 
@@ -1035,6 +1086,56 @@
 ### Acceptance
 - **matrix-ui-strip**: R7; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_phase_screen.py tests/test_dashboard_app.py -q -k "strip or glyph" _(id: [rec-2803f0e2-8159-46ac-90b0-d9cec7762a4a](.artifacts/records/project__acceptance/rec-2803f0e2-8159-46ac-90b0-d9cec7762a4a.md))_
 
+## milestone-nav-helpers
+
+### Acceptance
+- **milestone-nav-helpers**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R3 _(id: [rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc](.artifacts/records/project__acceptance/rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc.md))_
+
+## milestone-nav-helpers-r7
+
+### Acceptance
+- **milestone-nav-helpers-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-cec6c732-e285-4853-a8e7-01f94ee49425](.artifacts/records/project__acceptance/rec-cec6c732-e285-4853-a8e7-01f94ee49425.md))_
+
+## milestone-nav-helpers-r8
+
+### Acceptance
+- **milestone-nav-helpers-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R8 _(id: [rec-b2803a64-6aa8-4749-b1ef-44d099372bb4](.artifacts/records/project__acceptance/rec-b2803a64-6aa8-4749-b1ef-44d099372bb4.md))_
+
+## milestone-nav-ui
+
+### Acceptance
+- **milestone-nav-ui**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R1 _(id: [rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab](.artifacts/records/project__acceptance/rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab.md))_
+
+## milestone-nav-ui-r10
+
+### Acceptance
+- **milestone-nav-ui-r10**: R10; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R10 _(id: [rec-863722d6-7ee4-430b-93a9-32919d31fcdc](.artifacts/records/project__acceptance/rec-863722d6-7ee4-430b-93a9-32919d31fcdc.md))_
+
+## milestone-nav-ui-r2
+
+### Acceptance
+- **milestone-nav-ui-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R2 _(id: [rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1](.artifacts/records/project__acceptance/rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1.md))_
+
+## milestone-nav-ui-r4
+
+### Acceptance
+- **milestone-nav-ui-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-ce00f555-db82-4549-a6c8-4598b2274f57](.artifacts/records/project__acceptance/rec-ce00f555-db82-4549-a6c8-4598b2274f57.md))_
+
+## milestone-nav-ui-r5
+
+### Acceptance
+- **milestone-nav-ui-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-cbca727e-806c-4ace-b5f0-19afd144744d](.artifacts/records/project__acceptance/rec-cbca727e-806c-4ace-b5f0-19afd144744d.md))_
+
+## milestone-nav-ui-r6
+
+### Acceptance
+- **milestone-nav-ui-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R6 _(id: [rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341](.artifacts/records/project__acceptance/rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341.md))_
+
+## milestone-nav-ui-r9
+
+### Acceptance
+- **milestone-nav-ui-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R9 _(id: [rec-5f055263-a2ec-4551-9943-004890bb130e](.artifacts/records/project__acceptance/rec-5f055263-a2ec-4551-9943-004890bb130e.md))_
+
 ## model-fixture-reuse
 
 ### Acceptance
@@ -1621,6 +1722,51 @@ print("phase checks only")
 
 ### Acceptance
 - **shared-aa-resolver**: R2; tdd; packaging; uv run --with pytest python -m pytest tests/test_aa_resolve.py -q _(id: [rec-15f765d5-4785-4b60-8e28-1e0c176acff4](.artifacts/records/project__acceptance/rec-15f765d5-4785-4b60-8e28-1e0c176acff4.md))_
+
+## side-rail-home
+
+### Acceptance
+- **side-rail-home**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R1 _(id: [rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631](.artifacts/records/project__acceptance/rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631.md))_
+
+## side-rail-home-r2
+
+### Acceptance
+- **side-rail-home-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R2 _(id: [rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5](.artifacts/records/project__acceptance/rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5.md))_
+
+## side-rail-home-r3
+
+### Acceptance
+- **side-rail-home-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-2bbcde12-f78c-4b03-abbb-0fd59939efed](.artifacts/records/project__acceptance/rec-2bbcde12-f78c-4b03-abbb-0fd59939efed.md))_
+
+## side-rail-home-r4
+
+### Acceptance
+- **side-rail-home-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R4 _(id: [rec-049b56c1-fc81-42c4-944e-7431cd88dc5c](.artifacts/records/project__acceptance/rec-049b56c1-fc81-42c4-944e-7431cd88dc5c.md))_
+
+## side-rail-journal-screen
+
+### Acceptance
+- **side-rail-journal-screen**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9f91c834-c5b5-4585-b668-7352942d7739](.artifacts/records/project__acceptance/rec-9f91c834-c5b5-4585-b668-7352942d7739.md))_
+
+## side-rail-journal-screen-r6
+
+### Acceptance
+- **side-rail-journal-screen-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R6 _(id: [rec-783c3195-93d2-4203-863b-26c681a0db7f](.artifacts/records/project__acceptance/rec-783c3195-93d2-4203-863b-26c681a0db7f.md))_
+
+## side-rail-journal-screen-r7
+
+### Acceptance
+- **side-rail-journal-screen-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R7 _(id: [rec-92004460-e379-480b-8da4-3efc6c2369fa](.artifacts/records/project__acceptance/rec-92004460-e379-480b-8da4-3efc6c2369fa.md))_
+
+## side-rail-journal-screen-r8
+
+### Acceptance
+- **side-rail-journal-screen-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-0a5812b1-56a2-446d-96df-a719a84264c7](.artifacts/records/project__acceptance/rec-0a5812b1-56a2-446d-96df-a719a84264c7.md))_
+
+## side-rail-journal-screen-r9
+
+### Acceptance
+- **side-rail-journal-screen-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R9 _(id: [rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0](.artifacts/records/project__acceptance/rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0.md))_
 
 ## skill-needs-clear
 
@@ -2211,6 +2357,29 @@ print("phase checks only")
 ### Acceptance
 - **verify-dashboard-view-phase-suites**: check; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q && cd ~/se-workflow && python3 -m pytest tests -q _(id: [rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f](.artifacts/records/project__acceptance/rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f.md))_
 
+## verify-deep-links
+
+### Work
+- **verify-deep-links**: Verify deep links; deep-links; deliver; dashboard _(id: [rec-750cba61-f182-42ff-9b69-52b3c1c33f8e](.artifacts/records/project__work-item/rec-750cba61-f182-42ff-9b69-52b3c1c33f8e.md))_
+
+### Acceptance
+- **verify-deep-links**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts src/deepLinks.test.ts _(id: [rec-958aa792-491a-4872-ab24-f443c5842736](.artifacts/records/project__acceptance/rec-958aa792-491a-4872-ab24-f443c5842736.md))_
+
+## verify-deep-links-demo
+
+### Acceptance
+- **verify-deep-links-demo**: R1; manual; dashboard _(id: [rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746](.artifacts/records/project__acceptance/rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746.md))_
+
+## verify-deep-links-labels
+
+### Acceptance
+- **verify-deep-links-labels**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-1e1557cd-967c-47c4-acbe-6bc916c297f2](.artifacts/records/project__acceptance/rec-1e1557cd-967c-47c4-acbe-6bc916c297f2.md))_
+
+## verify-deep-links-plain
+
+### Acceptance
+- **verify-deep-links-plain**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-a2b0a193-5ddc-4681-850d-74299b46b1a6](.artifacts/records/project__acceptance/rec-a2b0a193-5ddc-4681-850d-74299b46b1a6.md))_
+
 ## verify-end-to-end-phase
 
 ### Acceptance
@@ -2415,6 +2584,31 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-layout-phase**: check; dashboard; uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m 'not tmux' && uv run --with textual --with pytest python -m pytest tests -q -m tmux -rf _(id: [rec-5d64f143-cdea-49dc-8cb4-7ca9fb9f2517](.artifacts/records/project__acceptance/rec-5d64f143-cdea-49dc-8cb4-7ca9fb9f2517.md))_
+
+## verify-milestone-nav
+
+### Acceptance
+- **verify-milestone-nav**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts src/milestoneNav.test.ts _(id: [rec-2bc35113-9f94-41d8-966d-6f05da4eb36e](.artifacts/records/project__acceptance/rec-2bc35113-9f94-41d8-966d-6f05da4eb36e.md))_
+
+## verify-milestone-nav-collapse
+
+### Acceptance
+- **verify-milestone-nav-collapse**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2](.artifacts/records/project__acceptance/rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2.md))_
+
+## verify-milestone-nav-demo
+
+### Acceptance
+- **verify-milestone-nav-demo**: R2; manual; dashboard _(id: [rec-d0e08589-06f0-495e-8d77-b6847225d2bc](.artifacts/records/project__acceptance/rec-d0e08589-06f0-495e-8d77-b6847225d2bc.md))_
+
+## verify-milestone-nav-flat
+
+### Acceptance
+- **verify-milestone-nav-flat**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-0b22571b-615f-4ee7-9dcc-9010f606b323](.artifacts/records/project__acceptance/rec-0b22571b-615f-4ee7-9dcc-9010f606b323.md))_
+
+## verify-milestone-nav-scope
+
+### Acceptance
+- **verify-milestone-nav-scope**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c](.artifacts/records/project__acceptance/rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c.md))_
 
 ## verify-navigation-phase
 
@@ -2737,6 +2931,31 @@ print("phase checks only")
 ### Acceptance
 - **verify-run-facts-suite**: R1; check; dashboard; uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m "not tmux" && uv run --with textual --with pytest python -m pytest tests -q -m tmux _(id: [rec-b43db00d-52de-4ffe-ba39-07011280cbbb](.artifacts/records/project__acceptance/rec-b43db00d-52de-4ffe-ba39-07011280cbbb.md))_
 
+## verify-side-rail-calm
+
+### Acceptance
+- **verify-side-rail-calm**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts _(id: [rec-a9846788-5dff-47fa-9846-c377b3a877fa](.artifacts/records/project__acceptance/rec-a9846788-5dff-47fa-9846-c377b3a877fa.md))_
+
+## verify-side-rail-calm-demo
+
+### Acceptance
+- **verify-side-rail-calm-demo**: R2; manual; dashboard _(id: [rec-01b90989-ee7e-4df1-b446-676d3674695f](.artifacts/records/project__acceptance/rec-01b90989-ee7e-4df1-b446-676d3674695f.md))_
+
+## verify-side-rail-calm-overlay
+
+### Acceptance
+- **verify-side-rail-calm-overlay**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc](.artifacts/records/project__acceptance/rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc.md))_
+
+## verify-side-rail-calm-route
+
+### Acceptance
+- **verify-side-rail-calm-route**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9bcd444d-4c5f-4668-bd26-f96097527713](.artifacts/records/project__acceptance/rec-9bcd444d-4c5f-4668-bd26-f96097527713.md))_
+
+## verify-side-rail-calm-teaser
+
+### Acceptance
+- **verify-side-rail-calm-teaser**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2](.artifacts/records/project__acceptance/rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2.md))_
+
 ## verify-spec-view
 
 ### Acceptance
@@ -2953,11 +3172,6 @@ print("phase checks only")
 
 ### Acceptance
 - **watch-command**: tdd; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q _(id: [rec-ec792cef-650b-492a-ac2d-eed325546c19](.artifacts/records/project__acceptance/rec-ec792cef-650b-492a-ac2d-eed325546c19.md))_
-
-## web-dashboard
-
-### Position
-- **web-dashboard**: Tasks are cut for the FastAPI server and the Svelte UI. Plan review is open.; phase _(id: [rec-50cfd97b-c9d9-43ef-a5d6-0ec34af934cf](.artifacts/records/project__current-position/rec-50cfd97b-c9d9-43ef-a5d6-0ec34af934cf.md))_
 
 ## web-launcher
 

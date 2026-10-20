@@ -3,7 +3,7 @@
   "base_kind": "phase",
   "id": "rec-cbdd05be-a310-47b3-be75-5ac1d2fb6a3a",
   "identity": "unknown",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
     "effort": "dashboard",
     "milestone": "web-calm",
@@ -11,9 +11,9 @@
     "title": "Deep links"
   },
   "record_type": "project:phase",
-  "recorded_at": "2026-10-20T03:10:49+00:00",
+  "recorded_at": "2026-10-20T04:43:57+00:00",
   "relationships": {},
-  "revision": "sha256:9aee7c51dbddb9f3503570798b66f1801c01ba6900d121ec347f1af91944b0d2",
+  "revision": "sha256:562edc33c0ee11b81952a09b697ed3407d51c47f3471a9e8b4ac92f9297cefa9",
   "stewardship": {
     "steward": "agent"
   },
@@ -47,3 +47,9 @@ A human opens a detail view that cites another record or task and follows the li
 - worktree: /home/andrewyin/orchestra/.worktrees/deep-links
 - base: main
 - close: commit code on the phase branch; merge that branch into main; commit the store on the primary checkout
+
+## Run
+
+- size: one sitting
+- human stops: approve the plan review before any task starts; open the web dashboard and follow one linkified reference before the phase closes
+- collision: resolve helper and wire both touch markdown/detail surfaces — keep sequential waves (helper then wire then verify)
