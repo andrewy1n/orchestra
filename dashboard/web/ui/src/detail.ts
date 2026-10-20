@@ -139,6 +139,11 @@ export function recordHref(id: string): string {
   return `#/record/${enc(id)}`;
 }
 
+/** Hash href that opens the journal screen for an effort. */
+export function journalHref(effort: string): string {
+  return `#/journal/${enc(effort)}`;
+}
+
 /** Hash href that opens a Needs you overlay. */
 export function needsHref(effort: string, id: string): string {
   return `#/needs/${enc(effort)}/${enc(id)}`;

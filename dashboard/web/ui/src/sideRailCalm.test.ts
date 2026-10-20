@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 /**
- * Calm home side rail (side-rail-home).
+ * Calm home side rail + journal screen (side-rail-calm).
  *
  * R1: home side rail has no individual journal entry rows.
  * R2: Needs you and Backlog remain.
  * R3: repair/evaluate show one journal teaser with open count when known →
  *     navigates to journal screen.
  * R4: deliver/incidental show no teaser.
+ * R5: hash route opens journal screen loading GET /api/journal for effort.
+ * R6: lists open then earlier; each row type + subject/text.
+ * R7: text filter by subject or text.
+ * R8: activating row opens existing record detail overlay.
+ * R9: Esc or back returns to effort home.
  */
 
 import { readFileSync } from "node:fs";
@@ -16,6 +21,9 @@ import { fileURLToPath } from "node:url";
 import { flushSync, mount, unmount, type Component } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { journalHref } from "./detail";
+import { filterJournal, orderedJournal } from "./side";
+import { parseRoute } from "./router";
 import type {
   EffortView,
   JournalResponse,
@@ -113,8 +121,8 @@ async function tryMountApp(): Promise<boolean> {
 
 describe("side-rail-home calm rail", () => {
   it("R1: home side rail has no individual journal entry rows", async () => {
-    expect(appSource).not.toMatch(/data-journal=\{/);
     expect(appSource).not.toContain("data-side-journal>");
+    expect(appSource).not.toMatch(/data-side-journal(?!-)/);
 
     const journal: JournalResponse = {
       open: [
@@ -181,7 +189,7 @@ describe("side-rail-home calm rail", () => {
 
   it("R3: repair/evaluate show one journal teaser with open count when known → navigates to journal screen", async () => {
     expect(appSource).toContain("data-journal-teaser");
-    expect(appSource).toMatch(/#\/journal\//);
+    expect(appSource).toMatch(/journalHref/);
 
     const journal: JournalResponse = {
       open: [
@@ -258,5 +266,225 @@ describe("side-rail-home calm rail", () => {
       expect(document.querySelector("[data-journal-teaser]")).toBeNull();
       expect(document.querySelector("[data-side-journal-teaser]")).toBeNull();
     }
+  });
+});
+
+describe("side-rail-journal-screen", () => {
+  const sampleJournal: JournalResponse = {
+    open: [
+      {
+        id: "j-open",
+        record_type: "project:finding",
+        subject: "open-finding",
+        text: "open body",
+        open: true,
+      },
+    ],
+    rest: [
+      {
+        id: "j-earlier",
+        record_type: "project:failed-attempt",
+        subject: "earlier-attempt",
+        text: "closed body",
+        open: false,
+      },
+    ],
+  };
+
+  it("R5: hash route opens journal screen loading GET /api/journal for effort", async () => {
+    expect(journalHref("alpha")).toBe("#/journal/alpha");
+    expect(parseRoute("#/journal/alpha")).toEqual({
+      name: "journal",
+      parts: ["journal", "alpha"],
+      raw: "journal/alpha",
+    });
+    expect(appSource).toMatch(/journal\?effort=/);
+
+    stubFetch(makeSnapshot([effort({ effort: "alpha", kind: "repair" })]), {
+      alpha: sampleJournal,
+    });
+    window.location.hash = journalHref("alpha");
+    if (!(await tryMountApp())) return;
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    expect(
+      document.querySelector<HTMLElement>("main")?.dataset.route,
+    ).toBe("journal");
+    expect(document.querySelector("[data-journal-screen]")).toBeTruthy();
+
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+    const journalCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("journal?effort="),
+    );
+    expect(journalCalls.length).toBeGreaterThan(0);
+    expect(String(journalCalls[0]![0])).toMatch(/effort=alpha/);
+  });
+
+  it("R6: lists open then earlier; each row type + subject/text", async () => {
+    const ordered = orderedJournal(sampleJournal);
+    expect(ordered.map((r) => r.id)).toEqual(["j-open", "j-earlier"]);
+
+    stubFetch(makeSnapshot([effort({ effort: "alpha", kind: "repair" })]), {
+      alpha: sampleJournal,
+    });
+    window.location.hash = journalHref("alpha");
+    if (!(await tryMountApp())) return;
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    const rows = [
+      ...document.querySelectorAll<HTMLElement>("[data-journal]"),
+    ];
+    expect(rows.map((r) => r.dataset.journal)).toEqual([
+      "j-open",
+      "j-earlier",
+    ]);
+    expect(rows.map((r) => r.dataset.recordType)).toEqual([
+      "project:finding",
+      "project:failed-attempt",
+    ]);
+    expect(rows[0]!.textContent).toMatch(/open-finding|open body/);
+    expect(rows[1]!.textContent).toMatch(/earlier-attempt|closed body/);
+  });
+
+  it("R7: text filter by subject or text", async () => {
+    const bySubject = filterJournal(orderedJournal(sampleJournal), "open-find");
+    expect(bySubject.map((r) => r.id)).toEqual(["j-open"]);
+    const byText = filterJournal(orderedJournal(sampleJournal), "closed body");
+    expect(byText.map((r) => r.id)).toEqual(["j-earlier"]);
+
+    stubFetch(makeSnapshot([effort({ effort: "alpha", kind: "repair" })]), {
+      alpha: sampleJournal,
+    });
+    window.location.hash = journalHref("alpha");
+    if (!(await tryMountApp())) return;
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    const input = document.querySelector<HTMLInputElement>(
+      "[data-journal-filter]",
+    );
+    expect(input).toBeTruthy();
+    input!.value = "earlier";
+    input!.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+
+    const rows = [
+      ...document.querySelectorAll<HTMLElement>("[data-journal]"),
+    ];
+    expect(rows.map((r) => r.dataset.journal)).toEqual(["j-earlier"]);
+  });
+
+  it("R8: activating row opens existing record detail overlay", async () => {
+    expect(appSource).toMatch(/recordHref/);
+
+    const recordPayload = {
+      record: {
+        id: "j-open",
+        record_type: "project:finding",
+        subject: "open-finding",
+        body: "Record from journal row",
+      },
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/token")) {
+          return new Response(JSON.stringify({ token: "tok-1" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.includes("/api/journal")) {
+          return new Response(JSON.stringify(sampleJournal), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.includes("/api/record")) {
+          return new Response(JSON.stringify(recordPayload), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return new Response(
+          JSON.stringify(
+            makeSnapshot([effort({ effort: "alpha", kind: "repair" })]),
+          ),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      }),
+    );
+
+    window.location.hash = journalHref("alpha");
+    if (!(await tryMountApp())) return;
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    const row = document.querySelector<HTMLElement>('[data-journal="j-open"]');
+    expect(row).toBeTruthy();
+    row!.click();
+    flushSync();
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    expect(window.location.hash).toBe("#/record/j-open");
+    expect(document.querySelector('[data-detail="record"]')).toBeTruthy();
+  });
+
+  it("R9: Esc or back returns to effort home", async () => {
+    stubFetch(makeSnapshot([effort({ effort: "alpha", kind: "repair" })]), {
+      alpha: sampleJournal,
+    });
+    window.location.hash = journalHref("alpha");
+    if (!(await tryMountApp())) return;
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+
+    expect(
+      document.querySelector<HTMLElement>("main")?.dataset.route,
+    ).toBe("journal");
+
+    const back = document.querySelector<HTMLButtonElement>(
+      '[data-act="close-journal"]',
+    );
+    expect(back).toBeTruthy();
+    back!.click();
+    flushSync();
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    flushSync();
+
+    expect(window.location.hash).toBe("");
+    expect(
+      document.querySelector<HTMLElement>("main")?.dataset.route,
+    ).toBe("home");
+    expect(document.querySelector("[data-journal-screen]")).toBeNull();
+
+    window.location.hash = journalHref("alpha");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await vi.advanceTimersByTimeAsync(0);
+    flushSync();
+    expect(
+      document.querySelector<HTMLElement>("main")?.dataset.route,
+    ).toBe("journal");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    flushSync();
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    flushSync();
+
+    expect(window.location.hash).toBe("");
+    expect(
+      document.querySelector<HTMLElement>("main")?.dataset.route,
+    ).toBe("home");
   });
 });

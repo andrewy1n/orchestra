@@ -176,6 +176,53 @@ button {
   min-width: 0;
 }
 
+.journal-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 48rem;
+}
+
+.journal-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.journal-bar .back {
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 6px;
+}
+
+.journal-bar .back:hover {
+  color: var(--ink);
+}
+
+.journal-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.journal-screen .field {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--sunken);
+  color: var(--ink);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.journal-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .statusbar {
   border-top: 1px solid var(--line);
   padding: 4px 16px;
