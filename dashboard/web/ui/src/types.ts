@@ -53,6 +53,17 @@ export interface BacklogItem {
   status: string;
 }
 
+/** Milestone row from `dashboard.model.MilestoneRow` on the snapshot. */
+export interface MilestoneRow {
+  subject: string;
+  title: string;
+  ordinal: number;
+  state: string;
+  done: number;
+  total: number;
+  id?: string;
+}
+
 /** One row from GET /api/journal (`open` or `rest`). */
 export interface JournalItem {
   id: string;
@@ -81,7 +92,7 @@ export interface EffortView {
   phases: PhaseRow[];
   tasks: TaskRow[];
   needs_you: NeedsYouItem[];
-  milestones?: unknown[];
+  milestones?: MilestoneRow[];
   backlog?: BacklogItem[];
 }
 
