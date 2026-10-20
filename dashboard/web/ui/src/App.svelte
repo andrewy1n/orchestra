@@ -26,7 +26,7 @@
   import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
   import { buildPhaseChrome } from "./phaseChrome";
-  import { buildWaveGraph } from "./taskGraph";
+  import { buildWaveGraph, layoutWaveGraph } from "./taskGraph";
   import {
     defaultPhase,
     filteredTasks,
@@ -297,34 +297,8 @@
   }
 
   const graphLayout = $derived.by(() => {
-    const graph = phaseTaskGraph;
-    if (!graph?.show) return null;
-    const colW = 140;
-    const rowH = 52;
-    const padX = 24;
-    const padY = 28;
-    const positions = new Map<string, { x: number; y: number }>();
-    let maxIndex = 0;
-    for (const lane of graph.lanes) {
-      for (const node of lane.nodes) {
-        maxIndex = Math.max(maxIndex, node.index);
-        positions.set(node.id, {
-          x: padX + node.lane * colW + colW / 2,
-          y: padY + node.index * rowH + 18,
-        });
-      }
-    }
-    const width = Math.max(padX * 2 + graph.lanes.length * colW, 200);
-    const height = Math.max(padY * 2 + (maxIndex + 1) * rowH, 80);
-    const lines = graph.edges
-      .map((edge) => {
-        const from = positions.get(edge.from);
-        const to = positions.get(edge.to);
-        if (!from || !to) return null;
-        return { ...edge, x1: from.x, y1: from.y, x2: to.x, y2: to.y };
-      })
-      .filter((row): row is NonNullable<typeof row> => row != null);
-    return { width, height, colW, rowH, padX, padY, lines, positions };
+    if (!phaseTaskGraph?.show) return null;
+    return layoutWaveGraph(phaseTaskGraph);
   });
 
   $effect(() => {
@@ -1007,54 +981,79 @@
         {/if}
         {#if phaseTaskGraph?.show && graphLayout}
           <div class="task-graph" data-task-graph>
-            <div class="section-title">Dependencies</div>
-            <div
-              class="task-graph-board"
-              style:width={`${graphLayout.width}px`}
-              style:height={`${graphLayout.height}px`}
-            >
+            <div class="task-graph-head">
+              <span class="section-title">Workflow</span>
+              <div class="task-graph-legend" aria-hidden="true">
+                <span class="legend-item signal-done">done</span>
+                <span class="legend-item signal-run">run</span>
+                <span class="legend-item signal-ready">ready</span>
+                <span class="legend-item signal-wait">wait</span>
+              </div>
+            </div>
+            <div class="task-graph-board">
+              <div
+                class="task-graph-canvas"
+                style:width={`${graphLayout.width}px`}
+                style:height={`${graphLayout.height}px`}
+              >
               <svg
                 class="task-graph-edges"
                 width={graphLayout.width}
                 height={graphLayout.height}
                 aria-hidden="true"
               >
-                {#each graphLayout.lines as line (line.from + "->" + line.to)}
-                  <line
-                    data-graph-edge={`${line.from}->${line.to}`}
-                    x1={line.x1}
-                    y1={line.y1}
-                    x2={line.x2}
-                    y2={line.y2}
+                <defs>
+                  <marker
+                    id="graph-arrow"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 0 L 10 5 L 0 10 z" class="graph-arrow-head" />
+                  </marker>
+                </defs>
+                {#each graphLayout.lanes as lane (lane.wave)}
+                  <text
+                    class="lane-label-svg"
+                    data-graph-lane={lane.wave}
+                    x={lane.x}
+                    y="16"
+                    text-anchor="middle"
+                  >{lane.label}</text>
+                {/each}
+                {#each graphLayout.edges as edge (edge.from + "->" + edge.to)}
+                  <path
+                    data-graph-edge={`${edge.from}->${edge.to}`}
+                    d={edge.d}
                     class="graph-edge"
+                    marker-end="url(#graph-arrow)"
                   />
                 {/each}
               </svg>
-              {#each phaseTaskGraph.lanes as lane (lane.wave)}
-                <div
-                  class="task-graph-lane"
-                  data-graph-lane={lane.wave}
-                  style:left={`${graphLayout.padX + (lane.nodes[0]?.lane ?? 0) * graphLayout.colW}px`}
-                  style:width={`${graphLayout.colW - 16}px`}
+              {#each graphLayout.nodes as node (node.id)}
+                <button
+                  type="button"
+                  class={`graph-node signal-${node.signal}`}
+                  data-graph-node={node.id}
+                  data-status={node.status}
+                  data-signal={node.signal}
+                  style:left={`${node.x}px`}
+                  style:top={`${node.y}px`}
+                  style:width={`${node.w}px`}
+                  style:height={`${node.h}px`}
+                  onclick={() => openGraphTask(node.id)}
                 >
-                  <div class="lane-label">w{lane.wave}</div>
-                  {#each lane.nodes as node (node.id)}
-                    <button
-                      type="button"
-                      class="graph-node"
-                      class:done={node.status === "done"}
-                      class:ready={node.status === "ready"}
-                      class:running={node.status === "running" || node.status === "in_progress"}
-                      data-graph-node={node.id}
-                      data-status={node.status}
-                      style:top={`${graphLayout.padY + node.index * graphLayout.rowH}px`}
-                      onclick={() => openGraphTask(node.id)}
-                    >
-                      {node.label}
-                    </button>
-                  {/each}
-                </div>
+                  <span class="graph-signal" aria-hidden="true"></span>
+                  <span class="graph-node-body">
+                    <span class="graph-node-title">{node.label}</span>
+                    <span class="graph-node-meta">{node.signal}</span>
+                  </span>
+                </button>
               {/each}
+              </div>
             </div>
           </div>
         {/if}

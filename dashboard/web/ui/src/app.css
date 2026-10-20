@@ -940,81 +940,183 @@ a.lrow {
 }
 
 .task-graph {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+}
+
+.task-graph-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.task-graph-head .section-title {
+  margin: 0;
+}
+
+.task-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-item::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.legend-item.signal-done::before {
+  background: var(--done);
+}
+
+.legend-item.signal-run::before {
+  background: var(--warn);
+}
+
+.legend-item.signal-ready::before {
+  background: var(--accent);
+}
+
+.legend-item.signal-wait::before {
+  background: var(--muted);
 }
 
 .task-graph-board {
-  position: relative;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
-  overflow: auto;
-  max-width: 100%;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 65%, transparent) 1px, transparent 0)
+      0 0 / 16px 16px,
+    var(--panel);
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.task-graph-canvas {
+  position: relative;
 }
 
 .task-graph-edges {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  overflow: visible;
+}
+
+.lane-label-svg {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .graph-edge {
-  stroke: var(--line-2, var(--muted));
-  stroke-width: 1.5;
+  fill: none;
+  stroke: color-mix(in srgb, var(--ink) 35%, var(--line));
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
-.task-graph-lane {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-
-.lane-label {
-  position: absolute;
-  top: 6px;
-  left: 0;
-  right: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted);
-  text-align: center;
+.graph-arrow-head {
+  fill: color-mix(in srgb, var(--ink) 45%, var(--line));
 }
 
 .graph-node {
   position: absolute;
-  left: 0;
-  right: 8px;
-  height: 36px;
-  padding: 0 8px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--sunken);
+  border-radius: 8px;
+  background: var(--panel);
   color: var(--ink);
-  font-size: 12px;
-  text-align: left;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent);
   cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.graph-node:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.graph-signal {
+  flex: 0 0 6px;
+  background: var(--muted);
+}
+
+.graph-node.signal-done .graph-signal {
+  background: var(--done);
+}
+
+.graph-node.signal-run .graph-signal {
+  background: var(--warn);
+}
+
+.graph-node.signal-ready .graph-signal {
+  background: var(--accent);
+}
+
+.graph-node.signal-wait .graph-signal,
+.graph-node.signal-plan .graph-signal {
+  background: var(--muted);
+}
+
+.graph-node.signal-done {
+  border-color: color-mix(in srgb, var(--done) 40%, var(--line));
+}
+
+.graph-node.signal-run {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+
+.graph-node.signal-ready {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.graph-node-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 10px;
+}
+
+.graph-node-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.graph-node:hover {
-  border-color: var(--accent);
-}
-
-.graph-node.done {
-  border-color: color-mix(in srgb, var(--done) 45%, var(--line));
-  color: var(--done);
-}
-
-.graph-node.ready {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
-}
-
-.graph-node.running {
-  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+.graph-node-meta {
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .md {

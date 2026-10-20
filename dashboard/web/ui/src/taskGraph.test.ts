@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { flushSync, mount, unmount, type Component } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildWaveGraph } from "./taskGraph";
+import { buildWaveGraph, layoutWaveGraph, statusSignal } from "./taskGraph";
 import type { EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -179,14 +179,17 @@ describe("buildWaveGraph", () => {
     ]);
   });
 
-  it("R2: nodes carry status", () => {
+  it("R2: nodes carry status and signal", () => {
     const graph = buildWaveGraph(threeTasks);
     const alpha = graph.lanes[0]?.nodes[0];
     expect(alpha?.status).toBe("done");
+    expect(alpha?.signal).toBe("done");
     expect(alpha?.label).toBe("Alpha");
+    expect(statusSignal("ready")).toBe("ready");
+    expect(statusSignal("running")).toBe("run");
   });
 
-  it("R3: edges follow depends_on", () => {
+  it("R3: edges follow depends_on and layout draws paths", () => {
     const graph = buildWaveGraph(threeTasks);
     expect(graph.edges).toEqual(
       expect.arrayContaining([
@@ -194,6 +197,10 @@ describe("buildWaveGraph", () => {
         { from: "t-a", to: "t-c" },
       ]),
     );
+    const layout = layoutWaveGraph(graph)!;
+    expect(layout.edges.length).toBeGreaterThanOrEqual(2);
+    expect(layout.edges[0]?.d).toMatch(/^M /);
+    expect(layout.edges[0]?.d).toContain("C ");
   });
 
   it("R6: omit graph when two or fewer tasks", () => {
@@ -218,7 +225,12 @@ describe("task graph UI", () => {
     expect(
       document.querySelector('[data-graph-node="t-a"]')?.getAttribute("data-status"),
     ).toBe("done");
-    expect(document.querySelector('[data-graph-edge="t-a->t-b"]')).toBeTruthy();
+    expect(
+      document.querySelector('[data-graph-node="t-a"]')?.getAttribute("data-signal"),
+    ).toBe("done");
+    const edge = document.querySelector('[data-graph-edge="t-a->t-b"]');
+    expect(edge).toBeTruthy();
+    expect(edge?.getAttribute("d") || "").toMatch(/^M /);
   });
 
   it("R4: activating a node opens the task overlay", async () => {
