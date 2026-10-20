@@ -167,7 +167,7 @@
         ? (route.parts[1] ?? effort?.effort ?? null)
         : target?.kind === "requirement"
           ? (route.parts[1] ?? effort?.effort ?? null)
-          : (effort?.effort ?? selectedEffort || null);
+          : (effort?.effort ?? selectedEffort ?? null);
     const phaseName =
       target?.kind === "phase"
         ? (route.parts[2] ?? phaseSubject)
