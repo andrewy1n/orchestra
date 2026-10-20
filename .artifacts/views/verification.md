@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:30ef5175ac9ebebcdd88d071ab7ac65b185f0031f53931dc8acd0d18ab6d24ce
+> Store state: sha256:5e92a26ced3bb8cc9d7e9b34beed2e10c791c0471f5fb40dc64f2c413c881c5b
 
 ## aa-installable-package
 
@@ -652,6 +652,80 @@
 
 ### Check
 - **dashboard-status-segment**: rec-e7e94ca1-9742-44b2-9fe1-7a014b58ef3d; 79fda7a; pass; tdd _(id: [rec-9b7aa254-a191-4196-a918-8e364893a451](.artifacts/records/project__check-run/rec-9b7aa254-a191-4196-a918-8e364893a451.md))_
+
+## deep-links-resolve
+
+### Acceptance
+- **deep-links-resolve**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R4 _(id: [rec-d41c2986-ef5c-480a-971d-18377b39c1ad](.artifacts/records/project__acceptance/rec-d41c2986-ef5c-480a-971d-18377b39c1ad.md))_
+
+### Check
+- **deep-links-resolve**: rec-d41c2986-ef5c-480a-971d-18377b39c1ad; 3216e017c64e9e851f3a51efe273b26ba7450456; pass; check _(id: [rec-9e27f631-06b0-4612-848f-457c7f2e0611](.artifacts/records/project__check-run/rec-9e27f631-06b0-4612-848f-457c7f2e0611.md))_
+
+## deep-links-resolve-r7
+
+### Acceptance
+- **deep-links-resolve-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-a3b4511b-eab7-48e1-b9f2-379030867ef0](.artifacts/records/project__acceptance/rec-a3b4511b-eab7-48e1-b9f2-379030867ef0.md))_
+
+### Check
+- **deep-links-resolve-r7**: rec-a3b4511b-eab7-48e1-b9f2-379030867ef0; 3216e017c64e9e851f3a51efe273b26ba7450456; pass; check _(id: [rec-9d12908b-fae7-4535-a444-4dfe1cd739ef](.artifacts/records/project__check-run/rec-9d12908b-fae7-4535-a444-4dfe1cd739ef.md))_
+
+## deep-links-resolve-r8
+
+### Acceptance
+- **deep-links-resolve-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe](.artifacts/records/project__acceptance/rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe.md))_
+
+### Check
+- **deep-links-resolve-r8**: rec-28d4e052-e7a4-450a-9bd3-184e7c13b6fe; 3216e017c64e9e851f3a51efe273b26ba7450456; pass; check _(id: [rec-86c42115-690b-4b07-8f6e-2c9346721449](.artifacts/records/project__check-run/rec-86c42115-690b-4b07-8f6e-2c9346721449.md))_
+
+## deep-links-review
+
+### Check
+- **deep-links-review**: 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; review _(id: [rec-b2518fc1-75e3-4270-a9b9-a0f4dbef72b6](.artifacts/records/project__check-run/rec-b2518fc1-75e3-4270-a9b9-a0f4dbef72b6.md))_
+
+## deep-links-wire
+
+### Acceptance
+- **deep-links-wire**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R1 _(id: [rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a](.artifacts/records/project__acceptance/rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a.md))_
+
+### Check
+- **deep-links-wire**: rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-8c93329e-11af-4de0-a823-5525701e49da](.artifacts/records/project__check-run/rec-8c93329e-11af-4de0-a823-5525701e49da.md))_
+- **deep-links-wire**: rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-e8c5dd8a-61a2-425f-a8f0-b988e9d6817d](.artifacts/records/project__check-run/rec-e8c5dd8a-61a2-425f-a8f0-b988e9d6817d.md))_
+
+## deep-links-wire-r2
+
+### Acceptance
+- **deep-links-wire-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R2 _(id: [rec-1ad98619-b61f-49c3-a0e2-2159185565b7](.artifacts/records/project__acceptance/rec-1ad98619-b61f-49c3-a0e2-2159185565b7.md))_
+
+### Check
+- **deep-links-wire-r2**: rec-1ad98619-b61f-49c3-a0e2-2159185565b7; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-10ab4da4-8328-4143-a83a-2c98aa58e50a](.artifacts/records/project__check-run/rec-10ab4da4-8328-4143-a83a-2c98aa58e50a.md))_
+- **deep-links-wire-r2**: rec-1ad98619-b61f-49c3-a0e2-2159185565b7; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-a0c4c5ff-5493-4c9b-b5cb-78a2de13a360](.artifacts/records/project__check-run/rec-a0c4c5ff-5493-4c9b-b5cb-78a2de13a360.md))_
+
+## deep-links-wire-r3
+
+### Acceptance
+- **deep-links-wire-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R3 _(id: [rec-b8ce4135-e40e-4ece-910a-781e5b30e30c](.artifacts/records/project__acceptance/rec-b8ce4135-e40e-4ece-910a-781e5b30e30c.md))_
+
+### Check
+- **deep-links-wire-r3**: rec-b8ce4135-e40e-4ece-910a-781e5b30e30c; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-35005cb7-feee-4b52-ad72-b3411ee6c7d6](.artifacts/records/project__check-run/rec-35005cb7-feee-4b52-ad72-b3411ee6c7d6.md))_
+- **deep-links-wire-r3**: rec-b8ce4135-e40e-4ece-910a-781e5b30e30c; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-f8dfa5a5-dc1a-491e-b9ec-f4f749e43b78](.artifacts/records/project__check-run/rec-f8dfa5a5-dc1a-491e-b9ec-f4f749e43b78.md))_
+
+## deep-links-wire-r5
+
+### Acceptance
+- **deep-links-wire-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R5 _(id: [rec-882aa357-a17d-41cc-a762-e75f493ea634](.artifacts/records/project__acceptance/rec-882aa357-a17d-41cc-a762-e75f493ea634.md))_
+
+### Check
+- **deep-links-wire-r5**: rec-882aa357-a17d-41cc-a762-e75f493ea634; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-0021c87c-c0c3-4fe1-ae7f-cfd27a5ce008](.artifacts/records/project__check-run/rec-0021c87c-c0c3-4fe1-ae7f-cfd27a5ce008.md))_
+- **deep-links-wire-r5**: rec-882aa357-a17d-41cc-a762-e75f493ea634; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-40bc7ebe-fdd2-49c6-b2b8-fa00186ddbaa](.artifacts/records/project__check-run/rec-40bc7ebe-fdd2-49c6-b2b8-fa00186ddbaa.md))_
+
+## deep-links-wire-r6
+
+### Acceptance
+- **deep-links-wire-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R6 _(id: [rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d](.artifacts/records/project__acceptance/rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d.md))_
+
+### Check
+- **deep-links-wire-r6**: rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-7688d828-996f-4ad3-a0ce-7a7c88b59c2b](.artifacts/records/project__check-run/rec-7688d828-996f-4ad3-a0ce-7a7c88b59c2b.md))_
+- **deep-links-wire-r6**: rec-a0481bf1-d92e-4f8c-a6b5-57be57e51c0d; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-9239a964-00d9-44ff-acf0-b8060cd7d316](.artifacts/records/project__check-run/rec-9239a964-00d9-44ff-acf0-b8060cd7d316.md))_
 
 ## detail-redraw-race
 
@@ -1675,6 +1749,91 @@
 ### Check
 - **matrix-ui-strip**: rec-2803f0e2-8159-46ac-90b0-d9cec7762a4a; dirty; pass; tdd _(id: [rec-967f4dc8-c14d-4f0f-b094-fdd4e4ed50d4](.artifacts/records/project__check-run/rec-967f4dc8-c14d-4f0f-b094-fdd4e4ed50d4.md))_
 
+## milestone-nav-helpers
+
+### Acceptance
+- **milestone-nav-helpers**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R3 _(id: [rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc](.artifacts/records/project__acceptance/rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc.md))_
+
+### Check
+- **milestone-nav-helpers**: rec-2e55a392-c6be-4932-bd50-fb2d23b83fbc; 0f572addc9d3ee72a6de5c2f6c9b2007a30a71de; pass; check _(id: [rec-0606ffaf-0eb3-484c-be68-49d062e988e0](.artifacts/records/project__check-run/rec-0606ffaf-0eb3-484c-be68-49d062e988e0.md))_
+
+## milestone-nav-helpers-r7
+
+### Acceptance
+- **milestone-nav-helpers-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-cec6c732-e285-4853-a8e7-01f94ee49425](.artifacts/records/project__acceptance/rec-cec6c732-e285-4853-a8e7-01f94ee49425.md))_
+
+### Check
+- **milestone-nav-helpers-r7**: rec-cec6c732-e285-4853-a8e7-01f94ee49425; 0f572addc9d3ee72a6de5c2f6c9b2007a30a71de; pass; check _(id: [rec-271ce170-b86a-4c6d-9a66-cc7466bc7703](.artifacts/records/project__check-run/rec-271ce170-b86a-4c6d-9a66-cc7466bc7703.md))_
+
+## milestone-nav-helpers-r8
+
+### Acceptance
+- **milestone-nav-helpers-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R8 _(id: [rec-b2803a64-6aa8-4749-b1ef-44d099372bb4](.artifacts/records/project__acceptance/rec-b2803a64-6aa8-4749-b1ef-44d099372bb4.md))_
+
+### Check
+- **milestone-nav-helpers-r8**: rec-b2803a64-6aa8-4749-b1ef-44d099372bb4; 0f572addc9d3ee72a6de5c2f6c9b2007a30a71de; pass; check _(id: [rec-6658f87d-6125-4b29-ac52-c3fb7951f599](.artifacts/records/project__check-run/rec-6658f87d-6125-4b29-ac52-c3fb7951f599.md))_
+
+## milestone-nav-review
+
+### Check
+- **milestone-nav-review**: milestone-nav-review; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; review _(id: [rec-7cfcbe31-b806-4727-a8d1-b59ec7d3a74e](.artifacts/records/project__check-run/rec-7cfcbe31-b806-4727-a8d1-b59ec7d3a74e.md))_
+
+## milestone-nav-ui
+
+### Acceptance
+- **milestone-nav-ui**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R1 _(id: [rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab](.artifacts/records/project__acceptance/rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab.md))_
+
+### Check
+- **milestone-nav-ui**: rec-0ba73bbb-99ad-44ef-8696-3cad46aa6fab; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-e4ac4288-45e8-4fdc-8a30-bd542932cb3e](.artifacts/records/project__check-run/rec-e4ac4288-45e8-4fdc-8a30-bd542932cb3e.md))_
+
+## milestone-nav-ui-r10
+
+### Acceptance
+- **milestone-nav-ui-r10**: R10; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R10 _(id: [rec-863722d6-7ee4-430b-93a9-32919d31fcdc](.artifacts/records/project__acceptance/rec-863722d6-7ee4-430b-93a9-32919d31fcdc.md))_
+
+### Check
+- **milestone-nav-ui-r10**: rec-863722d6-7ee4-430b-93a9-32919d31fcdc; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-40452a65-b742-4637-a0d0-03e64d3775cd](.artifacts/records/project__check-run/rec-40452a65-b742-4637-a0d0-03e64d3775cd.md))_
+
+## milestone-nav-ui-r2
+
+### Acceptance
+- **milestone-nav-ui-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R2 _(id: [rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1](.artifacts/records/project__acceptance/rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1.md))_
+
+### Check
+- **milestone-nav-ui-r2**: rec-85702607-79f3-4c96-b65d-ce0c8c20f1e1; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-df1de636-2e38-418e-ab4e-f8f20de0d9a8](.artifacts/records/project__check-run/rec-df1de636-2e38-418e-ab4e-f8f20de0d9a8.md))_
+
+## milestone-nav-ui-r4
+
+### Acceptance
+- **milestone-nav-ui-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-ce00f555-db82-4549-a6c8-4598b2274f57](.artifacts/records/project__acceptance/rec-ce00f555-db82-4549-a6c8-4598b2274f57.md))_
+
+### Check
+- **milestone-nav-ui-r4**: rec-ce00f555-db82-4549-a6c8-4598b2274f57; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-5e3be4db-8e60-4378-a17e-14d7768d9a11](.artifacts/records/project__check-run/rec-5e3be4db-8e60-4378-a17e-14d7768d9a11.md))_
+
+## milestone-nav-ui-r5
+
+### Acceptance
+- **milestone-nav-ui-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-cbca727e-806c-4ace-b5f0-19afd144744d](.artifacts/records/project__acceptance/rec-cbca727e-806c-4ace-b5f0-19afd144744d.md))_
+
+### Check
+- **milestone-nav-ui-r5**: rec-cbca727e-806c-4ace-b5f0-19afd144744d; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-ac157edf-5a0a-46a4-a333-7827b4efdfc8](.artifacts/records/project__check-run/rec-ac157edf-5a0a-46a4-a333-7827b4efdfc8.md))_
+
+## milestone-nav-ui-r6
+
+### Acceptance
+- **milestone-nav-ui-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R6 _(id: [rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341](.artifacts/records/project__acceptance/rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341.md))_
+
+### Check
+- **milestone-nav-ui-r6**: rec-a9f06f0b-ba41-4c2a-88c0-93d96ded3341; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-9e586465-e2cf-4833-a41a-59ee02eaeb63](.artifacts/records/project__check-run/rec-9e586465-e2cf-4833-a41a-59ee02eaeb63.md))_
+
+## milestone-nav-ui-r9
+
+### Acceptance
+- **milestone-nav-ui-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R9 _(id: [rec-5f055263-a2ec-4551-9943-004890bb130e](.artifacts/records/project__acceptance/rec-5f055263-a2ec-4551-9943-004890bb130e.md))_
+
+### Check
+- **milestone-nav-ui-r9**: rec-5f055263-a2ec-4551-9943-004890bb130e; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-33df45a9-a62c-4e1b-9ed1-8be812c80f13](.artifacts/records/project__check-run/rec-33df45a9-a62c-4e1b-9ed1-8be812c80f13.md))_
+
 ## model-fixture-reuse
 
 ### Acceptance
@@ -1979,6 +2138,83 @@ print("phase checks only")
 
 ### Check
 - **phase-once-render**: rec-65f00d59-aaa4-48e0-8f70-271787545434; dirty; pass; check _(id: [rec-9dda60c8-bb7d-47e0-992b-245575ec5f5a](.artifacts/records/project__check-run/rec-9dda60c8-bb7d-47e0-992b-245575ec5f5a.md))_
+
+## phase-overview-chrome
+
+### Acceptance
+- **phase-overview-chrome**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R1 _(id: [rec-b29164ce-f175-4ba4-82fa-321932c4e7de](.artifacts/records/project__acceptance/rec-b29164ce-f175-4ba4-82fa-321932c4e7de.md))_
+
+### Check
+- **phase-overview-chrome**: rec-b29164ce-f175-4ba4-82fa-321932c4e7de; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-c082ad1e-5484-41db-b3db-3da561e3b088](.artifacts/records/project__check-run/rec-c082ad1e-5484-41db-b3db-3da561e3b088.md))_
+
+## phase-overview-chrome-r2
+
+### Acceptance
+- **phase-overview-chrome-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R2 _(id: [rec-67018e2f-e797-40df-bef6-68cedebd96c0](.artifacts/records/project__acceptance/rec-67018e2f-e797-40df-bef6-68cedebd96c0.md))_
+
+### Check
+- **phase-overview-chrome-r2**: rec-67018e2f-e797-40df-bef6-68cedebd96c0; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-746a9592-0b3b-4a0a-8487-558f3527661c](.artifacts/records/project__check-run/rec-746a9592-0b3b-4a0a-8487-558f3527661c.md))_
+
+## phase-overview-chrome-r3
+
+### Acceptance
+- **phase-overview-chrome-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R3 _(id: [rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f](.artifacts/records/project__acceptance/rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f.md))_
+
+### Check
+- **phase-overview-chrome-r3**: rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-c3fc79d9-e102-48f5-bcac-82c03f2f6ea3](.artifacts/records/project__check-run/rec-c3fc79d9-e102-48f5-bcac-82c03f2f6ea3.md))_
+
+## phase-overview-chrome-r4
+
+### Acceptance
+- **phase-overview-chrome-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R4 _(id: [rec-1da92888-9b5b-44a7-8e29-0970c44cd76e](.artifacts/records/project__acceptance/rec-1da92888-9b5b-44a7-8e29-0970c44cd76e.md))_
+
+### Check
+- **phase-overview-chrome-r4**: rec-1da92888-9b5b-44a7-8e29-0970c44cd76e; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-a8927d2d-e338-441e-9ade-ed9afaf22204](.artifacts/records/project__check-run/rec-a8927d2d-e338-441e-9ade-ed9afaf22204.md))_
+
+## phase-overview-chrome-r5
+
+### Acceptance
+- **phase-overview-chrome-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R5 _(id: [rec-ac498629-cc10-4bae-bdf2-6c070f58a43c](.artifacts/records/project__acceptance/rec-ac498629-cc10-4bae-bdf2-6c070f58a43c.md))_
+
+### Check
+- **phase-overview-chrome-r5**: rec-ac498629-cc10-4bae-bdf2-6c070f58a43c; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-a5741ac8-92ed-4674-8687-4309f93369ae](.artifacts/records/project__check-run/rec-a5741ac8-92ed-4674-8687-4309f93369ae.md))_
+
+## phase-overview-chrome-r6
+
+### Acceptance
+- **phase-overview-chrome-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R6 _(id: [rec-67074614-68ef-49d5-84e1-70780ff98261](.artifacts/records/project__acceptance/rec-67074614-68ef-49d5-84e1-70780ff98261.md))_
+
+### Check
+- **phase-overview-chrome-r6**: rec-67074614-68ef-49d5-84e1-70780ff98261; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-3f511932-7d4e-40e8-b36e-51b173481d88](.artifacts/records/project__check-run/rec-3f511932-7d4e-40e8-b36e-51b173481d88.md))_
+
+## phase-overview-chrome-r8
+
+### Acceptance
+- **phase-overview-chrome-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R8 _(id: [rec-60eb2222-5daf-4fc0-af10-0a301472ca13](.artifacts/records/project__acceptance/rec-60eb2222-5daf-4fc0-af10-0a301472ca13.md))_
+
+### Check
+- **phase-overview-chrome-r8**: rec-60eb2222-5daf-4fc0-af10-0a301472ca13; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-48ac678e-7bba-474e-ab61-11589f5687bd](.artifacts/records/project__check-run/rec-48ac678e-7bba-474e-ab61-11589f5687bd.md))_
+
+## phase-overview-review
+
+### Check
+- **phase-overview-review**: 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; review _(id: [rec-b9224051-8fbf-411a-b5e6-d5a6517c2e4d](.artifacts/records/project__check-run/rec-b9224051-8fbf-411a-b5e6-d5a6517c2e4d.md))_
+
+## phase-overview-tabs
+
+### Acceptance
+- **phase-overview-tabs**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R7 _(id: [rec-9938dfb5-a08e-4b97-9779-fd9766636182](.artifacts/records/project__acceptance/rec-9938dfb5-a08e-4b97-9779-fd9766636182.md))_
+
+### Check
+- **phase-overview-tabs**: rec-9938dfb5-a08e-4b97-9779-fd9766636182; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-74c10b2a-c039-4063-98e7-18a58f550d70](.artifacts/records/project__check-run/rec-74c10b2a-c039-4063-98e7-18a58f550d70.md))_
+
+## phase-overview-tabs-r9
+
+### Acceptance
+- **phase-overview-tabs-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R9 _(id: [rec-3b4e5def-9aaf-4d52-bdf4-f67f33653119](.artifacts/records/project__acceptance/rec-3b4e5def-9aaf-4d52-bdf4-f67f33653119.md))_
+
+### Check
+- **phase-overview-tabs-r9**: rec-3b4e5def-9aaf-4d52-bdf4-f67f33653119; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-f24a7d19-98b7-4980-9dff-63c92715cf2a](.artifacts/records/project__check-run/rec-f24a7d19-98b7-4980-9dff-63c92715cf2a.md))_
 
 ## phase-position-skills
 
@@ -2346,6 +2582,11 @@ print("phase checks only")
 ### Check
 - **retry-engine-contract**: rec-a40b0635-99ac-481f-a4fb-855a830b6fa1; 0077727e7e8d3b25e53d5aa1722b5c8f9ca58577; pass; check _(id: [rec-732dbbeb-f099-4d3a-afe6-cd7f04062180](.artifacts/records/project__check-run/rec-732dbbeb-f099-4d3a-afe6-cd7f04062180.md))_
 
+## retry-web-write-api
+
+### Finding
+- **retry-web-write-api**: R24 oracle asserts predecessor signed_by after correct-based sign; store puts signed_by on correction successor; test_r24_signer fail; direct dismiss_item reproduces; 8/9 other write tests pass at 4fc8cc27; oracle amended and R24 passes, or human withdrawn the claim; none _(id: [rec-39c0935d-669a-4825-a3a1-1450d9e4a1cc](.artifacts/records/project__finding/rec-39c0935d-669a-4825-a3a1-1450d9e4a1cc.md))_
+
 ## review-approval-constraints-spec-gap
 
 ### Finding
@@ -2568,6 +2809,83 @@ print("phase checks only")
 - **shared-aa-resolver**: rec-15f765d5-4785-4b60-8e28-1e0c176acff4; dirty; fail; tdd _(id: [rec-570c80b2-13ad-4e0c-ad09-ddb8e3f82bb7](.artifacts/records/project__check-run/rec-570c80b2-13ad-4e0c-ad09-ddb8e3f82bb7.md))_
 - **shared-aa-resolver**: rec-15f765d5-4785-4b60-8e28-1e0c176acff4; 23c6f922d2a051135dc323f67924f2364b3788db; pass; tdd _(id: [rec-5a71810f-915b-4628-b05b-538d32faa74b](.artifacts/records/project__check-run/rec-5a71810f-915b-4628-b05b-538d32faa74b.md))_
 - **shared-aa-resolver**: rec-15f765d5-4785-4b60-8e28-1e0c176acff4; dirty; fail; tdd _(id: [rec-a9a1ceb3-58a7-4c54-bbf5-c3e778574d60](.artifacts/records/project__check-run/rec-a9a1ceb3-58a7-4c54-bbf5-c3e778574d60.md))_
+
+## side-rail-calm-review
+
+### Check
+- **side-rail-calm-review**: side-rail-calm-review; c747adfaf64276bb807bb99e17174c1d3542a572; pass; review _(id: [rec-4a609646-0600-478a-91da-1c9197bfe476](.artifacts/records/project__check-run/rec-4a609646-0600-478a-91da-1c9197bfe476.md))_
+
+## side-rail-home
+
+### Acceptance
+- **side-rail-home**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R1 _(id: [rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631](.artifacts/records/project__acceptance/rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631.md))_
+
+### Check
+- **side-rail-home**: rec-2cc14bc7-6741-42cd-89ee-7d1ac0428631; 4a95fb2856cf0e88cebd5fc684df29dfb638d742; pass; check _(id: [rec-bd90a161-0f69-445f-aa8b-35bba0e01a56](.artifacts/records/project__check-run/rec-bd90a161-0f69-445f-aa8b-35bba0e01a56.md))_
+
+## side-rail-home-r2
+
+### Acceptance
+- **side-rail-home-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R2 _(id: [rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5](.artifacts/records/project__acceptance/rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5.md))_
+
+### Check
+- **side-rail-home-r2**: rec-33d3807c-6eb6-45f7-b3b8-c3cf757b6da5; 4a95fb2856cf0e88cebd5fc684df29dfb638d742; pass; check _(id: [rec-c11d799e-5290-4fd9-95e2-d7fc55c10e62](.artifacts/records/project__check-run/rec-c11d799e-5290-4fd9-95e2-d7fc55c10e62.md))_
+
+## side-rail-home-r3
+
+### Acceptance
+- **side-rail-home-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-2bbcde12-f78c-4b03-abbb-0fd59939efed](.artifacts/records/project__acceptance/rec-2bbcde12-f78c-4b03-abbb-0fd59939efed.md))_
+
+### Check
+- **side-rail-home-r3**: rec-2bbcde12-f78c-4b03-abbb-0fd59939efed; 4a95fb2856cf0e88cebd5fc684df29dfb638d742; pass; check _(id: [rec-c7cf0887-9f4d-41e9-83af-7d33cad72029](.artifacts/records/project__check-run/rec-c7cf0887-9f4d-41e9-83af-7d33cad72029.md))_
+
+## side-rail-home-r4
+
+### Acceptance
+- **side-rail-home-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R4 _(id: [rec-049b56c1-fc81-42c4-944e-7431cd88dc5c](.artifacts/records/project__acceptance/rec-049b56c1-fc81-42c4-944e-7431cd88dc5c.md))_
+
+### Check
+- **side-rail-home-r4**: rec-049b56c1-fc81-42c4-944e-7431cd88dc5c; 4a95fb2856cf0e88cebd5fc684df29dfb638d742; pass; check _(id: [rec-0bac8c17-e305-49c2-8569-24978e969e9d](.artifacts/records/project__check-run/rec-0bac8c17-e305-49c2-8569-24978e969e9d.md))_
+
+## side-rail-journal-screen
+
+### Acceptance
+- **side-rail-journal-screen**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9f91c834-c5b5-4585-b668-7352942d7739](.artifacts/records/project__acceptance/rec-9f91c834-c5b5-4585-b668-7352942d7739.md))_
+
+### Check
+- **side-rail-journal-screen**: rec-9f91c834-c5b5-4585-b668-7352942d7739; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-cbed4457-5010-48c5-b3b4-5bcd7c0ab5e5](.artifacts/records/project__check-run/rec-cbed4457-5010-48c5-b3b4-5bcd7c0ab5e5.md))_
+
+## side-rail-journal-screen-r6
+
+### Acceptance
+- **side-rail-journal-screen-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R6 _(id: [rec-783c3195-93d2-4203-863b-26c681a0db7f](.artifacts/records/project__acceptance/rec-783c3195-93d2-4203-863b-26c681a0db7f.md))_
+
+### Check
+- **side-rail-journal-screen-r6**: rec-783c3195-93d2-4203-863b-26c681a0db7f; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-5e8cceaa-4d11-4c00-9b85-3f25a19f6290](.artifacts/records/project__check-run/rec-5e8cceaa-4d11-4c00-9b85-3f25a19f6290.md))_
+
+## side-rail-journal-screen-r7
+
+### Acceptance
+- **side-rail-journal-screen-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R7 _(id: [rec-92004460-e379-480b-8da4-3efc6c2369fa](.artifacts/records/project__acceptance/rec-92004460-e379-480b-8da4-3efc6c2369fa.md))_
+
+### Check
+- **side-rail-journal-screen-r7**: rec-92004460-e379-480b-8da4-3efc6c2369fa; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-d2cb1092-04fa-4677-9ebb-e733188e250e](.artifacts/records/project__check-run/rec-d2cb1092-04fa-4677-9ebb-e733188e250e.md))_
+
+## side-rail-journal-screen-r8
+
+### Acceptance
+- **side-rail-journal-screen-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-0a5812b1-56a2-446d-96df-a719a84264c7](.artifacts/records/project__acceptance/rec-0a5812b1-56a2-446d-96df-a719a84264c7.md))_
+
+### Check
+- **side-rail-journal-screen-r8**: rec-0a5812b1-56a2-446d-96df-a719a84264c7; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-53a4cbca-9310-4146-9dba-3e9fc5f81972](.artifacts/records/project__check-run/rec-53a4cbca-9310-4146-9dba-3e9fc5f81972.md))_
+
+## side-rail-journal-screen-r9
+
+### Acceptance
+- **side-rail-journal-screen-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R9 _(id: [rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0](.artifacts/records/project__acceptance/rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0.md))_
+
+### Check
+- **side-rail-journal-screen-r9**: rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-b605ee55-c461-49f4-8a4e-2dfe2270d051](.artifacts/records/project__check-run/rec-b605ee55-c461-49f4-8a4e-2dfe2270d051.md))_
 
 ## skill-needs-clear
 
@@ -2910,6 +3228,67 @@ print("phase checks only")
 
 ### Check
 - **task-detail-screen**: rec-421586f5-5f49-4a47-b715-eeb09ad69b90; e6cf774; pass; tdd _(id: [rec-d4342ee2-0473-4fa8-b8b8-4abc42c914ec](.artifacts/records/project__check-run/rec-d4342ee2-0473-4fa8-b8b8-4abc42c914ec.md))_
+
+## task-graph-depends
+
+### Acceptance
+- **task-graph-depends**: R7; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k depends_on _(id: [rec-cdca8182-c377-49ef-bf7c-393abc9579e7](.artifacts/records/project__acceptance/rec-cdca8182-c377-49ef-bf7c-393abc9579e7.md))_
+
+### Check
+- **task-graph-depends**: rec-cdca8182-c377-49ef-bf7c-393abc9579e7; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-d50bb1ec-05d9-42ac-8ab6-694f258c70fa](.artifacts/records/project__check-run/rec-d50bb1ec-05d9-42ac-8ab6-694f258c70fa.md))_
+
+## task-graph-review
+
+### Check
+- **task-graph-review**: bafc565bce46cca3f85b02a392c10073e42b300d; pass; review _(id: [rec-bbf0f42a-95d1-4b52-a772-dabf5232a686](.artifacts/records/project__check-run/rec-bbf0f42a-95d1-4b52-a772-dabf5232a686.md))_
+
+## task-graph-ui
+
+### Acceptance
+- **task-graph-ui**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R1 _(id: [rec-fb54d44f-9435-4a84-9dde-0579582ca22b](.artifacts/records/project__acceptance/rec-fb54d44f-9435-4a84-9dde-0579582ca22b.md))_
+
+### Check
+- **task-graph-ui**: rec-fb54d44f-9435-4a84-9dde-0579582ca22b; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-08f90ecf-f282-4390-9eb0-a27555852a5f](.artifacts/records/project__check-run/rec-08f90ecf-f282-4390-9eb0-a27555852a5f.md))_
+
+## task-graph-ui-r2
+
+### Acceptance
+- **task-graph-ui-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R2 _(id: [rec-214d99fb-fb17-4658-9466-9fa14eb35fc9](.artifacts/records/project__acceptance/rec-214d99fb-fb17-4658-9466-9fa14eb35fc9.md))_
+
+### Check
+- **task-graph-ui-r2**: rec-214d99fb-fb17-4658-9466-9fa14eb35fc9; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-6476a573-8524-42bf-8905-9926480e409b](.artifacts/records/project__check-run/rec-6476a573-8524-42bf-8905-9926480e409b.md))_
+
+## task-graph-ui-r3
+
+### Acceptance
+- **task-graph-ui-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R3 _(id: [rec-08b7da88-e954-41a8-8e3e-c256b7516b61](.artifacts/records/project__acceptance/rec-08b7da88-e954-41a8-8e3e-c256b7516b61.md))_
+
+### Check
+- **task-graph-ui-r3**: rec-08b7da88-e954-41a8-8e3e-c256b7516b61; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-6378a2c3-4f9a-4869-8130-e93e73608b86](.artifacts/records/project__check-run/rec-6378a2c3-4f9a-4869-8130-e93e73608b86.md))_
+
+## task-graph-ui-r4
+
+### Acceptance
+- **task-graph-ui-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R4 _(id: [rec-a5b90888-5dcf-4c23-b8af-ef0a57e24cf0](.artifacts/records/project__acceptance/rec-a5b90888-5dcf-4c23-b8af-ef0a57e24cf0.md))_
+
+### Check
+- **task-graph-ui-r4**: rec-a5b90888-5dcf-4c23-b8af-ef0a57e24cf0; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-3163641d-7d0f-41b9-a4ac-58d0cb055478](.artifacts/records/project__check-run/rec-3163641d-7d0f-41b9-a4ac-58d0cb055478.md))_
+
+## task-graph-ui-r5
+
+### Acceptance
+- **task-graph-ui-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R5 _(id: [rec-2c906ad1-71c8-4416-8f31-68a6cc327572](.artifacts/records/project__acceptance/rec-2c906ad1-71c8-4416-8f31-68a6cc327572.md))_
+
+### Check
+- **task-graph-ui-r5**: rec-2c906ad1-71c8-4416-8f31-68a6cc327572; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-f7bab6ef-6ff8-4af1-8d52-03d4c18278f4](.artifacts/records/project__check-run/rec-f7bab6ef-6ff8-4af1-8d52-03d4c18278f4.md))_
+
+## task-graph-ui-r6
+
+### Acceptance
+- **task-graph-ui-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R6 _(id: [rec-861d45c6-1169-4ddd-ab16-c7caf5fabdfb](.artifacts/records/project__acceptance/rec-861d45c6-1169-4ddd-ab16-c7caf5fabdfb.md))_
+
+### Check
+- **task-graph-ui-r6**: rec-861d45c6-1169-4ddd-ab16-c7caf5fabdfb; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-58f6084c-08c7-4162-842f-3765fd6e19c5](.artifacts/records/project__check-run/rec-58f6084c-08c7-4162-842f-3765fd6e19c5.md))_
 
 ## task-list-filters
 
@@ -3562,6 +3941,39 @@ print("phase checks only")
 ### Acceptance
 - **verify-dashboard-view-phase-suites**: check; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q && cd ~/se-workflow && python3 -m pytest tests -q _(id: [rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f](.artifacts/records/project__acceptance/rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f.md))_
 
+## verify-deep-links
+
+### Acceptance
+- **verify-deep-links**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts src/deepLinks.test.ts _(id: [rec-958aa792-491a-4872-ab24-f443c5842736](.artifacts/records/project__acceptance/rec-958aa792-491a-4872-ab24-f443c5842736.md))_
+
+### Check
+- **verify-deep-links**: rec-958aa792-491a-4872-ab24-f443c5842736; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-409ebd90-75f2-44e3-a883-2673437c7ee0](.artifacts/records/project__check-run/rec-409ebd90-75f2-44e3-a883-2673437c7ee0.md))_
+- **verify-deep-links**: rec-958aa792-491a-4872-ab24-f443c5842736; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-87412726-0932-4ecc-b7d8-5479b712749b](.artifacts/records/project__check-run/rec-87412726-0932-4ecc-b7d8-5479b712749b.md))_
+
+## verify-deep-links-demo
+
+### Acceptance
+- **verify-deep-links-demo**: R1; manual; dashboard _(id: [rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746](.artifacts/records/project__acceptance/rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746.md))_
+
+### Check
+- **verify-deep-links-demo**: rec-b330e8d6-0aa3-4a11-af82-c9a3927ce746; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; manual; auto-web-calm _(id: [rec-4e78aaa7-0fc1-4455-a9f8-e634d6d2abe0](.artifacts/records/project__check-run/rec-4e78aaa7-0fc1-4455-a9f8-e634d6d2abe0.md))_
+
+## verify-deep-links-labels
+
+### Acceptance
+- **verify-deep-links-labels**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-1e1557cd-967c-47c4-acbe-6bc916c297f2](.artifacts/records/project__acceptance/rec-1e1557cd-967c-47c4-acbe-6bc916c297f2.md))_
+
+### Check
+- **verify-deep-links-labels**: rec-1e1557cd-967c-47c4-acbe-6bc916c297f2; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-67b90c8a-25a8-4cb6-b8a6-7db5ab95fb34](.artifacts/records/project__check-run/rec-67b90c8a-25a8-4cb6-b8a6-7db5ab95fb34.md))_
+
+## verify-deep-links-plain
+
+### Acceptance
+- **verify-deep-links-plain**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R8 _(id: [rec-a2b0a193-5ddc-4681-850d-74299b46b1a6](.artifacts/records/project__acceptance/rec-a2b0a193-5ddc-4681-850d-74299b46b1a6.md))_
+
+### Check
+- **verify-deep-links-plain**: rec-a2b0a193-5ddc-4681-850d-74299b46b1a6; 55ca9dc45d79f715d395b404e894194c3e1bc074; pass; check _(id: [rec-e8a0c1b2-f535-4c9e-bf96-9fd4dc80fbbe](.artifacts/records/project__check-run/rec-e8a0c1b2-f535-4c9e-bf96-9fd4dc80fbbe.md))_
+
 ## verify-end-to-end-phase
 
 ### Acceptance
@@ -3898,6 +4310,46 @@ print("phase checks only")
 ### Check
 - **verify-layout-phase**: rec-5d64f143-cdea-49dc-8cb4-7ca9fb9f2517; d9e3eebae5096d3bfd0852e9a910fe4e8df9a725; pass; check _(id: [rec-b2b9ebb8-5411-4a63-93c3-1028295a1ce7](.artifacts/records/project__check-run/rec-b2b9ebb8-5411-4a63-93c3-1028295a1ce7.md))_
 
+## verify-milestone-nav
+
+### Acceptance
+- **verify-milestone-nav**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts src/milestoneNav.test.ts _(id: [rec-2bc35113-9f94-41d8-966d-6f05da4eb36e](.artifacts/records/project__acceptance/rec-2bc35113-9f94-41d8-966d-6f05da4eb36e.md))_
+
+### Check
+- **verify-milestone-nav**: rec-2bc35113-9f94-41d8-966d-6f05da4eb36e; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-f80519b7-1cc1-4709-aec3-044292f40f97](.artifacts/records/project__check-run/rec-f80519b7-1cc1-4709-aec3-044292f40f97.md))_
+
+## verify-milestone-nav-collapse
+
+### Acceptance
+- **verify-milestone-nav-collapse**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestones.test.ts -t R7 _(id: [rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2](.artifacts/records/project__acceptance/rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2.md))_
+
+### Check
+- **verify-milestone-nav-collapse**: rec-9a9e8ab6-940c-47e3-8f7d-0794f661b0a2; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-f55a0fc1-ba87-44b9-b58c-5ee939c95031](.artifacts/records/project__check-run/rec-f55a0fc1-ba87-44b9-b58c-5ee939c95031.md))_
+
+## verify-milestone-nav-demo
+
+### Acceptance
+- **verify-milestone-nav-demo**: R2; manual; dashboard _(id: [rec-d0e08589-06f0-495e-8d77-b6847225d2bc](.artifacts/records/project__acceptance/rec-d0e08589-06f0-495e-8d77-b6847225d2bc.md))_
+
+### Check
+- **verify-milestone-nav-demo**: rec-d0e08589-06f0-495e-8d77-b6847225d2bc; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; manual; agent _(id: [rec-d7150eac-733e-41da-834b-a50be2711e0f](.artifacts/records/project__check-run/rec-d7150eac-733e-41da-834b-a50be2711e0f.md))_
+
+## verify-milestone-nav-flat
+
+### Acceptance
+- **verify-milestone-nav-flat**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R4 _(id: [rec-0b22571b-615f-4ee7-9dcc-9010f606b323](.artifacts/records/project__acceptance/rec-0b22571b-615f-4ee7-9dcc-9010f606b323.md))_
+
+### Check
+- **verify-milestone-nav-flat**: rec-0b22571b-615f-4ee7-9dcc-9010f606b323; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-9a5ab22d-02a6-484a-8f72-903620a5dfc0](.artifacts/records/project__check-run/rec-9a5ab22d-02a6-484a-8f72-903620a5dfc0.md))_
+
+## verify-milestone-nav-scope
+
+### Acceptance
+- **verify-milestone-nav-scope**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/milestoneNav.test.ts -t R5 _(id: [rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c](.artifacts/records/project__acceptance/rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c.md))_
+
+### Check
+- **verify-milestone-nav-scope**: rec-97b373dc-cd68-47cd-9c1a-95c221f28a7c; d374a278d97ad9418d03fa09ae76bee9ec64c95a; pass; check _(id: [rec-d7ed7814-c7f2-4606-9220-e14d56040444](.artifacts/records/project__check-run/rec-d7ed7814-c7f2-4606-9220-e14d56040444.md))_
+
 ## verify-navigation-phase
 
 ### Acceptance
@@ -4030,6 +4482,38 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-phase-landing-plan**: tdd; workflow-loop; python3 -m pytest tests/test_plan_landing.py -q _(id: [rec-58522d3a-4f28-4cd8-bcf8-4f8ab951dd54](.artifacts/records/project__acceptance/rec-58522d3a-4f28-4cd8-bcf8-4f8ab951dd54.md))_
+
+## verify-phase-overview
+
+### Acceptance
+- **verify-phase-overview**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts _(id: [rec-39f2269c-55c0-45e5-83d0-b799213be189](.artifacts/records/project__acceptance/rec-39f2269c-55c0-45e5-83d0-b799213be189.md))_
+
+### Check
+- **verify-phase-overview**: rec-39f2269c-55c0-45e5-83d0-b799213be189; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-938ffdcc-ca3f-4732-bd16-39a0242b0891](.artifacts/records/project__check-run/rec-938ffdcc-ca3f-4732-bd16-39a0242b0891.md))_
+
+## verify-phase-overview-demo
+
+### Acceptance
+- **verify-phase-overview-demo**: R7; manual; dashboard _(id: [rec-be401439-0cbf-4a09-8b24-9954747001ac](.artifacts/records/project__acceptance/rec-be401439-0cbf-4a09-8b24-9954747001ac.md))_
+
+### Check
+- **verify-phase-overview-demo**: 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; manual; auto-web-calm _(id: [rec-561a3e29-1d9a-4289-85e7-3ba73d12a1bf](.artifacts/records/project__check-run/rec-561a3e29-1d9a-4289-85e7-3ba73d12a1bf.md))_
+
+## verify-phase-overview-nav
+
+### Acceptance
+- **verify-phase-overview-nav**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R5 _(id: [rec-223e3c0d-95ea-4880-a5f9-9bd4978afbd3](.artifacts/records/project__acceptance/rec-223e3c0d-95ea-4880-a5f9-9bd4978afbd3.md))_
+
+### Check
+- **verify-phase-overview-nav**: rec-223e3c0d-95ea-4880-a5f9-9bd4978afbd3; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-54724cb0-0a88-4f2d-b357-fd777a30e40b](.artifacts/records/project__check-run/rec-54724cb0-0a88-4f2d-b357-fd777a30e40b.md))_
+
+## verify-phase-overview-tabs
+
+### Acceptance
+- **verify-phase-overview-tabs**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R7 _(id: [rec-2215dfd0-ba68-4253-ac8b-fd214c0bfd01](.artifacts/records/project__acceptance/rec-2215dfd0-ba68-4253-ac8b-fd214c0bfd01.md))_
+
+### Check
+- **verify-phase-overview-tabs**: rec-2215dfd0-ba68-4253-ac8b-fd214c0bfd01; 42d8187d49206aeb1ee9de8cae589935123d6e0b; pass; check _(id: [rec-ee419342-994a-446c-b600-bdb262d94052](.artifacts/records/project__check-run/rec-ee419342-994a-446c-b600-bdb262d94052.md))_
 
 ## verify-phase-proof-packet
 
@@ -4418,6 +4902,46 @@ print("phase checks only")
 - **verify-run-facts-suite**: rec-b43db00d-52de-4ffe-ba39-07011280cbbb; dirty; fail; check _(id: [rec-389edfb5-bb7e-4fff-9659-263ef95dcf07](.artifacts/records/project__check-run/rec-389edfb5-bb7e-4fff-9659-263ef95dcf07.md))_
 - **verify-run-facts-suite**: rec-b43db00d-52de-4ffe-ba39-07011280cbbb; dirty; pass; check _(id: [rec-39c113c6-6e92-4900-bc66-5b3abb6be177](.artifacts/records/project__check-run/rec-39c113c6-6e92-4900-bc66-5b3abb6be177.md))_
 
+## verify-side-rail-calm
+
+### Acceptance
+- **verify-side-rail-calm**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts _(id: [rec-a9846788-5dff-47fa-9846-c377b3a877fa](.artifacts/records/project__acceptance/rec-a9846788-5dff-47fa-9846-c377b3a877fa.md))_
+
+### Check
+- **verify-side-rail-calm**: rec-a9846788-5dff-47fa-9846-c377b3a877fa; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-5379216c-6283-4d16-86e8-b286ae40c83a](.artifacts/records/project__check-run/rec-5379216c-6283-4d16-86e8-b286ae40c83a.md))_
+
+## verify-side-rail-calm-demo
+
+### Acceptance
+- **verify-side-rail-calm-demo**: R2; manual; dashboard _(id: [rec-01b90989-ee7e-4df1-b446-676d3674695f](.artifacts/records/project__acceptance/rec-01b90989-ee7e-4df1-b446-676d3674695f.md))_
+
+### Check
+- **verify-side-rail-calm-demo**: rec-01b90989-ee7e-4df1-b446-676d3674695f; c747adfaf64276bb807bb99e17174c1d3542a572; pass; manual; agent _(id: [rec-f996d945-2488-4e2e-93f6-7ac93a873ebe](.artifacts/records/project__check-run/rec-f996d945-2488-4e2e-93f6-7ac93a873ebe.md))_
+
+## verify-side-rail-calm-overlay
+
+### Acceptance
+- **verify-side-rail-calm-overlay**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R8 _(id: [rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc](.artifacts/records/project__acceptance/rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc.md))_
+
+### Check
+- **verify-side-rail-calm-overlay**: rec-bae7396a-0f2c-42db-a6bf-dbd6893863fc; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-346ae04f-9c9d-45dc-b1cd-999340d699f0](.artifacts/records/project__check-run/rec-346ae04f-9c9d-45dc-b1cd-999340d699f0.md))_
+
+## verify-side-rail-calm-route
+
+### Acceptance
+- **verify-side-rail-calm-route**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R5 _(id: [rec-9bcd444d-4c5f-4668-bd26-f96097527713](.artifacts/records/project__acceptance/rec-9bcd444d-4c5f-4668-bd26-f96097527713.md))_
+
+### Check
+- **verify-side-rail-calm-route**: rec-9bcd444d-4c5f-4668-bd26-f96097527713; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-39f022b1-7bc5-4bfc-8177-3db31cc2dad5](.artifacts/records/project__check-run/rec-39f022b1-7bc5-4bfc-8177-3db31cc2dad5.md))_
+
+## verify-side-rail-calm-teaser
+
+### Acceptance
+- **verify-side-rail-calm-teaser**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3 _(id: [rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2](.artifacts/records/project__acceptance/rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2.md))_
+
+### Check
+- **verify-side-rail-calm-teaser**: rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2; c747adfaf64276bb807bb99e17174c1d3542a572; pass; check _(id: [rec-49be90d1-5177-41bc-a847-d8aa46d81189](.artifacts/records/project__check-run/rec-49be90d1-5177-41bc-a847-d8aa46d81189.md))_
+
 ## verify-spec-view
 
 ### Acceptance
@@ -4476,6 +5000,38 @@ print("phase checks only")
 
 ### Check
 - **verify-task-details-phase-signoff**: rec-11643a9d-4693-4761-b94a-ba3a6be27ad6; 03d561c; pass; manual; ayin _(id: [rec-3049cecc-9049-4792-b1d6-8d607534885f](.artifacts/records/project__check-run/rec-3049cecc-9049-4792-b1d6-8d607534885f.md))_
+
+## verify-task-graph
+
+### Acceptance
+- **verify-task-graph**: R1; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k depends_on && npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts _(id: [rec-ec5f4fea-f3c7-4318-a7b9-3d4f121f3d48](.artifacts/records/project__acceptance/rec-ec5f4fea-f3c7-4318-a7b9-3d4f121f3d48.md))_
+
+### Check
+- **verify-task-graph**: rec-ec5f4fea-f3c7-4318-a7b9-3d4f121f3d48; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-7064a0e7-7d08-417b-a44c-4cd8f5e8d1ed](.artifacts/records/project__check-run/rec-7064a0e7-7d08-417b-a44c-4cd8f5e8d1ed.md))_
+
+## verify-task-graph-demo
+
+### Acceptance
+- **verify-task-graph-demo**: R1; manual; dashboard _(id: [rec-377f96ac-6702-495f-88f4-6e17a3557cc7](.artifacts/records/project__acceptance/rec-377f96ac-6702-495f-88f4-6e17a3557cc7.md))_
+
+### Check
+- **verify-task-graph-demo**: rec-377f96ac-6702-495f-88f4-6e17a3557cc7; bafc565bce46cca3f85b02a392c10073e42b300d; pass; manual; auto-web-calm _(id: [rec-6e8deae4-9e71-4a22-a3b3-a9cd25683df9](.artifacts/records/project__check-run/rec-6e8deae4-9e71-4a22-a3b3-a9cd25683df9.md))_
+
+## verify-task-graph-nav
+
+### Acceptance
+- **verify-task-graph-nav**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R4 _(id: [rec-a87f3f4e-894c-403c-a566-334b61819b69](.artifacts/records/project__acceptance/rec-a87f3f4e-894c-403c-a566-334b61819b69.md))_
+
+### Check
+- **verify-task-graph-nav**: rec-a87f3f4e-894c-403c-a566-334b61819b69; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-cd327540-7571-4e55-9c6f-fc7b786eabfb](.artifacts/records/project__check-run/rec-cd327540-7571-4e55-9c6f-fc7b786eabfb.md))_
+
+## verify-task-graph-skip
+
+### Acceptance
+- **verify-task-graph-skip**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R6 _(id: [rec-f107d90f-d6c7-4057-8d27-d2fb1d9160ee](.artifacts/records/project__acceptance/rec-f107d90f-d6c7-4057-8d27-d2fb1d9160ee.md))_
+
+### Check
+- **verify-task-graph-skip**: rec-f107d90f-d6c7-4057-8d27-d2fb1d9160ee; bafc565bce46cca3f85b02a392c10073e42b300d; pass; check _(id: [rec-d2cae125-bc2a-4bcf-bca2-b85c5a09dc4d](.artifacts/records/project__check-run/rec-d2cae125-bc2a-4bcf-bca2-b85c5a09dc4d.md))_
 
 ## verify-task-navigation-phase
 
@@ -4710,20 +5266,59 @@ print("phase checks only")
 ### Acceptance
 - **verify-web-dashboard**: R1; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r1_loopback -q _(id: [rec-a0a942d1-9498-4c85-be22-ed91224e3c51](.artifacts/records/project__acceptance/rec-a0a942d1-9498-4c85-be22-ed91224e3c51.md))_
 
+### Check
+- **verify-web-dashboard**: rec-a0a942d1-9498-4c85-be22-ed91224e3c51; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-41ab3a72-19f6-4cec-b5ef-fe2131eb90ce](.artifacts/records/project__check-run/rec-41ab3a72-19f6-4cec-b5ef-fe2131eb90ce.md))_
+
 ## verify-web-dashboard-api
 
 ### Acceptance
 - **verify-web-dashboard-api**: R21; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py -q -k 'snapshot or token or approve or reject or sign or signer or accept_note or refused or backlog or stale' _(id: [rec-9a2e2a15-7ba6-4893-a2ae-9b818d4d101b](.artifacts/records/project__acceptance/rec-9a2e2a15-7ba6-4893-a2ae-9b818d4d101b.md))_
+
+### Check
+- **verify-web-dashboard-api**: rec-9a2e2a15-7ba6-4893-a2ae-9b818d4d101b; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-eaba4d94-0aa4-48bc-8eb9-2640554ca545](.artifacts/records/project__check-run/rec-eaba4d94-0aa4-48bc-8eb9-2640554ca545.md))_
 
 ## verify-web-dashboard-build
 
 ### Acceptance
 - **verify-web-dashboard-build**: R30; check; dashboard; npm --prefix dashboard/web/ui run build && uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r30_serves_build -q _(id: [rec-a7887505-0f2e-4300-8417-e14f31924643](.artifacts/records/project__acceptance/rec-a7887505-0f2e-4300-8417-e14f31924643.md))_
 
+### Check
+- **verify-web-dashboard-build**: rec-a7887505-0f2e-4300-8417-e14f31924643; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-20077269-1d71-4f0a-9d52-fe8875d863b0](.artifacts/records/project__check-run/rec-20077269-1d71-4f0a-9d52-fe8875d863b0.md))_
+
 ## verify-web-dashboard-store
 
 ### Acceptance
 - **verify-web-dashboard-store**: R2; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r2_same_store -q _(id: [rec-45a69ce8-9954-4521-a332-3b7b311543ee](.artifacts/records/project__acceptance/rec-45a69ce8-9954-4521-a332-3b7b311543ee.md))_
+
+### Check
+- **verify-web-dashboard-store**: rec-45a69ce8-9954-4521-a332-3b7b311543ee; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-855aa55c-0c55-4113-a3b4-6da6ae6d1c21](.artifacts/records/project__check-run/rec-855aa55c-0c55-4113-a3b4-6da6ae6d1c21.md))_
+
+## verify-web-write-body
+
+### Acceptance
+- **verify-web-write-body**: R1; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r1_backlog_dismiss -q _(id: [rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315](.artifacts/records/project__acceptance/rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315.md))_
+
+### Check
+- **verify-web-write-body**: rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-00880b27-7a79-4325-80bb-de4bcac133fc](.artifacts/records/project__check-run/rec-00880b27-7a79-4325-80bb-de4bcac133fc.md))_
+- **verify-web-write-body**: rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315; dirty; fail; tdd _(id: [rec-aa27cfe4-91f6-4a9f-a659-5fbcf9dbeb4d](.artifacts/records/project__check-run/rec-aa27cfe4-91f6-4a9f-a659-5fbcf9dbeb4d.md))_
+
+## verify-web-write-body-needs
+
+### Acceptance
+- **verify-web-write-body-needs**: R2; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r2_needs_clear -q _(id: [rec-307e2b98-1902-4327-845a-b03beb6b8b86](.artifacts/records/project__acceptance/rec-307e2b98-1902-4327-845a-b03beb6b8b86.md))_
+
+### Check
+- **verify-web-write-body-needs**: rec-307e2b98-1902-4327-845a-b03beb6b8b86; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-87179b7d-fa4b-445e-ac04-097927e47781](.artifacts/records/project__check-run/rec-87179b7d-fa4b-445e-ac04-097927e47781.md))_
+- **verify-web-write-body-needs**: rec-307e2b98-1902-4327-845a-b03beb6b8b86; dirty; fail; tdd _(id: [rec-d7ffc4ee-62f4-41a6-88f5-4c6d54ef8418](.artifacts/records/project__check-run/rec-d7ffc4ee-62f4-41a6-88f5-4c6d54ef8418.md))_
+
+## verify-web-write-body-openapi
+
+### Acceptance
+- **verify-web-write-body-openapi**: R3; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r3_openapi -q _(id: [rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967](.artifacts/records/project__acceptance/rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967.md))_
+
+### Check
+- **verify-web-write-body-openapi**: rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-549ef08f-89b3-421f-9ad2-8981e6d4c1ed](.artifacts/records/project__check-run/rec-549ef08f-89b3-421f-9ad2-8981e6d4c1ed.md))_
+- **verify-web-write-body-openapi**: rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967; dirty; fail; tdd _(id: [rec-cc6e02f8-c3ae-4f98-a745-b40135a8c87a](.artifacts/records/project__check-run/rec-cc6e02f8-c3ae-4f98-a745-b40135a8c87a.md))_
 
 ## watch-command
 
@@ -4733,13 +5328,20 @@ print("phase checks only")
 ### Check
 - **watch-command**: rec-ec792cef-650b-492a-ac2d-eed325546c19; 846188f; pass; tdd _(id: [rec-f370db55-4f74-4981-bfae-1d39e925d6ff](.artifacts/records/project__check-run/rec-f370db55-4f74-4981-bfae-1d39e925d6ff.md))_
 
+## web-dashboard-review
+
+### Check
+- **web-dashboard-review**: web-dashboard-review; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; review _(id: [rec-21c8124b-5084-4114-98d6-28382bef610e](.artifacts/records/project__check-run/rec-21c8124b-5084-4114-98d6-28382bef610e.md))_
+
 ## web-launcher
 
 ### Acceptance
 - **web-launcher**: R1; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r1_loopback -q _(id: [rec-7a86817f-5f89-4984-895a-d94f86fa0cff](.artifacts/records/project__acceptance/rec-7a86817f-5f89-4984-895a-d94f86fa0cff.md))_
 
 ### Check
+- **web-launcher**: rec-7a86817f-5f89-4984-895a-d94f86fa0cff; a5bb973439b75ea27af3feb25e5885781618108b; pass; tdd _(id: [rec-63fa6553-d1c1-4e28-a42d-71af67297629](.artifacts/records/project__check-run/rec-63fa6553-d1c1-4e28-a42d-71af67297629.md))_
 - **web-launcher**: rec-7a86817f-5f89-4984-895a-d94f86fa0cff; dirty; fail; tdd _(id: [rec-d324acbc-a03e-4ab0-a084-d6c37bfd3ac2](.artifacts/records/project__check-run/rec-d324acbc-a03e-4ab0-a084-d6c37bfd3ac2.md))_
+- **web-launcher**: rec-7a86817f-5f89-4984-895a-d94f86fa0cff; dirty; fail; tdd _(id: [rec-d9312cd8-147d-4c79-98ea-61879ed1ae5c](.artifacts/records/project__check-run/rec-d9312cd8-147d-4c79-98ea-61879ed1ae5c.md))_
 
 ## web-launcher-r2
 
@@ -4747,6 +5349,8 @@ print("phase checks only")
 - **web-launcher-r2**: R2; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r2_same_store -q _(id: [rec-c07ba87d-fac0-453e-9d85-5633e2d11198](.artifacts/records/project__acceptance/rec-c07ba87d-fac0-453e-9d85-5633e2d11198.md))_
 
 ### Check
+- **web-launcher-r2**: rec-c07ba87d-fac0-453e-9d85-5633e2d11198; a5bb973439b75ea27af3feb25e5885781618108b; pass; tdd _(id: [rec-2a42741b-8f21-41ee-a12a-c0970ac0c2e9](.artifacts/records/project__check-run/rec-2a42741b-8f21-41ee-a12a-c0970ac0c2e9.md))_
+- **web-launcher-r2**: rec-c07ba87d-fac0-453e-9d85-5633e2d11198; dirty; fail; tdd _(id: [rec-34615448-e651-4ea1-a407-a36fdf7e5a51](.artifacts/records/project__check-run/rec-34615448-e651-4ea1-a407-a36fdf7e5a51.md))_
 - **web-launcher-r2**: rec-c07ba87d-fac0-453e-9d85-5633e2d11198; dirty; fail; tdd _(id: [rec-9d9503cb-dae7-4cbc-9349-c9ac5b5efae6](.artifacts/records/project__check-run/rec-9d9503cb-dae7-4cbc-9349-c9ac5b5efae6.md))_
 
 ## web-launcher-r30
@@ -4755,6 +5359,8 @@ print("phase checks only")
 - **web-launcher-r30**: R30; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard_launch.py::test_r30_serves_build -q _(id: [rec-4330f7e7-99ff-4cc6-be02-27c78971fba1](.artifacts/records/project__acceptance/rec-4330f7e7-99ff-4cc6-be02-27c78971fba1.md))_
 
 ### Check
+- **web-launcher-r30**: rec-4330f7e7-99ff-4cc6-be02-27c78971fba1; dirty; fail; tdd _(id: [rec-aa3a32d6-53bb-4c3f-b1c7-ce3293d77840](.artifacts/records/project__check-run/rec-aa3a32d6-53bb-4c3f-b1c7-ce3293d77840.md))_
+- **web-launcher-r30**: rec-4330f7e7-99ff-4cc6-be02-27c78971fba1; a5bb973439b75ea27af3feb25e5885781618108b; pass; tdd _(id: [rec-b568f9e3-06c7-4276-8d72-21d36bd2c9fd](.artifacts/records/project__check-run/rec-b568f9e3-06c7-4276-8d72-21d36bd2c9fd.md))_
 - **web-launcher-r30**: rec-4330f7e7-99ff-4cc6-be02-27c78971fba1; dirty; fail; tdd _(id: [rec-b6cd8012-a7ae-42ac-a3cb-aabff33a7847](.artifacts/records/project__check-run/rec-b6cd8012-a7ae-42ac-a3cb-aabff33a7847.md))_
 
 ## web-read-api
@@ -4764,6 +5370,8 @@ print("phase checks only")
 
 ### Check
 - **web-read-api**: rec-39750da5-4bed-4a37-b46b-012d58a8be55; dirty; fail; tdd _(id: [rec-3d32e09d-f05b-4f5f-aedf-749d9ae1be97](.artifacts/records/project__check-run/rec-3d32e09d-f05b-4f5f-aedf-749d9ae1be97.md))_
+- **web-read-api**: rec-39750da5-4bed-4a37-b46b-012d58a8be55; dirty; fail; tdd _(id: [rec-4688c1f4-7368-472b-b561-76f2f3703cb6](.artifacts/records/project__check-run/rec-4688c1f4-7368-472b-b561-76f2f3703cb6.md))_
+- **web-read-api**: rec-39750da5-4bed-4a37-b46b-012d58a8be55; 16c78c65bb32bc35e06543a002726cea3b7bcaa3; pass; tdd _(id: [rec-f31243e8-9d14-4275-82a9-133b8ca5c67e](.artifacts/records/project__check-run/rec-f31243e8-9d14-4275-82a9-133b8ca5c67e.md))_
 
 ## web-read-api-r4
 
@@ -4771,6 +5379,8 @@ print("phase checks only")
 - **web-read-api-r4**: R4; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r4_token -q _(id: [rec-ceb6e37a-647b-44c6-a74b-a4662a589b8d](.artifacts/records/project__acceptance/rec-ceb6e37a-647b-44c6-a74b-a4662a589b8d.md))_
 
 ### Check
+- **web-read-api-r4**: rec-ceb6e37a-647b-44c6-a74b-a4662a589b8d; 16c78c65bb32bc35e06543a002726cea3b7bcaa3; pass; tdd _(id: [rec-2f486e0e-8c7e-4632-b41a-de9d205379d8](.artifacts/records/project__check-run/rec-2f486e0e-8c7e-4632-b41a-de9d205379d8.md))_
+- **web-read-api-r4**: rec-ceb6e37a-647b-44c6-a74b-a4662a589b8d; dirty; fail; tdd _(id: [rec-90528fb4-566f-4579-8b82-1354e15c907d](.artifacts/records/project__check-run/rec-90528fb4-566f-4579-8b82-1354e15c907d.md))_
 - **web-read-api-r4**: rec-ceb6e37a-647b-44c6-a74b-a4662a589b8d; dirty; fail; tdd _(id: [rec-dc9980d9-b3c3-4c87-9577-3e6533af3677](.artifacts/records/project__check-run/rec-dc9980d9-b3c3-4c87-9577-3e6533af3677.md))_
 
 ## web-ui-actions
@@ -4778,110 +5388,212 @@ print("phase checks only")
 ### Acceptance
 - **web-ui-actions**: R20; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/actions.test.ts -t R20 _(id: [rec-87efd039-2c55-4091-842b-2f1f8fdfa4ac](.artifacts/records/project__acceptance/rec-87efd039-2c55-4091-842b-2f1f8fdfa4ac.md))_
 
+### Check
+- **web-ui-actions**: rec-87efd039-2c55-4091-842b-2f1f8fdfa4ac; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-4bfcd762-e256-4fde-8713-6a813ef61e1f](.artifacts/records/project__check-run/rec-4bfcd762-e256-4fde-8713-6a813ef61e1f.md))_
+
 ## web-ui-actions-r27
 
 ### Acceptance
 - **web-ui-actions-r27**: R27; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/actions.test.ts -t R27 _(id: [rec-4d957b43-25b5-4fdc-be50-2200606af70a](.artifacts/records/project__acceptance/rec-4d957b43-25b5-4fdc-be50-2200606af70a.md))_
+
+### Check
+- **web-ui-actions-r27**: rec-4d957b43-25b5-4fdc-be50-2200606af70a; db84ee9ef00088870c2ac53a685f08dfbc15512a; pass; check _(id: [rec-9abf0a29-ea7f-4d4e-8318-a440fa7a131f](.artifacts/records/project__check-run/rec-9abf0a29-ea7f-4d4e-8318-a440fa7a131f.md))_
 
 ## web-ui-detail
 
 ### Acceptance
 - **web-ui-detail**: R14; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R14 _(id: [rec-0d6a38bb-bc45-42a1-b025-3870a65c4fef](.artifacts/records/project__acceptance/rec-0d6a38bb-bc45-42a1-b025-3870a65c4fef.md))_
 
+### Check
+- **web-ui-detail**: rec-0d6a38bb-bc45-42a1-b025-3870a65c4fef; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-11e54937-c8c8-42f3-8ebc-db432022199d](.artifacts/records/project__check-run/rec-11e54937-c8c8-42f3-8ebc-db432022199d.md))_
+
 ## web-ui-detail-r15
 
 ### Acceptance
 - **web-ui-detail-r15**: R15; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R15 _(id: [rec-4ed43d96-3a8c-4458-864f-aa756818ca4b](.artifacts/records/project__acceptance/rec-4ed43d96-3a8c-4458-864f-aa756818ca4b.md))_
+
+### Check
+- **web-ui-detail-r15**: rec-4ed43d96-3a8c-4458-864f-aa756818ca4b; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-3912dc24-c0ed-4a10-8c51-04221bc732c4](.artifacts/records/project__check-run/rec-3912dc24-c0ed-4a10-8c51-04221bc732c4.md))_
 
 ## web-ui-detail-r16
 
 ### Acceptance
 - **web-ui-detail-r16**: R16; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R16 _(id: [rec-90f3f583-7e47-4375-a5ad-d13cc55eb3f9](.artifacts/records/project__acceptance/rec-90f3f583-7e47-4375-a5ad-d13cc55eb3f9.md))_
 
+### Check
+- **web-ui-detail-r16**: rec-90f3f583-7e47-4375-a5ad-d13cc55eb3f9; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-5c39b8f4-0655-4824-ad5e-98207fb50310](.artifacts/records/project__check-run/rec-5c39b8f4-0655-4824-ad5e-98207fb50310.md))_
+
 ## web-ui-detail-r17
 
 ### Acceptance
 - **web-ui-detail-r17**: R17; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R17 _(id: [rec-e12cb025-c028-4658-a406-c31efdc3dae8](.artifacts/records/project__acceptance/rec-e12cb025-c028-4658-a406-c31efdc3dae8.md))_
+
+### Check
+- **web-ui-detail-r17**: rec-e12cb025-c028-4658-a406-c31efdc3dae8; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-872e08f3-f09f-442d-b239-aa9e1027cadf](.artifacts/records/project__check-run/rec-872e08f3-f09f-442d-b239-aa9e1027cadf.md))_
 
 ## web-ui-detail-r18
 
 ### Acceptance
 - **web-ui-detail-r18**: R18; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R18 _(id: [rec-a40c0868-5897-4f8e-b2ac-7ef034005115](.artifacts/records/project__acceptance/rec-a40c0868-5897-4f8e-b2ac-7ef034005115.md))_
 
+### Check
+- **web-ui-detail-r18**: rec-a40c0868-5897-4f8e-b2ac-7ef034005115; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-24f8ecd8-2613-438f-9051-e94694b9ab4e](.artifacts/records/project__check-run/rec-24f8ecd8-2613-438f-9051-e94694b9ab4e.md))_
+
 ## web-ui-detail-r19
 
 ### Acceptance
 - **web-ui-detail-r19**: R19; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/detail.test.ts -t R19 _(id: [rec-3f65034a-4cc6-4d11-9a4b-dd1e53ebe264](.artifacts/records/project__acceptance/rec-3f65034a-4cc6-4d11-9a4b-dd1e53ebe264.md))_
+
+### Check
+- **web-ui-detail-r19**: rec-3f65034a-4cc6-4d11-9a4b-dd1e53ebe264; 1290682a207e913a96aad7b31406f6fe8fa3a243; pass; check _(id: [rec-185a300c-550e-4cf5-aca3-e1c38ac26c8c](.artifacts/records/project__check-run/rec-185a300c-550e-4cf5-aca3-e1c38ac26c8c.md))_
 
 ## web-ui-main
 
 ### Acceptance
 - **web-ui-main**: R5; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R5 _(id: [rec-e7d85f56-4f37-4f13-9e82-edf9ad112beb](.artifacts/records/project__acceptance/rec-e7d85f56-4f37-4f13-9e82-edf9ad112beb.md))_
 
+### Check
+- **web-ui-main**: rec-e7d85f56-4f37-4f13-9e82-edf9ad112beb; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-331f7817-a76c-443e-8b50-e6f322f7c548](.artifacts/records/project__check-run/rec-331f7817-a76c-443e-8b50-e6f322f7c548.md))_
+
 ## web-ui-main-r10
 
 ### Acceptance
 - **web-ui-main-r10**: R10; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R10 _(id: [rec-e0feebb8-d9a5-4c8b-8a50-6cafa4a0eea3](.artifacts/records/project__acceptance/rec-e0feebb8-d9a5-4c8b-8a50-6cafa4a0eea3.md))_
+
+### Check
+- **web-ui-main-r10**: rec-e0feebb8-d9a5-4c8b-8a50-6cafa4a0eea3; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-bf78b6df-1cbc-4798-8f1e-6b7bd0f11c7c](.artifacts/records/project__check-run/rec-bf78b6df-1cbc-4798-8f1e-6b7bd0f11c7c.md))_
 
 ## web-ui-main-r32
 
 ### Acceptance
 - **web-ui-main-r32**: R32; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R32 _(id: [rec-eb1dc00c-fb0b-4407-ab50-7e4a12e2ece9](.artifacts/records/project__acceptance/rec-eb1dc00c-fb0b-4407-ab50-7e4a12e2ece9.md))_
 
+### Check
+- **web-ui-main-r32**: rec-eb1dc00c-fb0b-4407-ab50-7e4a12e2ece9; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-abcda6a9-4a07-42ca-a811-39a180804064](.artifacts/records/project__check-run/rec-abcda6a9-4a07-42ca-a811-39a180804064.md))_
+
 ## web-ui-main-r33
 
 ### Acceptance
 - **web-ui-main-r33**: R33; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R33 _(id: [rec-6fabe656-f50c-40cc-8910-d6cbb842aa98](.artifacts/records/project__acceptance/rec-6fabe656-f50c-40cc-8910-d6cbb842aa98.md))_
+
+### Check
+- **web-ui-main-r33**: rec-6fabe656-f50c-40cc-8910-d6cbb842aa98; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-ba987433-4b8f-431a-9172-bf6e5bad9c91](.artifacts/records/project__check-run/rec-ba987433-4b8f-431a-9172-bf6e5bad9c91.md))_
 
 ## web-ui-main-r6
 
 ### Acceptance
 - **web-ui-main-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R6 _(id: [rec-f36e227a-f954-4654-a364-e7472ed899ca](.artifacts/records/project__acceptance/rec-f36e227a-f954-4654-a364-e7472ed899ca.md))_
 
+### Check
+- **web-ui-main-r6**: rec-f36e227a-f954-4654-a364-e7472ed899ca; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-c727a823-d19d-4057-aaba-936ec1b3a456](.artifacts/records/project__check-run/rec-c727a823-d19d-4057-aaba-936ec1b3a456.md))_
+
 ## web-ui-main-r7
 
 ### Acceptance
 - **web-ui-main-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R7 _(id: [rec-7b6d6bac-572f-42c3-8fe7-ec6de93c3559](.artifacts/records/project__acceptance/rec-7b6d6bac-572f-42c3-8fe7-ec6de93c3559.md))_
+
+### Check
+- **web-ui-main-r7**: rec-7b6d6bac-572f-42c3-8fe7-ec6de93c3559; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-ea1fee30-851b-4357-a303-33e342ef89aa](.artifacts/records/project__check-run/rec-ea1fee30-851b-4357-a303-33e342ef89aa.md))_
 
 ## web-ui-main-r8
 
 ### Acceptance
 - **web-ui-main-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R8 _(id: [rec-e8680ef6-df90-4957-be9d-85133eaf99b2](.artifacts/records/project__acceptance/rec-e8680ef6-df90-4957-be9d-85133eaf99b2.md))_
 
+### Check
+- **web-ui-main-r8**: rec-e8680ef6-df90-4957-be9d-85133eaf99b2; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-d0969602-30a1-4588-a662-455004d36cf3](.artifacts/records/project__check-run/rec-d0969602-30a1-4588-a662-455004d36cf3.md))_
+
 ## web-ui-main-r9
 
 ### Acceptance
 - **web-ui-main-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/main.test.ts -t R9 _(id: [rec-89de12fa-d78d-497a-a4b8-b1fafc7442f9](.artifacts/records/project__acceptance/rec-89de12fa-d78d-497a-a4b8-b1fafc7442f9.md))_
+
+### Check
+- **web-ui-main-r9**: rec-89de12fa-d78d-497a-a4b8-b1fafc7442f9; 4dfbd2b07cc25406bee4e3bae5161f5dd4790522; pass; check _(id: [rec-e5a5b88b-dd0c-4f62-a7de-6a8f371fecae](.artifacts/records/project__check-run/rec-e5a5b88b-dd0c-4f62-a7de-6a8f371fecae.md))_
 
 ## web-ui-scaffold
 
 ### Acceptance
 - **web-ui-scaffold**: R31; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/scaffold.test.ts -t R31 _(id: [rec-987406c8-3ff3-475e-aea1-1a74584e5693](.artifacts/records/project__acceptance/rec-987406c8-3ff3-475e-aea1-1a74584e5693.md))_
 
+### Check
+- **web-ui-scaffold**: rec-987406c8-3ff3-475e-aea1-1a74584e5693; 16c78c65bb32bc35e06543a002726cea3b7bcaa3; pass; check _(id: [rec-dea484af-b47c-4fd0-a657-2a60b1b8cb99](.artifacts/records/project__check-run/rec-dea484af-b47c-4fd0-a657-2a60b1b8cb99.md))_
+
 ## web-ui-scaffold-r35
 
 ### Acceptance
 - **web-ui-scaffold-r35**: R35; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/scaffold.test.ts -t R35 _(id: [rec-15b25cbd-fd4c-419a-bb7f-808bee8f71bd](.artifacts/records/project__acceptance/rec-15b25cbd-fd4c-419a-bb7f-808bee8f71bd.md))_
+
+### Check
+- **web-ui-scaffold-r35**: rec-15b25cbd-fd4c-419a-bb7f-808bee8f71bd; 16c78c65bb32bc35e06543a002726cea3b7bcaa3; pass; check _(id: [rec-1d7479c4-5350-4090-a8a8-f6b3d3df5a14](.artifacts/records/project__check-run/rec-1d7479c4-5350-4090-a8a8-f6b3d3df5a14.md))_
 
 ## web-ui-scaffold-r36
 
 ### Acceptance
 - **web-ui-scaffold-r36**: R36; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/scaffold.test.ts -t R36 _(id: [rec-2b879879-e526-4499-a9b6-a47e8b79653c](.artifacts/records/project__acceptance/rec-2b879879-e526-4499-a9b6-a47e8b79653c.md))_
 
+### Check
+- **web-ui-scaffold-r36**: rec-2b879879-e526-4499-a9b6-a47e8b79653c; 16c78c65bb32bc35e06543a002726cea3b7bcaa3; pass; check _(id: [rec-c208a35a-52b3-42b5-8865-60a9c6f05bfa](.artifacts/records/project__check-run/rec-c208a35a-52b3-42b5-8865-60a9c6f05bfa.md))_
+
 ## web-ui-side
 
 ### Acceptance
 - **web-ui-side**: R11; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/side.test.ts -t R11 _(id: [rec-c86fdf26-17c0-4a94-ba8f-38366fc6c692](.artifacts/records/project__acceptance/rec-c86fdf26-17c0-4a94-ba8f-38366fc6c692.md))_
+
+### Check
+- **web-ui-side**: rec-c86fdf26-17c0-4a94-ba8f-38366fc6c692; 4f4573b597aa9fc16d0563e4e39db05c63ec374c; pass; check _(id: [rec-744383b5-92f9-40b6-ab63-b2053e0b988f](.artifacts/records/project__check-run/rec-744383b5-92f9-40b6-ab63-b2053e0b988f.md))_
 
 ## web-ui-side-r12
 
 ### Acceptance
 - **web-ui-side-r12**: R12; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/side.test.ts -t R12 _(id: [rec-77f4d05e-75d4-49a9-9ee0-f9a28ee00c6b](.artifacts/records/project__acceptance/rec-77f4d05e-75d4-49a9-9ee0-f9a28ee00c6b.md))_
 
+### Check
+- **web-ui-side-r12**: rec-77f4d05e-75d4-49a9-9ee0-f9a28ee00c6b; 4f4573b597aa9fc16d0563e4e39db05c63ec374c; pass; check _(id: [rec-0dbb1afd-6600-4873-9725-432ba7cefe74](.artifacts/records/project__check-run/rec-0dbb1afd-6600-4873-9725-432ba7cefe74.md))_
+
 ## web-ui-side-r13
 
 ### Acceptance
 - **web-ui-side-r13**: R13; check; dashboard; npm --prefix dashboard/web/ui exec vitest run src/side.test.ts -t R13 _(id: [rec-9d2656c6-797f-4f4a-b134-7f375d396110](.artifacts/records/project__acceptance/rec-9d2656c6-797f-4f4a-b134-7f375d396110.md))_
+
+### Check
+- **web-ui-side-r13**: rec-9d2656c6-797f-4f4a-b134-7f375d396110; 4f4573b597aa9fc16d0563e4e39db05c63ec374c; pass; check _(id: [rec-2a405833-3f83-4ac8-92e4-ccd6165847d0](.artifacts/records/project__check-run/rec-2a405833-3f83-4ac8-92e4-ccd6165847d0.md))_
+
+## web-write-annotations
+
+### Acceptance
+- **web-write-annotations**: R1; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r1_backlog_dismiss -q _(id: [rec-5678aa33-8261-4197-814e-c3045faf122d](.artifacts/records/project__acceptance/rec-5678aa33-8261-4197-814e-c3045faf122d.md))_
+
+### Check
+- **web-write-annotations**: rec-5678aa33-8261-4197-814e-c3045faf122d; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-a33baee6-16e9-4a9a-8393-8d7bf2c95585](.artifacts/records/project__check-run/rec-a33baee6-16e9-4a9a-8393-8d7bf2c95585.md))_
+- **web-write-annotations**: rec-5678aa33-8261-4197-814e-c3045faf122d; dirty; fail; tdd _(id: [rec-a5039054-e72c-4030-8c1a-42cb42ad742f](.artifacts/records/project__check-run/rec-a5039054-e72c-4030-8c1a-42cb42ad742f.md))_
+- **web-write-annotations**: rec-5678aa33-8261-4197-814e-c3045faf122d; dirty; fail; tdd _(id: [rec-deab58bb-0a02-40ca-868e-de425b27531e](.artifacts/records/project__check-run/rec-deab58bb-0a02-40ca-868e-de425b27531e.md))_
+
+### Observation
+- **web-write-annotations**: Before the edit, backlog and needs posts returned 422 for a missing request query parameter and openapi returned 500. After the edit the three tests passed.; dashboard _(id: [rec-5b5b5aa3-42a4-4fc4-b8cd-c102bef4f137](.artifacts/records/project__investigation-observation/rec-5b5b5aa3-42a4-4fc4-b8cd-c102bef4f137.md))_
+
+### Finding
+- **web-write-annotations**: Postponed annotations made FastAPI require a query parameter named request, so confirm writes returned 422.; Assertion failures on test_r1_backlog_dismiss and test_r2_needs_clear before the edit, and passes at 29fec4bc after deleting from __future__ import annotations.; POST /api/backlog or POST /api/needs returns 422 for a missing request query parameter again on the FastAPI app.; none _(id: [rec-42013bd8-7f75-4189-bf0e-419834013782](.artifacts/records/project__finding/rec-42013bd8-7f75-4189-bf0e-419834013782.md))_
+
+## web-write-annotations-needs
+
+### Acceptance
+- **web-write-annotations-needs**: R2; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r2_needs_clear -q _(id: [rec-9838800f-6424-4ad6-a78a-dc34180d8345](.artifacts/records/project__acceptance/rec-9838800f-6424-4ad6-a78a-dc34180d8345.md))_
+
+### Check
+- **web-write-annotations-needs**: rec-9838800f-6424-4ad6-a78a-dc34180d8345; dirty; fail; tdd _(id: [rec-0b518d65-b4c2-4360-a1c3-bfcb93d4ccf6](.artifacts/records/project__check-run/rec-0b518d65-b4c2-4360-a1c3-bfcb93d4ccf6.md))_
+- **web-write-annotations-needs**: rec-9838800f-6424-4ad6-a78a-dc34180d8345; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-2f5f36b7-f8ca-4d0b-a849-5ba379c31b15](.artifacts/records/project__check-run/rec-2f5f36b7-f8ca-4d0b-a849-5ba379c31b15.md))_
+- **web-write-annotations-needs**: rec-9838800f-6424-4ad6-a78a-dc34180d8345; dirty; fail; tdd _(id: [rec-90b704cf-1178-47ba-94b4-79a7f4426f3f](.artifacts/records/project__check-run/rec-90b704cf-1178-47ba-94b4-79a7f4426f3f.md))_
+
+## web-write-annotations-openapi
+
+### Acceptance
+- **web-write-annotations-openapi**: R3; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r3_openapi -q _(id: [rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17](.artifacts/records/project__acceptance/rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17.md))_
+
+### Check
+- **web-write-annotations-openapi**: rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17; dirty; fail; tdd _(id: [rec-67a58b69-b669-4333-8c04-abd2c30cba11](.artifacts/records/project__check-run/rec-67a58b69-b669-4333-8c04-abd2c30cba11.md))_
+- **web-write-annotations-openapi**: rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; tdd _(id: [rec-acf86e2a-b549-4189-b8f7-d28e78f3fa5b](.artifacts/records/project__check-run/rec-acf86e2a-b549-4189-b8f7-d28e78f3fa5b.md))_
+- **web-write-annotations-openapi**: rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17; dirty; fail; tdd _(id: [rec-e056f340-6754-40ba-ad8d-0753864175ac](.artifacts/records/project__check-run/rec-e056f340-6754-40ba-ad8d-0753864175ac.md))_
 
 ## web-write-api
 
@@ -4889,7 +5601,9 @@ print("phase checks only")
 - **web-write-api**: R21; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r21_approve -q _(id: [rec-9b753d3c-769f-458b-a279-f9821408f1dd](.artifacts/records/project__acceptance/rec-9b753d3c-769f-458b-a279-f9821408f1dd.md))_
 
 ### Check
+- **web-write-api**: rec-9b753d3c-769f-458b-a279-f9821408f1dd; dirty; fail; tdd _(id: [rec-a2643c5d-d9e0-429d-9c82-0670c9af9b60](.artifacts/records/project__check-run/rec-a2643c5d-d9e0-429d-9c82-0670c9af9b60.md))_
 - **web-write-api**: rec-9b753d3c-769f-458b-a279-f9821408f1dd; dirty; fail; tdd _(id: [rec-a57266f0-718f-429d-b04c-cca183cabc1a](.artifacts/records/project__check-run/rec-a57266f0-718f-429d-b04c-cca183cabc1a.md))_
+- **web-write-api**: rec-9b753d3c-769f-458b-a279-f9821408f1dd; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-f9d8dff9-3ac9-4e0e-82d8-53089f45f8df](.artifacts/records/project__check-run/rec-f9d8dff9-3ac9-4e0e-82d8-53089f45f8df.md))_
 
 ## web-write-api-r22
 
@@ -4898,6 +5612,8 @@ print("phase checks only")
 
 ### Check
 - **web-write-api-r22**: rec-d32c9db3-448d-4fca-a0aa-d8b10bb49c8a; dirty; fail; tdd _(id: [rec-35269b3c-d00e-46aa-befb-a18403212c67](.artifacts/records/project__check-run/rec-35269b3c-d00e-46aa-befb-a18403212c67.md))_
+- **web-write-api-r22**: rec-d32c9db3-448d-4fca-a0aa-d8b10bb49c8a; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-a893a7fc-2002-43b5-b0e1-56f9f9bf001f](.artifacts/records/project__check-run/rec-a893a7fc-2002-43b5-b0e1-56f9f9bf001f.md))_
+- **web-write-api-r22**: rec-d32c9db3-448d-4fca-a0aa-d8b10bb49c8a; dirty; fail; tdd _(id: [rec-cb10ecaa-3ad0-4f65-bbed-115695f2befa](.artifacts/records/project__check-run/rec-cb10ecaa-3ad0-4f65-bbed-115695f2befa.md))_
 
 ## web-write-api-r23
 
@@ -4906,6 +5622,8 @@ print("phase checks only")
 
 ### Check
 - **web-write-api-r23**: rec-bc24f370-7c8a-44f7-9f4f-783754b2d3a5; dirty; fail; tdd _(id: [rec-0596f91a-da9e-491d-8873-d963034729cb](.artifacts/records/project__check-run/rec-0596f91a-da9e-491d-8873-d963034729cb.md))_
+- **web-write-api-r23**: rec-bc24f370-7c8a-44f7-9f4f-783754b2d3a5; dirty; fail; tdd _(id: [rec-5020dbab-8704-4fd4-acff-32524235bfb7](.artifacts/records/project__check-run/rec-5020dbab-8704-4fd4-acff-32524235bfb7.md))_
+- **web-write-api-r23**: rec-bc24f370-7c8a-44f7-9f4f-783754b2d3a5; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-9f0f85cd-8174-487f-a5f3-35e213774678](.artifacts/records/project__check-run/rec-9f0f85cd-8174-487f-a5f3-35e213774678.md))_
 
 ## web-write-api-r24
 
@@ -4914,6 +5632,8 @@ print("phase checks only")
 
 ### Check
 - **web-write-api-r24**: rec-be370437-14d1-4c3e-8316-a940155e8cec; dirty; fail; tdd _(id: [rec-1e987af2-bb5a-40e6-8d86-b8a84d241dff](.artifacts/records/project__check-run/rec-1e987af2-bb5a-40e6-8d86-b8a84d241dff.md))_
+- **web-write-api-r24**: rec-be370437-14d1-4c3e-8316-a940155e8cec; dirty; fail; tdd _(id: [rec-1fdc0598-5c95-450a-8dbf-a1f5e2c7d2dc](.artifacts/records/project__check-run/rec-1fdc0598-5c95-450a-8dbf-a1f5e2c7d2dc.md))_
+- **web-write-api-r24**: rec-be370437-14d1-4c3e-8316-a940155e8cec; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-83fbf9f4-59f3-4a69-92e3-283b231622a6](.artifacts/records/project__check-run/rec-83fbf9f4-59f3-4a69-92e3-283b231622a6.md))_
 
 ## web-write-api-r25
 
@@ -4921,7 +5641,9 @@ print("phase checks only")
 - **web-write-api-r25**: R25; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r25_accept_note -q _(id: [rec-78629b0a-b92e-40cc-8c10-31c3a02dd766](.artifacts/records/project__acceptance/rec-78629b0a-b92e-40cc-8c10-31c3a02dd766.md))_
 
 ### Check
+- **web-write-api-r25**: rec-78629b0a-b92e-40cc-8c10-31c3a02dd766; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-1c35d160-9b35-44be-b207-671b51728175](.artifacts/records/project__check-run/rec-1c35d160-9b35-44be-b207-671b51728175.md))_
 - **web-write-api-r25**: rec-78629b0a-b92e-40cc-8c10-31c3a02dd766; dirty; fail; tdd _(id: [rec-2fcea7dc-b97a-4517-b22c-06ec755f5751](.artifacts/records/project__check-run/rec-2fcea7dc-b97a-4517-b22c-06ec755f5751.md))_
+- **web-write-api-r25**: rec-78629b0a-b92e-40cc-8c10-31c3a02dd766; dirty; fail; tdd _(id: [rec-80e7669a-af79-4642-b01d-e47fcfc99bdf](.artifacts/records/project__check-run/rec-80e7669a-af79-4642-b01d-e47fcfc99bdf.md))_
 
 ## web-write-api-r26
 
@@ -4929,7 +5651,9 @@ print("phase checks only")
 - **web-write-api-r26**: R26; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r26_refused -q _(id: [rec-171cb043-59ae-41a2-bd02-431687ff5663](.artifacts/records/project__acceptance/rec-171cb043-59ae-41a2-bd02-431687ff5663.md))_
 
 ### Check
+- **web-write-api-r26**: rec-171cb043-59ae-41a2-bd02-431687ff5663; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-2002c809-9bf4-4144-80ba-07db664513bd](.artifacts/records/project__check-run/rec-2002c809-9bf4-4144-80ba-07db664513bd.md))_
 - **web-write-api-r26**: rec-171cb043-59ae-41a2-bd02-431687ff5663; dirty; fail; tdd _(id: [rec-2d8b8380-f1bd-4c0a-8e9b-fdc1f2ceb818](.artifacts/records/project__check-run/rec-2d8b8380-f1bd-4c0a-8e9b-fdc1f2ceb818.md))_
+- **web-write-api-r26**: rec-171cb043-59ae-41a2-bd02-431687ff5663; dirty; fail; tdd _(id: [rec-ea01b841-7a8f-4587-bfac-d3f9783414db](.artifacts/records/project__check-run/rec-ea01b841-7a8f-4587-bfac-d3f9783414db.md))_
 
 ## web-write-api-r28
 
@@ -4937,7 +5661,9 @@ print("phase checks only")
 - **web-write-api-r28**: R28; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r28_backlog_dismiss -q _(id: [rec-a9fc00b5-7ae8-4396-9013-c753ce9da519](.artifacts/records/project__acceptance/rec-a9fc00b5-7ae8-4396-9013-c753ce9da519.md))_
 
 ### Check
+- **web-write-api-r28**: rec-a9fc00b5-7ae8-4396-9013-c753ce9da519; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-03bb3279-6d04-4c10-bdec-14a52c6876cf](.artifacts/records/project__check-run/rec-03bb3279-6d04-4c10-bdec-14a52c6876cf.md))_
 - **web-write-api-r28**: rec-a9fc00b5-7ae8-4396-9013-c753ce9da519; dirty; fail; tdd _(id: [rec-76ff0313-0868-4c0e-9e80-eb44ec18b89f](.artifacts/records/project__check-run/rec-76ff0313-0868-4c0e-9e80-eb44ec18b89f.md))_
+- **web-write-api-r28**: rec-a9fc00b5-7ae8-4396-9013-c753ce9da519; dirty; fail; tdd _(id: [rec-d4586113-b01e-45b8-b5b9-d04df5a7ce16](.artifacts/records/project__check-run/rec-d4586113-b01e-45b8-b5b9-d04df5a7ce16.md))_
 
 ## web-write-api-r29
 
@@ -4946,6 +5672,8 @@ print("phase checks only")
 
 ### Check
 - **web-write-api-r29**: rec-85c4cf39-fd64-41fa-8e03-3aa46331d06f; dirty; fail; tdd _(id: [rec-6c3b4a8b-a3f1-4dc0-883a-def50378184a](.artifacts/records/project__check-run/rec-6c3b4a8b-a3f1-4dc0-883a-def50378184a.md))_
+- **web-write-api-r29**: rec-85c4cf39-fd64-41fa-8e03-3aa46331d06f; dirty; fail; tdd _(id: [rec-7ed439b8-f3bf-4aa5-9439-1eaeaf0fa57d](.artifacts/records/project__check-run/rec-7ed439b8-f3bf-4aa5-9439-1eaeaf0fa57d.md))_
+- **web-write-api-r29**: rec-85c4cf39-fd64-41fa-8e03-3aa46331d06f; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-af8ac0fc-d719-4f8d-a418-61bf350e2f27](.artifacts/records/project__check-run/rec-af8ac0fc-d719-4f8d-a418-61bf350e2f27.md))_
 
 ## web-write-api-r34
 
@@ -4953,4 +5681,11 @@ print("phase checks only")
 - **web-write-api-r34**: R34; tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r34_stale -q _(id: [rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26](.artifacts/records/project__acceptance/rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26.md))_
 
 ### Check
+- **web-write-api-r34**: rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26; 6cacba9e9fb325600fd0805d74b574e3323eec73; pass; tdd _(id: [rec-223fa910-2803-4557-855f-42da4cf4302e](.artifacts/records/project__check-run/rec-223fa910-2803-4557-855f-42da4cf4302e.md))_
+- **web-write-api-r34**: rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26; dirty; fail; tdd _(id: [rec-5049a8ef-b726-46b9-8e09-41be10b5c137](.artifacts/records/project__check-run/rec-5049a8ef-b726-46b9-8e09-41be10b5c137.md))_
 - **web-write-api-r34**: rec-a3e1d953-95ac-48dc-a4e6-e5835b4e1a26; dirty; fail; tdd _(id: [rec-b87f64ec-3f67-4d4c-b94f-46a5a83e3d8f](.artifacts/records/project__check-run/rec-b87f64ec-3f67-4d4c-b94f-46a5a83e3d8f.md))_
+
+## web-write-body-review
+
+### Check
+- **web-write-body-review**: web-write-body-review; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; pass; review _(id: [rec-09a020ff-b81a-4600-9b28-feb8d546f0f1](.artifacts/records/project__check-run/rec-09a020ff-b81a-4600-9b28-feb8d546f0f1.md))_

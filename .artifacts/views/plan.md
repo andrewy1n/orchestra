@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:6df6da4270f691993963681d1c21d99b919d26c7a14178ff051acda62cfe9f19
+> Store state: sha256:ba5f80b3c6f477ad0965bcac6eb0423a2b6b28632786d2b4c84070df4c2b6756
 
 ## dashboard-view
 
@@ -873,14 +873,6 @@ print("phase checks only")
 
 ## deep-links
 
-### Phase
-- **deep-links**: Deep links; 34; dashboard _(id: [rec-cbdd05be-a310-47b3-be75-5ac1d2fb6a3a](.artifacts/records/project__phase/rec-cbdd05be-a310-47b3-be75-5ac1d2fb6a3a.md))_
-
-### Work
-- **deep-links-resolve**: Reference resolve helper; deep-links; deliver; dashboard _(id: [rec-966f0550-8372-4227-827a-84c4aecb5634](.artifacts/records/project__work-item/rec-966f0550-8372-4227-827a-84c4aecb5634.md))_
-- **deep-links-wire**: Wire linkify into meta and markdown; deep-links; deliver; dashboard _(id: [rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8](.artifacts/records/project__work-item/rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8.md))_
-- **verify-deep-links**: Verify deep links; deep-links; deliver; dashboard _(id: [rec-750cba61-f182-42ff-9b69-52b3c1c33f8e](.artifacts/records/project__work-item/rec-750cba61-f182-42ff-9b69-52b3c1c33f8e.md))_
-
 ### Acceptance
 - **deep-links-resolve**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R4 _(id: [rec-d41c2986-ef5c-480a-971d-18377b39c1ad](.artifacts/records/project__acceptance/rec-d41c2986-ef5c-480a-971d-18377b39c1ad.md))_
 - **deep-links-resolve-r7**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/links.test.ts -t R7 _(id: [rec-a3b4511b-eab7-48e1-b9f2-379030867ef0](.artifacts/records/project__acceptance/rec-a3b4511b-eab7-48e1-b9f2-379030867ef0.md))_
@@ -897,13 +889,45 @@ print("phase checks only")
 
 ## phase-overview
 
-### Phase
-- **phase-overview**: Phase overview UI; 35; dashboard _(id: [rec-64f72a2c-484d-442b-9aae-b46de4e13371](.artifacts/records/project__phase/rec-64f72a2c-484d-442b-9aae-b46de4e13371.md))_
+### Acceptance
+- **phase-overview-chrome**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R1 _(id: [rec-b29164ce-f175-4ba4-82fa-321932c4e7de](.artifacts/records/project__acceptance/rec-b29164ce-f175-4ba4-82fa-321932c4e7de.md))_
+- **phase-overview-chrome-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R2 _(id: [rec-67018e2f-e797-40df-bef6-68cedebd96c0](.artifacts/records/project__acceptance/rec-67018e2f-e797-40df-bef6-68cedebd96c0.md))_
+- **phase-overview-chrome-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R3 _(id: [rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f](.artifacts/records/project__acceptance/rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f.md))_
+- **phase-overview-chrome-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R4 _(id: [rec-1da92888-9b5b-44a7-8e29-0970c44cd76e](.artifacts/records/project__acceptance/rec-1da92888-9b5b-44a7-8e29-0970c44cd76e.md))_
+- **phase-overview-chrome-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R5 _(id: [rec-ac498629-cc10-4bae-bdf2-6c070f58a43c](.artifacts/records/project__acceptance/rec-ac498629-cc10-4bae-bdf2-6c070f58a43c.md))_
+- **phase-overview-chrome-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R6 _(id: [rec-67074614-68ef-49d5-84e1-70780ff98261](.artifacts/records/project__acceptance/rec-67074614-68ef-49d5-84e1-70780ff98261.md))_
+- **phase-overview-chrome-r8**: R8; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R8 _(id: [rec-60eb2222-5daf-4fc0-af10-0a301472ca13](.artifacts/records/project__acceptance/rec-60eb2222-5daf-4fc0-af10-0a301472ca13.md))_
+- **phase-overview-tabs**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R7 _(id: [rec-9938dfb5-a08e-4b97-9779-fd9766636182](.artifacts/records/project__acceptance/rec-9938dfb5-a08e-4b97-9779-fd9766636182.md))_
+- **phase-overview-tabs-r9**: R9; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R9 _(id: [rec-3b4e5def-9aaf-4d52-bdf4-f67f33653119](.artifacts/records/project__acceptance/rec-3b4e5def-9aaf-4d52-bdf4-f67f33653119.md))_
+- **verify-phase-overview**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts _(id: [rec-39f2269c-55c0-45e5-83d0-b799213be189](.artifacts/records/project__acceptance/rec-39f2269c-55c0-45e5-83d0-b799213be189.md))_
+- **verify-phase-overview-demo**: R7; manual; dashboard _(id: [rec-be401439-0cbf-4a09-8b24-9954747001ac](.artifacts/records/project__acceptance/rec-be401439-0cbf-4a09-8b24-9954747001ac.md))_
+- **verify-phase-overview-nav**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R5 _(id: [rec-223e3c0d-95ea-4880-a5f9-9bd4978afbd3](.artifacts/records/project__acceptance/rec-223e3c0d-95ea-4880-a5f9-9bd4978afbd3.md))_
+- **verify-phase-overview-tabs**: R7; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/phaseOverview.test.ts -t R7 _(id: [rec-2215dfd0-ba68-4253-ac8b-fd214c0bfd01](.artifacts/records/project__acceptance/rec-2215dfd0-ba68-4253-ac8b-fd214c0bfd01.md))_
 
 ## task-graph
 
-### Phase
-- **task-graph**: Task dependency graph; 36; dashboard _(id: [rec-0d0b1acb-0e18-4da8-8697-02e652c7a9c8](.artifacts/records/project__phase/rec-0d0b1acb-0e18-4da8-8697-02e652c7a9c8.md))_
+### Acceptance
+- **task-graph-depends**: R7; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k depends_on _(id: [rec-cdca8182-c377-49ef-bf7c-393abc9579e7](.artifacts/records/project__acceptance/rec-cdca8182-c377-49ef-bf7c-393abc9579e7.md))_
+- **task-graph-ui**: R1; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R1 _(id: [rec-fb54d44f-9435-4a84-9dde-0579582ca22b](.artifacts/records/project__acceptance/rec-fb54d44f-9435-4a84-9dde-0579582ca22b.md))_
+- **task-graph-ui-r2**: R2; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R2 _(id: [rec-214d99fb-fb17-4658-9466-9fa14eb35fc9](.artifacts/records/project__acceptance/rec-214d99fb-fb17-4658-9466-9fa14eb35fc9.md))_
+- **task-graph-ui-r3**: R3; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R3 _(id: [rec-08b7da88-e954-41a8-8e3e-c256b7516b61](.artifacts/records/project__acceptance/rec-08b7da88-e954-41a8-8e3e-c256b7516b61.md))_
+- **task-graph-ui-r4**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R4 _(id: [rec-a5b90888-5dcf-4c23-b8af-ef0a57e24cf0](.artifacts/records/project__acceptance/rec-a5b90888-5dcf-4c23-b8af-ef0a57e24cf0.md))_
+- **task-graph-ui-r5**: R5; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R5 _(id: [rec-2c906ad1-71c8-4416-8f31-68a6cc327572](.artifacts/records/project__acceptance/rec-2c906ad1-71c8-4416-8f31-68a6cc327572.md))_
+- **task-graph-ui-r6**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R6 _(id: [rec-861d45c6-1169-4ddd-ab16-c7caf5fabdfb](.artifacts/records/project__acceptance/rec-861d45c6-1169-4ddd-ab16-c7caf5fabdfb.md))_
+- **verify-task-graph**: R1; check; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k depends_on && npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts _(id: [rec-ec5f4fea-f3c7-4318-a7b9-3d4f121f3d48](.artifacts/records/project__acceptance/rec-ec5f4fea-f3c7-4318-a7b9-3d4f121f3d48.md))_
+- **verify-task-graph-demo**: R1; manual; dashboard _(id: [rec-377f96ac-6702-495f-88f4-6e17a3557cc7](.artifacts/records/project__acceptance/rec-377f96ac-6702-495f-88f4-6e17a3557cc7.md))_
+- **verify-task-graph-nav**: R4; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R4 _(id: [rec-a87f3f4e-894c-403c-a566-334b61819b69](.artifacts/records/project__acceptance/rec-a87f3f4e-894c-403c-a566-334b61819b69.md))_
+- **verify-task-graph-skip**: R6; check; dashboard; npm --prefix dashboard/web/ui exec -- vitest run src/taskGraph.test.ts -t R6 _(id: [rec-f107d90f-d6c7-4057-8d27-d2fb1d9160ee](.artifacts/records/project__acceptance/rec-f107d90f-d6c7-4057-8d27-d2fb1d9160ee.md))_
+
+## web-write-body
+
+### Acceptance
+- **verify-web-write-body**: R1; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r1_backlog_dismiss -q _(id: [rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315](.artifacts/records/project__acceptance/rec-b633ae9b-ad8f-4fa8-947f-e93af2b70315.md))_
+- **verify-web-write-body-needs**: R2; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r2_needs_clear -q _(id: [rec-307e2b98-1902-4327-845a-b03beb6b8b86](.artifacts/records/project__acceptance/rec-307e2b98-1902-4327-845a-b03beb6b8b86.md))_
+- **verify-web-write-body-openapi**: R3; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r3_openapi -q _(id: [rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967](.artifacts/records/project__acceptance/rec-8421d92b-4b6a-409d-bbdb-cb03d1d3a967.md))_
+- **web-write-annotations**: R1; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r1_backlog_dismiss -q _(id: [rec-5678aa33-8261-4197-814e-c3045faf122d](.artifacts/records/project__acceptance/rec-5678aa33-8261-4197-814e-c3045faf122d.md))_
+- **web-write-annotations-needs**: R2; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r2_needs_clear -q _(id: [rec-9838800f-6424-4ad6-a78a-dc34180d8345](.artifacts/records/project__acceptance/rec-9838800f-6424-4ad6-a78a-dc34180d8345.md))_
+- **web-write-annotations-openapi**: R3; tdd; dashboard; uv run --with textual --with pytest --with fastapi --with httpx python -m pytest tests/test_web_fastapi_writes.py::test_r3_openapi -q _(id: [rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17](.artifacts/records/project__acceptance/rec-6667c3cf-fe62-4bd5-8087-7e49ff965b17.md))_
 
 ## 
 

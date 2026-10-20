@@ -1,7 +1,7 @@
 # Project Status
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:5e7838436fd18064d0f75eae0b85f430def18d95d7841ee28f54c8fa0c9a8c87
+> Store state: sha256:6f18b5d0ab09cc00e0c3fcad4dc75d9ae1991d5311c52fa5138d13ebc4083f62
 
 ## dashboard-view
 
@@ -478,15 +478,56 @@
 ## web-dashboard
 
 ### Work
-- **verify-web-dashboard**: Verify the web dashboard; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 6; criteria: 0 pass / 0 fail _(id: [rec-db6cd2f0-8da1-4f62-a933-f01076471169](.artifacts/records/project__work-item/rec-db6cd2f0-8da1-4f62-a933-f01076471169.md))_
-- **web-launcher**: Launch the server on loopback for the resolved store; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 3; criteria: 0 pass / 3 fail _(id: [rec-6dee2920-ed43-410c-af60-b7cf452aed32](.artifacts/records/project__work-item/rec-6dee2920-ed43-410c-af60-b7cf452aed32.md))_
-- **web-read-api**: Serve the read API from dashboard.model; web-dashboard; deliver; dashboard; state: planned; ready: True; wave: 1; criteria: 0 pass / 2 fail _(id: [rec-f81c5962-37e5-452a-b480-aa4da206b58a](.artifacts/records/project__work-item/rec-f81c5962-37e5-452a-b480-aa4da206b58a.md))_
-- **web-ui-actions**: Confirm writes and show dismiss errors; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 5; criteria: 0 pass / 0 fail _(id: [rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1](.artifacts/records/project__work-item/rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1.md))_
-- **web-ui-detail**: Open phase, task, requirement, record, and item details; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 4; criteria: 0 pass / 0 fail _(id: [rec-866d19de-9eca-443d-bc24-17cb15dbcdc4](.artifacts/records/project__work-item/rec-866d19de-9eca-443d-bc24-17cb15dbcdc4.md))_
-- **web-ui-main**: Render the rail, goal, phases, and task rows; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 2; criteria: 0 pass / 0 fail _(id: [rec-7102f038-1cb1-4752-99f1-2ed73eec9f25](.artifacts/records/project__work-item/rec-7102f038-1cb1-4752-99f1-2ed73eec9f25.md))_
-- **web-ui-scaffold**: Scaffold the Vite Svelte app; web-dashboard; deliver; dashboard; state: planned; ready: True; wave: 1; criteria: 0 pass / 0 fail _(id: [rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb](.artifacts/records/project__work-item/rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb.md))_
-- **web-ui-side**: Show Needs you, journal, and backlog; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 3; criteria: 0 pass / 0 fail _(id: [rec-a6a8056f-9dee-4efb-a387-c15e653a75be](.artifacts/records/project__work-item/rec-a6a8056f-9dee-4efb-a387-c15e653a75be.md))_
-- **web-write-api**: Write Needs you and backlog through the existing helpers; web-dashboard; deliver; dashboard; state: planned; ready: False; wave: 2; criteria: 0 pass / 9 fail _(id: [rec-4474072a-2ef4-487a-afd8-73d4482094c2](.artifacts/records/project__work-item/rec-4474072a-2ef4-487a-afd8-73d4482094c2.md))_
+- **verify-web-dashboard**: Verify the web dashboard; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 6; criteria: 4 pass / 0 fail _(id: [rec-db6cd2f0-8da1-4f62-a933-f01076471169](.artifacts/records/project__work-item/rec-db6cd2f0-8da1-4f62-a933-f01076471169.md))_
+- **web-launcher**: Launch the server on loopback for the resolved store; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 3 pass / 6 fail _(id: [rec-6dee2920-ed43-410c-af60-b7cf452aed32](.artifacts/records/project__work-item/rec-6dee2920-ed43-410c-af60-b7cf452aed32.md))_
+- **web-read-api**: Serve the read API from dashboard.model; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 2 pass / 4 fail _(id: [rec-f81c5962-37e5-452a-b480-aa4da206b58a](.artifacts/records/project__work-item/rec-f81c5962-37e5-452a-b480-aa4da206b58a.md))_
+- **web-ui-actions**: Confirm writes and show dismiss errors; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 5; criteria: 2 pass / 0 fail _(id: [rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1](.artifacts/records/project__work-item/rec-5d3720ed-eedb-498e-b9c2-ab6af5b9f8b1.md))_
+- **web-ui-detail**: Open phase, task, requirement, record, and item details; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 4; criteria: 6 pass / 0 fail _(id: [rec-866d19de-9eca-443d-bc24-17cb15dbcdc4](.artifacts/records/project__work-item/rec-866d19de-9eca-443d-bc24-17cb15dbcdc4.md))_
+- **web-ui-main**: Render the rail, goal, phases, and task rows; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 8 pass / 0 fail _(id: [rec-7102f038-1cb1-4752-99f1-2ed73eec9f25](.artifacts/records/project__work-item/rec-7102f038-1cb1-4752-99f1-2ed73eec9f25.md))_
+- **web-ui-scaffold**: Scaffold the Vite Svelte app; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 3 pass / 0 fail _(id: [rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb](.artifacts/records/project__work-item/rec-1c76e77e-3b91-444f-a57e-ca02ee31d3eb.md))_
+- **web-ui-side**: Show Needs you, journal, and backlog; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 3 pass / 0 fail _(id: [rec-a6a8056f-9dee-4efb-a387-c15e653a75be](.artifacts/records/project__work-item/rec-a6a8056f-9dee-4efb-a387-c15e653a75be.md))_
+- **web-write-api**: Write Needs you and backlog through the existing helpers; web-dashboard; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 9 pass / 18 fail _(id: [rec-4474072a-2ef4-487a-afd8-73d4482094c2](.artifacts/records/project__work-item/rec-4474072a-2ef4-487a-afd8-73d4482094c2.md))_
+
+## milestone-nav
+
+### Work
+- **milestone-nav-helpers**: Milestone grouping and expand helpers; milestone-nav; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 3 pass / 0 fail _(id: [rec-6d3e248d-13a3-46fd-b113-d36c911b2d3d](.artifacts/records/project__work-item/rec-6d3e248d-13a3-46fd-b113-d36c911b2d3d.md))_
+- **milestone-nav-ui**: Phases block UI in App; milestone-nav; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 7 pass / 0 fail _(id: [rec-a18ab51a-b527-4d5b-b647-6914c61aa744](.artifacts/records/project__work-item/rec-a18ab51a-b527-4d5b-b647-6914c61aa744.md))_
+- **verify-milestone-nav**: Verify milestone-nav; milestone-nav; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 5 pass / 0 fail _(id: [rec-e84c286f-6ece-4473-8270-ccb055ab5f7f](.artifacts/records/project__work-item/rec-e84c286f-6ece-4473-8270-ccb055ab5f7f.md))_
+
+## side-rail-calm
+
+### Work
+- **side-rail-home**: Calm home side rail; side-rail-calm; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 4 pass / 0 fail _(id: [rec-d579406f-4381-42ef-84cb-89e61d7fd9a0](.artifacts/records/project__work-item/rec-d579406f-4381-42ef-84cb-89e61d7fd9a0.md))_
+- **side-rail-journal-screen**: Journal hash screen; side-rail-calm; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 5 pass / 0 fail _(id: [rec-1f9c0953-e991-4014-a53c-e6f479c3f10e](.artifacts/records/project__work-item/rec-1f9c0953-e991-4014-a53c-e6f479c3f10e.md))_
+- **verify-side-rail-calm**: Verify side-rail-calm; side-rail-calm; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 5 pass / 0 fail _(id: [rec-e927e857-0fd7-4add-b2fa-1389bc237e7d](.artifacts/records/project__work-item/rec-e927e857-0fd7-4add-b2fa-1389bc237e7d.md))_
+
+## deep-links
+
+### Work
+- **deep-links-resolve**: Reference resolve helper; deep-links; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 3 pass / 0 fail _(id: [rec-966f0550-8372-4227-827a-84c4aecb5634](.artifacts/records/project__work-item/rec-966f0550-8372-4227-827a-84c4aecb5634.md))_
+- **deep-links-wire**: Wire linkify into meta and markdown; deep-links; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 10 pass / 0 fail _(id: [rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8](.artifacts/records/project__work-item/rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8.md))_
+- **verify-deep-links**: Verify deep links; deep-links; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 5 pass / 0 fail _(id: [rec-750cba61-f182-42ff-9b69-52b3c1c33f8e](.artifacts/records/project__work-item/rec-750cba61-f182-42ff-9b69-52b3c1c33f8e.md))_
+
+## phase-overview
+
+### Work
+- **phase-overview-chrome**: Shared phase overlay chrome; phase-overview; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 7 pass / 0 fail _(id: [rec-6b110034-ce0c-448d-bc27-dbcc1be4425b](.artifacts/records/project__work-item/rec-6b110034-ce0c-448d-bc27-dbcc1be4425b.md))_
+- **phase-overview-tabs**: Structured UI for each phase tab body; phase-overview; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 2 pass / 0 fail _(id: [rec-47538406-49a8-47d0-b170-f7ed18948d13](.artifacts/records/project__work-item/rec-47538406-49a8-47d0-b170-f7ed18948d13.md))_
+- **verify-phase-overview**: Verify phase overview UI; phase-overview; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 4 pass / 0 fail _(id: [rec-77db5630-4a2c-443e-8116-a93b4aa8a59b](.artifacts/records/project__work-item/rec-77db5630-4a2c-443e-8116-a93b4aa8a59b.md))_
+
+## task-graph
+
+### Work
+- **task-graph-depends**: Enrich task JSON with depends_on ids; task-graph; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-56d2c4ac-3566-4c2b-bbaa-f1f0c38176a5](.artifacts/records/project__work-item/rec-56d2c4ac-3566-4c2b-bbaa-f1f0c38176a5.md))_
+- **task-graph-ui**: Wave-lane dependency graph on Overview; task-graph; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 6 pass / 0 fail _(id: [rec-4d4a1801-60f6-47e0-b8b0-047877b88511](.artifacts/records/project__work-item/rec-4d4a1801-60f6-47e0-b8b0-047877b88511.md))_
+- **verify-task-graph**: Verify task dependency graph; task-graph; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 4 pass / 0 fail _(id: [rec-0b8b80f0-2129-4e01-ab35-183edd7ebb0f](.artifacts/records/project__work-item/rec-0b8b80f0-2129-4e01-ab35-183edd7ebb0f.md))_
+
+## web-write-body
+
+### Work
+- **verify-web-write-body**: Verify web writes read the JSON body; web-write-body; repair; dashboard; state: done; ready: True; wave: 2; criteria: 3 pass / 3 fail _(id: [rec-a0978f37-7118-4aa7-995f-a2d91374a422](.artifacts/records/project__work-item/rec-a0978f37-7118-4aa7-995f-a2d91374a422.md))_
+- **web-write-annotations**: Drop postponed annotations; web-write-body; repair; dashboard; state: done; ready: True; wave: 1; criteria: 3 pass / 6 fail _(id: [rec-136288f4-1f46-4d85-95ef-52f653278e5d](.artifacts/records/project__work-item/rec-136288f4-1f46-4d85-95ef-52f653278e5d.md))_
 
 ## 
 

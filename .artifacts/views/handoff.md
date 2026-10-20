@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:1f5658c395174bab7f4a7ff859cef2155610c535f39ae46c82bc6cee8b3408c5
+> Store state: sha256:7b39c524be239c044efedc5e33aed33859a17a7acc96aa55f0c51ccf95745cba
 
 ## dashboard
 
@@ -9,17 +9,21 @@
 - **dashboard**: A live terminal dashboard, openable from tmux, shows each effort's phases, tasks and what needs you, lets you move from any item to its related records, and works correctly in every state; effort; deliver _(id: [rec-39db526b-abbb-4753-b9ff-40b8c05662c2](.artifacts/records/project__active-goal/rec-39db526b-abbb-4753-b9ff-40b8c05662c2.md))_
 
 ### Position
-- **dashboard**: side-rail-calm done; next up: deep-links (web-calm); effort _(id: [rec-6517f13f-3a82-4daa-b88e-96c018fd35fd](.artifacts/records/project__current-position/rec-6517f13f-3a82-4daa-b88e-96c018fd35fd.md))_
-- **deep-links**: Planning deep-links work-items (web-calm); phase _(id: [rec-e9dc2270-4412-4f88-a474-13190fe0ffc0](.artifacts/records/project__current-position/rec-e9dc2270-4412-4f88-a474-13190fe0ffc0.md))_
+- **dashboard**: web-write-body done at 29fec4bc. Next backlog: phase-overlay-split-pane (layout B).; effort _(id: [rec-622dd3ff-61a3-47b8-b771-308fca04e704](.artifacts/records/project__current-position/rec-622dd3ff-61a3-47b8-b771-308fca04e704.md))_
 
 ### Latest Proof
+- **deep-links**: deep-links; dashboard; 506b97b205c65e9f929379c3a3f656a09e7376f1; demo _(id: [rec-0e6acd66-fa59-4e1c-abfc-042e8d09fbba](.artifacts/records/project__proof-packet/rec-0e6acd66-fa59-4e1c-abfc-042e8d09fbba.md))_
 - **milestone-nav**: milestone-nav; dashboard; d374a278d97ad9418d03fa09ae76bee9ec64c95a; demo _(id: [rec-d9fad1a1-1637-41f3-b3fc-4418ceca3790](.artifacts/records/project__proof-packet/rec-d9fad1a1-1637-41f3-b3fc-4418ceca3790.md))_
+- **phase-overview**: phase-overview; dashboard; 42d8187d49206aeb1ee9de8cae589935123d6e0b; demo _(id: [rec-8fa6ea4a-6dbc-4eb7-81eb-a98bd9e30a47](.artifacts/records/project__proof-packet/rec-8fa6ea4a-6dbc-4eb7-81eb-a98bd9e30a47.md))_
 - **side-rail-calm**: side-rail-calm; dashboard; c747adfaf64276bb807bb99e17174c1d3542a572; demo _(id: [rec-9881ec7b-b152-461f-9bc8-6f3a84901c19](.artifacts/records/project__proof-packet/rec-9881ec7b-b152-461f-9bc8-6f3a84901c19.md))_
+- **task-graph**: task-graph; dashboard; bafc565bce46cca3f85b02a392c10073e42b300d; demo _(id: [rec-d81884b5-b48a-4ac2-a405-13b790af765e](.artifacts/records/project__proof-packet/rec-d81884b5-b48a-4ac2-a405-13b790af765e.md))_
 - **web-dashboard**: web-dashboard; dashboard; db84ee9ef00088870c2ac53a685f08dfbc15512a; mixed _(id: [rec-9d330c4d-b3dc-4daa-b63d-d485d061d985](.artifacts/records/project__proof-packet/rec-9d330c4d-b3dc-4daa-b63d-d485d061d985.md))_
 - **web-dashboard**: web-dashboard; dashboard; 9f83ef7b9aab7610857af622ac8f8e9cfa42524a; mixed _(id: [rec-f810c9fd-14ff-40bf-b57a-686c592ac522](.artifacts/records/project__proof-packet/rec-f810c9fd-14ff-40bf-b57a-686c592ac522.md))_
+- **web-write-body**: web-write-body; dashboard; 29fec4bceaa72b8880b50dc8ceda560810cdfb09; demo _(id: [rec-818fddc7-fb4a-463e-9fd8-36e84e443a35](.artifacts/records/project__proof-packet/rec-818fddc7-fb4a-463e-9fd8-36e84e443a35.md))_
 
 ### Backlog
 - **journal-detail-xdist-flake**: dashboard; open _(id: [rec-3d8b654b-bf85-4203-9fe8-f0aeeead64f4](.artifacts/records/project__backlog-item/rec-3d8b654b-bf85-4203-9fe8-f0aeeead64f4.md))_
+- **phase-overlay-split-pane**: dashboard; open _(id: [rec-f7b45cdc-a1fd-4e27-8425-5b9a0ea1db5b](.artifacts/records/project__backlog-item/rec-f7b45cdc-a1fd-4e27-8425-5b9a0ea1db5b.md))_
 - **ui-revamp**: dashboard; open _(id: [rec-b7216ac0-0c4a-4436-8388-fccc8922470c](.artifacts/records/project__backlog-item/rec-b7216ac0-0c4a-4436-8388-fccc8922470c.md))_
 
 ## packaging
