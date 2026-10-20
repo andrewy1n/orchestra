@@ -1007,41 +1007,58 @@ a.lrow {
   overflow-y: visible;
 }
 
-.task-graph-canvas {
-  position: relative;
-}
-
-.task-graph-edges {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.lane-label-svg {
-  fill: var(--muted);
+.task-graph-lanes {
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px 0 2px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--muted);
 }
 
-.graph-edge {
-  fill: none;
-  stroke: color-mix(in srgb, var(--ink) 35%, var(--line));
-  stroke-width: 2;
-  stroke-linecap: round;
+.task-graph-lanes span {
+  flex: 0 0 auto;
+  text-align: center;
 }
 
-.graph-arrow-head {
-  fill: color-mix(in srgb, var(--ink) 45%, var(--line));
+.task-graph-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: color-mix(in srgb, var(--ink) 55%, var(--line));
+  --xy-edge-stroke-width: 1.5;
+  background: transparent !important;
+}
+
+.task-graph-flow .svelte-flow__node {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.task-edge-flow .svelte-flow__edge-path {
+  stroke: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+.task-handle {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .graph-node {
-  position: absolute;
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 0;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1051,7 +1068,6 @@ a.lrow {
   cursor: pointer;
   text-align: left;
   overflow: hidden;
-  z-index: 1;
 }
 
 .graph-node:hover {

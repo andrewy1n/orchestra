@@ -247,9 +247,8 @@ describe("phase overlay UI", () => {
       "Ship shared chrome",
     );
     expect(document.querySelector('[data-phase-req="R1"]')).toBeTruthy();
-    expect(document.querySelector("[data-phase-waves]")?.textContent).toMatch(
-      /w1/,
-    );
+    expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
+    expect(document.querySelector("[data-phase-waves]")).toBeNull();
   });
 
   it("R1: chrome also renders on Spec (not Overview-only)", async () => {

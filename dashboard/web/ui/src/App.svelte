@@ -26,7 +26,8 @@
   import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
   import { buildPhaseChrome } from "./phaseChrome";
-  import { buildWaveGraph, layoutWaveGraph } from "./taskGraph";
+  import TaskGraphBoard from "./TaskGraphBoard.svelte";
+  import { buildWaveGraph } from "./taskGraph";
   import {
     defaultPhase,
     filteredTasks,
@@ -278,6 +279,7 @@
           status?: string;
           wave?: number | null;
           depends_on?: string[];
+          waits_on?: string[];
         };
         return {
           id: String(task.id || ""),
@@ -286,6 +288,7 @@
           status: String(task.status || ""),
           wave: task.wave,
           depends_on: task.depends_on,
+          waits_on: task.waits_on,
         };
       }).filter((task) => task.id),
     );
@@ -295,11 +298,6 @@
     if (!id) return;
     openHash(taskHref(id));
   }
-
-  const graphLayout = $derived.by(() => {
-    if (!phaseTaskGraph?.show) return null;
-    return layoutWaveGraph(phaseTaskGraph);
-  });
 
   $effect(() => {
     if (journalEffort && journalEffort !== selectedEffort) {
@@ -925,6 +923,9 @@
             {/each}
           </div>
         {/if}
+        {#if phaseTaskGraph?.show}
+          <TaskGraphBoard graph={phaseTaskGraph} onselect={openGraphTask} />
+        {/if}
         {#if phaseChrome}
           <div class="phase-chrome" data-phase-chrome>
             <div class="chips" data-detail-chips data-phase-chips>
@@ -959,15 +960,6 @@
             {:else}
               <p class="phase-reqs-empty" data-phase-reqs-empty>No requirements yet</p>
             {/if}
-            {#if phaseChrome.waves.length}
-              <div class="phase-waves" data-phase-waves>
-                {#each phaseChrome.waves as wave (wave.wave)}
-                  <span class="phase-wave" data-phase-wave={wave.wave}>
-                    w{wave.wave} {wave.done}/{wave.total}
-                  </span>
-                {/each}
-              </div>
-            {/if}
           </div>
         {:else if overlayView.chips.length}
           <div class="chips" data-detail-chips>
@@ -978,84 +970,6 @@
         {/if}
         {#if writeError && !pendingWrite}
           <p class="write-error" data-write-error>{writeError}</p>
-        {/if}
-        {#if phaseTaskGraph?.show && graphLayout}
-          <div class="task-graph" data-task-graph>
-            <div class="task-graph-head">
-              <span class="section-title">Workflow</span>
-              <div class="task-graph-legend" aria-hidden="true">
-                <span class="legend-item signal-done">done</span>
-                <span class="legend-item signal-run">run</span>
-                <span class="legend-item signal-ready">ready</span>
-                <span class="legend-item signal-wait">wait</span>
-              </div>
-            </div>
-            <div class="task-graph-board">
-              <div
-                class="task-graph-canvas"
-                style:width={`${graphLayout.width}px`}
-                style:height={`${graphLayout.height}px`}
-              >
-              <svg
-                class="task-graph-edges"
-                width={graphLayout.width}
-                height={graphLayout.height}
-                aria-hidden="true"
-              >
-                <defs>
-                  <marker
-                    id="graph-arrow"
-                    viewBox="0 0 10 10"
-                    refX="9"
-                    refY="5"
-                    markerWidth="7"
-                    markerHeight="7"
-                    orient="auto-start-reverse"
-                  >
-                    <path d="M 0 0 L 10 5 L 0 10 z" class="graph-arrow-head" />
-                  </marker>
-                </defs>
-                {#each graphLayout.lanes as lane (lane.wave)}
-                  <text
-                    class="lane-label-svg"
-                    data-graph-lane={lane.wave}
-                    x={lane.x}
-                    y="16"
-                    text-anchor="middle"
-                  >{lane.label}</text>
-                {/each}
-                {#each graphLayout.edges as edge (edge.from + "->" + edge.to)}
-                  <path
-                    data-graph-edge={`${edge.from}->${edge.to}`}
-                    d={edge.d}
-                    class="graph-edge"
-                    marker-end="url(#graph-arrow)"
-                  />
-                {/each}
-              </svg>
-              {#each graphLayout.nodes as node (node.id)}
-                <button
-                  type="button"
-                  class={`graph-node signal-${node.signal}`}
-                  data-graph-node={node.id}
-                  data-status={node.status}
-                  data-signal={node.signal}
-                  style:left={`${node.x}px`}
-                  style:top={`${node.y}px`}
-                  style:width={`${node.w}px`}
-                  style:height={`${node.h}px`}
-                  onclick={() => openGraphTask(node.id)}
-                >
-                  <span class="graph-signal" aria-hidden="true"></span>
-                  <span class="graph-node-body">
-                    <span class="graph-node-title">{node.label}</span>
-                    <span class="graph-node-meta">{node.signal}</span>
-                  </span>
-                </button>
-              {/each}
-              </div>
-            </div>
-          </div>
         {/if}
         {#each overlayView.sections as section (section.title)}
           <div class="section-title" data-section-card>{section.title}</div>

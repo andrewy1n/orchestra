@@ -10,11 +10,12 @@ import { fileURLToPath } from "node:url";
 import { flushSync, mount, unmount, type Component } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildWaveGraph, layoutWaveGraph, statusSignal } from "./taskGraph";
+import { buildWaveGraph, statusSignal, toFlow } from "./taskGraph";
 import type { EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+const boardSource = readFileSync(path.join(here, "TaskGraphBoard.svelte"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;
 
@@ -30,6 +31,26 @@ beforeEach(() => {
   resetDocument();
   window.location.hash = "";
   vi.useFakeTimers();
+  if (!globalThis.ResizeObserver) {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    }) as MediaQueryList;
 });
 
 afterEach(() => {
@@ -189,18 +210,70 @@ describe("buildWaveGraph", () => {
     expect(statusSignal("running")).toBe("run");
   });
 
-  it("R3: edges follow depends_on and layout draws paths", () => {
+  it("R3: edges follow depends_on; skip edges use the top handles", () => {
     const graph = buildWaveGraph(threeTasks);
     expect(graph.edges).toEqual(
       expect.arrayContaining([
-        { from: "t-a", to: "t-b" },
-        { from: "t-a", to: "t-c" },
+        { from: "t-a", to: "t-b", kind: "depends" },
+        { from: "t-a", to: "t-c", kind: "depends" },
       ]),
     );
-    const layout = layoutWaveGraph(graph)!;
-    expect(layout.edges.length).toBeGreaterThanOrEqual(2);
-    expect(layout.edges[0]?.d).toMatch(/^M /);
-    expect(layout.edges[0]?.d).toContain("C ");
+    const flow = toFlow(graph);
+    const beta = flow.nodes.find((node) => node.id === "t-b");
+    const alpha = flow.nodes.find((node) => node.id === "t-a");
+    expect(beta && alpha && beta.position.x).toBeGreaterThan(alpha!.position.x);
+    expect(flow.edges.find((edge) => edge.id === "t-a->t-b")).toMatchObject({
+      sourceHandle: "out",
+      targetHandle: "in",
+    });
+
+    const skip = toFlow(
+      buildWaveGraph([
+        { id: "t-a", subject: "a", title: "A", status: "done", wave: 1, depends_on: [] },
+        { id: "t-b", subject: "b", title: "B", status: "done", wave: 2, depends_on: ["t-a"] },
+        {
+          id: "t-c",
+          subject: "c",
+          title: "C",
+          status: "done",
+          wave: 3,
+          depends_on: ["t-a", "t-b"],
+        },
+      ]),
+    );
+    expect(skip.edges.find((edge) => edge.id === "t-a->t-c")).toMatchObject({
+      sourceHandle: "skip-out",
+      targetHandle: "skip-in",
+    });
+  });
+
+  it("R3b: waits_on subjects resolve to edges; wave flow when no deps", () => {
+    const viaWaits = buildWaveGraph([
+      { id: "t-a", subject: "a", title: "A", status: "done", wave: 1, waits_on: [] },
+      {
+        id: "t-b",
+        subject: "b",
+        title: "B",
+        status: "ready",
+        wave: 2,
+        waits_on: ["a"],
+      },
+      { id: "t-c", subject: "c", title: "C", status: "ready", wave: 2, waits_on: [] },
+    ]);
+    expect(viaWaits.edges).toContainEqual({ from: "t-a", to: "t-b", kind: "depends" });
+
+    const flow = buildWaveGraph([
+      { id: "t-a", subject: "a", title: "A", status: "done", wave: 1 },
+      { id: "t-b", subject: "b", title: "B", status: "ready", wave: 2 },
+      { id: "t-c", subject: "c", title: "C", status: "ready", wave: 3 },
+    ]);
+    expect(flow.edges.every((e) => e.kind === "flow")).toBe(true);
+    expect(flow.edges).toEqual(
+      expect.arrayContaining([
+        { from: "t-a", to: "t-b", kind: "flow" },
+        { from: "t-b", to: "t-c", kind: "flow" },
+      ]),
+    );
   });
 
   it("R6: omit graph when two or fewer tasks", () => {
@@ -212,7 +285,9 @@ describe("buildWaveGraph", () => {
 describe("task graph UI", () => {
   it("wires Overview graph", () => {
     expect(appSource).toMatch(/buildWaveGraph/);
-    expect(appSource).toMatch(/data-task-graph/);
+    expect(appSource).toMatch(/TaskGraphBoard/);
+    expect(boardSource).toMatch(/data-task-graph/);
+    expect(boardSource).toMatch(/SvelteFlow/);
   });
 
   it("R1 R2 R3: shows graph with lanes, status, edges for ≥3 tasks", async () => {
@@ -228,9 +303,7 @@ describe("task graph UI", () => {
     expect(
       document.querySelector('[data-graph-node="t-a"]')?.getAttribute("data-signal"),
     ).toBe("done");
-    const edge = document.querySelector('[data-graph-edge="t-a->t-b"]');
-    expect(edge).toBeTruthy();
-    expect(edge?.getAttribute("d") || "").toMatch(/^M /);
+    expect(document.querySelector(".svelte-flow")).toBeTruthy();
   });
 
   it("R4: activating a node opens the task overlay", async () => {
@@ -248,13 +321,15 @@ describe("task graph UI", () => {
     expect(window.location.hash).toBe("#/task/t-b");
   });
 
-  it("R5: task list / strip remains available", async () => {
-    expect(appSource).toMatch(/data-phase-waves|data-phase-tab=\"tasks\"|Tasks/);
+  it("R5: task list tab remains available; wave chips omitted", async () => {
+    expect(appSource).toMatch(/data-phase-tab=\"tasks\"|Tasks/);
+    expect(appSource).not.toMatch(/data-phase-waves/);
     stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
     if (!(await tryMountApp())) return;
     await openOverview();
-    expect(document.querySelector("[data-phase-waves], [data-phase-tabs]")).toBeTruthy();
+    expect(document.querySelector("[data-phase-tabs]")).toBeTruthy();
     expect(document.querySelector('[data-phase-tab="tasks"]')).toBeTruthy();
+    expect(document.querySelector("[data-phase-waves]")).toBeNull();
   });
 
   it("R6: hides graph for ≤2 tasks", async () => {
