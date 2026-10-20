@@ -299,6 +299,96 @@ button {
   font-size: 11px;
 }
 
+.phases-block {
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.phases-heading {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.milestone {
+  margin: 0 0 10px;
+}
+
+.milestone-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 6px 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+.milestone-head b {
+  font-weight: 600;
+}
+
+.milestone-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.phase-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+
+.phase-row:hover {
+  background: var(--sunken);
+}
+
+.phase-row.on {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.phase-row.live .name {
+  color: var(--accent);
+}
+
+.phase-row.done .name {
+  color: var(--muted);
+}
+
+.phase-row .name {
+  flex: 1;
+  min-width: 0;
+}
+
+.phase-row .cnt {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.phases-all {
+  margin-top: 4px;
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;

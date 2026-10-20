@@ -30,6 +30,10 @@
     tabCounts,
     visibleEfforts,
   } from "./efforts";
+  import {
+    groupPhasesByMilestone,
+    initialExpandedMilestones,
+  } from "./milestones";
   import { startTokenPoller } from "./poll";
   import { currentRoute, routeLabel, type Route } from "./router";
   import { openBacklog, orderedJournal } from "./side";
@@ -54,6 +58,10 @@
   let pinnedPhase: string | null = $state(null);
   let statusTab: StatusTab = $state("active");
   let showFinished = $state(false);
+  /** Milestone subjects currently expanded in the Phases block. */
+  let expandedMilestones: Set<string> = $state(new Set());
+  /** Effort name that `expandedMilestones` was initialized for. */
+  let expandedForEffort = $state("");
 
   let journal: JournalResponse | null = $state(null);
   let journalError = $state("");
@@ -102,6 +110,28 @@
   );
 
   const counts = $derived(effort ? tabCounts(effort, phaseSubject) : null);
+
+  const hasMilestones = $derived((effort?.milestones?.length ?? 0) > 0);
+
+  const milestoneGroups = $derived(
+    effort && hasMilestones ? groupPhasesByMilestone(effort) : [],
+  );
+
+  $effect(() => {
+    const current = effort;
+    if (!current?.milestones?.length) {
+      expandedForEffort = "";
+      expandedMilestones = new Set();
+      return;
+    }
+    if (expandedForEffort === current.effort) return;
+    expandedForEffort = current.effort;
+    const next = initialExpandedMilestones(current, pinnedPhase);
+    if (groupPhasesByMilestone(current).some((group) => group.key === "")) {
+      next.add("");
+    }
+    expandedMilestones = next;
+  });
 
   const backlogItems = $derived(openBacklog(effort));
 
@@ -277,6 +307,23 @@
     openHash(phaseHref(effort.effort, subject));
   }
 
+  function toggleMilestone(key: string) {
+    const next = new Set(expandedMilestones);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    expandedMilestones = next;
+  }
+
+  function activatePhase(subject: string) {
+    if (phaseSubject === subject) openPhase(subject);
+    else selectPhase(subject);
+  }
+
+  function milestoneMeta(state: string, done: number, total: number): string {
+    const label = String(state || "").replace(/_/g, " ");
+    return [label, `${done}/${total}`].filter(Boolean).join(" · ");
+  }
+
   function selectPhaseTab(tab: string) {
     if (!effort || !target || target.kind !== "phase") return;
     const effortName = route.parts[1];
@@ -405,38 +452,88 @@
         <p class="goal" data-goal>{effort.goal}</p>
 
         {#if effort.phases.length}
-          <div class="stepper" data-phase-control>
-            {#each effort.phases
-              .slice()
-              .sort((a, b) => a.ordinal - b.ordinal) as phase (phase.subject)}
+          {#if hasMilestones}
+            <section class="phases-block" data-phase-control data-phases-block>
+              <h2 class="phases-heading">Phases</h2>
+              {#each milestoneGroups as group (group.key)}
+                <div
+                  class="milestone"
+                  data-milestone={group.key || "ungrouped"}
+                >
+                  <button
+                    type="button"
+                    class="milestone-head"
+                    aria-expanded={expandedMilestones.has(group.key)}
+                    data-milestone-toggle={group.key || "ungrouped"}
+                    onclick={() => toggleMilestone(group.key)}
+                  >
+                    <b>{group.title}</b>
+                    {#if group.milestone}
+                      <span
+                        >{milestoneMeta(
+                          group.milestone.state,
+                          group.milestone.done,
+                          group.milestone.total,
+                        )}</span
+                      >
+                    {/if}
+                  </button>
+                  {#if expandedMilestones.has(group.key)}
+                    {#each group.phases as phase (phase.subject)}
+                      <button
+                        type="button"
+                        class="phase-row"
+                        class:on={phaseSubject === phase.subject}
+                        class:done={phase.state === "done"}
+                        class:live={phase.state === "in_progress"}
+                        data-phase={phase.subject}
+                        onclick={() => activatePhase(phase.subject)}
+                      >
+                        <span class="name">{phase.title || phase.subject}</span>
+                        <span class="cnt">{phase.done}/{phase.total}</span>
+                      </button>
+                    {/each}
+                  {/if}
+                </div>
+              {/each}
+              <button
+                type="button"
+                class="seg phases-all"
+                class:on={phaseSubject === null}
+                data-phase="all"
+                onclick={() => selectPhase("all")}
+              >
+                All phases
+              </button>
+            </section>
+          {:else}
+            <div class="stepper" data-phase-control>
+              {#each effort.phases
+                .slice()
+                .sort((a, b) => a.ordinal - b.ordinal) as phase (phase.subject)}
+                <button
+                  type="button"
+                  class="seg"
+                  class:on={phaseSubject === phase.subject}
+                  class:live={phase.state === "in_progress"}
+                  data-phase={phase.subject}
+                  onclick={() => activatePhase(phase.subject)}
+                >
+                  {phase.title || phase.subject}
+                  <span class="cnt">{phase.done}/{phase.total}</span>
+                </button>
+              {/each}
               <button
                 type="button"
                 class="seg"
-                class:on={phaseSubject === phase.subject}
-                class:live={phase.state === "in_progress"}
-                data-phase={phase.subject}
-                onclick={() => {
-                  if (phaseSubject === phase.subject) {
-                    openPhase(phase.subject);
-                  } else {
-                    selectPhase(phase.subject);
-                  }
-                }}
+                class:on={phaseSubject === null}
+                data-phase="all"
+                onclick={() => selectPhase("all")}
               >
-                {phase.title || phase.subject}
-                <span class="cnt">{phase.done}/{phase.total}</span>
+                All phases
               </button>
-            {/each}
-            <button
-              type="button"
-              class="seg"
-              class:on={phaseSubject === null}
-              data-phase="all"
-              onclick={() => selectPhase("all")}
-            >
-              All phases
-            </button>
-          </div>
+            </div>
+          {/if}
         {/if}
 
         <div class="tabs" data-status-tabs>
