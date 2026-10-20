@@ -3,8 +3,7 @@
  * Side-column acceptance cases for the web dashboard UI.
  *
  * R11: Needs you items for the selected effort.
- * R12: journal from GET /api/journal in dashboard.journal.ordered order,
- *      each row showing record type and subject.
+ * R12: orderedJournal flattens open then rest (no home side entry list).
  * R13: open backlog items for the selected effort.
  */
 
@@ -168,12 +167,9 @@ describe("web-dashboard side", () => {
     }
   });
 
-  it("R12: The side column lists the selected effort's journal in dashboard.journal.ordered order, each row showing the record type and subject.", async () => {
-    expect(appSource).toContain("data-side-journal");
-    expect(appSource).toContain("data-journal=");
+  it("R12: orderedJournal returns open then rest; home side rail has no journal entry rows.", async () => {
+    expect(appSource).not.toMatch(/data-journal=\{/);
     expect(appSource).toMatch(/\/api\/journal|journal\?effort/);
-    expect(appSource).toMatch(/record_type/);
-    expect(appSource).toMatch(/orderedJournal|journal\.open|journalItems/);
 
     const journal: JournalResponse = {
       open: [
@@ -225,19 +221,7 @@ describe("web-dashboard side", () => {
     if (await tryMountApp()) {
       await vi.advanceTimersByTimeAsync(0);
       flushSync();
-      const nodes = [
-        ...document.querySelectorAll<HTMLElement>("[data-journal]"),
-      ];
-      expect(nodes.map((n) => n.dataset.journal)).toEqual([
-        "j-open-new",
-        "j-open-old",
-        "j-rest",
-      ]);
-      for (const row of rows) {
-        const el = document.querySelector(`[data-journal="${row.id}"]`);
-        expect(el?.textContent).toContain(row.record_type);
-        expect(el?.textContent).toContain(row.subject);
-      }
+      expect(document.querySelectorAll("[data-journal]").length).toBe(0);
     }
   });
 

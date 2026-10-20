@@ -559,6 +559,11 @@ button {
   cursor: pointer;
 }
 
+a.lrow {
+  text-decoration: none;
+  color: inherit;
+}
+
 .lrow.clickable:hover {
   background: var(--sunken);
 }

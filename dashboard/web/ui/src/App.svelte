@@ -16,7 +16,6 @@
     needsHref,
     openHash,
     phaseHref,
-    recordHref,
     taskHref,
     type DetailTarget,
   } from "./detail";
@@ -36,7 +35,7 @@
   } from "./milestones";
   import { startTokenPoller } from "./poll";
   import { currentRoute, routeLabel, type Route } from "./router";
-  import { openBacklog, orderedJournal } from "./side";
+  import { openBacklog } from "./side";
   import { applyTheme, DEFAULT_THEME, toggle, type Theme } from "./theme";
   import type {
     EffortView,
@@ -44,6 +43,8 @@
     Snapshot,
     StatusTab,
   } from "./types";
+
+  const JOURNAL_TEASER_KINDS = new Set(["repair", "evaluate"]);
 
   let theme: Theme = $state(DEFAULT_THEME);
   let route: Route = $state(currentRoute());
@@ -135,7 +136,11 @@
 
   const backlogItems = $derived(openBacklog(effort));
 
-  const journalItems = $derived(orderedJournal(journal));
+  const showJournalTeaser = $derived(
+    !!effort && JOURNAL_TEASER_KINDS.has(effort.kind),
+  );
+
+  const journalOpenCount = $derived(journal ? journal.open.length : null);
 
   const target: DetailTarget | null = $derived(detailTarget(route));
 
@@ -606,30 +611,28 @@
           {/if}
         </section>
 
-        <section class="panel" data-side-journal>
-          <span class="ptitle">Journal</span>
-          {#if journalError}
-            <p class="empty-note">{journalError}</p>
-          {:else if !journal}
-            <p class="empty-note">Loading journal…</p>
-          {:else if journalItems.length === 0}
-            <p class="empty-note">No journal entries</p>
-          {:else}
-            {#each journalItems as item (item.id)}
-              <button
-                type="button"
-                class="lrow clickable"
-                data-journal={item.id}
-                data-record-type={item.record_type}
-                onclick={() => openHash(recordHref(item.id))}
-              >
-                <span class="kind">{item.record_type}</span>
-                <span class="text">{item.subject}</span>
-                <span class="meta">{item.subject}</span>
-              </button>
-            {/each}
-          {/if}
-        </section>
+        {#if showJournalTeaser}
+          <section class="panel" data-side-journal-teaser>
+            <a
+              class="lrow clickable"
+              data-journal-teaser
+              href={`#/journal/${encodeURIComponent(effort.effort)}`}
+              onclick={(e) => {
+                e.preventDefault();
+                openHash(`#/journal/${encodeURIComponent(effort.effort)}`);
+              }}
+            >
+              <span class="kind accent">journal</span>
+              <span class="text">
+                Journal{#if journalOpenCount !== null && journalOpenCount > 0}
+                  {" "}{journalOpenCount} open{/if}
+              </span>
+              {#if journalError}
+                <span class="meta">{journalError}</span>
+              {/if}
+            </a>
+          </section>
+        {/if}
 
         <section class="panel" data-side-backlog>
           <span class="ptitle">Backlog {backlogItems.length || ""}</span>
