@@ -85,6 +85,8 @@ class TaskRow:
     wave: int | None
     status: str
     waits_on: tuple[str, ...] = ()
+    # Outbound dependency task record ids (for web graph edges).
+    depends_on: tuple[str, ...] = ()
     running_since: datetime | None = None
     size: str = ""
     estimate_minutes: int | None = None
@@ -691,6 +693,7 @@ def _task_rows(
             phase=phase, assignee=payload.get("assignee", ""),
             wave=_derived(record).get("wave"), status=status,
             waits_on=tuple(dep["subject"] for dep in depends_on if dep["lifecycle_state"] != "done"),
+            depends_on=tuple(dep["id"] for dep in depends_on),
             running_since=running_since,
             size=_size(payload), estimate_minutes=_estimate_minutes(payload), executor=_executor(payload),
             last_record_at=last_record_at,

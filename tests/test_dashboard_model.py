@@ -667,6 +667,18 @@ def test_phase_detail_task_rows_carry_waits_on(store, cli, defs):
     assert tasks["w-task"].waits_on == ("w-dep",)
 
 
+def test_task_rows_include_depends_on_task_ids(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
+    dep = _work_item(cli, defs, "alpha", "w-dep", "p-one")
+    _work_item(cli, defs, "alpha", "w-task", "p-one", f"depends_on:{dep['id']}")
+    snap = {t.subject: t for t in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
+    phase = {t.subject: t for t in model.load_phase_detail(_target(store), "alpha", "p-one").tasks}
+    assert snap["w-task"].depends_on == (dep["id"],)
+    assert phase["w-task"].depends_on == (dep["id"],)
+    assert snap["w-dep"].depends_on == ()
+
+
 def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, cli, defs):
     _goal(cli, defs, "alpha")
     running = _work_item(cli, defs, "alpha", "r-running", "p-one")

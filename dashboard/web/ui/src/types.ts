@@ -28,6 +28,8 @@ export interface TaskRow {
   executor?: string;
   attempts?: number;
   retry_budget?: number;
+  /** Outbound dependency task record ids. */
+  depends_on?: string[];
 }
 
 export interface PhaseRow {
