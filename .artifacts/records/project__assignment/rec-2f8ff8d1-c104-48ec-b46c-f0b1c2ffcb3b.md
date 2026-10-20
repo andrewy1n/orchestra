@@ -1,0 +1,31 @@
+---
+{
+  "base_kind": "instruction",
+  "id": "rec-2f8ff8d1-c104-48ec-b46c-f0b1c2ffcb3b",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "effort": "dashboard",
+    "executor": "verify-phase-overview-agent",
+    "work_item": "verify-phase-overview"
+  },
+  "provenance": {
+    "sources": [
+      "verify-phase-overview"
+    ]
+  },
+  "record_type": "project:assignment",
+  "recorded_at": "2026-10-20T04:51:04+00:00",
+  "relationships": {},
+  "revision": "sha256:f3fe0622e6e72d1214c53c73a3299f29acade78bfb47a5d3a261ab280b222251",
+  "subject": "verify-phase-overview",
+  "time": {
+    "observed": "2026-10-20T04:51:04+00:00",
+    "recorded": "2026-10-20T04:51:04+00:00"
+  }
+}
+---
+
+## Orientation
+
+Verification only. Run phaseOverview.test.ts from the worktree.

@@ -4,7 +4,7 @@
   "epistemic_status": "asserted",
   "id": "rec-1f5cfd2a-cfd9-4041-bcae-c4ecb16654aa",
   "identity": "unknown",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "effort": "dashboard",
     "phase": "phase-overview",
@@ -12,9 +12,9 @@
     "weight": "full"
   },
   "record_type": "project:specification",
-  "recorded_at": "2026-10-20T03:10:50+00:00",
+  "recorded_at": "2026-10-20T04:46:57+00:00",
   "relationships": {},
-  "revision": "sha256:167ddcd4313b578e5ac65e2ba6718c681544f0ba37a5430d54b1192718a864cc",
+  "revision": "sha256:e5342ee91cb104008a75f733dcea5c9efa76354ab0e837aba56ff64353f12337",
   "stewardship": {
     "steward": "agent"
   },
