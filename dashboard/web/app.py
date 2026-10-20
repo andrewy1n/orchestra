@@ -10,8 +10,6 @@ stdlib server uses and serves the Vite production build from
 ``dashboard/web/ui/dist`` at ``/`` when it exists.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from dashboard import model
