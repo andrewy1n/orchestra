@@ -22,6 +22,7 @@
     type DetailTarget,
   } from "./detail";
   import { detailView } from "./detailView";
+  import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
   import {
     defaultPhase,
@@ -45,6 +46,14 @@
     Snapshot,
     StatusTab,
   } from "./types";
+
+  function escHtml(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   const JOURNAL_TEASER_KINDS = new Set(["repair", "evaluate"]);
 
@@ -150,6 +159,59 @@
   );
 
   const target: DetailTarget | null = $derived(detailTarget(route));
+
+  const linkCtx: RefContext | null = $derived.by(() => {
+    if (!snapshot) return null;
+    const effortName =
+      target?.kind === "phase"
+        ? (route.parts[1] ?? effort?.effort ?? null)
+        : target?.kind === "requirement"
+          ? (route.parts[1] ?? effort?.effort ?? null)
+          : (effort?.effort ?? selectedEffort || null);
+    const phaseName =
+      target?.kind === "phase"
+        ? (route.parts[2] ?? phaseSubject)
+        : target?.kind === "requirement"
+          ? (route.parts[2] ?? phaseSubject)
+          : phaseSubject;
+    return {
+      snapshot,
+      effort: effortName,
+      phase: phaseName,
+      detail:
+        detailPayload && typeof detailPayload === "object"
+          ? (detailPayload as Record<string, unknown>)
+          : null,
+    };
+  });
+
+  function linkify(text: string): string {
+    if (!linkCtx) return escHtml(text);
+    return linkifyText(text, linkCtx, escHtml);
+  }
+
+  function md(body: string): string {
+    return renderMarkdown(body, linkCtx);
+  }
+
+  /** Expand a milestone group when the hash names one. */
+  $effect(() => {
+    if (route.name !== "milestone") return;
+    const effortName = route.parts[1] ?? "";
+    const milestoneKey = route.parts[2] ?? "";
+    if (!effortName || !milestoneKey || !snapshot) return;
+    selectedEffort = effortName;
+    const view = snapshot.efforts.find((row) => row.effort === effortName);
+    if (!view) return;
+    expandedForEffort = effortName;
+    const next = new Set(expandedMilestones);
+    next.add(milestoneKey);
+    expandedMilestones = next;
+    const phases = view.phases.filter((row) => row.milestone === milestoneKey);
+    if (phases.length === 1 && phases[0]) {
+      pinnedPhase = phases[0].subject;
+    }
+  });
 
   const phaseTabs: string[] = $derived.by(() => {
     if (!target || target.kind !== "phase") return [];
@@ -683,11 +745,24 @@
                 type="button"
                 class="lrow clickable"
                 data-needs={item.id}
-                onclick={() => openHash(needsHref(effort.effort, item.id))}
+                onclick={(e) => {
+                  const anchor = (e.target as HTMLElement | null)?.closest?.(
+                    "a[href]",
+                  );
+                  if (anchor) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openHash(anchor.getAttribute("href") || "");
+                    return;
+                  }
+                  openHash(needsHref(effort.effort, item.id));
+                }}
               >
                 <span class="kind warn">{item.kind}</span>
-                <span class="text">{item.text || item.subject}</span>
-                <span class="meta">{item.subject}</span>
+                <span class="text"
+                  >{@html linkify(item.text || item.subject)}</span
+                >
+                <span class="meta">{@html linkify(item.subject)}</span>
               </button>
             {/each}
           {/if}
@@ -811,7 +886,7 @@
           <div
             class="md"
             data-detail-section={section.title}
-          >{@html renderMarkdown(section.body)}</div>
+          >{@html md(section.body)}</div>
         {/each}
         <!-- Probe text for acceptances; not shown as a JSON dump. -->
         <pre data-detail-payload class="sr-only">{overlayView.probe}</pre>

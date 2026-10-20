@@ -1,7 +1,10 @@
 /**
  * Small markdown renderer matching the dashboard spike:
  * headings (##), lists, fenced code, **bold**, `code`.
+ * Optional deep-link context linkifies known reference tokens.
  */
+
+import { linkifyText, type RefContext } from "./links";
 
 function esc(value: string): string {
   return value
@@ -11,13 +14,18 @@ function esc(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function inline(text: string): string {
+function plain(text: string, ctx?: RefContext | null): string {
+  if (ctx) return linkifyText(text, ctx, esc);
+  return esc(text);
+}
+
+function inline(text: string, ctx?: RefContext | null): string {
   const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
   let last = 0;
   let out = "";
   let match: RegExpExecArray | null;
   while ((match = re.exec(text))) {
-    if (match.index > last) out += esc(text.slice(last, match.index));
+    if (match.index > last) out += plain(text.slice(last, match.index), ctx);
     const tok = match[0];
     if (tok.startsWith("**")) {
       out += `<strong>${esc(tok.slice(2, -2))}</strong>`;
@@ -26,12 +34,15 @@ function inline(text: string): string {
     }
     last = match.index + tok.length;
   }
-  if (last < text.length) out += esc(text.slice(last));
+  if (last < text.length) out += plain(text.slice(last), ctx);
   return out;
 }
 
 /** Render a markdown-ish body to HTML for `{@html}` in the overlay. */
-export function renderMarkdown(src: string): string {
+export function renderMarkdown(
+  src: string,
+  ctx?: RefContext | null,
+): string {
   const lines = (src || "").split("\n");
   const parts: string[] = [];
   let listOpen = false;
@@ -66,7 +77,7 @@ export function renderMarkdown(src: string): string {
         parts.push("<ul>");
         listOpen = true;
       }
-      parts.push(`<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`);
+      parts.push(`<li>${inline(line.replace(/^[-*]\s+/, ""), ctx)}</li>`);
       continue;
     }
     if (!line.trim()) {
@@ -74,7 +85,7 @@ export function renderMarkdown(src: string): string {
       continue;
     }
     closeList();
-    parts.push(`<p>${inline(line)}</p>`);
+    parts.push(`<p>${inline(line, ctx)}</p>`);
   }
   closeList();
   return parts.join("");
