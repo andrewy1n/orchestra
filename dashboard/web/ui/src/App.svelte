@@ -130,11 +130,7 @@
     }
     if (expandedForEffort === current.effort) return;
     expandedForEffort = current.effort;
-    const next = initialExpandedMilestones(current, pinnedPhase);
-    if (groupPhasesByMilestone(current).some((group) => group.key === "")) {
-      next.add("");
-    }
-    expandedMilestones = next;
+    expandedMilestones = initialExpandedMilestones(current, pinnedPhase);
   });
 
   const backlogItems = $derived(openBacklog(effort));
@@ -531,10 +527,11 @@
         {#if effort.phases.length}
           {#if hasMilestones}
             <section class="phases-block" data-phase-control data-phases-block>
-              <h2 class="phases-heading">Phases</h2>
+              <h2 class="milestones-heading">Milestones</h2>
               {#each milestoneGroups as group (group.key)}
                 <div
                   class="milestone"
+                  class:open={expandedMilestones.has(group.key)}
                   data-milestone={group.key || "ungrouped"}
                 >
                   <button
@@ -544,32 +541,45 @@
                     data-milestone-toggle={group.key || "ungrouped"}
                     onclick={() => toggleMilestone(group.key)}
                   >
-                    <b>{group.title}</b>
+                    <span class="milestone-chevron" aria-hidden="true"
+                      >{expandedMilestones.has(group.key) ? "▼" : "▶"}</span
+                    >
+                    <span class="milestone-title">{group.title}</span>
                     {#if group.milestone}
-                      <span
+                      <span class="milestone-meta"
                         >{milestoneMeta(
                           group.milestone.state,
                           group.milestone.done,
                           group.milestone.total,
                         )}</span
                       >
+                    {:else}
+                      <span class="milestone-meta"
+                        >{group.phases.length} phase{group.phases.length === 1
+                          ? ""
+                          : "s"}</span
+                      >
                     {/if}
                   </button>
                   {#if expandedMilestones.has(group.key)}
-                    {#each group.phases as phase (phase.subject)}
-                      <button
-                        type="button"
-                        class="phase-row"
-                        class:on={phaseSubject === phase.subject}
-                        class:done={phase.state === "done"}
-                        class:live={phase.state === "in_progress"}
-                        data-phase={phase.subject}
-                        onclick={() => activatePhase(phase.subject)}
-                      >
-                        <span class="name">{phase.title || phase.subject}</span>
-                        <span class="cnt">{phase.done}/{phase.total}</span>
-                      </button>
-                    {/each}
+                    <div class="milestone-phases">
+                      {#each group.phases as phase (phase.subject)}
+                        <button
+                          type="button"
+                          class="phase-row"
+                          class:on={phaseSubject === phase.subject}
+                          class:done={phase.state === "done"}
+                          class:live={phase.state === "in_progress"}
+                          data-phase={phase.subject}
+                          onclick={() => activatePhase(phase.subject)}
+                        >
+                          <span class="name"
+                            >{phase.title || phase.subject}</span
+                          >
+                          <span class="cnt">{phase.done}/{phase.total}</span>
+                        </button>
+                      {/each}
+                    </div>
                   {/if}
                 </div>
               {/each}

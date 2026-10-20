@@ -150,6 +150,24 @@ describe("initialExpandedMilestones", () => {
     expect(expanded.has("live")).toBe(true);
   });
 
+  it("R7: non-focus milestones stay collapsed even when not done", () => {
+    const view = effort({
+      effort: "demo",
+      milestones: [
+        milestone({ subject: "a", title: "A", state: "planned" }),
+        milestone({ subject: "b", title: "B", state: "planned" }),
+      ],
+      phases: [
+        phase({ subject: "p-a", milestone: "a", milestone_title: "A" }),
+        phase({ subject: "p-b", milestone: "b", milestone_title: "B" }),
+      ],
+    });
+
+    const expanded = initialExpandedMilestones(view, "p-b");
+    expect(expanded.has("b")).toBe(true);
+    expect(expanded.has("a")).toBe(false);
+  });
+
   it("R8: expands the milestone of the selected phase", () => {
     const view = effort({
       effort: "demo",
@@ -224,5 +242,7 @@ describe("initialExpandedMilestones", () => {
 
     const expanded = initialExpandedMilestones(view, "in-done");
     expect(expanded.has("finished")).toBe(true);
+    expect(expanded.has("other")).toBe(false);
   });
 });
+

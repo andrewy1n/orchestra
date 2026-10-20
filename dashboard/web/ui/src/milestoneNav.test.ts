@@ -285,6 +285,9 @@ describe("milestone-nav Phases block", () => {
   it("R1: When an effort's snapshot includes one or more milestones, the main pane shows a Phases block that groups that effort's phases under those milestones instead of the flat phase stepper.", async () => {
     expect(appSource).toMatch(/groupPhasesByMilestone/);
     expect(appSource).toMatch(/initialExpandedMilestones/);
+    expect(appSource).toMatch(/milestones-heading/);
+    expect(appSource).toMatch(/>Milestones</);
+    expect(appSource).toMatch(/milestone-chevron/);
     expect(appSource).toMatch(/data-phases-block/);
     expect(appSource).toMatch(/hasMilestones/);
     expect(appSource).toMatch(/\{#if hasMilestones\}/);
