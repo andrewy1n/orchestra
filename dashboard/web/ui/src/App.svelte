@@ -18,12 +18,14 @@
     openHash,
     phaseHref,
     recordHref,
+    requirementHref,
     taskHref,
     type DetailTarget,
   } from "./detail";
   import { detailView } from "./detailView";
   import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
+  import { buildPhaseChrome } from "./phaseChrome";
   import {
     defaultPhase,
     filteredTasks,
@@ -246,6 +248,20 @@
     if (!target || !detailPayload) return null;
     return detailView(target.kind, detailPayload, activePhaseTab);
   });
+
+  const phaseChrome = $derived.by(() => {
+    if (!target || target.kind !== "phase" || !detailPayload) return null;
+    return buildPhaseChrome(detailPayload, {
+      position: effort?.position ?? null,
+    });
+  });
+
+  function openRequirement(id: string) {
+    const effortName = route.parts[1] || effort?.effort || "";
+    const phaseName = route.parts[2] || "";
+    if (!effortName || !phaseName || !id) return;
+    openHash(requirementHref(effortName, phaseName, id));
+  }
 
   $effect(() => {
     if (journalEffort && journalEffort !== selectedEffort) {
@@ -871,7 +887,51 @@
             {/each}
           </div>
         {/if}
-        {#if overlayView.chips.length}
+        {#if phaseChrome}
+          <div class="phase-chrome" data-phase-chrome>
+            <div class="chips" data-detail-chips data-phase-chips>
+              {#each phaseChrome.chips as chip (chip.label)}
+                <span class="chip {chip.tone || ''}">{chip.label}</span>
+              {/each}
+            </div>
+            <p class="phase-progress" data-phase-progress>
+              {phaseChrome.progressLabel}
+            </p>
+            <p class="phase-next" data-phase-next>
+              <span class="phase-next-label">Next</span>
+              {phaseChrome.nextAction}
+            </p>
+            {#if phaseChrome.requirements.length}
+              <div class="phase-reqs" data-phase-reqs>
+                {#each phaseChrome.requirements as req (req.id)}
+                  <button
+                    type="button"
+                    class="phase-req"
+                    class:ok={req.status === "pass" || req.status === "verified"}
+                    class:warn={req.status === "fail"}
+                    data-phase-req={req.id}
+                    title={req.text || req.id}
+                    onclick={() => openRequirement(req.id)}
+                  >
+                    <span class="req-id">{req.id}</span>
+                    <span class="req-status">{req.status}</span>
+                  </button>
+                {/each}
+              </div>
+            {:else}
+              <p class="phase-reqs-empty" data-phase-reqs-empty>No requirements yet</p>
+            {/if}
+            {#if phaseChrome.waves.length}
+              <div class="phase-waves" data-phase-waves>
+                {#each phaseChrome.waves as wave (wave.wave)}
+                  <span class="phase-wave" data-phase-wave={wave.wave}>
+                    w{wave.wave} {wave.done}/{wave.total}
+                  </span>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {:else if overlayView.chips.length}
           <div class="chips" data-detail-chips>
             {#each overlayView.chips as chip (chip.label)}
               <span class="chip {chip.tone || ''}">{chip.label}</span>
@@ -882,9 +942,9 @@
           <p class="write-error" data-write-error>{writeError}</p>
         {/if}
         {#each overlayView.sections as section (section.title)}
-          <div class="section-title">{section.title}</div>
+          <div class="section-title" data-section-card>{section.title}</div>
           <div
-            class="md"
+            class="md section-card"
             data-detail-section={section.title}
           >{@html md(section.body)}</div>
         {/each}

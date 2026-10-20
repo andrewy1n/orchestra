@@ -74,17 +74,17 @@ function phaseDetail(payload: unknown, tab: string): DetailViewModel {
   const sections: DetailSection[] = [];
   const active = tab || "overview";
   if (active === "overview") {
-    if (body) sections.push({ title: "Phase", body });
-    else sections.push({ title: "Phase", body: "No overview body." });
+    if (body) sections.push({ title: "Phase notes", body });
+    else sections.push({ title: "Phase notes", body: "No overview notes yet." });
   } else if (active === "spec") {
     sections.push({
       title: "Specification",
-      body: specBody || "No specification body.",
+      body: specBody || "No specification recorded for this phase.",
     });
   } else if (active === "design") {
     sections.push({
       title: "Design",
-      body: designBody || "No design body.",
+      body: designBody || "No design recorded for this phase.",
     });
   } else if (active === "decisions") {
     const groups = obj(root.decisions).groups;
@@ -182,7 +182,11 @@ function phaseDetail(payload: unknown, tab: string): DetailViewModel {
     const list = Array.isArray(tasks) ? tasks : [];
     const rows = list.map((row) => {
       const item = obj(row);
-      return `${str(item.status) || "—"}  ${str(item.subject) || str(item.title)}`;
+      const status = str(item.status) || "—";
+      const name = str(item.title) || str(item.subject) || str(item.id);
+      const wave =
+        item.wave == null || item.wave === "" ? "" : ` · w${item.wave}`;
+      return `- **${status}** ${name}${wave}`;
     });
     sections.push({
       title: "Tasks",
