@@ -15,7 +15,8 @@ export type RouteName =
   | "backlog"
   | "record"
   | "picker"
-  | "journal";
+  | "journal"
+  | "milestone";
 
 export interface Route {
   /** First path segment, or `home` when the hash is empty. */
@@ -36,6 +37,7 @@ const NAMES: ReadonlySet<string> = new Set<RouteName>([
   "record",
   "picker",
   "journal",
+  "milestone",
 ]);
 
 /** Parse a `location.hash` value into a route. */
