@@ -26,6 +26,7 @@
   import { linkifyText, type RefContext } from "./links";
   import { renderMarkdown } from "./markdown";
   import { buildPhaseChrome } from "./phaseChrome";
+  import { buildWaveGraph } from "./taskGraph";
   import {
     defaultPhase,
     filteredTasks,
@@ -262,6 +263,69 @@
     if (!effortName || !phaseName || !id) return;
     openHash(requirementHref(effortName, phaseName, id));
   }
+
+  const phaseTaskGraph = $derived.by(() => {
+    if (!target || target.kind !== "phase" || !detailPayload) return null;
+    if (activePhaseTab !== "overview") return null;
+    const detail = (detailPayload as { detail?: { tasks?: unknown } }).detail;
+    const tasks = Array.isArray(detail?.tasks) ? detail.tasks : [];
+    return buildWaveGraph(
+      tasks.map((row) => {
+        const task = row as {
+          id?: string;
+          subject?: string;
+          title?: string;
+          status?: string;
+          wave?: number | null;
+          depends_on?: string[];
+        };
+        return {
+          id: String(task.id || ""),
+          subject: task.subject,
+          title: task.title,
+          status: String(task.status || ""),
+          wave: task.wave,
+          depends_on: task.depends_on,
+        };
+      }).filter((task) => task.id),
+    );
+  });
+
+  function openGraphTask(id: string) {
+    if (!id) return;
+    openHash(taskHref(id));
+  }
+
+  const graphLayout = $derived.by(() => {
+    const graph = phaseTaskGraph;
+    if (!graph?.show) return null;
+    const colW = 140;
+    const rowH = 52;
+    const padX = 24;
+    const padY = 28;
+    const positions = new Map<string, { x: number; y: number }>();
+    let maxIndex = 0;
+    for (const lane of graph.lanes) {
+      for (const node of lane.nodes) {
+        maxIndex = Math.max(maxIndex, node.index);
+        positions.set(node.id, {
+          x: padX + node.lane * colW + colW / 2,
+          y: padY + node.index * rowH + 18,
+        });
+      }
+    }
+    const width = Math.max(padX * 2 + graph.lanes.length * colW, 200);
+    const height = Math.max(padY * 2 + (maxIndex + 1) * rowH, 80);
+    const lines = graph.edges
+      .map((edge) => {
+        const from = positions.get(edge.from);
+        const to = positions.get(edge.to);
+        if (!from || !to) return null;
+        return { ...edge, x1: from.x, y1: from.y, x2: to.x, y2: to.y };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+    return { width, height, colW, rowH, padX, padY, lines, positions };
+  });
 
   $effect(() => {
     if (journalEffort && journalEffort !== selectedEffort) {
@@ -940,6 +1004,59 @@
         {/if}
         {#if writeError && !pendingWrite}
           <p class="write-error" data-write-error>{writeError}</p>
+        {/if}
+        {#if phaseTaskGraph?.show && graphLayout}
+          <div class="task-graph" data-task-graph>
+            <div class="section-title">Dependencies</div>
+            <div
+              class="task-graph-board"
+              style:width={`${graphLayout.width}px`}
+              style:height={`${graphLayout.height}px`}
+            >
+              <svg
+                class="task-graph-edges"
+                width={graphLayout.width}
+                height={graphLayout.height}
+                aria-hidden="true"
+              >
+                {#each graphLayout.lines as line (line.from + "->" + line.to)}
+                  <line
+                    data-graph-edge={`${line.from}->${line.to}`}
+                    x1={line.x1}
+                    y1={line.y1}
+                    x2={line.x2}
+                    y2={line.y2}
+                    class="graph-edge"
+                  />
+                {/each}
+              </svg>
+              {#each phaseTaskGraph.lanes as lane (lane.wave)}
+                <div
+                  class="task-graph-lane"
+                  data-graph-lane={lane.wave}
+                  style:left={`${graphLayout.padX + (lane.nodes[0]?.lane ?? 0) * graphLayout.colW}px`}
+                  style:width={`${graphLayout.colW - 16}px`}
+                >
+                  <div class="lane-label">w{lane.wave}</div>
+                  {#each lane.nodes as node (node.id)}
+                    <button
+                      type="button"
+                      class="graph-node"
+                      class:done={node.status === "done"}
+                      class:ready={node.status === "ready"}
+                      class:running={node.status === "running" || node.status === "in_progress"}
+                      data-graph-node={node.id}
+                      data-status={node.status}
+                      style:top={`${graphLayout.padY + node.index * graphLayout.rowH}px`}
+                      onclick={() => openGraphTask(node.id)}
+                    >
+                      {node.label}
+                    </button>
+                  {/each}
+                </div>
+              {/each}
+            </div>
+          </div>
         {/if}
         {#each overlayView.sections as section (section.title)}
           <div class="section-title" data-section-card>{section.title}</div>

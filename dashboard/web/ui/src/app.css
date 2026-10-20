@@ -939,6 +939,84 @@ a.lrow {
   margin-bottom: 4px;
 }
 
+.task-graph {
+  margin-bottom: 14px;
+}
+
+.task-graph-board {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: auto;
+  max-width: 100%;
+}
+
+.task-graph-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.graph-edge {
+  stroke: var(--line-2, var(--muted));
+  stroke-width: 1.5;
+}
+
+.task-graph-lane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.lane-label {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.graph-node {
+  position: absolute;
+  left: 0;
+  right: 8px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--sunken);
+  color: var(--ink);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-node:hover {
+  border-color: var(--accent);
+}
+
+.graph-node.done {
+  border-color: color-mix(in srgb, var(--done) 45%, var(--line));
+  color: var(--done);
+}
+
+.graph-node.ready {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.graph-node.running {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+
 .md {
   max-width: 92ch;
   color: var(--ink-2);
