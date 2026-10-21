@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:0706316af2897f9012e2059725def5c93ac1b1ab0b453eef86962bdbf48d9aba
+> Store state: sha256:43a37ca95fb79b2b084f6a4583ff2bfefccf9e190157d57a0832bce18c0075b0
 
 ## dashboard
 
@@ -32,10 +32,11 @@
 - **library-boundary**: adaptive-artifacts, affidavit, and orchestra call each other in-process through small Python libraries. The commands stay for agents and humans. One function in adaptive-artifacts opens the store. SE_WORKFLOW_STORE is gone.; effort; deliver _(id: [rec-e474e2d8-be06-44e2-8583-27966c04a3b3](.artifacts/records/project__active-goal/rec-e474e2d8-be06-44e2-8583-27966c04a3b3.md))_
 
 ### Position
-- **library-boundary**: aa-library done at 387d8d4; next up: affidavit-library; effort _(id: [rec-41afbe01-668a-4171-8d73-f3e46899a470](.artifacts/records/project__current-position/rec-41afbe01-668a-4171-8d73-f3e46899a470.md))_
+- **library-boundary**: affidavit-library done at 5a9b02fe; next up: orchestra-callers; effort _(id: [rec-21f00827-3b3d-43f9-88e3-2b76ca531e51](.artifacts/records/project__current-position/rec-21f00827-3b3d-43f9-88e3-2b76ca531e51.md))_
 
 ### Latest Proof
 - **aa-library**: aa-library; library-boundary; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; claims _(id: [rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253](.artifacts/records/project__proof-packet/rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253.md))_
+- **affidavit-library**: affidavit-library; library-boundary; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; claims _(id: [rec-f2d7b5fc-450a-4c2e-ac3f-8c8430644cd1](.artifacts/records/project__proof-packet/rec-f2d7b5fc-450a-4c2e-ac3f-8c8430644cd1.md))_
 
 ## packaging
 

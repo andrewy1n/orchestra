@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:67ca9a58bbc3737dade353082cf4185d3039cd910d654ed5a3593a948b70da70
+> Store state: sha256:bb84a0ee5c5f8a7ef654520875a80487e47e95dc3c72d553c4bcead92728e970
 
 ## aa-installable-package
 
@@ -83,6 +83,11 @@
 
 ### Finding
 - **advisory-suite-verification-policy**: advisory suite fail for verification-policy-suite; exit_code=1; failing journal pager tests under full suite; suite check-run passes at phase head, or human clears; none _(id: [rec-bc32b08c-6674-4bef-ac01-5f0442fae56c](.artifacts/records/project__finding/rec-bc32b08c-6674-4bef-ac01-5f0442fae56c.md))_
+
+## affidavit-library-review
+
+### Check
+- **affidavit-library-review**: affidavit-library-review; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; review _(id: [rec-3bf4a5ae-ddad-495a-8331-77fdaf5ef7ca](.artifacts/records/project__check-run/rec-3bf4a5ae-ddad-495a-8331-77fdaf5ef7ca.md))_
 
 ## affidavit-readme-git-tool
 
@@ -3861,6 +3866,61 @@ print("phase checks only")
 ### Observation
 - **stepper-wrap**: test_stepper_wraps_by_pane_width_and_keeps_glyph_with_label failed 3/10: stepper lines were wider than pane.scrollable_content_region.width. Hypothesis: the status-tab grid wraps, the pane overflows 20 rows, a vertical scrollbar appears after the stepper rendered, narrowing the content region without a pane resize, so EffortPane.on_resize never re-shows.; dashboard-features _(id: [rec-b3951803-56a0-4f76-aefb-68962a329e8a](.artifacts/records/project__investigation-observation/rec-b3951803-56a0-4f76-aefb-68962a329e8a.md))_
 
+## store-client
+
+### Acceptance
+- **store-client**: R1; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_create_observation -q _(id: [rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb](.artifacts/records/project__acceptance/rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb.md))_
+
+### Check
+- **store-client**: rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-3eca21a1-0962-40ba-bf98-35b381276c72](.artifacts/records/project__check-run/rec-3eca21a1-0962-40ba-bf98-35b381276c72.md))_
+- **store-client**: rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb; dirty; fail; tdd _(id: [rec-fe883ac9-dcd6-496f-8813-fb160628bc9a](.artifacts/records/project__check-run/rec-fe883ac9-dcd6-496f-8813-fb160628bc9a.md))_
+
+## store-client-binding
+
+### Acceptance
+- **store-client-binding**: R3; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_create_binding -q _(id: [rec-93051b57-d9b6-494a-8230-6decee0ed8d6](.artifacts/records/project__acceptance/rec-93051b57-d9b6-494a-8230-6decee0ed8d6.md))_
+
+### Check
+- **store-client-binding**: rec-93051b57-d9b6-494a-8230-6decee0ed8d6; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-4c765db4-e281-4cc2-b122-d857204bed35](.artifacts/records/project__check-run/rec-4c765db4-e281-4cc2-b122-d857204bed35.md))_
+- **store-client-binding**: rec-93051b57-d9b6-494a-8230-6decee0ed8d6; dirty; fail; tdd _(id: [rec-8543fe1e-83da-4d7c-adb1-8080543885e7](.artifacts/records/project__check-run/rec-8543fe1e-83da-4d7c-adb1-8080543885e7.md))_
+
+## store-client-binding-list
+
+### Acceptance
+- **store-client-binding-list**: R4; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_list_bindings -q _(id: [rec-7b352367-9ce2-4514-a6f6-674073d920e4](.artifacts/records/project__acceptance/rec-7b352367-9ce2-4514-a6f6-674073d920e4.md))_
+
+### Check
+- **store-client-binding-list**: rec-7b352367-9ce2-4514-a6f6-674073d920e4; dirty; fail; tdd _(id: [rec-ca746c0a-ea3f-478e-b1d3-3b21a0d3fc9b](.artifacts/records/project__check-run/rec-ca746c0a-ea3f-478e-b1d3-3b21a0d3fc9b.md))_
+- **store-client-binding-list**: rec-7b352367-9ce2-4514-a6f6-674073d920e4; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-f4b45e76-3109-4463-82e7-87179c4cc2e9](.artifacts/records/project__check-run/rec-f4b45e76-3109-4463-82e7-87179c4cc2e9.md))_
+
+## store-client-layout
+
+### Acceptance
+- **store-client-layout**: R6; tdd; library-boundary; python3 -m pytest tests/test_store_client_layout.py::test_store_client_layout_allows_library_and_record_types -q _(id: [rec-affed3b8-e9b0-41fa-b2d9-750e40282d87](.artifacts/records/project__acceptance/rec-affed3b8-e9b0-41fa-b2d9-750e40282d87.md))_
+
+### Check
+- **store-client-layout**: rec-affed3b8-e9b0-41fa-b2d9-750e40282d87; dirty; fail; tdd _(id: [rec-b2eaee7a-30c3-4d8f-888a-16ba4df1fa4d](.artifacts/records/project__check-run/rec-b2eaee7a-30c3-4d8f-888a-16ba4df1fa4d.md))_
+- **store-client-layout**: rec-affed3b8-e9b0-41fa-b2d9-750e40282d87; dirty; fail; tdd _(id: [rec-bcf17c0a-aac2-455c-b8dc-e073da25737e](.artifacts/records/project__check-run/rec-bcf17c0a-aac2-455c-b8dc-e073da25737e.md))_
+- **store-client-layout**: rec-affed3b8-e9b0-41fa-b2d9-750e40282d87; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-ceff3be6-cd48-4340-83fd-da5143b57091](.artifacts/records/project__check-run/rec-ceff3be6-cd48-4340-83fd-da5143b57091.md))_
+
+## store-client-list
+
+### Acceptance
+- **store-client-list**: R2; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_list_observations -q _(id: [rec-a7279718-645e-45da-a1e8-7a02174c6138](.artifacts/records/project__acceptance/rec-a7279718-645e-45da-a1e8-7a02174c6138.md))_
+
+### Check
+- **store-client-list**: rec-a7279718-645e-45da-a1e8-7a02174c6138; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-73ef36e5-d320-4852-bd62-6d9caab14f44](.artifacts/records/project__check-run/rec-73ef36e5-d320-4852-bd62-6d9caab14f44.md))_
+- **store-client-list**: rec-a7279718-645e-45da-a1e8-7a02174c6138; dirty; fail; tdd _(id: [rec-e103b683-32c4-429e-ad3a-95366cfa8046](.artifacts/records/project__check-run/rec-e103b683-32c4-429e-ad3a-95366cfa8046.md))_
+
+## store-client-subprocess
+
+### Acceptance
+- **store-client-subprocess**: R5; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_no_adaptive_artifacts_process -q _(id: [rec-73566385-e695-4d8e-87c5-f4a28370eeb4](.artifacts/records/project__acceptance/rec-73566385-e695-4d8e-87c5-f4a28370eeb4.md))_
+
+### Check
+- **store-client-subprocess**: rec-73566385-e695-4d8e-87c5-f4a28370eeb4; dirty; fail; tdd _(id: [rec-040f6ae7-a55f-4732-8ba6-9be6344850b7](.artifacts/records/project__check-run/rec-040f6ae7-a55f-4732-8ba6-9be6344850b7.md))_
+- **store-client-subprocess**: rec-73566385-e695-4d8e-87c5-f4a28370eeb4; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; tdd _(id: [rec-2decdafc-945e-4735-9f78-c5961707c143](.artifacts/records/project__check-run/rec-2decdafc-945e-4735-9f78-c5961707c143.md))_
+
 ## suite-advisory-atomic-claims
 
 ### Finding
@@ -4297,6 +4357,42 @@ print("phase checks only")
 ### Observation
 - **unsigned-check-label**: _needs_you built unsigned-check text from the raw criterion_id and used the check-run subject, so the panel showed a rec- id instead of the criterion and task.; dashboard-bugfix _(id: [rec-45a1d50b-0dae-47ec-88c3-19cab12238ba](.artifacts/records/project__investigation-observation/rec-45a1d50b-0dae-47ec-88c3-19cab12238ba.md))_
 
+## verdict-gate
+
+### Acceptance
+- **verdict-gate**: R7; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_zero -q _(id: [rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0](.artifacts/records/project__acceptance/rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0.md))_
+
+### Check
+- **verdict-gate**: rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-be8250e6-3e75-46d8-bbe1-ccbe6ad4fa52](.artifacts/records/project__check-run/rec-be8250e6-3e75-46d8-bbe1-ccbe6ad4fa52.md))_
+- **verdict-gate**: rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0; 5a263e1304089ecc2b4feec91b990963a8c56b3c; pass; check _(id: [rec-e6b40278-2397-492f-9dc5-80956e0ed20f](.artifacts/records/project__check-run/rec-e6b40278-2397-492f-9dc5-80956e0ed20f.md))_
+
+## verdict-gate-command
+
+### Acceptance
+- **verdict-gate-command**: R9; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_command_calls_run_verdict -q _(id: [rec-b710f687-d91b-4206-a5bd-2d8431eb21d8](.artifacts/records/project__acceptance/rec-b710f687-d91b-4206-a5bd-2d8431eb21d8.md))_
+
+### Check
+- **verdict-gate-command**: rec-b710f687-d91b-4206-a5bd-2d8431eb21d8; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-3cc22462-f711-4ad6-89a2-7d3bc1f46960](.artifacts/records/project__check-run/rec-3cc22462-f711-4ad6-89a2-7d3bc1f46960.md))_
+- **verdict-gate-command**: rec-b710f687-d91b-4206-a5bd-2d8431eb21d8; 5a263e1304089ecc2b4feec91b990963a8c56b3c; pass; check _(id: [rec-99de6678-8a65-44bd-bf1d-a05338a57404](.artifacts/records/project__check-run/rec-99de6678-8a65-44bd-bf1d-a05338a57404.md))_
+
+## verdict-gate-false
+
+### Acceptance
+- **verdict-gate-false**: R8; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_one -q _(id: [rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2](.artifacts/records/project__acceptance/rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2.md))_
+
+### Check
+- **verdict-gate-false**: rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-2268038c-c1ea-47bb-b951-1cf6030a2ea1](.artifacts/records/project__check-run/rec-2268038c-c1ea-47bb-b951-1cf6030a2ea1.md))_
+- **verdict-gate-false**: rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2; 5a263e1304089ecc2b4feec91b990963a8c56b3c; pass; check _(id: [rec-4283b141-8834-46eb-a3ba-7a0caafc3d93](.artifacts/records/project__check-run/rec-4283b141-8834-46eb-a3ba-7a0caafc3d93.md))_
+
+## verdict-gate-nostore
+
+### Acceptance
+- **verdict-gate-nostore**: R10; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_without_store -q _(id: [rec-6b189dbb-4fb6-47eb-9577-68b320964fac](.artifacts/records/project__acceptance/rec-6b189dbb-4fb6-47eb-9577-68b320964fac.md))_
+
+### Check
+- **verdict-gate-nostore**: rec-6b189dbb-4fb6-47eb-9577-68b320964fac; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-0cf1e7c4-ebec-44ad-b080-665065eb5f41](.artifacts/records/project__check-run/rec-0cf1e7c4-ebec-44ad-b080-665065eb5f41.md))_
+- **verdict-gate-nostore**: rec-6b189dbb-4fb6-47eb-9577-68b320964fac; 5a263e1304089ecc2b4feec91b990963a8c56b3c; pass; check _(id: [rec-20d07d36-08dd-4858-9ce3-930349cff4dd](.artifacts/records/project__check-run/rec-20d07d36-08dd-4858-9ce3-930349cff4dd.md))_
+
 ## verification-policy-review
 
 ### Check
@@ -4335,6 +4431,38 @@ print("phase checks only")
 ### Check
 - **verify-aa-library-scan**: rec-9f00ff4c-6d08-4671-81b9-11169db780ec; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; check _(id: [rec-536ce38b-790e-4592-9aea-87f9fde8b22e](.artifacts/records/project__check-run/rec-536ce38b-790e-4592-9aea-87f9fde8b22e.md))_
 - **verify-aa-library-scan**: rec-9f00ff4c-6d08-4671-81b9-11169db780ec; 206fcd0b22ed111d7a272c934bb1864271947591; pass; check _(id: [rec-bb4a3d69-86bc-4bf4-90c6-216e422d0bc6](.artifacts/records/project__check-run/rec-bb4a3d69-86bc-4bf4-90c6-216e422d0bc6.md))_
+
+## verify-affidavit-library
+
+### Acceptance
+- **verify-affidavit-library**: R5; check; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_no_adaptive_artifacts_process -q _(id: [rec-425c5e1a-aa1f-4b9b-a774-029d1e18b9bd](.artifacts/records/project__acceptance/rec-425c5e1a-aa1f-4b9b-a774-029d1e18b9bd.md))_
+
+### Check
+- **verify-affidavit-library**: rec-425c5e1a-aa1f-4b9b-a774-029d1e18b9bd; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-97f8d71e-496c-4c26-845d-e5774307b89f](.artifacts/records/project__check-run/rec-97f8d71e-496c-4c26-845d-e5774307b89f.md))_
+
+## verify-affidavit-library-help
+
+### Acceptance
+- **verify-affidavit-library-help**: R9; check; library-boundary; bin/aff --help | python3 -c "import sys; t=sys.stdin.read(); missing=[w for w in ('verdict','recheck','assertion-red') if w not in t]; assert not missing, missing" _(id: [rec-53ece8a3-1c43-4ec1-8462-77e90d36a79a](.artifacts/records/project__acceptance/rec-53ece8a3-1c43-4ec1-8462-77e90d36a79a.md))_
+
+### Check
+- **verify-affidavit-library-help**: rec-53ece8a3-1c43-4ec1-8462-77e90d36a79a; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-3a8dbcf0-85a1-470f-a344-809c047f6c90](.artifacts/records/project__check-run/rec-3a8dbcf0-85a1-470f-a344-809c047f6c90.md))_
+
+## verify-affidavit-library-nostore
+
+### Acceptance
+- **verify-affidavit-library-nostore**: R10; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_without_store -q _(id: [rec-8634b6ff-5faf-4552-84ad-656408272281](.artifacts/records/project__acceptance/rec-8634b6ff-5faf-4552-84ad-656408272281.md))_
+
+### Check
+- **verify-affidavit-library-nostore**: rec-8634b6ff-5faf-4552-84ad-656408272281; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-f42f1779-498e-48d9-9ba6-30af23c27724](.artifacts/records/project__check-run/rec-f42f1779-498e-48d9-9ba6-30af23c27724.md))_
+
+## verify-affidavit-library-red
+
+### Acceptance
+- **verify-affidavit-library-red**: R7; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_zero -q _(id: [rec-c74119bf-2348-45d8-8aae-5e65b7e190a7](.artifacts/records/project__acceptance/rec-c74119bf-2348-45d8-8aae-5e65b7e190a7.md))_
+
+### Check
+- **verify-affidavit-library-red**: rec-c74119bf-2348-45d8-8aae-5e65b7e190a7; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; pass; check _(id: [rec-daa17883-ea4a-4de4-8dcb-85d2864d76a7](.artifacts/records/project__check-run/rec-daa17883-ea4a-4de4-8dcb-85d2864d76a7.md))_
 
 ## verify-atomic-claims
 

@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:f4679bf51ca004b70cf33e229004728367f883c2f7298a0340cdfc0207cc0645
+> Store state: sha256:da916f0c50772e4b16944473dfd96f1d03e45f8cedfd5d84d01cf8fda36f24b3
 
 ## aa-installable-package
 
@@ -1123,7 +1123,7 @@
 ## library-boundary
 
 ### Position
-- **library-boundary**: aa-library done at 387d8d4; next up: affidavit-library; effort _(id: [rec-41afbe01-668a-4171-8d73-f3e46899a470](.artifacts/records/project__current-position/rec-41afbe01-668a-4171-8d73-f3e46899a470.md))_
+- **library-boundary**: affidavit-library done at 5a9b02fe; next up: orchestra-callers; effort _(id: [rec-21f00827-3b3d-43f9-88e3-2b76ca531e51](.artifacts/records/project__current-position/rec-21f00827-3b3d-43f9-88e3-2b76ca531e51.md))_
 
 ## loop-scenarios
 
@@ -2290,6 +2290,36 @@ print("phase checks only")
 ### Acceptance
 - **stepper-wrap**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k stepper _(id: [rec-c2df3f61-8b0b-44d8-89b3-f3033ebcf9d0](.artifacts/records/project__acceptance/rec-c2df3f61-8b0b-44d8-89b3-f3033ebcf9d0.md))_
 
+## store-client
+
+### Acceptance
+- **store-client**: R1; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_create_observation -q _(id: [rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb](.artifacts/records/project__acceptance/rec-a3c83cf3-598c-40d5-a651-7c24f3bebeeb.md))_
+
+## store-client-binding
+
+### Acceptance
+- **store-client-binding**: R3; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_create_binding -q _(id: [rec-93051b57-d9b6-494a-8230-6decee0ed8d6](.artifacts/records/project__acceptance/rec-93051b57-d9b6-494a-8230-6decee0ed8d6.md))_
+
+## store-client-binding-list
+
+### Acceptance
+- **store-client-binding-list**: R4; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_list_bindings -q _(id: [rec-7b352367-9ce2-4514-a6f6-674073d920e4](.artifacts/records/project__acceptance/rec-7b352367-9ce2-4514-a6f6-674073d920e4.md))_
+
+## store-client-layout
+
+### Acceptance
+- **store-client-layout**: R6; tdd; library-boundary; python3 -m pytest tests/test_store_client_layout.py::test_store_client_layout_allows_library_and_record_types -q _(id: [rec-affed3b8-e9b0-41fa-b2d9-750e40282d87](.artifacts/records/project__acceptance/rec-affed3b8-e9b0-41fa-b2d9-750e40282d87.md))_
+
+## store-client-list
+
+### Acceptance
+- **store-client-list**: R2; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_list_observations -q _(id: [rec-a7279718-645e-45da-a1e8-7a02174c6138](.artifacts/records/project__acceptance/rec-a7279718-645e-45da-a1e8-7a02174c6138.md))_
+
+## store-client-subprocess
+
+### Acceptance
+- **store-client-subprocess**: R5; tdd; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_no_adaptive_artifacts_process -q _(id: [rec-73566385-e695-4d8e-87c5-f4a28370eeb4](.artifacts/records/project__acceptance/rec-73566385-e695-4d8e-87c5-f4a28370eeb4.md))_
+
 ## suite-advisory-atomic-claims
 
 ### Finding
@@ -2546,6 +2576,26 @@ print("phase checks only")
 ### Acceptance
 - **unsigned-check-label**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k unsigned _(id: [rec-403febb3-cbe5-474d-8413-5687934c29d2](.artifacts/records/project__acceptance/rec-403febb3-cbe5-474d-8413-5687934c29d2.md))_
 
+## verdict-gate
+
+### Acceptance
+- **verdict-gate**: R7; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_zero -q _(id: [rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0](.artifacts/records/project__acceptance/rec-29e0b3bf-94df-4a5d-9317-b6c12e6443a0.md))_
+
+## verdict-gate-command
+
+### Acceptance
+- **verdict-gate-command**: R9; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_command_calls_run_verdict -q _(id: [rec-b710f687-d91b-4206-a5bd-2d8431eb21d8](.artifacts/records/project__acceptance/rec-b710f687-d91b-4206-a5bd-2d8431eb21d8.md))_
+
+## verdict-gate-false
+
+### Acceptance
+- **verdict-gate-false**: R8; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_one -q _(id: [rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2](.artifacts/records/project__acceptance/rec-6306a25f-9095-4f9e-aedd-4d473ecc2ee2.md))_
+
+## verdict-gate-nostore
+
+### Acceptance
+- **verdict-gate-nostore**: R10; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_without_store -q _(id: [rec-6b189dbb-4fb6-47eb-9577-68b320964fac](.artifacts/records/project__acceptance/rec-6b189dbb-4fb6-47eb-9577-68b320964fac.md))_
+
 ## verify-aa-library
 
 ### Acceptance
@@ -2560,6 +2610,26 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-aa-library-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f00ff4c-6d08-4671-81b9-11169db780ec](.artifacts/records/project__acceptance/rec-9f00ff4c-6d08-4671-81b9-11169db780ec.md))_
+
+## verify-affidavit-library
+
+### Acceptance
+- **verify-affidavit-library**: R5; check; library-boundary; python3 -m pytest tests/test_store_client.py::test_store_client_no_adaptive_artifacts_process -q _(id: [rec-425c5e1a-aa1f-4b9b-a774-029d1e18b9bd](.artifacts/records/project__acceptance/rec-425c5e1a-aa1f-4b9b-a774-029d1e18b9bd.md))_
+
+## verify-affidavit-library-help
+
+### Acceptance
+- **verify-affidavit-library-help**: R9; check; library-boundary; bin/aff --help | python3 -c "import sys; t=sys.stdin.read(); missing=[w for w in ('verdict','recheck','assertion-red') if w not in t]; assert not missing, missing" _(id: [rec-53ece8a3-1c43-4ec1-8462-77e90d36a79a](.artifacts/records/project__acceptance/rec-53ece8a3-1c43-4ec1-8462-77e90d36a79a.md))_
+
+## verify-affidavit-library-nostore
+
+### Acceptance
+- **verify-affidavit-library-nostore**: R10; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_without_store -q _(id: [rec-8634b6ff-5faf-4552-84ad-656408272281](.artifacts/records/project__acceptance/rec-8634b6ff-5faf-4552-84ad-656408272281.md))_
+
+## verify-affidavit-library-red
+
+### Acceptance
+- **verify-affidavit-library-red**: R7; check; library-boundary; python3 -m pytest tests/test_verdict_gate.py::test_verdict_gate_assertion_red_exits_zero -q _(id: [rec-c74119bf-2348-45d8-8aae-5e65b7e190a7](.artifacts/records/project__acceptance/rec-c74119bf-2348-45d8-8aae-5e65b7e190a7.md))_
 
 ## verify-atomic-claims
 
