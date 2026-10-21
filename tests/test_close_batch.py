@@ -1705,6 +1705,94 @@ def test_claim_gate_refuses_done_when_aff_recheck_nonzero(tmp_path, monkeypatch)
     assert "recheck" in msg or CLAIM_ID in msg
 
 
+
+
+def test_claim_gate_accepts_done_when_verdict_and_recheck_zero(tmp_path, monkeypatch):
+    """R5/R6 success: manifest claim closes when aff verdict and recheck exit 0."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=0, recheck_code=0)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    request = _claim_gate_check_request()
+    ops = _build(
+        request,
+        cwd=repo,
+        load_acceptance=lambda _aid: _claim_gate_acceptance(),
+    )
+    assert ops[-1]["transition"] == "done"
+
+
+def test_claim_gate_uses_payload_claim_id_over_task_subject(tmp_path, monkeypatch):
+    """Claim id may live in payload.claim when subject is a task slug."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=1, recheck_code=0)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    def load_acceptance(_aid):
+        return {
+            "id": "rec-ac1",
+            "subject": "claim-gate-close",  # task slug, not claim id
+            "payload": {
+                "method": "check",
+                "effort": "effort-1",
+                "claim": CLAIM_ID,
+            },
+        }
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(request, cwd=repo, load_acceptance=load_acceptance)
+    msg = str(excinfo.value).lower()
+    assert "verdict" in msg or CLAIM_ID in msg
+
+
+def test_claim_gate_refuses_when_aff_cli_missing(tmp_path, monkeypatch):
+    """Missing aff binary refuses claim-gate done clearly."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
+    (tmp_path / "empty-bin").mkdir()
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(
+            request,
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+    msg = str(excinfo.value).lower()
+    assert "aff" in msg
+    assert "not found" in msg or "path" in msg or "verdict" in msg
+
+
+def test_oracle_red_refuses_when_aff_cli_missing(tmp_path, monkeypatch):
+    """R9: missing aff assertion-red CLI refuses oracle-backed done clearly."""
+    repo, green_sha = _oracle_repo(tmp_path)
+    entry = _tdd_with_dirty_red(
+        revision=green_sha,
+        **_assertion_red_fields(),
+    )
+    request = _request(criteria=[entry])
+
+    real_run = subprocess.run
+
+    def spy(cmd, **kwargs):
+        argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
+        name = Path(argv[0]).name if argv else ""
+        if name == "aff":
+            raise FileNotFoundError("aff")
+        return real_run(cmd, **kwargs)
+
+    monkeypatch.setattr(close_batch.subprocess, "run", spy)
+
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build_oracle(request, cwd=repo)
+    msg = str(excinfo.value).lower()
+    assert "aff" in msg or "assertion" in msg or "oracle" in msg
+
+
 # -- oracle red via Affidavit CLI only (evidence-authority) ---------------
 
 

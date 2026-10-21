@@ -499,21 +499,31 @@ def _manifest_claim_ids(cwd: Path) -> set[str]:
 
 def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
     """Refuse when ``aff verdict`` or ``aff recheck`` exits non-zero for claim."""
-    verdict = subprocess.run(
-        ["aff", "verdict", "--cwd", str(cwd), "--at", revision, claim_id],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        verdict = subprocess.run(
+            ["aff", "verdict", "--cwd", str(cwd), "--at", revision, claim_id],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise CloseRefused(
+            f"aff CLI not found on PATH; cannot run verdict for claim {claim_id!r}"
+        ) from exc
     if verdict.returncode != 0:
         raise CloseRefused(
             f"aff verdict refused for claim {claim_id!r} "
             f"at revision {revision!r} (exit {verdict.returncode})"
         )
-    recheck = subprocess.run(
-        ["aff", "recheck", "--cwd", str(cwd), "--claim", claim_id],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        recheck = subprocess.run(
+            ["aff", "recheck", "--cwd", str(cwd), "--claim", claim_id],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise CloseRefused(
+            f"aff CLI not found on PATH; cannot run recheck for claim {claim_id!r}"
+        ) from exc
     if recheck.returncode != 0:
         raise CloseRefused(
             f"aff recheck refused for claim {claim_id!r} "
@@ -538,7 +548,11 @@ def _enforce_claim_gates(
             acceptance = load_acceptance(str(criterion_id))
         except LookupError:
             continue
-        claim_id = str(acceptance.get("subject") or "").strip()
+        payload = _payload(acceptance)
+        claim_id = (
+            str(payload.get("claim") or payload.get("claim_id") or "").strip()
+            or str(acceptance.get("subject") or "").strip()
+        )
         if not claim_id or claim_id not in claim_ids:
             continue
         revision: Any = None
@@ -578,7 +592,13 @@ def _enforce_oracle_gates(
     if not is_oracle_backed(acceptance_payload):
         return
 
-    if not _assertion_level_red(red_record):
+    try:
+        assertion_red = _assertion_level_red(red_record)
+    except OracleAdapterUnavailable as exc:
+        raise CloseRefused(
+            f"criterion {criterion_id!r}: {exc}"
+        ) from exc
+    if not assertion_red:
         raise CloseRefused(
             f"criterion {criterion_id!r}: oracle-backed tdd requires "
             "assertion-level red (fail with assertion failure); "
