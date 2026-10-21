@@ -177,11 +177,22 @@ def test_cli_integration_pass_check_run(store, cli, resolved_contract):
     record = _parse_check_stdout(result)
     assert record["payload"]["result"] == "pass"
     assert record["payload"]["revision"] == head
-    assert record["payload"]["runner"] == "aff"
+    assert record["payload"]["runner"] == "orchestra"
     assert record["payload"]["exit_code"] == 0
     assert "duration_s" in record["payload"]
     assert "output_sha256" in record["payload"]
     assert acceptance["id"] in (record.get("relationships") or {}).get("informed_by", [])
+
+
+def test_check_writes_runner_orchestra(store, cli, resolved_contract):
+    """R1: orchestra check stamps payload.runner as orchestra."""
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="runner-orchestra-task", verify_command="true",
+    )
+    result = _run_affidavit("check", "--acceptance", acceptance["id"], cwd=store)
+    assert result.returncode == 0, result.stdout + result.stderr
+    record = _parse_check_stdout(result)
+    assert record["payload"]["runner"] == "orchestra"
 
 
 def test_cli_integration_fail_check_run(store, cli, resolved_contract):
@@ -193,7 +204,7 @@ def test_cli_integration_fail_check_run(store, cli, resolved_contract):
     record = _parse_check_stdout(result)
     assert record["payload"]["result"] == "fail"
     assert record["payload"]["exit_code"] != 0
-    assert record["payload"]["runner"] == "aff"
+    assert record["payload"]["runner"] == "orchestra"
 
 
 def test_cli_blocked_missing_command(store, cli, resolved_contract):
@@ -291,7 +302,7 @@ def test_runner_fields_and_metadata_on_pass(store, cli, resolved_contract):
     assert isinstance(payload["duration_s"], (int, float))
     assert payload["duration_s"] >= 0
     assert len(payload["output_sha256"]) == 64
-    assert payload["runner"] == "aff"
+    assert payload["runner"] == "orchestra"
     assert payload["requirement"] == "R9"
     assert payload["method"] == "check"
     assert payload["revision"]

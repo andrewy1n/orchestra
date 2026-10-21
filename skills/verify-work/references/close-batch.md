@@ -57,14 +57,15 @@ adaptive-artifacts list --type project:check-run --subject "<task-slug>" --full 
 ```
 
    Copy from the red: `red_check_run_id`, `red_result` (`fail`),
-   `red_revision`, `red_runner` (`aff`), and when `red_revision` is
-   `dirty`, non-empty `red_diff_sha256` from that run's
-   `diff_sha256`. Copy the green run's `revision` onto the criteria
-   entry (ancestry: green equals or is a git descendant of red SHA;
-   dirty red skips SHA ancestry and only needs `red_diff_sha256`).
-   Do not invent red fields; if none, keep `in_progress` or use the
-   finding escape. For `manual`, use `revision` from
-   `git rev-parse HEAD` once committed and `signed_by` once reviewed.
+   `red_revision`, `red_runner` (`orchestra`), and when
+   `red_revision` is `dirty`, non-empty `red_diff_sha256` from that
+   run's `diff_sha256`. Copy the green run's `revision` onto the
+   criteria entry (ancestry: green equals or is a git descendant of
+   red SHA; dirty red skips SHA ancestry and only needs
+   `red_diff_sha256`). Do not invent red fields; if none, keep
+   `in_progress` or use the finding escape. For `manual`, use
+   `revision` from `git rev-parse HEAD` once committed and
+   `signed_by` once reviewed.
 
    Write a close-request: `criteria` = acceptances actually checked;
    `acceptance_ids` = **every** active acceptance from step 1.
@@ -90,7 +91,7 @@ cat > /tmp/close-request.json <<'EOF'
       "red_check_run_id": "<red-runner-check-run-id>",
       "red_result": "fail",
       "red_revision": "<red-sha>",
-      "red_runner": "aff"
+      "red_runner": "orchestra"
     },
     {"criterion_id": "<acceptance-id-2>", "method": "check", "check_run_id": "<runner-check-run-id-2>", "result": "pass"}
   ],
@@ -121,7 +122,7 @@ cat > /tmp/close-request.json <<'EOF'
       "red_check_run_id": "<red-runner-check-run-id>",
       "red_result": "fail",
       "red_revision": "dirty",
-      "red_runner": "aff",
+      "red_runner": "orchestra",
       "red_diff_sha256": "<digest-from-red-check-run-diff_sha256>"
     }
   ],

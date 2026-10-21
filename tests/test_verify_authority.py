@@ -159,7 +159,7 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
                 "red_check_run_id": "rec-red-cr",
                 "red_result": "fail",
                 "red_revision": "dirty",
-                "red_runner": "aff",
+                "red_runner": "orchestra",
                 "red_diff_sha256": "c" * 64,
             }
         ],
@@ -174,7 +174,7 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
                 "payload": {
                     "criterion_id": entry["criterion_id"],
                     "result": entry["result"],
-                    "runner": "aff",
+                    "runner": "orchestra",
                     "revision": entry["revision"],
                     "method": "tdd",
                 },

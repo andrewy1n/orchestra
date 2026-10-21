@@ -48,7 +48,7 @@ from typing import Any, Callable
 from orchestra import aa
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
-RUNNER_MARKER = "aff"
+RUNNER_MARKER = "orchestra"
 _HASH_SEP = ":sha256:"
 
 CheckRunLoader = Callable[[str], dict[str, Any]]
@@ -65,10 +65,10 @@ class CloseRefused(Exception):
 
 
 class OracleAdapterUnavailable(Exception):
-    """Oracle-backed close needs ``affidavit.oracle_red``, which is absent.
+    """Oracle-backed close needs the Affidavit ``aff assertion-red`` CLI.
 
-    An installed CLI serves every other subcommand without an affidavit
-    checkout, so the import is deferred to the one gate that reads it.
+    An installed Orchestra CLI serves every other subcommand without Affidavit
+    on PATH; this gate refuses clearly when the classifier is missing.
     """
 
 
@@ -435,19 +435,32 @@ def _enforce_red_first_from_store(
 
 
 def _assertion_level_red(record: dict[str, Any]) -> bool:
-    """Ask the affidavit oracle adapter whether red failed at assertion level.
+    """Ask Affidavit ``aff assertion-red`` whether red failed at assertion level.
 
-    The import is deferred: only oracle-backed closes need the affidavit
-    checkout, and an installed CLI must start without one.
+    Classification is CLI-only (R9): stdin JSON, exit 0 = assertion-level red,
+    exit 1 = not. Missing CLI raises OracleAdapterUnavailable.
     """
     try:
-        from affidavit.oracle_red import is_assertion_level_red
-    except ModuleNotFoundError as exc:
+        result = subprocess.run(
+            ["aff", "assertion-red"],
+            input=json.dumps(record),
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
         raise OracleAdapterUnavailable(
-            "affidavit is not importable; close-batch needs the affidavit "
-            "checkout (affidavit.oracle_red) for oracle-backed acceptances"
+            "aff CLI not found on PATH; close-batch needs the affidavit "
+            "CLI (aff assertion-red) for oracle-backed acceptances"
         ) from exc
-    return is_assertion_level_red(record)
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    detail = (result.stderr or result.stdout or "").strip()
+    raise OracleAdapterUnavailable(
+        f"aff assertion-red failed (exit {result.returncode})"
+        + (f": {detail}" if detail else "")
+    )
 
 
 def _approved_amendment_covers_tree(
@@ -463,6 +476,97 @@ def _approved_amendment_covers_tree(
         if new_hashes and new_hashes == tree_hashes:
             return True
     return False
+
+
+def _manifest_claim_ids(cwd: Path) -> set[str]:
+    """Claim ids listed in ``.affidavit/manifest.json`` under ``cwd``, if any."""
+    path = cwd / ".affidavit" / "manifest.json"
+    if not path.is_file():
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    claims = data.get("claims") if isinstance(data, dict) else None
+    if not isinstance(claims, list):
+        return set()
+    ids: set[str] = set()
+    for claim in claims:
+        if isinstance(claim, dict) and claim.get("id"):
+            ids.add(str(claim["id"]))
+    return ids
+
+
+def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
+    """Refuse when ``aff verdict`` or ``aff recheck`` exits non-zero for claim."""
+    try:
+        verdict = subprocess.run(
+            ["aff", "verdict", "--cwd", str(cwd), "--at", revision, claim_id],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise CloseRefused(
+            f"aff CLI not found on PATH; cannot run verdict for claim {claim_id!r}"
+        ) from exc
+    if verdict.returncode != 0:
+        raise CloseRefused(
+            f"aff verdict refused for claim {claim_id!r} "
+            f"at revision {revision!r} (exit {verdict.returncode})"
+        )
+    try:
+        recheck = subprocess.run(
+            ["aff", "recheck", "--cwd", str(cwd), "--claim", claim_id],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise CloseRefused(
+            f"aff CLI not found on PATH; cannot run recheck for claim {claim_id!r}"
+        ) from exc
+    if recheck.returncode != 0:
+        raise CloseRefused(
+            f"aff recheck refused for claim {claim_id!r} "
+            f"(exit {recheck.returncode})"
+        )
+
+
+def _enforce_claim_gates(
+    criteria: list[dict[str, Any]],
+    *,
+    green_by_criterion: dict[Any, dict[str, Any]],
+    cwd: Path,
+    load_acceptance: AcceptanceLoader,
+) -> None:
+    """R5/R6: manifest-backed acceptances need aff verdict + recheck on done."""
+    claim_ids = _manifest_claim_ids(cwd)
+    if not claim_ids:
+        return
+    for entry in criteria:
+        criterion_id = entry.get("criterion_id")
+        try:
+            acceptance = load_acceptance(str(criterion_id))
+        except LookupError:
+            continue
+        payload = _payload(acceptance)
+        claim_id = (
+            str(payload.get("claim") or payload.get("claim_id") or "").strip()
+            or str(acceptance.get("subject") or "").strip()
+        )
+        if not claim_id or claim_id not in claim_ids:
+            continue
+        revision: Any = None
+        green = green_by_criterion.get(criterion_id)
+        if green is not None:
+            revision = green.get("revision")
+        if not revision:
+            revision = entry.get("revision")
+        if not revision:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: claim {claim_id!r} requires "
+                "a close revision for aff verdict"
+            )
+        _run_aff_claim_gate(claim_id, cwd=cwd, revision=str(revision))
 
 
 def _enforce_oracle_gates(
@@ -488,7 +592,13 @@ def _enforce_oracle_gates(
     if not is_oracle_backed(acceptance_payload):
         return
 
-    if not _assertion_level_red(red_record):
+    try:
+        assertion_red = _assertion_level_red(red_record)
+    except OracleAdapterUnavailable as exc:
+        raise CloseRefused(
+            f"criterion {criterion_id!r}: {exc}"
+        ) from exc
+    if not assertion_red:
         raise CloseRefused(
             f"criterion {criterion_id!r}: oracle-backed tdd requires "
             "assertion-level red (fail with assertion failure); "
@@ -653,6 +763,12 @@ def build_batch(
             green_by_criterion[entry.get("criterion_id")] = _resolve_green_check_run(
                 entry, loader=loader
             )
+        _enforce_claim_gates(
+            criteria,
+            green_by_criterion=green_by_criterion,
+            cwd=work_cwd,
+            load_acceptance=acceptance_loader,
+        )
 
     if transition == "done" and not finding:
         for entry in criteria:

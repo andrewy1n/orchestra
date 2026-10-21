@@ -18,7 +18,7 @@ from orchestra.policy import (
     map_process_outcome,
 )
 
-RUNNER = "aff"
+RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
 OUTPUT_BODY_CHARS = 8000
 

@@ -13,6 +13,7 @@ must not invent them.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +26,8 @@ from orchestra import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
-RUNNER = "aff"
+RUNNER = "orchestra"
+ORCHESTRA_RUNNER = "orchestra"
 
 
 def _tdd_pass_only_entry(**extra):
@@ -429,7 +431,7 @@ def _seed_runner_check_run(
         "effort": acceptance["payload"]["effort"],
         "method": acceptance["payload"]["method"],
         "signed_by": "",
-        "runner": "aff",
+        "runner": "orchestra",
     }
     if diff_sha256 is not None:
         payload["diff_sha256"] = diff_sha256
@@ -518,7 +520,7 @@ def test_end_to_end_all_pass_closes_the_work_item_to_done(
     assert len(check_runs) == 2
     by_id = {cr["id"]: cr for cr in check_runs}
     assert by_id[green_cr["id"]]["payload"]["result"] == "pass"
-    assert by_id[green_cr["id"]]["payload"].get("runner") == "aff"
+    assert by_id[green_cr["id"]]["payload"].get("runner") == "orchestra"
     assert by_id[red_cr["id"]]["payload"]["result"] == "fail"
 
 
@@ -1547,3 +1549,303 @@ def test_cli_assertion_level_refuses_import_only_oracle_red(
     assert not out_path.exists()
     msg = (result.stderr + result.stdout).lower()
     assert "assertion" in msg or "oracle" in msg
+
+
+# -- honest runner stamp (evidence-authority) -----------------------------
+
+
+def test_close_batch_accepts_orchestra_runner_stamp():
+    """R3: stored check-run is runner-produced only when runner is orchestra."""
+    request = _request(
+        criteria=[
+            {
+                "criterion_id": "rec-ac1",
+                "method": "check",
+                "check_run_id": "rec-runner-cr",
+                "result": "pass",
+                "runner": ORCHESTRA_RUNNER,
+            }
+        ]
+    )
+    refused: close_batch.CloseRefused | None = None
+    ops: list | None = None
+    try:
+        ops = _build(request)
+    except close_batch.CloseRefused as exc:
+        refused = exc
+    assert refused is None, f"orchestra runner must be runner-produced; refused: {refused}"
+    assert ops is not None
+    assert ops[-1]["transition"] == "done"
+
+
+def test_close_batch_refuses_aff_runner_stamp():
+    """R4: stored check-run with runner aff is not runner-produced."""
+    request = _request(
+        criteria=[
+            {
+                "criterion_id": "rec-ac1",
+                "method": "check",
+                "check_run_id": "rec-runner-cr",
+                "result": "pass",
+                "runner": "aff",
+            }
+        ]
+    )
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(request)
+    msg = str(excinfo.value).lower()
+    assert "runner" in msg
+    assert "aff" in msg or "not runner-produced" in msg
+
+
+# -- claim gate: aff verdict / recheck (evidence-authority) ---------------
+
+
+CLAIM_ID = "claim-widget"
+
+
+def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
+    aff_dir = repo / ".affidavit"
+    aff_dir.mkdir(parents=True, exist_ok=True)
+    (aff_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "claims": [
+                    {
+                        "id": claim_id,
+                        "text": "widget works",
+                        "tests": ["tests/test_widget.py::test_widget"],
+                        "oracle_hashes": {},
+                    }
+                ],
+                "amendments": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _fake_aff_bin(tmp_path: Path, *, verdict_code: int, recheck_code: int) -> Path:
+    bin_dir = tmp_path / "aff-bin"
+    bin_dir.mkdir()
+    script = bin_dir / "aff"
+    script.write_text(
+        "#!/bin/sh\n"
+        'cmd="$1"\n'
+        'case "$cmd" in\n'
+        f"  verdict) exit {verdict_code} ;;\n"
+        f"  recheck) exit {recheck_code} ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    return bin_dir
+
+
+def _claim_gate_acceptance(claim_id: str = CLAIM_ID) -> dict:
+    return {
+        "id": "rec-ac1",
+        "subject": claim_id,
+        "payload": {
+            "method": "check",
+            "effort": "effort-1",
+        },
+    }
+
+
+def _claim_gate_check_request() -> dict:
+    # Use the currently accepted runner stamp so the claim gate is reachable
+    # before R3/R4 land; after the marker flips to orchestra, helpers follow.
+    return _request(
+        criteria=[
+            {
+                "criterion_id": "rec-ac1",
+                "method": "check",
+                "check_run_id": "rec-runner-cr",
+                "result": "pass",
+            }
+        ]
+    )
+
+
+def test_claim_gate_refuses_done_when_aff_verdict_nonzero(tmp_path, monkeypatch):
+    """R5: manifest claim requires aff verdict exit 0 at close revision."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=1, recheck_code=0)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(
+            request,
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+    msg = str(excinfo.value).lower()
+    assert "verdict" in msg or CLAIM_ID in msg
+
+
+def test_claim_gate_refuses_done_when_aff_recheck_nonzero(tmp_path, monkeypatch):
+    """R6: manifest claim requires aff recheck exit 0."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=0, recheck_code=1)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(
+            request,
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+    msg = str(excinfo.value).lower()
+    assert "recheck" in msg or CLAIM_ID in msg
+
+
+
+
+def test_claim_gate_accepts_done_when_verdict_and_recheck_zero(tmp_path, monkeypatch):
+    """R5/R6 success: manifest claim closes when aff verdict and recheck exit 0."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=0, recheck_code=0)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    request = _claim_gate_check_request()
+    ops = _build(
+        request,
+        cwd=repo,
+        load_acceptance=lambda _aid: _claim_gate_acceptance(),
+    )
+    assert ops[-1]["transition"] == "done"
+
+
+def test_claim_gate_uses_payload_claim_id_over_task_subject(tmp_path, monkeypatch):
+    """Claim id may live in payload.claim when subject is a task slug."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    bin_dir = _fake_aff_bin(tmp_path, verdict_code=1, recheck_code=0)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    def load_acceptance(_aid):
+        return {
+            "id": "rec-ac1",
+            "subject": "claim-gate-close",  # task slug, not claim id
+            "payload": {
+                "method": "check",
+                "effort": "effort-1",
+                "claim": CLAIM_ID,
+            },
+        }
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(request, cwd=repo, load_acceptance=load_acceptance)
+    msg = str(excinfo.value).lower()
+    assert "verdict" in msg or CLAIM_ID in msg
+
+
+def test_claim_gate_refuses_when_aff_cli_missing(tmp_path, monkeypatch):
+    """Missing aff binary refuses claim-gate done clearly."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
+    (tmp_path / "empty-bin").mkdir()
+
+    request = _claim_gate_check_request()
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(
+            request,
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+    msg = str(excinfo.value).lower()
+    assert "aff" in msg
+    assert "not found" in msg or "path" in msg or "verdict" in msg
+
+
+def test_oracle_red_refuses_when_aff_cli_missing(tmp_path, monkeypatch):
+    """R9: missing aff assertion-red CLI refuses oracle-backed done clearly."""
+    repo, green_sha = _oracle_repo(tmp_path)
+    entry = _tdd_with_dirty_red(
+        revision=green_sha,
+        **_assertion_red_fields(),
+    )
+    request = _request(criteria=[entry])
+
+    real_run = subprocess.run
+
+    def spy(cmd, **kwargs):
+        argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
+        name = Path(argv[0]).name if argv else ""
+        if name == "aff":
+            raise FileNotFoundError("aff")
+        return real_run(cmd, **kwargs)
+
+    monkeypatch.setattr(close_batch.subprocess, "run", spy)
+
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build_oracle(request, cwd=repo)
+    msg = str(excinfo.value).lower()
+    assert "aff" in msg or "assertion" in msg or "oracle" in msg
+
+
+# -- oracle red via Affidavit CLI only (evidence-authority) ---------------
+
+
+def test_oracle_backed_close_invokes_aff_cli_for_assertion_red(tmp_path, monkeypatch):
+    """R9: assertion-level red classification comes from an Affidavit CLI call."""
+    repo, green_sha = _oracle_repo(tmp_path)
+    # Stamp with the currently accepted runner so the oracle gate is reached;
+    # once RUNNER_MARKER is orchestra, helpers/defaults move with it.
+    entry = _tdd_with_dirty_red(
+        revision=green_sha,
+        **_assertion_red_fields(),
+    )
+    request = _request(criteria=[entry])
+
+    aff_calls: list[list[str]] = []
+    real_run = subprocess.run
+
+    def spy(cmd, **kwargs):
+        argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
+        name = Path(argv[0]).name if argv else ""
+        if name == "aff":
+            aff_calls.append(argv)
+            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+        return real_run(cmd, **kwargs)
+
+    monkeypatch.setattr(close_batch.subprocess, "run", spy)
+
+    ops = _build_oracle(request, cwd=repo)
+    assert ops[-1]["transition"] == "done"
+    assert aff_calls, "expected Affidavit CLI invocation for assertion-level red"
+
+
+def test_oracle_red_refuses_when_aff_cli_classification_fails(tmp_path, monkeypatch):
+    """R9: non-zero Affidavit CLI classification refuses oracle-backed done."""
+    repo, green_sha = _oracle_repo(tmp_path)
+    entry = _tdd_with_dirty_red(
+        revision=green_sha,
+        **_assertion_red_fields(),
+    )
+    request = _request(criteria=[entry])
+
+    real_run = subprocess.run
+
+    def spy(cmd, **kwargs):
+        argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
+        name = Path(argv[0]).name if argv else ""
+        if name == "aff":
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="not assertion")
+        return real_run(cmd, **kwargs)
+
+    monkeypatch.setattr(close_batch.subprocess, "run", spy)
+
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build_oracle(request, cwd=repo)
+    msg = str(excinfo.value).lower()
+    assert "assertion" in msg or "oracle" in msg or "aff" in msg

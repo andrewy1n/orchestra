@@ -156,7 +156,7 @@ def test_runner_records_suite_check_run_payload_fields():
     assert payload["output_sha256"] == "deadbeef" * 8
     assert payload["evidence_kind"] == EVIDENCE_KIND == "integration"
     assert payload["method"] == METHOD
-    assert payload["runner"] == "aff"
+    assert payload["runner"] == "orchestra"
     assert json.loads(payload["failing_node_ids"]) == [
         "tests/test_foo.py::test_a",
         "tests/test_bar.py::test_b",
@@ -164,6 +164,25 @@ def test_runner_records_suite_check_run_payload_fields():
     assert payload["criterion_id"] == suite_subject(PHASE)
     assert payload["criterion_id"].endswith("-suite")
     assert not payload["criterion_id"].endswith("-tier2")
+
+
+def test_suite_record_writes_runner_orchestra():
+    """R2: suite check-run writer stamps payload.runner as orchestra."""
+    suite = SuiteResult(
+        exit_code=0,
+        duration_s=1.0,
+        output="1 passed\n",
+        output_sha256="cafebabe" * 8,
+        failing_node_ids=[],
+        result="pass",
+        revision=HEAD,
+    )
+    payload = build_suite_check_run_payload(
+        phase_slug=PHASE,
+        effort="workflow-loop",
+        suite=suite,
+    )
+    assert payload["runner"] == "orchestra"
 
 
 def test_tmux_poll_collects_check_run_ready_result(tmp_path: Path):
@@ -263,14 +282,14 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
             "revision": HEAD,
             "result": "pass",
             "method": "tdd",
-            "runner": "aff",
+            "runner": "orchestra",
         },
         {
             "criterion_id": "acc-b",
             "revision": HEAD,
             "result": "pass",
             "method": "check",
-            "runner": "aff",
+            "runner": "orchestra",
         },
         {
             "subject": suite_subject(PHASE),
@@ -279,7 +298,7 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
             "result": "pass",
             "method": "check",
             "evidence_kind": "integration",
-            "runner": "aff",
+            "runner": "orchestra",
         },
     ]
     assert (
@@ -329,7 +348,7 @@ def test_advisory_gate_does_not_block_merge_on_suite_fail():
             "revision": HEAD,
             "result": "pass",
             "method": "tdd",
-            "runner": "aff",
+            "runner": "orchestra",
         },
         {
             "subject": suite_subject(PHASE),
@@ -338,7 +357,7 @@ def test_advisory_gate_does_not_block_merge_on_suite_fail():
             "result": "fail",
             "method": "check",
             "evidence_kind": "integration",
-            "runner": "aff",
+            "runner": "orchestra",
         },
     ]
     assert (
@@ -584,7 +603,7 @@ def test_mode_none_policy_gate_holds_without_suite_check_run():
             "revision": HEAD,
             "result": "pass",
             "method": "check",
-            "runner": "aff",
+            "runner": "orchestra",
         },
     ]
     assert (
