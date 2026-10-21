@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:fe14995540d1ddff815302f84abef31f9173096845c7b38c6ee0068ac4128f9d
+> Store state: sha256:34c3d90ef9c0c156e192c561d89c17c82b55464073460a30e51faf8c3a36d116
 
 ## dashboard-view
 
@@ -797,6 +797,27 @@ print("phase checks only")
 
 ### Phase
 - **evidence-authority**: Honest Affidavit evidence at Orchestra close; 25; workflow-loop _(id: [rec-ee0f7e9b-945e-45fe-99f1-8d4361a39c07](.artifacts/records/project__phase/rec-ee0f7e9b-945e-45fe-99f1-8d4361a39c07.md))_
+
+### Work
+- **claim-gate-close**: Close requires aff verdict and recheck; evidence-authority; deliver; workflow-loop _(id: [rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b](.artifacts/records/project__work-item/rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b.md))_
+- **honest-runner-stamp**: Stamp and accept only runner orchestra; evidence-authority; deliver; workflow-loop _(id: [rec-9efecf5d-bdd4-448e-a85f-7647914db67c](.artifacts/records/project__work-item/rec-9efecf5d-bdd4-448e-a85f-7647914db67c.md))_
+- **oracle-red-cli-surface**: Assertion-level red via aff CLI only; evidence-authority; deliver; workflow-loop _(id: [rec-fd6fe374-afe5-4b72-ae12-f0f400a85013](.artifacts/records/project__work-item/rec-fd6fe374-afe5-4b72-ae12-f0f400a85013.md))_
+- **skills-no-aff-runner**: Skills stop forging runner aff; evidence-authority; deliver; workflow-loop _(id: [rec-056252e3-2129-40c8-8f7a-199b636c5dcf](.artifacts/records/project__work-item/rec-056252e3-2129-40c8-8f7a-199b636c5dcf.md))_
+- **verify-evidence-authority**: Verify evidence-authority; evidence-authority; deliver; workflow-loop _(id: [rec-93df39dc-67e9-45de-829b-908c3e6e0317](.artifacts/records/project__work-item/rec-93df39dc-67e9-45de-829b-908c3e6e0317.md))_
+
+### Acceptance
+- **claim-gate-close**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_verdict_nonzero -q _(id: [rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a](.artifacts/records/project__acceptance/rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a.md))_
+- **claim-gate-close-recheck**: R6; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_recheck_nonzero -q _(id: [rec-feea1426-6af8-4732-8e6b-431eb5331240](.artifacts/records/project__acceptance/rec-feea1426-6af8-4732-8e6b-431eb5331240.md))_
+- **honest-runner-stamp**: R1; tdd; workflow-loop; python3 -m pytest tests/test_affidavit_check.py::test_check_writes_runner_orchestra -q _(id: [rec-06168a96-378d-436e-91d5-0aee4b6a186f](.artifacts/records/project__acceptance/rec-06168a96-378d-436e-91d5-0aee4b6a186f.md))_
+- **honest-runner-stamp-accept**: R3; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_accepts_orchestra_runner_stamp -q _(id: [rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860](.artifacts/records/project__acceptance/rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860.md))_
+- **honest-runner-stamp-refuse-aff**: R4; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_refuses_aff_runner_stamp -q _(id: [rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3](.artifacts/records/project__acceptance/rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3.md))_
+- **honest-runner-stamp-suite**: R2; tdd; workflow-loop; python3 -m pytest tests/test_tiered_verification.py::test_suite_record_writes_runner_orchestra -q _(id: [rec-3a9261a1-b666-48fc-a9b4-068838f86307](.artifacts/records/project__acceptance/rec-3a9261a1-b666-48fc-a9b4-068838f86307.md))_
+- **oracle-red-cli-surface**: R8; tdd; workflow-loop; python3 -m pytest tests/test_affidavit_import_boundary.py::test_close_batch_does_not_import_affidavit -q _(id: [rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5](.artifacts/records/project__acceptance/rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5.md))_
+- **oracle-red-cli-surface-invoke**: R9; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_oracle_backed_close_invokes_aff_cli_for_assertion_red tests/test_close_batch.py::test_oracle_red_refuses_when_aff_cli_classification_fails -q _(id: [rec-af80005c-c965-4740-b41e-08a8d9fd94a9](.artifacts/records/project__acceptance/rec-af80005c-c965-4740-b41e-08a8d9fd94a9.md))_
+- **skills-no-aff-runner**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_runner_stamp.py -q _(id: [rec-5a365cb8-9626-4fd4-b02b-c536a920e439](.artifacts/records/project__acceptance/rec-5a365cb8-9626-4fd4-b02b-c536a920e439.md))_
+- **verify-evidence-authority**: R3; check; workflow-loop; python3 -m pytest tests/test_close_batch.py tests/test_affidavit_check.py tests/test_affidavit_import_boundary.py -q -k 'runner or orchestra or aff or oracle or import or verdict or recheck or assertion' _(id: [rec-0f7ff4db-5a19-40ce-b16e-f2391360d473](.artifacts/records/project__acceptance/rec-0f7ff4db-5a19-40ce-b16e-f2391360d473.md))_
+- **verify-evidence-authority-claim-gate**: R5; check; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'verdict or recheck or manifest or claim_gate' _(id: [rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60](.artifacts/records/project__acceptance/rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60.md))_
+- **verify-evidence-authority-skills**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_runner_stamp.py -q _(id: [rec-74ba756f-c23b-41e2-8bf6-b77c600124da](.artifacts/records/project__acceptance/rec-74ba756f-c23b-41e2-8bf6-b77c600124da.md))_
 
 ## evidence-matrix
 

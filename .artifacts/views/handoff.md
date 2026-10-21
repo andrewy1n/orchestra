@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:206f41befb239338052280e58ac2d9fb67b503daa9d08629143433ab5347e731
+> Store state: sha256:b095bc439ed63c244c8e26404f5d236e6fd51e1a996fc15c6dc4468c90b4f947
 
 ## dashboard
 
@@ -65,6 +65,8 @@
 - **workflow-loop**: The se-workflow loop maps efforts to product areas, closes finished efforts, runs phases in parallel, and settles the approach with the user before planning; effort; deliver _(id: [rec-65213e61-dda6-4955-95bc-8c9c4b289af1](.artifacts/records/project__active-goal/rec-65213e61-dda6-4955-95bc-8c9c4b289af1.md))_
 
 ### Position
+- **evidence-authority**: planning evidence-authority tasks; phase _(id: [rec-5e084e4e-dc54-4828-8deb-7e4f8c6a79d5](.artifacts/records/project__current-position/rec-5e084e4e-dc54-4828-8deb-7e4f8c6a79d5.md))_
+- **evidence-authority**: plan ready for review; oracles frozen; phase _(id: [rec-8a107c66-8f85-4c03-89a3-41d3283048bb](.artifacts/records/project__current-position/rec-8a107c66-8f85-4c03-89a3-41d3283048bb.md))_
 - **phase-proof-packet**: phase-proof-packet done; proof packet + Proof tab landed on main; phase _(id: [rec-208d6247-9c02-44fa-af8a-8739274184b6](.artifacts/records/project__current-position/rec-208d6247-9c02-44fa-af8a-8739274184b6.md))_
 - **phase-reviewer**: phase-reviewer done; next up: tiered-verification; phase _(id: [rec-db17b780-4178-4359-b4ee-119fb52aba18](.artifacts/records/project__current-position/rec-db17b780-4178-4359-b4ee-119fb52aba18.md))_
 - **workflow-loop**: task-worktrees done; next up: evidence-authority; effort _(id: [rec-13a51b7a-0295-4dde-9b01-820294b0cd0f](.artifacts/records/project__current-position/rec-13a51b7a-0295-4dde-9b01-820294b0cd0f.md))_
