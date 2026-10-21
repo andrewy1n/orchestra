@@ -1,0 +1,36 @@
+---
+{
+  "base_kind": "claim",
+  "epistemic_status": "asserted",
+  "id": "rec-7579cad4-faa6-41a7-9cb5-f83a6d526426",
+  "identity": "unknown",
+  "lifecycle_state": "active",
+  "payload": {
+    "acceptance": "rec-06168a96-378d-436e-91d5-0aee4b6a186f",
+    "effort": "workflow-loop",
+    "new_hashes": "tests/test_affidavit_check.py:sha256:f8c9f384051f28356ec836cb9320c5755074b5d7e9a5837376244e91d2908a2c",
+    "old_hashes": "tests/test_affidavit_check.py:sha256:bf9dfb85ccb8568c570a99726266defa348560a76c07f5533951dc2430e52593",
+    "phase": "evidence-authority",
+    "status": "approved"
+  },
+  "record_type": "project:oracle-amendment",
+  "recorded_at": "2026-10-21T06:58:46+00:00",
+  "relationships": {},
+  "revision": "sha256:c1adaee4e39fc2f3c7d9bb64717828327cb0c7ddeb4c76cca2c9b25ff5feaba0",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "honest-runner-stamp",
+  "time": {
+    "as_of": "2026-10-21T06:58:46+00:00"
+  }
+}
+---
+
+## Reason
+
+Phase verify filter still selected legacy tests that asserted runner aff / seeded aff check-runs. Parent finishes the stamp migration in frozen oracles so verification can pass without weakening RUNNER_MARKER.
+
+## Change
+
+Flip remaining seed/assert runner stamps from aff to orchestra in test_close_batch.py, test_affidavit_check.py, and test_tiered_verification.py. Keep explicit aff fixtures for R4 refuse coverage and aff CLI name spies.

@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:3970971a9ae38df59d7173ff126db4b487974ad76654e8012b1d28abc9374e3a
+> Store state: sha256:813d320a7cb0c2a1bfa84f50886102937b53a38d722589fc9c12f89061a087b1
 
 ## aa-installable-package
 
@@ -607,7 +607,6 @@
 ## evidence-authority
 
 ### Position
-- **evidence-authority**: wave 1 dispatching: honest-runner-stamp, claim-gate-close, oracle-red-cli-surface; phase _(id: [rec-50d6ec0b-0f1b-450f-ae63-b0022f93809f](.artifacts/records/project__current-position/rec-50d6ec0b-0f1b-450f-ae63-b0022f93809f.md))_
 - **evidence-authority**: plan ready for review; oracles frozen; retired-duplicate _(id: [rec-8a107c66-8f85-4c03-89a3-41d3283048bb](.artifacts/records/project__current-position/rec-8a107c66-8f85-4c03-89a3-41d3283048bb.md))_
 
 ## evidence-model
@@ -708,6 +707,11 @@
 ### Acceptance
 - **finished-effort-view**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py tests/test_dashboard_app.py -q -k finished _(id: [rec-cc216932-78bb-4df8-b80d-8da0eb287a9c](.artifacts/records/project__acceptance/rec-cc216932-78bb-4df8-b80d-8da0eb287a9c.md))_
 
+## fix-claim-gate-hardening
+
+### Acceptance
+- **fix-claim-gate-hardening**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'claim_gate' _(id: [rec-43215a07-b490-49f1-9631-fb8bb14dbb93](.artifacts/records/project__acceptance/rec-43215a07-b490-49f1-9631-fb8bb14dbb93.md))_
+
 ## fix-cli-runtime-surface
 
 ### Acceptance
@@ -762,6 +766,11 @@
 
 ### Acceptance
 - **fix-oracle-cli-tests**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'cli and (oracle or freeze or assertion_level or amendment)' _(id: [rec-8aba909a-63ea-4152-a144-11f5d525f8d5](.artifacts/records/project__acceptance/rec-8aba909a-63ea-4152-a144-11f5d525f8d5.md))_
+
+## fix-oracle-red-missing-aff
+
+### Acceptance
+- **fix-oracle-red-missing-aff**: R9; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_oracle_red_refuses_when_aff_cli_classification_fails tests/test_close_batch.py -q -k 'oracle_red or assertion' _(id: [rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61](.artifacts/records/project__acceptance/rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61.md))_
 
 ## fix-phase-gate-defaults
 
@@ -1625,6 +1634,21 @@ print("phase checks only")
 ### Finding
 - **review-approval-constraints-spec-gap**: spec-gap on approval-constraints: exclusive human-gate constraint wording conflicts with preserved backlog promote/dismiss writes; dashboard-human-gate-writes says only Needs-you clears; backlog.py still supersedes with @current; constraint statement names backlog promote/dismiss as allowed or exclusivity is clarified without contradicting Non-goals, and reviewer re-run passes; none _(id: [rec-d3047fa6-a5cf-4f79-8d70-3a32f5590f8f](.artifacts/records/project__finding/rec-d3047fa6-a5cf-4f79-8d70-3a32f5590f8f.md))_
 
+## review-claim-gate-missing-aff
+
+### Finding
+- **review-claim-gate-missing-aff**: missing aff raises FileNotFoundError instead of CloseRefused; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-3d72e525-d261-41ed-a19b-494bcc14660c](.artifacts/records/project__finding/rec-3d72e525-d261-41ed-a19b-494bcc14660c.md))_
+
+## review-claim-gate-subject
+
+### Finding
+- **review-claim-gate-subject**: claim-gate uses acceptance.subject as claim id; dogfood subjects are task slugs; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-c8f43189-2581-4c49-82fd-8ea10694fd23](.artifacts/records/project__finding/rec-c8f43189-2581-4c49-82fd-8ea10694fd23.md))_
+
+## review-claim-gate-success-test
+
+### Finding
+- **review-claim-gate-success-test**: no success-path test when verdict and recheck exit 0; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-b792b1f3-c487-476b-95fa-651ff6ba5aa8](.artifacts/records/project__finding/rec-b792b1f3-c487-476b-95fa-651ff6ba5aa8.md))_
+
 ## review-cli-package-behavior-bug
 
 ### Finding
@@ -1665,6 +1689,11 @@ print("phase checks only")
 ### Finding
 - **review-oracle-contract-record-types**: invariant-violation on oracle-contract: dual records/record_types catalogs; contract/project-design.json duplicates full record catalog under record_types; runtime uses records only; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-783374cb-2fc7-4b4a-a849-7ef8c983b528](.artifacts/records/project__finding/rec-783374cb-2fc7-4b4a-a849-7ef8c983b528.md))_
 
+## review-oracle-red-path
+
+### Finding
+- **review-oracle-red-path**: pre-existing oracle suite requires real aff on PATH; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-04ad7abf-4e00-41da-8560-24684bcf3f3d](.artifacts/records/project__finding/rec-04ad7abf-4e00-41da-8560-24684bcf3f3d.md))_
+
 ## review-phase-gate-contract-behavior-bug
 
 ### Finding
@@ -1684,6 +1713,11 @@ print("phase checks only")
 
 ### Finding
 - **review-portable-skill-refs-spec-gap**: spec-gap on portable-skill-refs: skills/execute-phase/SKILL.md names agents/se-reviewer.md outside the skill directory, so R1's every-referenced-file-inside rule is unmet and a skills-only install has a dangling instruction; Reviewer observed skills/execute-phase/SKILL.md:422 dispatching agents/se-reviewer.md, while the installer generates that file under <host>/agents/ and the npx skills add tail ships no agents/ tree; tests/test_skill_portability.py only examines ./ ../ and references/ paths; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec](.artifacts/records/project__finding/rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec.md))_
+
+## review-skills-oracle-red-docs
+
+### Finding
+- **review-skills-oracle-red-docs**: skills still document affidavit.oracle_red Python API while close-batch is CLI-only; reviewer judgment finding; docs updated or human clears; human _(id: [rec-ef1901ba-46da-4daf-a533-cb14f4552b2a](.artifacts/records/project__finding/rec-ef1901ba-46da-4daf-a533-cb14f4552b2a.md))_
 
 ## review-tests-brief-lock
 
@@ -2050,9 +2084,6 @@ print("phase checks only")
 - **skills-claim-handoff-thin**: R3; check; workflow-loop; python3 -m pytest tests/test_skill_contract_consistency.py -q _(id: [rec-177d102b-7173-412b-b4c0-2b7608eff04c](.artifacts/records/project__acceptance/rec-177d102b-7173-412b-b4c0-2b7608eff04c.md))_
 
 ## skills-no-aff-runner
-
-### Work
-- **skills-no-aff-runner**: Skills stop forging runner aff; evidence-authority; deliver; workflow-loop _(id: [rec-056252e3-2129-40c8-8f7a-199b636c5dcf](.artifacts/records/project__work-item/rec-056252e3-2129-40c8-8f7a-199b636c5dcf.md))_
 
 ### Acceptance
 - **skills-no-aff-runner**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_runner_stamp.py -q _(id: [rec-5a365cb8-9626-4fd4-b02b-c536a920e439](.artifacts/records/project__acceptance/rec-5a365cb8-9626-4fd4-b02b-c536a920e439.md))_
@@ -2681,9 +2712,6 @@ print("phase checks only")
 - **verify-estimate-view-wave**: R2; check; dashboard; uv run --with pytest python -m pytest tests/test_dashboard_model.py -q -k estimate_view_wave_rule _(id: [rec-29ba3627-46df-4308-bae9-8939ff93b2f1](.artifacts/records/project__acceptance/rec-29ba3627-46df-4308-bae9-8939ff93b2f1.md))_
 
 ## verify-evidence-authority
-
-### Work
-- **verify-evidence-authority**: Verify evidence-authority; evidence-authority; deliver; workflow-loop _(id: [rec-93df39dc-67e9-45de-829b-908c3e6e0317](.artifacts/records/project__work-item/rec-93df39dc-67e9-45de-829b-908c3e6e0317.md))_
 
 ### Acceptance
 - **verify-evidence-authority**: R3; check; workflow-loop; python3 -m pytest tests/test_close_batch.py tests/test_affidavit_check.py tests/test_affidavit_import_boundary.py -q -k 'runner or orchestra or aff or oracle or import or verdict or recheck or assertion' _(id: [rec-0f7ff4db-5a19-40ce-b16e-f2391360d473](.artifacts/records/project__acceptance/rec-0f7ff4db-5a19-40ce-b16e-f2391360d473.md))_
@@ -3715,4 +3743,4 @@ print("phase checks only")
 ## workflow-loop
 
 ### Position
-- **workflow-loop**: task-worktrees done; next up: evidence-authority; effort _(id: [rec-13a51b7a-0295-4dde-9b01-820294b0cd0f](.artifacts/records/project__current-position/rec-13a51b7a-0295-4dde-9b01-820294b0cd0f.md))_
+- **workflow-loop**: evidence-authority done at 7353a01f; next up: plan-phase for backlog (gh-11-verification-loop) or a new phase; effort _(id: [rec-f90cad27-5fac-473e-a393-25330f958111](.artifacts/records/project__current-position/rec-f90cad27-5fac-473e-a393-25330f958111.md))_

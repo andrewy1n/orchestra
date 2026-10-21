@@ -1,0 +1,22 @@
+---
+{
+  "base_kind": "question",
+  "id": "rec-deea46f9-3c01-4f22-acb6-d5098cf720cf",
+  "identity": "unknown",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "plan-review:evidence-authority"
+  },
+  "record_type": "project:continuity-question",
+  "recorded_at": "2026-10-21T06:35:40+00:00",
+  "relationships": {},
+  "revision": "sha256:ed07c2038baf8eb3d3c2f6b8218b7926987d0d0209f2a9c5032a89afe47ce732",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "workflow-loop"
+}
+---
+
