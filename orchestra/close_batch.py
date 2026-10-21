@@ -48,7 +48,7 @@ from typing import Any, Callable
 from orchestra import aa
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
-RUNNER_MARKER = "aff"
+RUNNER_MARKER = "orchestra"
 _HASH_SEP = ":sha256:"
 
 CheckRunLoader = Callable[[str], dict[str, Any]]
