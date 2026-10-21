@@ -1,4 +1,4 @@
-"""execute-phase requires a commit per task on the phase branch before verify.
+"""execute-phase requires a commit per task before verify.
 
 Skill commit snippets use a Conventional Commits subject,
 ``type(scope): summary``, where type is feat, fix, docs, refactor, test,
@@ -29,6 +29,12 @@ _QUOTED_COMMIT_RE = re.compile(r'commit -m "([^"]*)"')
 
 def _text() -> str:
     return re.sub(r"\s+", " ", SKILL.read_text())
+
+
+def _body_names_task_slug(message: str) -> bool:
+    parts = message.strip().split("\n\n", 1)
+    body = parts[1] if len(parts) == 2 else ""
+    return "<task-slug>" in body
 
 
 def conventional_commit(message: str) -> bool:
@@ -73,7 +79,7 @@ def test_execute_phase_requires_a_commit_per_task_before_verify():
 
 def test_task_commit_excludes_artifacts_on_the_phase_branch():
     text = _text()
-    assert "commits on the phase branch from the worktree" in text
+    assert "<repo>/.worktrees/<phase-slug>--<task-slug>" in text
     assert "That commit excludes `.artifacts`" in text
     assert "add -A -- . ':!.artifacts'" in text
 
@@ -91,19 +97,21 @@ def test_subject_with_an_empty_body_fails():
 
 def test_execute_phase_snippets_match_conventional_commits():
     messages = commit_messages(SKILL)
-    assert len(messages) == 3
+    named = [message for message in messages if _body_names_task_slug(message)]
+    assert named
+    assert all(conventional_commit(message) for message in named)
     assert all(conventional_commit(message) for message in messages)
 
 
 def test_task_commit_body_names_the_task_slug():
-    named = []
-    for message in commit_messages(SKILL):
-        parts = message.strip().split("\n\n", 1)
-        body = parts[1] if len(parts) == 2 else ""
-        if "<task-slug>" in body:
-            named.append(message)
-    assert len(named) == 1
-    assert conventional_commit(named[0])
+    named = [message for message in commit_messages(SKILL) if _body_names_task_slug(message)]
+    assert named
+    assert all(conventional_commit(message) for message in named)
+
+
+def test_r27_per_task_commit_path_is_the_task_worktree():
+    text = _text()
+    assert "git -C <repo>/.worktrees/<phase-slug>--<task-slug> commit" in text
 
 
 def test_ensure_store_records_commit_matches_conventional_commits():

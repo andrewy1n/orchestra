@@ -87,13 +87,55 @@ mkdir -p <repo>/.worktrees
 git worktree add <repo>/.worktrees/<phase-slug> phase/<phase-slug>
 ```
 
-   Code writes go in the worktree; store / `.artifacts` stay on the
-   primary checkout (on `main`). Phase-branch commits exclude
-   `.artifacts`. No Landing (or incidental) → stay in the current
-   checkout; do not create a branch or worktree.
+   When Landing is present, code writes only under the worktree and
+   store writes on the primary checkout (on `main`). `.artifacts`
+   stays on that primary checkout. Phase-branch commits exclude
+   `.artifacts`. When Landing is absent, a missing Landing section
+   stays in the current checkout (incidental too); do not create a
+   branch or worktree. When Landing is absent, execute-phase does not
+   create a `task/<phase-slug>/<task-slug>` branch. When Landing is
+   absent, execute-phase does not add a
+   `<repo>/.worktrees/<phase-slug>--<task-slug>` worktree.
 3. Group results by `derived.wave`. Lower waves first; waves stay
    serial. Re-run the step-2 `list` before each wave — wave numbers
    can shift.
+
+   When Landing is present, at the start of a wave, execute-phase
+   creates branch `task/<phase-slug>/<task-slug>` from the current
+   `phase/<phase-slug>` tip for every task in that wave except the
+   work-item that depends_on every other phase work-item. When Landing
+   is present, at the start of a wave, execute-phase adds worktree
+   `<repo>/.worktrees/<phase-slug>--<task-slug>` checked out on that
+   task branch for every task in that wave except the work-item that
+   depends_on every other phase work-item. execute-phase does not
+   create a task branch for the work-item that depends_on every other
+   phase work-item. execute-phase does not add a task worktree for the
+   work-item that depends_on every other phase work-item. The
+   work-item that depends_on every other phase work-item is dispatched
+   in `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`.
+
+   Re-dispatch of a task other than the work-item that depends_on
+   every other phase work-item reuses branch
+   `task/<phase-slug>/<task-slug>`. Re-dispatch of a task other than
+   the work-item that depends_on every other phase work-item reuses
+   worktree `<repo>/.worktrees/<phase-slug>--<task-slug>`. Before a
+   re-dispatch continues, the parent merges `phase/<phase-slug>` into
+   the task branch when the task branch does not already contain the
+   phase tip. If that merge conflicts, leave it unresolved, open a
+   blocking continuity question on the effort, and do not start the
+   next wave (same conflict rules as wave end).
+
+   Create the branch and worktree only when they are missing, and only
+   for a task other than the work-item that depends_on every other
+   phase work-item. On re-dispatch, reuse them. Run the merge only
+   when the task branch does not already contain the phase tip:
+
+```bash
+git branch task/<phase-slug>/<task-slug> phase/<phase-slug>
+git worktree add <repo>/.worktrees/<phase-slug>--<task-slug> task/<phase-slug>/<task-slug>
+git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phase/<phase-slug> HEAD \
+  || git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge phase/<phase-slug>
+```
 
    Read `payload.executor` on each ready task (`inline` | `subagent`;
    missing/empty → `subagent`). If the wave disagrees, or any value is
@@ -125,6 +167,15 @@ adaptive-artifacts update --type project:work-item --id <id> \
    Omit absent records. Do not restate `criterion`, `verify_command`,
    or findings — brief already has those.
 
+   The assignment orientation names that task worktree as the
+   executor's write root. The assignment orientation does not tell the
+   executor to avoid `git add -A`. For a task other than the work-item
+   that depends_on every other phase work-item, that write root is
+   `<repo>/.worktrees/<phase-slug>--<task-slug>`. For the work-item
+   that depends_on every other phase work-item, the write root is
+   `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`. When
+   Landing is absent, the write root is the current checkout.
+
    If any active acceptance is **oracle-backed** (non-empty `test_ids`
    and `oracle_hashes`), list those frozen paths in Orientation and
    forbid editing them. Pushback → oracle amendment path below; never
@@ -150,6 +201,8 @@ adaptive-artifacts create --type project:assignment \
   --body "## Orientation
 
 <territory split / concurrency warning / operational context>
+
+Write root: `<repo>/.worktrees/<phase-slug>--<task-slug>` for a task other than the work-item that depends_on every other phase work-item. Write root: `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>` for that work-item. Current checkout when Landing is absent.
 
 ### Work-item (quote)
 
@@ -190,8 +243,12 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    **`subagent`:** one `generalPurpose` subagent per task, parallel
    within the wave. Give each only:
 
-   - repo path — worktree when Landing present, else current checkout —
-     plus task `subject`/title, `kind`, focus `effort`
+   - repo path — that write root
+     (`<repo>/.worktrees/<phase-slug>--<task-slug>` for a task other
+     than the work-item that depends_on every other phase work-item;
+     `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>` for that
+     work-item; current checkout when Landing is absent) — plus task
+     `subject`/title, `kind`, focus `effort`
    - `## <task-slug>` from `views/brief.md` — verbatim
    - assignment `## Orientation` from step 4
    - kind instruction:
@@ -210,19 +267,28 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    execution-report and runs `verify-work` once in step 7. Same
    verification-task and Landing rules as subagent.
 
-   With Landing, after code lands and before verify, commit on the
-   phase branch from the worktree (exclude `.artifacts`); put the SHA
-   in evidence `revision`. Skip when nothing to commit, no Landing, or
-   verification task. Subject `type(scope): summary`
-   (`feat|fix|docs|refactor|test|chore`); body 1–2 sentences naming
-   the task slug.
+   With Landing, after each task's code lands and before verify, the
+   parent does a commit per task so a passing check-run can carry a real
+   SHA. The per-task commit for a task other than the work-item that
+   depends_on every other phase work-item runs in that task worktree.
+   That per-task commit stages with `git add -A` excluding
+   `.artifacts`. That commit excludes `.artifacts`. Put that commit
+   SHA in evidence `revision`. A passing check-run for a task other
+   than the work-item that depends_on every other phase work-item
+   records that task's commit as its revision. When a task other than
+   the work-item that depends_on every other phase work-item has
+   nothing to commit, execute-phase does not create an empty commit.
+   Skip when nothing to commit, no Landing, or the work-item that
+   depends_on every other phase work-item. Subject `type(scope):
+   summary` (`feat|fix|docs|refactor|test|chore`); body 1–2 sentences
+   naming the task slug.
 
 ```bash
-git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.artifacts'
-git -C <repo>/.worktrees/<phase-slug> commit -m "$(cat <<'EOF'
+git -C <repo>/.worktrees/<phase-slug>--<task-slug> add -A -- . ':!.artifacts'
+git -C <repo>/.worktrees/<phase-slug>--<task-slug> commit -m "$(cat <<'EOF'
 feat(<scope>): <summary>
 
-Land <task-slug> so a passing check-run can cite this revision.
+Land <task-slug> so a passing check-run can carry a real SHA.
 
 EOF
 )"
@@ -271,7 +337,9 @@ adaptive-artifacts create --type project:execution-report \
   --body "<the evidence block, verbatim>"
 ```
 
-   Then run `verify-work` here. It derives investigation / finding /
+   Then run `verify-work` here. verify-work for a task other than the
+   work-item that depends_on every other phase work-item runs in that
+   task worktree. It derives investigation / finding /
    check-run from this execution-report (not chat memory) and closes
    or leaves `in_progress`. `tdd`/`check` results come from
    `orchestra check` (verify-work runs it). Manual/review check-runs
@@ -285,9 +353,37 @@ adaptive-artifacts create --type project:execution-report \
    Do not supersede or re-derive readiness — dependents flip
    `derived.ready` when a dependency reaches terminal success; the
    next wave's `list` sees it.
-8. Next wave. After the last implementation wave's execution-reports,
-   return to step 3 for the closing verification task (do **not**
-   write an integration-report before verification).
+8. At wave end, the parent merges each passing task branch of a task
+   other than the work-item that depends_on every other phase
+   work-item into `phase/<phase-slug>`. Run those merges in the phase
+   worktree `<repo>/.worktrees/<phase-slug>`. Those wave-end merges
+   run in task-slug order. The wave-end integration does not rebase
+   the task branch. The parent does not merge a task branch whose
+   check did not pass. Use `git merge` only.
+
+```bash
+git -C <repo>/.worktrees/<phase-slug> merge task/<phase-slug>/<task-slug>
+```
+
+   When a merge between a task branch and the phase branch conflicts,
+   the parent leaves that conflict unresolved. When a merge between a
+   task branch and the phase branch conflicts, the parent opens a
+   blocking continuity question on the effort. Scope that question
+   `merge:<task-slug>`. When a merge between a task branch and the
+   phase branch conflicts, the parent does not start the next wave.
+   Leave the conflict markers. Do not edit them and do not abort the
+   merge.
+
+```bash
+adaptive-artifacts create --type project:continuity-question \
+  --subject "<focus>" \
+  --payload '{"owner":"user","blocking":true,"scope":"merge:<task-slug>"}'
+```
+
+   Next wave only after every passing task branch in this wave has
+   merged cleanly. After the last implementation wave's
+   execution-reports, return to step 3 for the closing verification
+   task (do **not** write an integration-report before verification).
 
    When no same-focus `planned`/`in_progress` work-items remain (or
    incidental is closed), follow
@@ -295,6 +391,10 @@ adaptive-artifacts create --type project:execution-report \
 
    closing verification → reviewer → integration-report → suite →
    phase gate → proof packet → Landing merge / phase close.
+
+   At phase close, commit the phase branch, merge into `main`, and
+   commit the store; push only when it is a human stop. Details are
+   in phase-end.md.
 
    An empty task list is not proof the phase is done. Skip
    reviewer/suite for incidental. Reopen later: kinds-and-focus,
@@ -339,11 +439,18 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Re-run the reviewer more than once after fix tasks for the same phase-end
 - Fix-and-rerun inside the suite step (`required` → fix tasks + re-run at
   new head; `advisory` → finding only)
-- Create a branch/worktree without Landing; let code leave the worktree
-  when Landing is present; write `.artifacts` off the primary checkout
-  or include it in the phase-branch commit
-- Skip the per-task phase-branch commit when Landing is present and code changed
+- Create a branch or worktree without Landing; create a task branch or
+  task worktree for the work-item that depends_on every other phase
+  work-item; let code leave the worktree when Landing is present;
+  write `.artifacts` off the primary checkout or include it in a task
+  or phase commit
+- Skip the per-task commit when Landing is present and that task's
+  code changed; create an empty commit when there is nothing to commit
+- Rebase a task branch, merge a task branch whose check did not pass,
+  resolve a task-branch merge conflict, or start the next wave while
+  that conflict is unresolved
 - Push unless Landing names push as a human stop
+- Tell the executor to avoid `git add -A`
 - Let the verification executor edit the tree
 - Reopen `done` — create a fix work-item and `depends_on` instead
 - Re-dispatch after retry budget exhaustion without `scope: retry:<task-slug>`
