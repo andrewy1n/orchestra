@@ -184,6 +184,17 @@ def test_cli_integration_pass_check_run(store, cli, resolved_contract):
     assert acceptance["id"] in (record.get("relationships") or {}).get("informed_by", [])
 
 
+def test_check_writes_runner_orchestra(store, cli, resolved_contract):
+    """R1: orchestra check stamps payload.runner as orchestra."""
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="runner-orchestra-task", verify_command="true",
+    )
+    result = _run_affidavit("check", "--acceptance", acceptance["id"], cwd=store)
+    assert result.returncode == 0, result.stdout + result.stderr
+    record = _parse_check_stdout(result)
+    assert record["payload"]["runner"] == "orchestra"
+
+
 def test_cli_integration_fail_check_run(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
         store, cli, resolved_contract, subject="fail-task", verify_command="false",

@@ -166,6 +166,25 @@ def test_runner_records_suite_check_run_payload_fields():
     assert not payload["criterion_id"].endswith("-tier2")
 
 
+def test_suite_record_writes_runner_orchestra():
+    """R2: suite check-run writer stamps payload.runner as orchestra."""
+    suite = SuiteResult(
+        exit_code=0,
+        duration_s=1.0,
+        output="1 passed\n",
+        output_sha256="cafebabe" * 8,
+        failing_node_ids=[],
+        result="pass",
+        revision=HEAD,
+    )
+    payload = build_suite_check_run_payload(
+        phase_slug=PHASE,
+        effort="workflow-loop",
+        suite=suite,
+    )
+    assert payload["runner"] == "orchestra"
+
+
 def test_tmux_poll_collects_check_run_ready_result(tmp_path: Path):
     import subprocess
 

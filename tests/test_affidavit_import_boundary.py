@@ -1,4 +1,4 @@
-"""Orchestra store client does not import affidavit except oracle_red on close."""
+"""Orchestra must not import the affidavit Python package from close-batch."""
 
 from __future__ import annotations
 
@@ -42,7 +42,9 @@ def test_orchestra_and_dashboard_do_not_import_affidavit_store_client():
     assert hits == []
 
 
-def test_close_batch_imports_affidavit_oracle_red():
+def test_close_batch_does_not_import_affidavit():
+    """R8: orchestra close-batch must not import the affidavit package."""
     path = ROOT / "orchestra" / "close_batch.py"
     modules = [module for _, module in _imported_modules(path)]
-    assert "affidavit.oracle_red" in modules
+    affidavit_hits = [m for m in modules if m == "affidavit" or m.startswith("affidavit.")]
+    assert affidavit_hits == []
