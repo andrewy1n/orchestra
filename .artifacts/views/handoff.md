@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:b095bc439ed63c244c8e26404f5d236e6fd51e1a996fc15c6dc4468c90b4f947
+> Store state: sha256:b8199f944fc7627c151df19e9359973ff7abf694e11821491334af00011eae19
 
 ## dashboard
 
@@ -65,16 +65,19 @@
 - **workflow-loop**: The se-workflow loop maps efforts to product areas, closes finished efforts, runs phases in parallel, and settles the approach with the user before planning; effort; deliver _(id: [rec-65213e61-dda6-4955-95bc-8c9c4b289af1](.artifacts/records/project__active-goal/rec-65213e61-dda6-4955-95bc-8c9c4b289af1.md))_
 
 ### Position
-- **evidence-authority**: planning evidence-authority tasks; phase _(id: [rec-5e084e4e-dc54-4828-8deb-7e4f8c6a79d5](.artifacts/records/project__current-position/rec-5e084e4e-dc54-4828-8deb-7e4f8c6a79d5.md))_
-- **evidence-authority**: plan ready for review; oracles frozen; phase _(id: [rec-8a107c66-8f85-4c03-89a3-41d3283048bb](.artifacts/records/project__current-position/rec-8a107c66-8f85-4c03-89a3-41d3283048bb.md))_
+- **evidence-authority**: plan ready for review; oracles frozen; retired-duplicate _(id: [rec-8a107c66-8f85-4c03-89a3-41d3283048bb](.artifacts/records/project__current-position/rec-8a107c66-8f85-4c03-89a3-41d3283048bb.md))_
 - **phase-proof-packet**: phase-proof-packet done; proof packet + Proof tab landed on main; phase _(id: [rec-208d6247-9c02-44fa-af8a-8739274184b6](.artifacts/records/project__current-position/rec-208d6247-9c02-44fa-af8a-8739274184b6.md))_
 - **phase-reviewer**: phase-reviewer done; next up: tiered-verification; phase _(id: [rec-db17b780-4178-4359-b4ee-119fb52aba18](.artifacts/records/project__current-position/rec-db17b780-4178-4359-b4ee-119fb52aba18.md))_
-- **workflow-loop**: task-worktrees done; next up: evidence-authority; effort _(id: [rec-13a51b7a-0295-4dde-9b01-820294b0cd0f](.artifacts/records/project__current-position/rec-13a51b7a-0295-4dde-9b01-820294b0cd0f.md))_
+- **workflow-loop**: evidence-authority done at 7353a01f; next up: plan-phase for backlog (gh-11-verification-loop) or a new phase; effort _(id: [rec-f90cad27-5fac-473e-a393-25330f958111](.artifacts/records/project__current-position/rec-f90cad27-5fac-473e-a393-25330f958111.md))_
 
 ### Latest Proof
+- **evidence-authority**: evidence-authority; workflow-loop; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; claims _(id: [rec-5aa1fd84-0184-498b-85f4-0fb0caf86fc7](.artifacts/records/project__proof-packet/rec-5aa1fd84-0184-498b-85f4-0fb0caf86fc7.md))_
 - **phase-proof-packet**: phase-proof-packet; workflow-loop; c9c2d6a70719285637ba08662d4772f661e88a74; claims _(id: [rec-685583a1-e6ce-4776-8257-7f123d9fcff7](.artifacts/records/project__proof-packet/rec-685583a1-e6ce-4776-8257-7f123d9fcff7.md))_
 - **phase-proof-packet-smoke-tmp**: phase-proof-packet; workflow-loop; deadbeef; claims _(id: [rec-af529abf-f428-43aa-be0f-eb43fb810cdd](.artifacts/records/project__proof-packet/rec-af529abf-f428-43aa-be0f-eb43fb810cdd.md))_
 - **task-worktrees**: task-worktrees; workflow-loop; ac64d0816c9e14410dce73596abbe3681637d0cc; commands _(id: [rec-daca05ba-1ad8-45f7-9b98-e5ef0d43365e](.artifacts/records/project__proof-packet/rec-daca05ba-1ad8-45f7-9b98-e5ef0d43365e.md))_
+
+### Needs Human
+- **review-skills-oracle-red-docs**: skills still document affidavit.oracle_red Python API while close-batch is CLI-only; human _(id: [rec-ef1901ba-46da-4daf-a533-cb14f4552b2a](.artifacts/records/project__finding/rec-ef1901ba-46da-4daf-a533-cb14f4552b2a.md))_
 
 ### Backlog
 - **gh-11-verification-loop**: workflow-loop; open _(id: [rec-0df3151d-956c-4c9a-b031-87ef9cceeeb7](.artifacts/records/project__backlog-item/rec-0df3151d-956c-4c9a-b031-87ef9cceeeb7.md))_
