@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:20560e8d676156d97bc6ff4d8a31ad0c9eaebb7ec33e26ad673e41fbce86c23c
+> Store state: sha256:67ca9a58bbc3737dade353082cf4185d3039cd910d654ed5a3593a948b70da70
 
 ## aa-installable-package
 
@@ -26,6 +26,12 @@
 
 ### Check
 - **aa-installable-package-tools-shim**: rec-d7737207-7463-4fa3-828f-647c738784bf; a086e27ca3eaff82960f6d5f4685a8dab4525a6b; pass; check _(id: [rec-c3ecfc7f-1928-4e98-a7f7-55252996bb52](.artifacts/records/project__check-run/rec-c3ecfc7f-1928-4e98-a7f7-55252996bb52.md))_
+
+## aa-library-review
+
+### Check
+- **aa-library-review**: aa-library-review; 206fcd0b22ed111d7a272c934bb1864271947591; fail; review _(id: [rec-016c0bd8-dc44-4247-97c8-da58c621e7c5](.artifacts/records/project__check-run/rec-016c0bd8-dc44-4247-97c8-da58c621e7c5.md))_
+- **aa-library-review**: aa-library-review; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; review _(id: [rec-1654c2f3-ea33-4725-9d3e-9ac2b3ab7f25](.artifacts/records/project__check-run/rec-1654c2f3-ea33-4725-9d3e-9ac2b3ab7f25.md))_
 
 ## aa-packaging-amendment
 
@@ -328,6 +334,34 @@
 ### Check
 - **check-run-contract**: rec-88363d0c-d058-4a0d-8c04-4a697bbe457d; 16c24e78d806d5207ee2c37a9418e828521f8389; pass; tdd _(id: [rec-06babb10-72f2-4c7c-8ef8-285ebdef0f15](.artifacts/records/project__check-run/rec-06babb10-72f2-4c7c-8ef8-285ebdef0f15.md))_
 
+## claim-gate-close
+
+### Acceptance
+- **claim-gate-close**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_verdict_nonzero -q _(id: [rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a](.artifacts/records/project__acceptance/rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a.md))_
+
+### Check
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 61b77e4f1958556f05a740269859441df8726e10; fail; tdd _(id: [rec-0e7b2ecf-4181-4ddc-b346-0bc5da3e9e0d](.artifacts/records/project__check-run/rec-0e7b2ecf-4181-4ddc-b346-0bc5da3e9e0d.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-17bd3720-c0c6-4f02-a813-1d3cba67b51e](.artifacts/records/project__check-run/rec-17bd3720-c0c6-4f02-a813-1d3cba67b51e.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; dirty; fail; tdd _(id: [rec-1eebaf48-7b0a-4999-b4d5-825fa67b44ee](.artifacts/records/project__check-run/rec-1eebaf48-7b0a-4999-b4d5-825fa67b44ee.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-2d637fac-d590-44ed-a120-bc314030eb90](.artifacts/records/project__check-run/rec-2d637fac-d590-44ed-a120-bc314030eb90.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-4e2207ac-3d88-4ebb-becc-efc19a227045](.artifacts/records/project__check-run/rec-4e2207ac-3d88-4ebb-becc-efc19a227045.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-8c54c22a-c4e0-4258-b681-fb86cdc38463](.artifacts/records/project__check-run/rec-8c54c22a-c4e0-4258-b681-fb86cdc38463.md))_
+- **claim-gate-close**: rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-c0d70dda-d892-41f2-940f-5f0dd427725e](.artifacts/records/project__check-run/rec-c0d70dda-d892-41f2-940f-5f0dd427725e.md))_
+
+## claim-gate-close-recheck
+
+### Acceptance
+- **claim-gate-close-recheck**: R6; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_recheck_nonzero -q _(id: [rec-feea1426-6af8-4732-8e6b-431eb5331240](.artifacts/records/project__acceptance/rec-feea1426-6af8-4732-8e6b-431eb5331240.md))_
+
+### Check
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-0cc1dadd-11ac-4718-9fce-9ae664beec94](.artifacts/records/project__check-run/rec-0cc1dadd-11ac-4718-9fce-9ae664beec94.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-15cb6665-0330-46cf-b741-967c4899e5fc](.artifacts/records/project__check-run/rec-15cb6665-0330-46cf-b741-967c4899e5fc.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; dirty; fail; tdd _(id: [rec-2a4009d4-1326-4b6f-8f08-56ae44e59ace](.artifacts/records/project__check-run/rec-2a4009d4-1326-4b6f-8f08-56ae44e59ace.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-6b760a48-7aba-4104-a2d3-8f75f05a263a](.artifacts/records/project__check-run/rec-6b760a48-7aba-4104-a2d3-8f75f05a263a.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-854e3225-e40a-492f-8281-432f746b650c](.artifacts/records/project__check-run/rec-854e3225-e40a-492f-8281-432f746b650c.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 61b77e4f1958556f05a740269859441df8726e10; fail; tdd _(id: [rec-8878c64c-ee99-4dbd-8df7-f15580216198](.artifacts/records/project__check-run/rec-8878c64c-ee99-4dbd-8df7-f15580216198.md))_
+- **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-fbfaf22d-0ff4-40aa-b0b4-04af91618d19](.artifacts/records/project__check-run/rec-fbfaf22d-0ff4-40aa-b0b4-04af91618d19.md))_
+
 ## claim-witnesses-review
 
 ### Check
@@ -495,6 +529,35 @@
 
 ### Observation
 - **column-resize**: On resize, DashboardApp.on_resize runs before App.size updates, so paint() used the old width; EffortPane.on_resize replayed the stored stale width. Columns stayed wide until reload.; dashboard-bugfix _(id: [rec-c526251e-c035-426f-abf2-b9604030e7fa](.artifacts/records/project__investigation-observation/rec-c526251e-c035-426f-abf2-b9604030e7fa.md))_
+
+## command-facade
+
+### Acceptance
+- **command-facade**: R20; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883](.artifacts/records/project__acceptance/rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883.md))_
+
+### Check
+- **command-facade**: rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883; dirty; fail; tdd _(id: [rec-27899b77-9be8-4dfc-95a3-3ee02f7f32ac](.artifacts/records/project__check-run/rec-27899b77-9be8-4dfc-95a3-3ee02f7f32ac.md))_
+- **command-facade**: rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883; 206fcd0b22ed111d7a272c934bb1864271947591; pass; tdd _(id: [rec-6f40d9f1-1109-4069-8322-8d23d2390058](.artifacts/records/project__check-run/rec-6f40d9f1-1109-4069-8322-8d23d2390058.md))_
+- **command-facade**: rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-bfc494d4-ef31-457e-be75-26797480cd46](.artifacts/records/project__check-run/rec-bfc494d4-ef31-457e-be75-26797480cd46.md))_
+
+## command-facade-get
+
+### Acceptance
+- **command-facade-get**: R21; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4](.artifacts/records/project__acceptance/rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4.md))_
+
+### Check
+- **command-facade-get**: rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4; dirty; fail; tdd _(id: [rec-42721b07-0dfe-48d9-8627-6fde15b81aeb](.artifacts/records/project__check-run/rec-42721b07-0dfe-48d9-8627-6fde15b81aeb.md))_
+- **command-facade-get**: rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-77807359-056d-4ba9-a500-38cadb0c9b5c](.artifacts/records/project__check-run/rec-77807359-056d-4ba9-a500-38cadb0c9b5c.md))_
+- **command-facade-get**: rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4; 206fcd0b22ed111d7a272c934bb1864271947591; pass; tdd _(id: [rec-e107b1b7-5df4-4eb1-b8e8-c253ae44cddb](.artifacts/records/project__check-run/rec-e107b1b7-5df4-4eb1-b8e8-c253ae44cddb.md))_
+
+## command-facade-scan
+
+### Acceptance
+- **command-facade-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9](.artifacts/records/project__acceptance/rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9.md))_
+
+### Check
+- **command-facade-scan**: rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9; 206fcd0b22ed111d7a272c934bb1864271947591; pass; check _(id: [rec-e16eede4-d80f-4385-8056-7949fbbcce76](.artifacts/records/project__check-run/rec-e16eede4-d80f-4385-8056-7949fbbcce76.md))_
+- **command-facade-scan**: rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; check _(id: [rec-f697f97b-efb2-4320-b1e9-9bdad6657890](.artifacts/records/project__check-run/rec-f697f97b-efb2-4320-b1e9-9bdad6657890.md))_
 
 ## commit-stat-width
 
@@ -953,6 +1016,12 @@
 - **estimate-table-suffix**: rec-c823c876-890c-4582-b8ac-0b8e804b6de6; dirty; fail; tdd _(id: [rec-2a34d0dc-66e9-4fa4-9611-8aa1d6f0b953](.artifacts/records/project__check-run/rec-2a34d0dc-66e9-4fa4-9611-8aa1d6f0b953.md))_
 - **estimate-table-suffix**: rec-c823c876-890c-4582-b8ac-0b8e804b6de6; dirty; pass; tdd _(id: [rec-59eac60c-c027-49fe-87db-04e923f17fb4](.artifacts/records/project__check-run/rec-59eac60c-c027-49fe-87db-04e923f17fb4.md))_
 
+## evidence-authority-review
+
+### Check
+- **evidence-authority-review**: evidence-authority-review; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; review _(id: [rec-0b95cf60-9a36-4f25-968b-89ded38ab29e](.artifacts/records/project__check-run/rec-0b95cf60-9a36-4f25-968b-89ded38ab29e.md))_
+- **evidence-authority-review**: evidence-authority-review; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; fail; review _(id: [rec-4d74091c-1d1d-45b6-972a-e6f6ba942cf7](.artifacts/records/project__check-run/rec-4d74091c-1d1d-45b6-972a-e6f6ba942cf7.md))_
+
 ## evidence-model
 
 ### Acceptance
@@ -1106,6 +1175,26 @@
 ### Check
 - **finished-effort-view**: rec-cc216932-78bb-4df8-b80d-8da0eb287a9c; 11fdbbe31fe4a60f1985ccc24fa41788fa83d1d5; pass; tdd _(id: [rec-9e17ccb9-1b70-4843-ade6-cabf22d52de2](.artifacts/records/project__check-run/rec-9e17ccb9-1b70-4843-ade6-cabf22d52de2.md))_
 
+## fix-apply-ops
+
+### Acceptance
+- **fix-apply-ops**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_apply_ops.py::test_r19_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_apply_bad_line_does_not_abort tests/test_apply_ops.py::test_r19_command_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_command_apply_bad_line_does_not_abort -q _(id: [rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1](.artifacts/records/project__acceptance/rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1.md))_
+
+### Check
+- **fix-apply-ops**: rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-53616aa0-0b96-4978-b9bb-772b9a7a5fbd](.artifacts/records/project__check-run/rec-53616aa0-0b96-4978-b9bb-772b9a7a5fbd.md))_
+- **fix-apply-ops**: rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1; dirty; fail; tdd _(id: [rec-8d95b3f1-3772-4531-94ea-0a5b37c042c5](.artifacts/records/project__check-run/rec-8d95b3f1-3772-4531-94ea-0a5b37c042c5.md))_
+
+## fix-claim-gate-hardening
+
+### Acceptance
+- **fix-claim-gate-hardening**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'claim_gate' _(id: [rec-43215a07-b490-49f1-9631-fb8bb14dbb93](.artifacts/records/project__acceptance/rec-43215a07-b490-49f1-9631-fb8bb14dbb93.md))_
+
+### Check
+- **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-2fe17b26-d2fa-44a9-9b73-729701dc73ad](.artifacts/records/project__check-run/rec-2fe17b26-d2fa-44a9-9b73-729701dc73ad.md))_
+- **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; tdd _(id: [rec-52a73c3d-1e32-440a-af4a-806a2bd9404d](.artifacts/records/project__check-run/rec-52a73c3d-1e32-440a-af4a-806a2bd9404d.md))_
+- **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; dirty; fail; tdd _(id: [rec-5db3b94d-948d-4f36-a05e-a0c69689bf50](.artifacts/records/project__check-run/rec-5db3b94d-948d-4f36-a05e-a0c69689bf50.md))_
+- **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-b9c96d24-986b-486c-a580-2da7aae1bb1d](.artifacts/records/project__check-run/rec-b9c96d24-986b-486c-a580-2da7aae1bb1d.md))_
+
 ## fix-cli-runtime-surface
 
 ### Acceptance
@@ -1203,6 +1292,16 @@
 - **fix-oracle-cli-tests**: rec-8aba909a-63ea-4152-a144-11f5d525f8d5; b9adc0ee0836b843fd963ca38ad105d5e2176b68; pass; tdd _(id: [rec-5ee53854-9e43-481e-997b-bee6443d52e6](.artifacts/records/project__check-run/rec-5ee53854-9e43-481e-997b-bee6443d52e6.md))_
 - **fix-oracle-cli-tests**: rec-8aba909a-63ea-4152-a144-11f5d525f8d5; 977750c3c4f05015bcf03d4b82c77d25c8f039d3; fail; tdd _(id: [rec-6f50bc76-c2f3-44b2-bdfc-7279817d2ba4](.artifacts/records/project__check-run/rec-6f50bc76-c2f3-44b2-bdfc-7279817d2ba4.md))_
 - **fix-oracle-cli-tests**: rec-8aba909a-63ea-4152-a144-11f5d525f8d5; e04bc30552d35b83b19337abee8df4c26cb55b61; pass; tdd _(id: [rec-a11cc5d6-ce65-4990-b34c-b712b614669f](.artifacts/records/project__check-run/rec-a11cc5d6-ce65-4990-b34c-b712b614669f.md))_
+
+## fix-oracle-red-missing-aff
+
+### Acceptance
+- **fix-oracle-red-missing-aff**: R9; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_oracle_red_refuses_when_aff_cli_classification_fails tests/test_close_batch.py -q -k 'oracle_red or assertion' _(id: [rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61](.artifacts/records/project__acceptance/rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61.md))_
+
+### Check
+- **fix-oracle-red-missing-aff**: rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61; dirty; fail; tdd _(id: [rec-4f7a3431-afff-4e85-8c91-91c8620b8cfa](.artifacts/records/project__check-run/rec-4f7a3431-afff-4e85-8c91-91c8620b8cfa.md))_
+- **fix-oracle-red-missing-aff**: rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-6936786e-02c2-4af7-a00f-1a54cde54db2](.artifacts/records/project__check-run/rec-6936786e-02c2-4af7-a00f-1a54cde54db2.md))_
+- **fix-oracle-red-missing-aff**: rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-c036675c-d67d-4c5c-b770-bd15365ac36d](.artifacts/records/project__check-run/rec-c036675c-d67d-4c5c-b770-bd15365ac36d.md))_
 
 ## fix-phase-gate-defaults
 
@@ -1458,6 +1557,62 @@
 
 ### Check
 - **heading-spacing**: rec-e3cb339f-2f12-42bd-9dab-4439494334aa; d6f518bc2b5c2f8f4ae54c678c9ffaf5c8949b6c; pass; tdd _(id: [rec-fb47b275-bf18-4ae2-8c81-21e6ebe99fce](.artifacts/records/project__check-run/rec-fb47b275-bf18-4ae2-8c81-21e6ebe99fce.md))_
+
+## honest-runner-stamp
+
+### Acceptance
+- **honest-runner-stamp**: R1; tdd; workflow-loop; python3 -m pytest tests/test_affidavit_check.py::test_check_writes_runner_orchestra -q _(id: [rec-06168a96-378d-436e-91d5-0aee4b6a186f](.artifacts/records/project__acceptance/rec-06168a96-378d-436e-91d5-0aee4b6a186f.md))_
+
+### Check
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-2be99441-3065-4af3-8511-f19230c18bcf](.artifacts/records/project__check-run/rec-2be99441-3065-4af3-8511-f19230c18bcf.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-310f3d2e-ec6e-4d02-be64-7390444cf945](.artifacts/records/project__check-run/rec-310f3d2e-ec6e-4d02-be64-7390444cf945.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; dirty; fail; tdd _(id: [rec-50bd0186-353b-4152-a8b7-c74b1d545197](.artifacts/records/project__check-run/rec-50bd0186-353b-4152-a8b7-c74b1d545197.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-75b1397f-10b1-4aac-8435-b143f39437dd](.artifacts/records/project__check-run/rec-75b1397f-10b1-4aac-8435-b143f39437dd.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-88bf994b-dd80-432d-b50c-b1dfe8e375d7](.artifacts/records/project__check-run/rec-88bf994b-dd80-432d-b50c-b1dfe8e375d7.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-b74a7e77-3e0f-4b96-ad85-7c2cc2ab9e93](.artifacts/records/project__check-run/rec-b74a7e77-3e0f-4b96-ad85-7c2cc2ab9e93.md))_
+- **honest-runner-stamp**: rec-06168a96-378d-436e-91d5-0aee4b6a186f; dirty; fail; tdd _(id: [rec-ff39cce1-2af2-4a3a-9308-1091059707bc](.artifacts/records/project__check-run/rec-ff39cce1-2af2-4a3a-9308-1091059707bc.md))_
+
+## honest-runner-stamp-accept
+
+### Acceptance
+- **honest-runner-stamp-accept**: R3; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_accepts_orchestra_runner_stamp -q _(id: [rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860](.artifacts/records/project__acceptance/rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860.md))_
+
+### Check
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-0345d65e-a00c-43d1-92ea-e1d24a8b12ad](.artifacts/records/project__check-run/rec-0345d65e-a00c-43d1-92ea-e1d24a8b12ad.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-1606a5e2-947f-411f-a783-e03597054f61](.artifacts/records/project__check-run/rec-1606a5e2-947f-411f-a783-e03597054f61.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; dirty; fail; tdd _(id: [rec-3e6a6441-ebd9-4214-9dc2-ecad4bc227ca](.artifacts/records/project__check-run/rec-3e6a6441-ebd9-4214-9dc2-ecad4bc227ca.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; dirty; fail; tdd _(id: [rec-4148799b-a1bf-4712-8428-68727bb56ced](.artifacts/records/project__check-run/rec-4148799b-a1bf-4712-8428-68727bb56ced.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-9cd09c3f-313d-4e32-82cc-ca25483f41e7](.artifacts/records/project__check-run/rec-9cd09c3f-313d-4e32-82cc-ca25483f41e7.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-d731193c-1e0f-4e23-8099-32ea3245896d](.artifacts/records/project__check-run/rec-d731193c-1e0f-4e23-8099-32ea3245896d.md))_
+- **honest-runner-stamp-accept**: rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-df96cb00-b09a-41c4-8c37-f729f78681d2](.artifacts/records/project__check-run/rec-df96cb00-b09a-41c4-8c37-f729f78681d2.md))_
+
+## honest-runner-stamp-refuse-aff
+
+### Acceptance
+- **honest-runner-stamp-refuse-aff**: R4; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_refuses_aff_runner_stamp -q _(id: [rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3](.artifacts/records/project__acceptance/rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3.md))_
+
+### Check
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; dirty; fail; tdd _(id: [rec-1b79a96c-6b46-4aaf-a751-a9a4398c650b](.artifacts/records/project__check-run/rec-1b79a96c-6b46-4aaf-a751-a9a4398c650b.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-3248e330-1e0f-4627-be87-98636fe42154](.artifacts/records/project__check-run/rec-3248e330-1e0f-4627-be87-98636fe42154.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-41ebda06-0058-4a22-9abb-187b82d44e7c](.artifacts/records/project__check-run/rec-41ebda06-0058-4a22-9abb-187b82d44e7c.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-bc1aec29-773b-4333-823f-6ccb81f92e47](.artifacts/records/project__check-run/rec-bc1aec29-773b-4333-823f-6ccb81f92e47.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-c84c6d57-f5b4-4db3-a90f-a31bf7472500](.artifacts/records/project__check-run/rec-c84c6d57-f5b4-4db3-a90f-a31bf7472500.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-d98b69d2-4982-4a47-b13b-64c86f154eca](.artifacts/records/project__check-run/rec-d98b69d2-4982-4a47-b13b-64c86f154eca.md))_
+- **honest-runner-stamp-refuse-aff**: rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3; dirty; fail; tdd _(id: [rec-ee6da65a-abd9-44fa-84f6-3d55a6e38ae2](.artifacts/records/project__check-run/rec-ee6da65a-abd9-44fa-84f6-3d55a6e38ae2.md))_
+
+## honest-runner-stamp-suite
+
+### Acceptance
+- **honest-runner-stamp-suite**: R2; tdd; workflow-loop; python3 -m pytest tests/test_tiered_verification.py::test_suite_record_writes_runner_orchestra -q _(id: [rec-3a9261a1-b666-48fc-a9b4-068838f86307](.artifacts/records/project__acceptance/rec-3a9261a1-b666-48fc-a9b4-068838f86307.md))_
+
+### Check
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; dirty; fail; tdd _(id: [rec-45ae5c08-ea40-48dc-ade1-3db6d4267cb7](.artifacts/records/project__check-run/rec-45ae5c08-ea40-48dc-ade1-3db6d4267cb7.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-59c6a01b-5e57-406f-b57a-e2b33b3cf38e](.artifacts/records/project__check-run/rec-59c6a01b-5e57-406f-b57a-e2b33b3cf38e.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-64fecb33-02ab-449d-9a55-39a030921686](.artifacts/records/project__check-run/rec-64fecb33-02ab-449d-9a55-39a030921686.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-7e7cad1d-ed29-4152-88e7-f028ac475604](.artifacts/records/project__check-run/rec-7e7cad1d-ed29-4152-88e7-f028ac475604.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; dirty; fail; tdd _(id: [rec-865a70c7-6a39-4d03-82ec-3691fbb45ac1](.artifacts/records/project__check-run/rec-865a70c7-6a39-4d03-82ec-3691fbb45ac1.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-d6f5cf54-d7e7-4cf5-9848-c1c584417a8b](.artifacts/records/project__check-run/rec-d6f5cf54-d7e7-4cf5-9848-c1c584417a8b.md))_
+- **honest-runner-stamp-suite**: rec-3a9261a1-b666-48fc-a9b4-068838f86307; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-d8e675ea-fa2f-49c3-914f-88bd3413f8d1](.artifacts/records/project__check-run/rec-d8e675ea-fa2f-49c3-914f-88bd3413f8d1.md))_
 
 ## install-docs
 
@@ -1941,6 +2096,136 @@ print("phase checks only")
 ### Observation
 - **needs-you-tab-removal**: The Needs you tab matched needs-you subjects against task slugs, so effort-level questions and non-task subjects never counted and the tab disagreed with the panel.; dashboard-bugfix _(id: [rec-613913b9-0be9-46f8-a9b5-5f59739f368b](.artifacts/records/project__investigation-observation/rec-613913b9-0be9-46f8-a9b5-5f59739f368b.md))_
 
+## open-store
+
+### Acceptance
+- **open-store**: R1; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r1_git_toplevel -q _(id: [rec-082c3521-bd06-4066-b644-8e918f6a5f4a](.artifacts/records/project__acceptance/rec-082c3521-bd06-4066-b644-8e918f6a5f4a.md))_
+
+### Check
+- **open-store**: rec-082c3521-bd06-4066-b644-8e918f6a5f4a; dirty; fail; tdd _(id: [rec-3ed48525-bdaf-46f9-bb25-a3227f9cbcc8](.artifacts/records/project__check-run/rec-3ed48525-bdaf-46f9-bb25-a3227f9cbcc8.md))_
+- **open-store**: rec-082c3521-bd06-4066-b644-8e918f6a5f4a; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-6786bfa6-21e0-48ac-8b76-9171588c54b8](.artifacts/records/project__check-run/rec-6786bfa6-21e0-48ac-8b76-9171588c54b8.md))_
+- **open-store**: rec-082c3521-bd06-4066-b644-8e918f6a5f4a; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-77299609-54b5-462c-8e75-ca7293ef3a81](.artifacts/records/project__check-run/rec-77299609-54b5-462c-8e75-ca7293ef3a81.md))_
+
+## open-store-binding-missing
+
+### Acceptance
+- **open-store-binding-missing**: R11; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r11_binding_missing_meta -q _(id: [rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8](.artifacts/records/project__acceptance/rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8.md))_
+
+### Check
+- **open-store-binding-missing**: rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-2d6ad5c9-5585-49db-992a-69cb83ce4549](.artifacts/records/project__check-run/rec-2d6ad5c9-5585-49db-992a-69cb83ce4549.md))_
+- **open-store-binding-missing**: rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-b0e8f503-a11d-49c2-b33d-3fa22a73d420](.artifacts/records/project__check-run/rec-b0e8f503-a11d-49c2-b33d-3fa22a73d420.md))_
+- **open-store-binding-missing**: rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8; dirty; fail; tdd _(id: [rec-ff31b6e9-fc4b-4906-be06-84739fc4d72f](.artifacts/records/project__check-run/rec-ff31b6e9-fc4b-4906-be06-84739fc4d72f.md))_
+
+## open-store-binding-value
+
+### Acceptance
+- **open-store-binding-value**: R12; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r12_binding_value -q _(id: [rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7](.artifacts/records/project__acceptance/rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7.md))_
+
+### Check
+- **open-store-binding-value**: rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7; dirty; fail; tdd _(id: [rec-23ecc762-4078-4996-a4ef-60cc43e2b7c9](.artifacts/records/project__check-run/rec-23ecc762-4078-4996-a4ef-60cc43e2b7c9.md))_
+- **open-store-binding-value**: rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-927561b0-32aa-49de-a6ea-f2ae67ca5ec7](.artifacts/records/project__check-run/rec-927561b0-32aa-49de-a6ea-f2ae67ca5ec7.md))_
+- **open-store-binding-value**: rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-b40c006d-cf35-43d3-8f12-e22f463d9acb](.artifacts/records/project__check-run/rec-b40c006d-cf35-43d3-8f12-e22f463d9acb.md))_
+
+## open-store-committed-binding
+
+### Acceptance
+- **open-store-committed-binding**: R6; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r6_committed_binding_file -q _(id: [rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a](.artifacts/records/project__acceptance/rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a.md))_
+
+### Check
+- **open-store-committed-binding**: rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a; dirty; fail; tdd _(id: [rec-55f63a3f-e5a0-4912-b9b0-1857b9b18993](.artifacts/records/project__check-run/rec-55f63a3f-e5a0-4912-b9b0-1857b9b18993.md))_
+- **open-store-committed-binding**: rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-af472225-d7db-49e7-9356-11e515817bb4](.artifacts/records/project__check-run/rec-af472225-d7db-49e7-9356-11e515817bb4.md))_
+- **open-store-committed-binding**: rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-f2cf1ea2-d525-4c71-941e-7a06ee8e3f46](.artifacts/records/project__check-run/rec-f2cf1ea2-d525-4c71-941e-7a06ee8e3f46.md))_
+
+## open-store-env
+
+### Acceptance
+- **open-store-env**: R4; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r4_artifacts_store_env -q _(id: [rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09](.artifacts/records/project__acceptance/rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09.md))_
+
+### Check
+- **open-store-env**: rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09; dirty; fail; tdd _(id: [rec-0794f8f4-bb81-40b0-bc37-47ece6e4e9a8](.artifacts/records/project__check-run/rec-0794f8f4-bb81-40b0-bc37-47ece6e4e9a8.md))_
+- **open-store-env**: rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-18721ded-2be3-42fa-86d6-a6de631f56c9](.artifacts/records/project__check-run/rec-18721ded-2be3-42fa-86d6-a6de631f56c9.md))_
+- **open-store-env**: rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-ef06e8ab-4dd3-4027-828b-4d2c8485cb51](.artifacts/records/project__check-run/rec-ef06e8ab-4dd3-4027-828b-4d2c8485cb51.md))_
+
+## open-store-env-missing
+
+### Acceptance
+- **open-store-env-missing**: R10; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r10_env_missing_meta -q _(id: [rec-5acb4008-cab3-4353-8e95-1d9eec168b36](.artifacts/records/project__acceptance/rec-5acb4008-cab3-4353-8e95-1d9eec168b36.md))_
+
+### Check
+- **open-store-env-missing**: rec-5acb4008-cab3-4353-8e95-1d9eec168b36; dirty; fail; tdd _(id: [rec-00a9fe73-6861-423f-9fdf-8ff6472c57be](.artifacts/records/project__check-run/rec-00a9fe73-6861-423f-9fdf-8ff6472c57be.md))_
+- **open-store-env-missing**: rec-5acb4008-cab3-4353-8e95-1d9eec168b36; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-941b7bf7-0a61-47ca-b810-1a68919f39b2](.artifacts/records/project__check-run/rec-941b7bf7-0a61-47ca-b810-1a68919f39b2.md))_
+- **open-store-env-missing**: rec-5acb4008-cab3-4353-8e95-1d9eec168b36; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-cb34334e-3db4-427d-a2ca-65023e04013e](.artifacts/records/project__check-run/rec-cb34334e-3db4-427d-a2ca-65023e04013e.md))_
+
+## open-store-home-meta
+
+### Acceptance
+- **open-store-home-meta**: R8; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r8_home_meta -q _(id: [rec-9e503dfa-da78-44e7-8ad6-547ec487dd18](.artifacts/records/project__acceptance/rec-9e503dfa-da78-44e7-8ad6-547ec487dd18.md))_
+
+### Check
+- **open-store-home-meta**: rec-9e503dfa-da78-44e7-8ad6-547ec487dd18; dirty; fail; tdd _(id: [rec-8ffb202b-6819-4131-9ce4-bc7c99b1dac5](.artifacts/records/project__check-run/rec-8ffb202b-6819-4131-9ce4-bc7c99b1dac5.md))_
+- **open-store-home-meta**: rec-9e503dfa-da78-44e7-8ad6-547ec487dd18; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-b894c6e6-f90b-4af3-9692-cdf9a42b1a2b](.artifacts/records/project__check-run/rec-b894c6e6-f90b-4af3-9692-cdf9a42b1a2b.md))_
+- **open-store-home-meta**: rec-9e503dfa-da78-44e7-8ad6-547ec487dd18; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-cbb0bde6-e565-4117-94b0-809e959f6d1d](.artifacts/records/project__check-run/rec-cbb0bde6-e565-4117-94b0-809e959f6d1d.md))_
+
+## open-store-local-binding
+
+### Acceptance
+- **open-store-local-binding**: R5; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r5_local_binding_file -q _(id: [rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552](.artifacts/records/project__acceptance/rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552.md))_
+
+### Check
+- **open-store-local-binding**: rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-12ebe800-6c2d-4690-8b17-3d76383bbe03](.artifacts/records/project__check-run/rec-12ebe800-6c2d-4690-8b17-3d76383bbe03.md))_
+- **open-store-local-binding**: rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-47e0284c-a97c-4212-8b87-e734fa8c72f5](.artifacts/records/project__check-run/rec-47e0284c-a97c-4212-8b87-e734fa8c72f5.md))_
+- **open-store-local-binding**: rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552; dirty; fail; tdd _(id: [rec-d0e4b724-af83-423c-b608-6797df742ade](.artifacts/records/project__check-run/rec-d0e4b724-af83-423c-b608-6797df742ade.md))_
+
+## open-store-none
+
+### Acceptance
+- **open-store-none**: R13; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r13_no_store -q _(id: [rec-b2468aae-dbf8-49e0-9120-1c5ca88064be](.artifacts/records/project__acceptance/rec-b2468aae-dbf8-49e0-9120-1c5ca88064be.md))_
+
+### Check
+- **open-store-none**: rec-b2468aae-dbf8-49e0-9120-1c5ca88064be; dirty; fail; tdd _(id: [rec-79fea413-e71e-4d33-bec1-165a37c10436](.artifacts/records/project__check-run/rec-79fea413-e71e-4d33-bec1-165a37c10436.md))_
+- **open-store-none**: rec-b2468aae-dbf8-49e0-9120-1c5ca88064be; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-d70d51c1-52fb-4c3a-8084-7b403cfb4fd9](.artifacts/records/project__check-run/rec-d70d51c1-52fb-4c3a-8084-7b403cfb4fd9.md))_
+- **open-store-none**: rec-b2468aae-dbf8-49e0-9120-1c5ca88064be; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-ee49b68b-25a9-4ca2-96af-459934a5cd53](.artifacts/records/project__check-run/rec-ee49b68b-25a9-4ca2-96af-459934a5cd53.md))_
+
+## open-store-outside-git
+
+### Acceptance
+- **open-store-outside-git**: R2; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r2_outside_git -q _(id: [rec-44418b65-e4db-4694-90d1-2dc3d84736aa](.artifacts/records/project__acceptance/rec-44418b65-e4db-4694-90d1-2dc3d84736aa.md))_
+
+### Check
+- **open-store-outside-git**: rec-44418b65-e4db-4694-90d1-2dc3d84736aa; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-4f7accd9-16cf-4c02-8bcb-6205b39726e7](.artifacts/records/project__check-run/rec-4f7accd9-16cf-4c02-8bcb-6205b39726e7.md))_
+- **open-store-outside-git**: rec-44418b65-e4db-4694-90d1-2dc3d84736aa; dirty; fail; tdd _(id: [rec-b1e133c7-d223-48a1-a723-5935cabc5d05](.artifacts/records/project__check-run/rec-b1e133c7-d223-48a1-a723-5935cabc5d05.md))_
+- **open-store-outside-git**: rec-44418b65-e4db-4694-90d1-2dc3d84736aa; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-f51b224d-56b6-4ce8-868c-1ab7eb598a41](.artifacts/records/project__check-run/rec-f51b224d-56b6-4ce8-868c-1ab7eb598a41.md))_
+
+## open-store-path
+
+### Acceptance
+- **open-store-path**: R3; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r3_store_argument -q _(id: [rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c](.artifacts/records/project__acceptance/rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c.md))_
+
+### Check
+- **open-store-path**: rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c; dirty; fail; tdd _(id: [rec-2a8f73da-344e-4863-b5c3-3363b8a45baa](.artifacts/records/project__check-run/rec-2a8f73da-344e-4863-b5c3-3363b8a45baa.md))_
+- **open-store-path**: rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-668d12c4-ee48-4934-9eab-35adc60b1cb3](.artifacts/records/project__check-run/rec-668d12c4-ee48-4934-9eab-35adc60b1cb3.md))_
+- **open-store-path**: rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-efb6f4fb-93bd-47a6-a985-45a4b493fea9](.artifacts/records/project__check-run/rec-efb6f4fb-93bd-47a6-a985-45a4b493fea9.md))_
+
+## open-store-path-missing
+
+### Acceptance
+- **open-store-path-missing**: R9; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r9_store_argument_missing_meta -q _(id: [rec-3811bbf0-6494-42e2-ab30-c092aad94cec](.artifacts/records/project__acceptance/rec-3811bbf0-6494-42e2-ab30-c092aad94cec.md))_
+
+### Check
+- **open-store-path-missing**: rec-3811bbf0-6494-42e2-ab30-c092aad94cec; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-6f1b0d7d-443f-4e0f-be25-97ff96250ccf](.artifacts/records/project__check-run/rec-6f1b0d7d-443f-4e0f-be25-97ff96250ccf.md))_
+- **open-store-path-missing**: rec-3811bbf0-6494-42e2-ab30-c092aad94cec; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-81239428-84f0-405c-a0b0-41bc4bbe9d26](.artifacts/records/project__check-run/rec-81239428-84f0-405c-a0b0-41bc4bbe9d26.md))_
+- **open-store-path-missing**: rec-3811bbf0-6494-42e2-ab30-c092aad94cec; dirty; fail; tdd _(id: [rec-f8b9db41-adf1-43db-ba77-14dfb9cca7b7](.artifacts/records/project__check-run/rec-f8b9db41-adf1-43db-ba77-14dfb9cca7b7.md))_
+
+## open-store-repo-meta
+
+### Acceptance
+- **open-store-repo-meta**: R7; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r7_repo_meta -q _(id: [rec-65abc0da-9938-42dc-873e-f20d2c598bf2](.artifacts/records/project__acceptance/rec-65abc0da-9938-42dc-873e-f20d2c598bf2.md))_
+
+### Check
+- **open-store-repo-meta**: rec-65abc0da-9938-42dc-873e-f20d2c598bf2; c979dd13c06c36eb1a4f9f042e97ec4846903d7a; pass; tdd _(id: [rec-4042347a-79ed-4952-b258-8ab0edba30e9](.artifacts/records/project__check-run/rec-4042347a-79ed-4952-b258-8ab0edba30e9.md))_
+- **open-store-repo-meta**: rec-65abc0da-9938-42dc-873e-f20d2c598bf2; dirty; fail; tdd _(id: [rec-9f230c22-5bf4-402f-8074-7464982b4508](.artifacts/records/project__check-run/rec-9f230c22-5bf4-402f-8074-7464982b4508.md))_
+- **open-store-repo-meta**: rec-65abc0da-9938-42dc-873e-f20d2c598bf2; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-b281b06e-5f09-4d79-8ecd-ca6b0bf71c95](.artifacts/records/project__check-run/rec-b281b06e-5f09-4d79-8ecd-ca6b0bf71c95.md))_
+
 ## oracle-assertion-red
 
 ### Acceptance
@@ -1992,6 +2277,36 @@ print("phase checks only")
 - **oracle-freeze-close-hashes**: rec-08e82b2b-f39f-4c7c-ac4e-b0c758b7f337; dirty; fail; tdd _(id: [rec-33588d05-618d-45c2-a209-ff09d2a78bcb](.artifacts/records/project__check-run/rec-33588d05-618d-45c2-a209-ff09d2a78bcb.md))_
 - **oracle-freeze-close-hashes**: rec-08e82b2b-f39f-4c7c-ac4e-b0c758b7f337; e04bc30552d35b83b19337abee8df4c26cb55b61; pass; tdd _(id: [rec-75de1caa-137c-4f02-8b69-2dc6fd05e7a8](.artifacts/records/project__check-run/rec-75de1caa-137c-4f02-8b69-2dc6fd05e7a8.md))_
 - **oracle-freeze-close-hashes**: rec-08e82b2b-f39f-4c7c-ac4e-b0c758b7f337; 977750c3c4f05015bcf03d4b82c77d25c8f039d3; pass; tdd _(id: [rec-979f65bc-7e53-4d1e-b38c-8de0fb1ede36](.artifacts/records/project__check-run/rec-979f65bc-7e53-4d1e-b38c-8de0fb1ede36.md))_
+
+## oracle-red-cli-surface
+
+### Acceptance
+- **oracle-red-cli-surface**: R8; tdd; workflow-loop; python3 -m pytest tests/test_affidavit_import_boundary.py::test_close_batch_does_not_import_affidavit -q _(id: [rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5](.artifacts/records/project__acceptance/rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5.md))_
+
+### Check
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-1c03daa2-3450-4610-ba37-0f878c14381c](.artifacts/records/project__check-run/rec-1c03daa2-3450-4610-ba37-0f878c14381c.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-2a7f8d81-61ea-4b50-ac68-41e1ffd8ec5f](.artifacts/records/project__check-run/rec-2a7f8d81-61ea-4b50-ac68-41e1ffd8ec5f.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; dirty; fail; tdd _(id: [rec-71acb210-c402-465e-9c0b-3fbcdbcf4b46](.artifacts/records/project__check-run/rec-71acb210-c402-465e-9c0b-3fbcdbcf4b46.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; dirty; fail; tdd _(id: [rec-7f85da84-3084-4964-9d97-8a59f147ea18](.artifacts/records/project__check-run/rec-7f85da84-3084-4964-9d97-8a59f147ea18.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-93f426b3-1a92-4883-814b-a9b03e925fdf](.artifacts/records/project__check-run/rec-93f426b3-1a92-4883-814b-a9b03e925fdf.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 61b77e4f1958556f05a740269859441df8726e10; fail; tdd _(id: [rec-a087de5a-721e-4d6d-9108-6c26894ce23c](.artifacts/records/project__check-run/rec-a087de5a-721e-4d6d-9108-6c26894ce23c.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-a873caba-da50-4b35-9ad2-b2d1bd87ee43](.artifacts/records/project__check-run/rec-a873caba-da50-4b35-9ad2-b2d1bd87ee43.md))_
+- **oracle-red-cli-surface**: rec-b8ca9700-c0a5-4278-be0f-c17529d6acd5; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-f09e7021-d904-49db-8a46-fd9aa1cf59e6](.artifacts/records/project__check-run/rec-f09e7021-d904-49db-8a46-fd9aa1cf59e6.md))_
+
+## oracle-red-cli-surface-invoke
+
+### Acceptance
+- **oracle-red-cli-surface-invoke**: R9; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_oracle_backed_close_invokes_aff_cli_for_assertion_red tests/test_close_batch.py::test_oracle_red_refuses_when_aff_cli_classification_fails -q _(id: [rec-af80005c-c965-4740-b41e-08a8d9fd94a9](.artifacts/records/project__acceptance/rec-af80005c-c965-4740-b41e-08a8d9fd94a9.md))_
+
+### Check
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-153c5b4f-6b2c-419e-8e80-16078ccda9e1](.artifacts/records/project__check-run/rec-153c5b4f-6b2c-419e-8e80-16078ccda9e1.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; dirty; fail; tdd _(id: [rec-1cb8e54a-13ad-4c7a-a0ec-47788ced1a64](.artifacts/records/project__check-run/rec-1cb8e54a-13ad-4c7a-a0ec-47788ced1a64.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-2ad1a821-1a61-41b1-9460-6abeb383c9c3](.artifacts/records/project__check-run/rec-2ad1a821-1a61-41b1-9460-6abeb383c9c3.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; dirty; fail; tdd _(id: [rec-3df10181-2872-4355-a7a8-0f87419902cd](.artifacts/records/project__check-run/rec-3df10181-2872-4355-a7a8-0f87419902cd.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 61b77e4f1958556f05a740269859441df8726e10; fail; tdd _(id: [rec-60aae5e0-40bf-4b5f-9624-fe13469d1f57](.artifacts/records/project__check-run/rec-60aae5e0-40bf-4b5f-9624-fe13469d1f57.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-df3c0383-e92f-4b2a-96dd-b6b431ce1819](.artifacts/records/project__check-run/rec-df3c0383-e92f-4b2a-96dd-b6b431ce1819.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-f78202bc-7d8f-48b7-834f-2ae17f383f45](.artifacts/records/project__check-run/rec-f78202bc-7d8f-48b7-834f-2ae17f383f45.md))_
+- **oracle-red-cli-surface-invoke**: rec-af80005c-c965-4740-b41e-08a8d9fd94a9; 8e54d3f4dbe3f3e0767b78673243092a27b9aa75; pass; tdd _(id: [rec-fc4cfca0-63a1-4001-966e-32f6496891f5](.artifacts/records/project__check-run/rec-fc4cfca0-63a1-4001-966e-32f6496891f5.md))_
 
 ## oracle-skills
 
@@ -2407,6 +2722,56 @@ print("phase checks only")
 - **portable-skill-refs-paths**: rec-26a7bcc5-61dc-4f46-ba57-7e01c963e3a7; b4fc77a1a125f0526d9941a374d0c633886a6b96; pass; check _(id: [rec-357e0a00-9369-455c-a9fc-809ebb9e2e9a](.artifacts/records/project__check-run/rec-357e0a00-9369-455c-a9fc-809ebb9e2e9a.md))_
 - **portable-skill-refs-paths**: rec-26a7bcc5-61dc-4f46-ba57-7e01c963e3a7; 48bcc343f9edcfd9338a6a497293aabd9cd52300; pass; check _(id: [rec-a88be341-41cc-498d-a2b8-58f0d9f422e2](.artifacts/records/project__check-run/rec-a88be341-41cc-498d-a2b8-58f0d9f422e2.md))_
 
+## project-ops
+
+### Acceptance
+- **project-ops**: R15; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r15_get -q _(id: [rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc](.artifacts/records/project__acceptance/rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc.md))_
+
+### Check
+- **project-ops**: rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-573e5e9d-ef7a-4ff2-9a52-11e22175c183](.artifacts/records/project__check-run/rec-573e5e9d-ef7a-4ff2-9a52-11e22175c183.md))_
+- **project-ops**: rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc; dirty; fail; tdd _(id: [rec-5bc7c5b6-40c0-4774-b2ec-3371758a5b7d](.artifacts/records/project__check-run/rec-5bc7c5b6-40c0-4774-b2ec-3371758a5b7d.md))_
+- **project-ops**: rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc; cc1cea322185b1faa60eaadfae14394d00e4c29d; pass; tdd _(id: [rec-99557937-7537-4b9a-a3e9-4ce343f73d26](.artifacts/records/project__check-run/rec-99557937-7537-4b9a-a3e9-4ce343f73d26.md))_
+
+## project-ops-apply
+
+### Acceptance
+- **project-ops-apply**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r19_apply -q _(id: [rec-4002e494-85dd-433f-913e-5ee2cd5b8636](.artifacts/records/project__acceptance/rec-4002e494-85dd-433f-913e-5ee2cd5b8636.md))_
+
+### Check
+- **project-ops-apply**: rec-4002e494-85dd-433f-913e-5ee2cd5b8636; cc1cea322185b1faa60eaadfae14394d00e4c29d; pass; tdd _(id: [rec-66e6463a-8e21-4d51-b4a8-92f26c80dca0](.artifacts/records/project__check-run/rec-66e6463a-8e21-4d51-b4a8-92f26c80dca0.md))_
+- **project-ops-apply**: rec-4002e494-85dd-433f-913e-5ee2cd5b8636; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-6c65e641-feda-4319-b583-3236563a6bf7](.artifacts/records/project__check-run/rec-6c65e641-feda-4319-b583-3236563a6bf7.md))_
+- **project-ops-apply**: rec-4002e494-85dd-433f-913e-5ee2cd5b8636; dirty; fail; tdd _(id: [rec-d2551ad1-1429-4236-b2c1-5798dfa2e425](.artifacts/records/project__check-run/rec-d2551ad1-1429-4236-b2c1-5798dfa2e425.md))_
+
+## project-ops-create
+
+### Acceptance
+- **project-ops-create**: R18; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r18_create -q _(id: [rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7](.artifacts/records/project__acceptance/rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7.md))_
+
+### Check
+- **project-ops-create**: rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-2db55cae-7f31-494e-84ab-cdb7f21e1b15](.artifacts/records/project__check-run/rec-2db55cae-7f31-494e-84ab-cdb7f21e1b15.md))_
+- **project-ops-create**: rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7; cc1cea322185b1faa60eaadfae14394d00e4c29d; pass; tdd _(id: [rec-9b8779ad-b1d1-4aa2-8b97-547bdd0fd5d3](.artifacts/records/project__check-run/rec-9b8779ad-b1d1-4aa2-8b97-547bdd0fd5d3.md))_
+- **project-ops-create**: rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7; dirty; fail; tdd _(id: [rec-d1cdc114-9bf1-4dae-a4c0-c826ea135af2](.artifacts/records/project__check-run/rec-d1cdc114-9bf1-4dae-a4c0-c826ea135af2.md))_
+
+## project-ops-list
+
+### Acceptance
+- **project-ops-list**: R17; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r17_list -q _(id: [rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec](.artifacts/records/project__acceptance/rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec.md))_
+
+### Check
+- **project-ops-list**: rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-07c066fe-b3de-488b-975e-cf0133abbd82](.artifacts/records/project__check-run/rec-07c066fe-b3de-488b-975e-cf0133abbd82.md))_
+- **project-ops-list**: rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec; cc1cea322185b1faa60eaadfae14394d00e4c29d; pass; tdd _(id: [rec-2df2cd70-6605-469a-97b6-70a35fe97316](.artifacts/records/project__check-run/rec-2df2cd70-6605-469a-97b6-70a35fe97316.md))_
+- **project-ops-list**: rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec; dirty; fail; tdd _(id: [rec-b5e56118-3cd3-4cb7-8a11-a28f033262c5](.artifacts/records/project__check-run/rec-b5e56118-3cd3-4cb7-8a11-a28f033262c5.md))_
+
+## project-ops-missing
+
+### Acceptance
+- **project-ops-missing**: R16; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r16_get_missing -q _(id: [rec-5f4505cf-d588-401b-a1e7-0266390e1d70](.artifacts/records/project__acceptance/rec-5f4505cf-d588-401b-a1e7-0266390e1d70.md))_
+
+### Check
+- **project-ops-missing**: rec-5f4505cf-d588-401b-a1e7-0266390e1d70; dirty; fail; tdd _(id: [rec-45cefd56-de6b-491d-92d1-c39df933ae2e](.artifacts/records/project__check-run/rec-45cefd56-de6b-491d-92d1-c39df933ae2e.md))_
+- **project-ops-missing**: rec-5f4505cf-d588-401b-a1e7-0266390e1d70; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-678d066e-8a1a-4edb-af5c-00fd64b8e7db](.artifacts/records/project__check-run/rec-678d066e-8a1a-4edb-af5c-00fd64b8e7db.md))_
+- **project-ops-missing**: rec-5f4505cf-d588-401b-a1e7-0266390e1d70; cc1cea322185b1faa60eaadfae14394d00e4c29d; pass; tdd _(id: [rec-e941eeae-956a-4d16-9aad-5c7c8f446b07](.artifacts/records/project__check-run/rec-e941eeae-956a-4d16-9aad-5c7c8f446b07.md))_
+
 ## proof-dashboard-ui
 
 ### Acceptance
@@ -2618,6 +2983,21 @@ print("phase checks only")
 ### Finding
 - **review-approval-constraints-spec-gap**: spec-gap on approval-constraints: exclusive human-gate constraint wording conflicts with preserved backlog promote/dismiss writes; dashboard-human-gate-writes says only Needs-you clears; backlog.py still supersedes with @current; constraint statement names backlog promote/dismiss as allowed or exclusivity is clarified without contradicting Non-goals, and reviewer re-run passes; none _(id: [rec-d3047fa6-a5cf-4f79-8d70-3a32f5590f8f](.artifacts/records/project__finding/rec-d3047fa6-a5cf-4f79-8d70-3a32f5590f8f.md))_
 
+## review-claim-gate-missing-aff
+
+### Finding
+- **review-claim-gate-missing-aff**: missing aff raises FileNotFoundError instead of CloseRefused; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-3d72e525-d261-41ed-a19b-494bcc14660c](.artifacts/records/project__finding/rec-3d72e525-d261-41ed-a19b-494bcc14660c.md))_
+
+## review-claim-gate-subject
+
+### Finding
+- **review-claim-gate-subject**: claim-gate uses acceptance.subject as claim id; dogfood subjects are task slugs; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-c8f43189-2581-4c49-82fd-8ea10694fd23](.artifacts/records/project__finding/rec-c8f43189-2581-4c49-82fd-8ea10694fd23.md))_
+
+## review-claim-gate-success-test
+
+### Finding
+- **review-claim-gate-success-test**: no success-path test when verdict and recheck exit 0; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-b792b1f3-c487-476b-95fa-651ff6ba5aa8](.artifacts/records/project__finding/rec-b792b1f3-c487-476b-95fa-651ff6ba5aa8.md))_
+
 ## review-cli-package-behavior-bug
 
 ### Finding
@@ -2627,6 +3007,11 @@ print("phase checks only")
 
 ### Finding
 - **review-cli-package-invariant-violation**: invariant-violation on cli-package: skills still call orchestra.reviewer, orchestra.suite, and orchestra.aa module APIs that the CLI does not expose, contradicting the 'CLI is the only runtime surface' invariant; Reviewer observed skills/execute-phase/SKILL.md:418,501,514,377,958 and shared/ensure-store.md:13,17 naming importable module APIs; orchestra/cli.py exposes only check, close-batch, install, contract, project-field, and sessions; fix lands and reviewer re-run passes, or human clears; human _(id: [rec-615efcde-152c-4962-8a78-f8c4253e298b](.artifacts/records/project__finding/rec-615efcde-152c-4962-8a78-f8c4253e298b.md))_
+
+## review-command-facade-behavior-bug
+
+### Finding
+- **review-command-facade-behavior-bug**: behavior-bug on command-facade: cmd_apply dropped supersede, correct, and contradict; cmd_apply forwards every parsed line to Project.apply, so those verbs fail where base cli.py routed them through _do_supersede, _do_correct, and _do_contradict.; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-36820286-39ed-4bbc-8213-0ce1ff7ffcbf](.artifacts/records/project__finding/rec-36820286-39ed-4bbc-8213-0ce1ff7ffcbf.md))_
 
 ## review-criterion-views-minor
 
@@ -2658,6 +3043,11 @@ print("phase checks only")
 ### Finding
 - **review-oracle-contract-record-types**: invariant-violation on oracle-contract: dual records/record_types catalogs; contract/project-design.json duplicates full record catalog under record_types; runtime uses records only; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-783374cb-2fc7-4b4a-a849-7ef8c983b528](.artifacts/records/project__finding/rec-783374cb-2fc7-4b4a-a849-7ef8c983b528.md))_
 
+## review-oracle-red-path
+
+### Finding
+- **review-oracle-red-path**: pre-existing oracle suite requires real aff on PATH; phase-end reviewer NEEDS_WORK; fix lands and reviewer re-run passes; none _(id: [rec-04ad7abf-4e00-41da-8560-24684bcf3f3d](.artifacts/records/project__finding/rec-04ad7abf-4e00-41da-8560-24684bcf3f3d.md))_
+
 ## review-phase-gate-contract-behavior-bug
 
 ### Finding
@@ -2677,6 +3067,16 @@ print("phase checks only")
 
 ### Finding
 - **review-portable-skill-refs-spec-gap**: spec-gap on portable-skill-refs: skills/execute-phase/SKILL.md names agents/se-reviewer.md outside the skill directory, so R1's every-referenced-file-inside rule is unmet and a skills-only install has a dangling instruction; Reviewer observed skills/execute-phase/SKILL.md:422 dispatching agents/se-reviewer.md, while the installer generates that file under <host>/agents/ and the npx skills add tail ships no agents/ tree; tests/test_skill_portability.py only examines ./ ../ and references/ paths; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec](.artifacts/records/project__finding/rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec.md))_
+
+## review-project-ops-behavior-bug
+
+### Finding
+- **review-project-ops-behavior-bug**: behavior-bug on project-ops: Project.apply must persist the NDJSON verbs the command already accepted; At 206fcd0, Project._apply_operation handles create and update only; supersede, correct, and contradict raise unsupported op.; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-25a1b825-fb83-49ea-a929-2b89d052c1c6](.artifacts/records/project__finding/rec-25a1b825-fb83-49ea-a929-2b89d052c1c6.md))_
+
+## review-skills-oracle-red-docs
+
+### Finding
+- **review-skills-oracle-red-docs**: skills still document affidavit.oracle_red Python API while close-batch is CLI-only; reviewer judgment finding; docs updated or human clears; human _(id: [rec-ef1901ba-46da-4daf-a533-cb14f4552b2a](.artifacts/records/project__finding/rec-ef1901ba-46da-4daf-a533-cb14f4552b2a.md))_
 
 ## review-tests-brief-lock
 
@@ -3329,6 +3729,15 @@ print("phase checks only")
 - **skills-claim-handoff-thin**: rec-177d102b-7173-412b-b4c0-2b7608eff04c; 464d6813f21f624097f5bfbfb293c8ede2478e49; pass; check _(id: [rec-45128b98-72fc-442f-8919-353f0b8b493a](.artifacts/records/project__check-run/rec-45128b98-72fc-442f-8919-353f0b8b493a.md))_
 - **skills-claim-handoff-thin**: rec-177d102b-7173-412b-b4c0-2b7608eff04c; 464d6813f21f624097f5bfbfb293c8ede2478e49; fail; check _(id: [rec-a2467912-996e-4a69-9d83-96817281a7b9](.artifacts/records/project__check-run/rec-a2467912-996e-4a69-9d83-96817281a7b9.md))_
 
+## skills-no-aff-runner
+
+### Acceptance
+- **skills-no-aff-runner**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_runner_stamp.py -q _(id: [rec-5a365cb8-9626-4fd4-b02b-c536a920e439](.artifacts/records/project__acceptance/rec-5a365cb8-9626-4fd4-b02b-c536a920e439.md))_
+
+### Check
+- **skills-no-aff-runner**: rec-5a365cb8-9626-4fd4-b02b-c536a920e439; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; check _(id: [rec-becb54f0-1e57-4c85-84b2-d26f111a47d4](.artifacts/records/project__check-run/rec-becb54f0-1e57-4c85-84b2-d26f111a47d4.md))_
+- **skills-no-aff-runner**: rec-5a365cb8-9626-4fd4-b02b-c536a920e439; 561f9a444b029e5c25752e81737c71009b486404; pass; check _(id: [rec-c5039c71-2780-41f7-a595-4cf82f6aec31](.artifacts/records/project__check-run/rec-c5039c71-2780-41f7-a595-4cf82f6aec31.md))_
+
 ## skills-red-first
 
 ### Acceptance
@@ -3900,6 +4309,33 @@ print("phase checks only")
 ### Check
 - **verification-policy-suite**: verification-policy-suite; 8119e8e0cc031286ad62da0fd4ba9750b7223749; fail; check _(id: [rec-f48be939-020c-4f90-a9a6-2ff91f978979](.artifacts/records/project__check-run/rec-f48be939-020c-4f90-a9a6-2ff91f978979.md))_
 
+## verify-aa-library
+
+### Acceptance
+- **verify-aa-library**: R20; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10](.artifacts/records/project__acceptance/rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10.md))_
+
+### Check
+- **verify-aa-library**: rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10; 206fcd0b22ed111d7a272c934bb1864271947591; pass; check _(id: [rec-0ee0826c-1f50-4697-9d0b-726c2ef18b94](.artifacts/records/project__check-run/rec-0ee0826c-1f50-4697-9d0b-726c2ef18b94.md))_
+- **verify-aa-library**: rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; check _(id: [rec-22d06ac1-58dd-42b0-8651-dfa3e2d7c2e8](.artifacts/records/project__check-run/rec-22d06ac1-58dd-42b0-8651-dfa3e2d7c2e8.md))_
+
+## verify-aa-library-get
+
+### Acceptance
+- **verify-aa-library-get**: R21; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-7dd35c7c-5161-4661-8352-04a3bc27f4df](.artifacts/records/project__acceptance/rec-7dd35c7c-5161-4661-8352-04a3bc27f4df.md))_
+
+### Check
+- **verify-aa-library-get**: rec-7dd35c7c-5161-4661-8352-04a3bc27f4df; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; check _(id: [rec-8b1a130b-1019-4290-91b4-660d518e3a07](.artifacts/records/project__check-run/rec-8b1a130b-1019-4290-91b4-660d518e3a07.md))_
+- **verify-aa-library-get**: rec-7dd35c7c-5161-4661-8352-04a3bc27f4df; 206fcd0b22ed111d7a272c934bb1864271947591; pass; check _(id: [rec-b748279f-a865-40fc-98c1-95e905722078](.artifacts/records/project__check-run/rec-b748279f-a865-40fc-98c1-95e905722078.md))_
+
+## verify-aa-library-scan
+
+### Acceptance
+- **verify-aa-library-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f00ff4c-6d08-4671-81b9-11169db780ec](.artifacts/records/project__acceptance/rec-9f00ff4c-6d08-4671-81b9-11169db780ec.md))_
+
+### Check
+- **verify-aa-library-scan**: rec-9f00ff4c-6d08-4671-81b9-11169db780ec; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; check _(id: [rec-536ce38b-790e-4592-9aea-87f9fde8b22e](.artifacts/records/project__check-run/rec-536ce38b-790e-4592-9aea-87f9fde8b22e.md))_
+- **verify-aa-library-scan**: rec-9f00ff4c-6d08-4671-81b9-11169db780ec; 206fcd0b22ed111d7a272c934bb1864271947591; pass; check _(id: [rec-bb4a3d69-86bc-4bf4-90c6-216e422d0bc6](.artifacts/records/project__check-run/rec-bb4a3d69-86bc-4bf4-90c6-216e422d0bc6.md))_
+
 ## verify-atomic-claims
 
 ### Acceptance
@@ -4379,6 +4815,34 @@ print("phase checks only")
 
 ### Check
 - **verify-estimate-view-wave**: rec-29ba3627-46df-4308-bae9-8939ff93b2f1; dirty; pass; check _(id: [rec-94e4eecc-6d14-489c-b911-6aed5d9bec61](.artifacts/records/project__check-run/rec-94e4eecc-6d14-489c-b911-6aed5d9bec61.md))_
+
+## verify-evidence-authority
+
+### Acceptance
+- **verify-evidence-authority**: R3; check; workflow-loop; python3 -m pytest tests/test_close_batch.py tests/test_affidavit_check.py tests/test_affidavit_import_boundary.py -q -k 'runner or orchestra or aff or oracle or import or verdict or recheck or assertion' _(id: [rec-0f7ff4db-5a19-40ce-b16e-f2391360d473](.artifacts/records/project__acceptance/rec-0f7ff4db-5a19-40ce-b16e-f2391360d473.md))_
+
+### Check
+- **verify-evidence-authority**: rec-0f7ff4db-5a19-40ce-b16e-f2391360d473; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; check _(id: [rec-709ea2bd-983b-4f03-8f5a-7e1724d16edc](.artifacts/records/project__check-run/rec-709ea2bd-983b-4f03-8f5a-7e1724d16edc.md))_
+- **verify-evidence-authority**: rec-0f7ff4db-5a19-40ce-b16e-f2391360d473; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; check _(id: [rec-dcaba730-2a07-4a10-9f8a-fe180ae56d68](.artifacts/records/project__check-run/rec-dcaba730-2a07-4a10-9f8a-fe180ae56d68.md))_
+- **verify-evidence-authority**: rec-0f7ff4db-5a19-40ce-b16e-f2391360d473; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; check _(id: [rec-ff1bcfd4-043b-4aed-82df-d70504ecfe1a](.artifacts/records/project__check-run/rec-ff1bcfd4-043b-4aed-82df-d70504ecfe1a.md))_
+
+## verify-evidence-authority-claim-gate
+
+### Acceptance
+- **verify-evidence-authority-claim-gate**: R5; check; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'verdict or recheck or manifest or claim_gate' _(id: [rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60](.artifacts/records/project__acceptance/rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60.md))_
+
+### Check
+- **verify-evidence-authority-claim-gate**: rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; check _(id: [rec-8e73674e-9e50-413d-bd99-772867aa8459](.artifacts/records/project__check-run/rec-8e73674e-9e50-413d-bd99-772867aa8459.md))_
+- **verify-evidence-authority-claim-gate**: rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; check _(id: [rec-9fbc3ae4-5126-491e-8bd1-cee3ec94813d](.artifacts/records/project__check-run/rec-9fbc3ae4-5126-491e-8bd1-cee3ec94813d.md))_
+
+## verify-evidence-authority-skills
+
+### Acceptance
+- **verify-evidence-authority-skills**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_runner_stamp.py -q _(id: [rec-74ba756f-c23b-41e2-8bf6-b77c600124da](.artifacts/records/project__acceptance/rec-74ba756f-c23b-41e2-8bf6-b77c600124da.md))_
+
+### Check
+- **verify-evidence-authority-skills**: rec-74ba756f-c23b-41e2-8bf6-b77c600124da; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; check _(id: [rec-00811694-4c2c-4b72-9d6d-3ee981911624](.artifacts/records/project__check-run/rec-00811694-4c2c-4b72-9d6d-3ee981911624.md))_
+- **verify-evidence-authority-skills**: rec-74ba756f-c23b-41e2-8bf6-b77c600124da; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; check _(id: [rec-d27a337e-f954-40d0-90d3-ec3bcd10868a](.artifacts/records/project__check-run/rec-d27a337e-f954-40d0-90d3-ec3bcd10868a.md))_
 
 ## verify-evidence-loop
 

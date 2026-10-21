@@ -1,0 +1,54 @@
+---
+{
+  "base_kind": "task",
+  "id": "rec-35f6ccf5-81c0-453c-a795-3fabdaf16bc8",
+  "identity": "unknown",
+  "lifecycle_state": "done",
+  "payload": {
+    "assignee": "project-ops-agent",
+    "decisions": "library-facade,store-resolution,call-style,three-repos",
+    "effort": "library-boundary",
+    "estimate_minutes": 12,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "aa-library",
+    "requirements": "R15,R16,R17,R18,R19",
+    "size": "M",
+    "title": "Project get, list, create, and apply"
+  },
+  "record_type": "project:work-item",
+  "recorded_at": "2026-10-21T09:18:56+00:00",
+  "relationships": {
+    "depends_on": [
+      "rec-e5c5f5ac-64d2-4f41-bd62-73892af1cce4"
+    ]
+  },
+  "revision": "sha256:e8b1d8cf813685432d5c33c2ab1b6f12c0300caf759b723a7cb0d20160d1cfc2",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "project-ops"
+}
+---
+
+## Description
+
+R15: `Project.get` returns the record for an id present in the opened store.
+R16: `Project.get` raises when that id is not in the opened store.
+R17: `Project.list` returns every record of the given type in the opened store.
+R18: `Project.create` persists one record in the opened store and returns the stored record.
+R19: `Project.apply` persists each operation in the given sequence and returns each result.
+
+## Approach
+
+Implement `Project.get`, `Project.list`, `Project.create`, and `Project.apply` on the store `open_store` already opened.
+
+`get(record_id, record_type=None)` returns the stored record. When `record_type` is omitted, find the id the way the command's get-without-type lookup does. Raise an error that names the id when it is absent.
+
+`list(record_type)` returns every record of that type. No `--where`, `--order-by`, or `--fields`.
+
+`create(*, record_type, subject, payload, body=None, rels=None)` writes one record and returns the stored record, including id and revision. Move the command's record-construction helpers into a module `project.py` can import without importing `cli`, and keep the existing command create path working until `command-facade` switches it over.
+
+`apply(operations)` takes the same operation objects the command reads from NDJSON, writes each one, and returns each result. Continue-and-report stays the failure mode the command already uses. Do not implement a cross-record transaction.
+
+Leave update, supersede, correct, hooks, watch, views, lock, and resolve in the command module. Do not edit orchestra or affidavit. Do not edit frozen oracle files.

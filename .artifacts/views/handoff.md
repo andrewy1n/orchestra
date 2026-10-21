@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:b8199f944fc7627c151df19e9359973ff7abf694e11821491334af00011eae19
+> Store state: sha256:0706316af2897f9012e2059725def5c93ac1b1ab0b453eef86962bdbf48d9aba
 
 ## dashboard
 
@@ -26,6 +26,17 @@
 - **phase-overlay-split-pane**: dashboard; open _(id: [rec-f7b45cdc-a1fd-4e27-8425-5b9a0ea1db5b](.artifacts/records/project__backlog-item/rec-f7b45cdc-a1fd-4e27-8425-5b9a0ea1db5b.md))_
 - **ui-revamp**: dashboard; open _(id: [rec-b7216ac0-0c4a-4436-8388-fccc8922470c](.artifacts/records/project__backlog-item/rec-b7216ac0-0c4a-4436-8388-fccc8922470c.md))_
 
+## library-boundary
+
+### Goal
+- **library-boundary**: adaptive-artifacts, affidavit, and orchestra call each other in-process through small Python libraries. The commands stay for agents and humans. One function in adaptive-artifacts opens the store. SE_WORKFLOW_STORE is gone.; effort; deliver _(id: [rec-e474e2d8-be06-44e2-8583-27966c04a3b3](.artifacts/records/project__active-goal/rec-e474e2d8-be06-44e2-8583-27966c04a3b3.md))_
+
+### Position
+- **library-boundary**: aa-library done at 387d8d4; next up: affidavit-library; effort _(id: [rec-41afbe01-668a-4171-8d73-f3e46899a470](.artifacts/records/project__current-position/rec-41afbe01-668a-4171-8d73-f3e46899a470.md))_
+
+### Latest Proof
+- **aa-library**: aa-library; library-boundary; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; claims _(id: [rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253](.artifacts/records/project__proof-packet/rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253.md))_
+
 ## packaging
 
 ### Goal
@@ -43,7 +54,6 @@
 - **review2-opencode-plugin-path**: behavior-bug on native-adapters: the OpenCode hook payload is installed at the install root as plugin.js, but OpenCode auto-loads plugins only from <root>/plugins/ (or a plugins config entry), so hook-start/hook-stop never run; human _(id: [rec-265b5127-b459-474e-ab45-732925c68473](.artifacts/records/project__finding/rec-265b5127-b459-474e-ab45-732925c68473.md))_
 
 ### Backlog
-- **version-compat-check**: packaging; open _(id: [rec-31762a2f-52c6-42cc-bf76-04b3969fe925](.artifacts/records/project__backlog-item/rec-31762a2f-52c6-42cc-bf76-04b3969fe925.md))_
 - **version-tag-releases**: packaging; open _(id: [rec-e88d3ac2-fce4-46a7-9064-99458fe30c39](.artifacts/records/project__backlog-item/rec-e88d3ac2-fce4-46a7-9064-99458fe30c39.md))_
 
 ## session-analysis

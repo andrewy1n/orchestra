@@ -1,7 +1,36 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:34c3d90ef9c0c156e192c561d89c17c82b55464073460a30e51faf8c3a36d116
+> Store state: sha256:74769cb3de66be5dcc7b73444752ee1b18228de5c804cf048a6a3678583d4fe5
+
+## aa-library
+
+### Acceptance
+- **command-facade**: R20; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883](.artifacts/records/project__acceptance/rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883.md))_
+- **command-facade-get**: R21; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4](.artifacts/records/project__acceptance/rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4.md))_
+- **command-facade-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9](.artifacts/records/project__acceptance/rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9.md))_
+- **fix-apply-ops**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_apply_ops.py::test_r19_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_apply_bad_line_does_not_abort tests/test_apply_ops.py::test_r19_command_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_command_apply_bad_line_does_not_abort -q _(id: [rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1](.artifacts/records/project__acceptance/rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1.md))_
+- **open-store**: R1; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r1_git_toplevel -q _(id: [rec-082c3521-bd06-4066-b644-8e918f6a5f4a](.artifacts/records/project__acceptance/rec-082c3521-bd06-4066-b644-8e918f6a5f4a.md))_
+- **open-store-binding-missing**: R11; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r11_binding_missing_meta -q _(id: [rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8](.artifacts/records/project__acceptance/rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8.md))_
+- **open-store-binding-value**: R12; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r12_binding_value -q _(id: [rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7](.artifacts/records/project__acceptance/rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7.md))_
+- **open-store-committed-binding**: R6; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r6_committed_binding_file -q _(id: [rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a](.artifacts/records/project__acceptance/rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a.md))_
+- **open-store-env**: R4; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r4_artifacts_store_env -q _(id: [rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09](.artifacts/records/project__acceptance/rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09.md))_
+- **open-store-env-missing**: R10; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r10_env_missing_meta -q _(id: [rec-5acb4008-cab3-4353-8e95-1d9eec168b36](.artifacts/records/project__acceptance/rec-5acb4008-cab3-4353-8e95-1d9eec168b36.md))_
+- **open-store-home-meta**: R8; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r8_home_meta -q _(id: [rec-9e503dfa-da78-44e7-8ad6-547ec487dd18](.artifacts/records/project__acceptance/rec-9e503dfa-da78-44e7-8ad6-547ec487dd18.md))_
+- **open-store-local-binding**: R5; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r5_local_binding_file -q _(id: [rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552](.artifacts/records/project__acceptance/rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552.md))_
+- **open-store-none**: R13; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r13_no_store -q _(id: [rec-b2468aae-dbf8-49e0-9120-1c5ca88064be](.artifacts/records/project__acceptance/rec-b2468aae-dbf8-49e0-9120-1c5ca88064be.md))_
+- **open-store-outside-git**: R2; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r2_outside_git -q _(id: [rec-44418b65-e4db-4694-90d1-2dc3d84736aa](.artifacts/records/project__acceptance/rec-44418b65-e4db-4694-90d1-2dc3d84736aa.md))_
+- **open-store-path**: R3; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r3_store_argument -q _(id: [rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c](.artifacts/records/project__acceptance/rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c.md))_
+- **open-store-path-missing**: R9; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r9_store_argument_missing_meta -q _(id: [rec-3811bbf0-6494-42e2-ab30-c092aad94cec](.artifacts/records/project__acceptance/rec-3811bbf0-6494-42e2-ab30-c092aad94cec.md))_
+- **open-store-repo-meta**: R7; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r7_repo_meta -q _(id: [rec-65abc0da-9938-42dc-873e-f20d2c598bf2](.artifacts/records/project__acceptance/rec-65abc0da-9938-42dc-873e-f20d2c598bf2.md))_
+- **project-ops**: R15; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r15_get -q _(id: [rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc](.artifacts/records/project__acceptance/rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc.md))_
+- **project-ops-apply**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r19_apply -q _(id: [rec-4002e494-85dd-433f-913e-5ee2cd5b8636](.artifacts/records/project__acceptance/rec-4002e494-85dd-433f-913e-5ee2cd5b8636.md))_
+- **project-ops-create**: R18; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r18_create -q _(id: [rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7](.artifacts/records/project__acceptance/rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7.md))_
+- **project-ops-list**: R17; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r17_list -q _(id: [rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec](.artifacts/records/project__acceptance/rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec.md))_
+- **project-ops-missing**: R16; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r16_get_missing -q _(id: [rec-5f4505cf-d588-401b-a1e7-0266390e1d70](.artifacts/records/project__acceptance/rec-5f4505cf-d588-401b-a1e7-0266390e1d70.md))_
+- **verify-aa-library**: R20; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10](.artifacts/records/project__acceptance/rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10.md))_
+- **verify-aa-library-get**: R21; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-7dd35c7c-5161-4661-8352-04a3bc27f4df](.artifacts/records/project__acceptance/rec-7dd35c7c-5161-4661-8352-04a3bc27f4df.md))_
+- **verify-aa-library-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f00ff4c-6d08-4671-81b9-11169db780ec](.artifacts/records/project__acceptance/rec-9f00ff4c-6d08-4671-81b9-11169db780ec.md))_
 
 ## dashboard-view
 
@@ -29,6 +58,11 @@
 - **tm-parse-events**: tdd; session-analysis; python3 -m pytest -q tests/test_session_metrics.py -k parse _(id: [rec-2df7a704-c3ba-43a0-966d-42474d3c2318](.artifacts/records/project__acceptance/rec-2df7a704-c3ba-43a0-966d-42474d3c2318.md))_
 - **tm-session-fields**: tdd; session-analysis; python3 -m pytest -q tests/test_session_fields.py _(id: [rec-5f8ebfcf-f591-4f07-932d-65fabc8871fb](.artifacts/records/project__acceptance/rec-5f8ebfcf-f591-4f07-932d-65fabc8871fb.md))_
 - **tm-tool-metrics**: tdd; session-analysis; python3 -m pytest -q tests/test_session_tools.py _(id: [rec-eb5399be-74fd-4403-bf2d-69fb1cb5bce9](.artifacts/records/project__acceptance/rec-eb5399be-74fd-4403-bf2d-69fb1cb5bce9.md))_
+
+## affidavit-library
+
+### Phase
+- **affidavit-library**: Affidavit calls the store and exposes functions; 2; library-boundary _(id: [rec-4056f6d2-9f55-4e11-9a68-db3f992ab32c](.artifacts/records/project__phase/rec-4056f6d2-9f55-4e11-9a68-db3f992ab32c.md))_
 
 ## goal-close
 
@@ -79,6 +113,11 @@
 ### Phase
 - **evidence-kind**: Requirement evidence_kind enforcement; 3; evidence-layer _(id: [rec-8152251a-6238-4841-8183-6717775aeb30](.artifacts/records/project__phase/rec-8152251a-6238-4841-8183-6717775aeb30.md))_
 
+## orchestra-callers
+
+### Phase
+- **orchestra-callers**: Orchestra and the dashboard call the libraries; 3; library-boundary _(id: [rec-a61f3ac3-3308-40f0-8df6-d107ea0b7046](.artifacts/records/project__phase/rec-a61f3ac3-3308-40f0-8df6-d107ea0b7046.md))_
+
 ## phase-position
 
 ### Acceptance
@@ -110,6 +149,11 @@
 - **verify-end-to-end-phase**: check; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q && cd ~/se-workflow && python3 -m pytest tests -q _(id: [rec-a5e71d14-1f25-4868-a42e-3a2b17e16616](.artifacts/records/project__acceptance/rec-a5e71d14-1f25-4868-a42e-3a2b17e16616.md))_
 - **verify-end-to-end-phase-clear**: check; dashboard; ~/se-workflow/scripts/dashboard-status ~/se-workflow _(id: [rec-9dce7bb8-9cc7-4a4d-9ebd-48a749f7cc85](.artifacts/records/project__acceptance/rec-9dce7bb8-9cc7-4a4d-9ebd-48a749f7cc85.md))_
 
+## library-e2e
+
+### Phase
+- **library-e2e**: Prove the three packages on one fixture; 4; library-boundary _(id: [rec-8093189a-a9bc-44d5-a318-a8891b78d98e](.artifacts/records/project__phase/rec-8093189a-a9bc-44d5-a318-a8891b78d98e.md))_
+
 ## rename-agent-affidavit
 
 ### Acceptance
@@ -119,6 +163,11 @@
 - **rename-tests**: R5; tdd; packaging; uv run --with pytest python -m pytest tests/test_aa_resolve.py tests/test_close_batch.py tests/test_skill_contract_consistency.py -q && grep -q affidavit scripts/sync-plugin.sh && ! grep -E 'se-workflow|se_workflow' scripts/sync-plugin.sh _(id: [rec-322f6c86-d91a-4ab6-95bb-82a9bbcd348f](.artifacts/records/project__acceptance/rec-322f6c86-d91a-4ab6-95bb-82a9bbcd348f.md))_
 - **verify-rename-agent-affidavit**: R2; tdd; packaging; test -x bin/aff && ! test -e bin/se-workflow && bin/aff check --help >/dev/null && bin/aff close-batch --help >/dev/null && python3 -c "import importlib.util as u; assert u.find_spec('affidavit'); assert u.find_spec('se_workflow') is None" _(id: [rec-d5e70a1b-64c9-4d59-9de9-81f5d57e751f](.artifacts/records/project__acceptance/rec-d5e70a1b-64c9-4d59-9de9-81f5d57e751f.md))_
 - **verify-rename-agent-affidavit-identity**: R1; check; packaging; python3 scripts/check_affidavit_plugin_names.py && python3 scripts/check_affidavit_contract_project.py && uv run --with pytest python -m pytest tests/test_skill_contract_consistency.py -q _(id: [rec-63816a0d-c37b-4fb3-8bbf-a0a33a762939](.artifacts/records/project__acceptance/rec-63816a0d-c37b-4fb3-8bbf-a0a33a762939.md))_
+
+## declared-install
+
+### Phase
+- **declared-install**: One install graph for uv and plugins; 5; library-boundary _(id: [rec-44001332-66cb-47cb-bbf4-9146914bae00](.artifacts/records/project__phase/rec-44001332-66cb-47cb-bbf4-9146914bae00.md))_
 
 ## discuss-step
 
@@ -150,6 +199,11 @@
 - **dashboard-snapshot**: tdd; dashboard; python3 -m pytest tests/test_dashboard_model.py -q _(id: [rec-8f27fb0c-0113-4d37-9083-5f9767e2d6e6](.artifacts/records/project__acceptance/rec-8f27fb0c-0113-4d37-9083-5f9767e2d6e6.md))_
 - **verify-readable-layout-phase**: check; dashboard; uv run --with textual --with pytest python -m pytest tests -q _(id: [rec-b9c2eff5-a486-4b57-89bc-cc4a3aa95314](.artifacts/records/project__acceptance/rec-b9c2eff5-a486-4b57-89bc-cc4a3aa95314.md))_
 - **verify-readable-layout-phase-signoff**: manual; dashboard _(id: [rec-83820e9f-6ff5-407c-aa8f-deb4e441d5a5](.artifacts/records/project__acceptance/rec-83820e9f-6ff5-407c-aa8f-deb4e441d5a5.md))_
+
+## claim-clocks
+
+### Phase
+- **claim-clocks**: Close reports verdict and recheck separately; 6; library-boundary _(id: [rec-461707b9-5a9f-4ea4-92ab-ee5e55776157](.artifacts/records/project__phase/rec-461707b9-5a9f-4ea4-92ab-ee5e55776157.md))_
 
 ## cross-harness-install
 
@@ -795,19 +849,11 @@ print("phase checks only")
 
 ## evidence-authority
 
-### Phase
-- **evidence-authority**: Honest Affidavit evidence at Orchestra close; 25; workflow-loop _(id: [rec-ee0f7e9b-945e-45fe-99f1-8d4361a39c07](.artifacts/records/project__phase/rec-ee0f7e9b-945e-45fe-99f1-8d4361a39c07.md))_
-
-### Work
-- **claim-gate-close**: Close requires aff verdict and recheck; evidence-authority; deliver; workflow-loop _(id: [rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b](.artifacts/records/project__work-item/rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b.md))_
-- **honest-runner-stamp**: Stamp and accept only runner orchestra; evidence-authority; deliver; workflow-loop _(id: [rec-9efecf5d-bdd4-448e-a85f-7647914db67c](.artifacts/records/project__work-item/rec-9efecf5d-bdd4-448e-a85f-7647914db67c.md))_
-- **oracle-red-cli-surface**: Assertion-level red via aff CLI only; evidence-authority; deliver; workflow-loop _(id: [rec-fd6fe374-afe5-4b72-ae12-f0f400a85013](.artifacts/records/project__work-item/rec-fd6fe374-afe5-4b72-ae12-f0f400a85013.md))_
-- **skills-no-aff-runner**: Skills stop forging runner aff; evidence-authority; deliver; workflow-loop _(id: [rec-056252e3-2129-40c8-8f7a-199b636c5dcf](.artifacts/records/project__work-item/rec-056252e3-2129-40c8-8f7a-199b636c5dcf.md))_
-- **verify-evidence-authority**: Verify evidence-authority; evidence-authority; deliver; workflow-loop _(id: [rec-93df39dc-67e9-45de-829b-908c3e6e0317](.artifacts/records/project__work-item/rec-93df39dc-67e9-45de-829b-908c3e6e0317.md))_
-
 ### Acceptance
 - **claim-gate-close**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_verdict_nonzero -q _(id: [rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a](.artifacts/records/project__acceptance/rec-a2fa3de2-0c6d-419c-b028-26351fdbc11a.md))_
 - **claim-gate-close-recheck**: R6; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_recheck_nonzero -q _(id: [rec-feea1426-6af8-4732-8e6b-431eb5331240](.artifacts/records/project__acceptance/rec-feea1426-6af8-4732-8e6b-431eb5331240.md))_
+- **fix-claim-gate-hardening**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'claim_gate' _(id: [rec-43215a07-b490-49f1-9631-fb8bb14dbb93](.artifacts/records/project__acceptance/rec-43215a07-b490-49f1-9631-fb8bb14dbb93.md))_
+- **fix-oracle-red-missing-aff**: R9; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_oracle_red_refuses_when_aff_cli_classification_fails tests/test_close_batch.py -q -k 'oracle_red or assertion' _(id: [rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61](.artifacts/records/project__acceptance/rec-8975b1cb-f384-4cf1-8d8d-75ed45266b61.md))_
 - **honest-runner-stamp**: R1; tdd; workflow-loop; python3 -m pytest tests/test_affidavit_check.py::test_check_writes_runner_orchestra -q _(id: [rec-06168a96-378d-436e-91d5-0aee4b6a186f](.artifacts/records/project__acceptance/rec-06168a96-378d-436e-91d5-0aee4b6a186f.md))_
 - **honest-runner-stamp-accept**: R3; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_accepts_orchestra_runner_stamp -q _(id: [rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860](.artifacts/records/project__acceptance/rec-ef0fb7b2-c352-4dab-92c7-eaab8da90860.md))_
 - **honest-runner-stamp-refuse-aff**: R4; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_close_batch_refuses_aff_runner_stamp -q _(id: [rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3](.artifacts/records/project__acceptance/rec-3e1157f5-8e67-4d05-9433-8ddc7f9e38f3.md))_

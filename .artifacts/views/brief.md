@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:813d320a7cb0c2a1bfa84f50886102937b53a38d722589fc9c12f89061a087b1
+> Store state: sha256:f4679bf51ca004b70cf33e229004728367f883c2f7298a0340cdfc0207cc0645
 
 ## aa-installable-package
 
@@ -293,6 +293,21 @@
 
 ### Acceptance
 - **column-resize**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k resize _(id: [rec-4b32e614-7d7e-4a55-be85-301c98fe6ef9](.artifacts/records/project__acceptance/rec-4b32e614-7d7e-4a55-be85-301c98fe6ef9.md))_
+
+## command-facade
+
+### Acceptance
+- **command-facade**: R20; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883](.artifacts/records/project__acceptance/rec-ff99f4c7-f4f4-43f3-8d09-afe55ef5d883.md))_
+
+## command-facade-get
+
+### Acceptance
+- **command-facade-get**: R21; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4](.artifacts/records/project__acceptance/rec-a4822eee-d1b1-4079-bf8d-3be6cf7babe4.md))_
+
+## command-facade-scan
+
+### Acceptance
+- **command-facade-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9](.artifacts/records/project__acceptance/rec-9f9de8c6-9890-4dd5-b699-4469b9ddebb9.md))_
 
 ## commit-stat-width
 
@@ -707,6 +722,11 @@
 ### Acceptance
 - **finished-effort-view**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py tests/test_dashboard_app.py -q -k finished _(id: [rec-cc216932-78bb-4df8-b80d-8da0eb287a9c](.artifacts/records/project__acceptance/rec-cc216932-78bb-4df8-b80d-8da0eb287a9c.md))_
 
+## fix-apply-ops
+
+### Acceptance
+- **fix-apply-ops**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_apply_ops.py::test_r19_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_apply_bad_line_does_not_abort tests/test_apply_ops.py::test_r19_command_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_command_apply_bad_line_does_not_abort -q _(id: [rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1](.artifacts/records/project__acceptance/rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1.md))_
+
 ## fix-claim-gate-hardening
 
 ### Acceptance
@@ -1100,6 +1120,11 @@
 ### Acceptance
 - **label-view-fields**: tdd; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q _(id: [rec-0a970468-5d80-49a0-bf80-d5481a65814b](.artifacts/records/project__acceptance/rec-0a970468-5d80-49a0-bf80-d5481a65814b.md))_
 
+## library-boundary
+
+### Position
+- **library-boundary**: aa-library done at 387d8d4; next up: affidavit-library; effort _(id: [rec-41afbe01-668a-4171-8d73-f3e46899a470](.artifacts/records/project__current-position/rec-41afbe01-668a-4171-8d73-f3e46899a470.md))_
+
 ## loop-scenarios
 
 ### Acceptance
@@ -1238,6 +1263,71 @@ print("phase checks only")
 
 ### Acceptance
 - **needs-you-tab-removal**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py tests/test_dashboard_view.py -q _(id: [rec-e781be72-47b4-4705-8bb4-82f57f1391ef](.artifacts/records/project__acceptance/rec-e781be72-47b4-4705-8bb4-82f57f1391ef.md))_
+
+## open-store
+
+### Acceptance
+- **open-store**: R1; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r1_git_toplevel -q _(id: [rec-082c3521-bd06-4066-b644-8e918f6a5f4a](.artifacts/records/project__acceptance/rec-082c3521-bd06-4066-b644-8e918f6a5f4a.md))_
+
+## open-store-binding-missing
+
+### Acceptance
+- **open-store-binding-missing**: R11; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r11_binding_missing_meta -q _(id: [rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8](.artifacts/records/project__acceptance/rec-12d189a7-91c8-4d00-b0bc-18b553f1bfc8.md))_
+
+## open-store-binding-value
+
+### Acceptance
+- **open-store-binding-value**: R12; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r12_binding_value -q _(id: [rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7](.artifacts/records/project__acceptance/rec-0f6e3526-38ff-4cfa-a625-a49a1e5685c7.md))_
+
+## open-store-committed-binding
+
+### Acceptance
+- **open-store-committed-binding**: R6; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r6_committed_binding_file -q _(id: [rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a](.artifacts/records/project__acceptance/rec-dbece29d-2cc1-4ae8-99dc-300a3b7c8e3a.md))_
+
+## open-store-env
+
+### Acceptance
+- **open-store-env**: R4; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r4_artifacts_store_env -q _(id: [rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09](.artifacts/records/project__acceptance/rec-c940e1b3-04da-48f6-97b8-8ddfaf906e09.md))_
+
+## open-store-env-missing
+
+### Acceptance
+- **open-store-env-missing**: R10; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r10_env_missing_meta -q _(id: [rec-5acb4008-cab3-4353-8e95-1d9eec168b36](.artifacts/records/project__acceptance/rec-5acb4008-cab3-4353-8e95-1d9eec168b36.md))_
+
+## open-store-home-meta
+
+### Acceptance
+- **open-store-home-meta**: R8; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r8_home_meta -q _(id: [rec-9e503dfa-da78-44e7-8ad6-547ec487dd18](.artifacts/records/project__acceptance/rec-9e503dfa-da78-44e7-8ad6-547ec487dd18.md))_
+
+## open-store-local-binding
+
+### Acceptance
+- **open-store-local-binding**: R5; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r5_local_binding_file -q _(id: [rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552](.artifacts/records/project__acceptance/rec-e5d4e992-8ac9-4166-b781-a2c6c8b8c552.md))_
+
+## open-store-none
+
+### Acceptance
+- **open-store-none**: R13; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r13_no_store -q _(id: [rec-b2468aae-dbf8-49e0-9120-1c5ca88064be](.artifacts/records/project__acceptance/rec-b2468aae-dbf8-49e0-9120-1c5ca88064be.md))_
+
+## open-store-outside-git
+
+### Acceptance
+- **open-store-outside-git**: R2; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r2_outside_git -q _(id: [rec-44418b65-e4db-4694-90d1-2dc3d84736aa](.artifacts/records/project__acceptance/rec-44418b65-e4db-4694-90d1-2dc3d84736aa.md))_
+
+## open-store-path
+
+### Acceptance
+- **open-store-path**: R3; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r3_store_argument -q _(id: [rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c](.artifacts/records/project__acceptance/rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c.md))_
+
+## open-store-path-missing
+
+### Acceptance
+- **open-store-path-missing**: R9; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r9_store_argument_missing_meta -q _(id: [rec-3811bbf0-6494-42e2-ab30-c092aad94cec](.artifacts/records/project__acceptance/rec-3811bbf0-6494-42e2-ab30-c092aad94cec.md))_
+
+## open-store-repo-meta
+
+### Acceptance
+- **open-store-repo-meta**: R7; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store.py::test_r7_repo_meta -q _(id: [rec-65abc0da-9938-42dc-873e-f20d2c598bf2](.artifacts/records/project__acceptance/rec-65abc0da-9938-42dc-873e-f20d2c598bf2.md))_
 
 ## oracle-assertion-red
 
@@ -1514,6 +1604,31 @@ print("phase checks only")
 ### Acceptance
 - **portable-skill-refs-paths**: R6; check; packaging; python3 -m pytest tests/test_skill_portability.py -q -k paths _(id: [rec-26a7bcc5-61dc-4f46-ba57-7e01c963e3a7](.artifacts/records/project__acceptance/rec-26a7bcc5-61dc-4f46-ba57-7e01c963e3a7.md))_
 
+## project-ops
+
+### Acceptance
+- **project-ops**: R15; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r15_get -q _(id: [rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc](.artifacts/records/project__acceptance/rec-c142bb5d-e29f-464a-9fa7-d4d6ad4c89cc.md))_
+
+## project-ops-apply
+
+### Acceptance
+- **project-ops-apply**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r19_apply -q _(id: [rec-4002e494-85dd-433f-913e-5ee2cd5b8636](.artifacts/records/project__acceptance/rec-4002e494-85dd-433f-913e-5ee2cd5b8636.md))_
+
+## project-ops-create
+
+### Acceptance
+- **project-ops-create**: R18; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r18_create -q _(id: [rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7](.artifacts/records/project__acceptance/rec-af1deece-a7c4-410c-884c-7ba4ae9aa0c7.md))_
+
+## project-ops-list
+
+### Acceptance
+- **project-ops-list**: R17; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r17_list -q _(id: [rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec](.artifacts/records/project__acceptance/rec-97d8ae4d-48e8-4fc6-81c4-f163ca7189ec.md))_
+
+## project-ops-missing
+
+### Acceptance
+- **project-ops-missing**: R16; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_project_ops.py::test_r16_get_missing -q _(id: [rec-5f4505cf-d588-401b-a1e7-0266390e1d70](.artifacts/records/project__acceptance/rec-5f4505cf-d588-401b-a1e7-0266390e1d70.md))_
+
 ## proof-dashboard-ui
 
 ### Acceptance
@@ -1659,6 +1774,11 @@ print("phase checks only")
 ### Finding
 - **review-cli-package-invariant-violation**: invariant-violation on cli-package: skills still call orchestra.reviewer, orchestra.suite, and orchestra.aa module APIs that the CLI does not expose, contradicting the 'CLI is the only runtime surface' invariant; Reviewer observed skills/execute-phase/SKILL.md:418,501,514,377,958 and shared/ensure-store.md:13,17 naming importable module APIs; orchestra/cli.py exposes only check, close-batch, install, contract, project-field, and sessions; fix lands and reviewer re-run passes, or human clears; human _(id: [rec-615efcde-152c-4962-8a78-f8c4253e298b](.artifacts/records/project__finding/rec-615efcde-152c-4962-8a78-f8c4253e298b.md))_
 
+## review-command-facade-behavior-bug
+
+### Finding
+- **review-command-facade-behavior-bug**: behavior-bug on command-facade: cmd_apply dropped supersede, correct, and contradict; cmd_apply forwards every parsed line to Project.apply, so those verbs fail where base cli.py routed them through _do_supersede, _do_correct, and _do_contradict.; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-36820286-39ed-4bbc-8213-0ce1ff7ffcbf](.artifacts/records/project__finding/rec-36820286-39ed-4bbc-8213-0ce1ff7ffcbf.md))_
+
 ## review-criterion-views-minor
 
 ### Finding
@@ -1713,6 +1833,11 @@ print("phase checks only")
 
 ### Finding
 - **review-portable-skill-refs-spec-gap**: spec-gap on portable-skill-refs: skills/execute-phase/SKILL.md names agents/se-reviewer.md outside the skill directory, so R1's every-referenced-file-inside rule is unmet and a skills-only install has a dangling instruction; Reviewer observed skills/execute-phase/SKILL.md:422 dispatching agents/se-reviewer.md, while the installer generates that file under <host>/agents/ and the npx skills add tail ships no agents/ tree; tests/test_skill_portability.py only examines ./ ../ and references/ paths; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec](.artifacts/records/project__finding/rec-7b48bc63-bdc3-4bff-bd47-9b9f388a03ec.md))_
+
+## review-project-ops-behavior-bug
+
+### Finding
+- **review-project-ops-behavior-bug**: behavior-bug on project-ops: Project.apply must persist the NDJSON verbs the command already accepted; At 206fcd0, Project._apply_operation handles create and update only; supersede, correct, and contradict raise unsupported op.; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-25a1b825-fb83-49ea-a929-2b89d052c1c6](.artifacts/records/project__finding/rec-25a1b825-fb83-49ea-a929-2b89d052c1c6.md))_
 
 ## review-skills-oracle-red-docs
 
@@ -2420,6 +2545,21 @@ print("phase checks only")
 
 ### Acceptance
 - **unsigned-check-label**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k unsigned _(id: [rec-403febb3-cbe5-474d-8413-5687934c29d2](.artifacts/records/project__acceptance/rec-403febb3-cbe5-474d-8413-5687934c29d2.md))_
+
+## verify-aa-library
+
+### Acceptance
+- **verify-aa-library**: R20; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r20_create_without_store -q _(id: [rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10](.artifacts/records/project__acceptance/rec-1e8bcbfe-b605-42ac-b14d-d54a04b92a10.md))_
+
+## verify-aa-library-get
+
+### Acceptance
+- **verify-aa-library-get**: R21; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r21_get_without_store -q _(id: [rec-7dd35c7c-5161-4661-8352-04a3bc27f4df](.artifacts/records/project__acceptance/rec-7dd35c7c-5161-4661-8352-04a3bc27f4df.md))_
+
+## verify-aa-library-scan
+
+### Acceptance
+- **verify-aa-library-scan**: R14; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_command_facade.py::test_r14_no_se_workflow_store -q _(id: [rec-9f00ff4c-6d08-4671-81b9-11169db780ec](.artifacts/records/project__acceptance/rec-9f00ff4c-6d08-4671-81b9-11169db780ec.md))_
 
 ## verify-atomic-claims
 
