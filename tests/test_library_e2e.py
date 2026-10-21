@@ -9,8 +9,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from adaptive_artifacts.project import open_store
+from orchestra import close_batch
+
 CLAIM_ID = "claim-widget"
 CLAIM_TEXT = "widget works"
+_CLOSE_MUST_NOT_START = {"aff", "adaptive-artifacts"}
 
 
 def _env() -> dict[str, str]:
@@ -175,18 +179,15 @@ def _repository(directory: Path) -> tuple[Path, dict]:
             "runner": "orchestra",
         },
     )
-    try:
-        from affidavit.binding import bind_observation
+    from affidavit.binding import bind_observation
 
-        bind_observation(
-            repo,
-            observation_id="obs-library-e2e",
-            claim_id=CLAIM_ID,
-            base_rev=base,
-            head_rev=head,
-        )
-    except Exception:
-        pass
+    bind_observation(
+        repo,
+        observation_id="obs-library-e2e",
+        claim_id=CLAIM_ID,
+        base_rev=base,
+        head_rev=head,
+    )
 
     request = {
         "subject": "library-fixture",
@@ -221,11 +222,51 @@ def _close_command(repo: Path, request: dict) -> tuple[int, str]:
     return result.returncode, (result.stderr or result.stdout or "").strip()
 
 
-def test_library_fixture_close(tmp_path):
-    """R5: orchestra close-batch exits 0 for a close that meets the claim gate."""
-    try:
-        repo, request = _repository(tmp_path)
-        code, detail = _close_command(repo, request)
-    except Exception as exc:
-        code, detail = 1, f"{type(exc).__name__}: {exc}"
+def _assert_created_records(repo: Path, request: dict) -> None:
+    """open_store reads the records adaptive-artifacts create wrote."""
+    project = open_store(repo)
+    acceptance_id = request["acceptance_ids"][0]
+    acceptance = project.get(acceptance_id, "project:acceptance")
+    assert acceptance["id"] == acceptance_id
+    assert acceptance["subject"] == CLAIM_ID
+    assert acceptance["payload"]["method"] == "check"
+    check_run_id = request["criteria"][0]["check_run_id"]
+    check_run = project.get(check_run_id, "project:check-run")
+    assert check_run["id"] == check_run_id
+    assert check_run["payload"]["criterion_id"] == acceptance_id
+    assert check_run["payload"]["result"] == "pass"
+    assert check_run["payload"]["runner"] == "orchestra"
+
+
+def _close_in_process(repo: Path, request: dict, monkeypatch) -> int:
+    """Python close on the fixture. A subprocess named aff or adaptive-artifacts fails."""
+    path = repo / "close-request.json"
+    path.write_text(json.dumps(request), encoding="utf-8")
+    out = repo / "close-python.ndjson"
+    spawned: list[str] = []
+    real_run = subprocess.run
+
+    def spy(cmd, *args, **kwargs):
+        argv = cmd if isinstance(cmd, (list, tuple)) else [cmd]
+        parts = [str(part) for part in argv]
+        name = Path(parts[0]).name if parts else ""
+        if name in _CLOSE_MUST_NOT_START:
+            spawned.append(name)
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(subprocess, "run", spy)
+    code = close_batch.main(
+        ["--input", str(path), "--out", str(out), "--cwd", str(repo)]
+    )
+    assert spawned == [], f"in-process close started {spawned}"
+    return code
+
+
+def test_library_fixture_close(tmp_path, monkeypatch):
+    """Created records are in the opened store, and command and Python close both accept the fixture."""
+    repo, request = _repository(tmp_path)
+    _assert_created_records(repo, request)
+    code, detail = _close_command(repo, request)
     assert code == 0, detail or f"exit {code}"
+    assert _close_in_process(repo, request, monkeypatch) == 0
