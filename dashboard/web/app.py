@@ -13,7 +13,7 @@ stdlib server uses and serves the Vite production build from
 from pathlib import Path
 
 from dashboard import model
-from dashboard.artifact_store import Target
+from adaptive_artifacts.project import Project
 from dashboard.web.service import Reader, WriteError
 
 DIST = Path(__file__).resolve().parent / "ui" / "dist"
@@ -23,7 +23,7 @@ MISSING_BUILD = (
 )
 
 
-def create_app(target: Target):
+def create_app(target: Project):
     """Return a FastAPI app serving the read/write API (and built UI) for ``target``."""
     from fastapi import FastAPI, Query, Request
     from fastapi.responses import HTMLResponse, JSONResponse

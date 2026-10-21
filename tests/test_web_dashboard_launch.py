@@ -24,7 +24,7 @@ import helpers as h
 from conftest import AA_ROOT, REPO_ROOT, run_cli
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
@@ -231,9 +231,8 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     )
     (store / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))
     monkeypatch.setenv("HOME", str(home))
-    target = artifact_store.resolve(store)
-    assert target.store is not None
-    assert target.store.resolve() == home_store.resolve()
+    target = open_store(store)
+    assert target.store_path.resolve() == home_store.resolve()
     snap = _snapshot(target)
     assert [view.effort for view in snap.efforts] == ["global-effort"]
 

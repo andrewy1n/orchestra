@@ -19,7 +19,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from orchestra import aa
+from adaptive_artifacts.contract import ContractError
+from adaptive_artifacts.project import StoreBindingError, open_store
+from adaptive_artifacts.store import StoreError
+from adaptive_artifacts.validation import ValidationError
 from orchestra.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
@@ -144,15 +147,20 @@ def normalize_suite_policy(
 
 def iter_project_design_paths(start: Path) -> list[Path]:
     """Candidate project-design paths (same roots as other project metadata)."""
-    # aa_resolve is part of the installed package; dashboard is not.
-    from orchestra.aa_resolve import resolve
-
-    target = resolve(start)
+    root = start
+    contract = None
+    try:
+        project = open_store(start)
+    except StoreBindingError:
+        root = start.resolve()
+    else:
+        root = project.project_root
+        contract = project.contract_path
     ordered: list[Path] = []
     for candidate in (
-        target.root / ".artifacts" / "project-design.json",
-        target.root / "contract" / "project-design.json",
-        target.contract,
+        root / ".artifacts" / "project-design.json",
+        root / "contract" / "project-design.json",
+        contract,
     ):
         if candidate is None:
             continue
@@ -171,7 +179,7 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     """
     root = start or Path.cwd()
     try:
-        store_root = aa.find_store_root(root)
+        store_root = open_store(root).project_root
     except Exception:
         store_root = root.resolve()
     for path in iter_project_design_paths(store_root):
@@ -760,13 +768,16 @@ def record_suite_check_run(
             "\n## Failing node IDs\n\n"
             + "\n".join(f"- {n}" for n in suite.failing_node_ids)
         )
-    return aa.create_record(
-        store_root,
-        record_type="project:check-run",
-        subject=subject,
-        payload=payload,
-        body="\n".join(body_parts),
-    )
+    try:
+        project = open_store(store_root)
+        return project.create(
+            record_type="project:check-run",
+            subject=subject,
+            payload=payload,
+            body="\n".join(body_parts),
+        )
+    except (StoreBindingError, StoreError, ContractError, ValidationError) as exc:
+        raise RuntimeError(str(exc)) from exc
 
 
 def orphan_recovery_hint(job: SuiteStart) -> str:

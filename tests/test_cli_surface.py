@@ -107,13 +107,14 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
             "body": "SECRET_BUILDER_NOTES",
         },
     ]
-    calls: list[tuple[str, ...]] = []
+    calls: list[str] = []
 
-    def fake_run_aa(*args: str, root: Path, **kwargs):
-        calls.append(args)
-        return completed(args, json.dumps({"records": records}))
+    class _Project:
+        def list(self, record_type: str):
+            calls.append(record_type)
+            return [row for row in records if row.get("record_type") == record_type]
 
-    monkeypatch.setattr("orchestra.aa.run_aa", fake_run_aa)
+    monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
     monkeypatch.setattr(
         "orchestra.reviewer.git_phase_diff", lambda *a, **k: "+reviewed line"
     )
@@ -137,7 +138,7 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     assert "+reviewed line" in out
     assert "main..abc1234" in out
     assert "SECRET_BUILDER_NOTES" not in out
-    assert calls and all("--full" in args for args in calls)
+    assert calls
 
 
 def test_suite_policy_smoke(tmp_path, capsys):
@@ -227,11 +228,14 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
     finished_suite(repo)
     recorded: list[dict] = []
 
-    def fake_create(root, **kwargs):
-        recorded.append({"root": str(root), **kwargs})
-        return {"id": "rec-suite", "subject": kwargs.get("subject")}
+    class _Project:
+        project_root = repo
 
-    monkeypatch.setattr("orchestra.aa.create_record", fake_create)
+        def create(self, **kwargs):
+            recorded.append({"root": str(repo), **kwargs})
+            return {"id": "rec-suite", "subject": kwargs.get("subject")}
+
+    monkeypatch.setattr(suite, "open_store", lambda directory: _Project())
     code, out, err = run(
         [
             "suite",
@@ -274,9 +278,12 @@ def test_store_path_smoke(tmp_path, capsys):
     code, out, err = run(["store", "path", "--cwd", str(repo), "--json"], capsys)
     assert code == 0, err
     target = json.loads(out)
-    assert target["store"] == str(repo / ".artifacts")
-    assert target["contract"] == str(repo / ".artifacts" / "project-design.json")
-    assert target["binding"] == "local"
+    from adaptive_artifacts.project import open_store
+
+    project = open_store(repo)
+    assert target["store"] == str(project.store_path)
+    assert target["contract"] == (str(project.contract_path) if project.contract_path else None)
+    assert target["binding"] == project.binding.location
 
     code, out, err = run(["store", "path", "--cwd", str(repo)], capsys)
     assert code == 0
@@ -285,20 +292,21 @@ def test_store_path_smoke(tmp_path, capsys):
 
 def test_store_run_smoke(tmp_path, monkeypatch, capsys):
     repo = _store_repo(tmp_path)
-    calls: list[tuple[str, ...]] = []
+    calls: list[str] = []
 
-    def fake_run_aa(*args: str, root: Path, **kwargs):
-        calls.append(args)
-        return completed(args, "pong\n")
+    class _Project:
+        def list(self, record_type: str):
+            calls.append(record_type)
+            return []
 
-    monkeypatch.setattr("orchestra.aa.run_aa", fake_run_aa)
+    monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
     code, out, err = run(
         ["store", "run", "--cwd", str(repo), "--", "list", "--type", "project:work-item"],
         capsys,
     )
     assert code == 0, err
-    assert out.strip() == "pong"
-    assert calls == [("list", "--type", "project:work-item")]
+    assert json.loads(out) == {"records": [], "count": 0}
+    assert calls == ["project:work-item"]
 
 
 def test_store_ensure_writes_a_design_once(tmp_path, capsys):

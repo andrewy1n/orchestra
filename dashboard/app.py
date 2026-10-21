@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dashboard import approval as approval_module
-from dashboard import artifact_store
+from adaptive_artifacts.project import Project, StoreBindingError, open_store
 from dashboard import backlog as backlog_module
 from dashboard import dismiss as dismiss_module
 from dashboard import gates
@@ -103,7 +103,7 @@ class _RecordDetailStub(Screen[None]):
 
     BINDINGS = [Binding("escape", "app.pop_screen", "back")]
 
-    def __init__(self, target: artifact_store.Target, record_id: str, task_id: str = "") -> None:
+    def __init__(self, target: Project, record_id: str, task_id: str = "") -> None:
         super().__init__()
         self.target = target
         self.record_id = record_id
@@ -193,13 +193,13 @@ def next_step_text(view: model.EffortView, landing: dict[str, Landing], colors: 
     return text
 
 
-def header_text(target: artifact_store.Target, stamp: datetime | None, colors: dict[str, str], width: int = 100) -> Text:
+def header_text(target: Project, stamp: datetime | None, colors: dict[str, str], width: int = 100) -> Text:
     updated = f"  updated {stamp.astimezone().strftime('%H:%M:%S')}" if stamp is not None else ""
-    room = width - len(target.root.name) - len(updated) - 4
+    room = width - len(target.project_root.name) - len(updated) - 4
     text = Text(no_wrap=True, overflow="ellipsis")
-    text.append(target.root.name, style="bold")
+    text.append(target.project_root.name, style="bold")
     if room >= 12:
-        text.append(f"  {clip(str(target.store), room)}", style=colors["muted"])
+        text.append(f"  {clip(str(target.store_path), room)}", style=colors["muted"])
     text.append(updated, style=colors["muted"])
     return text
 
@@ -212,13 +212,13 @@ def tab_label(view: model.EffortView) -> str:
 
 
 
-def render_once(target: artifact_store.Target, snapshot: model.Snapshot, console: Console) -> None:
+def render_once(target: Project, snapshot: model.Snapshot, console: Console) -> None:
     colors = ANSI_PALETTE
-    landings = gates.landings_for_snapshot(target.root, snapshot)
+    landings = gates.landings_for_snapshot(target.project_root, snapshot)
     snapshot = gates.apply_landing_needs(snapshot, landings)
     console.print(header_text(target, snapshot.generated_at, colors))
     if not snapshot.efforts:
-        console.print(f"\nNo live efforts in {target.store}")
+        console.print(f"\nNo live efforts in {target.store_path}")
     for view in snapshot.efforts:
         console.print()
         console.rule(Text(tab_label(view), style="dim" if view.finished else "bold"), align="left")
@@ -744,7 +744,7 @@ class NeedsYouDetailScreen(Screen[None]):
         self.query_one("#needs-body").display = bool(item.body.strip())
         await self.query_one("#needs-body Markdown", Markdown).update(item.body.strip())
         panels = approval_module.evidence_panels(
-            self.app.target, item, root=self.app.target.root, view=view,
+            self.app.target, item, root=self.app.target.project_root, view=view,
         )
         evidence = self.query_one("#needs-evidence")
         if panels:
@@ -1021,7 +1021,7 @@ class DashboardApp(App[None]):
         Binding("escape", "clear_filter", "clear filter", show=False),
     ]
 
-    def __init__(self, target: artifact_store.Target, interval: float = 2.0) -> None:
+    def __init__(self, target: Project, interval: float = 2.0) -> None:
         super().__init__()
         self.target = target
         self.interval = interval
@@ -1048,7 +1048,7 @@ class DashboardApp(App[None]):
 
     def on_mount(self) -> None:
         self.query_one("#header-path", Static).update(header_text(self.target, None, palette_from(self.get_css_variables())))
-        self.query_one("#empty", Static).update(f"No live efforts in {self.target.store}")
+        self.query_one("#empty", Static).update(f"No live efforts in {self.target.store_path}")
         for tabs in self.query(ContentTabs):
             tabs.can_focus = False
         self.set_interval(self.interval, self.poll)
@@ -1695,7 +1695,7 @@ class DashboardApp(App[None]):
         snapshot = self.snapshot
         if snapshot is None:
             return
-        root = self.target.root
+        root = self.target.project_root
         token = gates.landing_cache_token(root, snapshot)
         if token is not None and token == self._landing_token and self.landings:
             landings = self.landings
@@ -1839,12 +1839,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        target = artifact_store.resolve(Path.cwd())
-    except artifact_store.StoreBindingError as exc:
+        target = open_store(Path.cwd())
+    except StoreBindingError as exc:
         print(str(exc))
         return 1
-    if target.store is None or target.contract is None:
-        print(f"No artifact store found for {target.root}")
+    if target.contract_path is None:
+        print(f"No artifact store found for {target.project_root}")
         return 1
     if args.once:
         tty = sys.stdout.isatty()

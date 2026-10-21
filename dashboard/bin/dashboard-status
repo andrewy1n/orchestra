@@ -18,7 +18,22 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from dashboard.artifact_store import resolve  # noqa: E402
+
+
+def _enable_library() -> None:
+    try:
+        import adaptive_artifacts  # noqa: F401
+    except ModuleNotFoundError:
+        import pwd
+
+        home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+        site_packages = home / ".local" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+        if site_packages.is_dir():
+            sys.path.append(str(site_packages))
+
+
+_enable_library()
+from adaptive_artifacts.project import StoreBindingError, open_store  # noqa: E402
 from dashboard.gates import apply_landing_needs, landings_for_snapshot  # noqa: E402
 from dashboard.model import ModelError, Snapshot, load_snapshot  # noqa: E402
 
@@ -78,15 +93,18 @@ def main(argv: list[str]) -> int:
     directory = target_directory(rest)
     if directory is None or not directory.is_dir():
         return 0
-    target = resolve(directory)
-    if target.store is None or target.contract is None:
+    try:
+        target = open_store(directory)
+    except StoreBindingError:
+        return 0
+    if target.contract_path is None:
         return 0
     signal.signal(signal.SIGALRM, _give_up)
     signal.alarm(TIMEOUT)
     try:
         snapshot = load_snapshot(target)
         if tmux:
-            line = summarize_tmux(target.root, snapshot)
+            line = summarize_tmux(target.project_root, snapshot)
             if line:
                 print(line)
             return 0

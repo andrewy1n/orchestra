@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
 
-from orchestra import aa, reviewer, suite
-from orchestra.aa_resolve import (
-    StoreBindingError,
-    project_root,
-    resolve as resolve_store,
-)
+from adaptive_artifacts.project import StoreBindingError, open_store
+from adaptive_artifacts.store import StoreError
+from orchestra import reviewer, suite
 from orchestra.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.contract import contract_path
 from orchestra.project_field import STOPPED, rewrite_project_field
@@ -26,7 +24,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="orchestra",
         description=(
             "orchestra CLI: checks, contracts, reviewer briefs, phase suite, "
-            "and store access (shells to adaptive-artifacts)."
+            "and store access through the artifact library."
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -311,7 +309,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     store = sub.add_parser(
         "store",
-        help="Resolve the bound store and run adaptive-artifacts through it",
+        help="Open the bound store and read or write it through the library",
     )
     store_sub = store.add_subparsers(dest="action", required=True)
     store_path = store_sub.add_parser(
@@ -326,13 +324,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     store_run = store_sub.add_parser(
         "run",
-        help="Run adaptive-artifacts with the resolved --root/--store/--contract",
+        help="Run a library read or write against the opened store",
     )
     store_run.add_argument("--cwd", default=None, help="Directory (default: cwd)")
     store_run.add_argument(
         "args",
         nargs=argparse.REMAINDER,
-        help="adaptive-artifacts arguments, after '--'",
+        help="library arguments, after '--'",
     )
     store_ensure = store_sub.add_parser(
         "ensure",
@@ -376,10 +374,15 @@ def _cwd(args: argparse.Namespace) -> Path:
     return Path(args.cwd).expanduser() if args.cwd else Path.cwd()
 
 
-def _store_root(args: argparse.Namespace, work: Path) -> Path:
-    if getattr(args, "store", None):
-        return Path(args.store).expanduser()
-    return aa.find_store_root(work)
+def _git_root(directory: Path) -> Path:
+    result = subprocess.run(
+        ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return Path(result.stdout.strip())
+    return directory.resolve()
 
 
 def _print_json(payload: object) -> None:
@@ -452,27 +455,20 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
 
 
 def _load_review_records(
-    store_root: Path,
+    work: Path,
 ) -> tuple[list[dict[str, object]], list[str]]:
-    """Read the reviewer-allowed kinds through adaptive-artifacts list."""
+    """Read the reviewer-allowed kinds from the opened store."""
+    project = open_store(work)
     records: list[dict[str, object]] = []
     failures: list[str] = []
     for kind in sorted(reviewer.ALLOWED_KINDS):
-        result = aa.run_aa(
-            "list", "--type", f"project:{kind}", "--full", root=store_root
-        )
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
-            failures.append(f"project:{kind}: {detail or 'list failed'}")
-            continue
+        record_type = f"project:{kind}"
         try:
-            payload = json.loads(result.stdout or "{}")
-        except json.JSONDecodeError:
-            failures.append(f"project:{kind}: invalid JSON")
+            rows = project.list(record_type)
+        except StoreError as exc:
+            failures.append(f"{record_type}: {exc}")
             continue
-        rows = payload.get("records") if isinstance(payload, dict) else payload
-        if isinstance(rows, list):
-            records.extend(row for row in rows if isinstance(row, dict))
+        records.extend(row for row in rows if isinstance(row, dict))
     if not records and failures:
         raise RuntimeError("; ".join(failures))
     return records, failures
@@ -481,7 +477,7 @@ def _load_review_records(
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records, failures = _load_review_records(_store_root(args, work))
+        records, failures = _load_review_records(work)
         phase_diff = reviewer.git_phase_diff(
             work, base=args.base, phase_head=args.phase_head
         )
@@ -593,8 +589,9 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 3
+        directory = Path(args.store).expanduser() if getattr(args, "store", None) else work
         record = suite.record_suite_check_run(
-            store_root=_store_root(args, work),
+            store_root=directory,
             phase_slug=args.phase,
             effort=args.effort,
             suite=result,
@@ -607,29 +604,77 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
     return 0
 
 
+def _flag_values(argv: list[str]) -> dict[str, list[str]]:
+    values: dict[str, list[str]] = {}
+    index = 0
+    while index < len(argv):
+        item = argv[index]
+        if item.startswith("--") and index + 1 < len(argv) and not argv[index + 1].startswith("--"):
+            values.setdefault(item, []).append(argv[index + 1])
+            index += 2
+        else:
+            index += 1
+    return values
+
+
+def _dispatch_store(project, argv: list[str]) -> tuple[object, int]:
+    verb = argv[0]
+    flags = _flag_values(argv[1:])
+    if verb == "list":
+        record_type = (flags.get("--type") or [None])[0]
+        if not record_type:
+            raise ValueError("list requires --type")
+        rows = project.list(record_type)
+        state = (flags.get("--state") or [None])[0]
+        if state:
+            rows = [row for row in rows if row.get("lifecycle_state") == state]
+        return {"records": rows, "count": len(rows)}, 0
+    if verb == "get":
+        record_id = (flags.get("--id") or [None])[0]
+        if not record_id:
+            raise ValueError("get requires --id")
+        record_type = (flags.get("--type") or [None])[0]
+        return project.get(record_id, record_type), 0
+    if verb == "create":
+        record_type = (flags.get("--type") or [None])[0]
+        subject = (flags.get("--subject") or [None])[0]
+        payload_text = (flags.get("--payload") or ["{}"])[0]
+        body = (flags.get("--body") or [None])[0]
+        if not record_type or not subject:
+            raise ValueError("create requires --type and --subject")
+        record = project.create(
+            record_type=record_type,
+            subject=subject,
+            payload=json.loads(payload_text),
+            rels=flags.get("--rel") or None,
+            body=body,
+        )
+        return {"ok": True, "op": "create", "record": record}, 0
+    if verb == "apply":
+        source = (flags.get("--file") or [None])[0]
+        raw = Path(source).read_text(encoding="utf-8") if source else sys.stdin.read()
+        operations = [json.loads(line) for line in raw.splitlines() if line.strip()]
+        return project.apply(operations), 0
+    raise ValueError(f"unsupported store operation {verb!r}")
+
+
 def _cmd_store_path(args: argparse.Namespace) -> int:
     try:
-        target = resolve_store(_cwd(args))
+        project = open_store(_cwd(args))
     except (OSError, StoreBindingError) as exc:
         print(f"orchestra store path: {exc}", file=sys.stderr)
-        return 2
-    if target.store is None:
-        print(
-            f"orchestra store path: no artifact store under {target.root}",
-            file=sys.stderr,
-        )
         return 2
     if args.json:
         _print_json(
             {
-                "root": str(target.root),
-                "store": str(target.store),
-                "contract": str(target.contract) if target.contract else None,
-                "binding": target.binding.store if target.binding else None,
+                "root": str(project.project_root),
+                "store": str(project.store_path),
+                "contract": str(project.contract_path) if project.contract_path else None,
+                "binding": project.binding.location,
             }
         )
     else:
-        print(target.store)
+        print(project.store_path)
     return 0
 
 
@@ -638,38 +683,45 @@ def _cmd_store_run(args: argparse.Namespace) -> int:
     if argv and argv[0] == "--":
         argv = argv[1:]
     if not argv:
-        print("orchestra store run: needs adaptive-artifacts arguments", file=sys.stderr)
+        print("orchestra store run: needs library arguments", file=sys.stderr)
         return 2
     try:
-        result = aa.run_aa(*argv, root=aa.find_store_root(_cwd(args)))
-    except (OSError, RuntimeError, StoreBindingError) as exc:
+        project = open_store(_cwd(args))
+        payload, code = _dispatch_store(project, argv)
+    except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         print(f"orchestra store run: {exc}", file=sys.stderr)
         return 2
-    if result.stdout:
-        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
-    if result.stderr:
-        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr)
-    return result.returncode
+    text = payload if isinstance(payload, str) else json.dumps(payload)
+    print(text, end="" if text.endswith("\n") else "\n")
+    return code
 
 
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
-    root = project_root(_cwd(args))
+    root = _git_root(_cwd(args))
     artifacts = root / ".artifacts"
     design = artifacts / "project-design.json"
     try:
         artifacts.mkdir(parents=True, exist_ok=True)
         if not design.is_file():
             design.write_text(contract_path().read_text(encoding="utf-8"), encoding="utf-8")
-        target = resolve_store(root)
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         print(f"orchestra store ensure: {exc}", file=sys.stderr)
         return 2
+    store_path = None
+    store_ready = False
+    try:
+        project = open_store(root)
+    except (OSError, StoreBindingError):
+        project = None
+    if project is not None:
+        store_path = project.store_path
+        store_ready = (project.store_path / "meta.json").is_file()
     payload = {
         "root": str(root),
         "artifacts": str(artifacts),
         "design": str(design),
-        "store": str(target.store) if target.store else None,
-        "store_ready": bool(target.store and (target.store / "meta.json").is_file()),
+        "store": str(store_path) if store_path else None,
+        "store_ready": store_ready,
     }
     if args.json:
         _print_json(payload)

@@ -12,7 +12,22 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from dashboard.artifact_store import StoreBindingError, resolve  # noqa: E402
+
+
+def _enable_library() -> None:
+    try:
+        import adaptive_artifacts  # noqa: F401
+    except ModuleNotFoundError:
+        import pwd
+
+        home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+        site_packages = home / ".local" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+        if site_packages.is_dir():
+            sys.path.append(str(site_packages))
+
+
+_enable_library()
+from adaptive_artifacts.project import StoreBindingError, open_store  # noqa: E402
 
 APP = Path(__file__).resolve().parent.parent / "web" / "__main__.py"
 
@@ -32,18 +47,9 @@ def find_uv() -> str | None:
 
 def main(argv: list[str]) -> int:
     try:
-        target = resolve(Path.cwd())
+        target = open_store(Path.cwd())
     except StoreBindingError as exc:
         return fail(str(exc))
-    if target.store is None:
-        return fail(
-            f"No artifact store for {target.root}.\n"
-            f"No store binding and no meta.json in:\n"
-            f"  {target.repo_store()} (local)\n"
-            f"  {target.home_store()} (global)\n"
-            f"Set SE_WORKFLOW_STORE or add .artifacts/store-binding.json "
-            f'with {{"store":"local"}} or {{"store":"global"}}.'
-        )
     uv = find_uv()
     if uv is None:
         return fail(
@@ -53,7 +59,7 @@ def main(argv: list[str]) -> int:
         )
     command = [uv, "run", "--script", str(APP), *argv]
     try:
-        os.chdir(target.root)
+        os.chdir(target.project_root)
         os.execv(command[0], command)
     except OSError as exc:
         return fail(f"Cannot run {command[0]}: {exc}")

@@ -17,7 +17,7 @@ import helpers as h  # noqa: E402
 from conftest import REPO_ROOT, stamped_store  # noqa: E402
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import open_store  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from dashboard import model as model_module  # noqa: E402
 from dashboard import requirement_detail as requirement_module  # noqa: E402
@@ -151,7 +151,7 @@ def _memoized_cli(monkeypatch):
     real = model_module._run
 
     def run(target, *args):
-        key = (args, _store_digest(target.store))
+        key = (args, _store_digest(target.store_path))
         if key not in _CLI_CACHE:
             _CLI_CACHE[key] = real(target, *args)
         return copy.deepcopy(_CLI_CACHE[key])
@@ -182,7 +182,7 @@ async def _until(pilot, condition, timeout=30.0):
 
 def _run(store, width, scenario, interval=60.0, height=40):
     async def go():
-        app = app_module.DashboardApp(artifact_store.resolve(store), interval=interval)
+        app = app_module.DashboardApp(open_store(store), interval=interval)
         async with app.run_test(size=(width, height)) as pilot:
             app.push_screen(requirement_module.RequirementDetailScreen(
                 app.target, EFFORT, PHASE, "R1",

@@ -13,7 +13,7 @@ import helpers as h
 from conftest import CONTRACT_PATH, REPO_ROOT, make_git_repo, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import Binding, Project, open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import selection  # noqa: E402
 
@@ -44,7 +44,7 @@ def _work_item(cli, defs, effort: str, subject: str, phase: str, *rels: str, ass
 
 
 def _target(store):
-    return artifact_store.resolve(store)
+    return open_store(store)
 
 
 def _effort(snapshot: model.Snapshot, name: str) -> model.EffortView:
@@ -510,10 +510,15 @@ def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
 
 def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
     calls = []
-    real = model.subprocess.run
-    monkeypatch.setattr(model.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or real(cmd, **kw))
+    real = model._run
+
+    def spy(target, *args):
+        calls.append(args)
+        return real(target, *args)
+
+    monkeypatch.setattr(model, "_run", spy)
     _detail(detail_store)
-    assert len([cmd for cmd in calls if cmd[0] != "git"]) == 4
+    assert len(calls) == 4
 
 
 def test_detail_of_an_unknown_id_raises_a_model_error(store):
@@ -929,16 +934,16 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     })
 
     calls = []
-    real = model.subprocess.run
+    real = model._run
 
-    def spy(cmd, **kwargs):
-        calls.append(cmd)
-        return real(cmd, **kwargs)
+    def spy(target, *args):
+        calls.append(args)
+        return real(target, *args)
 
-    monkeypatch.setattr(model.subprocess, "run", spy)
+    monkeypatch.setattr(model, "_run", spy)
     detail = model.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
     assert any(
-        "project:assessment" in cmd and "--state" in cmd and "superseded" in cmd for cmd in calls
+        "project:assessment" in args and "--state" in args and "superseded" in args for args in calls
     )
     assert (detail.phase, detail.id, detail.text, detail.status, detail.next) == (
         "p-detail", "R1", "the traced requirement", "failed", "design",
@@ -1362,7 +1367,12 @@ def test_list_skips_types_absent_from_bound_contract(tmp_path, monkeypatch):
         "store_version": 1,
         "contract": str(contract),
     }))
-    target = artifact_store.Target(root=tmp_path, store=store, contract=contract)
+    target = Project(
+        project_root=tmp_path,
+        store_path=store,
+        contract_path=contract,
+        binding=Binding("local", "argument"),
+    )
 
     calls: list[tuple[str, ...]] = []
 
@@ -1386,7 +1396,7 @@ def test_snapshot_loads_against_adaptive_artifacts_store():
     root = Path.home() / "adaptive-artifacts"
     if not (root / ".artifacts" / "meta.json").is_file():
         pytest.skip("adaptive-artifacts store not present")
-    target = artifact_store.resolve(root)
+    target = open_store(root)
     # AA may use the orchestra design (has project:phase) or an older
     # foreign design without it. Either way load_snapshot must not die.
     _ = model._declared_record_types(target)

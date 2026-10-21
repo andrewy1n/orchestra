@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
+from typing import Any
 
-from dashboard.artifact_store import Target, aa_command
+from adaptive_artifacts.project import Project
 from dashboard.model import BacklogItem
 
 BACKLOG_TYPE = "project:backlog-item"
@@ -40,16 +40,37 @@ def prompt(item: BacklogItem, effort: str | None = None) -> str:
     )
 
 
-def _cli(target: Target, *args: str) -> subprocess.CompletedProcess[str]:
-    command = [*aa_command(), *target.cli_args(), *args]
+def _operation(args: list[str]) -> dict[str, Any]:
+    operation: dict[str, Any] = {"op": args[0]}
+    index = 1
+    while index < len(args):
+        flag = args[index]
+        if index + 1 >= len(args):
+            break
+        value = args[index + 1]
+        index += 2
+        if flag == "--type":
+            operation["type"] = value
+        elif flag == "--id":
+            operation["id"] = value
+        elif flag == "--expected-revision":
+            operation["expected_revision"] = value
+        elif flag == "--payload":
+            operation["payload"] = json.loads(value)
+    return operation
+
+
+def _write(target: Project, args: list[str]) -> None:
+    operation = _operation(args)
+    label = " ".join(args[:3])
     try:
-        return subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise BacklogError(f"cannot run {command[0]}: {exc}") from exc
-
-
-def _fail(result: subprocess.CompletedProcess[str], label: str) -> None:
-    detail = (result.stdout or result.stderr or "").strip() or f"exit {result.returncode}"
+        results = target.apply([operation])
+    except OSError as exc:
+        raise BacklogError(f"cannot apply {operation.get('op')}: {exc}") from exc
+    result = results[0] if results else {"ok": False, "message": "no result"}
+    if result.get("ok"):
+        return
+    detail = str(result.get("message") or result.get("error") or "apply failed")
     raise BacklogError(f"{label} failed: {detail.splitlines()[0]}")
 
 
@@ -83,17 +104,11 @@ def dismiss_command(item: BacklogItem) -> list[str]:
     return _supersede_args(item, "dismissed")
 
 
-def promote_item(target: Target, item: BacklogItem, *, phase: str | None = None) -> None:
+def promote_item(target: Project, item: BacklogItem, *, phase: str | None = None) -> None:
     """Supersede an open backlog item to promoted."""
-    args = promote_command(item, phase=phase)
-    result = _cli(target, *args)
-    if result.returncode != 0:
-        _fail(result, " ".join(args[:3]))
+    _write(target, promote_command(item, phase=phase))
 
 
-def dismiss_item(target: Target, item: BacklogItem) -> None:
+def dismiss_item(target: Project, item: BacklogItem) -> None:
     """Supersede an open backlog item to dismissed."""
-    args = dismiss_command(item)
-    result = _cli(target, *args)
-    if result.returncode != 0:
-        _fail(result, " ".join(args[:3]))
+    _write(target, dismiss_command(item))

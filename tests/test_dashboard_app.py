@@ -24,7 +24,7 @@ import helpers as h  # noqa: E402
 from conftest import REPO_ROOT, git, stamped_store  # noqa: E402
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import Binding, Project, open_store  # noqa: E402
 from dashboard import model as model_module  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from dashboard import selection  # noqa: E402
@@ -120,7 +120,7 @@ def _memoized_cli(monkeypatch):
     real = model_module._run
 
     def run(target, *args):
-        key = (args, _store_digest(target.store))
+        key = (args, _store_digest(target.store_path))
         if key not in _CLI_CACHE:
             _CLI_CACHE[key] = real(target, *args)
         return copy.deepcopy(_CLI_CACHE[key])
@@ -165,7 +165,7 @@ async def _wait_workers(app) -> None:
 
 def _run(store, width, scenario, interval=60.0, height=40, grouped=False):
     async def go():
-        app = app_module.DashboardApp(artifact_store.resolve(store), interval=interval)
+        app = app_module.DashboardApp(open_store(store), interval=interval)
         async with app.run_test(size=(width, height)) as pilot:
             await _until(pilot, lambda: _dashboard_ready(app))
             await _wait_workers(app)
@@ -581,7 +581,7 @@ def test_empty_store_shows_the_empty_state(store):
         assert "No live efforts" in _text(app, "#empty")
 
     async def go():
-        app = app_module.DashboardApp(artifact_store.resolve(store), interval=60.0)
+        app = app_module.DashboardApp(open_store(store), interval=60.0)
         async with app.run_test(size=(60, 40)) as pilot:
             await scenario(app, pilot)
 
@@ -1112,7 +1112,7 @@ def _cursor_key(table):
 
 def _detail_run(store, size, scenario, interval=60.0, grouped=False):
     async def go():
-        app = app_module.DashboardApp(artifact_store.resolve(store), interval=interval)
+        app = app_module.DashboardApp(open_store(store), interval=interval)
         async with app.run_test(size=size) as pilot:
             await _until(pilot, lambda: _dashboard_ready(app))
             await _wait_workers(app)
@@ -1882,7 +1882,7 @@ def test_arrows_scroll_the_commit_screen(committed):
 
 def test_q_quits(seeded):
     async def go():
-        app = app_module.DashboardApp(artifact_store.resolve(seeded), interval=60.0)
+        app = app_module.DashboardApp(open_store(seeded), interval=60.0)
         async with app.run_test(size=(60, 40)) as pilot:
             await pilot.press("q")
             await pilot.pause()
@@ -3553,14 +3553,11 @@ def test_dismiss_refused_for_merge_branch(store, cli, defs):
 
 def test_dismiss_cli_failure_keeps_item_and_shows_error(store, cli, defs, monkeypatch):
     stamped_store(store, "dismiss-fail", lambda root, c, d: _seed_dismiss_human(c, d))
-    real = app_module.dismiss_module.subprocess.run
 
-    def fake_run(cmd, **kwargs):
-        if isinstance(cmd, (list, tuple)) and any(part in {"update", "correct", "supersede"} for part in cmd):
-            return subprocess.CompletedProcess(cmd, 1, '{"error":"boom"}', "permission denied")
-        return real(cmd, **kwargs)
+    def fake_write(target, args):
+        raise app_module.dismiss_module.DismissError("update failed: permission denied")
 
-    monkeypatch.setattr(app_module.dismiss_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(app_module.dismiss_module, "_write", fake_write)
 
     async def scenario(app, pilot):
         await _until(pilot, lambda: app.query_one("#needs-you").option_count == 3)
@@ -3902,29 +3899,35 @@ def test_approval_dismiss_refuses_missing_or_at_current_revision():
 
 def test_approval_stale_revision_raises_clear_error_without_retry(monkeypatch):
     from dashboard import dismiss as dismiss_module
-    from dashboard.artifact_store import Target
     from pathlib import Path
 
     item = _approval_question()
-    calls: list[list[str]] = []
+    calls: list[list[dict]] = []
 
-    def fake_run(cmd, **kwargs):
-        calls.append(list(cmd))
-        return subprocess.CompletedProcess(
-            cmd, 2,
-            '{"error":"stale_write","message":"stale write for rec-q1: expected sha256:displayed-question, got sha256:other"}',
-            "",
-        )
+    def fake_apply(self, operations):
+        calls.append(operations)
+        return [{
+            "ok": False,
+            "op": operations[0].get("op"),
+            "error": "stale_write",
+            "message": "stale write for rec-q1",
+            "line": 1,
+        }]
 
-    monkeypatch.setattr(dismiss_module.subprocess, "run", fake_run)
-    target = Target(root=Path("/tmp"), store=Path("/tmp/store"), contract=Path("/tmp/contract.json"))
+    monkeypatch.setattr(Project, "apply", fake_apply)
+    target = Project(
+        project_root=Path("/tmp"),
+        store_path=Path("/tmp/store"),
+        contract_path=Path("/tmp/contract.json"),
+        binding=Binding("local", "argument"),
+    )
 
     with pytest.raises(dismiss_module.DismissError, match="changed since opened|stale revision"):
         dismiss_module.dismiss_item(target, item, action="approve")
 
-    write_calls = [c for c in calls if any(part in {"update", "correct", "create"} for part in c)]
-    assert len(write_calls) == 1
-    assert all("@current" not in c for c in calls)
+    assert len(calls) == 1
+    assert calls[0][0]["op"] == "update"
+    assert calls[0][0].get("expected_revision") != "@current"
 
 
 # --- approval-confirm-ux: detail-first, confirm/cancel, actions ---
@@ -4020,13 +4023,13 @@ def _write_calls(calls):
 def test_approval_detail_first_d_opens_detail_without_cli_write(store, cli, defs, monkeypatch):
     stamped_store(store, "approval-detail-first", lambda root, c, d: _seed_approval_human_gates(c, d))
     calls: list[list[str]] = []
-    real = app_module.dismiss_module.subprocess.run
+    real = app_module.dismiss_module._write
 
-    def fake_run(cmd, **kwargs):
-        calls.append(list(cmd))
-        return real(cmd, **kwargs)
+    def fake_write(target, args):
+        calls.append(list(args))
+        return real(target, args)
 
-    monkeypatch.setattr(app_module.dismiss_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(app_module.dismiss_module, "_write", fake_write)
 
     async def scenario(app, pilot):
         await _until(pilot, lambda: app.query_one("#needs-you").option_count >= 1)
@@ -4048,13 +4051,13 @@ def test_approval_confirm_writes_after_detail_and_cancel_makes_no_cli_call(
 ):
     stamped_store(store, "approval-confirm-cancel", lambda root, c, d: _seed_approval_human_gates(c, d))
     calls: list[list[str]] = []
-    real = app_module.dismiss_module.subprocess.run
+    real = app_module.dismiss_module._write
 
-    def fake_run(cmd, **kwargs):
-        calls.append(list(cmd))
-        return real(cmd, **kwargs)
+    def fake_write(target, args):
+        calls.append(list(args))
+        return real(target, args)
 
-    monkeypatch.setattr(app_module.dismiss_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(app_module.dismiss_module, "_write", fake_write)
 
     async def scenario(app, pilot):
         await _until(pilot, lambda: app.query_one("#needs-you").option_count >= 3)

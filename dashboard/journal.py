@@ -17,7 +17,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Input, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
-from dashboard.artifact_store import Target
+from adaptive_artifacts.project import Project
 from dashboard import model
 from dashboard import pager
 from dashboard.display import REDRAW_SECONDS, clip, palette_from, relative_time
@@ -55,7 +55,7 @@ class JournalItem:
     task_id: str = ""
 
 
-def _soft_list(target: Target, record_type: str, *, where: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+def _soft_list(target: Project, record_type: str, *, where: tuple[str, ...] = ()) -> list[dict[str, Any]]:
     try:
         return model._list(target, record_type, where=where, full=True)
     except model.ModelError:
@@ -166,7 +166,7 @@ def _assignment_task(
     return model._payload(task).get("phase") or None, task["id"], task["subject"]
 
 
-def load_journal(target: Target, effort: str) -> list[JournalItem]:
+def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
     aliases = model._merge_aliases(model._list(target, "project:active-goal"))
     goals = [
@@ -295,7 +295,7 @@ def filter_items(items: list[JournalItem], needle: str) -> list[JournalItem]:
     ]
 
 
-def load_record(target: Target, record_id: str) -> dict[str, Any]:
+def load_record(target: Project, record_id: str) -> dict[str, Any]:
     """Fetch one record by id (type optional on the CLI)."""
     record = model._run(target, "get", "--id", record_id)
     if "subject" not in record:
@@ -439,7 +439,7 @@ class JournalScreen(Screen[None]):
         Binding("c", "app.copy_slug", "copy"),
     ]
 
-    def __init__(self, target: Target, effort: str, phase: str | None) -> None:
+    def __init__(self, target: Project, effort: str, phase: str | None) -> None:
         super().__init__()
         self.target = target
         self.effort = effort
@@ -601,7 +601,7 @@ class RecordDetailScreen(Screen[None]):
         Binding("l", "focus_links", "links", show=False),
     ]
 
-    def __init__(self, target: Target, record_id: str, task_id: str = "") -> None:
+    def __init__(self, target: Project, record_id: str, task_id: str = "") -> None:
         super().__init__()
         self.target = target
         self.record_id = record_id

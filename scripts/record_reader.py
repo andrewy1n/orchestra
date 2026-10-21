@@ -1,4 +1,4 @@
-"""Read record metadata through the adaptive-artifacts CLI, never bodies."""
+"""Read record metadata through the artifact library, never bodies."""
 
 from __future__ import annotations
 
@@ -7,6 +7,9 @@ import os
 import subprocess
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
+
+from adaptive_artifacts.project import open_store
+from adaptive_artifacts.store import StoreError
 
 DEFAULT_TYPES = tuple(
     f"project:{name}"
@@ -60,23 +63,40 @@ def _metadata(raw: dict, store: str) -> dict:
     }
 
 
+def _read_open_store(root: str, types: Iterable[str] | None) -> list[dict]:
+    project = open_store(root)
+    rows: list[dict] = []
+    chosen = types if types is not None else DEFAULT_TYPES
+    for record_type in chosen:
+        try:
+            records = project.list(record_type)
+            rows.extend(_metadata(record, project.project_root.name) for record in records)
+        except (StoreError, OSError, KeyError, TypeError, ValueError) as exc:
+            raise RecordReadError(
+                f"cannot read records of type {record_type} ({type(exc).__name__})"
+            ) from None
+    return rows
+
+
 def read_records(
     root: str,
     types: Iterable[str] | None = None,
-    run: Callable[[list[str]], str] = subprocess_runner,
+    run: Callable[[list[str]], str] | None = None,
 ) -> list[dict]:
+    if run is None or run is subprocess_runner:
+        return _read_open_store(root, types)
     store = os.path.basename(os.path.abspath(root))
     store_path = os.path.join(os.path.expanduser("~"), ".artifacts", store)
     rows: list[dict] = []
     for record_type in types if types is not None else DEFAULT_TYPES:
         argv = [
-            "adaptive-artifacts", "--root", root, "--store", store_path,
+            "record-list", "--root", root, "--store", store_path,
             "--read-only",
             "list", "--type", record_type,
         ]
         try:
             records = json.loads(run(argv))["records"]
-            rows.extend(_metadata(r, store) for r in records)
+            rows.extend(_metadata(record, store) for record in records)
         except Exception as exc:
             raise RecordReadError(
                 f"cannot read records of type {record_type} ({type(exc).__name__})"

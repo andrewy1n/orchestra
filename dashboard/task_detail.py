@@ -18,7 +18,8 @@ from textual.widget import Widget
 from textual.widgets import Collapsible, Footer, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
-from dashboard import artifact_store, model, pager
+from adaptive_artifacts.project import Project
+from dashboard import model, pager
 from dashboard.commit import CommitScreen, latest_revision, load_commit, stat_width
 from dashboard.display import (
     ACTIVITY_GLYPH, REDRAW_SECONDS, STATUS_GLYPH, palette_from, relative_time, slug,
@@ -334,7 +335,7 @@ class TaskDetailScreen(Screen[None]):
         Binding("o", "page_block", "pager", show=False),
     ]
 
-    def __init__(self, target: artifact_store.Target, task_id: str) -> None:
+    def __init__(self, target: Project, task_id: str) -> None:
         super().__init__()
         self.target = target
         self.task_id = task_id
@@ -441,13 +442,13 @@ class TaskDetailScreen(Screen[None]):
 
     @work(thread=True, exclusive=True, group="commit")
     def open_commit(self, revision: str) -> None:
-        commit = load_commit(self.target.root, revision, stat_width(self.app))
+        commit = load_commit(self.target.project_root, revision, stat_width(self.app))
         if commit is None:
             self.app.call_from_thread(
-                self.app.notify, f"Commit {revision} not found in {self.target.root}", timeout=4,
+                self.app.notify, f"Commit {revision} not found in {self.target.project_root}", timeout=4,
             )
             return
-        self.app.call_from_thread(self.app.push_screen, CommitScreen(commit, self.target.root, revision))
+        self.app.call_from_thread(self.app.push_screen, CommitScreen(commit, self.target.project_root, revision))
 
     @work(thread=True, exclusive=True, group="detail")
     def load(self) -> None:

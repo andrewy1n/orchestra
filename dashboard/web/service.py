@@ -20,7 +20,7 @@ from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
 from dashboard import approval, backlog, dismiss, journal, model
-from dashboard.artifact_store import Target
+from adaptive_artifacts.project import Project
 
 
 def jsonable(value: Any) -> Any:
@@ -127,7 +127,7 @@ def needs_payload(item: model.NeedsYouItem) -> dict:
 class Cache:
     """Snapshot and detail cache keyed by ``dashboard.model.change_token``."""
 
-    def __init__(self, target: Target) -> None:
+    def __init__(self, target: Project) -> None:
         self.target = target
         self.lock = threading.Lock()
         self.token = ""
@@ -168,7 +168,7 @@ class Cache:
         return {
             "token": snapshot.token,
             "generated_at": snapshot.generated_at.isoformat(),
-            "store": str(self.target.store),
+            "store": str(self.target.store_path),
             "efforts": [effort_summary(view) for view in snapshot.efforts],
         }
 
@@ -195,7 +195,7 @@ class Cache:
 class Reader:
     """Read-only accessors that both the stdlib server and FastAPI app share."""
 
-    def __init__(self, target: Target) -> None:
+    def __init__(self, target: Project) -> None:
         self.target = target
         self.cache = Cache(target)
 
@@ -436,7 +436,7 @@ def build_handler(reader: Reader):
     return Handler
 
 
-def serve(target: Target, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
+def serve(target: Project, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
     """Bind a threading HTTP server for ``target``'s read API and return it.
 
     The caller runs ``serve_forever()`` in a thread and later calls

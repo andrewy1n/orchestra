@@ -1,4 +1,4 @@
-"""Store binding resolution: local | global, exclusive, layered preference."""
+"""Store opening follows adaptive_artifacts.project.open_store."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from adaptive_artifacts.project import StoreBindingError, open_store
 from conftest import make_git_repo
-from dashboard import artifact_store as a
 
 
 def _meta(store: Path, contract: Path | None = None) -> None:
@@ -31,6 +31,7 @@ def home(tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("ARTIFACTS_STORE", raising=False)
     return home
 
 
@@ -39,80 +40,68 @@ def repo():
     return make_git_repo()
 
 
-def test_default_prefers_local_when_both_have_meta(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+def test_default_prefers_local_when_both_have_meta(home, repo):
     _meta(repo / ".artifacts")
     _meta(home / ".artifacts" / repo.name)
-    target = a.resolve(repo, env={})
-    assert Path(target.store).resolve() == (repo / ".artifacts").resolve()
-    assert target.binding is not None and target.binding.store == "local"
-    assert target.binding.source == "default"
+    project = open_store(repo)
+    assert project.store_path.resolve() == (repo / ".artifacts").resolve()
+    assert project.binding.location == "local"
+    assert project.binding.source == "default"
 
 
-def test_default_uses_global_when_only_home_has_meta(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+def test_default_uses_global_when_only_home_has_meta(home, repo):
     _meta(home / ".artifacts" / repo.name)
-    target = a.resolve(repo, env={})
-    assert Path(target.store).resolve() == (home / ".artifacts" / repo.name).resolve()
-    assert target.binding is not None and target.binding.store == "global"
+    project = open_store(repo)
+    assert project.store_path.resolve() == (home / ".artifacts" / repo.name).resolve()
+    assert project.binding.location == "global"
 
 
-def test_committed_local_wins_over_home_store(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+def test_committed_local_wins_over_home_store(home, repo):
     _meta(repo / ".artifacts")
     _meta(home / ".artifacts" / repo.name)
-    _binding(repo / ".artifacts" / a.COMMITTED_BINDING, "local")
-    target = a.resolve(repo, env={})
-    assert Path(target.store).resolve() == (repo / ".artifacts").resolve()
-    assert target.binding is not None
-    assert target.binding.source.endswith(a.COMMITTED_BINDING)
+    _binding(repo / ".artifacts" / "store-binding.json", "local")
+    project = open_store(repo)
+    assert project.store_path.resolve() == (repo / ".artifacts").resolve()
+    assert project.binding.source.endswith("store-binding.json")
 
 
-def test_local_override_beats_committed(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+def test_local_override_beats_committed(home, repo):
     _meta(repo / ".artifacts")
     _meta(home / ".artifacts" / repo.name)
-    _binding(repo / ".artifacts" / a.COMMITTED_BINDING, "local")
-    _binding(repo / ".artifacts" / a.LOCAL_BINDING, "global")
-    target = a.resolve(repo, env={})
-    assert Path(target.store).resolve() == (home / ".artifacts" / repo.name).resolve()
-    assert target.binding is not None and target.binding.store == "global"
+    _binding(repo / ".artifacts" / "store-binding.json", "local")
+    _binding(repo / ".artifacts" / "store-binding.local.json", "global")
+    project = open_store(repo)
+    assert project.store_path.resolve() == (home / ".artifacts" / repo.name).resolve()
+    assert project.binding.location == "global"
 
 
-def test_env_beats_local_override(home, repo):
+def test_explicit_store_argument_beats_binding(home, repo):
     _meta(repo / ".artifacts")
     _meta(home / ".artifacts" / repo.name)
-    _binding(repo / ".artifacts" / a.LOCAL_BINDING, "global")
-    target = a.resolve(repo, env={a.ENV_STORE: "local"})
-    assert Path(target.store).resolve() == (repo / ".artifacts").resolve()
-    assert target.binding is not None and target.binding.source == f"env:{a.ENV_STORE}"
+    _binding(repo / ".artifacts" / "store-binding.local.json", "global")
+    project = open_store(repo, store=repo / ".artifacts")
+    assert project.store_path.resolve() == (repo / ".artifacts").resolve()
+    assert project.binding.source == "argument"
 
-def test_bound_missing_store_raises_without_fallthrough(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+
+def test_bound_missing_store_raises_without_fallthrough(home, repo):
     _meta(home / ".artifacts" / repo.name)
-    _binding(repo / ".artifacts" / a.COMMITTED_BINDING, "local")
-    with pytest.raises(a.StoreBindingError, match="no meta.json"):
-        a.resolve(repo, env={})
+    _binding(repo / ".artifacts" / "store-binding.json", "local")
+    with pytest.raises(StoreBindingError, match="no meta.json"):
+        open_store(repo)
 
 
-def test_invalid_binding_value_raises(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
+def test_invalid_binding_value_raises(home, repo):
     _meta(repo / ".artifacts")
-    (repo / ".artifacts" / a.COMMITTED_BINDING).write_text(json.dumps({"store": "both"}))
-    with pytest.raises(a.StoreBindingError, match="local"):
-        a.resolve(repo, env={})
+    (repo / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "both"}))
+    with pytest.raises(StoreBindingError, match="local"):
+        open_store(repo)
 
 
-def test_invalid_env_raises(home, repo):
-    _meta(repo / ".artifacts")
-    with pytest.raises(a.StoreBindingError, match="SE_WORKFLOW_STORE"):
-        a.resolve(repo, env={a.ENV_STORE: "both"})
-
-
-def test_cli_args_include_store_and_contract(home, repo, monkeypatch):
-    monkeypatch.delenv("SE_WORKFLOW_STORE", raising=False)
-    _meta(repo / ".artifacts")
-    args = a.resolve(repo, env={}).cli_args()
-    assert args[0] == "--root" and Path(args[1]).resolve() == repo.resolve()
-    assert args[2] == "--store" and Path(args[3]).resolve() == (repo / ".artifacts").resolve()
-    assert args[4] == "--contract"
+def test_open_store_exposes_contract_path(home, repo):
+    contract = repo / ".artifacts" / "resolved-contract.json"
+    _meta(repo / ".artifacts", contract)
+    project = open_store(repo)
+    assert project.contract_path is not None
+    assert project.contract_path.resolve() == contract.resolve()
+    assert project.project_root.resolve() == repo.resolve()

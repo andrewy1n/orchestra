@@ -15,7 +15,7 @@ import helpers as h
 from conftest import AA_ROOT, REPO_ROOT, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import open_store  # noqa: E402
 from dashboard import model as dashboard_model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard-status"
@@ -121,7 +121,7 @@ def test_every_line_names_a_snapshot_effort_with_matching_counts(home, seeded, c
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "calm")
     _work_item(cli, defs, "orphan", "orphan-ready")
-    snapshot = dashboard_model.load_snapshot(artifact_store.resolve(seeded))
+    snapshot = dashboard_model.load_snapshot(open_store(seeded))
     expected = []
     for view in snapshot.efforts:
         counts = {

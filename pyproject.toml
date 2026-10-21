@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Orchestra CLI: acceptance checks, bundled contract, project field, and session metrics"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = ["adaptive-artifacts"]
 
 [project.scripts]
 orchestra = "orchestra.cli:main"

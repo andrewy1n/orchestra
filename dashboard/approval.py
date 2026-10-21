@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dashboard.artifact_store import Target, aa_command
+from adaptive_artifacts.project import Project
+from adaptive_artifacts.store import StoreError
 from dashboard.dismiss import (
     ACTION_ACCEPT,
     ACTION_APPROVE,
@@ -82,22 +81,27 @@ def _section(body: str, heading: str) -> str:
     return "\n".join(collected).strip()
 
 
-def _cli_json(target: Target, *args: str) -> dict[str, Any]:
-    command = [*aa_command(), *target.cli_args(), *args]
+def _cli_json(target: Project, *args: str) -> dict[str, Any]:
+    record_id = None
+    record_type = None
+    items = list(args)
+    index = 0
+    while index < len(items):
+        if items[index] == "--id" and index + 1 < len(items):
+            record_id = items[index + 1]
+            index += 2
+        elif items[index] == "--type" and index + 1 < len(items):
+            record_type = items[index + 1]
+            index += 2
+        else:
+            index += 1
+    if not record_id:
+        return {}
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired):
+        record = target.get(record_id, record_type)
+    except StoreError:
         return {}
-    if result.returncode != 0:
-        return {}
-    try:
-        data = json.loads(result.stdout or "")
-    except json.JSONDecodeError:
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    record = data.get("record")
-    return record if isinstance(record, dict) else data
+    return record if isinstance(record, dict) else {}
 
 
 def _git_head(root: Path) -> str:
@@ -138,7 +142,7 @@ def _finding_evidence(item: NeedsYouItem, record: dict[str, Any]) -> list[tuple[
 
 
 def _check_evidence(
-    target: Target, item: NeedsYouItem, root: Path, record: dict[str, Any],
+    target: Project, item: NeedsYouItem, root: Path, record: dict[str, Any],
 ) -> list[tuple[str, str]]:
     payload = _payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
@@ -205,7 +209,7 @@ def _plan_review_evidence(item: NeedsYouItem, view: EffortView | None) -> list[t
 
 
 def evidence_panels(
-    target: Target,
+    target: Project,
     item: NeedsYouItem,
     *,
     root: Path,

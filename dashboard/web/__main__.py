@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from dashboard.artifact_store import StoreBindingError, resolve  # noqa: E402
+from adaptive_artifacts.project import StoreBindingError, open_store  # noqa: E402
 from dashboard.web.app import create_app  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -32,20 +32,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        target = resolve(Path.cwd())
+        target = open_store(Path.cwd())
     except StoreBindingError as exc:
         print(exc, file=sys.stderr)
         return 1
-    if target.store is None:
-        print(
-            f"No artifact store for {target.root}.\n"
-            f"No store binding and no meta.json in:\n"
-            f"  {target.repo_store()} (local)\n"
-            f"  {target.home_store()} (global)\n"
-            f"Set SE_WORKFLOW_STORE or add .artifacts/store-binding.json "
-            f'with {{"store":"local"}} or {{"store":"global"}}.',
-            file=sys.stderr,
-        )
+    if target.contract_path is None:
+        print(f"No artifact store for {target.project_root}.", file=sys.stderr)
         return 1
 
     import uvicorn

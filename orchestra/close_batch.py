@@ -45,7 +45,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from orchestra import aa
+from adaptive_artifacts.project import open_store
+from adaptive_artifacts.store import StoreError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -88,14 +89,20 @@ def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
     return result.returncode == 0
 
 
+def _open_project(store_root: Path | None):
+    return open_store(store_root if store_root is not None else Path.cwd())
+
+
 def default_load_check_run(
     check_run_id: str,
     *,
     store_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Load a check-run via adaptive-artifacts get (store from primary cwd)."""
-    store = store_root if store_root is not None else aa.find_store_root(Path.cwd())
-    return aa.get_record(store, check_run_id, "project:check-run")
+    """Load a check-run from the store opened for the primary cwd."""
+    try:
+        return _open_project(store_root).get(check_run_id, "project:check-run")
+    except StoreError as exc:
+        raise LookupError(str(exc)) from exc
 
 
 def default_load_acceptance(
@@ -103,9 +110,11 @@ def default_load_acceptance(
     *,
     store_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Load an acceptance via adaptive-artifacts get (store from primary cwd)."""
-    store = store_root if store_root is not None else aa.find_store_root(Path.cwd())
-    return aa.get_record(store, acceptance_id, "project:acceptance")
+    """Load an acceptance from the store opened for the primary cwd."""
+    try:
+        return _open_project(store_root).get(acceptance_id, "project:acceptance")
+    except StoreError as exc:
+        raise LookupError(str(exc)) from exc
 
 
 def default_list_oracle_amendments(
@@ -114,28 +123,15 @@ def default_list_oracle_amendments(
     store_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Active oracle-amendment records whose payload.acceptance matches id."""
-    store = store_root if store_root is not None else aa.find_store_root(Path.cwd())
-    result = aa.run_aa(
-        "list",
-        "--type",
-        "project:oracle-amendment",
-        "--state",
-        "active",
-        "--full",
-        root=store,
-    )
-    if result.returncode != 0:
-        return []
     try:
-        listed = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return []
-    records = listed.get("records") if isinstance(listed, dict) else None
-    if not isinstance(records, list):
+        records = _open_project(store_root).list("project:oracle-amendment")
+    except StoreError:
         return []
     matched: list[dict[str, Any]] = []
     for record in records:
         if not isinstance(record, dict):
+            continue
+        if record.get("lifecycle_state") not in (None, "active"):
             continue
         payload = _payload(record)
         ref = payload.get("acceptance")

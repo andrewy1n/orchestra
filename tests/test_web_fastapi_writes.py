@@ -16,7 +16,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import open_store  # noqa: E402
 from dashboard.web.app import create_app  # noqa: E402
 
 
@@ -33,7 +33,7 @@ def _goal(cli, defs) -> None:
 
 
 def _client(store) -> TestClient:
-    target = artifact_store.resolve(store)
+    target = open_store(store)
     try:
         app = create_app(target)
     except Exception as exc:

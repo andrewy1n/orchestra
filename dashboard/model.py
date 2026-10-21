@@ -5,13 +5,16 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from dashboard.artifact_store import Target, aa_command
+from adaptive_artifacts.contract import load_contract
+from adaptive_artifacts.derive import attach_derived_all, compute_derived
+from adaptive_artifacts.project import Project
+from adaptive_artifacts.query import QueryError, parse_where, subject_matches, where_matches
+from adaptive_artifacts.store import StoreError
 
 RECENT = timedelta(hours=24)
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
@@ -166,15 +169,14 @@ class Snapshot:
     generated_at: datetime
 
 
-def change_token(target: Target) -> str:
+def change_token(target: Project) -> str:
     """Hash of (path, mtime_ns, size) for every file under the store's records and history.
 
-    One directory walk, no CLI call, and any create, update, or supersede rewrites or adds a file.
+    One directory walk, and any create, update, or supersede rewrites or adds a file.
     """
     digest = hashlib.sha1()
-    assert target.store is not None
     for name in TOKEN_DIRS:
-        for directory, subdirs, files in os.walk(target.store / name):
+        for directory, subdirs, files in os.walk(target.store_path / name):
             subdirs.sort()
             for file in sorted(files):
                 path = os.path.join(directory, file)
@@ -186,32 +188,78 @@ def change_token(target: Target) -> str:
     return digest.hexdigest()
 
 
-def _run(target: Target, *args: str) -> dict[str, Any]:
-    command = [*aa_command(), *target.cli_args(), *args]
+def _options(args: tuple[str, ...]) -> dict[str, list[str]]:
+    values: dict[str, list[str]] = {}
+    items = list(args)
+    index = 0
+    while index < len(items):
+        item = items[index]
+        if item.startswith("--") and index + 1 < len(items) and not items[index + 1].startswith("--"):
+            values.setdefault(item, []).append(items[index + 1])
+            index += 2
+        else:
+            index += 1
+    return values
+
+
+def _catalog(target: Project) -> list[dict[str, Any]]:
+    declared = _declared_record_types(target)
+    if not declared or target.contract_path is None:
+        return []
+    records: list[dict[str, Any]] = []
+    for record_type in sorted(declared):
+        try:
+            records.extend(target.list(record_type))
+        except StoreError:
+            continue
+    contract = load_contract(target.contract_path)
+    return attach_derived_all(records, compute_derived(records, contract))
+
+
+def _run(target: Project, *args: str) -> dict[str, Any]:
     label = " ".join(args[:3])
+    if not args:
+        raise ModelError("missing store operation")
+    flags = _options(args[1:])
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ModelError(f"cannot run {command[0]}: {exc}") from exc
-    if result.returncode != 0:
-        raise ModelError(f"{label} failed: {result.stdout}{result.stderr}".strip())
-    try:
-        return json.loads(result.stdout)
-    except ValueError as exc:
-        raise ModelError(f"{label} returned unreadable output") from exc
+        if args[0] == "get":
+            record_id = (flags.get("--id") or [None])[0]
+            if not record_id:
+                raise ModelError("get requires --id")
+            record = target.get(record_id, (flags.get("--type") or [None])[0])
+            derived = next((row for row in _catalog(target) if row.get("id") == record_id), None)
+            return derived or record
+        if args[0] == "list":
+            rows = _catalog(target)
+            record_type = (flags.get("--type") or [None])[0]
+            if record_type:
+                rows = [row for row in rows if row.get("record_type") == record_type]
+            state = (flags.get("--state") or [None])[0]
+            if state:
+                rows = [row for row in rows if row.get("lifecycle_state") == state]
+            subject = (flags.get("--subject") or [None])[0]
+            if subject:
+                rows = [row for row in rows if subject_matches(row, subject)]
+            wheres = flags.get("--where") or []
+            if wheres:
+                filters = parse_where(wheres)
+                rows = [row for row in rows if where_matches(row, filters)]
+            return {"records": rows}
+    except (StoreError, QueryError, OSError, ValueError) as exc:
+        raise ModelError(f"{label} failed: {exc}") from exc
+    raise ModelError(f"unsupported store operation {args[0]!r}")
 
 
-def _declared_record_types(target: Target) -> frozenset[str] | None:
+def _declared_record_types(target: Project) -> frozenset[str] | None:
     """Record type ids from the bound contract, or None if the contract is unreadable.
 
     Used so list calls for orchestra types (phase, work-item, …) are no-ops on
-    foreign stores whose contract does not declare them, instead of failing with
-    adaptive-artifacts unknown_type.
+    foreign stores whose contract does not declare them.
     """
-    if target.contract is None:
+    if target.contract_path is None:
         return None
     try:
-        records = json.loads(target.contract.read_text()).get("records") or []
+        records = json.loads(target.contract_path.read_text()).get("records") or []
     except (OSError, ValueError, AttributeError):
         return None
     return frozenset(
@@ -222,7 +270,7 @@ def _declared_record_types(target: Target) -> frozenset[str] | None:
 
 
 def _list(
-    target: Target,
+    target: Project,
     record_type: str,
     *,
     state: str | None = None,
@@ -262,7 +310,7 @@ _SNAPSHOT_TYPES = (
 )
 
 
-def _list_all(target: Target, record_types: tuple[str, ...]) -> dict[str, list[dict[str, Any]]]:
+def _list_all(target: Project, record_types: tuple[str, ...]) -> dict[str, list[dict[str, Any]]]:
     with ThreadPoolExecutor(max_workers=4) as pool:
         return dict(zip(record_types, pool.map(lambda record_type: _list(target, record_type), record_types)))
 
@@ -1144,7 +1192,7 @@ def _phase_evidence(
     )
 
 
-def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
+def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
     now = now or datetime.now(timezone.utc)
     token = change_token(target)
     listed = _list_all(target, _SNAPSHOT_TYPES)
@@ -1195,8 +1243,6 @@ def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
         and _payload(record).get("status") != "closed"
         and _payload(record).get("scope") == "effort"
     }
-    from dashboard.journal import KIND_JOURNAL, load_journal, ordered as journal_ordered
-
     efforts = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -1222,7 +1268,9 @@ def load_snapshot(target: Target, now: datetime | None = None) -> Snapshot:
         phase_rows = attach_milestones(phase_rows, milestone_rows)
         kind = _payload(goal).get("kind") or ""
         journal_open = []
-        if kind in KIND_JOURNAL:
+        if kind in ("repair", "evaluate"):
+            from dashboard.journal import load_journal, ordered as journal_ordered
+
             open_items, _ = journal_ordered(load_journal(target, effort))
             journal_open = open_items
         efforts.append(EffortView(
@@ -1479,7 +1527,7 @@ def _agent_work(
     return tuple(works)
 
 
-def load_task_detail(target: Target, work_item_id: str) -> TaskDetail:
+def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     """Load one task's records with four CLI calls.
 
     `get` yields the subject, effort, body, and outbound depends_on; one `list --subject --full`
@@ -1622,7 +1670,7 @@ def _decision_entry(
 
 
 def load_decision_log(
-    target: Target, effort: str, phase: str | None, history: bool,
+    target: Project, effort: str, phase: str | None, history: bool,
 ) -> DecisionLog:
     """Phase- or effort-scoped decisions, with optional superseded chains (R7)."""
     aliases = _merge_aliases(_list(target, "project:active-goal"))
@@ -1678,7 +1726,7 @@ def load_decision_log(
     ))
 
 
-def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseDetail:
+def load_phase_detail(target: Project, effort: str, phase_subject: str) -> PhaseDetail:
     """Load one phase with its body, decisions, constraints, and tasks."""
     aliases = _merge_aliases(_list(target, "project:active-goal"))
 
@@ -1782,7 +1830,7 @@ def load_phase_detail(target: Target, effort: str, phase_subject: str) -> PhaseD
     )
 
 
-def load_requirement_detail(target: Target, effort: str, phase: str, requirement: str) -> RequirementDetail:
+def load_requirement_detail(target: Project, effort: str, phase: str, requirement: str) -> RequirementDetail:
     """Load one requirement, including superseded assessments oldest first."""
     aliases = _merge_aliases(_list(target, "project:active-goal"))
 

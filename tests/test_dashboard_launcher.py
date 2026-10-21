@@ -156,8 +156,9 @@ def test_bound_global_without_meta_prints_binding_error(home, repo, tmp_path):
     (repo / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))
     result = _run(repo, home, uv=_fake_uv(tmp_path / "uv"))
     assert result.returncode == 1
-    assert "store binding" in result.stdout.lower()
-    assert "global" in result.stdout
+    assert "store-binding.json" in result.stdout
+    assert str(home / ".artifacts" / repo.name) in result.stdout
+    assert "meta.json" in result.stdout
     assert '"argv"' not in result.stdout
 
 

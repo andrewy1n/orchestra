@@ -14,7 +14,8 @@ from textual.screen import Screen
 from textual.widgets import Footer, OptionList, Static
 from textual.widgets.option_list import Option
 
-from dashboard import artifact_store, model
+from adaptive_artifacts.project import Project
+from dashboard import model
 from dashboard.display import STATUS_GLYPH, clip, palette_from
 from dashboard.task_detail import TaskDetailScreen
 
@@ -129,7 +130,7 @@ class RequirementDetailScreen(TaskDetailScreen):
         Binding("r", "app.refresh", "refresh"),
     ]
 
-    def __init__(self, target: artifact_store.Target, effort: str, phase: str, requirement: str) -> None:
+    def __init__(self, target: Project, effort: str, phase: str, requirement: str) -> None:
         Screen.__init__(self)
         self.target = target
         self.effort = effort

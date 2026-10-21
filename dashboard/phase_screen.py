@@ -19,7 +19,7 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option
 
-from dashboard import artifact_store
+from adaptive_artifacts.project import Project
 from dashboard import gates
 from dashboard import matrix as matrix_mod
 from dashboard import model
@@ -815,7 +815,7 @@ class PhaseScreen(Screen[None]):
 
     def __init__(
         self,
-        target: artifact_store.Target,
+        target: Project,
         effort: str,
         phase: str,
         tab: str = "overview",

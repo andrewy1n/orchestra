@@ -20,7 +20,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import artifact_store  # noqa: E402
+from adaptive_artifacts.project import open_store  # noqa: E402
 from dashboard import backlog as backlog_module  # noqa: E402
 from dashboard import dismiss as dismiss_module  # noqa: E402
 from dashboard import model  # noqa: E402
@@ -121,7 +121,7 @@ def _snapshot(target) -> model.Snapshot:
 
 @contextmanager
 def _running(store):
-    target = artifact_store.resolve(store)
+    target = open_store(store)
     web = _import_web()
     assert web is not None, "dashboard.web is not importable"
     import importlib
@@ -208,7 +208,7 @@ def defs(resolved_contract):
 
 def test_r3_snapshot(store, cli, defs):
     _seed(cli, defs)
-    snap = _snapshot(artifact_store.resolve(store))
+    snap = _snapshot(open_store(store))
     assert {item.kind for view in snap.efforts for item in view.needs_you} >= {
         "blocking-question", "needs-human", "unsigned-check", "loop-route", "integration",
     }
@@ -221,16 +221,16 @@ def test_r3_snapshot(store, cli, defs):
 
 def test_r4_token(store, cli, defs):
     _seed(cli, defs)
-    target = artifact_store.resolve(store)
+    target = open_store(store)
     with _running(store) as (base, served):
-        assert Path(served.store).resolve() == Path(target.store).resolve()
+        assert Path(served.store).resolve() == Path(target.store_path).resolve()
         payload = _get_json(base, "/api/token")
         assert payload["token"] == model.change_token(target)
 
 
 def test_r21_approve(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    snap = _snapshot(artifact_store.resolve(store))
+    snap = _snapshot(open_store(store))
     question = _model_item(snap, "blocking-question")
     assert question.revision and question.revision != "@current"
     calls = []
@@ -251,12 +251,12 @@ def test_r21_approve(store, cli, defs, monkeypatch):
     assert calls[0]["item"].id == question.id
     assert calls[0]["item"].kind == "blocking-question"
     assert calls[0]["item"].revision == page["revision"]
-    assert Path(calls[0]["target"].store).resolve() == Path(target.store).resolve()
+    assert Path(calls[0]["target"].store_path).resolve() == Path(target.store_path).resolve()
 
 
 def test_r22_reject_note(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    question = _model_item(_snapshot(artifact_store.resolve(store)), "blocking-question")
+    question = _model_item(_snapshot(open_store(store)), "blocking-question")
     assert question.revision and question.revision != "@current"
     calls = []
 
@@ -286,7 +286,7 @@ def test_r22_reject_note(store, cli, defs, monkeypatch):
 
 def test_r23_sign(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    check = _model_item(_snapshot(artifact_store.resolve(store)), "unsigned-check")
+    check = _model_item(_snapshot(open_store(store)), "unsigned-check")
     assert check.revision and check.revision != "@current"
     calls = []
 
@@ -311,7 +311,7 @@ def test_r24_signer(store, cli, defs, monkeypatch):
     monkeypatch.setenv("SE_WORKFLOW_SIGNED_BY", "oracle-signer")
     assert dismiss_module.default_signer() == "oracle-signer"
     _seed(cli, defs)
-    check = _model_item(_snapshot(artifact_store.resolve(store)), "unsigned-check")
+    check = _model_item(_snapshot(open_store(store)), "unsigned-check")
     original = dismiss_module.dismiss_item
     calls = []
 
@@ -349,7 +349,7 @@ def test_r24_signer(store, cli, defs, monkeypatch):
 
 def test_r25_accept_note(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    finding = _model_item(_snapshot(artifact_store.resolve(store)), "needs-human")
+    finding = _model_item(_snapshot(open_store(store)), "needs-human")
     assert finding.revision and finding.revision != "@current"
     calls = []
 
@@ -380,7 +380,7 @@ def test_r25_accept_note(store, cli, defs, monkeypatch):
 
 def test_r26_refused(store, cli, defs):
     _seed(cli, defs)
-    target = artifact_store.resolve(store)
+    target = open_store(store)
     snap = _snapshot(target)
     loop = _model_item(snap, "loop-route")
     integration = _model_item(snap, "integration")
@@ -404,7 +404,7 @@ def test_r26_refused(store, cli, defs):
 
 def test_r28_backlog_dismiss(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    parked = _backlog_item(_snapshot(artifact_store.resolve(store)))
+    parked = _backlog_item(_snapshot(open_store(store)))
     assert parked.status == "open"
     calls = []
 
@@ -422,12 +422,12 @@ def test_r28_backlog_dismiss(store, cli, defs, monkeypatch):
     assert isinstance(calls[0]["item"], model.BacklogItem)
     assert calls[0]["item"].id == parked.id
     assert calls[0]["item"].status == "open"
-    assert Path(calls[0]["target"].store).resolve() == Path(target.store).resolve()
+    assert Path(calls[0]["target"].store_path).resolve() == Path(target.store_path).resolve()
 
 
 def test_r29_backlog_promote(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    parked = _backlog_item(_snapshot(artifact_store.resolve(store)))
+    parked = _backlog_item(_snapshot(open_store(store)))
     assert parked.status == "open"
     calls = []
 
@@ -444,12 +444,12 @@ def test_r29_backlog_promote(store, cli, defs, monkeypatch):
     assert isinstance(calls[0]["item"], model.BacklogItem)
     assert calls[0]["item"].id == parked.id
     assert calls[0]["item"].status == "open"
-    assert Path(calls[0]["target"].store).resolve() == Path(target.store).resolve()
+    assert Path(calls[0]["target"].store_path).resolve() == Path(target.store_path).resolve()
 
 
 def test_r34_stale(store, cli, defs, monkeypatch):
     _seed(cli, defs)
-    question = _model_item(_snapshot(artifact_store.resolve(store)), "blocking-question")
+    question = _model_item(_snapshot(open_store(store)), "blocking-question")
     displayed = question.revision
     assert displayed and displayed != "@current"
 

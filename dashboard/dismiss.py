@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from dataclasses import dataclass
 from typing import Any
 
-from dashboard.artifact_store import Target, aa_command
+from adaptive_artifacts.project import Project
+from adaptive_artifacts.store import StoreError
 from dashboard.model import NeedsYouItem
 
 HUMAN_DISMISSIBLE = frozenset({
@@ -62,34 +62,47 @@ def default_signer() -> str:
     )
 
 
-def _cli(target: Target, *args: str) -> subprocess.CompletedProcess[str]:
-    command = [*aa_command(), *target.cli_args(), *args]
+def _operation(args: list[str]) -> dict[str, Any]:
+    operation: dict[str, Any] = {"op": args[0]}
+    index = 1
+    while index < len(args):
+        flag = args[index]
+        if index + 1 >= len(args):
+            break
+        value = args[index + 1]
+        index += 2
+        if flag == "--type":
+            operation["type"] = value
+        elif flag == "--id":
+            operation["id"] = value
+        elif flag == "--subject":
+            operation["subject"] = value
+        elif flag == "--transition":
+            operation["transition"] = value
+        elif flag == "--expected-revision":
+            operation["expected_revision"] = value
+        elif flag == "--payload":
+            operation["payload"] = json.loads(value)
+        elif flag == "--body":
+            operation["body"] = value
+        elif flag == "--rel":
+            operation.setdefault("rels", []).append(value)
+    return operation
+
+
+def _write(target: Project, args: list[str]) -> None:
+    operation = _operation(args)
+    label = " ".join(args[:3])
     try:
-        return subprocess.run(command, capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise DismissError(f"cannot run {command[0]}: {exc}") from exc
-
-
-def _parse_json(stdout: str) -> dict[str, Any]:
-    try:
-        data = json.loads(stdout or "")
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def _is_stale_result(result: subprocess.CompletedProcess[str]) -> bool:
-    payload = _parse_json(result.stdout or "")
-    if payload.get("error") == "stale_write":
-        return True
-    detail = f"{result.stdout or ''}{result.stderr or ''}".lower()
-    return "stale write" in detail or "stale_write" in detail
-
-
-def _fail(result: subprocess.CompletedProcess[str], label: str) -> None:
-    if _is_stale_result(result):
+        results = target.apply([operation])
+    except OSError as exc:
+        raise DismissError(f"cannot apply {operation.get('op')}: {exc}") from exc
+    result = results[0] if results else {"ok": False, "message": "no result"}
+    if result.get("ok"):
+        return
+    if result.get("error") == "stale_write":
         raise DismissError(STALE_MESSAGE)
-    detail = (result.stdout or result.stderr or "").strip() or f"exit {result.returncode}"
+    detail = str(result.get("message") or result.get("error") or "apply failed")
     raise DismissError(f"{label} failed: {detail.splitlines()[0]}")
 
 
@@ -215,25 +228,21 @@ def dismiss_command(
     return _check_sign_args(item, signer or default_signer(), note)
 
 
-def _current_revision(target: Target, item: NeedsYouItem) -> str:
+def _current_revision(target: Project, item: NeedsYouItem) -> str:
     record_type = item.record_type or {
         "blocking-question": "project:continuity-question",
         "open-question": "project:continuity-question",
         "needs-human": "project:finding",
         "unsigned-check": "project:check-run",
     }.get(item.kind, "")
-    args = ["get", "--id", item.id]
-    if record_type:
-        args.extend(["--type", record_type])
-    result = _cli(target, *args)
-    if result.returncode != 0:
-        _fail(result, "get")
-    payload = _parse_json(result.stdout or "")
-    record = payload.get("record") if isinstance(payload.get("record"), dict) else payload
+    try:
+        record = target.get(item.id, record_type or None)
+    except StoreError as exc:
+        raise DismissError(f"get failed: {exc}") from exc
     return str(record.get("revision") or "")
 
 
-def _assert_revision_current(target: Target, item: NeedsYouItem) -> None:
+def _assert_revision_current(target: Project, item: NeedsYouItem) -> None:
     expected = _displayed_revision(item)
     current = _current_revision(target, item)
     if current != expected:
@@ -241,7 +250,7 @@ def _assert_revision_current(target: Target, item: NeedsYouItem) -> None:
 
 
 def dismiss_item(
-    target: Target,
+    target: Project,
     item: NeedsYouItem,
     *,
     signer: str | None = None,
@@ -260,6 +269,4 @@ def dismiss_item(
     # correct has no --expected-revision; reject create has none — guard both.
     if resolved in (ACTION_SIGN, ACTION_REJECT):
         _assert_revision_current(target, item)
-    result = _cli(target, *args)
-    if result.returncode != 0:
-        _fail(result, " ".join(args[:3]))
+    _write(target, list(args))

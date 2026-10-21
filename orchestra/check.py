@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from orchestra import aa
+from adaptive_artifacts.contract import ContractError
+from adaptive_artifacts.project import StoreBindingError, open_store
+from adaptive_artifacts.store import StoreError
+from adaptive_artifacts.validation import ValidationError
 from orchestra.policy import (
     dirty_pass_decision,
     manual_refuse_message,
@@ -144,12 +147,15 @@ def run_check(
     execution_report: str | None = None,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
-    store = store_root or aa.find_store_root(Path.cwd())
     work = cwd.resolve()
+    try:
+        project = open_store(store_root or Path.cwd())
+    except StoreBindingError as exc:
+        return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     try:
-        acceptance = aa.get_record(store, acceptance_id, "project:acceptance")
-    except LookupError as exc:
+        acceptance = project.get(acceptance_id, "project:acceptance")
+    except StoreError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     payload = acceptance.get("payload") or {}
@@ -231,15 +237,14 @@ def run_check(
         rels.append(f"informed_by:{execution_report}")
 
     try:
-        record = aa.create_record(
-            store,
+        record = project.create(
             record_type="project:check-run",
             subject=acceptance.get("subject") or acceptance["id"],
             payload=check_payload,
             rels=rels,
             body=_body_tail(output),
         )
-    except RuntimeError as exc:
+    except (StoreError, ContractError, ValidationError, OSError) as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     cli_exit = {"pass": 0, "fail": 1, "blocked": 2}[result]
