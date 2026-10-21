@@ -1,7 +1,7 @@
 # Project Status
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:6f18b5d0ab09cc00e0c3fcad4dc75d9ae1991d5311c52fa5138d13ebc4083f62
+> Store state: sha256:732ad76498e7c98e78b282dd9db04bd12068ac4e37a39b6682ea4d16e5a201c6
 
 ## dashboard-view
 
@@ -452,6 +452,13 @@
 - **spec-pager**: Pager helpers: temp file outside store and command choice; spec-view; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-f18a04b6-32b6-4908-bb5e-6a2323419831](.artifacts/records/project__work-item/rec-f18a04b6-32b6-4908-bb5e-6a2323419831.md))_
 - **spec-screen**: Tabbed PhaseScreen replacing phase detail; spec-view; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 3 pass / 0 fail _(id: [rec-bf13b12a-b42d-46d2-9165-9105a5c84139](.artifacts/records/project__work-item/rec-bf13b12a-b42d-46d2-9165-9105a5c84139.md))_
 - **verify-spec-view**: Verify spec-view phase; spec-view; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 3 pass / 0 fail _(id: [rec-79a4e4c1-cfcb-421b-a023-64563ff645f3](.artifacts/records/project__work-item/rec-79a4e4c1-cfcb-421b-a023-64563ff645f3.md))_
+
+## task-worktrees
+
+### Work
+- **phase-end-cleanup**: Remove task worktrees at phase close; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 4 pass / 8 fail _(id: [rec-9d76cc70-508c-479c-92ea-d1340a6c0651](.artifacts/records/project__work-item/rec-9d76cc70-508c-479c-92ea-d1340a6c0651.md))_
+- **skill-task-worktree**: Dispatch each task in its own worktree; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 50 pass / 77 fail _(id: [rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f](.artifacts/records/project__work-item/rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f.md))_
+- **verify-task-worktrees**: Verify task worktrees; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 2; criteria: 2 pass / 0 fail _(id: [rec-838b8715-ca2d-4c01-a064-b99dd6e66a47](.artifacts/records/project__work-item/rec-838b8715-ca2d-4c01-a064-b99dd6e66a47.md))_
 
 ## evidence-matrix
 

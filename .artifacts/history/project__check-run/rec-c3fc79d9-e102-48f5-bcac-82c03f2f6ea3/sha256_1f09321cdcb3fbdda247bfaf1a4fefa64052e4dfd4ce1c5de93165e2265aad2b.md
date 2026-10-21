@@ -1,0 +1,47 @@
+---
+{
+  "base_kind": "event",
+  "id": "rec-c3fc79d9-e102-48f5-bcac-82c03f2f6ea3",
+  "identity": "unknown",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f",
+    "duration_s": 1.06329,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "method": "check",
+    "output_sha256": "b3ef549a4448a524ffc79ab5424659c707925366dfeb9acb6ba021961144c55b",
+    "requirement": "R3",
+    "result": "pass",
+    "revision": "42d8187d49206aeb1ee9de8cae589935123d6e0b",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "phase-overview-chrome-r3"
+    ]
+  },
+  "record_type": "project:check-run",
+  "recorded_at": "2026-10-20T04:50:37+00:00",
+  "relationships": {
+    "informed_by": [
+      "rec-88be0788-4c80-4ea1-a6b2-ed1b4d1c939f"
+    ]
+  },
+  "revision": "sha256:1f09321cdcb3fbdda247bfaf1a4fefa64052e4dfd4ce1c5de93165e2265aad2b",
+  "subject": "phase-overview-chrome-r3",
+  "time": {
+    "observed": "2026-10-20T04:50:37+00:00",
+    "recorded": "2026-10-20T04:50:37+00:00"
+  }
+}
+---
+
+ RUN  v5.0.5 /home/andrewyin/orchestra/.worktrees/phase-overview
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 11 skipped (13)
+   Start at  21:50:37
+   Duration  569ms (environment 85%, import 9%, tests 4%, transform 2%, worker 1%)

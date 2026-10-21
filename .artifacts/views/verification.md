@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:5e92a26ced3bb8cc9d7e9b34beed2e10c791c0471f5fb40dc64f2c413c881c5b
+> Store state: sha256:20560e8d676156d97bc6ff4d8a31ad0c9eaebb7ec33e26ad673e41fbce86c23c
 
 ## aa-installable-package
 
@@ -2086,6 +2086,32 @@ print("phase checks only")
 ### Observation
 - **phase-detail-tasks**: Cherry-pick onto task-detail-links conflicted only where both added a list class (LinkList, PhaseTaskList); parent kept both; the combined app tests pass (190).; dashboard-features _(id: [rec-31107cb0-d8f3-457b-acd6-e04ed4f3508f](.artifacts/records/project__investigation-observation/rec-31107cb0-d8f3-457b-acd6-e04ed4f3508f.md))_
 
+## phase-end-cleanup
+
+### Acceptance
+- **phase-end-cleanup**: R22; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r22_phase_close_removes_each_task_worktree -q --tb=short _(id: [rec-e176758e-9b0f-49b0-a359-035a344da71f](.artifacts/records/project__acceptance/rec-e176758e-9b0f-49b0-a359-035a344da71f.md))_
+
+### Check
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; dirty; fail; tdd _(id: [rec-18e4b72c-de25-435b-b369-e61e1ef9dd92](.artifacts/records/project__check-run/rec-18e4b72c-de25-435b-b369-e61e1ef9dd92.md))_
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-3c513114-f644-498b-9ecc-3e58d8ea0574](.artifacts/records/project__check-run/rec-3c513114-f644-498b-9ecc-3e58d8ea0574.md))_
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; dirty; fail; tdd _(id: [rec-8e13f762-c7bf-4f1d-a579-50b8938db4b0](.artifacts/records/project__check-run/rec-8e13f762-c7bf-4f1d-a579-50b8938db4b0.md))_
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-a07b5762-6957-442d-8894-c2d494ab0075](.artifacts/records/project__check-run/rec-a07b5762-6957-442d-8894-c2d494ab0075.md))_
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; dirty; fail; tdd _(id: [rec-c0983d5a-5578-4f8f-9e45-52557ed626b3](.artifacts/records/project__check-run/rec-c0983d5a-5578-4f8f-9e45-52557ed626b3.md))_
+- **phase-end-cleanup**: rec-e176758e-9b0f-49b0-a359-035a344da71f; dirty; fail; tdd _(id: [rec-c323c6b8-56c1-4f6f-a0c3-f660eeb256a1](.artifacts/records/project__check-run/rec-c323c6b8-56c1-4f6f-a0c3-f660eeb256a1.md))_
+
+## phase-end-cleanup-r23
+
+### Acceptance
+- **phase-end-cleanup-r23**: R23; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch -q --tb=short _(id: [rec-111eddcd-d564-4ec9-9857-c55931bc3ccd](.artifacts/records/project__acceptance/rec-111eddcd-d564-4ec9-9857-c55931bc3ccd.md))_
+
+### Check
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; dirty; fail; tdd _(id: [rec-2a9ceac6-e488-420f-a408-69ecbdb7c4dd](.artifacts/records/project__check-run/rec-2a9ceac6-e488-420f-a408-69ecbdb7c4dd.md))_
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-568a7db2-74be-45f9-be0c-540adfe350c2](.artifacts/records/project__check-run/rec-568a7db2-74be-45f9-be0c-540adfe350c2.md))_
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; dirty; fail; tdd _(id: [rec-79cd801a-79f3-46da-a694-682e87d8d389](.artifacts/records/project__check-run/rec-79cd801a-79f3-46da-a694-682e87d8d389.md))_
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-9d64290a-e467-458b-b25c-3e4b218ade7d](.artifacts/records/project__check-run/rec-9d64290a-e467-458b-b25c-3e4b218ade7d.md))_
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; dirty; fail; tdd _(id: [rec-d0d8dce2-4d26-4421-959d-ff888b1743fb](.artifacts/records/project__check-run/rec-d0d8dce2-4d26-4421-959d-ff888b1743fb.md))_
+- **phase-end-cleanup-r23**: rec-111eddcd-d564-4ec9-9857-c55931bc3ccd; dirty; fail; tdd _(id: [rec-f41206ea-e26c-4de3-9acc-9d48c68bdd67](.artifacts/records/project__check-run/rec-f41206ea-e26c-4de3-9acc-9d48c68bdd67.md))_
+
 ## phase-gate-contract
 
 ### Acceptance
@@ -2941,6 +2967,308 @@ print("phase checks only")
 ### Check
 - **skill-plugin-paths-contract**: rec-3b720bda-fcdb-4cab-9cb2-e965636a73b0; 269ab7bde409ee04e1d7fa5de38363d9acb46c1e; pass; check _(id: [rec-3ca9c3cb-a02a-47bf-9ac9-79d2bf5d2a00](.artifacts/records/project__check-run/rec-3ca9c3cb-a02a-47bf-9ac9-79d2bf5d2a00.md))_
 
+## skill-task-worktree
+
+### Acceptance
+- **skill-task-worktree**: R1; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r1_landing_creates_a_task_branch_except_the_verification_task -q --tb=short _(id: [rec-05063455-94b9-4240-a1c0-eda12599cf71](.artifacts/records/project__acceptance/rec-05063455-94b9-4240-a1c0-eda12599cf71.md))_
+
+### Check
+- **skill-task-worktree**: rec-05063455-94b9-4240-a1c0-eda12599cf71; dirty; fail; tdd _(id: [rec-14c32e53-c0ef-4a78-ae7d-f458a2def8ea](.artifacts/records/project__check-run/rec-14c32e53-c0ef-4a78-ae7d-f458a2def8ea.md))_
+- **skill-task-worktree**: rec-05063455-94b9-4240-a1c0-eda12599cf71; dirty; fail; tdd _(id: [rec-1b8caffa-0f69-4ab0-a3f0-9557ffed6bda](.artifacts/records/project__check-run/rec-1b8caffa-0f69-4ab0-a3f0-9557ffed6bda.md))_
+- **skill-task-worktree**: rec-05063455-94b9-4240-a1c0-eda12599cf71; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-74d90161-898a-456f-b9ec-7f6de8ba6337](.artifacts/records/project__check-run/rec-74d90161-898a-456f-b9ec-7f6de8ba6337.md))_
+- **skill-task-worktree**: rec-05063455-94b9-4240-a1c0-eda12599cf71; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-b1540e97-40e9-4e52-84d7-35adeedfdeca](.artifacts/records/project__check-run/rec-b1540e97-40e9-4e52-84d7-35adeedfdeca.md))_
+- **skill-task-worktree**: rec-05063455-94b9-4240-a1c0-eda12599cf71; dirty; fail; tdd _(id: [rec-d66e0603-72be-419d-a94d-c246521a74b3](.artifacts/records/project__check-run/rec-d66e0603-72be-419d-a94d-c246521a74b3.md))_
+
+## skill-task-worktree-r10
+
+### Acceptance
+- **skill-task-worktree-r10**: R10; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r10_parent_does_not_merge_a_task_branch_whose_check_did_not_pass -q --tb=short _(id: [rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7](.artifacts/records/project__acceptance/rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7.md))_
+
+### Check
+- **skill-task-worktree-r10**: rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-21bb8566-0502-4a09-97e1-850716895aa6](.artifacts/records/project__check-run/rec-21bb8566-0502-4a09-97e1-850716895aa6.md))_
+- **skill-task-worktree-r10**: rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-49d3cc37-cf51-4672-8b94-fc675f1fa454](.artifacts/records/project__check-run/rec-49d3cc37-cf51-4672-8b94-fc675f1fa454.md))_
+- **skill-task-worktree-r10**: rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7; dirty; fail; tdd _(id: [rec-6e97157b-1b9c-4242-8025-e48d881261d5](.artifacts/records/project__check-run/rec-6e97157b-1b9c-4242-8025-e48d881261d5.md))_
+- **skill-task-worktree-r10**: rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7; dirty; fail; tdd _(id: [rec-82a30c01-765b-44e9-8511-803508de4f51](.artifacts/records/project__check-run/rec-82a30c01-765b-44e9-8511-803508de4f51.md))_
+- **skill-task-worktree-r10**: rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7; dirty; fail; tdd _(id: [rec-db22c554-37b8-47e3-8914-647f46759ef9](.artifacts/records/project__check-run/rec-db22c554-37b8-47e3-8914-647f46759ef9.md))_
+
+## skill-task-worktree-r11
+
+### Acceptance
+- **skill-task-worktree-r11**: R11; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r11_conflict_leaves_that_conflict_unresolved -q --tb=short _(id: [rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2](.artifacts/records/project__acceptance/rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2.md))_
+
+### Check
+- **skill-task-worktree-r11**: rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2; dirty; fail; tdd _(id: [rec-2baf627f-eba5-4ede-b2f7-dd5e34b443b7](.artifacts/records/project__check-run/rec-2baf627f-eba5-4ede-b2f7-dd5e34b443b7.md))_
+- **skill-task-worktree-r11**: rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2; dirty; fail; tdd _(id: [rec-342581f7-ccc0-44f3-ab4f-9e8c882a52a4](.artifacts/records/project__check-run/rec-342581f7-ccc0-44f3-ab4f-9e8c882a52a4.md))_
+- **skill-task-worktree-r11**: rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2; dirty; fail; tdd _(id: [rec-41f6c08f-71c9-4e28-ad7a-7f2746e4e1bb](.artifacts/records/project__check-run/rec-41f6c08f-71c9-4e28-ad7a-7f2746e4e1bb.md))_
+- **skill-task-worktree-r11**: rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-540a7cb8-cb63-4ea6-93a1-79d868e76a3f](.artifacts/records/project__check-run/rec-540a7cb8-cb63-4ea6-93a1-79d868e76a3f.md))_
+- **skill-task-worktree-r11**: rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-5f7c1061-9fa6-422b-827d-34e93efe915d](.artifacts/records/project__check-run/rec-5f7c1061-9fa6-422b-827d-34e93efe915d.md))_
+
+## skill-task-worktree-r12
+
+### Acceptance
+- **skill-task-worktree-r12**: R12; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r12_conflict_opens_a_blocking_continuity_question_on_the_effort -q --tb=short _(id: [rec-337eff4c-04fb-4528-a38d-43cfb332a3e1](.artifacts/records/project__acceptance/rec-337eff4c-04fb-4528-a38d-43cfb332a3e1.md))_
+
+### Check
+- **skill-task-worktree-r12**: rec-337eff4c-04fb-4528-a38d-43cfb332a3e1; dirty; fail; tdd _(id: [rec-3c903a6e-bf4c-451f-90d4-73c951c6af3c](.artifacts/records/project__check-run/rec-3c903a6e-bf4c-451f-90d4-73c951c6af3c.md))_
+- **skill-task-worktree-r12**: rec-337eff4c-04fb-4528-a38d-43cfb332a3e1; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-3ef03313-d04a-4407-b398-1f7391966ab6](.artifacts/records/project__check-run/rec-3ef03313-d04a-4407-b398-1f7391966ab6.md))_
+- **skill-task-worktree-r12**: rec-337eff4c-04fb-4528-a38d-43cfb332a3e1; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-b4d74256-f045-44af-817b-b99540f66415](.artifacts/records/project__check-run/rec-b4d74256-f045-44af-817b-b99540f66415.md))_
+- **skill-task-worktree-r12**: rec-337eff4c-04fb-4528-a38d-43cfb332a3e1; dirty; fail; tdd _(id: [rec-b5c4e42c-12e6-4580-bbc8-1ed6cd856693](.artifacts/records/project__check-run/rec-b5c4e42c-12e6-4580-bbc8-1ed6cd856693.md))_
+- **skill-task-worktree-r12**: rec-337eff4c-04fb-4528-a38d-43cfb332a3e1; dirty; fail; tdd _(id: [rec-fb0d5197-2e9c-4ed7-b5ab-622d5e21fb8d](.artifacts/records/project__check-run/rec-fb0d5197-2e9c-4ed7-b5ab-622d5e21fb8d.md))_
+
+## skill-task-worktree-r13
+
+### Acceptance
+- **skill-task-worktree-r13**: R13; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r13_conflict_does_not_start_the_next_wave -q --tb=short _(id: [rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c](.artifacts/records/project__acceptance/rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c.md))_
+
+### Check
+- **skill-task-worktree-r13**: rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-0bb7b605-4f84-49cf-832f-99939c0c49f5](.artifacts/records/project__check-run/rec-0bb7b605-4f84-49cf-832f-99939c0c49f5.md))_
+- **skill-task-worktree-r13**: rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-4f4e3028-0c80-40c3-8b59-b04d06422ccc](.artifacts/records/project__check-run/rec-4f4e3028-0c80-40c3-8b59-b04d06422ccc.md))_
+- **skill-task-worktree-r13**: rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c; dirty; fail; tdd _(id: [rec-96128fdb-cd4b-4996-87c9-c3b7de91dda9](.artifacts/records/project__check-run/rec-96128fdb-cd4b-4996-87c9-c3b7de91dda9.md))_
+- **skill-task-worktree-r13**: rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c; dirty; fail; tdd _(id: [rec-ccff30bd-f86b-4c6f-b95b-a642633189ed](.artifacts/records/project__check-run/rec-ccff30bd-f86b-4c6f-b95b-a642633189ed.md))_
+- **skill-task-worktree-r13**: rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c; dirty; fail; tdd _(id: [rec-f5771dcb-5302-402b-af67-014d1a293c1b](.artifacts/records/project__check-run/rec-f5771dcb-5302-402b-af67-014d1a293c1b.md))_
+
+## skill-task-worktree-r14
+
+### Acceptance
+- **skill-task-worktree-r14**: R14; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r14_redispatch_reuses_the_task_branch -q --tb=short _(id: [rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6](.artifacts/records/project__acceptance/rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6.md))_
+
+### Check
+- **skill-task-worktree-r14**: rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6; dirty; fail; tdd _(id: [rec-4c293747-0c26-4d1a-8db7-f4ced0533a66](.artifacts/records/project__check-run/rec-4c293747-0c26-4d1a-8db7-f4ced0533a66.md))_
+- **skill-task-worktree-r14**: rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-a0ca9c78-e1f3-42c2-a266-8e57ded83242](.artifacts/records/project__check-run/rec-a0ca9c78-e1f3-42c2-a266-8e57ded83242.md))_
+- **skill-task-worktree-r14**: rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6; dirty; fail; tdd _(id: [rec-bccb9b5e-0260-4c2d-b946-e55f7fc81317](.artifacts/records/project__check-run/rec-bccb9b5e-0260-4c2d-b946-e55f7fc81317.md))_
+- **skill-task-worktree-r14**: rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-c334827b-8994-4ee6-afdc-3e06719bad2b](.artifacts/records/project__check-run/rec-c334827b-8994-4ee6-afdc-3e06719bad2b.md))_
+- **skill-task-worktree-r14**: rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6; dirty; fail; tdd _(id: [rec-cfa110cb-1402-4b7b-af1c-806428cf8b81](.artifacts/records/project__check-run/rec-cfa110cb-1402-4b7b-af1c-806428cf8b81.md))_
+
+## skill-task-worktree-r15
+
+### Acceptance
+- **skill-task-worktree-r15**: R15; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r15_redispatch_reuses_the_task_worktree -q --tb=short _(id: [rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305](.artifacts/records/project__acceptance/rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305.md))_
+
+### Check
+- **skill-task-worktree-r15**: rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305; dirty; fail; tdd _(id: [rec-24452f84-873a-499d-9268-c5e367ce2729](.artifacts/records/project__check-run/rec-24452f84-873a-499d-9268-c5e367ce2729.md))_
+- **skill-task-worktree-r15**: rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305; dirty; fail; tdd _(id: [rec-3a4bc253-e263-45c6-b4c6-411694c5eec5](.artifacts/records/project__check-run/rec-3a4bc253-e263-45c6-b4c6-411694c5eec5.md))_
+- **skill-task-worktree-r15**: rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-65a011e3-63c7-4171-901b-b286bf87313a](.artifacts/records/project__check-run/rec-65a011e3-63c7-4171-901b-b286bf87313a.md))_
+- **skill-task-worktree-r15**: rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305; dirty; fail; tdd _(id: [rec-869edeea-7ac1-4b46-a639-066706445dde](.artifacts/records/project__check-run/rec-869edeea-7ac1-4b46-a639-066706445dde.md))_
+- **skill-task-worktree-r15**: rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-bb550706-e242-425d-8f1b-bcdf01b988f5](.artifacts/records/project__check-run/rec-bb550706-e242-425d-8f1b-bcdf01b988f5.md))_
+
+## skill-task-worktree-r16
+
+### Acceptance
+- **skill-task-worktree-r16**: R16; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r16_redispatch_merges_the_phase_tip_into_the_task_branch -q --tb=short _(id: [rec-4591df96-ffef-4618-8e6e-07d98f9b4347](.artifacts/records/project__acceptance/rec-4591df96-ffef-4618-8e6e-07d98f9b4347.md))_
+
+### Check
+- **skill-task-worktree-r16**: rec-4591df96-ffef-4618-8e6e-07d98f9b4347; dirty; fail; tdd _(id: [rec-0a0c49cb-a31c-4ff7-bcf4-bef2820794d7](.artifacts/records/project__check-run/rec-0a0c49cb-a31c-4ff7-bcf4-bef2820794d7.md))_
+- **skill-task-worktree-r16**: rec-4591df96-ffef-4618-8e6e-07d98f9b4347; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-40ac5943-35f2-40f6-ad62-f8c9946559c5](.artifacts/records/project__check-run/rec-40ac5943-35f2-40f6-ad62-f8c9946559c5.md))_
+- **skill-task-worktree-r16**: rec-4591df96-ffef-4618-8e6e-07d98f9b4347; dirty; fail; tdd _(id: [rec-4895e141-9b1a-4713-abe6-fa935bdf706c](.artifacts/records/project__check-run/rec-4895e141-9b1a-4713-abe6-fa935bdf706c.md))_
+- **skill-task-worktree-r16**: rec-4591df96-ffef-4618-8e6e-07d98f9b4347; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-6a1dfa67-10f5-4a63-abc5-dbd7da159b77](.artifacts/records/project__check-run/rec-6a1dfa67-10f5-4a63-abc5-dbd7da159b77.md))_
+- **skill-task-worktree-r16**: rec-4591df96-ffef-4618-8e6e-07d98f9b4347; dirty; fail; tdd _(id: [rec-a78727c0-eafb-416f-9d32-2c1feeca3f5a](.artifacts/records/project__check-run/rec-a78727c0-eafb-416f-9d32-2c1feeca3f5a.md))_
+
+## skill-task-worktree-r17
+
+### Acceptance
+- **skill-task-worktree-r17**: R17; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r17_verification_task_is_dispatched_in_the_phase_worktree -q --tb=short _(id: [rec-dea088d8-3b6d-448b-8754-7275de84ad54](.artifacts/records/project__acceptance/rec-dea088d8-3b6d-448b-8754-7275de84ad54.md))_
+
+### Check
+- **skill-task-worktree-r17**: rec-dea088d8-3b6d-448b-8754-7275de84ad54; dirty; fail; tdd _(id: [rec-2fece5d7-345c-47ab-b223-e9787ee25a6a](.artifacts/records/project__check-run/rec-2fece5d7-345c-47ab-b223-e9787ee25a6a.md))_
+- **skill-task-worktree-r17**: rec-dea088d8-3b6d-448b-8754-7275de84ad54; dirty; fail; tdd _(id: [rec-68032fdb-06c6-4397-8915-952c38798dc6](.artifacts/records/project__check-run/rec-68032fdb-06c6-4397-8915-952c38798dc6.md))_
+- **skill-task-worktree-r17**: rec-dea088d8-3b6d-448b-8754-7275de84ad54; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-a19d9e86-3f70-4f6f-8ccd-bf6bd7191288](.artifacts/records/project__check-run/rec-a19d9e86-3f70-4f6f-8ccd-bf6bd7191288.md))_
+- **skill-task-worktree-r17**: rec-dea088d8-3b6d-448b-8754-7275de84ad54; dirty; fail; tdd _(id: [rec-b55edc78-8093-403a-992f-3ff1e981756d](.artifacts/records/project__check-run/rec-b55edc78-8093-403a-992f-3ff1e981756d.md))_
+- **skill-task-worktree-r17**: rec-dea088d8-3b6d-448b-8754-7275de84ad54; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-d02ae3c9-b978-4c33-807f-9944584cde6b](.artifacts/records/project__check-run/rec-d02ae3c9-b978-4c33-807f-9944584cde6b.md))_
+
+## skill-task-worktree-r18
+
+### Acceptance
+- **skill-task-worktree-r18**: R18; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r18_no_task_branch_for_the_verification_task -q --tb=short _(id: [rec-88951356-0702-4f6d-91e8-b76a478ba443](.artifacts/records/project__acceptance/rec-88951356-0702-4f6d-91e8-b76a478ba443.md))_
+
+### Check
+- **skill-task-worktree-r18**: rec-88951356-0702-4f6d-91e8-b76a478ba443; dirty; fail; tdd _(id: [rec-3ab8edee-3c53-44e6-869c-1577971f5c08](.artifacts/records/project__check-run/rec-3ab8edee-3c53-44e6-869c-1577971f5c08.md))_
+- **skill-task-worktree-r18**: rec-88951356-0702-4f6d-91e8-b76a478ba443; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-4171ba65-bbdf-4175-8b7b-2f281c8dc6ee](.artifacts/records/project__check-run/rec-4171ba65-bbdf-4175-8b7b-2f281c8dc6ee.md))_
+- **skill-task-worktree-r18**: rec-88951356-0702-4f6d-91e8-b76a478ba443; dirty; fail; tdd _(id: [rec-488ca6a0-f20d-432c-8281-fd782a9e4996](.artifacts/records/project__check-run/rec-488ca6a0-f20d-432c-8281-fd782a9e4996.md))_
+- **skill-task-worktree-r18**: rec-88951356-0702-4f6d-91e8-b76a478ba443; dirty; fail; tdd _(id: [rec-58157bd2-862b-4e4e-93c6-12ff16a7978f](.artifacts/records/project__check-run/rec-58157bd2-862b-4e4e-93c6-12ff16a7978f.md))_
+- **skill-task-worktree-r18**: rec-88951356-0702-4f6d-91e8-b76a478ba443; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-e6b0ceb1-e26e-4f98-ad2f-a81a45eb1b46](.artifacts/records/project__check-run/rec-e6b0ceb1-e26e-4f98-ad2f-a81a45eb1b46.md))_
+
+## skill-task-worktree-r19
+
+### Acceptance
+- **skill-task-worktree-r19**: R19; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r19_no_task_worktree_for_the_verification_task -q --tb=short _(id: [rec-3163b04c-0b19-49de-8055-7eadd147518f](.artifacts/records/project__acceptance/rec-3163b04c-0b19-49de-8055-7eadd147518f.md))_
+
+### Check
+- **skill-task-worktree-r19**: rec-3163b04c-0b19-49de-8055-7eadd147518f; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-388224b6-835f-4408-89e9-042264f472da](.artifacts/records/project__check-run/rec-388224b6-835f-4408-89e9-042264f472da.md))_
+- **skill-task-worktree-r19**: rec-3163b04c-0b19-49de-8055-7eadd147518f; dirty; fail; tdd _(id: [rec-74a7f953-1bd0-4f3f-99e3-82cc6093ea3d](.artifacts/records/project__check-run/rec-74a7f953-1bd0-4f3f-99e3-82cc6093ea3d.md))_
+- **skill-task-worktree-r19**: rec-3163b04c-0b19-49de-8055-7eadd147518f; dirty; fail; tdd _(id: [rec-79e4da84-2c88-4cbf-ab99-340bf42b3bc7](.artifacts/records/project__check-run/rec-79e4da84-2c88-4cbf-ab99-340bf42b3bc7.md))_
+- **skill-task-worktree-r19**: rec-3163b04c-0b19-49de-8055-7eadd147518f; dirty; fail; tdd _(id: [rec-c9d1c057-51c4-4b9f-a365-fc356e79f1f3](.artifacts/records/project__check-run/rec-c9d1c057-51c4-4b9f-a365-fc356e79f1f3.md))_
+- **skill-task-worktree-r19**: rec-3163b04c-0b19-49de-8055-7eadd147518f; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-c9ed8f1a-383a-4b2f-b87a-3846740c76e8](.artifacts/records/project__check-run/rec-c9ed8f1a-383a-4b2f-b87a-3846740c76e8.md))_
+
+## skill-task-worktree-r2
+
+### Acceptance
+- **skill-task-worktree-r2**: R2; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r2_landing_adds_a_task_worktree_except_the_verification_task -q --tb=short _(id: [rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e](.artifacts/records/project__acceptance/rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e.md))_
+
+### Check
+- **skill-task-worktree-r2**: rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e; dirty; fail; tdd _(id: [rec-55beba58-5139-43b4-867c-f4ad1c868c86](.artifacts/records/project__check-run/rec-55beba58-5139-43b4-867c-f4ad1c868c86.md))_
+- **skill-task-worktree-r2**: rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-64d6d8ce-fdd2-4553-b573-9868b68b6f59](.artifacts/records/project__check-run/rec-64d6d8ce-fdd2-4553-b573-9868b68b6f59.md))_
+- **skill-task-worktree-r2**: rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e; dirty; fail; tdd _(id: [rec-726d05a4-5d05-416b-934f-683797919f55](.artifacts/records/project__check-run/rec-726d05a4-5d05-416b-934f-683797919f55.md))_
+- **skill-task-worktree-r2**: rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e; dirty; fail; tdd _(id: [rec-84de1486-7128-41cf-93be-1f83dc0e9422](.artifacts/records/project__check-run/rec-84de1486-7128-41cf-93be-1f83dc0e9422.md))_
+- **skill-task-worktree-r2**: rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-d081541e-42d1-4eb7-bddb-008fa2521174](.artifacts/records/project__check-run/rec-d081541e-42d1-4eb7-bddb-008fa2521174.md))_
+
+## skill-task-worktree-r20
+
+### Acceptance
+- **skill-task-worktree-r20**: R20; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r20_absent_landing_does_not_create_a_task_branch tests/test_execute_landing.py::test_landing_worktree_confines_code_and_keeps_the_store_on_the_primary_checkout tests/test_execute_landing.py::test_gate_commits_the_phase_branch_merges_to_main_and_commits_the_store tests/test_execute_landing.py::test_push_only_when_it_is_a_human_stop tests/test_execute_landing.py::test_missing_landing_section_stays_in_the_current_checkout -q --tb=short _(id: [rec-6f21fdb6-ed88-4965-a020-b9e9b386f343](.artifacts/records/project__acceptance/rec-6f21fdb6-ed88-4965-a020-b9e9b386f343.md))_
+
+### Check
+- **skill-task-worktree-r20**: rec-6f21fdb6-ed88-4965-a020-b9e9b386f343; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-0a187b64-4ce1-475c-949d-114b9146fd8a](.artifacts/records/project__check-run/rec-0a187b64-4ce1-475c-949d-114b9146fd8a.md))_
+- **skill-task-worktree-r20**: rec-6f21fdb6-ed88-4965-a020-b9e9b386f343; dirty; fail; tdd _(id: [rec-0ce05df9-4fec-49fa-80ec-5a82c1d5781d](.artifacts/records/project__check-run/rec-0ce05df9-4fec-49fa-80ec-5a82c1d5781d.md))_
+- **skill-task-worktree-r20**: rec-6f21fdb6-ed88-4965-a020-b9e9b386f343; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-2d1ca6f3-aadb-42b1-af31-72373477011b](.artifacts/records/project__check-run/rec-2d1ca6f3-aadb-42b1-af31-72373477011b.md))_
+- **skill-task-worktree-r20**: rec-6f21fdb6-ed88-4965-a020-b9e9b386f343; dirty; fail; tdd _(id: [rec-93e316e1-f879-4696-8605-3f562e743381](.artifacts/records/project__check-run/rec-93e316e1-f879-4696-8605-3f562e743381.md))_
+- **skill-task-worktree-r20**: rec-6f21fdb6-ed88-4965-a020-b9e9b386f343; dirty; fail; tdd _(id: [rec-a99f307d-89d0-4423-9b2a-067fd8abbe93](.artifacts/records/project__check-run/rec-a99f307d-89d0-4423-9b2a-067fd8abbe93.md))_
+
+## skill-task-worktree-r21
+
+### Acceptance
+- **skill-task-worktree-r21**: R21; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r21_absent_landing_does_not_add_a_task_worktree -q --tb=short _(id: [rec-d944f332-01b4-4677-8037-04da1b64e433](.artifacts/records/project__acceptance/rec-d944f332-01b4-4677-8037-04da1b64e433.md))_
+
+### Check
+- **skill-task-worktree-r21**: rec-d944f332-01b4-4677-8037-04da1b64e433; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-4c8f6f6c-824d-423a-8362-99a9b0672a35](.artifacts/records/project__check-run/rec-4c8f6f6c-824d-423a-8362-99a9b0672a35.md))_
+- **skill-task-worktree-r21**: rec-d944f332-01b4-4677-8037-04da1b64e433; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-5c3bb6af-c002-495b-a1da-5b4ae3c7ed8e](.artifacts/records/project__check-run/rec-5c3bb6af-c002-495b-a1da-5b4ae3c7ed8e.md))_
+- **skill-task-worktree-r21**: rec-d944f332-01b4-4677-8037-04da1b64e433; dirty; fail; tdd _(id: [rec-7515e30f-9a7d-4e5f-9d2b-ca77a8a98039](.artifacts/records/project__check-run/rec-7515e30f-9a7d-4e5f-9d2b-ca77a8a98039.md))_
+- **skill-task-worktree-r21**: rec-d944f332-01b4-4677-8037-04da1b64e433; dirty; fail; tdd _(id: [rec-d3aa044b-87ab-497e-a69f-01fc1c46491b](.artifacts/records/project__check-run/rec-d3aa044b-87ab-497e-a69f-01fc1c46491b.md))_
+- **skill-task-worktree-r21**: rec-d944f332-01b4-4677-8037-04da1b64e433; dirty; fail; tdd _(id: [rec-e2ae828e-7c15-4e7d-bef4-12e800aa9713](.artifacts/records/project__check-run/rec-e2ae828e-7c15-4e7d-bef4-12e800aa9713.md))_
+
+## skill-task-worktree-r24
+
+### Acceptance
+- **skill-task-worktree-r24**: R24; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r24_orientation_names_the_task_worktree_as_the_write_root -q --tb=short _(id: [rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2](.artifacts/records/project__acceptance/rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2.md))_
+
+### Check
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-144175f3-eb39-480f-87b1-031e67685bef](.artifacts/records/project__check-run/rec-144175f3-eb39-480f-87b1-031e67685bef.md))_
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; dirty; fail; tdd _(id: [rec-17aa2640-eee0-4591-bed8-2c1cf8a60919](.artifacts/records/project__check-run/rec-17aa2640-eee0-4591-bed8-2c1cf8a60919.md))_
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; dirty; fail; tdd _(id: [rec-64ad7ef3-6980-4f5f-ab08-1feaf527b080](.artifacts/records/project__check-run/rec-64ad7ef3-6980-4f5f-ab08-1feaf527b080.md))_
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-88889c7e-5fa4-4afe-822e-c138e7a636bf](.artifacts/records/project__check-run/rec-88889c7e-5fa4-4afe-822e-c138e7a636bf.md))_
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; dirty; fail; tdd _(id: [rec-91b4b740-edbe-4b26-aefb-528dfca19488](.artifacts/records/project__check-run/rec-91b4b740-edbe-4b26-aefb-528dfca19488.md))_
+- **skill-task-worktree-r24**: rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2; dirty; fail; tdd _(id: [rec-d949d285-1bf4-4dab-850d-8e868462c05d](.artifacts/records/project__check-run/rec-d949d285-1bf4-4dab-850d-8e868462c05d.md))_
+
+## skill-task-worktree-r25
+
+### Acceptance
+- **skill-task-worktree-r25**: R25; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r25_orientation_does_not_tell_the_executor_to_avoid_git_add -q --tb=short _(id: [rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47](.artifacts/records/project__acceptance/rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47.md))_
+
+### Check
+- **skill-task-worktree-r25**: rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47; dirty; fail; tdd _(id: [rec-304faeaf-14d5-4496-8293-6b86171d1fcb](.artifacts/records/project__check-run/rec-304faeaf-14d5-4496-8293-6b86171d1fcb.md))_
+- **skill-task-worktree-r25**: rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47; dirty; fail; tdd _(id: [rec-7a5551c0-91ee-4845-be65-8a6307345429](.artifacts/records/project__check-run/rec-7a5551c0-91ee-4845-be65-8a6307345429.md))_
+- **skill-task-worktree-r25**: rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-8d0830a4-3771-44fa-9ca2-b45761e4decf](.artifacts/records/project__check-run/rec-8d0830a4-3771-44fa-9ca2-b45761e4decf.md))_
+- **skill-task-worktree-r25**: rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-b028c61e-2147-4256-a12f-dc9e8c0058a5](.artifacts/records/project__check-run/rec-b028c61e-2147-4256-a12f-dc9e8c0058a5.md))_
+- **skill-task-worktree-r25**: rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47; dirty; fail; tdd _(id: [rec-c13bf238-9134-4344-8ae7-fbb04897d4ec](.artifacts/records/project__check-run/rec-c13bf238-9134-4344-8ae7-fbb04897d4ec.md))_
+
+## skill-task-worktree-r26
+
+### Acceptance
+- **skill-task-worktree-r26**: R26; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r26_no_empty_commit_when_a_task_has_nothing_to_commit -q --tb=short _(id: [rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292](.artifacts/records/project__acceptance/rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292.md))_
+
+### Check
+- **skill-task-worktree-r26**: rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-01db6df7-7eac-4380-a097-aeb00f3611db](.artifacts/records/project__check-run/rec-01db6df7-7eac-4380-a097-aeb00f3611db.md))_
+- **skill-task-worktree-r26**: rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292; dirty; fail; tdd _(id: [rec-120dc2a9-89cb-4a3d-a4a1-98b8fd21c53c](.artifacts/records/project__check-run/rec-120dc2a9-89cb-4a3d-a4a1-98b8fd21c53c.md))_
+- **skill-task-worktree-r26**: rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-514e39ba-12d2-45e5-9142-1a5fa1b17ebf](.artifacts/records/project__check-run/rec-514e39ba-12d2-45e5-9142-1a5fa1b17ebf.md))_
+- **skill-task-worktree-r26**: rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292; dirty; fail; tdd _(id: [rec-759b5224-85f6-49f2-b243-01b53cd6c25d](.artifacts/records/project__check-run/rec-759b5224-85f6-49f2-b243-01b53cd6c25d.md))_
+- **skill-task-worktree-r26**: rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292; dirty; fail; tdd _(id: [rec-e6ed0abd-bc12-44c6-aa54-ec99555e0912](.artifacts/records/project__check-run/rec-e6ed0abd-bc12-44c6-aa54-ec99555e0912.md))_
+
+## skill-task-worktree-r27
+
+### Acceptance
+- **skill-task-worktree-r27**: R27; tdd; workflow-loop; python3 -m pytest tests/test_task_commit.py::test_r27_per_task_commit_path_is_the_task_worktree -q --tb=short _(id: [rec-1848327f-f58b-4e72-aeb3-ae082358e7c4](.artifacts/records/project__acceptance/rec-1848327f-f58b-4e72-aeb3-ae082358e7c4.md))_
+
+### Check
+- **skill-task-worktree-r27**: rec-1848327f-f58b-4e72-aeb3-ae082358e7c4; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-097aabe8-fcb9-4332-9728-54787f073a09](.artifacts/records/project__check-run/rec-097aabe8-fcb9-4332-9728-54787f073a09.md))_
+- **skill-task-worktree-r27**: rec-1848327f-f58b-4e72-aeb3-ae082358e7c4; dirty; fail; tdd _(id: [rec-1fb77c37-3c2e-426e-9c35-ce0ea9775825](.artifacts/records/project__check-run/rec-1fb77c37-3c2e-426e-9c35-ce0ea9775825.md))_
+- **skill-task-worktree-r27**: rec-1848327f-f58b-4e72-aeb3-ae082358e7c4; dirty; fail; tdd _(id: [rec-2c9aa2bf-ccce-422e-afcc-a094c9c81966](.artifacts/records/project__check-run/rec-2c9aa2bf-ccce-422e-afcc-a094c9c81966.md))_
+- **skill-task-worktree-r27**: rec-1848327f-f58b-4e72-aeb3-ae082358e7c4; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-2f117514-3394-4fcc-8b10-5a07f3a34102](.artifacts/records/project__check-run/rec-2f117514-3394-4fcc-8b10-5a07f3a34102.md))_
+- **skill-task-worktree-r27**: rec-1848327f-f58b-4e72-aeb3-ae082358e7c4; dirty; fail; tdd _(id: [rec-cfb6391b-3e72-444a-b203-35c39b273fc4](.artifacts/records/project__check-run/rec-cfb6391b-3e72-444a-b203-35c39b273fc4.md))_
+
+## skill-task-worktree-r3
+
+### Acceptance
+- **skill-task-worktree-r3**: R3; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r3_per_task_commit_runs_in_that_task_worktree -q --tb=short _(id: [rec-9978c80a-6e9e-4a29-963c-5cdd28a10718](.artifacts/records/project__acceptance/rec-9978c80a-6e9e-4a29-963c-5cdd28a10718.md))_
+
+### Check
+- **skill-task-worktree-r3**: rec-9978c80a-6e9e-4a29-963c-5cdd28a10718; dirty; fail; tdd _(id: [rec-1d36f7d6-c312-4fc3-95a5-957ac1cf1f94](.artifacts/records/project__check-run/rec-1d36f7d6-c312-4fc3-95a5-957ac1cf1f94.md))_
+- **skill-task-worktree-r3**: rec-9978c80a-6e9e-4a29-963c-5cdd28a10718; dirty; fail; tdd _(id: [rec-65e15abb-cd2d-40a9-acbb-211342ec39dc](.artifacts/records/project__check-run/rec-65e15abb-cd2d-40a9-acbb-211342ec39dc.md))_
+- **skill-task-worktree-r3**: rec-9978c80a-6e9e-4a29-963c-5cdd28a10718; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-6ffa7b96-45a1-4a9e-8d2d-56f7221cb092](.artifacts/records/project__check-run/rec-6ffa7b96-45a1-4a9e-8d2d-56f7221cb092.md))_
+- **skill-task-worktree-r3**: rec-9978c80a-6e9e-4a29-963c-5cdd28a10718; dirty; fail; tdd _(id: [rec-cddc0bc7-1cdb-45c6-b60b-b1b724f0ca72](.artifacts/records/project__check-run/rec-cddc0bc7-1cdb-45c6-b60b-b1b724f0ca72.md))_
+- **skill-task-worktree-r3**: rec-9978c80a-6e9e-4a29-963c-5cdd28a10718; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-e38123ec-e187-496b-8955-7c2aa1bd14ab](.artifacts/records/project__check-run/rec-e38123ec-e187-496b-8955-7c2aa1bd14ab.md))_
+
+## skill-task-worktree-r4
+
+### Acceptance
+- **skill-task-worktree-r4**: R4; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r4_per_task_commit_stages_with_git_add_excluding_artifacts -q --tb=short _(id: [rec-ef7174ed-e462-4077-8933-95f77cac0ce2](.artifacts/records/project__acceptance/rec-ef7174ed-e462-4077-8933-95f77cac0ce2.md))_
+
+### Check
+- **skill-task-worktree-r4**: rec-ef7174ed-e462-4077-8933-95f77cac0ce2; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-37401979-e848-487e-b93c-5c6a61b9ca4d](.artifacts/records/project__check-run/rec-37401979-e848-487e-b93c-5c6a61b9ca4d.md))_
+- **skill-task-worktree-r4**: rec-ef7174ed-e462-4077-8933-95f77cac0ce2; dirty; fail; tdd _(id: [rec-4eada2d7-bc32-47b8-9f04-47462d630e02](.artifacts/records/project__check-run/rec-4eada2d7-bc32-47b8-9f04-47462d630e02.md))_
+- **skill-task-worktree-r4**: rec-ef7174ed-e462-4077-8933-95f77cac0ce2; dirty; fail; tdd _(id: [rec-6fadcb9b-fbba-4327-85bc-7494190f5ea3](.artifacts/records/project__check-run/rec-6fadcb9b-fbba-4327-85bc-7494190f5ea3.md))_
+- **skill-task-worktree-r4**: rec-ef7174ed-e462-4077-8933-95f77cac0ce2; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-801f032c-2102-422b-8c07-4f5ac879aa43](.artifacts/records/project__check-run/rec-801f032c-2102-422b-8c07-4f5ac879aa43.md))_
+- **skill-task-worktree-r4**: rec-ef7174ed-e462-4077-8933-95f77cac0ce2; dirty; fail; tdd _(id: [rec-a139fb8c-48b1-4654-8379-4792ea33d3af](.artifacts/records/project__check-run/rec-a139fb8c-48b1-4654-8379-4792ea33d3af.md))_
+
+## skill-task-worktree-r5
+
+### Acceptance
+- **skill-task-worktree-r5**: R5; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r5_verify_work_runs_in_that_task_worktree -q --tb=short _(id: [rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6](.artifacts/records/project__acceptance/rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6.md))_
+
+### Check
+- **skill-task-worktree-r5**: rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-0226fe5d-5bf8-43ec-9c4b-f603f1570610](.artifacts/records/project__check-run/rec-0226fe5d-5bf8-43ec-9c4b-f603f1570610.md))_
+- **skill-task-worktree-r5**: rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6; dirty; fail; tdd _(id: [rec-09b9f45a-ef19-492d-875d-fee194fa9149](.artifacts/records/project__check-run/rec-09b9f45a-ef19-492d-875d-fee194fa9149.md))_
+- **skill-task-worktree-r5**: rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6; dirty; fail; tdd _(id: [rec-1ce89a7e-88e8-4e81-8ff5-2dc494ff23fd](.artifacts/records/project__check-run/rec-1ce89a7e-88e8-4e81-8ff5-2dc494ff23fd.md))_
+- **skill-task-worktree-r5**: rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-3e0c8a73-9302-462a-838b-6207fedfb516](.artifacts/records/project__check-run/rec-3e0c8a73-9302-462a-838b-6207fedfb516.md))_
+- **skill-task-worktree-r5**: rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6; dirty; fail; tdd _(id: [rec-a4d5b831-d9ea-44a5-a5ea-d508523caa4c](.artifacts/records/project__check-run/rec-a4d5b831-d9ea-44a5-a5ea-d508523caa4c.md))_
+
+## skill-task-worktree-r6
+
+### Acceptance
+- **skill-task-worktree-r6**: R6; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r6_passing_check_run_records_that_task_commit -q --tb=short _(id: [rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b](.artifacts/records/project__acceptance/rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b.md))_
+
+### Check
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; dirty; fail; tdd _(id: [rec-13644abe-8f84-4115-a953-97b69c9a47c6](.artifacts/records/project__check-run/rec-13644abe-8f84-4115-a953-97b69c9a47c6.md))_
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-16902069-68a6-4350-b6fc-e442bcb4c64f](.artifacts/records/project__check-run/rec-16902069-68a6-4350-b6fc-e442bcb4c64f.md))_
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; dirty; fail; tdd _(id: [rec-21f49a84-bc5f-4d15-ad1d-8aca034752a4](.artifacts/records/project__check-run/rec-21f49a84-bc5f-4d15-ad1d-8aca034752a4.md))_
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; dirty; fail; tdd _(id: [rec-5c8db8bd-77bb-4f94-9ee1-c30cc2e3a202](.artifacts/records/project__check-run/rec-5c8db8bd-77bb-4f94-9ee1-c30cc2e3a202.md))_
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; dirty; fail; tdd _(id: [rec-9e1f5d5a-f880-426b-b644-a788fe4b5712](.artifacts/records/project__check-run/rec-9e1f5d5a-f880-426b-b644-a788fe4b5712.md))_
+- **skill-task-worktree-r6**: rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-a298e904-3ba3-4807-a3b9-13a997d05ad2](.artifacts/records/project__check-run/rec-a298e904-3ba3-4807-a3b9-13a997d05ad2.md))_
+
+## skill-task-worktree-r7
+
+### Acceptance
+- **skill-task-worktree-r7**: R7; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r7_wave_end_merges_passing_task_branches_into_the_phase_branch -q --tb=short _(id: [rec-7e7db37d-173a-4938-93b0-91b2c18a98fc](.artifacts/records/project__acceptance/rec-7e7db37d-173a-4938-93b0-91b2c18a98fc.md))_
+
+### Check
+- **skill-task-worktree-r7**: rec-7e7db37d-173a-4938-93b0-91b2c18a98fc; dirty; fail; tdd _(id: [rec-00a42c51-99f2-4a12-9d36-5cd421fab32e](.artifacts/records/project__check-run/rec-00a42c51-99f2-4a12-9d36-5cd421fab32e.md))_
+- **skill-task-worktree-r7**: rec-7e7db37d-173a-4938-93b0-91b2c18a98fc; dirty; fail; tdd _(id: [rec-3a02d438-05d6-4fdb-a29a-d3c35a35c8fe](.artifacts/records/project__check-run/rec-3a02d438-05d6-4fdb-a29a-d3c35a35c8fe.md))_
+- **skill-task-worktree-r7**: rec-7e7db37d-173a-4938-93b0-91b2c18a98fc; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-63cecf3c-333a-47e3-acc8-a1fa700669f9](.artifacts/records/project__check-run/rec-63cecf3c-333a-47e3-acc8-a1fa700669f9.md))_
+- **skill-task-worktree-r7**: rec-7e7db37d-173a-4938-93b0-91b2c18a98fc; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-6b2ac047-d658-4dbe-9d06-34fda1a0e71f](.artifacts/records/project__check-run/rec-6b2ac047-d658-4dbe-9d06-34fda1a0e71f.md))_
+- **skill-task-worktree-r7**: rec-7e7db37d-173a-4938-93b0-91b2c18a98fc; dirty; fail; tdd _(id: [rec-c70e89fc-9ed8-444f-aca3-3b4cda521f44](.artifacts/records/project__check-run/rec-c70e89fc-9ed8-444f-aca3-3b4cda521f44.md))_
+
+## skill-task-worktree-r8
+
+### Acceptance
+- **skill-task-worktree-r8**: R8; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r8_wave_end_merges_run_in_task_slug_order -q --tb=short _(id: [rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2](.artifacts/records/project__acceptance/rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2.md))_
+
+### Check
+- **skill-task-worktree-r8**: rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-2f0d7eea-331a-45da-830d-1b12913224e1](.artifacts/records/project__check-run/rec-2f0d7eea-331a-45da-830d-1b12913224e1.md))_
+- **skill-task-worktree-r8**: rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-4d51e2ff-5502-42b8-b90f-91e3e51f816f](.artifacts/records/project__check-run/rec-4d51e2ff-5502-42b8-b90f-91e3e51f816f.md))_
+- **skill-task-worktree-r8**: rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2; dirty; fail; tdd _(id: [rec-6d51788d-8919-49a8-af23-11ce4652f341](.artifacts/records/project__check-run/rec-6d51788d-8919-49a8-af23-11ce4652f341.md))_
+- **skill-task-worktree-r8**: rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2; dirty; fail; tdd _(id: [rec-b6ce6027-73d7-4ba4-8f92-23a2e174840c](.artifacts/records/project__check-run/rec-b6ce6027-73d7-4ba4-8f92-23a2e174840c.md))_
+- **skill-task-worktree-r8**: rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2; dirty; fail; tdd _(id: [rec-c6923080-da50-4ef1-9586-87a19224ecb9](.artifacts/records/project__check-run/rec-c6923080-da50-4ef1-9586-87a19224ecb9.md))_
+
+## skill-task-worktree-r9
+
+### Acceptance
+- **skill-task-worktree-r9**: R9; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r9_wave_end_integration_does_not_rebase_the_task_branch -q --tb=short _(id: [rec-c1742922-b91e-449a-94bc-9fce443f6d88](.artifacts/records/project__acceptance/rec-c1742922-b91e-449a-94bc-9fce443f6d88.md))_
+
+### Check
+- **skill-task-worktree-r9**: rec-c1742922-b91e-449a-94bc-9fce443f6d88; dirty; fail; tdd _(id: [rec-47ed6f0e-bd88-4c2f-b481-8dcff0cdff21](.artifacts/records/project__check-run/rec-47ed6f0e-bd88-4c2f-b481-8dcff0cdff21.md))_
+- **skill-task-worktree-r9**: rec-c1742922-b91e-449a-94bc-9fce443f6d88; dirty; fail; tdd _(id: [rec-5a32f90c-a689-4c04-a575-93b2495908e4](.artifacts/records/project__check-run/rec-5a32f90c-a689-4c04-a575-93b2495908e4.md))_
+- **skill-task-worktree-r9**: rec-c1742922-b91e-449a-94bc-9fce443f6d88; 55e29a6c1dc3ad08bbe3d6af777bbb09bda0aba8; pass; tdd _(id: [rec-7555cd24-7dde-4ab9-b806-f9c3d7aacd52](.artifacts/records/project__check-run/rec-7555cd24-7dde-4ab9-b806-f9c3d7aacd52.md))_
+- **skill-task-worktree-r9**: rec-c1742922-b91e-449a-94bc-9fce443f6d88; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; tdd _(id: [rec-8711d599-ded8-4823-ba35-3cd35f99787f](.artifacts/records/project__check-run/rec-8711d599-ded8-4823-ba35-3cd35f99787f.md))_
+- **skill-task-worktree-r9**: rec-c1742922-b91e-449a-94bc-9fce443f6d88; dirty; fail; tdd _(id: [rec-fa282884-5604-427b-a8ac-f2e6f35a4888](.artifacts/records/project__check-run/rec-fa282884-5604-427b-a8ac-f2e6f35a4888.md))_
+
 ## skills-backlog
 
 ### Acceptance
@@ -3324,6 +3652,11 @@ print("phase checks only")
 
 ### Check
 - **task-table-module**: rec-9a70606f-50c9-40b0-9b8c-107ff6573a06; dirty; pass; tdd _(id: [rec-4acae157-ca43-4995-93fc-cbfbf4e8ce80](.artifacts/records/project__check-run/rec-4acae157-ca43-4995-93fc-cbfbf4e8ce80.md))_
+
+## task-worktrees-review
+
+### Check
+- **task-worktrees-review**: task-worktrees-review; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; review _(id: [rec-87f9db00-c642-4d83-89b8-9b1c95540161](.artifacts/records/project__check-run/rec-87f9db00-c642-4d83-89b8-9b1c95540161.md))_
 
 ## terminal-view-format
 
@@ -5055,6 +5388,22 @@ print("phase checks only")
 
 ### Check
 - **verify-task-rows-phase**: rec-92df6b15-9068-4342-b3fa-899bc28247b3; e6591ab8dd58b85e63d1bed9702b6edaf0b236a1; pass; check _(id: [rec-07e2fbea-ed1f-4ea9-95b1-0b6416449996](.artifacts/records/project__check-run/rec-07e2fbea-ed1f-4ea9-95b1-0b6416449996.md))_
+
+## verify-task-worktrees
+
+### Acceptance
+- **verify-task-worktrees**: R27; check; workflow-loop; python3 -m pytest tests/test_task_commit.py tests/test_task_worktrees.py -q _(id: [rec-0536d65f-7df9-474c-a91b-95c0903d21fb](.artifacts/records/project__acceptance/rec-0536d65f-7df9-474c-a91b-95c0903d21fb.md))_
+
+### Check
+- **verify-task-worktrees**: rec-0536d65f-7df9-474c-a91b-95c0903d21fb; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; check _(id: [rec-87f26400-af63-4f7c-9086-24c546e71761](.artifacts/records/project__check-run/rec-87f26400-af63-4f7c-9086-24c546e71761.md))_
+
+## verify-task-worktrees-landing
+
+### Acceptance
+- **verify-task-worktrees-landing**: R21; check; workflow-loop; python3 -m pytest tests/test_execute_landing.py tests/test_task_commit.py -q _(id: [rec-0e0a57cf-e8ba-4b5d-b90a-22402bd2890b](.artifacts/records/project__acceptance/rec-0e0a57cf-e8ba-4b5d-b90a-22402bd2890b.md))_
+
+### Check
+- **verify-task-worktrees-landing**: rec-0e0a57cf-e8ba-4b5d-b90a-22402bd2890b; ac64d0816c9e14410dce73596abbe3681637d0cc; pass; check _(id: [rec-a836e0c0-1eee-4550-8668-61ce977a583e](.artifacts/records/project__check-run/rec-a836e0c0-1eee-4550-8668-61ce977a583e.md))_
 
 ## verify-tiered-verification
 

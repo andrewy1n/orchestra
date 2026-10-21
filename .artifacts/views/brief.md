@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:76fbf7e1e6bc79a05426b7668daec759635b170c488fd3de1b1c765394cc2f94
+> Store state: sha256:cce168bc22596469f147b0eb9a0457fb223070abe599d943170171d193aaf11f
 
 ## aa-installable-package
 
@@ -1269,6 +1269,16 @@ print("phase checks only")
 ### Acceptance
 - **phase-detail-tasks**: tdd; dashboard; uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k phase_task _(id: [rec-2356a60d-0eda-499f-b3ab-ee4746d6aa45](.artifacts/records/project__acceptance/rec-2356a60d-0eda-499f-b3ab-ee4746d6aa45.md))_
 
+## phase-end-cleanup
+
+### Acceptance
+- **phase-end-cleanup**: R22; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r22_phase_close_removes_each_task_worktree -q --tb=short _(id: [rec-e176758e-9b0f-49b0-a359-035a344da71f](.artifacts/records/project__acceptance/rec-e176758e-9b0f-49b0-a359-035a344da71f.md))_
+
+## phase-end-cleanup-r23
+
+### Acceptance
+- **phase-end-cleanup-r23**: R23; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch -q --tb=short _(id: [rec-111eddcd-d564-4ec9-9857-c55931bc3ccd](.artifacts/records/project__acceptance/rec-111eddcd-d564-4ec9-9857-c55931bc3ccd.md))_
+
 ## phase-gate-contract
 
 ### Acceptance
@@ -1837,6 +1847,131 @@ print("phase checks only")
 
 ### Acceptance
 - **skill-plugin-paths-contract**: R4; check; packaging; uv run --with pytest python -m pytest tests/test_skill_contract_consistency.py -q _(id: [rec-3b720bda-fcdb-4cab-9cb2-e965636a73b0](.artifacts/records/project__acceptance/rec-3b720bda-fcdb-4cab-9cb2-e965636a73b0.md))_
+
+## skill-task-worktree
+
+### Acceptance
+- **skill-task-worktree**: R1; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r1_landing_creates_a_task_branch_except_the_verification_task -q --tb=short _(id: [rec-05063455-94b9-4240-a1c0-eda12599cf71](.artifacts/records/project__acceptance/rec-05063455-94b9-4240-a1c0-eda12599cf71.md))_
+
+## skill-task-worktree-r10
+
+### Acceptance
+- **skill-task-worktree-r10**: R10; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r10_parent_does_not_merge_a_task_branch_whose_check_did_not_pass -q --tb=short _(id: [rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7](.artifacts/records/project__acceptance/rec-f869e403-b8c6-4fc9-87d7-9dc306655ac7.md))_
+
+## skill-task-worktree-r11
+
+### Acceptance
+- **skill-task-worktree-r11**: R11; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r11_conflict_leaves_that_conflict_unresolved -q --tb=short _(id: [rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2](.artifacts/records/project__acceptance/rec-d3795838-1047-40f0-ad9b-a8523c5ca6c2.md))_
+
+## skill-task-worktree-r12
+
+### Acceptance
+- **skill-task-worktree-r12**: R12; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r12_conflict_opens_a_blocking_continuity_question_on_the_effort -q --tb=short _(id: [rec-337eff4c-04fb-4528-a38d-43cfb332a3e1](.artifacts/records/project__acceptance/rec-337eff4c-04fb-4528-a38d-43cfb332a3e1.md))_
+
+## skill-task-worktree-r13
+
+### Acceptance
+- **skill-task-worktree-r13**: R13; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r13_conflict_does_not_start_the_next_wave -q --tb=short _(id: [rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c](.artifacts/records/project__acceptance/rec-e2d33f8f-465d-4c3a-9cae-fa60fb219f3c.md))_
+
+## skill-task-worktree-r14
+
+### Acceptance
+- **skill-task-worktree-r14**: R14; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r14_redispatch_reuses_the_task_branch -q --tb=short _(id: [rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6](.artifacts/records/project__acceptance/rec-a456a15c-89ba-47a8-8ed5-3fa7658c76e6.md))_
+
+## skill-task-worktree-r15
+
+### Acceptance
+- **skill-task-worktree-r15**: R15; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r15_redispatch_reuses_the_task_worktree -q --tb=short _(id: [rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305](.artifacts/records/project__acceptance/rec-4363b7ed-e4f5-43e4-9904-6bdd8adb3305.md))_
+
+## skill-task-worktree-r16
+
+### Acceptance
+- **skill-task-worktree-r16**: R16; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r16_redispatch_merges_the_phase_tip_into_the_task_branch -q --tb=short _(id: [rec-4591df96-ffef-4618-8e6e-07d98f9b4347](.artifacts/records/project__acceptance/rec-4591df96-ffef-4618-8e6e-07d98f9b4347.md))_
+
+## skill-task-worktree-r17
+
+### Acceptance
+- **skill-task-worktree-r17**: R17; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r17_verification_task_is_dispatched_in_the_phase_worktree -q --tb=short _(id: [rec-dea088d8-3b6d-448b-8754-7275de84ad54](.artifacts/records/project__acceptance/rec-dea088d8-3b6d-448b-8754-7275de84ad54.md))_
+
+## skill-task-worktree-r18
+
+### Acceptance
+- **skill-task-worktree-r18**: R18; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r18_no_task_branch_for_the_verification_task -q --tb=short _(id: [rec-88951356-0702-4f6d-91e8-b76a478ba443](.artifacts/records/project__acceptance/rec-88951356-0702-4f6d-91e8-b76a478ba443.md))_
+
+## skill-task-worktree-r19
+
+### Acceptance
+- **skill-task-worktree-r19**: R19; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r19_no_task_worktree_for_the_verification_task -q --tb=short _(id: [rec-3163b04c-0b19-49de-8055-7eadd147518f](.artifacts/records/project__acceptance/rec-3163b04c-0b19-49de-8055-7eadd147518f.md))_
+
+## skill-task-worktree-r2
+
+### Acceptance
+- **skill-task-worktree-r2**: R2; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r2_landing_adds_a_task_worktree_except_the_verification_task -q --tb=short _(id: [rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e](.artifacts/records/project__acceptance/rec-1ec290b8-4b8c-4d2d-afea-035c8c53235e.md))_
+
+## skill-task-worktree-r20
+
+### Acceptance
+- **skill-task-worktree-r20**: R20; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r20_absent_landing_does_not_create_a_task_branch tests/test_execute_landing.py::test_landing_worktree_confines_code_and_keeps_the_store_on_the_primary_checkout tests/test_execute_landing.py::test_gate_commits_the_phase_branch_merges_to_main_and_commits_the_store tests/test_execute_landing.py::test_push_only_when_it_is_a_human_stop tests/test_execute_landing.py::test_missing_landing_section_stays_in_the_current_checkout -q --tb=short _(id: [rec-6f21fdb6-ed88-4965-a020-b9e9b386f343](.artifacts/records/project__acceptance/rec-6f21fdb6-ed88-4965-a020-b9e9b386f343.md))_
+
+## skill-task-worktree-r21
+
+### Acceptance
+- **skill-task-worktree-r21**: R21; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r21_absent_landing_does_not_add_a_task_worktree -q --tb=short _(id: [rec-d944f332-01b4-4677-8037-04da1b64e433](.artifacts/records/project__acceptance/rec-d944f332-01b4-4677-8037-04da1b64e433.md))_
+
+## skill-task-worktree-r24
+
+### Acceptance
+- **skill-task-worktree-r24**: R24; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r24_orientation_names_the_task_worktree_as_the_write_root -q --tb=short _(id: [rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2](.artifacts/records/project__acceptance/rec-fecf70a3-9dff-4199-8d1a-cb9a3e7e3fe2.md))_
+
+## skill-task-worktree-r25
+
+### Acceptance
+- **skill-task-worktree-r25**: R25; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r25_orientation_does_not_tell_the_executor_to_avoid_git_add -q --tb=short _(id: [rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47](.artifacts/records/project__acceptance/rec-33bf5b0b-95af-427f-b5ee-cf19266d4d47.md))_
+
+## skill-task-worktree-r26
+
+### Acceptance
+- **skill-task-worktree-r26**: R26; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r26_no_empty_commit_when_a_task_has_nothing_to_commit -q --tb=short _(id: [rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292](.artifacts/records/project__acceptance/rec-e17c2106-cfde-42f1-a3b9-9a874f4c1292.md))_
+
+## skill-task-worktree-r27
+
+### Acceptance
+- **skill-task-worktree-r27**: R27; tdd; workflow-loop; python3 -m pytest tests/test_task_commit.py::test_r27_per_task_commit_path_is_the_task_worktree -q --tb=short _(id: [rec-1848327f-f58b-4e72-aeb3-ae082358e7c4](.artifacts/records/project__acceptance/rec-1848327f-f58b-4e72-aeb3-ae082358e7c4.md))_
+
+## skill-task-worktree-r3
+
+### Acceptance
+- **skill-task-worktree-r3**: R3; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r3_per_task_commit_runs_in_that_task_worktree -q --tb=short _(id: [rec-9978c80a-6e9e-4a29-963c-5cdd28a10718](.artifacts/records/project__acceptance/rec-9978c80a-6e9e-4a29-963c-5cdd28a10718.md))_
+
+## skill-task-worktree-r4
+
+### Acceptance
+- **skill-task-worktree-r4**: R4; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r4_per_task_commit_stages_with_git_add_excluding_artifacts -q --tb=short _(id: [rec-ef7174ed-e462-4077-8933-95f77cac0ce2](.artifacts/records/project__acceptance/rec-ef7174ed-e462-4077-8933-95f77cac0ce2.md))_
+
+## skill-task-worktree-r5
+
+### Acceptance
+- **skill-task-worktree-r5**: R5; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r5_verify_work_runs_in_that_task_worktree -q --tb=short _(id: [rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6](.artifacts/records/project__acceptance/rec-0564be4b-8e30-47ec-85f3-55b1301fc0e6.md))_
+
+## skill-task-worktree-r6
+
+### Acceptance
+- **skill-task-worktree-r6**: R6; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r6_passing_check_run_records_that_task_commit -q --tb=short _(id: [rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b](.artifacts/records/project__acceptance/rec-29827ca8-3bb5-474e-bc9d-e9f27c9cb64b.md))_
+
+## skill-task-worktree-r7
+
+### Acceptance
+- **skill-task-worktree-r7**: R7; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r7_wave_end_merges_passing_task_branches_into_the_phase_branch -q --tb=short _(id: [rec-7e7db37d-173a-4938-93b0-91b2c18a98fc](.artifacts/records/project__acceptance/rec-7e7db37d-173a-4938-93b0-91b2c18a98fc.md))_
+
+## skill-task-worktree-r8
+
+### Acceptance
+- **skill-task-worktree-r8**: R8; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r8_wave_end_merges_run_in_task_slug_order -q --tb=short _(id: [rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2](.artifacts/records/project__acceptance/rec-f9b1ca3f-a5dd-4c48-8b32-b38f4728c9d2.md))_
+
+## skill-task-worktree-r9
+
+### Acceptance
+- **skill-task-worktree-r9**: R9; tdd; workflow-loop; python3 -m pytest tests/test_task_worktrees.py::test_r9_wave_end_integration_does_not_rebase_the_task_branch -q --tb=short _(id: [rec-c1742922-b91e-449a-94bc-9fce443f6d88](.artifacts/records/project__acceptance/rec-c1742922-b91e-449a-94bc-9fce443f6d88.md))_
 
 ## skills-backlog
 
@@ -3115,6 +3250,16 @@ print("phase checks only")
 ### Acceptance
 - **verify-task-rows-phase**: check; dashboard; uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m 'not tmux' && uv run --with textual --with pytest python -m pytest tests -q -m tmux -rf _(id: [rec-92df6b15-9068-4342-b3fa-899bc28247b3](.artifacts/records/project__acceptance/rec-92df6b15-9068-4342-b3fa-899bc28247b3.md))_
 
+## verify-task-worktrees
+
+### Acceptance
+- **verify-task-worktrees**: R27; check; workflow-loop; python3 -m pytest tests/test_task_commit.py tests/test_task_worktrees.py -q _(id: [rec-0536d65f-7df9-474c-a91b-95c0903d21fb](.artifacts/records/project__acceptance/rec-0536d65f-7df9-474c-a91b-95c0903d21fb.md))_
+
+## verify-task-worktrees-landing
+
+### Acceptance
+- **verify-task-worktrees-landing**: R21; check; workflow-loop; python3 -m pytest tests/test_execute_landing.py tests/test_task_commit.py -q _(id: [rec-0e0a57cf-e8ba-4b5d-b90a-22402bd2890b](.artifacts/records/project__acceptance/rec-0e0a57cf-e8ba-4b5d-b90a-22402bd2890b.md))_
+
 ## verify-tiered-verification
 
 ### Acceptance
@@ -3498,4 +3643,4 @@ print("phase checks only")
 ## workflow-loop
 
 ### Position
-- **workflow-loop**: phase-proof-packet done; next up: evidence-kind or packaging backlog; effort _(id: [rec-ed13dfbc-5d73-403a-8113-3085a3ab08fa](.artifacts/records/project__current-position/rec-ed13dfbc-5d73-403a-8113-3085a3ab08fa.md))_
+- **workflow-loop**: task-worktrees done; next up: evidence-authority; effort _(id: [rec-13a51b7a-0295-4dde-9b01-820294b0cd0f](.artifacts/records/project__current-position/rec-13a51b7a-0295-4dde-9b01-820294b0cd0f.md))_

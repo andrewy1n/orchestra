@@ -1,7 +1,7 @@
 # Project Dashboard
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:fc0e33398bc8bf3264bf13d1a0d40b5da6be0df755235ece3c34049b88274484
+> Store state: sha256:3257c21bf2c00a28ba12b07fbfe696989b230c3142bc83b24c85c67581fa60b1
 
 ## dashboard
 
@@ -9,21 +9,6 @@
 - **dashboard**: goal: A live terminal dashboard, openable from tmux, shows each effort's phases, tasks and what needs you, lets you move from any item to its related records, and works correctly in every state; scope: effort; kind: deliver _(id: [rec-39db526b-abbb-4753-b9ff-40b8c05662c2](.artifacts/records/project__active-goal/rec-39db526b-abbb-4753-b9ff-40b8c05662c2.md))_
 
 ### Done Recent
-- **deep-links-resolve**: title: Reference resolve helper; phase: deep-links _(id: [rec-966f0550-8372-4227-827a-84c4aecb5634](.artifacts/records/project__work-item/rec-966f0550-8372-4227-827a-84c4aecb5634.md))_
-- **deep-links-wire**: title: Wire linkify into meta and markdown; phase: deep-links _(id: [rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8](.artifacts/records/project__work-item/rec-a0c9fa27-5d8a-4f8d-9de6-175ffed667a8.md))_
-- **milestone-nav-helpers**: title: Milestone grouping and expand helpers; phase: milestone-nav _(id: [rec-6d3e248d-13a3-46fd-b113-d36c911b2d3d](.artifacts/records/project__work-item/rec-6d3e248d-13a3-46fd-b113-d36c911b2d3d.md))_
-- **milestone-nav-ui**: title: Phases block UI in App; phase: milestone-nav _(id: [rec-a18ab51a-b527-4d5b-b647-6914c61aa744](.artifacts/records/project__work-item/rec-a18ab51a-b527-4d5b-b647-6914c61aa744.md))_
-- **phase-overview-chrome**: title: Shared phase overlay chrome; phase: phase-overview _(id: [rec-6b110034-ce0c-448d-bc27-dbcc1be4425b](.artifacts/records/project__work-item/rec-6b110034-ce0c-448d-bc27-dbcc1be4425b.md))_
-- **phase-overview-tabs**: title: Structured UI for each phase tab body; phase: phase-overview _(id: [rec-47538406-49a8-47d0-b170-f7ed18948d13](.artifacts/records/project__work-item/rec-47538406-49a8-47d0-b170-f7ed18948d13.md))_
-- **side-rail-home**: title: Calm home side rail; phase: side-rail-calm _(id: [rec-d579406f-4381-42ef-84cb-89e61d7fd9a0](.artifacts/records/project__work-item/rec-d579406f-4381-42ef-84cb-89e61d7fd9a0.md))_
-- **side-rail-journal-screen**: title: Journal hash screen; phase: side-rail-calm _(id: [rec-1f9c0953-e991-4014-a53c-e6f479c3f10e](.artifacts/records/project__work-item/rec-1f9c0953-e991-4014-a53c-e6f479c3f10e.md))_
-- **task-graph-depends**: title: Enrich task JSON with depends_on ids; phase: task-graph _(id: [rec-56d2c4ac-3566-4c2b-bbaa-f1f0c38176a5](.artifacts/records/project__work-item/rec-56d2c4ac-3566-4c2b-bbaa-f1f0c38176a5.md))_
-- **task-graph-ui**: title: Wave-lane dependency graph on Overview; phase: task-graph _(id: [rec-4d4a1801-60f6-47e0-b8b0-047877b88511](.artifacts/records/project__work-item/rec-4d4a1801-60f6-47e0-b8b0-047877b88511.md))_
-- **verify-deep-links**: title: Verify deep links; phase: deep-links _(id: [rec-750cba61-f182-42ff-9b69-52b3c1c33f8e](.artifacts/records/project__work-item/rec-750cba61-f182-42ff-9b69-52b3c1c33f8e.md))_
-- **verify-milestone-nav**: title: Verify milestone-nav; phase: milestone-nav _(id: [rec-e84c286f-6ece-4473-8270-ccb055ab5f7f](.artifacts/records/project__work-item/rec-e84c286f-6ece-4473-8270-ccb055ab5f7f.md))_
-- **verify-phase-overview**: title: Verify phase overview UI; phase: phase-overview _(id: [rec-77db5630-4a2c-443e-8116-a93b4aa8a59b](.artifacts/records/project__work-item/rec-77db5630-4a2c-443e-8116-a93b4aa8a59b.md))_
-- **verify-side-rail-calm**: title: Verify side-rail-calm; phase: side-rail-calm _(id: [rec-e927e857-0fd7-4add-b2fa-1389bc237e7d](.artifacts/records/project__work-item/rec-e927e857-0fd7-4add-b2fa-1389bc237e7d.md))_
-- **verify-task-graph**: title: Verify task dependency graph; phase: task-graph _(id: [rec-0b8b80f0-2129-4e01-ab35-183edd7ebb0f](.artifacts/records/project__work-item/rec-0b8b80f0-2129-4e01-ab35-183edd7ebb0f.md))_
 - **verify-web-write-body**: title: Verify web writes read the JSON body; phase: web-write-body _(id: [rec-a0978f37-7118-4aa7-995f-a2d91374a422](.artifacts/records/project__work-item/rec-a0978f37-7118-4aa7-995f-a2d91374a422.md))_
 - **web-write-annotations**: title: Drop postponed annotations; phase: web-write-body _(id: [rec-136288f4-1f46-4d85-95ef-52f653278e5d](.artifacts/records/project__work-item/rec-136288f4-1f46-4d85-95ef-52f653278e5d.md))_
 
@@ -53,3 +38,8 @@
 
 ### Goal
 - **workflow-loop**: goal: The se-workflow loop maps efforts to product areas, closes finished efforts, runs phases in parallel, and settles the approach with the user before planning; scope: effort; kind: deliver _(id: [rec-65213e61-dda6-4955-95bc-8c9c4b289af1](.artifacts/records/project__active-goal/rec-65213e61-dda6-4955-95bc-8c9c4b289af1.md))_
+
+### Done Recent
+- **phase-end-cleanup**: title: Remove task worktrees at phase close; phase: task-worktrees _(id: [rec-9d76cc70-508c-479c-92ea-d1340a6c0651](.artifacts/records/project__work-item/rec-9d76cc70-508c-479c-92ea-d1340a6c0651.md))_
+- **skill-task-worktree**: title: Dispatch each task in its own worktree; phase: task-worktrees _(id: [rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f](.artifacts/records/project__work-item/rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f.md))_
+- **verify-task-worktrees**: title: Verify task worktrees; phase: task-worktrees _(id: [rec-838b8715-ca2d-4c01-a064-b99dd6e66a47](.artifacts/records/project__work-item/rec-838b8715-ca2d-4c01-a064-b99dd6e66a47.md))_

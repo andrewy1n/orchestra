@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:7b39c524be239c044efedc5e33aed33859a17a7acc96aa55f0c51ccf95745cba
+> Store state: sha256:206f41befb239338052280e58ac2d9fb67b503daa9d08629143433ab5347e731
 
 ## dashboard
 
@@ -67,11 +67,12 @@
 ### Position
 - **phase-proof-packet**: phase-proof-packet done; proof packet + Proof tab landed on main; phase _(id: [rec-208d6247-9c02-44fa-af8a-8739274184b6](.artifacts/records/project__current-position/rec-208d6247-9c02-44fa-af8a-8739274184b6.md))_
 - **phase-reviewer**: phase-reviewer done; next up: tiered-verification; phase _(id: [rec-db17b780-4178-4359-b4ee-119fb52aba18](.artifacts/records/project__current-position/rec-db17b780-4178-4359-b4ee-119fb52aba18.md))_
-- **workflow-loop**: phase-proof-packet done; next up: evidence-kind or packaging backlog; effort _(id: [rec-ed13dfbc-5d73-403a-8113-3085a3ab08fa](.artifacts/records/project__current-position/rec-ed13dfbc-5d73-403a-8113-3085a3ab08fa.md))_
+- **workflow-loop**: task-worktrees done; next up: evidence-authority; effort _(id: [rec-13a51b7a-0295-4dde-9b01-820294b0cd0f](.artifacts/records/project__current-position/rec-13a51b7a-0295-4dde-9b01-820294b0cd0f.md))_
 
 ### Latest Proof
 - **phase-proof-packet**: phase-proof-packet; workflow-loop; c9c2d6a70719285637ba08662d4772f661e88a74; claims _(id: [rec-685583a1-e6ce-4776-8257-7f123d9fcff7](.artifacts/records/project__proof-packet/rec-685583a1-e6ce-4776-8257-7f123d9fcff7.md))_
 - **phase-proof-packet-smoke-tmp**: phase-proof-packet; workflow-loop; deadbeef; claims _(id: [rec-af529abf-f428-43aa-be0f-eb43fb810cdd](.artifacts/records/project__proof-packet/rec-af529abf-f428-43aa-be0f-eb43fb810cdd.md))_
+- **task-worktrees**: task-worktrees; workflow-loop; ac64d0816c9e14410dce73596abbe3681637d0cc; commands _(id: [rec-daca05ba-1ad8-45f7-9b98-e5ef0d43365e](.artifacts/records/project__proof-packet/rec-daca05ba-1ad8-45f7-9b98-e5ef0d43365e.md))_
 
 ### Backlog
 - **gh-11-verification-loop**: workflow-loop; open _(id: [rec-0df3151d-956c-4c9a-b031-87ef9cceeeb7](.artifacts/records/project__backlog-item/rec-0df3151d-956c-4c9a-b031-87ef9cceeeb7.md))_
