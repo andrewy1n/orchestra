@@ -66,10 +66,10 @@ class CloseRefused(Exception):
 
 
 class OracleAdapterUnavailable(Exception):
-    """Oracle-backed close needs the Affidavit ``aff assertion-red`` CLI.
+    """Oracle-backed close needs the affidavit library.
 
-    An installed Orchestra CLI serves every other subcommand without Affidavit
-    on PATH; this gate refuses clearly when the classifier is missing.
+    An installed Orchestra CLI serves every other subcommand without affidavit
+    importable; this gate refuses clearly when the import fails.
     """
 
 
@@ -431,32 +431,19 @@ def _enforce_red_first_from_store(
 
 
 def _assertion_level_red(record: dict[str, Any]) -> bool:
-    """Ask Affidavit ``aff assertion-red`` whether red failed at assertion level.
+    """Ask affidavit whether red failed at assertion level.
 
-    Classification is CLI-only (R9): stdin JSON, exit 0 = assertion-level red,
-    exit 1 = not. Missing CLI raises OracleAdapterUnavailable.
+    The import stays inside this function so ``orchestra --help`` does not
+    import affidavit. A missing import raises OracleAdapterUnavailable.
     """
     try:
-        result = subprocess.run(
-            ["aff", "assertion-red"],
-            input=json.dumps(record),
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
+        from affidavit.oracle_red import is_assertion_level_red
+    except ImportError as exc:
         raise OracleAdapterUnavailable(
-            "aff CLI not found on PATH; close-batch needs the affidavit "
-            "CLI (aff assertion-red) for oracle-backed acceptances"
+            "affidavit is not importable; close-batch needs affidavit to "
+            "classify assertion-level red for oracle-backed acceptances"
         ) from exc
-    if result.returncode == 0:
-        return True
-    if result.returncode == 1:
-        return False
-    detail = (result.stderr or result.stdout or "").strip()
-    raise OracleAdapterUnavailable(
-        f"aff assertion-red failed (exit {result.returncode})"
-        + (f": {detail}" if detail else "")
-    )
+    return bool(is_assertion_level_red(record))
 
 
 def _approved_amendment_covers_tree(
@@ -494,36 +481,40 @@ def _manifest_claim_ids(cwd: Path) -> set[str]:
 
 
 def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
-    """Refuse when ``aff verdict`` or ``aff recheck`` exits non-zero for claim."""
+    """Refuse unless affidavit verdict and recheck both pass for the claim.
+
+    Imports stay inside this function so ``orchestra --help`` does not import
+    affidavit. A missing import raises an error that names affidavit.
+    """
     try:
-        verdict = subprocess.run(
-            ["aff", "verdict", "--cwd", str(cwd), "--at", revision, claim_id],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
+        from affidavit.binding import recheck
+        from affidavit.verdict import run_verdict
+    except ImportError as exc:
         raise CloseRefused(
-            f"aff CLI not found on PATH; cannot run verdict for claim {claim_id!r}"
+            f"affidavit is not importable; cannot run verdict or recheck "
+            f"for claim {claim_id!r}"
         ) from exc
-    if verdict.returncode != 0:
+    try:
+        verdict = run_verdict(cwd, revision, None, [claim_id])
+    except Exception as exc:
         raise CloseRefused(
-            f"aff verdict refused for claim {claim_id!r} "
-            f"at revision {revision!r} (exit {verdict.returncode})"
+            f"affidavit verdict refused for claim {claim_id!r} "
+            f"at revision {revision!r}: {exc}"
+        ) from exc
+    if not isinstance(verdict, dict) or verdict.get("result") != "pass":
+        raise CloseRefused(
+            f"affidavit verdict refused for claim {claim_id!r} "
+            f"at revision {revision!r}"
         )
     try:
-        recheck = subprocess.run(
-            ["aff", "recheck", "--cwd", str(cwd), "--claim", claim_id],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
+        outcome = recheck(cwd, claim_id)
+    except Exception as exc:
         raise CloseRefused(
-            f"aff CLI not found on PATH; cannot run recheck for claim {claim_id!r}"
+            f"affidavit recheck refused for claim {claim_id!r}: {exc}"
         ) from exc
-    if recheck.returncode != 0:
+    if not isinstance(outcome, dict) or outcome.get("result") != "pass":
         raise CloseRefused(
-            f"aff recheck refused for claim {claim_id!r} "
-            f"(exit {recheck.returncode})"
+            f"affidavit recheck refused for claim {claim_id!r}"
         )
 
 
@@ -534,7 +525,7 @@ def _enforce_claim_gates(
     cwd: Path,
     load_acceptance: AcceptanceLoader,
 ) -> None:
-    """R5/R6: manifest-backed acceptances need aff verdict + recheck on done."""
+    """Manifest-backed acceptances need affidavit verdict and recheck on done."""
     claim_ids = _manifest_claim_ids(cwd)
     if not claim_ids:
         return
@@ -560,7 +551,7 @@ def _enforce_claim_gates(
         if not revision:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: claim {claim_id!r} requires "
-                "a close revision for aff verdict"
+                "a close revision for affidavit verdict"
             )
         _run_aff_claim_gate(claim_id, cwd=cwd, revision=str(revision))
 
