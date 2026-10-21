@@ -431,7 +431,7 @@ def _seed_runner_check_run(
         "effort": acceptance["payload"]["effort"],
         "method": acceptance["payload"]["method"],
         "signed_by": "",
-        "runner": "aff",
+        "runner": "orchestra",
     }
     if diff_sha256 is not None:
         payload["diff_sha256"] = diff_sha256
@@ -520,7 +520,7 @@ def test_end_to_end_all_pass_closes_the_work_item_to_done(
     assert len(check_runs) == 2
     by_id = {cr["id"]: cr for cr in check_runs}
     assert by_id[green_cr["id"]]["payload"]["result"] == "pass"
-    assert by_id[green_cr["id"]]["payload"].get("runner") == "aff"
+    assert by_id[green_cr["id"]]["payload"].get("runner") == "orchestra"
     assert by_id[red_cr["id"]]["payload"]["result"] == "fail"
 
 
