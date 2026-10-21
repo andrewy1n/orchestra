@@ -342,6 +342,24 @@
       ]
     },
     {
+      "name": "evidence-binding",
+      "pattern": "current-status",
+      "purpose": "An observation earning a claim under pinned base and head revisions",
+      "canonical_for": "the observation earning this claim under pins",
+      "capture": "at_event",
+      "read": "query",
+      "payload": [
+        "observation_id",
+        "claim_id",
+        "base_rev",
+        "head_rev",
+        "effort"
+      ],
+      "optional_payload": [
+        "effort"
+      ]
+    },
+    {
       "name": "finding",
       "pattern": "finding",
       "purpose": "Root cause or comparative evaluation conclusion",
