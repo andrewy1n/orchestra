@@ -65,10 +65,10 @@ class CloseRefused(Exception):
 
 
 class OracleAdapterUnavailable(Exception):
-    """Oracle-backed close needs ``affidavit.oracle_red``, which is absent.
+    """Oracle-backed close needs the Affidavit ``aff assertion-red`` CLI.
 
-    An installed CLI serves every other subcommand without an affidavit
-    checkout, so the import is deferred to the one gate that reads it.
+    An installed Orchestra CLI serves every other subcommand without Affidavit
+    on PATH; this gate refuses clearly when the classifier is missing.
     """
 
 
@@ -435,19 +435,32 @@ def _enforce_red_first_from_store(
 
 
 def _assertion_level_red(record: dict[str, Any]) -> bool:
-    """Ask the affidavit oracle adapter whether red failed at assertion level.
+    """Ask Affidavit ``aff assertion-red`` whether red failed at assertion level.
 
-    The import is deferred: only oracle-backed closes need the affidavit
-    checkout, and an installed CLI must start without one.
+    Classification is CLI-only (R9): stdin JSON, exit 0 = assertion-level red,
+    exit 1 = not. Missing CLI raises OracleAdapterUnavailable.
     """
     try:
-        from affidavit.oracle_red import is_assertion_level_red
-    except ModuleNotFoundError as exc:
+        result = subprocess.run(
+            ["aff", "assertion-red"],
+            input=json.dumps(record),
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
         raise OracleAdapterUnavailable(
-            "affidavit is not importable; close-batch needs the affidavit "
-            "checkout (affidavit.oracle_red) for oracle-backed acceptances"
+            "aff CLI not found on PATH; close-batch needs the affidavit "
+            "CLI (aff assertion-red) for oracle-backed acceptances"
         ) from exc
-    return is_assertion_level_red(record)
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    detail = (result.stderr or result.stdout or "").strip()
+    raise OracleAdapterUnavailable(
+        f"aff assertion-red failed (exit {result.returncode})"
+        + (f": {detail}" if detail else "")
+    )
 
 
 def _approved_amendment_covers_tree(

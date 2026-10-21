@@ -26,7 +26,7 @@ from orchestra import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
-RUNNER = "aff"
+RUNNER = "orchestra"
 ORCHESTRA_RUNNER = "orchestra"
 
 
