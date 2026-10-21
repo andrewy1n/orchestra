@@ -230,6 +230,10 @@ EOF
 git -C <primary-checkout> merge phase/<phase-slug>
 ```
 
+At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
+
+At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
+
 Close the phase; close phase position (`subject` = phase slug,
 `status: closed`); update effort position narrative (`subject` =
 focus). Never change `current-position.scope` (`supersede` rejects
