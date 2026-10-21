@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:c944b4575b65a61a8f5598e7c607338179d4a85987d9826616a45b1169fead0d
+> Store state: sha256:e3fc6ef98a5e4c14b7b8aba5290f025690ade516c76a41f9e4d1a04d8096ca28
 
 ## aa-library
 
@@ -128,8 +128,21 @@
 
 ## orchestra-callers
 
-### Phase
-- **orchestra-callers**: Orchestra and the dashboard call the libraries; 3; library-boundary _(id: [rec-a61f3ac3-3308-40f0-8df6-d107ea0b7046](.artifacts/records/project__phase/rec-a61f3ac3-3308-40f0-8df6-d107ea0b7046.md))_
+### Acceptance
+- **close-library**: R5; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r5 -q _(id: [rec-8a58e738-d0bc-4b3c-b55d-88094659b4f4](.artifacts/records/project__acceptance/rec-8a58e738-d0bc-4b3c-b55d-88094659b4f4.md))_
+- **close-library-help**: R8; check; library-boundary; python3 -c 'import os,subprocess,sys,tempfile; from pathlib import Path; root=Path.cwd(); b=Path(tempfile.mkdtemp()); (b/"sitecustomize.py").write_text("import sys\nclass Block:\n def find_spec(self, name, path, target=None):\n  if name==\"affidavit\" or name.startswith(\"affidavit.\"):\n   raise ImportError(name)\n  return None\nsys.meta_path.insert(0, Block())\n"); env=os.environ.copy(); pp=env.get("PYTHONPATH",""); env["PYTHONPATH"]=str(b)+os.pathsep+str(root)+(os.pathsep+pp if pp else ""); p=subprocess.run([sys.executable, str(root/"bin"/"orchestra"), "--help"], cwd=root, env=env); raise SystemExit(p.returncode)' _(id: [rec-2d921ac1-c5a8-4cb7-aa43-ef57f0a16c2e](.artifacts/records/project__acceptance/rec-2d921ac1-c5a8-4cb7-aa43-ef57f0a16c2e.md))_
+- **close-library-missing**: R9; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r9 -q _(id: [rec-56c5cf71-8a5c-49c0-9331-a475932c2c42](.artifacts/records/project__acceptance/rec-56c5cf71-8a5c-49c0-9331-a475932c2c42.md))_
+- **close-library-recheck**: R7; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r7 -q _(id: [rec-60f10927-c3fc-4d5e-97b8-1533645d4081](.artifacts/records/project__acceptance/rec-60f10927-c3fc-4d5e-97b8-1533645d4081.md))_
+- **close-library-verdict**: R6; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r6 -q _(id: [rec-ffc3c0fc-0654-49b9-9849-52d3181c8673](.artifacts/records/project__acceptance/rec-ffc3c0fc-0654-49b9-9849-52d3181c8673.md))_
+- **fix-dashboard-uv-env**: R2; tdd; library-boundary; python3 -m pytest tests/test_dashboard_uv_env.py::test_r2 -q _(id: [rec-83da71d0-5c67-4995-94f0-d9e2f9a99e58](.artifacts/records/project__acceptance/rec-83da71d0-5c67-4995-94f0-d9e2f9a99e58.md))_
+- **replace-resolvers**: R1; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r1 -q _(id: [rec-89843013-38fa-4ad0-af4f-aceb43c5232e](.artifacts/records/project__acceptance/rec-89843013-38fa-4ad0-af4f-aceb43c5232e.md))_
+- **replace-resolvers-aa**: R3; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r3 -q _(id: [rec-2dfbc2f6-8e1a-430b-87d3-6e6b44627ca7](.artifacts/records/project__acceptance/rec-2dfbc2f6-8e1a-430b-87d3-6e6b44627ca7.md))_
+- **replace-resolvers-dashboard**: R2; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r2 -q _(id: [rec-3b225e8d-812f-4975-8b1f-06a0fa127aec](.artifacts/records/project__acceptance/rec-3b225e8d-812f-4975-8b1f-06a0fa127aec.md))_
+- **replace-resolvers-dashboard-file**: R4; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r4 -q _(id: [rec-407c508d-0394-41c4-96c1-6c510bfffbc8](.artifacts/records/project__acceptance/rec-407c508d-0394-41c4-96c1-6c510bfffbc8.md))_
+- **replace-resolvers-dep**: R10; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r10 -q _(id: [rec-58aa92a1-e53d-4679-bc46-86cd5c98618b](.artifacts/records/project__acceptance/rec-58aa92a1-e53d-4679-bc46-86cd5c98618b.md))_
+- **verify-orchestra-callers**: R3; check; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r3 -q _(id: [rec-9ce2990b-82e2-4cbb-b6bf-1181472432d3](.artifacts/records/project__acceptance/rec-9ce2990b-82e2-4cbb-b6bf-1181472432d3.md))_
+- **verify-orchestra-callers-help**: R8; check; library-boundary; python3 -c 'import os,subprocess,sys,tempfile; from pathlib import Path; root=Path.cwd(); b=Path(tempfile.mkdtemp()); (b/"sitecustomize.py").write_text("import sys\nclass Block:\n def find_spec(self, name, path, target=None):\n  if name==\"affidavit\" or name.startswith(\"affidavit.\"):\n   raise ImportError(name)\n  return None\nsys.meta_path.insert(0, Block())\n"); env=os.environ.copy(); pp=env.get("PYTHONPATH",""); env["PYTHONPATH"]=str(b)+os.pathsep+str(root)+(os.pathsep+pp if pp else ""); p=subprocess.run([sys.executable, str(root/"bin"/"orchestra"), "--help"], cwd=root, env=env); raise SystemExit(p.returncode)' _(id: [rec-4255a827-d9d0-439f-bfc0-a6a75b248a9f](.artifacts/records/project__acceptance/rec-4255a827-d9d0-439f-bfc0-a6a75b248a9f.md))_
+- **verify-orchestra-callers-missing**: R9; check; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r9 -q _(id: [rec-8d395711-29a7-4afe-b1ff-54d5930d7c09](.artifacts/records/project__acceptance/rec-8d395711-29a7-4afe-b1ff-54d5930d7c09.md))_
 
 ## phase-position
 

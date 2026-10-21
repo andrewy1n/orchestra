@@ -1,0 +1,44 @@
+---
+{
+  "base_kind": "task",
+  "id": "rec-0e86bfda-83ae-4386-87a0-6dfe5d79fca4",
+  "identity": "unknown",
+  "lifecycle_state": "done",
+  "payload": {
+    "assignee": "close-library",
+    "decisions": "orchestra-imports,call-style,dependency-direction,store-resolution",
+    "effort": "library-boundary",
+    "estimate_minutes": 20,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "orchestra-callers",
+    "requirements": "R5,R6,R7,R8,R9",
+    "size": "L",
+    "title": "Call affidavit from close"
+  },
+  "record_type": "project:work-item",
+  "recorded_at": "2026-10-21T11:15:39+00:00",
+  "relationships": {
+    "depends_on": [
+      "rec-fc9cfbd9-3d03-4d01-a8b1-4b370a6e9e40"
+    ]
+  },
+  "revision": "sha256:2a00bde67b49e3d01e325f39e24094723d9b4c0a9519100fcd3cc97c80fae7ab",
+  "stewardship": {
+    "steward": "agent"
+  },
+  "subject": "close-library"
+}
+---
+
+## Description
+
+R5: `close_batch` calls `is_assertion_level_red` and does not start `aff` for that check.
+R6: `close_batch` calls `run_verdict` for a manifest claim and does not start `aff` for that check.
+R7: `close_batch` calls `recheck` for a manifest claim and does not start `aff` for that check.
+R8: `orchestra --help` exits 0 when affidavit is not importable.
+R9: A close that needs affidavit raises an error that names affidavit when affidavit is not importable.
+
+## Approach
+
+Inside the close functions, import and call `is_assertion_level_red`, `run_verdict`, and `recheck`. Do not start `aff` for those checks. Keep that import inside the close functions so `orchestra --help` does not import affidavit. If the import fails, raise an error whose message names affidavit. Update `tests/test_affidavit_import_boundary.py` and `tests/test_close_batch.py` so a function-local close import is allowed and a module-level import is not. Do not add affidavit to `pyproject.toml`.

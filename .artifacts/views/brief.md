@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:da916f0c50772e4b16944473dfd96f1d03e45f8cedfd5d84d01cf8fda36f24b3
+> Store state: sha256:aa6532ea08eec2b6fdfc704cacd920e2fa61d50120f1a802b486333d663fa17d
 
 ## aa-installable-package
 
@@ -258,6 +258,31 @@
 
 ### Acceptance
 - **close-batch-store-verify-revision**: R3; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -k 'tdd_revision_without_red or revision_allowed_tdd' -q _(id: [rec-b97cbd55-140b-4868-8652-f4dda7f99ae8](.artifacts/records/project__acceptance/rec-b97cbd55-140b-4868-8652-f4dda7f99ae8.md))_
+
+## close-library
+
+### Acceptance
+- **close-library**: R5; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r5 -q _(id: [rec-8a58e738-d0bc-4b3c-b55d-88094659b4f4](.artifacts/records/project__acceptance/rec-8a58e738-d0bc-4b3c-b55d-88094659b4f4.md))_
+
+## close-library-help
+
+### Acceptance
+- **close-library-help**: R8; check; library-boundary; python3 -c 'import os,subprocess,sys,tempfile; from pathlib import Path; root=Path.cwd(); b=Path(tempfile.mkdtemp()); (b/"sitecustomize.py").write_text("import sys\nclass Block:\n def find_spec(self, name, path, target=None):\n  if name==\"affidavit\" or name.startswith(\"affidavit.\"):\n   raise ImportError(name)\n  return None\nsys.meta_path.insert(0, Block())\n"); env=os.environ.copy(); pp=env.get("PYTHONPATH",""); env["PYTHONPATH"]=str(b)+os.pathsep+str(root)+(os.pathsep+pp if pp else ""); p=subprocess.run([sys.executable, str(root/"bin"/"orchestra"), "--help"], cwd=root, env=env); raise SystemExit(p.returncode)' _(id: [rec-2d921ac1-c5a8-4cb7-aa43-ef57f0a16c2e](.artifacts/records/project__acceptance/rec-2d921ac1-c5a8-4cb7-aa43-ef57f0a16c2e.md))_
+
+## close-library-missing
+
+### Acceptance
+- **close-library-missing**: R9; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r9 -q _(id: [rec-56c5cf71-8a5c-49c0-9331-a475932c2c42](.artifacts/records/project__acceptance/rec-56c5cf71-8a5c-49c0-9331-a475932c2c42.md))_
+
+## close-library-recheck
+
+### Acceptance
+- **close-library-recheck**: R7; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r7 -q _(id: [rec-60f10927-c3fc-4d5e-97b8-1533645d4081](.artifacts/records/project__acceptance/rec-60f10927-c3fc-4d5e-97b8-1533645d4081.md))_
+
+## close-library-verdict
+
+### Acceptance
+- **close-library-verdict**: R6; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r6 -q _(id: [rec-ffc3c0fc-0654-49b9-9849-52d3181c8673](.artifacts/records/project__acceptance/rec-ffc3c0fc-0654-49b9-9849-52d3181c8673.md))_
 
 ## close-red-first
 
@@ -752,6 +777,14 @@
 ### Acceptance
 - **fix-contract-record-types**: R3; check; workflow-loop; python3 -c "import json;from pathlib import Path;d=json.loads(Path('contract/project-design.json').read_text());assert 'record_types' not in d;types={t['name']:t for t in d['records']};a=types['acceptance'];assert 'test_ids' in a['payload'] and 'oracle_hashes' in a['payload'];assert 'oracle-amendment' in types" _(id: [rec-bb17c5ee-0385-4c8e-90d2-3fe5f9e2b519](.artifacts/records/project__acceptance/rec-bb17c5ee-0385-4c8e-90d2-3fe5f9e2b519.md))_
 
+## fix-dashboard-uv-env
+
+### Acceptance
+- **fix-dashboard-uv-env**: R2; tdd; library-boundary; python3 -m pytest tests/test_dashboard_uv_env.py::test_r2 -q _(id: [rec-83da71d0-5c67-4995-94f0-d9e2f9a99e58](.artifacts/records/project__acceptance/rec-83da71d0-5c67-4995-94f0-d9e2f9a99e58.md))_
+
+### Amendment
+- **fix-dashboard-uv-env**: fix-dashboard-uv-env; library-boundary _(id: [rec-8ace66c1-179d-4ab8-981f-d45709137f8c](.artifacts/records/project__assignment-amendment/rec-8ace66c1-179d-4ab8-981f-d45709137f8c.md))_
+
 ## fix-docs-and-hooks
 
 ### Acceptance
@@ -1123,7 +1156,7 @@
 ## library-boundary
 
 ### Position
-- **library-boundary**: affidavit-library done at 5a9b02fe; next up: orchestra-callers; effort _(id: [rec-21f00827-3b3d-43f9-88e3-2b76ca531e51](.artifacts/records/project__current-position/rec-21f00827-3b3d-43f9-88e3-2b76ca531e51.md))_
+- **library-boundary**: orchestra-callers done at e26118f3; next up: library-e2e; effort _(id: [rec-60fffa80-d99f-4065-a51d-fcba33f813f6](.artifacts/records/project__current-position/rec-60fffa80-d99f-4065-a51d-fcba33f813f6.md))_
 
 ## loop-scenarios
 
@@ -1704,6 +1737,31 @@ print("phase checks only")
 ### Acceptance
 - **rename-tests**: R5; tdd; packaging; uv run --with pytest python -m pytest tests/test_aa_resolve.py tests/test_close_batch.py tests/test_skill_contract_consistency.py -q && grep -q affidavit scripts/sync-plugin.sh && ! grep -E 'se-workflow|se_workflow' scripts/sync-plugin.sh _(id: [rec-322f6c86-d91a-4ab6-95bb-82a9bbcd348f](.artifacts/records/project__acceptance/rec-322f6c86-d91a-4ab6-95bb-82a9bbcd348f.md))_
 
+## replace-resolvers
+
+### Acceptance
+- **replace-resolvers**: R1; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r1 -q _(id: [rec-89843013-38fa-4ad0-af4f-aceb43c5232e](.artifacts/records/project__acceptance/rec-89843013-38fa-4ad0-af4f-aceb43c5232e.md))_
+
+## replace-resolvers-aa
+
+### Acceptance
+- **replace-resolvers-aa**: R3; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r3 -q _(id: [rec-2dfbc2f6-8e1a-430b-87d3-6e6b44627ca7](.artifacts/records/project__acceptance/rec-2dfbc2f6-8e1a-430b-87d3-6e6b44627ca7.md))_
+
+## replace-resolvers-dashboard
+
+### Acceptance
+- **replace-resolvers-dashboard**: R2; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r2 -q _(id: [rec-3b225e8d-812f-4975-8b1f-06a0fa127aec](.artifacts/records/project__acceptance/rec-3b225e8d-812f-4975-8b1f-06a0fa127aec.md))_
+
+## replace-resolvers-dashboard-file
+
+### Acceptance
+- **replace-resolvers-dashboard-file**: R4; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r4 -q _(id: [rec-407c508d-0394-41c4-96c1-6c510bfffbc8](.artifacts/records/project__acceptance/rec-407c508d-0394-41c4-96c1-6c510bfffbc8.md))_
+
+## replace-resolvers-dep
+
+### Acceptance
+- **replace-resolvers-dep**: R10; tdd; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r10 -q _(id: [rec-58aa92a1-e53d-4679-bc46-86cd5c98618b](.artifacts/records/project__acceptance/rec-58aa92a1-e53d-4679-bc46-86cd5c98618b.md))_
+
 ## requirement-links
 
 ### Acceptance
@@ -1838,6 +1896,11 @@ print("phase checks only")
 
 ### Finding
 - **review-project-ops-behavior-bug**: behavior-bug on project-ops: Project.apply must persist the NDJSON verbs the command already accepted; At 206fcd0, Project._apply_operation handles create and update only; supersede, correct, and contradict raise unsupported op.; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-25a1b825-fb83-49ea-a929-2b89d052c1c6](.artifacts/records/project__finding/rec-25a1b825-fb83-49ea-a929-2b89d052c1c6.md))_
+
+## review-replace-resolvers-dashboard-behavior-bug
+
+### Finding
+- **review-replace-resolvers-dashboard-behavior-bug**: behavior-bug on replace-resolvers-dashboard: dashboard uv scripts do not include adaptive-artifacts; dashboard/bin/dashboard and dashboard/bin/web exec uv run --script on scripts whose PEP 723 dependencies omit adaptive-artifacts, while those scripts import adaptive_artifacts.project; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-c36525d8-29e8-4050-91e2-6e63c83aacdf](.artifacts/records/project__finding/rec-c36525d8-29e8-4050-91e2-6e63c83aacdf.md))_
 
 ## review-skills-oracle-red-docs
 
@@ -3176,6 +3239,21 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-oracle-witnesses-skills**: R7; check; workflow-loop; python3 -m pytest tests/test_skill_contract_consistency.py tests/test_oracle_red.py -q _(id: [rec-f05bed1e-a34d-456b-9979-59572fc49c56](.artifacts/records/project__acceptance/rec-f05bed1e-a34d-456b-9979-59572fc49c56.md))_
+
+## verify-orchestra-callers
+
+### Acceptance
+- **verify-orchestra-callers**: R3; check; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r3 -q _(id: [rec-9ce2990b-82e2-4cbb-b6bf-1181472432d3](.artifacts/records/project__acceptance/rec-9ce2990b-82e2-4cbb-b6bf-1181472432d3.md))_
+
+## verify-orchestra-callers-help
+
+### Acceptance
+- **verify-orchestra-callers-help**: R8; check; library-boundary; python3 -c 'import os,subprocess,sys,tempfile; from pathlib import Path; root=Path.cwd(); b=Path(tempfile.mkdtemp()); (b/"sitecustomize.py").write_text("import sys\nclass Block:\n def find_spec(self, name, path, target=None):\n  if name==\"affidavit\" or name.startswith(\"affidavit.\"):\n   raise ImportError(name)\n  return None\nsys.meta_path.insert(0, Block())\n"); env=os.environ.copy(); pp=env.get("PYTHONPATH",""); env["PYTHONPATH"]=str(b)+os.pathsep+str(root)+(os.pathsep+pp if pp else ""); p=subprocess.run([sys.executable, str(root/"bin"/"orchestra"), "--help"], cwd=root, env=env); raise SystemExit(p.returncode)' _(id: [rec-4255a827-d9d0-439f-bfc0-a6a75b248a9f](.artifacts/records/project__acceptance/rec-4255a827-d9d0-439f-bfc0-a6a75b248a9f.md))_
+
+## verify-orchestra-callers-missing
+
+### Acceptance
+- **verify-orchestra-callers-missing**: R9; check; library-boundary; python3 -m pytest tests/test_orchestra_callers.py::test_r9 -q _(id: [rec-8d395711-29a7-4afe-b1ff-54d5930d7c09](.artifacts/records/project__acceptance/rec-8d395711-29a7-4afe-b1ff-54d5930d7c09.md))_
 
 ## verify-path-test-gaps
 
