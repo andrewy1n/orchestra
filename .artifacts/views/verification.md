@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:8ebf72b27052e2bf0e29bfbbd052d2c39ce8afa94571bf3ea39c88c0b8c509fd
+> Store state: sha256:9649f0d94e722c0c521fa424b7af2e5dec5763f98fe04a39621ddd09450c97ac
 
 ## aa-installable-package
 
@@ -1328,6 +1328,33 @@
 - **fix-journal-pager-timeout**: rec-83a0060b-ad9d-4ebf-9d9d-50a91677b1ff; dirty; fail; tdd _(id: [rec-2483b603-ab08-40c0-b787-865baebd1002](.artifacts/records/project__check-run/rec-2483b603-ab08-40c0-b787-865baebd1002.md))_
 - **fix-journal-pager-timeout**: rec-83a0060b-ad9d-4ebf-9d9d-50a91677b1ff; 3379fcf8a1d882d91330bec6e66a2889c71d3ece; pass; tdd _(id: [rec-67c47e4a-2545-4d89-93a9-c83f34293e09](.artifacts/records/project__check-run/rec-67c47e4a-2545-4d89-93a9-c83f34293e09.md))_
 
+## fix-library-e2e-coverage
+
+### Acceptance
+- **fix-library-e2e-coverage**: R4; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "open_store" in text' _(id: [rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20](.artifacts/records/project__acceptance/rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20.md))_
+
+### Check
+- **fix-library-e2e-coverage**: rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-857934dd-06d9-4df4-a234-6801f37bd2ed](.artifacts/records/project__check-run/rec-857934dd-06d9-4df4-a234-6801f37bd2ed.md))_
+- **fix-library-e2e-coverage**: rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-ebdea641-e61b-4331-b266-704231e53cf6](.artifacts/records/project__check-run/rec-ebdea641-e61b-4331-b266-704231e53cf6.md))_
+
+## fix-library-e2e-coverage-close
+
+### Acceptance
+- **fix-library-e2e-coverage-close**: R5; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "except Exception" not in text; assert "close_batch.main" in text' _(id: [rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7](.artifacts/records/project__acceptance/rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7.md))_
+
+### Check
+- **fix-library-e2e-coverage-close**: rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-65c5af65-187c-491a-adb9-f5537d10b523](.artifacts/records/project__check-run/rec-65c5af65-187c-491a-adb9-f5537d10b523.md))_
+- **fix-library-e2e-coverage-close**: rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-92760386-266a-48cb-bc28-41f48191f4c1](.artifacts/records/project__check-run/rec-92760386-266a-48cb-bc28-41f48191f4c1.md))_
+
+## fix-library-e2e-coverage-quiet
+
+### Acceptance
+- **fix-library-e2e-coverage-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "adaptive-artifacts" in text and "\"aff\"" in text' _(id: [rec-7ac471de-c228-42b0-a323-a077f55f89a4](.artifacts/records/project__acceptance/rec-7ac471de-c228-42b0-a323-a077f55f89a4.md))_
+
+### Check
+- **fix-library-e2e-coverage-quiet**: rec-7ac471de-c228-42b0-a323-a077f55f89a4; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-20971657-cab3-4df7-8b8f-8a9c066148e1](.artifacts/records/project__check-run/rec-20971657-cab3-4df7-8b8f-8a9c066148e1.md))_
+- **fix-library-e2e-coverage-quiet**: rec-7ac471de-c228-42b0-a323-a077f55f89a4; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-28c42bf4-ce33-4f81-bb6e-cc30c8cdb229](.artifacts/records/project__check-run/rec-28c42bf4-ce33-4f81-bb6e-cc30c8cdb229.md))_
+
 ## fix-opencode-shape
 
 ### Acceptance
@@ -1928,6 +1955,86 @@
 
 ### Check
 - **label-view-fields**: rec-0a970468-5d80-49a0-bf80-d5481a65814b; 3ecceba31d1cb6a750fd59320ccc43bee095a686; pass; tdd _(id: [rec-8a416f43-46fb-47fc-aeb5-7d656b99024c](.artifacts/records/project__check-run/rec-8a416f43-46fb-47fc-aeb5-7d656b99024c.md))_
+
+## library-e2e-review
+
+### Check
+- **library-e2e-review**: library-e2e-review; b624a3dcb27c119bdc37b928025d33959e9da77d; fail; review _(id: [rec-a3bd1bd5-2794-42a9-bd99-5bcb33e06992](.artifacts/records/project__check-run/rec-a3bd1bd5-2794-42a9-bd99-5bcb33e06992.md))_
+- **library-e2e-review**: library-e2e-review; de86e0df31c753d04064576cf7725c5bc3e34880; pass; review _(id: [rec-b2a9e286-6eb2-4c71-bc8f-c85d60b6d7fb](.artifacts/records/project__check-run/rec-b2a9e286-6eb2-4c71-bc8f-c85d60b6d7fb.md))_
+
+## library-fixture
+
+### Acceptance
+- **library-fixture**: R1; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert (repo/".git").is_dir()' _(id: [rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0](.artifacts/records/project__acceptance/rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0.md))_
+
+### Check
+- **library-fixture**: rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-2d2cd373-9038-4401-b104-4d0b92a0bd9e](.artifacts/records/project__check-run/rec-2d2cd373-9038-4401-b104-4d0b92a0bd9e.md))_
+- **library-fixture**: rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-4d877358-4222-4502-834b-5ad3a76b74af](.artifacts/records/project__check-run/rec-4d877358-4222-4502-834b-5ad3a76b74af.md))_
+- **library-fixture**: rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0; cd3750829722c495d77ca2617183afc5d66fa14d; pass; check _(id: [rec-f6f0469f-81c5-41d2-b7b2-4cc76e921c16](.artifacts/records/project__check-run/rec-f6f0469f-81c5-41d2-b7b2-4cc76e921c16.md))_
+
+## library-fixture-claim
+
+### Acceptance
+- **library-fixture-claim**: R3; check; library-boundary; python3 -c 'import importlib.util,json,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); manifest=json.loads((repo/".affidavit"/"manifest.json").read_text()); assert any(c.get("id")=="claim-widget" for c in manifest.get("claims",[]))' _(id: [rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67](.artifacts/records/project__acceptance/rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67.md))_
+
+### Check
+- **library-fixture-claim**: rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67; cd3750829722c495d77ca2617183afc5d66fa14d; pass; check _(id: [rec-0805d1a5-eced-41d4-be07-1f67c6af9a65](.artifacts/records/project__check-run/rec-0805d1a5-eced-41d4-be07-1f67c6af9a65.md))_
+- **library-fixture-claim**: rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-880ffeec-2f56-49c0-9f97-54bb29ece1ed](.artifacts/records/project__check-run/rec-880ffeec-2f56-49c0-9f97-54bb29ece1ed.md))_
+- **library-fixture-claim**: rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-941d3c76-95bd-4444-93aa-2486e05837fa](.artifacts/records/project__check-run/rec-941d3c76-95bd-4444-93aa-2486e05837fa.md))_
+
+## library-fixture-close
+
+### Acceptance
+- **library-fixture-close**: R5; tdd; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q _(id: [rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4](.artifacts/records/project__acceptance/rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4.md))_
+
+### Check
+- **library-fixture-close**: rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; tdd _(id: [rec-228b960c-b51e-46e0-bcdf-1b481381309f](.artifacts/records/project__check-run/rec-228b960c-b51e-46e0-bcdf-1b481381309f.md))_
+- **library-fixture-close**: rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4; de86e0df31c753d04064576cf7725c5bc3e34880; pass; tdd _(id: [rec-37fa8278-7239-4aaa-a9c8-fec21b287d48](.artifacts/records/project__check-run/rec-37fa8278-7239-4aaa-a9c8-fec21b287d48.md))_
+- **library-fixture-close**: rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4; cd3750829722c495d77ca2617183afc5d66fa14d; fail; tdd _(id: [rec-3b047cd0-cbd5-4669-a417-7ede8d9ae108](.artifacts/records/project__check-run/rec-3b047cd0-cbd5-4669-a417-7ede8d9ae108.md))_
+- **library-fixture-close**: rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4; cd3750829722c495d77ca2617183afc5d66fa14d; fail; tdd _(id: [rec-af60ee04-c97b-463d-b330-4337b8ec0bca](.artifacts/records/project__check-run/rec-af60ee04-c97b-463d-b330-4337b8ec0bca.md))_
+
+## library-fixture-create
+
+### Acceptance
+- **library-fixture-create**: R4; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; from adaptive_artifacts.project import open_store; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(r.get("subject")=="claim-widget" for r in open_store(repo).list("project:acceptance"))' _(id: [rec-5228e488-5a1f-43bc-8ca4-99c484556bea](.artifacts/records/project__acceptance/rec-5228e488-5a1f-43bc-8ca4-99c484556bea.md))_
+
+### Check
+- **library-fixture-create**: rec-5228e488-5a1f-43bc-8ca4-99c484556bea; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-030761ec-f4c5-4f8e-81b3-7827ec708ee6](.artifacts/records/project__check-run/rec-030761ec-f4c5-4f8e-81b3-7827ec708ee6.md))_
+- **library-fixture-create**: rec-5228e488-5a1f-43bc-8ca4-99c484556bea; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-59958131-ccef-4567-9e33-e3530cd8ff2e](.artifacts/records/project__check-run/rec-59958131-ccef-4567-9e33-e3530cd8ff2e.md))_
+- **library-fixture-create**: rec-5228e488-5a1f-43bc-8ca4-99c484556bea; cd3750829722c495d77ca2617183afc5d66fa14d; pass; check _(id: [rec-b19af625-bd0e-407f-96a3-e0f470b65139](.artifacts/records/project__check-run/rec-b19af625-bd0e-407f-96a3-e0f470b65139.md))_
+
+## library-fixture-quiet
+
+### Acceptance
+- **library-fixture-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" PYTHONPATH="$(pwd):$HOME/affidavit${PYTHONPATH:+:$PYTHONPATH}" python3 -c 'import importlib.util,json,os,subprocess,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,request=m._repository(Path(tempfile.mkdtemp())); seen=[]; real=subprocess.run
+class P(subprocess.Popen):
+ def __init__(self, cmd, *a, **k):
+  seen.append(cmd); super().__init__(cmd, *a, **k)
+def spy(cmd, *a, **k):
+ seen.append(cmd); return real(cmd, *a, **k)
+subprocess.run=spy; subprocess.Popen=P
+import orchestra.close_batch as cb
+cb.subprocess.run=spy; cb.subprocess.Popen=P
+path=repo/"close-request.json"; path.write_text(json.dumps(request)); os.chdir(repo); cb.main(["--input",str(path),"--out",str(repo/"out.ndjson"),"--cwd",str(repo)])
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"aff","adaptive-artifacts"} for p in parts)
+assert not any(bad(c) for c in seen)'  _(id: [rec-4f29f448-e9fd-417d-a1de-19ad50630264](.artifacts/records/project__acceptance/rec-4f29f448-e9fd-417d-a1de-19ad50630264.md))_
+
+### Check
+- **library-fixture-quiet**: rec-4f29f448-e9fd-417d-a1de-19ad50630264; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-030b1aca-f195-41a3-875a-d087a1540fcd](.artifacts/records/project__check-run/rec-030b1aca-f195-41a3-875a-d087a1540fcd.md))_
+- **library-fixture-quiet**: rec-4f29f448-e9fd-417d-a1de-19ad50630264; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-500ca0f2-804e-438f-9711-810f240635fe](.artifacts/records/project__check-run/rec-500ca0f2-804e-438f-9711-810f240635fe.md))_
+- **library-fixture-quiet**: rec-4f29f448-e9fd-417d-a1de-19ad50630264; cd3750829722c495d77ca2617183afc5d66fa14d; pass; check _(id: [rec-93fbdd47-e581-4e14-bc8f-f7f84168c6e7](.artifacts/records/project__check-run/rec-93fbdd47-e581-4e14-bc8f-f7f84168c6e7.md))_
+
+## library-fixture-store
+
+### Acceptance
+- **library-fixture-store**: R2; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(p.name=="meta.json" for p in repo.rglob("meta.json"))' _(id: [rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13](.artifacts/records/project__acceptance/rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13.md))_
+
+### Check
+- **library-fixture-store**: rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-682183a2-d304-41ee-a247-d13f97b1130e](.artifacts/records/project__check-run/rec-682183a2-d304-41ee-a247-d13f97b1130e.md))_
+- **library-fixture-store**: rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13; cd3750829722c495d77ca2617183afc5d66fa14d; pass; check _(id: [rec-be277726-eaad-4de2-be47-05850d73bd93](.artifacts/records/project__check-run/rec-be277726-eaad-4de2-be47-05850d73bd93.md))_
+- **library-fixture-store**: rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-e45cd95f-8d45-4f74-8319-00f9e986f3a6](.artifacts/records/project__check-run/rec-e45cd95f-8d45-4f74-8319-00f9e986f3a6.md))_
 
 ## loop-scenarios
 
@@ -3146,6 +3253,11 @@ print("phase checks only")
 
 ### Finding
 - **review-install-docs-spec-gap**: spec-gap on install-docs: the pre-existing Agent Skills-host README section still tells users to copy five skills and keep shared docs two levels above, conflicting with the generated per-skill references payload; Reviewer observed README around line 110 still lists init/plan-phase/execute-phase/verify-work/engage and says to keep skills/kinds-and-focus.md and skills/ensure-store.md two levels above each SKILL.md, omitting settle-phase and analyze-sessions; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-e4f93753-3b86-4eb3-ba76-d2d630a1edc3](.artifacts/records/project__finding/rec-e4f93753-3b86-4eb3-ba76-d2d630a1edc3.md))_
+
+## review-library-fixture-spec-gap
+
+### Finding
+- **review-library-fixture-spec-gap**: spec-gap on library-fixture: one integration test must read the created record with open_store, run close-batch to exit 0, and call the Python close so it accepts the fixture without starting aff or adaptive-artifacts; tests/test_library_e2e.py only asserts the close-batch command exit code; bind failures are discarded; the Python close is not called from the test; fix lands and reviewer re-run passes, or human clears; none _(id: [rec-b174273d-f4c3-4b89-9bc4-19d56369b34a](.artifacts/records/project__finding/rec-b174273d-f4c3-4b89-9bc4-19d56369b34a.md))_
 
 ## review-native-adapters-behavior-bug
 
@@ -5358,6 +5470,46 @@ print("phase checks only")
 
 ### Check
 - **verify-layout-phase**: rec-5d64f143-cdea-49dc-8cb4-7ca9fb9f2517; d9e3eebae5096d3bfd0852e9a910fe4e8df9a725; pass; check _(id: [rec-b2b9ebb8-5411-4a63-93c3-1028295a1ce7](.artifacts/records/project__check-run/rec-b2b9ebb8-5411-4a63-93c3-1028295a1ce7.md))_
+
+## verify-library-e2e
+
+### Acceptance
+- **verify-library-e2e**: R4; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; from adaptive_artifacts.project import open_store; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(r.get("subject")=="claim-widget" for r in open_store(repo).list("project:acceptance"))' _(id: [rec-6165972b-a96c-4128-b13a-a309fcdb10d8](.artifacts/records/project__acceptance/rec-6165972b-a96c-4128-b13a-a309fcdb10d8.md))_
+
+### Check
+- **verify-library-e2e**: rec-6165972b-a96c-4128-b13a-a309fcdb10d8; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-688ddd44-4ea4-448a-b3ef-30c253e493fb](.artifacts/records/project__check-run/rec-688ddd44-4ea4-448a-b3ef-30c253e493fb.md))_
+- **verify-library-e2e**: rec-6165972b-a96c-4128-b13a-a309fcdb10d8; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-9d538865-e0ac-45e5-acfd-3a2a2f3a29c4](.artifacts/records/project__check-run/rec-9d538865-e0ac-45e5-acfd-3a2a2f3a29c4.md))_
+
+## verify-library-e2e-close
+
+### Acceptance
+- **verify-library-e2e-close**: R5; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q _(id: [rec-112bd5ec-359a-410c-80d4-77c364b63587](.artifacts/records/project__acceptance/rec-112bd5ec-359a-410c-80d4-77c364b63587.md))_
+
+### Check
+- **verify-library-e2e-close**: rec-112bd5ec-359a-410c-80d4-77c364b63587; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-0e5f6cf1-c6f2-4949-833b-0b5a44b51d08](.artifacts/records/project__check-run/rec-0e5f6cf1-c6f2-4949-833b-0b5a44b51d08.md))_
+- **verify-library-e2e-close**: rec-112bd5ec-359a-410c-80d4-77c364b63587; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-a4c12cd5-2e0b-4aa0-8c90-2235a2f9625e](.artifacts/records/project__check-run/rec-a4c12cd5-2e0b-4aa0-8c90-2235a2f9625e.md))_
+
+## verify-library-e2e-quiet
+
+### Acceptance
+- **verify-library-e2e-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" PYTHONPATH="$(pwd):$HOME/affidavit${PYTHONPATH:+:$PYTHONPATH}" python3 -c 'import importlib.util,json,os,subprocess,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,request=m._repository(Path(tempfile.mkdtemp())); seen=[]; real=subprocess.run
+class P(subprocess.Popen):
+ def __init__(self, cmd, *a, **k):
+  seen.append(cmd); super().__init__(cmd, *a, **k)
+def spy(cmd, *a, **k):
+ seen.append(cmd); return real(cmd, *a, **k)
+subprocess.run=spy; subprocess.Popen=P
+import orchestra.close_batch as cb
+cb.subprocess.run=spy; cb.subprocess.Popen=P
+path=repo/"close-request.json"; path.write_text(json.dumps(request)); os.chdir(repo); cb.main(["--input",str(path),"--out",str(repo/"out.ndjson"),"--cwd",str(repo)])
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"aff","adaptive-artifacts"} for p in parts)
+assert not any(bad(c) for c in seen)'  _(id: [rec-197d8185-f42f-4030-9af7-94d992fe37d5](.artifacts/records/project__acceptance/rec-197d8185-f42f-4030-9af7-94d992fe37d5.md))_
+
+### Check
+- **verify-library-e2e-quiet**: rec-197d8185-f42f-4030-9af7-94d992fe37d5; de86e0df31c753d04064576cf7725c5bc3e34880; pass; check _(id: [rec-5600dd8d-c5f8-4eff-bc8d-d222b5cb8eda](.artifacts/records/project__check-run/rec-5600dd8d-c5f8-4eff-bc8d-d222b5cb8eda.md))_
+- **verify-library-e2e-quiet**: rec-197d8185-f42f-4030-9af7-94d992fe37d5; b624a3dcb27c119bdc37b928025d33959e9da77d; pass; check _(id: [rec-ec6b0fa4-6866-401d-bf8c-5c897177eba0](.artifacts/records/project__check-run/rec-ec6b0fa4-6866-401d-bf8c-5c897177eba0.md))_
 
 ## verify-milestone-nav
 

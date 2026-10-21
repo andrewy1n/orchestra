@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:e3fc6ef98a5e4c14b7b8aba5290f025690ade516c76a41f9e4d1a04d8096ca28
+> Store state: sha256:ab1d3d864234b93c9e6b9c18c2f7d3901640ddaf13bf52dee6f56824557b1781
 
 ## aa-library
 
@@ -177,8 +177,45 @@
 
 ## library-e2e
 
-### Phase
-- **library-e2e**: Prove the three packages on one fixture; 4; library-boundary _(id: [rec-8093189a-a9bc-44d5-a318-a8891b78d98e](.artifacts/records/project__phase/rec-8093189a-a9bc-44d5-a318-a8891b78d98e.md))_
+### Acceptance
+- **fix-library-e2e-coverage**: R4; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "open_store" in text' _(id: [rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20](.artifacts/records/project__acceptance/rec-1ffa67ad-1fe2-4897-b96a-6b604a6ebc20.md))_
+- **fix-library-e2e-coverage-close**: R5; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "except Exception" not in text; assert "close_batch.main" in text' _(id: [rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7](.artifacts/records/project__acceptance/rec-4ac13b10-acd4-43c8-9be5-0caa34e731b7.md))_
+- **fix-library-e2e-coverage-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q && python3 -c 'import pathlib; text=pathlib.Path("tests/test_library_e2e.py").read_text(); assert "adaptive-artifacts" in text and "\"aff\"" in text' _(id: [rec-7ac471de-c228-42b0-a323-a077f55f89a4](.artifacts/records/project__acceptance/rec-7ac471de-c228-42b0-a323-a077f55f89a4.md))_
+- **library-fixture**: R1; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert (repo/".git").is_dir()' _(id: [rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0](.artifacts/records/project__acceptance/rec-ff6595e5-3e4e-4dcd-80ac-9efcba034eb0.md))_
+- **library-fixture-claim**: R3; check; library-boundary; python3 -c 'import importlib.util,json,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); manifest=json.loads((repo/".affidavit"/"manifest.json").read_text()); assert any(c.get("id")=="claim-widget" for c in manifest.get("claims",[]))' _(id: [rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67](.artifacts/records/project__acceptance/rec-fc6f9ba3-255f-4c84-b1ce-8d3069f6ce67.md))_
+- **library-fixture-close**: R5; tdd; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q _(id: [rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4](.artifacts/records/project__acceptance/rec-cc3b93f7-9602-4827-83e3-15c0c50b15b4.md))_
+- **library-fixture-create**: R4; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; from adaptive_artifacts.project import open_store; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(r.get("subject")=="claim-widget" for r in open_store(repo).list("project:acceptance"))' _(id: [rec-5228e488-5a1f-43bc-8ca4-99c484556bea](.artifacts/records/project__acceptance/rec-5228e488-5a1f-43bc-8ca4-99c484556bea.md))_
+- **library-fixture-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" PYTHONPATH="$(pwd):$HOME/affidavit${PYTHONPATH:+:$PYTHONPATH}" python3 -c 'import importlib.util,json,os,subprocess,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,request=m._repository(Path(tempfile.mkdtemp())); seen=[]; real=subprocess.run
+class P(subprocess.Popen):
+ def __init__(self, cmd, *a, **k):
+  seen.append(cmd); super().__init__(cmd, *a, **k)
+def spy(cmd, *a, **k):
+ seen.append(cmd); return real(cmd, *a, **k)
+subprocess.run=spy; subprocess.Popen=P
+import orchestra.close_batch as cb
+cb.subprocess.run=spy; cb.subprocess.Popen=P
+path=repo/"close-request.json"; path.write_text(json.dumps(request)); os.chdir(repo); cb.main(["--input",str(path),"--out",str(repo/"out.ndjson"),"--cwd",str(repo)])
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"aff","adaptive-artifacts"} for p in parts)
+assert not any(bad(c) for c in seen)'  _(id: [rec-4f29f448-e9fd-417d-a1de-19ad50630264](.artifacts/records/project__acceptance/rec-4f29f448-e9fd-417d-a1de-19ad50630264.md))_
+- **library-fixture-store**: R2; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(p.name=="meta.json" for p in repo.rglob("meta.json"))' _(id: [rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13](.artifacts/records/project__acceptance/rec-328bc0e2-5aa4-4c22-9d76-f2387e4a5e13.md))_
+- **verify-library-e2e**: R4; check; library-boundary; python3 -c 'import importlib.util,tempfile; from pathlib import Path; from adaptive_artifacts.project import open_store; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,_=m._repository(Path(tempfile.mkdtemp())); assert any(r.get("subject")=="claim-widget" for r in open_store(repo).list("project:acceptance"))' _(id: [rec-6165972b-a96c-4128-b13a-a309fcdb10d8](.artifacts/records/project__acceptance/rec-6165972b-a96c-4128-b13a-a309fcdb10d8.md))_
+- **verify-library-e2e-close**: R5; check; library-boundary; PATH="$(pwd)/bin:$PATH" python3 -m pytest tests/test_library_e2e.py::test_library_fixture_close -q _(id: [rec-112bd5ec-359a-410c-80d4-77c364b63587](.artifacts/records/project__acceptance/rec-112bd5ec-359a-410c-80d4-77c364b63587.md))_
+- **verify-library-e2e-quiet**: R6; check; library-boundary; PATH="$(pwd)/bin:$PATH" PYTHONPATH="$(pwd):$HOME/affidavit${PYTHONPATH:+:$PYTHONPATH}" python3 -c 'import importlib.util,json,os,subprocess,tempfile; from pathlib import Path; s=importlib.util.spec_from_file_location("e2e","tests/test_library_e2e.py"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); repo,request=m._repository(Path(tempfile.mkdtemp())); seen=[]; real=subprocess.run
+class P(subprocess.Popen):
+ def __init__(self, cmd, *a, **k):
+  seen.append(cmd); super().__init__(cmd, *a, **k)
+def spy(cmd, *a, **k):
+ seen.append(cmd); return real(cmd, *a, **k)
+subprocess.run=spy; subprocess.Popen=P
+import orchestra.close_batch as cb
+cb.subprocess.run=spy; cb.subprocess.Popen=P
+path=repo/"close-request.json"; path.write_text(json.dumps(request)); os.chdir(repo); cb.main(["--input",str(path),"--out",str(repo/"out.ndjson"),"--cwd",str(repo)])
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"aff","adaptive-artifacts"} for p in parts)
+assert not any(bad(c) for c in seen)'  _(id: [rec-197d8185-f42f-4030-9af7-94d992fe37d5](.artifacts/records/project__acceptance/rec-197d8185-f42f-4030-9af7-94d992fe37d5.md))_
 
 ## rename-agent-affidavit
 
