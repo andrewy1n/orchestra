@@ -478,6 +478,83 @@ def _approved_amendment_covers_tree(
     return False
 
 
+def _manifest_claim_ids(cwd: Path) -> set[str]:
+    """Claim ids listed in ``.affidavit/manifest.json`` under ``cwd``, if any."""
+    path = cwd / ".affidavit" / "manifest.json"
+    if not path.is_file():
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    claims = data.get("claims") if isinstance(data, dict) else None
+    if not isinstance(claims, list):
+        return set()
+    ids: set[str] = set()
+    for claim in claims:
+        if isinstance(claim, dict) and claim.get("id"):
+            ids.add(str(claim["id"]))
+    return ids
+
+
+def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
+    """Refuse when ``aff verdict`` or ``aff recheck`` exits non-zero for claim."""
+    verdict = subprocess.run(
+        ["aff", "verdict", "--cwd", str(cwd), "--at", revision, claim_id],
+        capture_output=True,
+        text=True,
+    )
+    if verdict.returncode != 0:
+        raise CloseRefused(
+            f"aff verdict refused for claim {claim_id!r} "
+            f"at revision {revision!r} (exit {verdict.returncode})"
+        )
+    recheck = subprocess.run(
+        ["aff", "recheck", "--cwd", str(cwd), "--claim", claim_id],
+        capture_output=True,
+        text=True,
+    )
+    if recheck.returncode != 0:
+        raise CloseRefused(
+            f"aff recheck refused for claim {claim_id!r} "
+            f"(exit {recheck.returncode})"
+        )
+
+
+def _enforce_claim_gates(
+    criteria: list[dict[str, Any]],
+    *,
+    green_by_criterion: dict[Any, dict[str, Any]],
+    cwd: Path,
+    load_acceptance: AcceptanceLoader,
+) -> None:
+    """R5/R6: manifest-backed acceptances need aff verdict + recheck on done."""
+    claim_ids = _manifest_claim_ids(cwd)
+    if not claim_ids:
+        return
+    for entry in criteria:
+        criterion_id = entry.get("criterion_id")
+        try:
+            acceptance = load_acceptance(str(criterion_id))
+        except LookupError:
+            continue
+        claim_id = str(acceptance.get("subject") or "").strip()
+        if not claim_id or claim_id not in claim_ids:
+            continue
+        revision: Any = None
+        green = green_by_criterion.get(criterion_id)
+        if green is not None:
+            revision = green.get("revision")
+        if not revision:
+            revision = entry.get("revision")
+        if not revision:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: claim {claim_id!r} requires "
+                "a close revision for aff verdict"
+            )
+        _run_aff_claim_gate(claim_id, cwd=cwd, revision=str(revision))
+
+
 def _enforce_oracle_gates(
     entry: dict[str, Any],
     *,
@@ -666,6 +743,12 @@ def build_batch(
             green_by_criterion[entry.get("criterion_id")] = _resolve_green_check_run(
                 entry, loader=loader
             )
+        _enforce_claim_gates(
+            criteria,
+            green_by_criterion=green_by_criterion,
+            cwd=work_cwd,
+            load_acceptance=acceptance_loader,
+        )
 
     if transition == "done" and not finding:
         for entry in criteria:
