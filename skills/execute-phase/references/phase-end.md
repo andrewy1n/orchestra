@@ -119,10 +119,10 @@ inspect worktree `.suite/`; re-start if gone. Do not fix-and-rerun
 inside this step.
 
 ```bash
-adaptive-artifacts create --type project:check-run \
-  --subject "<phase-slug>-suite" \
-  --payload '{"criterion_id":"<phase-slug>-suite","revision":"<phase-head-sha>","result":"<pass|fail|blocked>","effort":"<focus>","method":"check","signed_by":"","evidence_kind":"integration","runner":"aff","exit_code":0,"duration_s":0,"output_sha256":"<digest>","failing_node_ids":"[]"}' \
-  --body "<suite output tail; failing node ids when failed>"
+orchestra suite record \
+  --phase "<phase-slug>" \
+  --effort "<focus>" \
+  --cwd <phase-worktree>
 
 adaptive-artifacts create --type project:finding \
   --subject "suite-advisory-<phase-slug>" \
