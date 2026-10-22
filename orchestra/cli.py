@@ -9,10 +9,28 @@ import sys
 import time
 from pathlib import Path
 
-from adaptive_artifacts.project import StoreBindingError, open_store
-from adaptive_artifacts.store import StoreError
-from orchestra import reviewer, suite
-from orchestra.check import DEFAULT_TIMEOUT_S, git_head, run_check
+from orchestra import reviewer
+
+try:
+    from adaptive_artifacts.project import StoreBindingError, open_store
+    from adaptive_artifacts.store import StoreError
+except ModuleNotFoundError:
+    StoreBindingError = None
+    open_store = None
+    StoreError = None
+
+try:
+    from orchestra import suite
+except ModuleNotFoundError:
+    suite = None
+
+try:
+    from orchestra.check import DEFAULT_TIMEOUT_S, git_head, run_check
+except ModuleNotFoundError:
+    DEFAULT_TIMEOUT_S = 600.0
+    git_head = None
+    run_check = None
+
 from orchestra.contract import contract_path
 from orchestra.project_field import STOPPED, rewrite_project_field
 from orchestra.sessions import aggregate as aggregate_sessions
