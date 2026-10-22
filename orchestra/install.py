@@ -11,6 +11,10 @@ from pathlib import Path
 
 
 def main(args) -> int:
+    if not (args.list_only or args.dry_run or args.uninstall):
+        from orchestra.runtime_deps import ensure_runtime_deps
+
+        ensure_runtime_deps()
     try:
         from installer.model import InstallRequest
         from installer.runner import run
