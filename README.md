@@ -567,15 +567,10 @@ not fall through to the other store. This repository pins local in
 If a personal shell function wraps `adaptive-artifacts` and forces
 `--store ~/.artifacts/<name>`, it bypasses this binding for bare CLI
 calls. Prefer `command adaptive-artifacts`, or pass `--store` /
-`--contract` from the resolved target (as `orchestra.aa.run_aa`
-does).
+`--contract` from the resolved target.
 
-It runs the app from the toplevel. The app finds the runtime binary in
-this order:
-
-1. `$ADAPTIVE_ARTIFACTS_BIN`.
-2. `~/adaptive-artifacts/bin/adaptive-artifacts`, if it is executable.
-3. `adaptive-artifacts` on `PATH`.
+It runs the app from the toplevel. The process imports the
+adaptive-artifacts library and opens the store through that import.
 
 Dismissing an unsigned manual check signs it with `$SE_WORKFLOW_SIGNED_BY`,
 else `$USER` / `$USERNAME`, else `dashboard`.
@@ -619,9 +614,9 @@ watch-dashboard · 1 running · 2 ready · 1 needs you
 "needs you" counts blocking questions, open questions, findings that
 need a human, and unsigned manual checks. The segment omits zero counts.
 It builds the same snapshot as the dashboard, so an effort without an
-active goal gets no line. It finds the store and the binary like
-`dashboard/bin/dashboard`. It prints nothing when there is no store, the CLI
-fails, or the snapshot takes more than 2 seconds.
+active goal gets no line. It opens the store by importing the library,
+the same way `dashboard/bin/dashboard` does. It prints nothing when there
+is no store, the open fails, or the snapshot takes more than 2 seconds.
 
 It reads Claude Code status JSON on stdin (`workspace.current_dir`, else
 `cwd`), or takes a directory argument. To add it to an existing status
