@@ -1,7 +1,7 @@
 # Project Handoff
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:b72f1769d2c053b394c24c8fc73c673a73e6a68bf3af24135d9915ad4080d40a
+> Store state: sha256:75d36798588dd7fb2d52c966fda87d337a56608f11d3e6dabfcbefeb15704f06
 
 ## dashboard
 
@@ -32,17 +32,14 @@
 - **library-boundary**: adaptive-artifacts, affidavit, and orchestra call each other in-process through small Python libraries. The commands stay for agents and humans. One function in adaptive-artifacts opens the store. SE_WORKFLOW_STORE is gone.; effort; deliver _(id: [rec-e474e2d8-be06-44e2-8583-27966c04a3b3](.artifacts/records/project__active-goal/rec-e474e2d8-be06-44e2-8583-27966c04a3b3.md))_
 
 ### Position
-- **declared-install**: planning declared-install; metadata, install, import path, and format gate; phase _(id: [rec-e40dbd99-4ad8-493f-a0e6-bf2dada06749](.artifacts/records/project__current-position/rec-e40dbd99-4ad8-493f-a0e6-bf2dada06749.md))_
-- **library-boundary**: library-e2e done at de86e0df; next up: declared-install; effort _(id: [rec-21092609-81cd-4eac-81af-897ef1576eac](.artifacts/records/project__current-position/rec-21092609-81cd-4eac-81af-897ef1576eac.md))_
+- **library-boundary**: declared-install done at 993cf14c; next up: claim-clocks; effort _(id: [rec-9c38245f-3593-4396-b5e4-6cdd594a47f7](.artifacts/records/project__current-position/rec-9c38245f-3593-4396-b5e4-6cdd594a47f7.md))_
 
 ### Latest Proof
 - **aa-library**: aa-library; library-boundary; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; claims _(id: [rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253](.artifacts/records/project__proof-packet/rec-2cb25fe3-797f-4dc6-a5bf-90ea04b12253.md))_
 - **affidavit-library**: affidavit-library; library-boundary; 5a9b02fe2f6c7aaff17f304ed1ad1e065b834538; claims _(id: [rec-f2d7b5fc-450a-4c2e-ac3f-8c8430644cd1](.artifacts/records/project__proof-packet/rec-f2d7b5fc-450a-4c2e-ac3f-8c8430644cd1.md))_
+- **declared-install**: declared-install; library-boundary; 993cf14ce58b162b8cfe000cca89f3dcc6397309; commands _(id: [rec-050d75fd-f480-41d5-b165-4af11e27e1b8](.artifacts/records/project__proof-packet/rec-050d75fd-f480-41d5-b165-4af11e27e1b8.md))_
 - **library-e2e**: library-e2e; library-boundary; de86e0df31c753d04064576cf7725c5bc3e34880; claims _(id: [rec-3340d5fe-1cbe-4fef-b1d8-856749370567](.artifacts/records/project__proof-packet/rec-3340d5fe-1cbe-4fef-b1d8-856749370567.md))_
 - **orchestra-callers**: orchestra-callers; library-boundary; e26118f3fdf05b46721f3c9b487eb2dcb9752e41; claims _(id: [rec-006a1121-1ce7-488e-87df-b85d507cb050](.artifacts/records/project__proof-packet/rec-006a1121-1ce7-488e-87df-b85d507cb050.md))_
-
-### Blocking Question
-- **library-boundary**: True; plan-review:declared-install _(id: [rec-10b5cea1-9e8c-4e55-9fbc-72b936fd30c2](.artifacts/records/project__continuity-question/rec-10b5cea1-9e8c-4e55-9fbc-72b936fd30c2.md))_
 
 ## packaging
 

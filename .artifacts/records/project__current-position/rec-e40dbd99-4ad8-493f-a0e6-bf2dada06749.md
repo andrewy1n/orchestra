@@ -4,7 +4,7 @@
   "epistemic_status": "asserted",
   "id": "rec-e40dbd99-4ad8-493f-a0e6-bf2dada06749",
   "identity": "unknown",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "effort": "library-boundary",
     "phase": "declared-install",
@@ -12,9 +12,9 @@
     "scope": "phase"
   },
   "record_type": "project:current-position",
-  "recorded_at": "2026-10-22T06:40:50+00:00",
+  "recorded_at": "2026-10-22T07:25:41+00:00",
   "relationships": {},
-  "revision": "sha256:2092db0d2833d1a06921a9dc1708fd87f046304b39051a182115d263cf76565b",
+  "revision": "sha256:52f515ac11c9e8ce4f43d9f96bb0eca7d76da3ccffaa20b97b8197f4301e44d0",
   "stewardship": {
     "steward": "agent"
   },

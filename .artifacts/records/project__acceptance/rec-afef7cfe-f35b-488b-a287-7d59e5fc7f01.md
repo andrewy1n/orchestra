@@ -10,12 +10,12 @@
     "method": "check",
     "phase": "declared-install",
     "requirement": "R8",
-    "verify_command": "cd /home/andrewyin/adaptive-artifacts/.worktrees/declared-install && PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q"
+    "verify_command": "PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q"
   },
   "record_type": "project:acceptance",
-  "recorded_at": "2026-10-22T06:54:06+00:00",
+  "recorded_at": "2026-10-22T06:57:13+00:00",
   "relationships": {},
-  "revision": "sha256:a45b1909f3f174a989ad49650153e29e37aaf6b499a7cdc4d88f83d6afd8d7e8",
+  "revision": "sha256:77b9ea511fe305f20d045d1b4115663c3e6d10e3d7dc4096fafab4e3b498571a",
   "stewardship": {
     "steward": "agent"
   },

@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:901ee1c1e1eac48d2b94471f50e46f24784ef0ceb672db55f61126f647adefa3
+> Store state: sha256:8db05e055cc4dd0e54eb84f9cbaff269de1dc8964990e8c854b4a2cb9346e5d1
 
 ## aa-library
 
@@ -229,18 +229,8 @@ assert not any(bad(c) for c in seen)'  _(id: [rec-197d8185-f42f-4030-9af7-94d992
 
 ## declared-install
 
-### Phase
-- **declared-install**: One install graph for uv and plugins; 5; library-boundary _(id: [rec-44001332-66cb-47cb-bbf4-9146914bae00](.artifacts/records/project__phase/rec-44001332-66cb-47cb-bbf4-9146914bae00.md))_
-
-### Work
-- **format-gate**: Reject an unsupported contract format; declared-install; deliver; library-boundary _(id: [rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6](.artifacts/records/project__work-item/rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6.md))_
-- **import-open**: Open the store by import; declared-install; deliver; library-boundary _(id: [rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a](.artifacts/records/project__work-item/rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a.md))_
-- **package-metadata**: Declare the install graph; declared-install; deliver; library-boundary _(id: [rec-eca50c8d-f9fc-4408-a013-072254682c98](.artifacts/records/project__work-item/rec-eca50c8d-f9fc-4408-a013-072254682c98.md))_
-- **runtime-install**: Install runtime dependencies; declared-install; deliver; library-boundary _(id: [rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f](.artifacts/records/project__work-item/rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f.md))_
-- **verify-declared-install**: Verify declared install; declared-install; deliver; library-boundary _(id: [rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4](.artifacts/records/project__work-item/rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4.md))_
-
 ### Acceptance
-- **format-gate**: R8; tdd; library-boundary; cd /home/andrewyin/adaptive-artifacts/.worktrees/declared-install && PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-af52e6e4-1191-4b01-8d7a-637858e467b2](.artifacts/records/project__acceptance/rec-af52e6e4-1191-4b01-8d7a-637858e467b2.md))_
+- **format-gate**: R8; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-af52e6e4-1191-4b01-8d7a-637858e467b2](.artifacts/records/project__acceptance/rec-af52e6e4-1191-4b01-8d7a-637858e467b2.md))_
 - **import-open**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
 for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)
 seen=[]
@@ -263,7 +253,7 @@ assert not any(bad(c) for c in seen)' _(id: [rec-625650b6-a012-4a20-b260-a24d0b2
 - **verify-declared-install**: R5; check; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r5_clean_install_imports_adaptive_artifacts -q _(id: [rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4](.artifacts/records/project__acceptance/rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4.md))_
 - **verify-declared-install-dep**: R2; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "adaptive-artifacts" in chunk' _(id: [rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606](.artifacts/records/project__acceptance/rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606.md))_
 - **verify-declared-install-evidence**: R4; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r4_evidence_extra_depends_on_affidavit -q _(id: [rec-a00aba68-b59e-4995-8a43-a19dea5d5a19](.artifacts/records/project__acceptance/rec-a00aba68-b59e-4995-8a43-a19dea5d5a19.md))_
-- **verify-declared-install-format**: R8; check; library-boundary; cd /home/andrewyin/adaptive-artifacts/.worktrees/declared-install && PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01](.artifacts/records/project__acceptance/rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01.md))_
+- **verify-declared-install-format**: R8; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01](.artifacts/records/project__acceptance/rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01.md))_
 - **verify-declared-install-graph**: R1; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r1_affidavit_depends_on_adaptive_artifacts -q _(id: [rec-d44dfb91-18af-4277-9888-510b5cbc93b1](.artifacts/records/project__acceptance/rec-d44dfb91-18af-4277-9888-510b5cbc93b1.md))_
 - **verify-declared-install-import**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
 for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)

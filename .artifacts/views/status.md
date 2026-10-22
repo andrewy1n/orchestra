@@ -1,7 +1,16 @@
 # Project Status
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:732ad76498e7c98e78b282dd9db04bd12068ac4e37a39b6682ea4d16e5a201c6
+> Store state: sha256:b747a617f0df6eb61024ffe00f309621990dc13627ae673e7f05173e428d8d7f
+
+## aa-library
+
+### Work
+- **command-facade**: Command create and get use open_store; aa-library; deliver; library-boundary; state: done; ready: True; wave: 3; criteria: 6 pass / 2 fail _(id: [rec-683ff3dc-5bf3-4997-8ab6-54e88b27f516](.artifacts/records/project__work-item/rec-683ff3dc-5bf3-4997-8ab6-54e88b27f516.md))_
+- **fix-apply-ops**: Fix apply NDJSON verbs; aa-library; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 1 pass / 1 fail _(id: [rec-3fd123ca-62ae-430f-b1af-80033ad75e64](.artifacts/records/project__work-item/rec-3fd123ca-62ae-430f-b1af-80033ad75e64.md))_
+- **open-store**: Resolve one store in open_store; aa-library; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 26 pass / 13 fail _(id: [rec-e5c5f5ac-64d2-4f41-bd62-73892af1cce4](.artifacts/records/project__work-item/rec-e5c5f5ac-64d2-4f41-bd62-73892af1cce4.md))_
+- **project-ops**: Project get, list, create, and apply; aa-library; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 10 pass / 5 fail _(id: [rec-35f6ccf5-81c0-453c-a795-3fabdaf16bc8](.artifacts/records/project__work-item/rec-35f6ccf5-81c0-453c-a795-3fabdaf16bc8.md))_
+- **verify-aa-library**: Verify public store library and one opener; aa-library; deliver; library-boundary; state: done; ready: True; wave: 4; criteria: 6 pass / 0 fail _(id: [rec-4e7e83fe-2ab1-46c1-9203-3b8e2b8684b6](.artifacts/records/project__work-item/rec-4e7e83fe-2ab1-46c1-9203-3b8e2b8684b6.md))_
 
 ## dashboard-view
 
@@ -24,6 +33,13 @@
 - **tm-parse-events**: Tolerant streaming transcript reader; transcript-metrics; deliver; session-analysis; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-e6a22660-dd35-4184-b4de-d3b6de66014d](.artifacts/records/project__work-item/rec-e6a22660-dd35-4184-b4de-d3b6de66014d.md))_
 - **tm-session-fields**: Session identity, time, cost and skill fields; transcript-metrics; deliver; session-analysis; state: done; ready: True; wave: 2; criteria: 1 pass / 0 fail _(id: [rec-8665e917-ac3b-489b-a342-5fc796ab94b7](.artifacts/records/project__work-item/rec-8665e917-ac3b-489b-a342-5fc796ab94b7.md))_
 - **tm-tool-metrics**: Tool call, error and retry counts; transcript-metrics; deliver; session-analysis; state: done; ready: True; wave: 2; criteria: 1 pass / 0 fail _(id: [rec-ae695987-95b7-4e83-a625-b9f16fe612ad](.artifacts/records/project__work-item/rec-ae695987-95b7-4e83-a625-b9f16fe612ad.md))_
+
+## affidavit-library
+
+### Work
+- **store-client**: Call Project from observation and binding; affidavit-library; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 6 pass / 7 fail _(id: [rec-2edb2fb6-b62f-487e-8c5e-9e24ba019ef8](.artifacts/records/project__work-item/rec-2edb2fb6-b62f-487e-8c5e-9e24ba019ef8.md))_
+- **verdict-gate**: Keep verdict store-free and assertion-red; affidavit-library; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 8 pass / 0 fail _(id: [rec-1568217d-6832-44f7-85e1-32bc3dfbddc7](.artifacts/records/project__work-item/rec-1568217d-6832-44f7-85e1-32bc3dfbddc7.md))_
+- **verify-affidavit-library**: Verify affidavit calls Project and verdict stays store-free; affidavit-library; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 4 pass / 0 fail _(id: [rec-e2aeedd4-e2ff-48c7-9eda-cb69477252ce](.artifacts/records/project__work-item/rec-e2aeedd4-e2ff-48c7-9eda-cb69477252ce.md))_
 
 ## goal-close
 
@@ -64,6 +80,14 @@
 - **ag-outliers**: Session outliers; aggregate-report; deliver; session-analysis; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-e6d0ee2d-6fbe-44c1-9534-31a95f4bf3a9](.artifacts/records/project__work-item/rec-e6d0ee2d-6fbe-44c1-9534-31a95f4bf3a9.md))_
 - **ag-tool-skill-rollup**: Tool and skill rollup; aggregate-report; deliver; session-analysis; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-25db5212-1252-490d-984c-4a91dae271d1](.artifacts/records/project__work-item/rec-25db5212-1252-490d-984c-4a91dae271d1.md))_
 
+## orchestra-callers
+
+### Work
+- **close-library**: Call affidavit from close; orchestra-callers; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 10 pass / 4 fail _(id: [rec-0e86bfda-83ae-4386-87a0-6dfe5d79fca4](.artifacts/records/project__work-item/rec-0e86bfda-83ae-4386-87a0-6dfe5d79fca4.md))_
+- **fix-dashboard-uv-env**: Give dashboard uv scripts the library; orchestra-callers; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 1 pass / 1 fail _(id: [rec-88bc8631-e806-4c85-b14d-4ffb41db5f26](.artifacts/records/project__work-item/rec-88bc8631-e806-4c85-b14d-4ffb41db5f26.md))_
+- **replace-resolvers**: Open the store through the library; orchestra-callers; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 15 pass / 5 fail _(id: [rec-fc9cfbd9-3d03-4d01-a8b1-4b370a6e9e40](.artifacts/records/project__work-item/rec-fc9cfbd9-3d03-4d01-a8b1-4b370a6e9e40.md))_
+- **verify-orchestra-callers**: Verify orchestra callers; orchestra-callers; deliver; library-boundary; state: done; ready: True; wave: 3; criteria: 6 pass / 0 fail _(id: [rec-785c803f-6e6f-4ee9-880a-4973af0971a1](.artifacts/records/project__work-item/rec-785c803f-6e6f-4ee9-880a-4973af0971a1.md))_
+
 ## phase-position
 
 ### Work
@@ -93,6 +117,13 @@
 - **e2e-scripted-run**: Drive the full dashboard chain in one scripted test; end-to-end-verification; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-dd4fcd94-68f4-47e2-aa6d-f86998cf25fd](.artifacts/records/project__work-item/rec-dd4fcd94-68f4-47e2-aa6d-f86998cf25fd.md))_
 - **verify-end-to-end-phase**: Verify the end-to-end phase and the final effort state; end-to-end-verification; deliver; dashboard; state: done; ready: True; wave: 2; criteria: 3 pass / 1 fail _(id: [rec-6344af8c-3dfc-4b36-be4b-522c79d92073](.artifacts/records/project__work-item/rec-6344af8c-3dfc-4b36-be4b-522c79d92073.md))_
 
+## library-e2e
+
+### Work
+- **fix-library-e2e-coverage**: Make the integration test cover the close; library-e2e; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 6 pass / 0 fail _(id: [rec-2427db9a-ed5f-4575-97dd-32f355f8dcb5](.artifacts/records/project__work-item/rec-2427db9a-ed5f-4575-97dd-32f355f8dcb5.md))_
+- **library-fixture**: Prove the three packages on one fixture; library-e2e; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 17 pass / 2 fail _(id: [rec-0dda3a08-f25e-430f-a52b-fac9bad1c2f4](.artifacts/records/project__work-item/rec-0dda3a08-f25e-430f-a52b-fac9bad1c2f4.md))_
+- **verify-library-e2e**: Verify the library fixture; library-e2e; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 6 pass / 0 fail _(id: [rec-455e53f3-9f0e-4768-8dd8-a1d7a56d2bb6](.artifacts/records/project__work-item/rec-455e53f3-9f0e-4768-8dd8-a1d7a56d2bb6.md))_
+
 ## rename-agent-affidavit
 
 ### Work
@@ -100,6 +131,15 @@
 - **rename-package-cli**: Rename se_workflow package and CLI to affidavit / aff; rename-agent-affidavit; deliver; packaging; state: done; ready: True; wave: 1; criteria: 2 pass / 3 fail _(id: [rec-b4e323ec-86bf-4114-8bfd-8e75636fbfcb](.artifacts/records/project__work-item/rec-b4e323ec-86bf-4114-8bfd-8e75636fbfcb.md))_
 - **rename-tests**: Rename tests and sync paths for affidavit; rename-agent-affidavit; deliver; packaging; state: done; ready: True; wave: 3; criteria: 1 pass / 1 fail _(id: [rec-1e8bb900-3ee6-4221-acb8-5bb7f61f800d](.artifacts/records/project__work-item/rec-1e8bb900-3ee6-4221-acb8-5bb7f61f800d.md))_
 - **verify-rename-agent-affidavit**: Verify rename to affidavit; rename-agent-affidavit; deliver; packaging; state: done; ready: True; wave: 4; criteria: 2 pass / 2 fail _(id: [rec-198a44f2-852e-4671-a3b7-fe89331ef728](.artifacts/records/project__work-item/rec-198a44f2-852e-4671-a3b7-fe89331ef728.md))_
+
+## declared-install
+
+### Work
+- **format-gate**: Reject an unsupported contract format; declared-install; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 1 pass / 2 fail _(id: [rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6](.artifacts/records/project__work-item/rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6.md))_
+- **import-open**: Open the store by import; declared-install; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a](.artifacts/records/project__work-item/rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a.md))_
+- **package-metadata**: Declare the install graph; declared-install; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 4 pass / 2 fail _(id: [rec-eca50c8d-f9fc-4408-a013-072254682c98](.artifacts/records/project__work-item/rec-eca50c8d-f9fc-4408-a013-072254682c98.md))_
+- **runtime-install**: Install runtime dependencies; declared-install; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 2 pass / 2 fail _(id: [rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f](.artifacts/records/project__work-item/rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f.md))_
+- **verify-declared-install**: Verify declared install; declared-install; deliver; library-boundary; state: done; ready: True; wave: 3; criteria: 8 pass / 0 fail _(id: [rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4](.artifacts/records/project__work-item/rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4.md))_
 
 ## discuss-step
 
@@ -459,6 +499,17 @@
 - **phase-end-cleanup**: Remove task worktrees at phase close; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 4 pass / 8 fail _(id: [rec-9d76cc70-508c-479c-92ea-d1340a6c0651](.artifacts/records/project__work-item/rec-9d76cc70-508c-479c-92ea-d1340a6c0651.md))_
 - **skill-task-worktree**: Dispatch each task in its own worktree; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 50 pass / 77 fail _(id: [rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f](.artifacts/records/project__work-item/rec-2a3f7e8d-81cb-40f8-9703-9db236411e4f.md))_
 - **verify-task-worktrees**: Verify task worktrees; task-worktrees; deliver; workflow-loop; state: done; ready: True; wave: 2; criteria: 2 pass / 0 fail _(id: [rec-838b8715-ca2d-4c01-a064-b99dd6e66a47](.artifacts/records/project__work-item/rec-838b8715-ca2d-4c01-a064-b99dd6e66a47.md))_
+
+## evidence-authority
+
+### Work
+- **claim-gate-close**: Close requires aff verdict and recheck; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 8 pass / 6 fail _(id: [rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b](.artifacts/records/project__work-item/rec-30c42beb-e534-4cc4-ab46-79e1d961bc1b.md))_
+- **fix-claim-gate-hardening**: Harden claim gate id detection and missing aff; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 3 pass / 1 fail _(id: [rec-583aa060-27c9-428d-968c-af571c1ab605](.artifacts/records/project__work-item/rec-583aa060-27c9-428d-968c-af571c1ab605.md))_
+- **fix-oracle-red-missing-aff**: Refuse clearly when aff missing for assertion-red; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 2 pass / 1 fail _(id: [rec-b84d2ec4-e9a3-42b4-adcf-334bf3a0e572](.artifacts/records/project__work-item/rec-b84d2ec4-e9a3-42b4-adcf-334bf3a0e572.md))_
+- **honest-runner-stamp**: Stamp and accept only runner orchestra; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 16 pass / 12 fail _(id: [rec-9efecf5d-bdd4-448e-a85f-7647914db67c](.artifacts/records/project__work-item/rec-9efecf5d-bdd4-448e-a85f-7647914db67c.md))_
+- **oracle-red-cli-surface**: Assertion-level red via aff CLI only; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 1; criteria: 8 pass / 8 fail _(id: [rec-fd6fe374-afe5-4b72-ae12-f0f400a85013](.artifacts/records/project__work-item/rec-fd6fe374-afe5-4b72-ae12-f0f400a85013.md))_
+- **skills-no-aff-runner**: Skills stop forging runner aff; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 2; criteria: 2 pass / 0 fail _(id: [rec-056252e3-2129-40c8-8f7a-199b636c5dcf](.artifacts/records/project__work-item/rec-056252e3-2129-40c8-8f7a-199b636c5dcf.md))_
+- **verify-evidence-authority**: Verify evidence-authority; evidence-authority; deliver; workflow-loop; state: done; ready: True; wave: 3; criteria: 7 pass / 0 fail _(id: [rec-93df39dc-67e9-45de-829b-908c3e6e0317](.artifacts/records/project__work-item/rec-93df39dc-67e9-45de-829b-908c3e6e0317.md))_
 
 ## evidence-matrix
 

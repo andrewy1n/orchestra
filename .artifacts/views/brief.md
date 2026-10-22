@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:2ba33ee77bbad585fc2d59d3dd1d237d9d8a2b2ace1765be4054245fba8bf664
+> Store state: sha256:2fe5f5c88a8a9326bf6ac987a8e1fae9f1f8c1653f917c0cd0ce1f2ec965519d
 
 ## aa-installable-package
 
@@ -895,6 +895,11 @@
 ### Acceptance
 - **fix-verify-authority-close-batch-import**: tdd; packaging; uv run --with pytest python -m pytest tests/test_verify_authority.py -q _(id: [rec-a33322af-14f2-44fd-a072-5bc4073fa8a2](.artifacts/records/project__acceptance/rec-a33322af-14f2-44fd-a072-5bc4073fa8a2.md))_
 
+## format-gate
+
+### Acceptance
+- **format-gate**: R8; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-af52e6e4-1191-4b01-8d7a-637858e467b2](.artifacts/records/project__acceptance/rec-af52e6e4-1191-4b01-8d7a-637858e467b2.md))_
+
 ## gates-landing
 
 ### Acceptance
@@ -1014,6 +1019,23 @@
 
 ### Acceptance
 - **honest-runner-stamp-suite**: R2; tdd; workflow-loop; python3 -m pytest tests/test_tiered_verification.py::test_suite_record_writes_runner_orchestra -q _(id: [rec-3a9261a1-b666-48fc-a9b4-068838f86307](.artifacts/records/project__acceptance/rec-3a9261a1-b666-48fc-a9b4-068838f86307.md))_
+
+## import-open
+
+### Acceptance
+- **import-open**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
+for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)
+seen=[]
+real=subprocess.run
+def spy(cmd,*a,**k):
+ seen.append(cmd); return real(cmd,*a,**k)
+subprocess.run=spy
+import orchestra.aa as aa
+aa.find_store_root(Path(".").resolve())
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"adaptive-artifacts","artifacts.py"} for p in parts)
+assert not any(bad(c) for c in seen)' _(id: [rec-625650b6-a012-4a20-b260-a24d0b258d9e](.artifacts/records/project__acceptance/rec-625650b6-a012-4a20-b260-a24d0b258d9e.md))_
 
 ## install-docs
 
@@ -1171,7 +1193,7 @@
 ## library-boundary
 
 ### Position
-- **library-boundary**: library-e2e done at de86e0df; next up: declared-install; effort _(id: [rec-21092609-81cd-4eac-81af-897ef1576eac](.artifacts/records/project__current-position/rec-21092609-81cd-4eac-81af-897ef1576eac.md))_
+- **library-boundary**: declared-install done at 993cf14c; next up: claim-clocks; effort _(id: [rec-9c38245f-3593-4396-b5e4-6cdd594a47f7](.artifacts/records/project__current-position/rec-9c38245f-3593-4396-b5e4-6cdd594a47f7.md))_
 
 ## library-fixture
 
@@ -1484,6 +1506,26 @@ print("phase checks only")
 
 ### Acceptance
 - **package-install-docs**: check; dashboard; ! grep -nE 'scripts/(dashboard|tmux-dashboard)' README.md dashboard/tmux.conf _(id: [rec-67e721d5-5b8f-482f-b2d7-f9f25c8ec7e3](.artifacts/records/project__acceptance/rec-67e721d5-5b8f-482f-b2d7-f9f25c8ec7e3.md))_
+
+## package-metadata
+
+### Acceptance
+- **package-metadata**: R1; tdd; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r1_affidavit_depends_on_adaptive_artifacts -q _(id: [rec-2d3bf9c9-bea6-4673-9d36-29d197dd81b0](.artifacts/records/project__acceptance/rec-2d3bf9c9-bea6-4673-9d36-29d197dd81b0.md))_
+
+## package-metadata-evidence
+
+### Acceptance
+- **package-metadata-evidence**: R4; tdd; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r4_evidence_extra_depends_on_affidavit -q _(id: [rec-d729a179-bd41-4a22-b54d-ca93eaa2c4fc](.artifacts/records/project__acceptance/rec-d729a179-bd41-4a22-b54d-ca93eaa2c4fc.md))_
+
+## package-metadata-optional
+
+### Acceptance
+- **package-metadata-optional**: R3; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "affidavit" not in chunk' _(id: [rec-d16228da-0add-439f-bfe8-ced554846bc5](.artifacts/records/project__acceptance/rec-d16228da-0add-439f-bfe8-ced554846bc5.md))_
+
+## package-metadata-orchestra
+
+### Acceptance
+- **package-metadata-orchestra**: R2; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "adaptive-artifacts" in chunk' _(id: [rec-f25bd119-e907-4f07-b265-1701c0ee8fb3](.artifacts/records/project__acceptance/rec-f25bd119-e907-4f07-b265-1701c0ee8fb3.md))_
 
 ## package-move
 
@@ -2037,6 +2079,16 @@ print("phase checks only")
 
 ### Acceptance
 - **route-through-discuss**: tdd; workflow-loop; python3 -m pytest tests/test_skill_contract_consistency.py tests/test_discuss_skill.py -q _(id: [rec-aac400ee-30c6-4fd2-a3ba-9fbd756f740a](.artifacts/records/project__acceptance/rec-aac400ee-30c6-4fd2-a3ba-9fbd756f740a.md))_
+
+## runtime-install
+
+### Acceptance
+- **runtime-install**: R5; tdd; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r5_clean_install_imports_adaptive_artifacts -q _(id: [rec-d790ab19-ac45-4a5c-a5e8-bec3225b397d](.artifacts/records/project__acceptance/rec-d790ab19-ac45-4a5c-a5e8-bec3225b397d.md))_
+
+## runtime-install-plain
+
+### Acceptance
+- **runtime-install-plain**: R6; tdd; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r6_plain_install_does_not_install_affidavit -q _(id: [rec-38889053-de00-4a96-b4cd-01664743ddf7](.artifacts/records/project__acceptance/rec-38889053-de00-4a96-b4cd-01664743ddf7.md))_
 
 ## sa-code-in-plugin-repo
 
@@ -2981,6 +3033,58 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-dashboard-view-phase-suites**: check; dashboard; cd ~/adaptive-artifacts && python3 -m pytest tools/runtime/tests -q && cd ~/se-workflow && python3 -m pytest tests -q _(id: [rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f](.artifacts/records/project__acceptance/rec-1a3c142c-b9c6-4f57-baf0-b38000b5bb9f.md))_
+
+## verify-declared-install
+
+### Acceptance
+- **verify-declared-install**: R5; check; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r5_clean_install_imports_adaptive_artifacts -q _(id: [rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4](.artifacts/records/project__acceptance/rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4.md))_
+
+## verify-declared-install-dep
+
+### Acceptance
+- **verify-declared-install-dep**: R2; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "adaptive-artifacts" in chunk' _(id: [rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606](.artifacts/records/project__acceptance/rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606.md))_
+
+## verify-declared-install-evidence
+
+### Acceptance
+- **verify-declared-install-evidence**: R4; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r4_evidence_extra_depends_on_affidavit -q _(id: [rec-a00aba68-b59e-4995-8a43-a19dea5d5a19](.artifacts/records/project__acceptance/rec-a00aba68-b59e-4995-8a43-a19dea5d5a19.md))_
+
+## verify-declared-install-format
+
+### Acceptance
+- **verify-declared-install-format**: R8; check; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01](.artifacts/records/project__acceptance/rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01.md))_
+
+## verify-declared-install-graph
+
+### Acceptance
+- **verify-declared-install-graph**: R1; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r1_affidavit_depends_on_adaptive_artifacts -q _(id: [rec-d44dfb91-18af-4277-9888-510b5cbc93b1](.artifacts/records/project__acceptance/rec-d44dfb91-18af-4277-9888-510b5cbc93b1.md))_
+
+## verify-declared-install-import
+
+### Acceptance
+- **verify-declared-install-import**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
+for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)
+seen=[]
+real=subprocess.run
+def spy(cmd,*a,**k):
+ seen.append(cmd); return real(cmd,*a,**k)
+subprocess.run=spy
+import orchestra.aa as aa
+aa.find_store_root(Path(".").resolve())
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"adaptive-artifacts","artifacts.py"} for p in parts)
+assert not any(bad(c) for c in seen)' _(id: [rec-fdd19c14-fa8d-4061-8515-8cc125edf745](.artifacts/records/project__acceptance/rec-fdd19c14-fa8d-4061-8515-8cc125edf745.md))_
+
+## verify-declared-install-optional
+
+### Acceptance
+- **verify-declared-install-optional**: R3; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "affidavit" not in chunk' _(id: [rec-f39eab16-ee60-4647-830f-ab158286834f](.artifacts/records/project__acceptance/rec-f39eab16-ee60-4647-830f-ab158286834f.md))_
+
+## verify-declared-install-plain
+
+### Acceptance
+- **verify-declared-install-plain**: R6; check; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r6_plain_install_does_not_install_affidavit -q _(id: [rec-a81a959e-7010-439c-8d32-317ad6ea4c2d](.artifacts/records/project__acceptance/rec-a81a959e-7010-439c-8d32-317ad6ea4c2d.md))_
 
 ## verify-deep-links
 
