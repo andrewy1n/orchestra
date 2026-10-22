@@ -1,7 +1,7 @@
 # Project Plan
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:ab1d3d864234b93c9e6b9c18c2f7d3901640ddaf13bf52dee6f56824557b1781
+> Store state: sha256:901ee1c1e1eac48d2b94471f50e46f24784ef0ceb672db55f61126f647adefa3
 
 ## aa-library
 
@@ -231,6 +231,55 @@ assert not any(bad(c) for c in seen)'  _(id: [rec-197d8185-f42f-4030-9af7-94d992
 
 ### Phase
 - **declared-install**: One install graph for uv and plugins; 5; library-boundary _(id: [rec-44001332-66cb-47cb-bbf4-9146914bae00](.artifacts/records/project__phase/rec-44001332-66cb-47cb-bbf4-9146914bae00.md))_
+
+### Work
+- **format-gate**: Reject an unsupported contract format; declared-install; deliver; library-boundary _(id: [rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6](.artifacts/records/project__work-item/rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6.md))_
+- **import-open**: Open the store by import; declared-install; deliver; library-boundary _(id: [rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a](.artifacts/records/project__work-item/rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a.md))_
+- **package-metadata**: Declare the install graph; declared-install; deliver; library-boundary _(id: [rec-eca50c8d-f9fc-4408-a013-072254682c98](.artifacts/records/project__work-item/rec-eca50c8d-f9fc-4408-a013-072254682c98.md))_
+- **runtime-install**: Install runtime dependencies; declared-install; deliver; library-boundary _(id: [rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f](.artifacts/records/project__work-item/rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f.md))_
+- **verify-declared-install**: Verify declared install; declared-install; deliver; library-boundary _(id: [rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4](.artifacts/records/project__work-item/rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4.md))_
+
+### Acceptance
+- **format-gate**: R8; tdd; library-boundary; cd /home/andrewyin/adaptive-artifacts/.worktrees/declared-install && PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-af52e6e4-1191-4b01-8d7a-637858e467b2](.artifacts/records/project__acceptance/rec-af52e6e4-1191-4b01-8d7a-637858e467b2.md))_
+- **import-open**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
+for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)
+seen=[]
+real=subprocess.run
+def spy(cmd,*a,**k):
+ seen.append(cmd); return real(cmd,*a,**k)
+subprocess.run=spy
+import orchestra.aa as aa
+aa.find_store_root(Path(".").resolve())
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"adaptive-artifacts","artifacts.py"} for p in parts)
+assert not any(bad(c) for c in seen)' _(id: [rec-625650b6-a012-4a20-b260-a24d0b258d9e](.artifacts/records/project__acceptance/rec-625650b6-a012-4a20-b260-a24d0b258d9e.md))_
+- **package-metadata**: R1; tdd; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r1_affidavit_depends_on_adaptive_artifacts -q _(id: [rec-2d3bf9c9-bea6-4673-9d36-29d197dd81b0](.artifacts/records/project__acceptance/rec-2d3bf9c9-bea6-4673-9d36-29d197dd81b0.md))_
+- **package-metadata-evidence**: R4; tdd; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r4_evidence_extra_depends_on_affidavit -q _(id: [rec-d729a179-bd41-4a22-b54d-ca93eaa2c4fc](.artifacts/records/project__acceptance/rec-d729a179-bd41-4a22-b54d-ca93eaa2c4fc.md))_
+- **package-metadata-optional**: R3; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "affidavit" not in chunk' _(id: [rec-d16228da-0add-439f-bfe8-ced554846bc5](.artifacts/records/project__acceptance/rec-d16228da-0add-439f-bfe8-ced554846bc5.md))_
+- **package-metadata-orchestra**: R2; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "adaptive-artifacts" in chunk' _(id: [rec-f25bd119-e907-4f07-b265-1701c0ee8fb3](.artifacts/records/project__acceptance/rec-f25bd119-e907-4f07-b265-1701c0ee8fb3.md))_
+- **runtime-install**: R5; tdd; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r5_clean_install_imports_adaptive_artifacts -q _(id: [rec-d790ab19-ac45-4a5c-a5e8-bec3225b397d](.artifacts/records/project__acceptance/rec-d790ab19-ac45-4a5c-a5e8-bec3225b397d.md))_
+- **runtime-install-plain**: R6; tdd; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r6_plain_install_does_not_install_affidavit -q _(id: [rec-38889053-de00-4a96-b4cd-01664743ddf7](.artifacts/records/project__acceptance/rec-38889053-de00-4a96-b4cd-01664743ddf7.md))_
+- **verify-declared-install**: R5; check; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r5_clean_install_imports_adaptive_artifacts -q _(id: [rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4](.artifacts/records/project__acceptance/rec-8bbf1c94-b713-40b2-8276-3eb2776fc6c4.md))_
+- **verify-declared-install-dep**: R2; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "adaptive-artifacts" in chunk' _(id: [rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606](.artifacts/records/project__acceptance/rec-0f038f9b-8c8a-4456-ba18-b7275a3bb606.md))_
+- **verify-declared-install-evidence**: R4; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r4_evidence_extra_depends_on_affidavit -q _(id: [rec-a00aba68-b59e-4995-8a43-a19dea5d5a19](.artifacts/records/project__acceptance/rec-a00aba68-b59e-4995-8a43-a19dea5d5a19.md))_
+- **verify-declared-install-format**: R8; check; library-boundary; cd /home/andrewyin/adaptive-artifacts/.worktrees/declared-install && PYTHONPATH=src python3 -m pytest tests/test_open_store_format.py::test_r8_open_store_raises_for_unsupported_contract_format -q _(id: [rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01](.artifacts/records/project__acceptance/rec-afef7cfe-f35b-488b-a287-7d59e5fc7f01.md))_
+- **verify-declared-install-graph**: R1; check; library-boundary; AFFIDAVIT_ROOT=/home/andrewyin/affidavit/.worktrees/declared-install python3 -m pytest tests/test_declared_install_metadata.py::test_r1_affidavit_depends_on_adaptive_artifacts -q _(id: [rec-d44dfb91-18af-4277-9888-510b5cbc93b1](.artifacts/records/project__acceptance/rec-d44dfb91-18af-4277-9888-510b5cbc93b1.md))_
+- **verify-declared-install-import**: R7; check; library-boundary; PYTHONPATH=. python3 -c 'import os,subprocess; from pathlib import Path
+for n in ("ADAPTIVE_ARTIFACTS_BIN","CLAUDE_PLUGIN_ROOT","CURSOR_PLUGIN_ROOT"): os.environ.pop(n, None)
+seen=[]
+real=subprocess.run
+def spy(cmd,*a,**k):
+ seen.append(cmd); return real(cmd,*a,**k)
+subprocess.run=spy
+import orchestra.aa as aa
+aa.find_store_root(Path(".").resolve())
+def bad(cmd):
+ parts=cmd if isinstance(cmd,(list,tuple)) else [cmd]
+ return any(Path(str(p)).name in {"adaptive-artifacts","artifacts.py"} for p in parts)
+assert not any(bad(c) for c in seen)' _(id: [rec-fdd19c14-fa8d-4061-8515-8cc125edf745](.artifacts/records/project__acceptance/rec-fdd19c14-fa8d-4061-8515-8cc125edf745.md))_
+- **verify-declared-install-optional**: R3; check; library-boundary; python3 -c 'import pathlib; t=pathlib.Path("pyproject.toml").read_text(); i=t.index("\ndependencies"); chunk=t[i:t.index("]", i)]; assert "affidavit" not in chunk' _(id: [rec-f39eab16-ee60-4647-830f-ab158286834f](.artifacts/records/project__acceptance/rec-f39eab16-ee60-4647-830f-ab158286834f.md))_
+- **verify-declared-install-plain**: R6; check; library-boundary; python3 -m pytest tests/integration/test_declared_install.py::test_r6_plain_install_does_not_install_affidavit -q _(id: [rec-a81a959e-7010-439c-8d32-317ad6ea4c2d](.artifacts/records/project__acceptance/rec-a81a959e-7010-439c-8d32-317ad6ea4c2d.md))_
 
 ## discuss-step
 
