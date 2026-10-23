@@ -4,9 +4,9 @@
   "epistemic_status": "asserted",
   "id": "rec-dfe81afd-d54a-415f-aeac-ff017f09b152",
   "identity": "unknown",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
-    "acceptance": "rec-af80005c-c965-4740-b41e-08a8d9fd94a9",
+    "acceptance": "oracle-red-cli-surface-invoke",
     "effort": "workflow-loop",
     "new_hashes": "tests/test_close_batch.py:sha256:7c3e4fb8bce676e86467458df4f8340c842dce44257db576ddb45c5ebc3c67be",
     "old_hashes": "tests/test_close_batch.py:sha256:49f1c79e817a0c5da733e9e23904fae945b2cf96a2956662179a305578f9b8ff",
@@ -14,9 +14,9 @@
     "status": "approved"
   },
   "record_type": "project:oracle-amendment",
-  "recorded_at": "2026-10-21T06:53:25+00:00",
+  "recorded_at": "2026-10-23T20:15:08+00:00",
   "relationships": {},
-  "revision": "sha256:aaf3db95772f9d6e944a57708c35b3ea8192a49e0df8faeef2494adca1a8ca33",
+  "revision": "sha256:353d7862fd92d77a7ff55c6e6709fbe2c6f5e501dc6514c97259851a80fc6efb",
   "stewardship": {
     "steward": "agent"
   },

@@ -4,7 +4,7 @@
   "epistemic_status": "asserted",
   "id": "rec-3feafbae-a124-4f65-aeb0-ae5dc1269617",
   "identity": "unknown",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "acceptance": "honest-runner-stamp-refuse-aff",
     "effort": "workflow-loop",
@@ -14,9 +14,9 @@
     "status": "approved"
   },
   "record_type": "project:oracle-amendment",
-  "recorded_at": "2026-10-21T06:49:23+00:00",
+  "recorded_at": "2026-10-23T20:15:08+00:00",
   "relationships": {},
-  "revision": "sha256:80b0e51faa7dfa47adf38202b110aebdbb700358189d2c4821460139170b6815",
+  "revision": "sha256:8ae758d643147d4fe49b99f46f44b27eab5add99712efa275b51b13e7ae80bb7",
   "stewardship": {
     "steward": "agent"
   },
