@@ -81,7 +81,7 @@ def _seed_journal(cli, defs, effort: str = "alpha") -> None:
     _work_item(cli, defs, effort, "j-task-c", "p-one")
     assignment = _record(
         cli, defs, "project:assignment", "j-task-a",
-        {"work_item": task_a["id"], "executor": "sub", "effort": effort},
+        {"work_item": task_a["subject"], "executor": "sub", "effort": effort},
         "## Orientation\n\ndo the work",
     )
     _record(
@@ -267,19 +267,19 @@ def _build_agent_task(store, cli, defs):
     older = h.run_cli_48h_ago(
         store, "create", "--type", "project:assignment", "--subject", "agent-task-old",
         "--body", "## Orientation\n\nold orientation\n\n## Requirements\n\nold rest",
-        "--payload", json.dumps({"work_item": task["id"], "executor": "old-exec", "effort": "alpha"}),
+        "--payload", json.dumps({"work_item": task["subject"], "executor": "old-exec", "effort": "alpha"}),
     )
     h.run_cli_48h_ago(
         store, "create", "--type", "project:execution-report", "--subject", "agent-task-old-report",
         "--body", "old report body",
         "--payload", json.dumps({
-            "work_item": task["id"], "assignment": older["id"],
+            "work_item": task["subject"], "assignment": older["subject"],
             "result": "no", "verdict": "fail", "revision": "r0",
         }),
     )
     assignment = _record(
         cli, defs, "project:assignment", "agent-task",
-        {"work_item": task["id"], "executor": "new-exec", "effort": "alpha"},
+        {"work_item": task["subject"], "executor": "new-exec", "effort": "alpha"},
         LONG_ORIENTATION + "\n\n## Requirements\n\nR8: collapse to eight lines.",
     )
     _record(
@@ -290,7 +290,7 @@ def _build_agent_task(store, cli, defs):
     _record(
         cli, defs, "project:execution-report", "agent-task",
         {
-            "work_item": task["id"], "assignment": assignment["id"],
+            "work_item": task["subject"], "assignment": assignment["subject"],
             "result": "ok", "verdict": "pass", "revision": "r2",
         },
         "report body line\n" + "\n".join(f"report extra {i}" for i in range(1, 10)),

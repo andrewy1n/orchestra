@@ -91,11 +91,11 @@ def _seed_alpha(cli, defs):
     )
     h.create_generic_record(
         cli, defs, "project:assignment", subject="a-assign",
-        extra_payload={"work_item": running["id"], "executor": "sub-1", "effort": "alpha"},
+        extra_payload={"work_item": running["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     h.create_generic_record(
         cli, defs, "project:execution-report", subject="a-report",
-        extra_payload={"work_item": done["id"], "result": "done it", "verdict": "pass"},
+        extra_payload={"work_item": done["subject"], "result": "done it", "verdict": "pass"},
     )
     h.create_generic_record(
         cli, defs, "project:check-run", subject="a-check",
@@ -367,7 +367,7 @@ def _seed_waits_and_running(root, cli, defs):
     _work_item(cli, defs, "alpha", "w-ready", "two", f"depends_on:{done['id']}")
     h.run_cli_48h_ago(
         root, "create", "--type", "project:assignment", "--subject", "w-running",
-        "--payload", json.dumps({"work_item": running["id"], "executor": "sub-w", "effort": "alpha"}),
+        "--payload", json.dumps({"work_item": running["subject"], "executor": "sub-w", "effort": "alpha"}),
         "--body", h.generic_body(defs["project:assignment"]),
     )
     return running
@@ -522,7 +522,7 @@ def test_long_activity_lines_are_clipped_not_wrapped_at_60_columns(store, cli, d
     item = _work_item(cli, defs, "alpha", "a-very-long-task-name-for-wrapping", "p")
     h.create_generic_record(
         cli, defs, "project:assignment", subject="a-assign",
-        extra_payload={"work_item": item["id"], "executor": "sub-with-an-equally-long-executor-name", "effort": "alpha"},
+        extra_payload={"work_item": item["subject"], "executor": "sub-with-an-equally-long-executor-name", "effort": "alpha"},
     )
 
     async def scenario(app, pilot):
@@ -1072,16 +1072,16 @@ def _build_detailed(store, cli, defs):
         "criterion": "docs updated", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "det-phase"})
     assignment = _record(
         cli, defs, "project:assignment", "det-task",
-        {"work_item": task["id"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart in the app module",
+        {"work_item": task["subject"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart in the app module",
     )
     _record(cli, defs, "project:assignment-amendment", "det-task",
             {"assignment": "det-task", "effort": "alpha"}, "## Correction\n\nuse the loader")
     h.run_cli_48h_ago(
         store, "create", "--type", "project:execution-report", "--subject", "det-task-first", "--body", "first attempt notes",
-        "--payload", json.dumps({"work_item": task["id"], "assignment": assignment["id"], "result": "no", "verdict": "fail", "revision": "r1"}),
+        "--payload", json.dumps({"work_item": task["subject"], "assignment": assignment["subject"], "result": "no", "verdict": "fail", "revision": "r1"}),
     )
     _record(cli, defs, "project:execution-report", "det-task",
-            {"work_item": task["id"], "assignment": assignment["id"], "result": "ok", "verdict": "pass", "revision": "r2"},
+            {"work_item": task["subject"], "assignment": assignment["subject"], "result": "ok", "verdict": "pass", "revision": "r2"},
             "```\nsubject: det-task\nresult: pass\nevidence: second attempt notes that run long enough to wrap "
             "under the value column at sixty columns\nverdict: pass\nneeds_human: false\n```\n\nclosing **remarks**")
     _record(cli, defs, "project:check-run", "det-task", {
@@ -1573,7 +1573,7 @@ def _build_committed(store, cli, defs):
         tasks[name] = _work_item(cli, defs, "alpha", name, "c-phase")
         for index, revision in enumerate(revisions):
             _record(cli, defs, "project:execution-report", f"{name}-{index}", {
-                "work_item": tasks[name]["id"], "assignment": "x", "result": "ok", "verdict": "pass", "revision": revision})
+                "work_item": tasks[name]["subject"], "assignment": "x", "result": "ok", "verdict": "pass", "revision": revision})
     return tasks, sha
 
 

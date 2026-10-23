@@ -178,7 +178,7 @@ def test_gates_once_shows_action_verbs_next_step_and_landing(store, cli, resolve
     h.transition(cli, "project:work-item", task, "in_progress")
     h.run_cli_48h_ago(
         store, "create", "--type", "project:assignment", "--subject", "quiet-run",
-        "--payload", json.dumps({"work_item": task["id"], "executor": "agent", "effort": EFFORT}),
+        "--payload", json.dumps({"work_item": task["subject"], "executor": "agent", "effort": EFFORT}),
         "--body", h.generic_body(defs["project:assignment"]),
     )
     h.create_generic_record(

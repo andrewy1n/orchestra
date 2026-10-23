@@ -136,7 +136,7 @@ def test_prefix_a_popup_renders_the_pane_repo_dashboard_with_waiting_running_tim
     _work_item(cli, defs, EFFORT, "fx-waiting", f"depends_on:{running['id']}")
     h.run_cli_48h_ago(
         seeded, "create", "--type", "project:assignment", "--subject", "fx-running",
-        "--payload", json.dumps({"work_item": running["id"], "executor": "sub-fx", "effort": EFFORT}),
+        "--payload", json.dumps({"work_item": running["subject"], "executor": "sub-fx", "effort": EFFORT}),
         "--body", h.generic_body(defs["project:assignment"]),
     )
     h.create_generic_record(
@@ -197,7 +197,7 @@ def test_prefix_a_popup_detail_screen_follows_a_task_through_its_lifecycle_and_e
 
     h.create_generic_record(
         cli, defs, "project:execution-report", subject="fx-moving",
-        extra_payload={"work_item": task["id"], "result": "ok", "verdict": "pass", "revision": "r1"},
+        extra_payload={"work_item": task["subject"], "result": "ok", "verdict": "pass", "revision": "r1"},
     )
     h.create_generic_record(
         cli, defs, "project:check-run", subject="fx-moving",
@@ -226,7 +226,7 @@ def test_prefix_a_popup_switches_status_tabs_filters_copies_a_slug_and_opens_a_c
     shipped = _work_item(cli, defs, EFFORT, "fx-shipped")
     h.create_generic_record(
         cli, defs, "project:execution-report", subject="fx-shipped",
-        extra_payload={"work_item": shipped["id"], "result": "ok", "verdict": "pass", "revision": sha},
+        extra_payload={"work_item": shipped["subject"], "result": "ok", "verdict": "pass", "revision": sha},
     )
     old = _work_item(cli, defs, EFFORT, "fx-old")
     h.transition(cli, "project:work-item", old, "in_progress", "done")

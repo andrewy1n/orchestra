@@ -275,11 +275,11 @@ def test_recent_activity_lists_last_24h_newest_first_and_resolves_reports_to_the
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     h.create_generic_record(
         cli, defs, "project:assignment", subject="a-assign",
-        extra_payload={"work_item": item["id"], "executor": "sub-1", "effort": "alpha"},
+        extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     h.create_generic_record(
         cli, defs, "project:execution-report", subject="a-report",
-        extra_payload={"work_item": item["id"], "result": "done it", "verdict": "pass"},
+        extra_payload={"work_item": item["subject"], "result": "done it", "verdict": "pass"},
     )
     h.create_generic_record(
         cli, defs, "project:check-run", subject="a-check",
@@ -308,14 +308,14 @@ def test_activity_marks_failed_check_runs_and_failed_reports_only(store, cli, de
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     h.create_generic_record(
         cli, defs, "project:assignment", subject="a-assign",
-        extra_payload={"work_item": item["id"], "executor": "sub-1", "effort": "alpha"},
+        extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     for subject, result, verdict in (
         ("a-report-pass", "pass", "pass"), ("a-report-result-fail", "fail", "pass"), ("a-report-verdict-fail", "pass", "fail"),
     ):
         h.create_generic_record(
             cli, defs, "project:execution-report", subject=subject,
-            extra_payload={"work_item": item["id"], "result": result, "verdict": verdict},
+            extra_payload={"work_item": item["subject"], "result": result, "verdict": verdict},
         )
     for subject, result in (("a-check-pass", "pass"), ("a-check-fail", "fail")):
         h.create_generic_record(
@@ -425,14 +425,14 @@ def detail_store(store, cli, defs):
     _record(cli, defs, "project:check-run", "d-task-first",
             {"criterion_id": first["id"], "method": "check", "result": "pass", "signed_by": "", "revision": "r2", "effort": "beta"})
     assignment = _record(cli, defs, "project:assignment", "d-task",
-                         {"work_item": task["id"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart here")
+                         {"work_item": task["subject"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart here")
     _record(cli, defs, "project:assignment-amendment", "d-task",
             {"assignment": "d-task", "effort": "alpha"}, "## Correction\n\nuse this")
     _record(cli, defs, "project:execution-report", "d-task",
-            {"work_item": task["id"], "assignment": assignment["id"], "result": "pass", "verdict": "pass", "revision": "abc"},
+            {"work_item": task["subject"], "assignment": assignment["subject"], "result": "pass", "verdict": "pass", "revision": "abc"},
             "evidence body")
     _record(cli, defs, "project:execution-report", "d-task-other",
-            {"work_item": sibling["id"], "assignment": "x", "result": "pass", "verdict": "pass", "revision": "zzz"}, "foreign body")
+            {"work_item": sibling["subject"], "assignment": "x", "result": "pass", "verdict": "pass", "revision": "zzz"}, "foreign body")
     _record(cli, defs, "project:finding", "d-task",
             {"claim": "a claim", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
     _record(cli, defs, "project:finding", "d-task-other",
@@ -690,7 +690,7 @@ def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, c
     h.transition(cli, "project:work-item", running, "in_progress")
     h.run_cli_48h_ago(
         store, "create", "--type", "project:assignment", "--subject", "old-assign",
-        "--payload", json.dumps({"work_item": running["id"], "executor": "old", "effort": "alpha"}),
+        "--payload", json.dumps({"work_item": running["subject"], "executor": "old", "effort": "alpha"}),
         "--body", h.generic_body(defs["project:assignment"]),
     )
     latest = _assign(cli, defs, "r-running", "new")
@@ -701,9 +701,9 @@ def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, c
 def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
     _goal(cli, defs, "alpha")
     ready = _work_item(cli, defs, "alpha", "r-ready", "p-one")
-    _assign(cli, defs, ready["id"], "ready")
+    _assign(cli, defs, ready["subject"], "ready")
     done = _work_item(cli, defs, "alpha", "r-done", "p-one")
-    _assign(cli, defs, done["id"], "done")
+    _assign(cli, defs, done["subject"], "done")
     h.transition(cli, "project:work-item", done, "in_progress", "done")
     unassigned = _work_item(cli, defs, "alpha", "r-unassigned", "p-one")
     h.transition(cli, "project:work-item", unassigned, "in_progress")
