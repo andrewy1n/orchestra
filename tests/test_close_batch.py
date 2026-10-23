@@ -1280,6 +1280,37 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
+def test_default_amendment_lister_matches_acceptance_by_id_or_subject(store, cli, resolved_contract):
+    defs = h.record_defs_by_id(resolved_contract)
+    phase = h.create_generic_record(cli, defs, "project:phase")
+    acceptance = h.create_generic_record(
+        cli, defs, "project:acceptance", extra_payload={"phase": phase["subject"]}
+    )
+    other = h.create_generic_record(
+        cli, defs, "project:acceptance", extra_payload={"phase": phase["subject"]}
+    )
+
+    def amend(acceptance_ref: str) -> dict:
+        return h.create_generic_record(
+            cli,
+            defs,
+            "project:oracle-amendment",
+            extra_payload={
+                "acceptance": acceptance_ref,
+                "phase": phase["subject"],
+                "status": "approved",
+            },
+        )
+
+    by_subject = amend(acceptance["subject"])
+    by_id = amend(acceptance["id"])
+    amend(other["subject"])
+
+    listed = close_batch.default_list_oracle_amendments(acceptance["id"], store_root=store)
+
+    assert {record["id"] for record in listed} == {by_subject["id"], by_id["id"]}
+
+
 def test_oracle_hash_refuses_silent_freeze_edit(tmp_path):
     repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
     entry = _tdd_with_dirty_red(

@@ -131,20 +131,24 @@ def default_list_oracle_amendments(
     *,
     store_root: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Active oracle-amendment records whose payload.acceptance matches id."""
+    """Active oracle-amendment records whose payload.acceptance is the id or the subject."""
     try:
-        records = _open_project(store_root).list("project:oracle-amendment")
+        project = _open_project(store_root)
+        records = project.list("project:oracle-amendment")
     except StoreError:
         return []
+    refs = {str(acceptance_id)}
+    try:
+        refs.add(str(project.get(acceptance_id, "project:acceptance")["subject"]))
+    except StoreError:
+        pass
     matched: list[dict[str, Any]] = []
     for record in records:
         if not isinstance(record, dict):
             continue
         if record.get("lifecycle_state") not in (None, "active"):
             continue
-        payload = _payload(record)
-        ref = payload.get("acceptance")
-        if ref == acceptance_id or str(ref) == str(acceptance_id):
+        if str(_payload(record).get("acceptance")) in refs:
             matched.append(record)
     return matched
 
