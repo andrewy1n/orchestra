@@ -1,7 +1,7 @@
 # Project Brief
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:2fe5f5c88a8a9326bf6ac987a8e1fae9f1f8c1653f917c0cd0ce1f2ec965519d
+> Store state: sha256:bef3fbf9c9396dc1fdc916ad361ad84ba90c7fa52ca977ae11f8ea91580e16ec
 
 ## aa-installable-package
 
@@ -204,6 +204,31 @@
 ### Acceptance
 - **check-run-contract**: R4; tdd; workflow-loop; uv run --with pytest python -m pytest tests/test_contract_self_consistency.py tests/test_evidence_loop.py tests/test_assess_routing.py -q -k 'enum or result or method or contract' _(id: [rec-88363d0c-d058-4a0d-8c04-4a697bbe457d](.artifacts/records/project__acceptance/rec-88363d0c-d058-4a0d-8c04-4a697bbe457d.md))_
 
+## claim-gate-clocks-both
+
+### Acceptance
+- **claim-gate-clocks-both**: R7; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_both_failures_name_both -q _(id: [rec-432334a4-f932-4592-9c38-06db287a2bc7](.artifacts/records/project__acceptance/rec-432334a4-f932-4592-9c38-06db287a2bc7.md))_
+
+## claim-gate-clocks-recheck
+
+### Acceptance
+- **claim-gate-clocks-recheck**: R4; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_recheck_runs_for_claim -q _(id: [rec-8ab53d48-b718-4b23-8662-92a347813022](.artifacts/records/project__acceptance/rec-8ab53d48-b718-4b23-8662-92a347813022.md))_
+
+## claim-gate-clocks-recheck-only
+
+### Acceptance
+- **claim-gate-clocks-recheck-only**: R6; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_recheck_only_failure_names_recheck -q _(id: [rec-8bdcbaad-032e-4f37-a08c-716708bacad5](.artifacts/records/project__acceptance/rec-8bdcbaad-032e-4f37-a08c-716708bacad5.md))_
+
+## claim-gate-clocks-verdict
+
+### Acceptance
+- **claim-gate-clocks-verdict**: R3; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_runs_at_green_revision -q _(id: [rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59](.artifacts/records/project__acceptance/rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59.md))_
+
+## claim-gate-clocks-verdict-only
+
+### Acceptance
+- **claim-gate-clocks-verdict-only**: R5; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_only_failure_names_verdict -q _(id: [rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400](.artifacts/records/project__acceptance/rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400.md))_
+
 ## claim-gate-close
 
 ### Acceptance
@@ -213,6 +238,26 @@
 
 ### Acceptance
 - **claim-gate-close-recheck**: R6; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py::test_claim_gate_refuses_done_when_aff_recheck_nonzero -q _(id: [rec-feea1426-6af8-4732-8e6b-431eb5331240](.artifacts/records/project__acceptance/rec-feea1426-6af8-4732-8e6b-431eb5331240.md))_
+
+## claim-gate-source
+
+### Acceptance
+- **claim-gate-source**: R1; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_claim_id_read_only_from_payload_claim -q _(id: [rec-cc03c990-7e5c-4647-b54b-e1adedb8e479](.artifacts/records/project__acceptance/rec-cc03c990-7e5c-4647-b54b-e1adedb8e479.md))_
+
+## claim-gate-source-empty
+
+### Acceptance
+- **claim-gate-source-empty**: R2; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_empty_claim_is_not_gated -q _(id: [rec-44d6f376-b9db-44a0-abf1-a069f90adbaf](.artifacts/records/project__acceptance/rec-44d6f376-b9db-44a0-abf1-a069f90adbaf.md))_
+
+## claim-gate-source-missing
+
+### Acceptance
+- **claim-gate-source-missing**: R8; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_missing_acceptance_refuses -q _(id: [rec-d6885b67-904c-44af-96f1-d8a64c5fd613](.artifacts/records/project__acceptance/rec-d6885b67-904c-44af-96f1-d8a64c5fd613.md))_
+
+## claim-gate-source-unknown
+
+### Acceptance
+- **claim-gate-source-unknown**: R9; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_unknown_claim_refuses -q _(id: [rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657](.artifacts/records/project__acceptance/rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657.md))_
 
 ## claude-shared-marketplace
 
@@ -752,10 +797,25 @@
 ### Acceptance
 - **fix-apply-ops**: R19; tdd; library-boundary; PYTHONPATH=src python3 -m pytest tests/test_apply_ops.py::test_r19_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_apply_bad_line_does_not_abort tests/test_apply_ops.py::test_r19_command_apply_persists_supersede_correct_and_contradict tests/test_apply_ops.py::test_r19_command_apply_bad_line_does_not_abort -q _(id: [rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1](.artifacts/records/project__acceptance/rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1.md))_
 
+## fix-claim-gate-e2e
+
+### Acceptance
+- **fix-claim-gate-e2e**: R1,R8,R9; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py tests/test_close_batch.py tests/test_orchestra_callers.py tests/test_library_e2e.py "tests/test_verify_authority.py::test_close_batch_still_creates_manual_check_runs" -q _(id: [rec-063c49d8-6bef-4f8d-8003-02802dd9109b](.artifacts/records/project__acceptance/rec-063c49d8-6bef-4f8d-8003-02802dd9109b.md))_
+
 ## fix-claim-gate-hardening
 
 ### Acceptance
 - **fix-claim-gate-hardening**: R5; tdd; workflow-loop; python3 -m pytest tests/test_close_batch.py -q -k 'claim_gate' _(id: [rec-43215a07-b490-49f1-9631-fb8bb14dbb93](.artifacts/records/project__acceptance/rec-43215a07-b490-49f1-9631-fb8bb14dbb93.md))_
+
+## fix-claim-gate-regressions
+
+### Acceptance
+- **fix-claim-gate-regressions**: R1,R5,R6,R8; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py tests/test_close_batch.py tests/test_orchestra_callers.py "tests/test_verify_authority.py::test_close_batch_still_creates_manual_check_runs" -q _(id: [rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42](.artifacts/records/project__acceptance/rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42.md))_
+
+## fix-claim-gate-unit-hook
+
+### Acceptance
+- **fix-claim-gate-unit-hook**: R8; check; library-boundary; python3 -m pytest tests/test_close_batch.py tests/test_claim_clocks.py -q _(id: [rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84](.artifacts/records/project__acceptance/rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84.md))_
 
 ## fix-cli-runtime-surface
 
@@ -1193,7 +1253,7 @@ assert not any(bad(c) for c in seen)' _(id: [rec-625650b6-a012-4a20-b260-a24d0b2
 ## library-boundary
 
 ### Position
-- **library-boundary**: declared-install done at 993cf14c; next up: claim-clocks; effort _(id: [rec-9c38245f-3593-4396-b5e4-6cdd594a47f7](.artifacts/records/project__current-position/rec-9c38245f-3593-4396-b5e4-6cdd594a47f7.md))_
+- **library-boundary**: claim-clocks done at aa1d6be2; next up: none planned; effort _(id: [rec-73bb74b0-7a75-4a46-8c70-e80476b9deae](.artifacts/records/project__current-position/rec-73bb74b0-7a75-4a46-8c70-e80476b9deae.md))_
 
 ## library-fixture
 
@@ -2878,6 +2938,26 @@ print("phase checks only")
 
 ### Acceptance
 - **verify-check-runner-skills**: R5; check; workflow-loop; uv run --with pytest python -m pytest tests/test_verify_authority.py tests/test_skill_contract_consistency.py -q _(id: [rec-a831be0f-059e-414e-90bb-36c485017676](.artifacts/records/project__acceptance/rec-a831be0f-059e-414e-90bb-36c485017676.md))_
+
+## verify-claim-clocks
+
+### Acceptance
+- **verify-claim-clocks**: R1; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py -q _(id: [rec-c70acbe0-be38-4b79-a60b-9ff96e705e35](.artifacts/records/project__acceptance/rec-c70acbe0-be38-4b79-a60b-9ff96e705e35.md))_
+
+## verify-claim-clocks-cli
+
+### Acceptance
+- **verify-claim-clocks-cli**: R9; check; library-boundary; python3 -m pytest tests/test_close_batch.py -k "cli and claim_gate" -q _(id: [rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50](.artifacts/records/project__acceptance/rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50.md))_
+
+## verify-claim-clocks-missing
+
+### Acceptance
+- **verify-claim-clocks-missing**: R8; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_missing_acceptance_refuses -q _(id: [rec-42e1e517-d39b-470f-9703-b097126fadbe](.artifacts/records/project__acceptance/rec-42e1e517-d39b-470f-9703-b097126fadbe.md))_
+
+## verify-claim-clocks-verdict
+
+### Acceptance
+- **verify-claim-clocks-verdict**: R5; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_only_failure_names_verdict -q _(id: [rec-e1ec0158-c053-4a12-bd35-76eb069e534e](.artifacts/records/project__acceptance/rec-e1ec0158-c053-4a12-bd35-76eb069e534e.md))_
 
 ## verify-claim-witnesses
 

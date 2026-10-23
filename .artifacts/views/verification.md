@@ -1,7 +1,7 @@
 # Project Verification
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:a9c97f672bb12665b04b43f132722c8d8160ae5c8c150278de88c0d50c083f3a
+> Store state: sha256:2d6a143f676e6d8c60c32801351f220b41b43248bed8d6fe43d5e503a919e6f6
 
 ## aa-installable-package
 
@@ -339,6 +339,62 @@
 ### Check
 - **check-run-contract**: rec-88363d0c-d058-4a0d-8c04-4a697bbe457d; 16c24e78d806d5207ee2c37a9418e828521f8389; pass; tdd _(id: [rec-06babb10-72f2-4c7c-8ef8-285ebdef0f15](.artifacts/records/project__check-run/rec-06babb10-72f2-4c7c-8ef8-285ebdef0f15.md))_
 
+## claim-clocks-review
+
+### Check
+- **claim-clocks-review**: claim-clocks-review; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; review _(id: [rec-bd6e09e1-0813-42ca-8542-437ccbf9a7ab](.artifacts/records/project__check-run/rec-bd6e09e1-0813-42ca-8542-437ccbf9a7ab.md))_
+
+## claim-gate-clocks-both
+
+### Acceptance
+- **claim-gate-clocks-both**: R7; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_both_failures_name_both -q _(id: [rec-432334a4-f932-4592-9c38-06db287a2bc7](.artifacts/records/project__acceptance/rec-432334a4-f932-4592-9c38-06db287a2bc7.md))_
+
+### Check
+- **claim-gate-clocks-both**: rec-432334a4-f932-4592-9c38-06db287a2bc7; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; tdd _(id: [rec-150d0e8b-4c59-4bc5-95d5-2221c1cc6db5](.artifacts/records/project__check-run/rec-150d0e8b-4c59-4bc5-95d5-2221c1cc6db5.md))_
+- **claim-gate-clocks-both**: rec-432334a4-f932-4592-9c38-06db287a2bc7; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; tdd _(id: [rec-30f8598f-01a9-4bcd-ae8a-b083d53b9790](.artifacts/records/project__check-run/rec-30f8598f-01a9-4bcd-ae8a-b083d53b9790.md))_
+- **claim-gate-clocks-both**: rec-432334a4-f932-4592-9c38-06db287a2bc7; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; tdd _(id: [rec-eab80a8e-6688-4f4a-b531-b0471259edd5](.artifacts/records/project__check-run/rec-eab80a8e-6688-4f4a-b531-b0471259edd5.md))_
+- **claim-gate-clocks-both**: rec-432334a4-f932-4592-9c38-06db287a2bc7; ee99dc40a59190f169f510bb16f2f44750f63f8b; fail; tdd _(id: [rec-f5070312-d379-441a-b6e6-ea6b2965d016](.artifacts/records/project__check-run/rec-f5070312-d379-441a-b6e6-ea6b2965d016.md))_
+
+## claim-gate-clocks-recheck
+
+### Acceptance
+- **claim-gate-clocks-recheck**: R4; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_recheck_runs_for_claim -q _(id: [rec-8ab53d48-b718-4b23-8662-92a347813022](.artifacts/records/project__acceptance/rec-8ab53d48-b718-4b23-8662-92a347813022.md))_
+
+### Check
+- **claim-gate-clocks-recheck**: rec-8ab53d48-b718-4b23-8662-92a347813022; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-695f6ab1-eeaf-4745-8a1a-6c893431ae2e](.artifacts/records/project__check-run/rec-695f6ab1-eeaf-4745-8a1a-6c893431ae2e.md))_
+- **claim-gate-clocks-recheck**: rec-8ab53d48-b718-4b23-8662-92a347813022; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-7873e88f-844f-45ac-a258-d70f5a0b13fb](.artifacts/records/project__check-run/rec-7873e88f-844f-45ac-a258-d70f5a0b13fb.md))_
+- **claim-gate-clocks-recheck**: rec-8ab53d48-b718-4b23-8662-92a347813022; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-9c640100-2f39-4158-b526-38a621e9b7e7](.artifacts/records/project__check-run/rec-9c640100-2f39-4158-b526-38a621e9b7e7.md))_
+
+## claim-gate-clocks-recheck-only
+
+### Acceptance
+- **claim-gate-clocks-recheck-only**: R6; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_recheck_only_failure_names_recheck -q _(id: [rec-8bdcbaad-032e-4f37-a08c-716708bacad5](.artifacts/records/project__acceptance/rec-8bdcbaad-032e-4f37-a08c-716708bacad5.md))_
+
+### Check
+- **claim-gate-clocks-recheck-only**: rec-8bdcbaad-032e-4f37-a08c-716708bacad5; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-22e7b3b8-e657-4a3a-ae74-910165fb98c0](.artifacts/records/project__check-run/rec-22e7b3b8-e657-4a3a-ae74-910165fb98c0.md))_
+- **claim-gate-clocks-recheck-only**: rec-8bdcbaad-032e-4f37-a08c-716708bacad5; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-a5899bb4-9734-49fa-96c5-af70129da118](.artifacts/records/project__check-run/rec-a5899bb4-9734-49fa-96c5-af70129da118.md))_
+- **claim-gate-clocks-recheck-only**: rec-8bdcbaad-032e-4f37-a08c-716708bacad5; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-da814626-5f89-47bd-b242-c74ae519aae2](.artifacts/records/project__check-run/rec-da814626-5f89-47bd-b242-c74ae519aae2.md))_
+
+## claim-gate-clocks-verdict
+
+### Acceptance
+- **claim-gate-clocks-verdict**: R3; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_runs_at_green_revision -q _(id: [rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59](.artifacts/records/project__acceptance/rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59.md))_
+
+### Check
+- **claim-gate-clocks-verdict**: rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-8f5bed2a-9265-484b-929a-a9d822764a4b](.artifacts/records/project__check-run/rec-8f5bed2a-9265-484b-929a-a9d822764a4b.md))_
+- **claim-gate-clocks-verdict**: rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-c2211206-5ec1-4909-8bd6-7a25cd47f5e8](.artifacts/records/project__check-run/rec-c2211206-5ec1-4909-8bd6-7a25cd47f5e8.md))_
+- **claim-gate-clocks-verdict**: rec-e6afa1ae-62e4-404f-8881-cb486a1e0c59; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-ed88270b-2b72-4556-8537-15701d2d6235](.artifacts/records/project__check-run/rec-ed88270b-2b72-4556-8537-15701d2d6235.md))_
+
+## claim-gate-clocks-verdict-only
+
+### Acceptance
+- **claim-gate-clocks-verdict-only**: R5; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_only_failure_names_verdict -q _(id: [rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400](.artifacts/records/project__acceptance/rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400.md))_
+
+### Check
+- **claim-gate-clocks-verdict-only**: rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-297a01f2-c9af-4a4b-8bc7-8c293555c9c9](.artifacts/records/project__check-run/rec-297a01f2-c9af-4a4b-8bc7-8c293555c9c9.md))_
+- **claim-gate-clocks-verdict-only**: rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-604b3afa-7b7a-462d-a7d9-1c16a7c77166](.artifacts/records/project__check-run/rec-604b3afa-7b7a-462d-a7d9-1c16a7c77166.md))_
+- **claim-gate-clocks-verdict-only**: rec-4e6bb722-1c42-4e77-a12d-6af44ce9f400; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-89198385-8565-41a1-bdaf-0e737665571d](.artifacts/records/project__check-run/rec-89198385-8565-41a1-bdaf-0e737665571d.md))_
+
 ## claim-gate-close
 
 ### Acceptance
@@ -366,6 +422,50 @@
 - **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-854e3225-e40a-492f-8281-432f746b650c](.artifacts/records/project__check-run/rec-854e3225-e40a-492f-8281-432f746b650c.md))_
 - **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 61b77e4f1958556f05a740269859441df8726e10; fail; tdd _(id: [rec-8878c64c-ee99-4dbd-8df7-f15580216198](.artifacts/records/project__check-run/rec-8878c64c-ee99-4dbd-8df7-f15580216198.md))_
 - **claim-gate-close-recheck**: rec-feea1426-6af8-4732-8e6b-431eb5331240; 51cd740b7588ae41ef9a50360d992d6995d1e09d; fail; tdd _(id: [rec-fbfaf22d-0ff4-40aa-b0b4-04af91618d19](.artifacts/records/project__check-run/rec-fbfaf22d-0ff4-40aa-b0b4-04af91618d19.md))_
+
+## claim-gate-source
+
+### Acceptance
+- **claim-gate-source**: R1; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_claim_id_read_only_from_payload_claim -q _(id: [rec-cc03c990-7e5c-4647-b54b-e1adedb8e479](.artifacts/records/project__acceptance/rec-cc03c990-7e5c-4647-b54b-e1adedb8e479.md))_
+
+### Check
+- **claim-gate-source**: rec-cc03c990-7e5c-4647-b54b-e1adedb8e479; ee99dc40a59190f169f510bb16f2f44750f63f8b; fail; tdd _(id: [rec-212f2086-7caf-4a08-8cdd-42c4eea1400a](.artifacts/records/project__check-run/rec-212f2086-7caf-4a08-8cdd-42c4eea1400a.md))_
+- **claim-gate-source**: rec-cc03c990-7e5c-4647-b54b-e1adedb8e479; 6a284525302f6b39e634dee115e78e89d3aebf2a; pass; tdd _(id: [rec-6a056e9b-a304-45b6-a2af-74f847338d29](.artifacts/records/project__check-run/rec-6a056e9b-a304-45b6-a2af-74f847338d29.md))_
+- **claim-gate-source**: rec-cc03c990-7e5c-4647-b54b-e1adedb8e479; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; tdd _(id: [rec-8bba5662-9a12-4483-8cb3-b82e67b42c20](.artifacts/records/project__check-run/rec-8bba5662-9a12-4483-8cb3-b82e67b42c20.md))_
+- **claim-gate-source**: rec-cc03c990-7e5c-4647-b54b-e1adedb8e479; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; tdd _(id: [rec-943c22ca-3c87-49c5-a194-67935d251608](.artifacts/records/project__check-run/rec-943c22ca-3c87-49c5-a194-67935d251608.md))_
+
+## claim-gate-source-empty
+
+### Acceptance
+- **claim-gate-source-empty**: R2; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_empty_claim_is_not_gated -q _(id: [rec-44d6f376-b9db-44a0-abf1-a069f90adbaf](.artifacts/records/project__acceptance/rec-44d6f376-b9db-44a0-abf1-a069f90adbaf.md))_
+
+### Check
+- **claim-gate-source-empty**: rec-44d6f376-b9db-44a0-abf1-a069f90adbaf; ee99dc40a59190f169f510bb16f2f44750f63f8b; fail; tdd _(id: [rec-26e0a527-3cd2-4856-970d-6221f288b877](.artifacts/records/project__check-run/rec-26e0a527-3cd2-4856-970d-6221f288b877.md))_
+- **claim-gate-source-empty**: rec-44d6f376-b9db-44a0-abf1-a069f90adbaf; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; tdd _(id: [rec-37994da3-a534-4654-a1ee-7535740e1fa2](.artifacts/records/project__check-run/rec-37994da3-a534-4654-a1ee-7535740e1fa2.md))_
+- **claim-gate-source-empty**: rec-44d6f376-b9db-44a0-abf1-a069f90adbaf; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; tdd _(id: [rec-404ff413-425b-4fbd-ac68-44a72dda2a18](.artifacts/records/project__check-run/rec-404ff413-425b-4fbd-ac68-44a72dda2a18.md))_
+- **claim-gate-source-empty**: rec-44d6f376-b9db-44a0-abf1-a069f90adbaf; 6a284525302f6b39e634dee115e78e89d3aebf2a; pass; tdd _(id: [rec-8bc569ff-caed-4fce-a01e-6eb3a4e2cfa1](.artifacts/records/project__check-run/rec-8bc569ff-caed-4fce-a01e-6eb3a4e2cfa1.md))_
+
+## claim-gate-source-missing
+
+### Acceptance
+- **claim-gate-source-missing**: R8; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_missing_acceptance_refuses -q _(id: [rec-d6885b67-904c-44af-96f1-d8a64c5fd613](.artifacts/records/project__acceptance/rec-d6885b67-904c-44af-96f1-d8a64c5fd613.md))_
+
+### Check
+- **claim-gate-source-missing**: rec-d6885b67-904c-44af-96f1-d8a64c5fd613; 6a284525302f6b39e634dee115e78e89d3aebf2a; pass; tdd _(id: [rec-4ffdebd0-890d-419b-a24f-ec77c8b50eab](.artifacts/records/project__check-run/rec-4ffdebd0-890d-419b-a24f-ec77c8b50eab.md))_
+- **claim-gate-source-missing**: rec-d6885b67-904c-44af-96f1-d8a64c5fd613; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; tdd _(id: [rec-75283a6f-c4a8-4691-b79e-e9d7a4835e0b](.artifacts/records/project__check-run/rec-75283a6f-c4a8-4691-b79e-e9d7a4835e0b.md))_
+- **claim-gate-source-missing**: rec-d6885b67-904c-44af-96f1-d8a64c5fd613; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; tdd _(id: [rec-76e38997-3f86-498f-9cd4-2938d7da2d9d](.artifacts/records/project__check-run/rec-76e38997-3f86-498f-9cd4-2938d7da2d9d.md))_
+- **claim-gate-source-missing**: rec-d6885b67-904c-44af-96f1-d8a64c5fd613; ee99dc40a59190f169f510bb16f2f44750f63f8b; fail; tdd _(id: [rec-d9e5d9a1-a505-4a15-9c70-488bb13e15bf](.artifacts/records/project__check-run/rec-d9e5d9a1-a505-4a15-9c70-488bb13e15bf.md))_
+
+## claim-gate-source-unknown
+
+### Acceptance
+- **claim-gate-source-unknown**: R9; tdd; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_unknown_claim_refuses -q _(id: [rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657](.artifacts/records/project__acceptance/rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657.md))_
+
+### Check
+- **claim-gate-source-unknown**: rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657; 6a284525302f6b39e634dee115e78e89d3aebf2a; pass; tdd _(id: [rec-2f31b85c-ad44-471c-8d9c-d14a8ee7d19c](.artifacts/records/project__check-run/rec-2f31b85c-ad44-471c-8d9c-d14a8ee7d19c.md))_
+- **claim-gate-source-unknown**: rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657; ee99dc40a59190f169f510bb16f2f44750f63f8b; fail; tdd _(id: [rec-31c31d77-7d55-47a7-833a-cb41c5ea31fd](.artifacts/records/project__check-run/rec-31c31d77-7d55-47a7-833a-cb41c5ea31fd.md))_
+- **claim-gate-source-unknown**: rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; tdd _(id: [rec-64bb6c70-a482-4918-bc1e-708cce69e0b8](.artifacts/records/project__check-run/rec-64bb6c70-a482-4918-bc1e-708cce69e0b8.md))_
+- **claim-gate-source-unknown**: rec-0c3ee26a-b508-46c3-89b3-9fbbee3dd657; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; tdd _(id: [rec-a46fd2f3-73c1-45fb-bdc5-25af4fc0ce9b](.artifacts/records/project__check-run/rec-a46fd2f3-73c1-45fb-bdc5-25af4fc0ce9b.md))_
 
 ## claim-witnesses-review
 
@@ -1243,6 +1343,15 @@
 - **fix-apply-ops**: rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1; 387d8d48aa0ddd88b9de581c2c52ae31c235655d; pass; tdd _(id: [rec-53616aa0-0b96-4978-b9bb-772b9a7a5fbd](.artifacts/records/project__check-run/rec-53616aa0-0b96-4978-b9bb-772b9a7a5fbd.md))_
 - **fix-apply-ops**: rec-8e9f45f6-685f-4008-bfc2-8bf6640e4ee1; dirty; fail; tdd _(id: [rec-8d95b3f1-3772-4531-94ea-0a5b37c042c5](.artifacts/records/project__check-run/rec-8d95b3f1-3772-4531-94ea-0a5b37c042c5.md))_
 
+## fix-claim-gate-e2e
+
+### Acceptance
+- **fix-claim-gate-e2e**: R1,R8,R9; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py tests/test_close_batch.py tests/test_orchestra_callers.py tests/test_library_e2e.py "tests/test_verify_authority.py::test_close_batch_still_creates_manual_check_runs" -q _(id: [rec-063c49d8-6bef-4f8d-8003-02802dd9109b](.artifacts/records/project__acceptance/rec-063c49d8-6bef-4f8d-8003-02802dd9109b.md))_
+
+### Check
+- **fix-claim-gate-e2e**: rec-063c49d8-6bef-4f8d-8003-02802dd9109b; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-b39203b6-7f3a-4a22-aae3-0feced56cb1a](.artifacts/records/project__check-run/rec-b39203b6-7f3a-4a22-aae3-0feced56cb1a.md))_
+- **fix-claim-gate-e2e**: rec-063c49d8-6bef-4f8d-8003-02802dd9109b; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-db612c89-afce-4bb3-bd20-44d57db3f69a](.artifacts/records/project__check-run/rec-db612c89-afce-4bb3-bd20-44d57db3f69a.md))_
+
 ## fix-claim-gate-hardening
 
 ### Acceptance
@@ -1253,6 +1362,26 @@
 - **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; 46f7be3e4062d8f39f62c3dd22958eb97ec022ad; pass; tdd _(id: [rec-52a73c3d-1e32-440a-af4a-806a2bd9404d](.artifacts/records/project__check-run/rec-52a73c3d-1e32-440a-af4a-806a2bd9404d.md))_
 - **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; dirty; fail; tdd _(id: [rec-5db3b94d-948d-4f36-a05e-a0c69689bf50](.artifacts/records/project__check-run/rec-5db3b94d-948d-4f36-a05e-a0c69689bf50.md))_
 - **fix-claim-gate-hardening**: rec-43215a07-b490-49f1-9631-fb8bb14dbb93; 7353a01f2b3f60dfe41543f6f527c59bc283e3a0; pass; tdd _(id: [rec-b9c96d24-986b-486c-a580-2da7aae1bb1d](.artifacts/records/project__check-run/rec-b9c96d24-986b-486c-a580-2da7aae1bb1d.md))_
+
+## fix-claim-gate-regressions
+
+### Acceptance
+- **fix-claim-gate-regressions**: R1,R5,R6,R8; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py tests/test_close_batch.py tests/test_orchestra_callers.py "tests/test_verify_authority.py::test_close_batch_still_creates_manual_check_runs" -q _(id: [rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42](.artifacts/records/project__acceptance/rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42.md))_
+
+### Check
+- **fix-claim-gate-regressions**: rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-cd9e532f-cf0f-4990-a7ea-0119121e28d6](.artifacts/records/project__check-run/rec-cd9e532f-cf0f-4990-a7ea-0119121e28d6.md))_
+- **fix-claim-gate-regressions**: rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-d06e22df-fb90-4d65-9fec-3c1cabbe066d](.artifacts/records/project__check-run/rec-d06e22df-fb90-4d65-9fec-3c1cabbe066d.md))_
+- **fix-claim-gate-regressions**: rec-0a2ec5bf-6ac6-4f03-b4de-22432adc9b42; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-d6aa29ed-7ea1-452a-bfc9-1cff7ccaaddb](.artifacts/records/project__check-run/rec-d6aa29ed-7ea1-452a-bfc9-1cff7ccaaddb.md))_
+
+## fix-claim-gate-unit-hook
+
+### Acceptance
+- **fix-claim-gate-unit-hook**: R8; check; library-boundary; python3 -m pytest tests/test_close_batch.py tests/test_claim_clocks.py -q _(id: [rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84](.artifacts/records/project__acceptance/rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84.md))_
+
+### Check
+- **fix-claim-gate-unit-hook**: rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84; 3ac0f0d6a5017dda68d15fd812ead47178e46029; pass; check _(id: [rec-2d0c6537-1800-46e7-98d0-faf6eaba180b](.artifacts/records/project__check-run/rec-2d0c6537-1800-46e7-98d0-faf6eaba180b.md))_
+- **fix-claim-gate-unit-hook**: rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-43dae7c7-e35d-44b7-a6b1-cf7147e36b84](.artifacts/records/project__check-run/rec-43dae7c7-e35d-44b7-a6b1-cf7147e36b84.md))_
+- **fix-claim-gate-unit-hook**: rec-bc4ef8c1-37df-4189-8243-5f910bb0fe84; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-fb871313-931f-4eae-a7b0-0ce027236a06](.artifacts/records/project__check-run/rec-fb871313-931f-4eae-a7b0-0ce027236a06.md))_
 
 ## fix-cli-runtime-surface
 
@@ -4907,6 +5036,46 @@ print("phase checks only")
 
 ### Check
 - **verify-check-runner-skills**: rec-a831be0f-059e-414e-90bb-36c485017676; 4bd42b96e925562686c726d6da61a27b99481255; pass; check _(id: [rec-ce3653a8-b5bd-40e1-a2af-0f37ef5045a8](.artifacts/records/project__check-run/rec-ce3653a8-b5bd-40e1-a2af-0f37ef5045a8.md))_
+
+## verify-claim-clocks
+
+### Acceptance
+- **verify-claim-clocks**: R1; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py -q _(id: [rec-c70acbe0-be38-4b79-a60b-9ff96e705e35](.artifacts/records/project__acceptance/rec-c70acbe0-be38-4b79-a60b-9ff96e705e35.md))_
+
+### Check
+- **verify-claim-clocks**: rec-c70acbe0-be38-4b79-a60b-9ff96e705e35; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-702a5827-9200-41af-b37c-aec201b4a23a](.artifacts/records/project__check-run/rec-702a5827-9200-41af-b37c-aec201b4a23a.md))_
+- **verify-claim-clocks**: rec-c70acbe0-be38-4b79-a60b-9ff96e705e35; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-a7a27541-06c5-46c0-9022-80fe045b66e0](.artifacts/records/project__check-run/rec-a7a27541-06c5-46c0-9022-80fe045b66e0.md))_
+- **verify-claim-clocks**: rec-c70acbe0-be38-4b79-a60b-9ff96e705e35; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-d7f1c886-279e-41e4-ad0a-9b83cf8d4a5f](.artifacts/records/project__check-run/rec-d7f1c886-279e-41e4-ad0a-9b83cf8d4a5f.md))_
+
+## verify-claim-clocks-cli
+
+### Acceptance
+- **verify-claim-clocks-cli**: R9; check; library-boundary; python3 -m pytest tests/test_close_batch.py -k "cli and claim_gate" -q _(id: [rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50](.artifacts/records/project__acceptance/rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50.md))_
+
+### Check
+- **verify-claim-clocks-cli**: rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-6a522846-52d0-4a1a-a5a0-94ddc28e51aa](.artifacts/records/project__check-run/rec-6a522846-52d0-4a1a-a5a0-94ddc28e51aa.md))_
+- **verify-claim-clocks-cli**: rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-9d2eef61-d596-4c52-9f2a-7209bbc93e19](.artifacts/records/project__check-run/rec-9d2eef61-d596-4c52-9f2a-7209bbc93e19.md))_
+- **verify-claim-clocks-cli**: rec-07f427f6-14c8-4b26-8ad0-54bad2e08b50; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-c7352b53-d2c2-40b0-b09e-4a644b92bcc7](.artifacts/records/project__check-run/rec-c7352b53-d2c2-40b0-b09e-4a644b92bcc7.md))_
+
+## verify-claim-clocks-missing
+
+### Acceptance
+- **verify-claim-clocks-missing**: R8; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_missing_acceptance_refuses -q _(id: [rec-42e1e517-d39b-470f-9703-b097126fadbe](.artifacts/records/project__acceptance/rec-42e1e517-d39b-470f-9703-b097126fadbe.md))_
+
+### Check
+- **verify-claim-clocks-missing**: rec-42e1e517-d39b-470f-9703-b097126fadbe; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-4e228b05-cb61-458e-858a-759323d312ea](.artifacts/records/project__check-run/rec-4e228b05-cb61-458e-858a-759323d312ea.md))_
+- **verify-claim-clocks-missing**: rec-42e1e517-d39b-470f-9703-b097126fadbe; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-86979f94-f85f-483a-9fca-7bf7c30480a0](.artifacts/records/project__check-run/rec-86979f94-f85f-483a-9fca-7bf7c30480a0.md))_
+- **verify-claim-clocks-missing**: rec-42e1e517-d39b-470f-9703-b097126fadbe; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-b8718afc-5aee-4232-b3ef-462d4fabc0ff](.artifacts/records/project__check-run/rec-b8718afc-5aee-4232-b3ef-462d4fabc0ff.md))_
+
+## verify-claim-clocks-verdict
+
+### Acceptance
+- **verify-claim-clocks-verdict**: R5; check; library-boundary; python3 -m pytest tests/test_claim_clocks.py::test_verdict_only_failure_names_verdict -q _(id: [rec-e1ec0158-c053-4a12-bd35-76eb069e534e](.artifacts/records/project__acceptance/rec-e1ec0158-c053-4a12-bd35-76eb069e534e.md))_
+
+### Check
+- **verify-claim-clocks-verdict**: rec-e1ec0158-c053-4a12-bd35-76eb069e534e; b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2; pass; check _(id: [rec-b4e2dde0-176d-4e81-9125-f11f308de352](.artifacts/records/project__check-run/rec-b4e2dde0-176d-4e81-9125-f11f308de352.md))_
+- **verify-claim-clocks-verdict**: rec-e1ec0158-c053-4a12-bd35-76eb069e534e; 0eeb43affeac04a97c98250569a39cac9ab779a8; pass; check _(id: [rec-b540a3a5-42a3-4d4d-bee5-78cf9c06d162](.artifacts/records/project__check-run/rec-b540a3a5-42a3-4d4d-bee5-78cf9c06d162.md))_
+- **verify-claim-clocks-verdict**: rec-e1ec0158-c053-4a12-bd35-76eb069e534e; aa1d6be21a26e2ff7674deef9a84ab9112fef763; pass; check _(id: [rec-cc14f8c4-00a9-4068-abba-34caed767bb3](.artifacts/records/project__check-run/rec-cc14f8c4-00a9-4068-abba-34caed767bb3.md))_
 
 ## verify-claim-witnesses
 

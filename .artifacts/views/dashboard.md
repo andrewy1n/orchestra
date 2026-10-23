@@ -1,7 +1,7 @@
 # Project Dashboard
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:d98ff8a98e1873c50c708a265dcecef22de4db470fcd9653f2f155b25cb3af9f
+> Store state: sha256:c32151343ec179e17e4011f54a9599c94a563fc3f1d121c1e534ee94d605de39
 
 ## dashboard
 
@@ -14,26 +14,12 @@
 - **library-boundary**: goal: adaptive-artifacts, affidavit, and orchestra call each other in-process through small Python libraries. The commands stay for agents and humans. One function in adaptive-artifacts opens the store. SE_WORKFLOW_STORE is gone.; scope: effort; kind: deliver _(id: [rec-e474e2d8-be06-44e2-8583-27966c04a3b3](.artifacts/records/project__active-goal/rec-e474e2d8-be06-44e2-8583-27966c04a3b3.md))_
 
 ### Done Recent
-- **close-library**: title: Call affidavit from close; phase: orchestra-callers _(id: [rec-0e86bfda-83ae-4386-87a0-6dfe5d79fca4](.artifacts/records/project__work-item/rec-0e86bfda-83ae-4386-87a0-6dfe5d79fca4.md))_
-- **command-facade**: title: Command create and get use open_store; phase: aa-library _(id: [rec-683ff3dc-5bf3-4997-8ab6-54e88b27f516](.artifacts/records/project__work-item/rec-683ff3dc-5bf3-4997-8ab6-54e88b27f516.md))_
-- **fix-apply-ops**: title: Fix apply NDJSON verbs; phase: aa-library _(id: [rec-3fd123ca-62ae-430f-b1af-80033ad75e64](.artifacts/records/project__work-item/rec-3fd123ca-62ae-430f-b1af-80033ad75e64.md))_
-- **fix-dashboard-uv-env**: title: Give dashboard uv scripts the library; phase: orchestra-callers _(id: [rec-88bc8631-e806-4c85-b14d-4ffb41db5f26](.artifacts/records/project__work-item/rec-88bc8631-e806-4c85-b14d-4ffb41db5f26.md))_
-- **fix-library-e2e-coverage**: title: Make the integration test cover the close; phase: library-e2e _(id: [rec-2427db9a-ed5f-4575-97dd-32f355f8dcb5](.artifacts/records/project__work-item/rec-2427db9a-ed5f-4575-97dd-32f355f8dcb5.md))_
-- **format-gate**: title: Reject an unsupported contract format; phase: declared-install _(id: [rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6](.artifacts/records/project__work-item/rec-1cd799b5-c157-4040-8b16-fc4d9f243ea6.md))_
-- **import-open**: title: Open the store by import; phase: declared-install _(id: [rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a](.artifacts/records/project__work-item/rec-8252bc00-0216-4da9-96ce-bd94b7dceb4a.md))_
-- **library-fixture**: title: Prove the three packages on one fixture; phase: library-e2e _(id: [rec-0dda3a08-f25e-430f-a52b-fac9bad1c2f4](.artifacts/records/project__work-item/rec-0dda3a08-f25e-430f-a52b-fac9bad1c2f4.md))_
-- **open-store**: title: Resolve one store in open_store; phase: aa-library _(id: [rec-e5c5f5ac-64d2-4f41-bd62-73892af1cce4](.artifacts/records/project__work-item/rec-e5c5f5ac-64d2-4f41-bd62-73892af1cce4.md))_
-- **package-metadata**: title: Declare the install graph; phase: declared-install _(id: [rec-eca50c8d-f9fc-4408-a013-072254682c98](.artifacts/records/project__work-item/rec-eca50c8d-f9fc-4408-a013-072254682c98.md))_
-- **project-ops**: title: Project get, list, create, and apply; phase: aa-library _(id: [rec-35f6ccf5-81c0-453c-a795-3fabdaf16bc8](.artifacts/records/project__work-item/rec-35f6ccf5-81c0-453c-a795-3fabdaf16bc8.md))_
-- **replace-resolvers**: title: Open the store through the library; phase: orchestra-callers _(id: [rec-fc9cfbd9-3d03-4d01-a8b1-4b370a6e9e40](.artifacts/records/project__work-item/rec-fc9cfbd9-3d03-4d01-a8b1-4b370a6e9e40.md))_
-- **runtime-install**: title: Install runtime dependencies; phase: declared-install _(id: [rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f](.artifacts/records/project__work-item/rec-61291d5a-31fd-417c-a320-d5bb9ad7e96f.md))_
-- **store-client**: title: Call Project from observation and binding; phase: affidavit-library _(id: [rec-2edb2fb6-b62f-487e-8c5e-9e24ba019ef8](.artifacts/records/project__work-item/rec-2edb2fb6-b62f-487e-8c5e-9e24ba019ef8.md))_
-- **verdict-gate**: title: Keep verdict store-free and assertion-red; phase: affidavit-library _(id: [rec-1568217d-6832-44f7-85e1-32bc3dfbddc7](.artifacts/records/project__work-item/rec-1568217d-6832-44f7-85e1-32bc3dfbddc7.md))_
-- **verify-aa-library**: title: Verify public store library and one opener; phase: aa-library _(id: [rec-4e7e83fe-2ab1-46c1-9203-3b8e2b8684b6](.artifacts/records/project__work-item/rec-4e7e83fe-2ab1-46c1-9203-3b8e2b8684b6.md))_
-- **verify-affidavit-library**: title: Verify affidavit calls Project and verdict stays store-free; phase: affidavit-library _(id: [rec-e2aeedd4-e2ff-48c7-9eda-cb69477252ce](.artifacts/records/project__work-item/rec-e2aeedd4-e2ff-48c7-9eda-cb69477252ce.md))_
-- **verify-declared-install**: title: Verify declared install; phase: declared-install _(id: [rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4](.artifacts/records/project__work-item/rec-e535e3b3-9740-4bab-b02b-f8318cf5b0a4.md))_
-- **verify-library-e2e**: title: Verify the library fixture; phase: library-e2e _(id: [rec-455e53f3-9f0e-4768-8dd8-a1d7a56d2bb6](.artifacts/records/project__work-item/rec-455e53f3-9f0e-4768-8dd8-a1d7a56d2bb6.md))_
-- **verify-orchestra-callers**: title: Verify orchestra callers; phase: orchestra-callers _(id: [rec-785c803f-6e6f-4ee9-880a-4973af0971a1](.artifacts/records/project__work-item/rec-785c803f-6e6f-4ee9-880a-4973af0971a1.md))_
+- **claim-gate-clocks**: title: Report verdict and recheck failures together; phase: claim-clocks _(id: [rec-ce44fbe7-37a7-4317-b62b-5faa40332cc1](.artifacts/records/project__work-item/rec-ce44fbe7-37a7-4317-b62b-5faa40332cc1.md))_
+- **claim-gate-source**: title: Read the claim id only from payload.claim; phase: claim-clocks _(id: [rec-89c53c0e-9062-45c0-974e-041a5550bb08](.artifacts/records/project__work-item/rec-89c53c0e-9062-45c0-974e-041a5550bb08.md))_
+- **fix-claim-gate-e2e**: title: Gate the library e2e oracle and empty-manifest claims; phase: claim-clocks _(id: [rec-7a4b59f7-6d14-46ab-8900-85edde14d269](.artifacts/records/project__work-item/rec-7a4b59f7-6d14-46ab-8900-85edde14d269.md))_
+- **fix-claim-gate-regressions**: title: Fix claim gate regressions from the phase changes; phase: claim-clocks _(id: [rec-f56f40a2-4190-4ce4-9a33-ae493f5868e2](.artifacts/records/project__work-item/rec-f56f40a2-4190-4ce4-9a33-ae493f5868e2.md))_
+- **fix-claim-gate-unit-hook**: title: Fix claim gate unit-test hook and prove claim_id is ignored; phase: claim-clocks _(id: [rec-b6b10a49-254c-416e-a0d9-4d73be88c567](.artifacts/records/project__work-item/rec-b6b10a49-254c-416e-a0d9-4d73be88c567.md))_
+- **verify-claim-clocks**: title: Verify claim-clocks; phase: claim-clocks _(id: [rec-419fa45f-35f6-401e-9ce2-d59417644d68](.artifacts/records/project__work-item/rec-419fa45f-35f6-401e-9ce2-d59417644d68.md))_
 
 ## packaging
 

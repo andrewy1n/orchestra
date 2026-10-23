@@ -1,7 +1,7 @@
 # Project Status
 
 > Derived view — not authoritative. Edit underlying records, not this file.
-> Store state: sha256:b747a617f0df6eb61024ffe00f309621990dc13627ae673e7f05173e428d8d7f
+> Store state: sha256:33619d589b7e6b44a74b0072d0a6b8c1059fa330fe53916c1e1048ed72cf21d9
 
 ## aa-library
 
@@ -164,6 +164,16 @@
 - **dashboard-launcher-switch**: Launch the Textual dashboard from scripts/dashboard; readable-layout; deliver; dashboard; state: done; ready: True; wave: 3; criteria: 1 pass / 0 fail _(id: [rec-2b3e8376-4c8f-402b-8c66-8b5f86982e2a](.artifacts/records/project__work-item/rec-2b3e8376-4c8f-402b-8c66-8b5f86982e2a.md))_
 - **dashboard-snapshot**: Build a dashboard snapshot from store records; readable-layout; deliver; dashboard; state: done; ready: True; wave: 1; criteria: 1 pass / 0 fail _(id: [rec-58b8892f-150a-48aa-a465-62853e59f75d](.artifacts/records/project__work-item/rec-58b8892f-150a-48aa-a465-62853e59f75d.md))_
 - **verify-readable-layout-phase**: Integration-test the readable layout and verify the phase; readable-layout; deliver; dashboard; state: done; ready: True; wave: 4; criteria: 2 pass / 0 fail _(id: [rec-02e456a6-120c-4442-90ef-57289fdeacdd](.artifacts/records/project__work-item/rec-02e456a6-120c-4442-90ef-57289fdeacdd.md))_
+
+## claim-clocks
+
+### Work
+- **claim-gate-clocks**: Report verdict and recheck failures together; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 2; criteria: 15 pass / 1 fail _(id: [rec-ce44fbe7-37a7-4317-b62b-5faa40332cc1](.artifacts/records/project__work-item/rec-ce44fbe7-37a7-4317-b62b-5faa40332cc1.md))_
+- **claim-gate-source**: Read the claim id only from payload.claim; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 12 pass / 4 fail _(id: [rec-89c53c0e-9062-45c0-974e-041a5550bb08](.artifacts/records/project__work-item/rec-89c53c0e-9062-45c0-974e-041a5550bb08.md))_
+- **fix-claim-gate-e2e**: Gate the library e2e oracle and empty-manifest claims; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 2 pass / 0 fail _(id: [rec-7a4b59f7-6d14-46ab-8900-85edde14d269](.artifacts/records/project__work-item/rec-7a4b59f7-6d14-46ab-8900-85edde14d269.md))_
+- **fix-claim-gate-regressions**: Fix claim gate regressions from the phase changes; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 3 pass / 0 fail _(id: [rec-f56f40a2-4190-4ce4-9a33-ae493f5868e2](.artifacts/records/project__work-item/rec-f56f40a2-4190-4ce4-9a33-ae493f5868e2.md))_
+- **fix-claim-gate-unit-hook**: Fix claim gate unit-test hook and prove claim_id is ignored; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 1; criteria: 3 pass / 0 fail _(id: [rec-b6b10a49-254c-416e-a0d9-4d73be88c567](.artifacts/records/project__work-item/rec-b6b10a49-254c-416e-a0d9-4d73be88c567.md))_
+- **verify-claim-clocks**: Verify claim-clocks; claim-clocks; deliver; library-boundary; state: done; ready: True; wave: 3; criteria: 12 pass / 0 fail _(id: [rec-419fa45f-35f6-401e-9ce2-d59417644d68](.artifacts/records/project__work-item/rec-419fa45f-35f6-401e-9ce2-d59417644d68.md))_
 
 ## cross-harness-install
 
