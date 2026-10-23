@@ -45,6 +45,20 @@ not files inside a checkout:
 
 Do not hardcode a plugin directory or a home checkout in a command.
 
+## Reference fields
+
+A payload field that names another record holds that record's
+**subject**, never its `rec-…` id. This covers `milestone`, `phase`,
+`work_item`, `assignment`, and `acceptance`. For example, an
+execution-report sets `"assignment":"<task-slug>"`.
+
+`adaptive-artifacts` does not check these fields when it writes. A
+wrong value is accepted, then fails store validation at session end.
+Check the value before you write it.
+
+Two inputs take the record id instead: `--rel <name>:<id>` and a
+check-run `criterion_id`.
+
 ## First run in a work repo
 
 The current project id is `orchestra`.
