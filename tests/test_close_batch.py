@@ -590,6 +590,60 @@ def test_end_to_end_refusal_leaves_the_work_item_in_progress(
     assert final_work_item["lifecycle_state"] == "in_progress"
 
 
+def test_cli_claim_gate_refuses_unknown_claim(
+    cli, store, resolved_contract, tmp_path
+):
+    """Real close-batch refuses a payload.claim the manifest does not list."""
+    defs = h.record_defs_by_id(resolved_contract)
+    subject = "demo-unknown-claim-task"
+    effort = "demo-effort"
+    work_item, acceptance, execution_report = _build_work_item_family(
+        cli, defs, subject, effort, method="check"
+    )
+    current = json.loads(
+        cli("get", "--type", "project:acceptance", "--id", acceptance["id"]).stdout
+    )
+    updated = cli(
+        "update",
+        "--type",
+        "project:acceptance",
+        "--id",
+        acceptance["id"],
+        "--expected-revision",
+        current["revision"],
+        "--payload",
+        json.dumps({"claim": "claim-not-in-manifest"}),
+    )
+    assert updated.returncode == 0, updated.stdout + updated.stderr
+    acceptance = json.loads(updated.stdout)["record"]
+    runner_cr = _seed_runner_check_run(
+        cli, defs, subject, acceptance, execution_report, result="pass"
+    )
+    _write_manifest_claim(store, "some-other-claim")
+
+    request = {
+        "subject": subject,
+        "effort": effort,
+        "work_item_id": work_item["id"],
+        "transition": "done",
+        "execution_report_id": execution_report["id"],
+        "acceptance_ids": [acceptance["id"]],
+        "criteria": [
+            {
+                "criterion_id": acceptance["id"],
+                "method": "check",
+                "check_run_id": runner_cr["id"],
+                "result": "pass",
+            }
+        ],
+        "finding": None,
+    }
+    result, out_path = _run_script(request, tmp_path, process_cwd=store)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "claim-not-in-manifest" in result.stderr
+    assert not out_path.exists()
+
+
 def test_end_to_end_failing_criterion_with_finding_closes_and_surfaces_needs_human(
     cli, store, resolved_contract, tmp_path
 ):
@@ -1710,10 +1764,11 @@ def _patch_affidavit(monkeypatch, module_name: str, attr: str, fn) -> None:
 def _claim_gate_acceptance(claim_id: str = CLAIM_ID) -> dict:
     return {
         "id": "rec-ac1",
-        "subject": claim_id,
+        "subject": "claim-gate-close",
         "payload": {
             "method": "check",
             "effort": "effort-1",
+            "claim": claim_id,
         },
     }
 
@@ -1848,6 +1903,89 @@ def test_claim_gate_uses_payload_claim_id_over_task_subject(tmp_path, monkeypatc
     msg = str(excinfo.value).lower()
     assert "verdict" in msg or CLAIM_ID in msg
     assert seen == [CLAIM_ID]
+
+
+def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, monkeypatch):
+    """An empty payload.claim is not gated even when the subject names a claim."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    seen: list[str] = []
+
+    def run_verdict(_cwd, _at, _base, claim_ids, *args, **kwargs):
+        seen.extend(claim_ids)
+        return {"result": "fail"}
+
+    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.binding",
+        "recheck",
+        lambda *args, **kwargs: {"result": "fail"},
+    )
+
+    def load_acceptance(_aid):
+        return {
+            "id": "rec-ac1",
+            "subject": CLAIM_ID,
+            "payload": {"method": "check", "effort": "effort-1", "claim": ""},
+        }
+
+    ops = _build(
+        _claim_gate_check_request(),
+        cwd=repo,
+        load_acceptance=load_acceptance,
+    )
+    assert ops[-1]["transition"] == "done"
+    assert seen == []
+
+
+def test_claim_gate_refuses_when_acceptance_cannot_be_loaded(tmp_path):
+    """A criterion whose acceptance record is missing refuses the close."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+
+    def missing(_aid):
+        raise LookupError(_aid)
+
+    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
+        _build(_claim_gate_check_request(), cwd=repo, load_acceptance=missing)
+
+
+def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
+    """A payload.claim absent from the manifest refuses the close."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    unknown = "claim-not-in-manifest"
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.verdict",
+        "run_verdict",
+        lambda *args, **kwargs: {"result": "pass"},
+    )
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.binding",
+        "recheck",
+        lambda *args, **kwargs: {"result": "pass"},
+    )
+
+    def load_acceptance(_aid):
+        return {
+            "id": "rec-ac1",
+            "subject": "claim-gate-close",
+            "payload": {
+                "method": "check",
+                "effort": "effort-1",
+                "claim": unknown,
+            },
+        }
+
+    with pytest.raises(close_batch.CloseRefused, match=unknown):
+        _build(
+            _claim_gate_check_request(),
+            cwd=repo,
+            load_acceptance=load_acceptance,
+        )
 
 
 def _block_affidavit_import():

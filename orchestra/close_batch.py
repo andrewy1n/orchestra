@@ -525,23 +525,31 @@ def _enforce_claim_gates(
     cwd: Path,
     load_acceptance: AcceptanceLoader,
 ) -> None:
-    """Manifest-backed acceptances need affidavit verdict and recheck on done."""
+    """Manifest-backed acceptances need affidavit verdict and recheck on done.
+
+    The claim id comes only from the acceptance payload field ``claim``.
+    An acceptance that cannot be loaded refuses, and so does a claim id
+    that the manifest does not list. An empty claim is not gated.
+    """
     claim_ids = _manifest_claim_ids(cwd)
-    if not claim_ids:
-        return
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
         try:
             acceptance = load_acceptance(str(criterion_id))
-        except LookupError:
-            continue
+        except LookupError as exc:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: acceptance could not be "
+                "loaded; cannot run the claim gate"
+            ) from exc
         payload = _payload(acceptance)
-        claim_id = (
-            str(payload.get("claim") or payload.get("claim_id") or "").strip()
-            or str(acceptance.get("subject") or "").strip()
-        )
-        if not claim_id or claim_id not in claim_ids:
+        claim_id = str(payload.get("claim") or "").strip()
+        if not claim_id:
             continue
+        if claim_id not in claim_ids:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: claim {claim_id!r} is not "
+                "listed in .affidavit/manifest.json"
+            )
         revision: Any = None
         green = green_by_criterion.get(criterion_id)
         if green is not None:
