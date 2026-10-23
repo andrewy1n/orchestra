@@ -224,7 +224,7 @@ def _claim_acceptance() -> dict:
     return {
         "id": "rec-ac1",
         "subject": CLAIM_ID,
-        "payload": {"method": "check", "effort": "effort-1"},
+        "payload": {"method": "check", "effort": "effort-1", "claim": CLAIM_ID},
     }
 
 

@@ -1811,7 +1811,7 @@ def test_claim_gate_refuses_done_when_verdict_not_pass(tmp_path, monkeypatch):
             load_acceptance=lambda _aid: _claim_gate_acceptance(),
         )
     msg = str(excinfo.value).lower()
-    assert "verdict" in msg or CLAIM_ID in msg
+    assert "verdict" in msg
 
 
 def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
@@ -1839,7 +1839,7 @@ def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
             load_acceptance=lambda _aid: _claim_gate_acceptance(),
         )
     msg = str(excinfo.value).lower()
-    assert "recheck" in msg or CLAIM_ID in msg
+    assert "recheck" in msg
 
 
 def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(
@@ -1931,7 +1931,7 @@ def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
     with pytest.raises(close_batch.CloseRefused) as excinfo:
         _build(request, cwd=repo, load_acceptance=load_acceptance)
     msg = str(excinfo.value).lower()
-    assert "verdict" in msg or CLAIM_ID in msg
+    assert "verdict" in msg
     assert seen == [CLAIM_ID]
 
 

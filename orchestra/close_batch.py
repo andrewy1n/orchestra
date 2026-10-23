@@ -544,6 +544,8 @@ def _enforce_claim_gates(
     that the manifest does not list. An empty claim is not gated.
     """
     claim_ids = _manifest_claim_ids(cwd)
+    if not claim_ids:
+        return
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
         try:
