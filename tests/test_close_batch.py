@@ -1898,7 +1898,7 @@ def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeyp
     assert ops[-1]["transition"] == "done"
 
 
-def test_claim_gate_uses_payload_claim_id_over_task_subject(tmp_path, monkeypatch):
+def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
     """Claim id may live in payload.claim when subject is a task slug."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
@@ -1933,6 +1933,45 @@ def test_claim_gate_uses_payload_claim_id_over_task_subject(tmp_path, monkeypatc
     msg = str(excinfo.value).lower()
     assert "verdict" in msg or CLAIM_ID in msg
     assert seen == [CLAIM_ID]
+
+
+def test_claim_gate_ignores_payload_claim_id(tmp_path, monkeypatch):
+    """The removed claim_id fallback stays removed; only payload.claim gates."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    verdict_seen: list[str] = []
+    recheck_seen: list[str] = []
+
+    def run_verdict(_cwd, _at, _base, claim_ids, *args, **kwargs):
+        verdict_seen.extend(claim_ids)
+        return {"result": "fail"}
+
+    def recheck(_cwd, claim_id, *args, **kwargs):
+        recheck_seen.append(claim_id)
+        return {"result": "fail"}
+
+    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
+    _patch_affidavit(monkeypatch, "affidavit.binding", "recheck", recheck)
+
+    def load_acceptance(_aid):
+        return {
+            "id": "rec-ac1",
+            "subject": "claim-gate-close",
+            "payload": {
+                "method": "check",
+                "effort": "effort-1",
+                "claim_id": CLAIM_ID,
+            },
+        }
+
+    ops = _build(
+        _claim_gate_check_request(),
+        cwd=repo,
+        load_acceptance=load_acceptance,
+    )
+    assert ops[-1]["transition"] == "done"
+    assert verdict_seen == [], "payload.claim_id must not drive verdict"
+    assert recheck_seen == [], "payload.claim_id must not drive recheck"
 
 
 def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, monkeypatch):

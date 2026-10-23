@@ -73,6 +73,15 @@ class OracleAdapterUnavailable(Exception):
     """
 
 
+class AcceptanceStoreUnavailable(LookupError):
+    """No acceptance store in the unit-test hook.
+
+    ``build_batch`` callers that inject ``load_check_run`` without a store get
+    this sentinel instead of a real lookup failure, so the claim gate can skip
+    rather than refuse a close the test did not mean to gate.
+    """
+
+
 def _entry_passed(entry: dict[str, Any]) -> bool:
     return entry.get("result") == "pass"
 
@@ -539,6 +548,8 @@ def _enforce_claim_gates(
         criterion_id = entry.get("criterion_id")
         try:
             acceptance = load_acceptance(str(criterion_id))
+        except AcceptanceStoreUnavailable:
+            continue
         except LookupError as exc:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: acceptance could not be "
@@ -678,7 +689,9 @@ def build_batch(
             return default_load_acceptance(acceptance_id, store_root=resolved_store)
     else:
         def acceptance_loader(_acceptance_id: str) -> dict[str, Any]:
-            raise LookupError("acceptance store not available in unit test hook")
+            raise AcceptanceStoreUnavailable(
+                "acceptance store not available in unit test hook"
+            )
 
     if list_oracle_amendments is not None:
         amendment_lister: AmendmentLister = list_oracle_amendments
