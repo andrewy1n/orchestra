@@ -2057,6 +2057,35 @@ def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
         )
 
 
+def test_claim_gate_refuses_claim_when_manifest_lists_none(tmp_path, monkeypatch):
+    """R9: a present manifest with no claims still refuses an unlisted claim."""
+    repo, _sha = _oracle_repo(tmp_path)
+    aff_dir = repo / ".affidavit"
+    aff_dir.mkdir()
+    (aff_dir / "manifest.json").write_text(
+        json.dumps({"claims": [], "amendments": []}), encoding="utf-8"
+    )
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.verdict",
+        "run_verdict",
+        lambda *args, **kwargs: {"result": "pass"},
+    )
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.binding",
+        "recheck",
+        lambda *args, **kwargs: {"result": "pass"},
+    )
+
+    with pytest.raises(close_batch.CloseRefused, match=CLAIM_ID):
+        _build(
+            _claim_gate_check_request(),
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+
+
 def _block_affidavit_import():
     saved = {
         key: sys.modules.pop(key)

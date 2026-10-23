@@ -470,11 +470,15 @@ def _approved_amendment_covers_tree(
     return False
 
 
-def _manifest_claim_ids(cwd: Path) -> set[str]:
-    """Claim ids listed in ``.affidavit/manifest.json`` under ``cwd``, if any."""
+def _manifest_claim_ids(cwd: Path) -> set[str] | None:
+    """Claim ids in ``.affidavit/manifest.json``, or None when it is absent.
+
+    An empty set means the manifest exists but lists no usable claims, so a
+    non-empty ``payload.claim`` is not listed and must refuse.
+    """
     path = cwd / ".affidavit" / "manifest.json"
     if not path.is_file():
-        return set()
+        return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -544,7 +548,7 @@ def _enforce_claim_gates(
     that the manifest does not list. An empty claim is not gated.
     """
     claim_ids = _manifest_claim_ids(cwd)
-    if not claim_ids:
+    if claim_ids is None:
         return
     for entry in criteria:
         criterion_id = entry.get("criterion_id")

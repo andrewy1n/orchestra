@@ -42,6 +42,18 @@ def pytest_configure(config):
         raise pytest.UsageError(f"se-workflow contract not found at {CONTRACT_PATH}.")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _preimport_affidavit_binding():
+    """Let binding capture the real run_verdict before any test patches it."""
+    root = Path.home() / "affidavit"
+    if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    try:
+        import affidavit.binding  # noqa: F401
+    except ImportError:
+        pass
+
+
 def pytest_collection_modifyitems(items):
     for item in items:
         if item.path.name in ("test_tmux_integration.py", "test_e2e_dashboard.py", "test_tmux_entry.py"):

@@ -162,6 +162,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
             "phase": "library-e2e",
             "effort": "library-boundary",
             "verify_command": "python3 -m pytest -q",
+            "claim": CLAIM_ID,
         },
     )
     check_run = _create(
@@ -230,6 +231,7 @@ def _assert_created_records(repo: Path, request: dict) -> None:
     assert acceptance["id"] == acceptance_id
     assert acceptance["subject"] == CLAIM_ID
     assert acceptance["payload"]["method"] == "check"
+    assert acceptance["payload"]["claim"] == CLAIM_ID
     check_run_id = request["criteria"][0]["check_run_id"]
     check_run = project.get(check_run_id, "project:check-run")
     assert check_run["id"] == check_run_id
