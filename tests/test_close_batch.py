@@ -1280,7 +1280,7 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
-def test_default_amendment_lister_matches_acceptance_by_id_or_subject(store, cli, resolved_contract):
+def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = h.create_generic_record(cli, defs, "project:phase")
     acceptance = h.create_generic_record(
@@ -1303,12 +1303,30 @@ def test_default_amendment_lister_matches_acceptance_by_id_or_subject(store, cli
         )
 
     by_subject = amend(acceptance["subject"])
-    by_id = amend(acceptance["id"])
     amend(other["subject"])
 
     listed = close_batch.default_list_oracle_amendments(acceptance["id"], store_root=store)
 
-    assert {record["id"] for record in listed} == {by_subject["id"], by_id["id"]}
+    assert [record["id"] for record in listed] == [by_subject["id"]]
+
+
+def test_default_amendment_lister_still_matches_a_legacy_acceptance_id(monkeypatch):
+    class Project:
+        def list(self, record_type):
+            return [
+                {"id": "rec-legacy", "lifecycle_state": "active", "payload": {"acceptance": "rec-ac1"}},
+                {"id": "rec-subject", "lifecycle_state": "active", "payload": {"acceptance": "claim-gate"}},
+                {"id": "rec-other", "lifecycle_state": "active", "payload": {"acceptance": "other"}},
+            ]
+
+        def get(self, record_id, record_type):
+            return {"id": record_id, "subject": "claim-gate"}
+
+    monkeypatch.setattr(close_batch, "_open_project", lambda store_root: Project())
+
+    listed = close_batch.default_list_oracle_amendments("rec-ac1")
+
+    assert [record["id"] for record in listed] == ["rec-legacy", "rec-subject"]
 
 
 def test_oracle_hash_refuses_silent_freeze_edit(tmp_path):
