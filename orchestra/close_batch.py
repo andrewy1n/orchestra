@@ -494,27 +494,30 @@ def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
             f"affidavit is not importable; cannot run verdict or recheck "
             f"for claim {claim_id!r}"
         ) from exc
+    failed: list[str] = []
+    details: list[str] = []
     try:
         verdict = run_verdict(cwd, revision, None, [claim_id])
     except Exception as exc:
-        raise CloseRefused(
-            f"affidavit verdict refused for claim {claim_id!r} "
-            f"at revision {revision!r}: {exc}"
-        ) from exc
-    if not isinstance(verdict, dict) or verdict.get("result") != "pass":
-        raise CloseRefused(
-            f"affidavit verdict refused for claim {claim_id!r} "
-            f"at revision {revision!r}"
-        )
+        failed.append("verdict")
+        details.append(f"verdict: {exc}")
+    else:
+        if not isinstance(verdict, dict) or verdict.get("result") != "pass":
+            failed.append("verdict")
     try:
         outcome = recheck(cwd, claim_id)
     except Exception as exc:
+        failed.append("recheck")
+        details.append(f"recheck: {exc}")
+    else:
+        if not isinstance(outcome, dict) or outcome.get("result") != "pass":
+            failed.append("recheck")
+    if failed:
+        clocks = " and ".join(failed)
+        suffix = f" ({'; '.join(details)})" if details else ""
         raise CloseRefused(
-            f"affidavit recheck refused for claim {claim_id!r}: {exc}"
-        ) from exc
-    if not isinstance(outcome, dict) or outcome.get("result") != "pass":
-        raise CloseRefused(
-            f"affidavit recheck refused for claim {claim_id!r}"
+            f"affidavit {clocks} refused for claim {claim_id!r} "
+            f"at revision {revision!r}{suffix}"
         )
 
 

@@ -1842,6 +1842,36 @@ def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
     assert "recheck" in msg or CLAIM_ID in msg
 
 
+def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(
+    tmp_path, monkeypatch
+):
+    """Both failing clocks are named in one refusal."""
+    repo, _sha = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.verdict",
+        "run_verdict",
+        lambda *args, **kwargs: {"result": "fail"},
+    )
+    _patch_affidavit(
+        monkeypatch,
+        "affidavit.binding",
+        "recheck",
+        lambda *args, **kwargs: {"result": "fail"},
+    )
+
+    with pytest.raises(close_batch.CloseRefused) as excinfo:
+        _build(
+            _claim_gate_check_request(),
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+    msg = str(excinfo.value).lower()
+    assert "verdict" in msg
+    assert "recheck" in msg
+
+
 def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeypatch):
     """Manifest claim closes when affidavit verdict and recheck both pass."""
     repo, _sha = _oracle_repo(tmp_path)
