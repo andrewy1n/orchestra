@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 
-import pytest
+from canon.project import open_store
 
 import helpers as h
-
-pytestmark = pytest.mark.skip(reason="views move to orchestra commands (phase/canon-views)")
+from orchestra import views
 
 EFFORT = "area"
 
@@ -24,10 +23,8 @@ def _phase_position(cli, defs, phase: str) -> dict:
     )
 
 
-def _handoff(cli) -> str:
-    result = cli("handoff")
-    assert result.returncode == 0, result.stdout + result.stderr
-    return result.stdout
+def _handoff(store) -> str:
+    return views.render_view(views.VIEWS["handoff"], views.load_records(open_store(store)))
 
 
 def _effort_section(handoff: str) -> str:
@@ -46,7 +43,7 @@ def test_two_phases_of_one_effort_keep_separate_positions_under_the_effort(store
     _phase_position(cli, defs, "area-two")
 
     assert cli("validate").returncode == 0
-    handoff = _handoff(cli)
+    handoff = _handoff(store)
     section = _effort_section(handoff)
     assert "working on area-one" in section and "working on area-two" in section
     assert "## area-one" not in handoff and "## area-two" not in handoff
@@ -62,7 +59,7 @@ def test_closing_a_phase_position_hides_only_that_phase(store, cli, resolved_con
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
-    section = _effort_section(_handoff(cli))
+    section = _effort_section(_handoff(store))
     assert "working on area-one" not in section and "working on area-two" in section
 
 
@@ -78,6 +75,6 @@ def test_work_item_renders_under_its_effort_not_its_task_slug(store, cli, resolv
     )
     h.transition(cli, "plan:work-item", task, "in_progress")
 
-    handoff = _handoff(cli)
+    handoff = _handoff(store)
     assert "**some-task**" in _effort_section(handoff)
     assert "## some-task" not in handoff

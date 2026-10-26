@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 
-import pytest
+from canon.project import open_store
 
 import helpers as h
+from orchestra import views
 
 
 def _effort(cli, defs, effort: str) -> tuple[dict, dict]:
@@ -40,25 +41,24 @@ def _render(cli, *args: str) -> str:
     return result.stdout
 
 
-@pytest.mark.skip(reason="views move to orchestra commands (phase/canon-views)")
-def test_closed_effort_leaves_handoff_brief_and_dashboard(store, cli, resolved_contract):
+def _handoff(store) -> str:
+    return views.render_view(views.VIEWS["handoff"], views.load_records(open_store(store)))
+
+
+def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _effort(cli, defs, "open-effort")
     goal, position = _effort(cli, defs, "done-effort")
     _close(cli, "plan:effort", goal)
     _close(cli, "plan:position", position)
 
-    for args in (("handoff",), ("view", "--id", "plan:dashboard"), ("view", "--id", "plan:brief")):
-        rendered = _render(cli, *args)
-        assert "done-effort" not in rendered, (args, rendered)
-    handoff = _render(cli, "handoff")
+    handoff = _handoff(store)
+    assert "done-effort" not in handoff
     assert "goal of open-effort" in handoff and "position of open-effort" in handoff
-    assert "goal of open-effort" in _render(cli, "view", "--id", "plan:dashboard")
     assert _render(cli, "validate")
 
 
-@pytest.mark.skip(reason="views move to orchestra commands (phase/canon-views)")
-def test_reopened_effort_returns_to_handoff_brief_and_dashboard(store, cli, resolved_contract):
+def test_reopened_effort_returns_to_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     goal, position = _effort(cli, defs, "back-effort")
     _close(cli, "plan:effort", goal)
@@ -71,8 +71,7 @@ def test_reopened_effort_returns_to_handoff_brief_and_dashboard(store, cli, reso
         )
         assert result.returncode == 0, result.stdout + result.stderr
 
-    for args in (("handoff",), ("view", "--id", "plan:dashboard"), ("view", "--id", "plan:brief")):
-        assert "back-effort" in _render(cli, *args), args
+    assert "back-effort" in _handoff(store)
     assert _render(cli, "validate")
 
 
