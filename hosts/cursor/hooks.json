@@ -3,12 +3,12 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "adaptive-artifacts hook-start"
+        "command": "orchestra hook-start --cursor"
       }
     ],
     "sessionEnd": [
       {
-        "command": "adaptive-artifacts hook-stop"
+        "command": "orchestra hook-stop --cursor"
       }
     ]
   }
