@@ -550,6 +550,7 @@ def test_task_title_uses_spare_width_at_120_columns(store, cli, defs):
     )
     title = "Integration-test the readable layout and verify 54ch"[:54]
     payload = {"title": title, "phase": "readable-layout", "kind": "deliver", "assignee": "sub-dashboard-snapshot", "effort": "alpha"}
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
     result = cli("create", "--type", "plan:work-item", "--subject", "a-long", "--payload", json.dumps(payload),
                  "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout
@@ -2412,7 +2413,7 @@ def test_finished_effort_sorts_after_a_live_effort_with_a_dimmed_label(finished)
 
 def test_tab_and_shift_tab_switch_to_a_finished_effort_beside_live_needs_you_items(finished, cli, defs):
     store, _ = finished
-    _record(cli, defs, "plan:continuity-question", "beta", {"subject": "beta", "owner": "ayin", "blocking": False, "scope": "which one"})
+    _record(cli, defs, "plan:continuity-question", "beta", {"owner": "ayin", "blocking": False, "scope": "which one"})
 
     async def scenario(app, pilot):
         tabs = app.query_one("#efforts")
@@ -2475,7 +2476,7 @@ def _needs_text(app):
 def _needy(cli, defs):
     _needs_task(cli, defs)
     return _record(cli, defs, "plan:continuity-question", "alpha",
-                   {"subject": "alpha", "owner": "ayin", "blocking": False, "scope": LONG_SCOPE},
+                   {"owner": "ayin", "blocking": False, "scope": LONG_SCOPE},
                    "Pick the **home** store unless the repo pins one.")
 
 
@@ -2956,6 +2957,7 @@ def test_evidence_link_task_opens_the_requirement(store, cli, defs):
     _phase(cli, defs, "alpha", "linked", 1, "in_progress")
     _spec(cli, defs, "linked", "R1")
     _decision(cli, defs, "pick-a", "linked", "keep the list")
+    _decision(cli, defs, "pick-b", "linked", "keep the table")
     task = _task(cli, defs, "linked-task", "linked", "R1, R2", "pick-a, pick-b")
 
     async def scenario(app, pilot):
@@ -3289,7 +3291,7 @@ def test_finished_effort_with_needs_you_stays_visible(finished, cli, defs):
     store, _ = finished
     _record(
         cli, defs, "plan:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": False, "scope": "still open"},
+        {"owner": "ayin", "blocking": False, "scope": "still open"},
     )
 
     async def scenario(app, pilot):
@@ -3433,7 +3435,7 @@ def _seed_dismiss_human(cli, defs):
     _phase(cli, defs, "alpha", "d-phase", 1, "in_progress")
     question = _record(
         cli, defs, "plan:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "dismiss-question"},
+        {"owner": "ayin", "blocking": True, "scope": "dismiss-question"},
     )
     finding = _record(
         cli, defs, "aff:finding", "dismiss-finding",
@@ -3610,7 +3612,7 @@ def _seed_backlog(cli, defs):
     assert superseded.returncode == 0, superseded.stdout + superseded.stderr
     question = _record(
         cli, defs, "plan:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "still-needs-you"},
+        {"owner": "ayin", "blocking": True, "scope": "still-needs-you"},
     )
     return json.loads(promote.stdout)["record"], json.loads(dismiss.stdout)["record"], question
 
@@ -3916,7 +3918,6 @@ def test_approval_stale_revision_raises_clear_error_without_retry(monkeypatch):
     target = Project(
         project_root=Path("/tmp"),
         store_path=Path("/tmp/store"),
-        contract_path=Path("/tmp/contract.json"),
         binding=Binding("local", "argument"),
     )
 
@@ -3965,7 +3966,7 @@ def _seed_approval_plan_review(cli, defs):
     _work_item(cli, defs, "alpha", "appr-task", "appr-phase")
     question = _record(
         cli, defs, "plan:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
+        {"owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
     )
     return question
 
@@ -3983,7 +3984,7 @@ def _seed_approval_human_gates(cli, defs):
     h.transition(cli, "plan:phase", phase, "in_progress")
     question = _record(
         cli, defs, "plan:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
+        {"owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
     )
     finding = _record(
         cli, defs, "aff:finding", "appr-finding",

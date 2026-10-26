@@ -90,6 +90,17 @@ def schema_defs() -> dict[str, dict]:
     return defs
 
 
+GENERIC_EFFORT = "test-effort"
+
+
+def generic_effort(cli, defs) -> str:
+    """Subject of a closed effort shared by records that name no effort of their own."""
+    found = cli("list", "--type", "plan:effort", "--subject", GENERIC_EFFORT)
+    if not json.loads(found.stdout)["records"]:
+        closed_effort(cli, defs, GENERIC_EFFORT)
+    return GENERIC_EFFORT
+
+
 def closed_effort(cli, defs, subject: str) -> dict:
     """An effort the dashboard treats as no longer live."""
     effort = create_generic_record(cli, defs, "plan:effort", subject=subject)
@@ -176,6 +187,8 @@ def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, di
         return []
     if "ref" in form:
         target_type = _ref_targets(form)[0]
+        if target_type == "plan:effort":
+            return generic_effort(cli, defs)
         if target_type not in target_cache:
             target_cache[target_type] = create_generic_record(cli, defs, target_type, target_cache=target_cache)
         target = target_cache[target_type]
