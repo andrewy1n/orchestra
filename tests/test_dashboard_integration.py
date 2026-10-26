@@ -189,9 +189,9 @@ def test_gates_once_shows_action_verbs_next_step_and_landing(store, cli, resolve
         extra_payload={"blocking": True, "scope": f"plan-review:{phase_slug}"},
     )
 
-    script = REPO_ROOT / "dashboard" / "bin" / "dashboard"
+    script = REPO_ROOT / "dashboard" / "__main__.py"
     result = subprocess.run(
-        [str(script), "--once"],
+        [sys.executable, str(script), "--once"],
         capture_output=True, text=True, cwd=str(store),
         env={**os.environ, "COLUMNS": "120"},
     )

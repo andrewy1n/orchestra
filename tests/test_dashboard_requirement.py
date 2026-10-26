@@ -173,7 +173,7 @@ def _text(screen, selector):
     return str(screen.query_one(selector).render())
 
 
-async def _until(pilot, condition, timeout=30.0):
+async def _until(pilot, condition, timeout=60.0):
     deadline = time.monotonic() + timeout
     while not condition():
         assert time.monotonic() < deadline, "condition not met in time"

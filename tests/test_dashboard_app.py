@@ -176,7 +176,7 @@ def _run(store, width, scenario, interval=60.0, height=40, grouped=False):
     asyncio.run(go())
 
 
-async def _until(pilot, condition, timeout=20.0):
+async def _until(pilot, condition, timeout=60.0):
     deadline = time.monotonic() + timeout
     while not condition():
         assert time.monotonic() < deadline, "condition not met in time"

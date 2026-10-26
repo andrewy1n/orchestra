@@ -44,8 +44,7 @@ def _writes(name: str, record_type: str, subcommands: set[str] | None = None) ->
 @pytest.fixture()
 def contract_indexes(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    bundles_by_id = {b["id"]: b for b in resolved_contract.get("bundles", [])}
-    return defs, bundles_by_id
+    return defs, {}
 
 
 def test_verify_and_assess_are_separate_steps():
@@ -251,7 +250,7 @@ def test_verify_work_documents_enforced_red_first_close():
 @pytest.mark.parametrize("skill_name", ["verify-work", "engage"])
 def test_documented_invocations_are_contract_legal(contract_indexes, skill_name):
     defs, bundles_by_id = contract_indexes
-    violations = check_skill_text(_text(skill_name), defs, bundles_by_id)
+    violations = check_skill_text(_text(skill_name), defs)
     assert not violations, "\n".join(violations)
 
 

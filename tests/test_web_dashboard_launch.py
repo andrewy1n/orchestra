@@ -20,6 +20,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import pytest
+
 import helpers as h
 from conftest import CANON_ROOT, REPO_ROOT, run_cli
 
@@ -162,6 +164,10 @@ def _get(port: int, path: str) -> tuple[int, str, bytes]:
     assert False, f"GET {path} on 127.0.0.1:{port} failed: {last}"
 
 
+@pytest.mark.skipif(
+    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r1_loopback(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
@@ -206,6 +212,10 @@ def _snapshot(target):
     return loaded
 
 
+@pytest.mark.skipif(
+    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     defs = h.record_defs_by_id(resolved_contract)
@@ -245,6 +255,10 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
         _stop(proc)
 
 
+@pytest.mark.skipif(
+    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r30_serves_build(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     page = (

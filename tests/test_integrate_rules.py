@@ -25,9 +25,8 @@ def _integration_creates(text: str) -> list[dict]:
 
 def test_integration_report_create_matches_the_contract(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    bundles_by_id = {b["id"]: b for b in resolved_contract.get("bundles", [])}
     text = SKILL.read_text()
-    violations = check_skill_text(text, defs, bundles_by_id)
+    violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
 
     creates = _integration_creates(text)

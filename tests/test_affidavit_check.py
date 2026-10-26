@@ -180,7 +180,7 @@ def test_cli_integration_pass_check_run(store, cli, resolved_contract):
     assert record["payload"]["exit_code"] == 0
     assert "duration_s" in record["payload"]
     assert "output_sha256" in record["payload"]
-    assert acceptance["id"] in (record.get("relationships") or {}).get("informed_by", [])
+    assert acceptance["id"] in record["payload"].get("informed_by", [])
 
 
 def test_check_writes_runner_orchestra(store, cli, resolved_contract):
@@ -345,7 +345,7 @@ def test_failing_node_ids_recorded_on_pytest_assertion_fail(
     assert record["payload"]["result"] == "fail"
     raw = record["payload"].get("failing_node_ids")
     assert raw, "expected failing_node_ids on fail"
-    nodes = json.loads(raw)
+    nodes = raw
     assert isinstance(nodes, list) and nodes
     assert any("test_oracle_assertion_red_probe" in n for n in nodes)
 
