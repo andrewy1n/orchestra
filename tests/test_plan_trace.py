@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import tempfile
+from pathlib import Path
 
 import helpers as h
 from conftest import REPO_ROOT
@@ -189,7 +191,7 @@ def test_verify_work_mechanical_oracle_backed():
 
 
 def test_thin_deliver_cli_capture(store, cli, resolved_contract):
-    """Thin deliver acceptance (no criterion prose) via real create + capture."""
+    """Thin deliver acceptance (no criterion prose) via real create + apply."""
     defs = h.record_defs_by_id(resolved_contract)
     phase = "thin-deliver-phase"
     effort = "thin-deliver-effort"
@@ -251,13 +253,12 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
             },
         },
     ]
-    captured = cli(
-        "capture",
-        "--bundle",
-        "plan:specified-work",
-        "--records",
-        json.dumps(records),
+    batch = Path(tempfile.mkdtemp(prefix="plan-trace-")) / "batch.ndjson"
+    batch.write_text(
+        "\n".join(json.dumps({"op": "create", **record}) for record in records) + "\n",
+        encoding="utf-8",
     )
+    captured = cli("apply", str(batch))
     assert captured.returncode == 0, captured.stdout + captured.stderr
     listed = cli("list", "--type", "plan:acceptance", "--subject", "thin-deliver-capture", "--full")
     assert listed.returncode == 0, listed.stdout + listed.stderr

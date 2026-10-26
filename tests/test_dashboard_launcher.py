@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, REPO_ROOT, make_git_repo, write_config
+from conftest import CANON_ROOT, REPO_ROOT, make_git_repo, uv_script_source_ok, write_config
 from test_dashboard_status import _goal, _work_item
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard"
@@ -164,7 +164,7 @@ def test_canon_root_reaches_the_app(home, repo, tmp_path):
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
 @pytest.mark.skipif(
-    not (APP.parent / ".." / ".." / "adaptive-artifacts").resolve().is_dir(),
+    not uv_script_source_ok(APP.parent, "../../adaptive-artifacts"),
     reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
 )
 def test_renders_a_seeded_store_once_with_the_textual_app(home, store, cli, resolved_contract):

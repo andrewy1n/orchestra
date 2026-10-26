@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, REPO_ROOT, run_cli
+from conftest import CANON_ROOT, REPO_ROOT, run_cli, uv_script_source_ok
 
 sys.path.insert(0, str(REPO_ROOT))
 from canon.project import open_store  # noqa: E402
@@ -165,7 +165,7 @@ def _get(port: int, path: str) -> tuple[int, str, bytes]:
 
 
 @pytest.mark.skipif(
-    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
     reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
 )
 def test_r1_loopback(store, tmp_path, monkeypatch):
@@ -213,7 +213,7 @@ def _snapshot(target):
 
 
 @pytest.mark.skipif(
-    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
     reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
 )
 def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
@@ -256,7 +256,7 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(
-    not (SCRIPT.parent.parent.parent / ".." / "adaptive-artifacts").resolve().is_dir(),
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
     reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
 )
 def test_r30_serves_build(store, tmp_path, monkeypatch):
