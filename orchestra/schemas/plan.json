@@ -262,6 +262,10 @@
         "answer": {
           "type": "string",
           "optional": true
+        },
+        "question": {
+          "type": "string",
+          "optional": true
         }
       }
     },

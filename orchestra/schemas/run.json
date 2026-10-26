@@ -78,6 +78,10 @@
         },
         "revision": {
           "type": "string"
+        },
+        "effort": {
+          "ref": "plan:effort",
+          "optional": true
         }
       }
     },
@@ -223,6 +227,10 @@
         },
         "effort": {
           "ref": "plan:effort"
+        },
+        "revision": {
+          "type": "string",
+          "optional": true
         }
       }
     }
