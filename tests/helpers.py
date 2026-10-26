@@ -26,7 +26,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from conftest import AA_ROOT, CLI, REPO_ROOT
+from conftest import CANON_CMD, CANON_ROOT, REPO_ROOT
 
 _COUNTER = itertools.count()
 
@@ -39,20 +39,62 @@ class _Past(_real):
     def now(cls, tz=None):
         return _real.now(tz) - _dt.timedelta(hours=48)
 _dt.datetime = _Past
-sys.argv = sys.argv[1:]
-runpy.run_path(sys.argv[0], run_name="__main__")
+sys.argv = ["canon", *sys.argv[1:]]
+runpy.run_module("canon", run_name="__main__", alter_sys=True)
 """
 
 
 def run_cli_48h_ago(store, *args: str) -> dict:
     result = subprocess.run(
-        [sys.executable, "-c", _PAST_CLOCK, str(CLI), "--root", str(store), *args],
+        [sys.executable, "-c", _PAST_CLOCK, "--root", str(store), *args],
         capture_output=True,
         text=True,
         cwd=str(REPO_ROOT),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
+
+
+def schema_defs() -> dict[str, dict]:
+    """Record type definitions from the schema modules, keyed by qualified type."""
+    from canon.modules import discover
+
+    defs: dict[str, dict] = {}
+    for module in discover().values():
+        from canon.schema import type_defs
+
+        for record_type, type_def in type_defs(module.module).items():
+            fields = type_def.fields
+            required = {n: f for n, f in fields.items() if not f.get("optional")}
+            lifecycle = type_def.lifecycle
+            defs[record_type] = {
+                "id": record_type,
+                "name": record_type.split(":", 1)[1],
+                "purpose": type_def.purpose,
+                "fields": fields,
+                "required": required,
+                "payload": list(fields),
+                "payload_enum": {n: f["enum"] for n, f in fields.items() if "enum" in f},
+                "payload_references": {
+                    n: _ref_targets(f)[0] for n, f in fields.items() if _ref_targets(f)
+                },
+                "required_sections": list(type_def.sections),
+                "relationships": ["supersedes"] if lifecycle.supersedable or lifecycle.name == "current" else [],
+                "lifecycle": {
+                    "name": lifecycle.name,
+                    "initial": lifecycle.initial,
+                    "transitions": {k: list(v) for k, v in lifecycle.transitions.items()},
+                },
+            }
+    return defs
+
+
+def _ref_targets(form: dict) -> list[str]:
+    inner = form["list"] if "list" in form else form
+    if "ref" not in inner:
+        return []
+    value = inner["ref"]
+    return list(value) if isinstance(value, list) else [value]
 
 
 def transition(cli, record_type: str, record: dict, *states: str) -> dict:
@@ -75,10 +117,6 @@ def advertises_supersedes(record_def: dict) -> bool:
 
 
 def generic_payload_value(field: str) -> Any:
-    if field == "blocking":
-        return True
-    if field == "ordinal":
-        return 1
     return f"test-{field}"
 
 
@@ -95,6 +133,25 @@ def unique_subject(record_def: dict) -> str:
     return f"test-{name}-{next(_COUNTER)}"
 
 
+def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, dict]) -> Any:
+    if "list" in form:
+        return []
+    if "ref" in form:
+        target_type = _ref_targets(form)[0]
+        if target_type not in target_cache:
+            target_cache[target_type] = create_generic_record(cli, defs, target_type, target_cache=target_cache)
+        target = target_cache[target_type]
+        return target["id"] if form.get("pin") else target["subject"]
+    if "enum" in form:
+        return form["enum"][0]
+    kind = form["type"]
+    if kind in ("integer", "number"):
+        return 1
+    if kind == "boolean":
+        return True
+    return generic_payload_value(field)
+
+
 def create_generic_record(
     cli,
     defs: dict[str, dict],
@@ -102,7 +159,7 @@ def create_generic_record(
     *,
     subject: str | None = None,
     extra_payload: dict | None = None,
-    target_cache: dict[str, str] | None = None,
+    target_cache: dict[str, dict] | None = None,
 ) -> dict:
     """Create a minimal-but-valid record of `record_type`, recursively
     satisfying any `payload_references` it declares. Returns the parsed
@@ -112,21 +169,9 @@ def create_generic_record(
         target_cache = {}
     record_def = defs[record_type]
     subject = subject or unique_subject(record_def)
-    payload_refs = record_def.get("payload_references", {})
     payload: dict[str, Any] = {}
-    for field in record_def.get("payload", []):
-        if field == "subject":
-            continue
-        if field in payload_refs:
-            target_type = payload_refs[field]
-            if target_type not in target_cache:
-                target_record = create_generic_record(cli, defs, target_type, target_cache=target_cache)
-                target_cache[target_type] = target_record["subject"]
-            payload[field] = target_cache[target_type]
-        elif field in record_def.get("payload_enum", {}):
-            payload[field] = record_def["payload_enum"][field][0]
-        else:
-            payload[field] = generic_payload_value(field)
+    for field, form in record_def["required"].items():
+        payload[field] = _generic_value(cli, defs, field, form, target_cache)
     if extra_payload:
         payload.update(extra_payload)
     args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
@@ -273,7 +318,7 @@ class Tmux:
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("TMUX")}
         self.env.update(
             HOME=str(home), SHELL="/bin/sh", TERM="xterm-256color",
-            ADAPTIVE_ARTIFACTS_BIN=str(AA_ROOT / "bin" / "adaptive-artifacts"),
+            CANON_ROOT=str(CANON_ROOT),
             UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv"),
         )
         self.cwd = cwd
@@ -298,9 +343,9 @@ class Tmux:
         self("set", "-g", "escape-time", "0")
         self("set", "-g", "status", "on")
         self("set", "-g", "status-interval", "1")
-        aa = self.env.get("ADAPTIVE_ARTIFACTS_BIN")
-        if aa:
-            self("set-environment", "-g", "ADAPTIVE_ARTIFACTS_BIN", aa)
+        for name in ("CANON_ROOT", "PYTHONPATH", "CANON_SCHEMA_PATH", "PATH"):
+            if self.env.get(name):
+                self("set-environment", "-g", name, self.env[name])
         self("run-shell", shlex.quote(str(TMUX_ENTRY)))
         self.socket_path = self("display", "-p", "#{socket_path}").strip()
 
