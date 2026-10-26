@@ -19,7 +19,7 @@ def _integration_creates(text: str) -> list[dict]:
     return [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "project:integration-report"
+        if inv["subcommand"] == "create" and inv["type"] == "run:integration-report"
     ]
 
 
@@ -32,7 +32,7 @@ def test_integration_report_create_matches_the_contract(resolved_contract):
 
     creates = _integration_creates(text)
     assert len(creates) == 1
-    record = defs["project:integration-report"]
+    record = defs["run:integration-report"]
     payload = creates[0]["payload"]
     required = set(record["payload"]) - {"subject"} - set(record.get("optional_payload") or [])
     assert required <= set(payload)

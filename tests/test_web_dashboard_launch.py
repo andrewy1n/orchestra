@@ -21,10 +21,10 @@ import urllib.request
 from pathlib import Path
 
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, run_cli
+from conftest import CANON_ROOT, REPO_ROOT, run_cli
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
@@ -40,7 +40,6 @@ def _free_port() -> int:
 def _env(home: Path | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-    env.setdefault("ADAPTIVE_ARTIFACTS_BIN", str(AA_ROOT / "bin" / "adaptive-artifacts"))
     if home is not None:
         env["HOME"] = str(home)
     return env
@@ -213,20 +212,16 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     home = tmp_path / "home"
     home_store = home / ".artifacts" / store.name
     shutil.copytree(store / ".artifacts", home_store)
-    meta_path = home_store / "meta.json"
-    meta = json.loads(meta_path.read_text())
-    meta["contract"] = str((home_store / "resolved-contract.json").resolve())
-    meta_path.write_text(json.dumps(meta))
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="local-effort",
+        cli, defs, "plan:effort", subject="local-effort",
         extra_payload={"goal": "local goal", "kind": "deliver"},
     )
 
     def home_cli(*args):
-        return run_cli("--store", str(home_store), "--contract", meta["contract"], *args, root=store)
+        return run_cli("--store", str(home_store), *args, root=store)
 
     h.create_generic_record(
-        home_cli, defs, "project:active-goal", subject="global-effort",
+        home_cli, defs, "plan:effort", subject="global-effort",
         extra_payload={"goal": "global goal", "kind": "deliver"},
     )
     (store / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))

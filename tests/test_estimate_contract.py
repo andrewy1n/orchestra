@@ -1,17 +1,14 @@
-"""Work-item size and estimate_minutes are optional contract fields."""
+"""Work-item size and estimate_minutes are optional schema fields."""
 
 from __future__ import annotations
 
-import json
-
-from conftest import REPO_ROOT
+import helpers as h
 
 SIZE_ENUM = ["XS", "S", "M", "L", "XL"]
 
 
 def _record(name: str) -> dict:
-    design = json.loads((REPO_ROOT / "contract" / "project-design.json").read_text())
-    return next(record for record in design["records"] if record["name"] == name)
+    return h.record_def(name)
 
 
 def _fields(record: dict) -> set[str]:

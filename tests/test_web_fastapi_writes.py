@@ -16,7 +16,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard.web.app import create_app  # noqa: E402
 
 
@@ -27,7 +27,7 @@ def defs(resolved_contract):
 
 def _goal(cli, defs) -> None:
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship alpha", "kind": "deliver"},
     )
 
@@ -50,7 +50,7 @@ def _snapshot(client: TestClient) -> dict:
 def test_r1_backlog_dismiss(store, cli, defs):
     _goal(cli, defs)
     h.create_generic_record(
-        cli, defs, "project:backlog-item", subject="park-me",
+        cli, defs, "plan:backlog-item", subject="park-me",
         extra_payload={"effort": "alpha", "status": "open", "source": "chat"},
     )
     client = _client(store)
@@ -77,7 +77,7 @@ def test_r1_backlog_dismiss(store, cli, defs):
 def test_r2_needs_clear(store, cli, defs):
     _goal(cli, defs)
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject="alpha",
+        cli, defs, "plan:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "which backend"},
     )
     client = _client(store)

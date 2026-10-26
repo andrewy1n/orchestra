@@ -181,6 +181,10 @@
         "verify_command": {
           "type": "string"
         },
+        "claim": {
+          "type": "string",
+          "optional": true
+        },
         "requirement": {
           "type": "string",
           "optional": true

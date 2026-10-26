@@ -1,10 +1,14 @@
-"""The project:dashboard view renders one section per role, in role order."""
+"""The plan:dashboard view renders one section per role, in role order."""
 
 from __future__ import annotations
 
 import json
 
+import pytest
+
 import helpers as h
+
+pytestmark = pytest.mark.skip(reason="views move to orchestra commands (phase/canon-views)")
 
 EFFORT = "demo"
 
@@ -23,57 +27,57 @@ SECTIONS = [
 
 def _work_item(cli, defs, subject: str, phase: str, **payload) -> dict:
     return h.create_generic_record(
-        cli, defs, "project:work-item", subject=subject,
+        cli, defs, "plan:work-item", subject=subject,
         extra_payload={"title": f"title of {subject}", "phase": phase, "effort": EFFORT, **payload},
     )
 
 
 def _seed(store, cli, defs) -> None:
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject=EFFORT,
+        cli, defs, "plan:effort", subject=EFFORT,
         extra_payload={"goal": "ship the dashboard", "kind": "deliver"},
     )
     phase = h.create_generic_record(
-        cli, defs, "project:phase", subject="demo-phase-1",
+        cli, defs, "plan:phase", subject="demo-phase-1",
         extra_payload={"title": "first phase", "ordinal": 1, "effort": EFFORT},
     )
-    h.transition(cli, "project:phase", phase, "in_progress")
+    h.transition(cli, "plan:phase", phase, "in_progress")
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject=EFFORT,
+        cli, defs, "plan:continuity-question", subject=EFFORT,
         extra_payload={"blocking": True, "scope": "blocking-scope"},
     )
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject=EFFORT,
+        cli, defs, "plan:continuity-question", subject=EFFORT,
         extra_payload={"blocking": False, "scope": "open-scope"},
     )
     h.create_generic_record(
-        cli, defs, "project:finding", subject="demo-finding",
+        cli, defs, "aff:finding", subject="demo-finding",
         extra_payload={"claim": "a human must decide", "needs": "human", "effort": EFFORT},
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="demo-check",
+        cli, defs, "aff:check-run", subject="demo-check",
         extra_payload={"method": "manual", "signed_by": "", "result": "pass", "effort": EFFORT},
     )
     running = _work_item(cli, defs, "running-item", "demo-phase-1", assignee="agent-7")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     ready = _work_item(cli, defs, "ready-item", "demo-phase-1")
     waiting_payload = {
         "title": "title of waiting-item", "phase": "demo-phase-1", "kind": "deliver",
         "assignee": "", "effort": EFFORT,
     }
     result = cli(
-        "create", "--type", "project:work-item", "--subject", "waiting-item",
-        "--payload", json.dumps(waiting_payload), "--rel", f"depends_on:{ready['id']}",
-        "--body", h.generic_body(defs["project:work-item"]),
+        "create", "--type", "plan:work-item", "--subject", "waiting-item",
+        "--payload", json.dumps({**waiting_payload, "depends_on": [ready["subject"]]}),
+        "--body", h.generic_body(defs["plan:work-item"]),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     done = _work_item(cli, defs, "done-item", "demo-phase-1")
-    h.transition(cli, "project:work-item", done, "in_progress", "done")
+    h.transition(cli, "plan:work-item", done, "in_progress", "done")
 
     old = _work_item(cli, defs, "old-done-item", "demo-phase-1")
-    old = h.transition(cli, "project:work-item", old, "in_progress")
+    old = h.transition(cli, "plan:work-item", old, "in_progress")
     h.run_cli_48h_ago(
-        store, "update", "--type", "project:work-item", "--id", old["id"],
+        store, "update", "--type", "plan:work-item", "--id", old["id"],
         "--transition", "done", "--expected-revision", old["revision"],
     )
 
@@ -88,7 +92,7 @@ def test_dashboard_renders_every_section_in_order_with_labeled_fields(store, cli
     defs = h.record_defs_by_id(resolved_contract)
     _seed(store, cli, defs)
 
-    result = cli("view", "--id", "project:dashboard")
+    result = cli("view", "--id", "plan:dashboard")
     assert result.returncode == 0, result.stdout + result.stderr
     rendered = result.stdout
 
@@ -115,6 +119,6 @@ def test_dashboard_omits_work_done_more_than_24h_ago(store, cli, resolved_contra
     defs = h.record_defs_by_id(resolved_contract)
     _seed(store, cli, defs)
 
-    result = cli("view", "--id", "project:dashboard")
+    result = cli("view", "--id", "plan:dashboard")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "**old-done-item**" not in result.stdout

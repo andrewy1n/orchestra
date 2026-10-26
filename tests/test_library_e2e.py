@@ -9,17 +9,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-from adaptive_artifacts.project import open_store
+from canon.project import open_store
+from conftest import AFFIDAVIT_ROOT
 from orchestra import close_batch
 
 CLAIM_ID = "claim-widget"
 CLAIM_TEXT = "widget works"
-_CLOSE_MUST_NOT_START = {"aff", "adaptive-artifacts"}
+_CLOSE_MUST_NOT_START = {"aff", "canon"}
 
 
 def _env() -> dict[str, str]:
     env = os.environ.copy()
-    root = Path.home() / "affidavit"
+    root = AFFIDAVIT_ROOT
     if (root / "affidavit" / "__init__.py").is_file():
         previous = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = str(root) if not previous else str(root) + os.pathsep + previous
@@ -66,22 +67,23 @@ def _allowlist(key: Path) -> bytes:
 
 
 def _init_store(repo: Path, env: dict[str, str]) -> None:
-    design = repo / ".artifacts"
-    design.mkdir(parents=True, exist_ok=True)
-    contract = Path(__file__).resolve().parents[1] / "contract" / "project-design.json"
-    (design / "project-design.json").write_text(contract.read_text(encoding="utf-8"), encoding="utf-8")
-    resolved = _run(["adaptive-artifacts", "resolve"], repo, env)
-    if resolved.returncode != 0:
-        raise RuntimeError(resolved.stdout + resolved.stderr)
-    initialized = _run(["adaptive-artifacts", "init"], repo, env)
+    initialized = _run(["canon", "init", "--schemas", "plan,run,aff"], repo, env)
     if initialized.returncode != 0:
         raise RuntimeError(initialized.stdout + initialized.stderr)
+    _create(repo, env, "plan:effort", "library-boundary", {"goal": "library boundary", "kind": "deliver"})
+    _create(
+        repo, env, "plan:phase", "library-e2e",
+        {"title": "Library e2e", "ordinal": 1, "effort": "library-boundary"},
+        "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n",
+    )
 
 
-def _create(repo: Path, env: dict[str, str], record_type: str, subject: str, payload: dict) -> dict:
+def _create(
+    repo: Path, env: dict[str, str], record_type: str, subject: str, payload: dict, body: str | None = None
+) -> dict:
     result = _run(
         [
-            "adaptive-artifacts",
+            "canon",
             "create",
             "--type",
             record_type,
@@ -89,6 +91,7 @@ def _create(repo: Path, env: dict[str, str], record_type: str, subject: str, pay
             subject,
             "--payload",
             json.dumps(payload),
+            *(["--body", body] if body else []),
         ],
         repo,
         env,
@@ -155,7 +158,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     acceptance = _create(
         repo,
         env,
-        "project:acceptance",
+        "plan:acceptance",
         CLAIM_ID,
         {
             "method": "check",
@@ -168,7 +171,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     check_run = _create(
         repo,
         env,
-        "project:check-run",
+        "aff:check-run",
         "close-check",
         {
             "criterion_id": acceptance["id"],
@@ -224,16 +227,16 @@ def _close_command(repo: Path, request: dict) -> tuple[int, str]:
 
 
 def _assert_created_records(repo: Path, request: dict) -> None:
-    """open_store reads the records adaptive-artifacts create wrote."""
+    """open_store reads the records canon create wrote."""
     project = open_store(repo)
     acceptance_id = request["acceptance_ids"][0]
-    acceptance = project.get(acceptance_id, "project:acceptance")
+    acceptance = project.get(acceptance_id, "plan:acceptance")
     assert acceptance["id"] == acceptance_id
     assert acceptance["subject"] == CLAIM_ID
     assert acceptance["payload"]["method"] == "check"
     assert acceptance["payload"]["claim"] == CLAIM_ID
     check_run_id = request["criteria"][0]["check_run_id"]
-    check_run = project.get(check_run_id, "project:check-run")
+    check_run = project.get(check_run_id, "aff:check-run")
     assert check_run["id"] == check_run_id
     assert check_run["payload"]["criterion_id"] == acceptance_id
     assert check_run["payload"]["result"] == "pass"
@@ -241,7 +244,7 @@ def _assert_created_records(repo: Path, request: dict) -> None:
 
 
 def _close_in_process(repo: Path, request: dict, monkeypatch) -> int:
-    """Python close on the fixture. A subprocess named aff or adaptive-artifacts fails."""
+    """Python close on the fixture. A subprocess named aff or canon fails."""
     path = repo / "close-request.json"
     path.write_text(json.dumps(request), encoding="utf-8")
     out = repo / "close-python.ndjson"

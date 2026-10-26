@@ -90,11 +90,11 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
     assert_skills_load(claude / "skills")
     assert_skills_load(opencode / "skills")
 
-    assert (claude / "contract" / "project-design.json").is_file()
+    assert not (claude / "contract").exists()
     assert (claude / "agents" / "se-reviewer.md").is_file()
     assert (claude / "hooks" / "hooks.json").is_file()
 
-    assert (opencode / "contract" / "project-design.json").is_file()
+    assert not (opencode / "contract").exists()
     assert (opencode / "agents" / "se-reviewer.md").is_file()
     assert (opencode / "plugins" / "plugin.js").is_file()
     assert not (opencode / "plugin.js").exists()

@@ -1,4 +1,4 @@
-"""orchestra.aa opens the store through adaptive_artifacts.project.open_store."""
+"""orchestra.aa opens the store through canon.project.open_store."""
 
 from __future__ import annotations
 
@@ -7,19 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from adaptive_artifacts.project import StoreBindingError, open_store
-from conftest import make_git_repo
+from canon.project import StoreBindingError, open_store
+from conftest import make_git_repo, write_config
 from orchestra import aa
 
 
 def _meta(store: Path) -> Path:
-    store.mkdir(parents=True, exist_ok=True)
-    contract = store / "resolved-contract.json"
-    contract.write_text(json.dumps({"records": []}))
-    (store / "meta.json").write_text(
-        json.dumps({"store_version": 1, "contract": str(contract), "contract_digest": "sha256:test"})
-    )
-    return contract
+    return write_config(store)
 
 
 @pytest.fixture()

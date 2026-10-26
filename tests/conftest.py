@@ -28,16 +28,25 @@ CANON_SRC = CANON_ROOT / "src"
 CANON_CMD = [sys.executable, "-m", "canon"]
 
 
-def _aff_schema() -> Path:
+def _affidavit_root() -> Path:
+    if os.environ.get("AFFIDAVIT_ROOT"):
+        return Path(os.environ["AFFIDAVIT_ROOT"]).expanduser()
     for base in (Path.home() / "affidavit" / ".worktrees" / "canon", Path.home() / "affidavit"):
-        candidate = base / "affidavit" / "schemas" / "aff.json"
-        if candidate.is_file():
-            return candidate
-    return Path.home() / "affidavit" / "affidavit" / "schemas" / "aff.json"
+        if (base / "affidavit" / "schemas" / "aff.json").is_file():
+            return base
+    return Path.home() / "affidavit"
+
+
+AFFIDAVIT_ROOT = _affidavit_root()
+
+
+def _aff_schema() -> Path:
+    return AFFIDAVIT_ROOT / "affidavit" / "schemas" / "aff.json"
 
 
 def _configure_environment() -> None:
     os.environ["CANON_ROOT"] = str(CANON_ROOT)
+    os.environ["AFFIDAVIT_ROOT"] = str(AFFIDAVIT_ROOT)
     paths = [str(CANON_SRC), str(REPO_ROOT)]
     existing = os.environ.get("PYTHONPATH", "")
     if existing:
@@ -80,9 +89,7 @@ def pytest_unconfigure(config):
 @pytest.fixture(scope="session", autouse=True)
 def _preimport_affidavit_binding():
     """Let binding capture the real run_verdict before any test patches it."""
-    root = Path(os.environ.get("AFFIDAVIT_ROOT", "")) if os.environ.get("AFFIDAVIT_ROOT") else None
-    if root is None:
-        root = _aff_schema().parents[2]
+    root = AFFIDAVIT_ROOT
     if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
         sys.path.insert(0, str(root))
     try:
@@ -121,15 +128,37 @@ def make_git_repo() -> Path:
 SCHEMAS = "plan,run,aff"
 
 
+def write_config(store: Path) -> Path:
+    """A minimal canon store marker, with no schemas."""
+    store.mkdir(parents=True, exist_ok=True)
+    (store / "config.json").write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {}}))
+    return store
+
+
 def resolve_contract(root: Path | None = None) -> dict:
     import helpers as h
 
     return {"records": list(h.schema_defs().values())}
 
 
-def build_store() -> Path:
+def build_store(drop: frozenset[str] | set[str] = frozenset()) -> Path:
+    """A git repo with a canon store; `drop` names unqualified types left out of the schemas."""
     root = make_git_repo()
-    init_result = run_cli("init", "--schemas", SCHEMAS, root=root)
+    env = dict(os.environ)
+    if drop:
+        trimmed = Path(tempfile.mkdtemp(prefix="canon-trimmed-"))
+        paths = []
+        for source in os.environ["CANON_SCHEMA_PATH"].split(os.pathsep):
+            module = json.loads(Path(source).read_text())
+            module["types"] = {k: v for k, v in module["types"].items() if k not in drop}
+            target = trimmed / Path(source).name
+            target.write_text(json.dumps(module))
+            paths.append(str(target))
+        env["CANON_SCHEMA_PATH"] = os.pathsep.join(paths)
+    init_result = subprocess.run(
+        [*CANON_CMD, "--root", str(root), "init", "--schemas", SCHEMAS],
+        capture_output=True, text=True, env=env,
+    )
     assert init_result.returncode == 0, init_result.stdout + init_result.stderr
     return root
 

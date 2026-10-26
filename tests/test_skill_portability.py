@@ -11,7 +11,7 @@ R3: the generated-copy drift check fails when a copy differs from its source.
 R4: every ``SKILL.md`` has frontmatter whose ``name`` equals its directory and
 whose ``description`` is non-empty.
 R6: no skill body names a checkout path or a ``<plugin>`` root for a runtime
-call; skills call ``orchestra``, ``adaptive-artifacts``, and ``aff`` by name.
+call; skills call ``orchestra``, ``canon``, and ``aff`` by name.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ _BARE_OUTSIDE_PATH = re.compile(
 )
 
 _CHECKOUT_PATH = re.compile(
-    r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|adaptive-artifacts)\b"
+    r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|canon)\b"
 )
 _CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/(?:orchestra|aff)\b")
 _AFFIDAVIT_HOME = re.compile(r"~/affidavit\b")
@@ -224,7 +224,7 @@ def test_paths_runtime_calls_use_named_commands_only():
         "Run `<plugin>/bin/orchestra check`.\n",
         "Run `~/affidavit/bin/aff verdict`.\n",
         "Run `bin/orchestra close-batch`.\n",
-        "Run `/usr/local/bin/adaptive-artifacts resolve`.\n",
+        "Run `/usr/local/bin/canon validate`.\n",
     ],
 )
 def test_paths_planted_runtime_checkout_paths_are_rejected(text: str):
@@ -234,7 +234,7 @@ def test_paths_planted_runtime_checkout_paths_are_rejected(text: str):
 def test_paths_named_runtime_commands_are_allowed():
     text = (
         "Run `orchestra check`, `orchestra close-batch`, "
-        "`adaptive-artifacts resolve`, and `aff verdict`.\n"
+        "`canon validate`, and `aff verdict`.\n"
     )
     assert runtime_call_errors(text) == []
 

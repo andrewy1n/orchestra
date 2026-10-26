@@ -38,7 +38,7 @@ def test_plan_phase_example_verification_task_depends_on_several_work_items():
         inv
         for inv in extract_invocations(_skill("plan-phase"))
         if inv["subcommand"] == "create"
-        and inv["type"] == "project:work-item"
+        and inv["type"] == "plan:work-item"
         and "verify-<phase-slug>" in inv["raw"]
     ]
     assert len(creates) == 1
@@ -50,7 +50,7 @@ def test_plan_phase_example_gives_the_verification_task_an_integration_acceptanc
         inv
         for inv in extract_invocations(_skill("plan-phase"))
         if inv["subcommand"] == "create"
-        and inv["type"] == "project:acceptance"
+        and inv["type"] == "plan:acceptance"
         and "verify-<phase-slug>" in inv["raw"]
     ]
     assert any("integration" in (inv["payload"] or {}).get("verify_command", "") for inv in acceptances)
@@ -84,5 +84,5 @@ def test_execute_phase_gates_phase_close(phrase):
 def test_execute_phase_queries_check_runs_by_criterion_before_closing():
     text = _skill("execute-phase")
     gate_query = text.index("--where payload.criterion_id=<acceptance-id>")
-    phase_close = text.index("adaptive-artifacts update --type project:phase --id <phase-id> \\\n  --transition done")
+    phase_close = text.index("canon update --type plan:phase --id <phase-id> \\\n  --transition done")
     assert gate_query < phase_close

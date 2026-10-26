@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import json
 
-from conftest import REPO_ROOT
+import helpers as h
 from dashboard import model
 
 
 def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
-    design = json.loads((REPO_ROOT / "contract" / "project-design.json").read_text())
-    records = {r["name"]: r for r in design["records"]}
-    assert "proof-packet" in records
-    handoff = next(v for v in design["views"] if v["name"] == "handoff")
-    assert any(r["name"] == "latest-proof" for r in handoff["roles"])
+    assert h.record_def("proof-packet")["id"] == "run:proof-packet"
 
     look = "open dashboard phase detail Proof for phase-proof-packet"
     sample = (

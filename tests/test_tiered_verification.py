@@ -7,6 +7,7 @@ import re
 import sys
 from pathlib import Path
 
+import helpers as h
 from conftest import REPO_ROOT
 from skill_extraction import extract_invocations
 
@@ -37,8 +38,6 @@ from orchestra.suite import (  # noqa: E402
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 README = REPO_ROOT / "README.md"
-CONTRACT = REPO_ROOT / "contract" / "project-design.json"
-LIVE_DESIGN = REPO_ROOT / ".artifacts" / "project-design.json"
 
 HEAD = "abcdef0123456789abcdef0123456789abcdef01"
 PHASE = "verification-policy"
@@ -461,24 +460,12 @@ def test_policy_defaults_missing_mode_none_omitted_gate_required():
     configured = normalize_suite_policy({"mode": "smoke", "command": "pytest -q"})
     assert configured.gate == "required"
     assert configured.mode == "smoke"
-    loaded = load_suite_policy(REPO_ROOT)
-    assert loaded.mode == "full"
-    assert loaded.gate == "advisory"
-    assert "pytest" in loaded.command
 
 
-def test_this_repo_suite_policy_full_advisory_from_design():
-    # R6: this-repo pin is live design; R2: bundled contract stays mode=none.
-    design = json.loads(LIVE_DESIGN.read_text())
-    suite = design["phase_gate"]["suite"]
-    policy = normalize_suite_policy(suite)
-    assert policy.mode == "full"
-    assert policy.gate == "advisory"
+def test_advisory_full_policy_does_not_block_merge():
+    policy = normalize_suite_policy({"mode": "full", "command": "pytest -q", "gate": "advisory"})
     assert policy.blocks_merge is False
     assert policy.run_locally is True
-    bundled = json.loads(CONTRACT.read_text())["phase_gate"]["suite"]
-    assert bundled["mode"] == "none"
-    assert bundled.get("command", "") == ""
 
 
 def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
@@ -528,7 +515,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "project:check-run"
+        if inv["subcommand"] == "create" and inv["type"] == "aff:check-run"
     ]
     suite_creates = [
         inv
@@ -588,8 +575,7 @@ def test_evidence_kind_integration_not_regression():
     )
     assert payload["evidence_kind"] == "integration"
     assert payload["evidence_kind"] != "regression"
-    design = json.loads(CONTRACT.read_text())
-    check = next(r for r in design["records"] if r["name"] == "check-run")
+    check = h.record_def("check-run")
     assert "failing_node_ids" in check["optional_payload"]
     assert "integration" in check["payload_enum"]["evidence_kind"]
 

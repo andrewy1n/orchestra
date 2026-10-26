@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import REPO_ROOT
+from conftest import AFFIDAVIT_ROOT, REPO_ROOT, build_store
 from orchestra import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"
@@ -150,7 +150,7 @@ def _ancestry_repo(tmp_path: Path) -> tuple[Path, str, str]:
 
 
 def _affidavit_checkout() -> Path | None:
-    root = Path.home() / "affidavit"
+    root = AFFIDAVIT_ROOT
     if (root / "affidavit" / "__init__.py").is_file():
         return root
     return None
@@ -188,11 +188,13 @@ def _run_script(
         if prefix not in current.split(os.pathsep):
             env["PYTHONPATH"] = prefix + (os.pathsep + current if current else "")
     # process_cwd is the primary checkout (store discovery); --cwd is code HEAD.
+    if process_cwd is None:
+        process_cwd = build_store()
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        cwd=str(process_cwd) if process_cwd is not None else None,
+        cwd=str(process_cwd),
         env=env,
     )
     return result, out_path
@@ -229,7 +231,7 @@ def test_all_pass_runner_batch_is_only_the_transition():
     assert [op["op"] for op in ops] == ["update"]
     assert ops[-1] == {
         "op": "update",
-        "type": "project:work-item",
+        "type": "plan:work-item",
         "id": "rec-wi",
         "transition": "done",
         "expected_revision": "@current",
@@ -240,11 +242,11 @@ def test_manual_pass_batch_is_one_check_run_then_the_transition():
     ops = _build(_manual_request())
     assert [op["op"] for op in ops] == ["create", "update"]
     check_run = ops[0]
-    assert check_run["type"] == "project:check-run"
+    assert check_run["type"] == "aff:check-run"
     assert check_run["subject"] == "task-1"
     assert check_run["payload"]["result"] == "pass"
     assert check_run["payload"]["method"] == "manual"
-    assert check_run["rel"] == ["informed_by:rec-ac1", "informed_by:rec-er"]
+    assert check_run["payload"]["informed_by"] == ["rec-ac1", "rec-er"]
 
 
 def test_refuses_done_with_failing_criterion_and_no_finding():
@@ -306,15 +308,15 @@ def test_finding_permits_the_close_and_needs_is_forced_to_human():
         },
     )
     ops = _build(request)
-    finding_op = next(op for op in ops if op["type"] == "project:finding")
+    finding_op = next(op for op in ops if op["type"] == "aff:finding")
     assert finding_op["payload"]["needs"] == "human"
     assert ops[-1]["op"] == "update" and ops[-1]["transition"] == "done"
-    assert not any(op.get("type") == "project:check-run" for op in ops)
+    assert not any(op.get("type") == "aff:check-run" for op in ops)
 
 
 def test_no_execution_report_omits_the_second_informed_by_on_manual():
     ops = _build(_manual_request(execution_report_id=None))
-    assert ops[0]["rel"] == ["informed_by:rec-ac1"]
+    assert ops[0]["payload"]["informed_by"] == ["rec-ac1"]
 
 
 def test_criteria_entry_outside_acceptance_ids_is_malformed():
@@ -398,35 +400,35 @@ def test_cli_malformed_json_exits_1(tmp_path):
 
 
 def _build_work_item_family(cli, defs, subject: str, effort: str, *, method: str = "tdd"):
-    phase = h.create_generic_record(cli, defs, "project:phase", extra_payload={"effort": effort})
+    phase = h.create_generic_record(cli, defs, "plan:phase", extra_payload={"effort": effort})
     work_item = h.create_generic_record(
         cli,
         defs,
-        "project:work-item",
+        "plan:work-item",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "kind": "deliver"},
     )
     work_item = h._apply_transition(
-        cli, defs["project:work-item"], "project:work-item", work_item, "in_progress"
+        cli, defs["plan:work-item"], "plan:work-item", work_item, "in_progress"
     )
     acceptance = h.create_generic_record(
         cli,
         defs,
-        "project:acceptance",
+        "plan:acceptance",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "method": method},
     )
     assignment = h.create_generic_record(
         cli,
         defs,
-        "project:assignment",
+        "run:assignment",
         subject=subject,
         extra_payload={"effort": effort, "work_item": subject},
     )
     execution_report = h.create_generic_record(
         cli,
         defs,
-        "project:execution-report",
+        "run:execution-report",
         subject=subject,
         extra_payload={
             "work_item": subject,
@@ -464,21 +466,19 @@ def _seed_runner_check_run(
     if diff_sha256 is not None:
         payload["diff_sha256"] = diff_sha256
     if failing_node_ids is not None:
-        payload["failing_node_ids"] = failing_node_ids
+        payload["failing_node_ids"] = (
+            json.loads(failing_node_ids) if isinstance(failing_node_ids, str) else failing_node_ids
+        )
     args = [
         "create",
         "--type",
-        "project:check-run",
+        "aff:check-run",
         "--subject",
         subject,
         "--payload",
-        json.dumps(payload),
-        "--rel",
-        f"informed_by:{acceptance['id']}",
-        "--rel",
-        f"informed_by:{execution_report['id']}",
+        json.dumps({**payload, "informed_by": [acceptance["id"], execution_report["id"]]}),
     ]
-    check_body = body if body is not None else h.generic_body(defs["project:check-run"])
+    check_body = body if body is not None else h.generic_body(defs["aff:check-run"])
     if check_body:
         args.extend(["--body", check_body])
     created = cli(*args)
@@ -539,11 +539,11 @@ def test_end_to_end_all_pass_closes_the_work_item_to_done(
     assert applied["applied"] == 1
     assert applied["failed"] == 0
 
-    final_work_item = json.loads(cli("get", "--type", "project:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "done"
 
     check_runs = json.loads(
-        cli("list", "--type", "project:check-run", "--subject", subject, "--full").stdout
+        cli("list", "--type", "aff:check-run", "--subject", subject, "--full").stdout
     )["records"]
     assert len(check_runs) == 2
     by_id = {cr["id"]: cr for cr in check_runs}
@@ -586,7 +586,7 @@ def test_end_to_end_refusal_leaves_the_work_item_in_progress(
     assert result.returncode == 2
     assert not out_path.exists()
 
-    final_work_item = json.loads(cli("get", "--type", "project:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "in_progress"
 
 
@@ -601,12 +601,12 @@ def test_cli_claim_gate_refuses_unknown_claim(
         cli, defs, subject, effort, method="check"
     )
     current = json.loads(
-        cli("get", "--type", "project:acceptance", "--id", acceptance["id"]).stdout
+        cli("get", "--type", "plan:acceptance", "--id", acceptance["id"]).stdout
     )
     updated = cli(
         "update",
         "--type",
-        "project:acceptance",
+        "plan:acceptance",
         "--id",
         acceptance["id"],
         "--expected-revision",
@@ -687,11 +687,11 @@ def test_end_to_end_failing_criterion_with_finding_closes_and_surfaces_needs_hum
     applied = json.loads(apply_result.stdout)
     assert applied["applied"] == 2
 
-    final_work_item = json.loads(cli("get", "--type", "project:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "done"
 
     findings = json.loads(
-        cli("list", "--type", "project:finding", "--subject", subject, "--full").stdout
+        cli("list", "--type", "aff:finding", "--subject", subject, "--full").stdout
     )["records"]
     assert len(findings) == 1
     assert findings[0]["payload"]["needs"] == "human"
@@ -852,7 +852,7 @@ def test_red_first_escape_permits_tdd_done_without_red_and_forces_human():
         },
     )
     ops = _build(request)
-    finding_op = next(op for op in ops if op["type"] == "project:finding")
+    finding_op = next(op for op in ops if op["type"] == "aff:finding")
     assert finding_op["payload"]["needs"] == "human"
     assert ops[-1]["transition"] == "done"
 
@@ -1137,8 +1137,8 @@ ORACLE_CONTENT_V1 = b"oracle v1\n"
 ORACLE_CONTENT_V2 = b"oracle v2\n"
 ORACLE_HASH_V1 = "sha256:ede7b166ddc88e3753eef482f245f300ad2b85ec3ebbe5a5f33270dd83d02896"
 ORACLE_HASH_V2 = "sha256:3e9c68d849014d8206d549226306afb687c39fd68dad9536ca6190862139949b"
-ORACLE_HASHES_V1 = f"{ORACLE_REL}:{ORACLE_HASH_V1}"
-ORACLE_HASHES_V2 = f"{ORACLE_REL}:{ORACLE_HASH_V2}"
+ORACLE_HASHES_V1 = [f"{ORACLE_REL}:{ORACLE_HASH_V1}"]
+ORACLE_HASHES_V2 = [f"{ORACLE_REL}:{ORACLE_HASH_V2}"]
 
 ASSERTION_RED_BODY = """\
 ============================= test session starts ==============================
@@ -1190,13 +1190,13 @@ def _oracle_repo(tmp_path: Path, content: bytes = ORACLE_CONTENT_V1) -> tuple[Pa
 def _oracle_acceptance(
     *,
     test_ids: str = ORACLE_NODE,
-    oracle_hashes: str = ORACLE_HASHES_V1,
+    oracle_hashes: list[str] = ORACLE_HASHES_V1,
 ):
     return {
         "id": "rec-ac1",
         "payload": {
             "method": "tdd",
-            "test_ids": test_ids,
+            "test_ids": [test_ids] if isinstance(test_ids, str) else test_ids,
             "oracle_hashes": oracle_hashes,
             "effort": "effort-1",
         },
@@ -1282,19 +1282,19 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
 
 def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    phase = h.create_generic_record(cli, defs, "project:phase")
+    phase = h.create_generic_record(cli, defs, "plan:phase")
     acceptance = h.create_generic_record(
-        cli, defs, "project:acceptance", extra_payload={"phase": phase["subject"]}
+        cli, defs, "plan:acceptance", extra_payload={"phase": phase["subject"]}
     )
     other = h.create_generic_record(
-        cli, defs, "project:acceptance", extra_payload={"phase": phase["subject"]}
+        cli, defs, "plan:acceptance", extra_payload={"phase": phase["subject"]}
     )
 
     def amend(acceptance_ref: str) -> dict:
         return h.create_generic_record(
             cli,
             defs,
-            "project:oracle-amendment",
+            "aff:oracle-amendment",
             extra_payload={
                 "acceptance": acceptance_ref,
                 "phase": phase["subject"],
@@ -1442,44 +1442,44 @@ def _build_oracle_work_item_family(
     effort: str,
     *,
     test_ids: str = ORACLE_NODE,
-    oracle_hashes: str = ORACLE_HASHES_V1,
+    oracle_hashes: list[str] = ORACLE_HASHES_V1,
 ):
     """Work-item family whose acceptance carries oracle freeze fields."""
-    phase = h.create_generic_record(cli, defs, "project:phase", extra_payload={"effort": effort})
+    phase = h.create_generic_record(cli, defs, "plan:phase", extra_payload={"effort": effort})
     work_item = h.create_generic_record(
         cli,
         defs,
-        "project:work-item",
+        "plan:work-item",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "kind": "deliver"},
     )
     work_item = h._apply_transition(
-        cli, defs["project:work-item"], "project:work-item", work_item, "in_progress"
+        cli, defs["plan:work-item"], "plan:work-item", work_item, "in_progress"
     )
     acceptance = h.create_generic_record(
         cli,
         defs,
-        "project:acceptance",
+        "plan:acceptance",
         subject=subject,
         extra_payload={
             "effort": effort,
             "phase": phase["subject"],
             "method": "tdd",
-            "test_ids": test_ids,
+            "test_ids": [test_ids] if isinstance(test_ids, str) else test_ids,
             "oracle_hashes": oracle_hashes,
         },
     )
     assignment = h.create_generic_record(
         cli,
         defs,
-        "project:assignment",
+        "run:assignment",
         subject=subject,
         extra_payload={"effort": effort, "work_item": subject},
     )
     execution_report = h.create_generic_record(
         cli,
         defs,
-        "project:execution-report",
+        "run:execution-report",
         subject=subject,
         extra_payload={
             "work_item": subject,

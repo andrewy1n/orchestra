@@ -25,7 +25,7 @@ def _source_tree(prefix: Path) -> Path:
     source.mkdir()
     for name in ("pyproject.toml", "README.md"):
         shutil.copy2(REPO_ROOT / name, source / name)
-    for name in ("orchestra", "scripts", "contract"):
+    for name in ("orchestra", "scripts"):
         shutil.copytree(
             REPO_ROOT / name,
             source / name,
@@ -113,34 +113,7 @@ def test_console_script_resolves_on_path_from_unrelated_cwd(installed, tmp_path)
     proc = run_cli(env, elsewhere, "--help")
     assert proc.returncode == 0, proc.stderr
     assert "check" in proc.stdout
-    assert "contract" in proc.stdout
-    assert "project-field" in proc.stdout
     assert "sessions" in proc.stdout
-
-
-def test_contract_subcommand_reports_packaged_path(installed, tmp_path):
-    _, env = installed
-    elsewhere = tmp_path / "unrelated"
-    elsewhere.mkdir()
-
-    proc = run_cli(env, elsewhere, "contract", "--path")
-    assert proc.returncode == 0, proc.stderr
-    path = Path(proc.stdout.strip())
-    assert path.is_file()
-    assert "orchestra" in path.parts
-    assert json.loads(path.read_text())["project"] == "orchestra"
-    # The packaged copy matches the checkout's source of truth.
-    assert path.read_text() == (REPO_ROOT / "contract" / "project-design.json").read_text()
-
-    body = run_cli(env, elsewhere, "contract")
-    assert body.returncode == 0, body.stderr
-    assert json.loads(body.stdout)["project"] == "orchestra"
-
-    written = elsewhere / "nested" / "project-design.json"
-    write = run_cli(env, elsewhere, "contract", "--write", str(written))
-    assert write.returncode == 0, write.stderr
-    assert Path(write.stdout.strip()) == written
-    assert written.read_text() == (REPO_ROOT / "contract" / "project-design.json").read_text()
 
 
 def _write_session(root: Path, project: str, name: str, session_id: str) -> None:
@@ -170,25 +143,6 @@ def test_installed_subcommands_run_from_unrelated_cwd(installed, tmp_path):
     _, env = installed
     elsewhere = tmp_path / "unrelated"
     elsewhere.mkdir()
-
-    contract = run_cli(env, elsewhere, "contract", "--path")
-    assert contract.returncode == 0, contract.stderr
-    assert Path(contract.stdout.strip()).is_file()
-
-    design = elsewhere / "project-design.json"
-    design.write_text(json.dumps({"project": "affidavit"}))
-    rewritten = run_cli(env, elsewhere, "project-field", "rewrite", str(design))
-    assert rewritten.returncode == 0, rewritten.stderr
-    assert rewritten.stdout.strip() == "rewritten"
-    assert json.loads(design.read_text())["project"] == "orchestra"
-    current = run_cli(env, elsewhere, "project-field", "rewrite", str(design))
-    assert current.stdout.strip() == "current"
-
-    design.write_text(json.dumps({"project": "someone-else"}))
-    stopped = run_cli(env, elsewhere, "project-field", "rewrite", str(design))
-    assert stopped.returncode == 1
-    assert stopped.stdout.strip() == "stopped"
-    assert json.loads(design.read_text())["project"] == "someone-else"
 
     transcripts = elsewhere / "transcripts"
     _write_session(transcripts, "projA", "s1", "s1")
@@ -220,8 +174,7 @@ def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, 
     scrubbed["HOME"] = str(home)
     for name in (
         "AFFIDAVIT_ROOT",
-        "ADAPTIVE_ARTIFACTS_BIN",
-        "ADAPTIVE_ARTIFACTS_ROOT",
+        "CANON_ROOT",
         "CLAUDE_PLUGIN_ROOT",
         "CURSOR_PLUGIN_ROOT",
         "SE_WORKFLOW_STORE",
@@ -283,22 +236,12 @@ def test_cli_standalone_without_affidavit_checkout(installed, tmp_path):
 
     helped = run_cli(env, elsewhere, "--help")
     assert helped.returncode == 0, helped.stderr
-    for command in ("check", "install", "contract", "project-field", "sessions"):
+    for command in ("check", "install", "sessions"):
         assert command in helped.stdout
 
-    for command in ("check", "install", "contract", "project-field", "sessions"):
+    for command in ("check", "install", "sessions"):
         proc = run_cli(env, elsewhere, command, "--help")
         assert proc.returncode == 0, (command, proc.stdout + proc.stderr)
-
-    contract = run_cli(env, elsewhere, "contract", "--path")
-    assert contract.returncode == 0, contract.stderr
-    assert Path(contract.stdout.strip()).is_file()
-
-    design = elsewhere / "project-design.json"
-    design.write_text(json.dumps({"project": "affidavit"}))
-    rewritten = run_cli(env, elsewhere, "project-field", "rewrite", str(design))
-    assert rewritten.returncode == 0, rewritten.stderr
-    assert rewritten.stdout.strip() == "rewritten"
 
     transcripts = elsewhere / "transcripts"
     _write_session(transcripts, "projA", "s1", "s1")

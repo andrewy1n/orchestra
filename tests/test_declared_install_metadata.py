@@ -1,6 +1,6 @@
 """Package metadata for declared install (R1, R4).
 
-Reads the orchestra, affidavit, and adaptive-artifacts ``pyproject.toml`` files.
+Reads the orchestra, affidavit, and canon ``pyproject.toml`` files.
 """
 
 from __future__ import annotations
@@ -18,14 +18,11 @@ def _pyproject_paths() -> dict[str, Path]:
         affidavit_root = Path(os.environ["AFFIDAVIT_ROOT"]).expanduser()
     else:
         affidavit_root = Path.home() / "affidavit"
-    if os.environ.get("ADAPTIVE_ARTIFACTS_ROOT"):
-        adaptive_root = Path(os.environ["ADAPTIVE_ARTIFACTS_ROOT"]).expanduser()
-    else:
-        adaptive_root = Path.home() / "adaptive-artifacts"
+    canon_root = Path(os.environ.get("CANON_ROOT") or Path.home() / "adaptive-artifacts").expanduser()
     return {
         "orchestra": _ROOT / "pyproject.toml",
         "affidavit": affidavit_root / "pyproject.toml",
-        "adaptive-artifacts": adaptive_root / "pyproject.toml",
+        "canon": canon_root / "pyproject.toml",
     }
 
 
@@ -84,14 +81,14 @@ def _read_projects() -> dict[str, str]:
     return {name: _read(path) for name, path in _pyproject_paths().items()}
 
 
-def test_r1_affidavit_depends_on_adaptive_artifacts():
-    """R1: the affidavit package declares a dependency on adaptive-artifacts."""
+def test_r1_affidavit_depends_on_canon():
+    """R1: the affidavit package declares a dependency on canon."""
     paths = _pyproject_paths()
     texts = _read_projects()
     deps = _dependency_names(texts["affidavit"])
-    assert "adaptive-artifacts" in deps, (
+    assert "canon" in deps, (
         f"{paths['affidavit']} dependencies={deps!r}; "
-        f"also read {paths['orchestra']} and {paths['adaptive-artifacts']}"
+        f"also read {paths['orchestra']} and {paths['canon']}"
     )
 
 
@@ -102,5 +99,5 @@ def test_r4_evidence_extra_depends_on_affidavit():
     evidence = _extra_names(texts["orchestra"], "evidence")
     assert "affidavit" in evidence, (
         f"{paths['orchestra']} evidence extra={evidence!r}; "
-        f"also read {paths['affidavit']} and {paths['adaptive-artifacts']}"
+        f"also read {paths['affidavit']} and {paths['canon']}"
     )

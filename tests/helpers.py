@@ -73,7 +73,8 @@ def schema_defs() -> dict[str, dict]:
                 "purpose": type_def.purpose,
                 "fields": fields,
                 "required": required,
-                "payload": list(fields),
+                "payload": [n for n in fields if n != "depends_on"],
+                "optional_payload": [n for n, f in fields.items() if f.get("optional") and n != "depends_on"],
                 "payload_enum": {n: f["enum"] for n, f in fields.items() if "enum" in f},
                 "payload_references": {
                     n: _ref_targets(f)[0] for n, f in fields.items() if _ref_targets(f)
@@ -87,6 +88,31 @@ def schema_defs() -> dict[str, dict]:
                 },
             }
     return defs
+
+
+def csv(value: str | None) -> list[str]:
+    return [part.strip() for part in (value or "").split(",") if part.strip()]
+
+
+def with_rels(cli, payload: dict, rels) -> dict:
+    """Fold legacy `depends_on:<id>` and `informed_by:<id>` links into the payload."""
+    merged = dict(payload)
+    for rel in rels or ():
+        kind, _, target = rel.partition(":")
+        if kind == "depends_on":
+            found = cli("get", "--id", target)
+            assert found.returncode == 0, found.stdout + found.stderr
+            merged.setdefault("depends_on", []).append(json.loads(found.stdout)["subject"])
+        elif kind == "informed_by":
+            merged.setdefault("informed_by", []).append(target)
+        else:
+            raise AssertionError(f"unsupported link {rel!r}")
+    return merged
+
+
+def record_def(name: str) -> dict:
+    """The definition of the type with this unqualified name."""
+    return next(d for d in schema_defs().values() if d["name"] == name)
 
 
 def _ref_targets(form: dict) -> list[str]:
@@ -152,6 +178,23 @@ def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, di
     return generic_payload_value(field)
 
 
+def ensure_refs(cli, defs, record_def: dict, given: dict) -> None:
+    """Create a generic record for each subject reference in `given` that has no record yet."""
+    for field, value in given.items():
+        form = record_def["fields"].get(field)
+        if not form or form.get("pin") or not value:
+            continue
+        inner = form["list"] if "list" in form else form
+        if "ref" not in inner or inner.get("pin"):
+            continue
+        target_type = _ref_targets(inner)[0]
+        for subject in value if isinstance(value, list) else [value]:
+            found = cli("list", "--type", target_type, "--subject", subject)
+            if found.returncode == 0 and json.loads(found.stdout).get("records"):
+                continue
+            create_generic_record(cli, defs, target_type, subject=subject)
+
+
 def create_generic_record(
     cli,
     defs: dict[str, dict],
@@ -174,6 +217,7 @@ def create_generic_record(
         payload[field] = _generic_value(cli, defs, field, form, target_cache)
     if extra_payload:
         payload.update(extra_payload)
+        ensure_refs(cli, defs, record_def, extra_payload)
     args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
     body = generic_body(record_def)
     if body:

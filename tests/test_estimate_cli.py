@@ -12,7 +12,7 @@ PHASE = "run-facts"
 
 def _phase(cli, defs) -> dict:
     return h.create_generic_record(
-        cli, defs, "project:phase", subject=PHASE,
+        cli, defs, "plan:phase", subject=PHASE,
         extra_payload={"title": "Run facts", "ordinal": 1, "effort": EFFORT},
     )
 
@@ -27,9 +27,9 @@ def _work_item(cli, defs, subject: str, phase: str, **fields):
     }
     payload.update(fields)
     return cli(
-        "create", "--type", "project:work-item", "--subject", subject,
+        "create", "--type", "plan:work-item", "--subject", subject,
         "--payload", json.dumps(payload),
-        "--body", h.generic_body(defs["project:work-item"]),
+        "--body", h.generic_body(defs["plan:work-item"]),
     )
 
 
@@ -58,11 +58,11 @@ def test_work_item_stores_size_l_and_estimate_minutes(store, cli, resolved_contr
         cli, defs, "sized-task", phase["subject"], size="L", estimate_minutes=25,
     ))
     _assert_valid(cli)
-    stored = _get(cli, "project:work-item", item["id"])
+    stored = _get(cli, "plan:work-item", item["id"])
     assert stored["payload"]["size"] == "L"
     assert stored["payload"]["estimate_minutes"] == 25
     assert type(stored["payload"]["estimate_minutes"]) is int
-    phase_stored = _get(cli, "project:phase", phase["id"])
+    phase_stored = _get(cli, "plan:phase", phase["id"])
     assert "size" not in phase_stored["payload"]
     assert "estimate_minutes" not in phase_stored["payload"]
 
@@ -74,7 +74,7 @@ def test_estimate_minutes_zero_is_stored(store, cli, resolved_contract):
         cli, defs, "zero-task", phase["subject"], estimate_minutes=0,
     ))
     _assert_valid(cli)
-    stored = _get(cli, "project:work-item", item["id"])
+    stored = _get(cli, "plan:work-item", item["id"])
     assert stored["payload"]["estimate_minutes"] == 0
     assert type(stored["payload"]["estimate_minutes"]) is int
 
@@ -84,7 +84,7 @@ def test_work_item_may_omit_size_and_estimate_minutes(store, cli, resolved_contr
     phase = _phase(cli, defs)
     item = _created(_work_item(cli, defs, "plain-task", phase["subject"]))
     _assert_valid(cli)
-    stored = _get(cli, "project:work-item", item["id"])
+    stored = _get(cli, "plan:work-item", item["id"])
     assert "size" not in stored["payload"]
     assert "estimate_minutes" not in stored["payload"]
 

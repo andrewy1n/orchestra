@@ -20,7 +20,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import backlog as backlog_module  # noqa: E402
 from dashboard import dismiss as dismiss_module  # noqa: E402
 from dashboard import model  # noqa: E402
@@ -28,63 +28,63 @@ from dashboard import model  # noqa: E402
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> dict:
     record = h.create_generic_record(
-        cli, defs, "project:phase", subject=subject,
+        cli, defs, "plan:phase", subject=subject,
         extra_payload={"title": f"title of {subject}", "ordinal": ordinal, "effort": effort},
     )
     if states:
-        record = h.transition(cli, "project:phase", record, *states)
+        record = h.transition(cli, "plan:phase", record, *states)
     return record
 
 
 def _seed(cli, defs) -> None:
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship alpha", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "p-work", 1, "in_progress")
     _phase(cli, defs, "alpha", "route-phase", 2, "in_progress")
     _phase(cli, defs, "alpha", "merge-phase", 3, "in_progress", "done")
     h.create_generic_record(
-        cli, defs, "project:work-item", subject="task-ready",
+        cli, defs, "plan:work-item", subject="task-ready",
         extra_payload={
             "title": "title of task-ready", "phase": "p-work", "kind": "deliver",
             "assignee": "", "effort": "alpha", "attempts": 0, "estimate_minutes": 0,
         },
     )
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject="alpha",
+        cli, defs, "plan:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "which backend"},
     )
     h.create_generic_record(
-        cli, defs, "project:finding", subject="human-finding",
+        cli, defs, "aff:finding", subject="human-finding",
         extra_payload={
             "claim": "a human must decide", "basis": "observed", "needs": "human",
             "effort": "alpha", "invalidated_when": "decision recorded",
         },
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="unsigned-check",
+        cli, defs, "aff:check-run", subject="unsigned-check",
         extra_payload={
             "method": "manual", "signed_by": "", "result": "pass", "effort": "alpha", "revision": "abc",
         },
     )
     h.create_generic_record(
-        cli, defs, "project:specification", subject="route-spec",
-        extra_payload={"phase": "route-phase", "effort": "alpha", "requirements": "R1", "weight": "light"},
+        cli, defs, "plan:specification", subject="route-spec",
+        extra_payload={"phase": "route-phase", "effort": "alpha", "requirements": ["R1"], "weight": "light"},
     )
     h.create_generic_record(
-        cli, defs, "project:assessment", subject="route-phase-R1",
+        cli, defs, "run:assessment", subject="route-phase-R1",
         extra_payload={
             "requirement": "R1", "phase": "route-phase", "effort": "alpha", "missing": "",
             "confidence": "high", "status": "failed", "next": "design", "level": "design",
         },
     )
     h.create_generic_record(
-        cli, defs, "project:integration-report", subject="route-phase-report",
+        cli, defs, "run:integration-report", subject="route-phase-report",
         extra_payload={"phase": "route-phase", "effort": "alpha", "result": "fail", "revision": "dirty"},
     )
     h.create_generic_record(
-        cli, defs, "project:backlog-item", subject="park-me",
+        cli, defs, "plan:backlog-item", subject="park-me",
         extra_payload={"effort": "alpha", "status": "open", "source": "chat"},
     )
 

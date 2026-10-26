@@ -1,6 +1,6 @@
-"""CLI create/list/promote/dismiss for project:backlog-item.
+"""CLI create/list/promote/dismiss for plan:backlog-item.
 
-Backlog is distinct from project:feedback: park via create, close via
+Backlog is distinct from plan:feedback: park via create, close via
 current-status supersede to promoted or dismissed. Every item needs effort.
 """
 
@@ -15,9 +15,9 @@ def _effort(cli, defs, effort: str) -> None:
     h.create_generic_record(
         cli,
         defs,
-        "project:active-goal",
+        "plan:effort",
         subject=effort,
-        extra_payload={"goal": f"goal of {effort}", "kind": "deliver", "scope": "effort"},
+        extra_payload={"goal": f"goal of {effort}", "kind": "deliver"},
     )
 
 
@@ -26,7 +26,7 @@ def _create_open(cli, subject: str, effort: str, **extra) -> dict:
     result = cli(
         "create",
         "--type",
-        "project:backlog-item",
+        "plan:backlog-item",
         "--subject",
         subject,
         "--payload",
@@ -40,7 +40,7 @@ def _list_open(cli) -> list[dict]:
     result = cli(
         "list",
         "--type",
-        "project:backlog-item",
+        "plan:backlog-item",
         "--state",
         "active",
         "--where",
@@ -56,7 +56,7 @@ def _supersede_status(cli, record: dict, status: str, **extra) -> dict:
     result = cli(
         "supersede",
         "--type",
-        "project:backlog-item",
+        "plan:backlog-item",
         "--id",
         record["id"],
         "--expected-revision",
@@ -89,7 +89,7 @@ def test_feedback_create_list_path_is_distinct(store, cli, resolved_contract):
     fb = cli(
         "create",
         "--type",
-        "project:feedback",
+        "plan:feedback",
         "--subject",
         "route-now",
         "--payload",
@@ -101,9 +101,9 @@ def test_feedback_create_list_path_is_distinct(store, cli, resolved_contract):
     )
     assert fb.returncode == 0, fb.stdout + fb.stderr
     feedback = json.loads(fb.stdout)["record"]
-    assert feedback["record_type"] == "project:feedback"
+    assert feedback["record_type"] == "plan:feedback"
 
-    fb_list = cli("list", "--type", "project:feedback", "--full")
+    fb_list = cli("list", "--type", "plan:feedback", "--full")
     assert fb_list.returncode == 0, fb_list.stdout + fb_list.stderr
     feedback_ids = {r["id"] for r in json.loads(fb_list.stdout)["records"]}
     assert feedback["id"] in feedback_ids
@@ -120,7 +120,7 @@ def test_promote_and_dismiss_leave_open_lists(store, cli, resolved_contract):
     phase = h.create_generic_record(
         cli,
         defs,
-        "project:phase",
+        "plan:phase",
         subject="close-effort-phase",
         extra_payload={"title": "next", "ordinal": 1, "effort": "close-effort"},
     )
@@ -146,7 +146,7 @@ def test_create_without_effort_fails(store, cli, resolved_contract):
     result = cli(
         "create",
         "--type",
-        "project:backlog-item",
+        "plan:backlog-item",
         "--subject",
         "missing-effort",
         "--payload",

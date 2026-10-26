@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import AFFIDAVIT_ROOT
 from orchestra import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -29,7 +30,7 @@ CHECK_RUN_ID = "rec-runner-cr"
 
 def _ensure_affidavit_importable() -> None:
     """In-process close tests call affidavit; the checkout is not an installed dep."""
-    root = Path.home() / "affidavit"
+    root = AFFIDAVIT_ROOT
     if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
         sys.path.insert(0, str(root))
 

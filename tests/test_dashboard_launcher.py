@@ -11,24 +11,20 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, make_git_repo
+from conftest import CANON_ROOT, REPO_ROOT, make_git_repo, write_config
 from test_dashboard_status import _goal, _work_item
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard"
 
 FAKE_UV = """#!/usr/bin/env python3
 import json, os, sys
-print(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd(), "aa_bin": os.environ.get("ADAPTIVE_ARTIFACTS_BIN")}))
+print(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd(), "canon_root": os.environ.get("CANON_ROOT")}))
 """
 APP = REPO_ROOT / "dashboard" / "__main__.py"
 
 
-def _write_store(store: Path, contract_ref: str | None = None) -> Path:
-    store.mkdir(parents=True, exist_ok=True)
-    contract = store / "resolved-contract.json"
-    contract.write_text(json.dumps({"views": []}))
-    (store / "meta.json").write_text(json.dumps({"store_version": 1, "contract": contract_ref or str(contract)}))
-    return store
+def _write_store(store: Path) -> Path:
+    return write_config(store)
 
 
 def _fake_uv(path: Path) -> Path:
@@ -51,14 +47,12 @@ def repo():
 
 
 def _run(
-    cwd: Path, home: Path, *args: str, uv: Path | None = None, aa_bin: Path | None = None, path: str | None = None,
+    cwd: Path, home: Path, *args: str, uv: Path | None = None, path: str | None = None,
 ) -> subprocess.CompletedProcess:
-    env = {k: v for k, v in os.environ.items() if k not in ("ADAPTIVE_ARTIFACTS_BIN", "SE_WORKFLOW_UV")}
+    env = {k: v for k, v in os.environ.items() if k not in ("SE_WORKFLOW_UV",)}
     env["HOME"] = str(home)
     if uv is not None:
         env["SE_WORKFLOW_UV"] = str(uv)
-    if aa_bin is not None:
-        env["ADAPTIVE_ARTIFACTS_BIN"] = str(aa_bin)
     if path is not None:
         env["PATH"] = path
     return subprocess.run(
@@ -151,21 +145,21 @@ def test_committed_local_binding_uses_repo_when_home_store_exists(home, repo, tm
     assert _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))["argv"][:2] == ["run", "--script"]
 
 
-def test_bound_global_without_meta_prints_binding_error(home, repo, tmp_path):
+def test_bound_global_without_config_prints_binding_error(home, repo, tmp_path):
     _write_store(repo / ".artifacts")
     (repo / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))
     result = _run(repo, home, uv=_fake_uv(tmp_path / "uv"))
     assert result.returncode == 1
     assert "store-binding.json" in result.stdout
     assert str(home / ".artifacts" / repo.name) in result.stdout
-    assert "meta.json" in result.stdout
+    assert "config.json" in result.stdout
     assert '"argv"' not in result.stdout
 
 
-def test_env_bin_reaches_the_app(home, repo, tmp_path):
+def test_canon_root_reaches_the_app(home, repo, tmp_path):
     _write_store(repo / ".artifacts")
-    record = _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv"), aa_bin=tmp_path / "aa"))
-    assert record["aa_bin"] == str(tmp_path / "aa")
+    record = _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))
+    assert record["canon_root"] == str(CANON_ROOT)
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
@@ -181,7 +175,7 @@ def test_renders_a_seeded_store_once_with_the_textual_app(home, store, cli, reso
 
 
 def _run_real(cwd: Path, home: Path, cache: str) -> subprocess.CompletedProcess:
-    env = dict(os.environ, HOME=str(home), UV_CACHE_DIR=cache, ADAPTIVE_ARTIFACTS_BIN=str(AA_ROOT / "bin" / "adaptive-artifacts"))
+    env = dict(os.environ, HOME=str(home), UV_CACHE_DIR=cache, CANON_ROOT=str(CANON_ROOT))
     env.pop("SE_WORKFLOW_UV", None)
     return subprocess.run(
         [str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(cwd), env=env,
