@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dashboard import approval as approval_module
-from adaptive_artifacts.project import Project, StoreBindingError, open_store
+from canon.project import Project, StoreBindingError, open_store
 from dashboard import backlog as backlog_module
 from dashboard import dismiss as dismiss_module
 from dashboard import gates
@@ -52,11 +52,11 @@ NEEDS_TEXT_TITLE = {
 }
 JOURNAL_PANEL_LIMIT = 5
 JOURNAL_TYPE_LABEL = {
-    "project:failed-attempt": ("✗", "attempt"),
-    "project:investigation-observation": ("◉", "observation"),
-    "project:finding": ("!", "finding"),
-    "project:continuity-question": ("?", "question"),
-    "project:assignment-amendment": ("△", "amendment"),
+    "run:failed-attempt": ("✗", "attempt"),
+    "aff:investigation-observation": ("◉", "observation"),
+    "aff:finding": ("!", "finding"),
+    "plan:continuity-question": ("?", "question"),
+    "run:assignment-amendment": ("△", "amendment"),
 }
 # Compat for tests and task_detail that still import the old name.
 PhaseDetailScreen = PhaseScreen
@@ -1842,9 +1842,6 @@ def main(argv: list[str] | None = None) -> int:
         target = open_store(Path.cwd())
     except StoreBindingError as exc:
         print(str(exc))
-        return 1
-    if target.contract_path is None:
-        print(f"No artifact store found for {target.project_root}")
         return 1
     if args.once:
         tty = sys.stdout.isatty()

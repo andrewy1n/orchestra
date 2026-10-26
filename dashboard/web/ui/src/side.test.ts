@@ -175,14 +175,14 @@ describe("web-dashboard side", () => {
       open: [
         {
           id: "j-open-new",
-          record_type: "project:finding",
+          record_type: "aff:finding",
           subject: "open-new",
           open: true,
           recorded_at: "2026-02-02T00:00:00Z",
         },
         {
           id: "j-open-old",
-          record_type: "project:continuity-question",
+          record_type: "plan:continuity-question",
           subject: "open-old",
           open: true,
           recorded_at: "2026-01-01T00:00:00Z",
@@ -191,7 +191,7 @@ describe("web-dashboard side", () => {
       rest: [
         {
           id: "j-rest",
-          record_type: "project:failed-attempt",
+          record_type: "run:failed-attempt",
           subject: "closed-attempt",
           open: false,
           recorded_at: "2026-03-01T00:00:00Z",
@@ -206,9 +206,9 @@ describe("web-dashboard side", () => {
       "j-rest",
     ]);
     expect(rows.map((r) => r.record_type)).toEqual([
-      "project:finding",
-      "project:continuity-question",
-      "project:failed-attempt",
+      "aff:finding",
+      "plan:continuity-question",
+      "run:failed-attempt",
     ]);
     expect(rows.map((r) => r.subject)).toEqual([
       "open-new",

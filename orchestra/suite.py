@@ -1,8 +1,8 @@
 """Phase-level suite runner: policy, background tmux, check-run, gate, fix routing.
 
-Parent session loads ``phase_gate.suite`` from the project design, starts the
-contracted command in a detached tmux window in the phase worktree when mode
-is smoke/full, polls for completion, and records one ``project:check-run`` with
+Parent session loads ``phase_gate.suite`` from the store config, starts the
+configured command in a detached tmux window in the phase worktree when mode
+is smoke/full, polls for completion, and records one ``aff:check-run`` with
 ``evidence_kind: integration`` and subject ``<phase>-suite``. Does not
 fix-and-rerun inline. Suite is never red-first.
 """
@@ -19,10 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from adaptive_artifacts.contract import ContractError
-from adaptive_artifacts.project import StoreBindingError, open_store
-from adaptive_artifacts.store import StoreError
-from adaptive_artifacts.validation import ValidationError
+from canon.project import StoreBindingError, open_store
+from canon.store import StoreError
+from canon.validation import ValidationError
 from orchestra.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
@@ -66,7 +65,7 @@ _SUMMARY_NODE_RE = re.compile(
 
 @dataclass(frozen=True)
 class SuitePolicy:
-    """Contracted ``phase_gate.suite`` after consumer defaults are applied."""
+    """Configured ``phase_gate.suite`` after consumer defaults are applied."""
 
     mode: str = "none"
     command: str = ""
@@ -145,60 +144,26 @@ def normalize_suite_policy(
     )
 
 
-def iter_project_design_paths(start: Path) -> list[Path]:
-    """Candidate project-design paths (same roots as other project metadata)."""
-    root = start
-    contract = None
-    try:
-        project = open_store(start)
-    except StoreBindingError:
-        root = start.resolve()
-    else:
-        root = project.project_root
-        contract = project.contract_path
-    ordered: list[Path] = []
-    for candidate in (
-        root / ".artifacts" / "project-design.json",
-        root / "contract" / "project-design.json",
-        contract,
-    ):
-        if candidate is None:
-            continue
-        path = Path(candidate)
-        if path.is_file() and path not in ordered:
-            ordered.append(path)
-    return ordered
-
-
 def load_suite_policy(start: Path | None = None) -> SuitePolicy:
-    """Load ``phase_gate.suite`` from the project design.
+    """Load ``phase_gate.suite`` from ``config.json`` under ``settings.run``.
 
-    Prefers the first design file that defines ``phase_gate.suite``. When none
-    do, returns the consumer default (mode=none → skip). Agents must not waive
-    or override this policy; change the contract/design instead.
+    A missing store, key, or malformed value yields the consumer default
+    (mode=none, skip). Agents must not waive or override this policy; change
+    the store config instead.
     """
     root = start or Path.cwd()
     try:
-        store_root = open_store(root).project_root
-    except Exception:
-        store_root = root.resolve()
-    for path in iter_project_design_paths(store_root):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError):
-            continue
-        phase_gate = data.get("phase_gate")
-        if not isinstance(phase_gate, dict):
-            continue
-        if "suite" not in phase_gate:
-            continue
-        suite_raw = phase_gate.get("suite")
-        if suite_raw is None:
-            continue
-        if not isinstance(suite_raw, dict):
-            continue
-        return normalize_suite_policy(suite_raw, source_path=str(path))
-    return normalize_suite_policy(None)
+        config_path = open_store(root).store_path / "config.json"
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except (StoreBindingError, OSError, ValueError, TypeError):
+        return normalize_suite_policy(None)
+    settings = data.get("settings") if isinstance(data, dict) else None
+    run = settings.get("run") if isinstance(settings, dict) else None
+    phase_gate = run.get("phase_gate") if isinstance(run, dict) else None
+    suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
+    if not isinstance(suite_raw, dict):
+        return normalize_suite_policy(None)
+    return normalize_suite_policy(suite_raw, source_path=str(config_path))
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -621,7 +586,7 @@ def build_suite_check_run_payload(
     suite: SuiteResult,
     criterion_id: str | None = None,
 ) -> dict[str, Any]:
-    """Parent-only payload for the suite ``project:check-run``."""
+    """Parent-only payload for the suite ``aff:check-run``."""
     subject = suite_subject(phase_slug)
     payload: dict[str, Any] = {
         "criterion_id": criterion_id or subject,
@@ -639,7 +604,7 @@ def build_suite_check_run_payload(
     if suite.diff_sha256:
         payload["diff_sha256"] = suite.diff_sha256
     if suite.failing_node_ids:
-        payload["failing_node_ids"] = json.dumps(suite.failing_node_ids)
+        payload["failing_node_ids"] = list(suite.failing_node_ids)
     return payload
 
 
@@ -750,7 +715,7 @@ def record_suite_check_run(
     suite: SuiteResult,
     criterion_id: str | None = None,
 ) -> dict[str, Any]:
-    """Create the suite check-run via adaptive-artifacts (parent session only)."""
+    """Create the suite check-run via canon (parent session only)."""
     if suite.refuse:
         raise RuntimeError(suite.refuse_message or "refusing suite check-run")
     if suite.skipped:
@@ -771,12 +736,12 @@ def record_suite_check_run(
     try:
         project = open_store(store_root)
         return project.create(
-            record_type="project:check-run",
+            record_type="aff:check-run",
             subject=subject,
             payload=payload,
             body="\n".join(body_parts),
         )
-    except (StoreBindingError, StoreError, ContractError, ValidationError) as exc:
+    except (StoreBindingError, StoreError, ValidationError) as exc:
         raise RuntimeError(str(exc)) from exc
 
 

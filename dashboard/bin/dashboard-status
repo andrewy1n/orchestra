@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 def _enable_library() -> None:
     try:
-        import adaptive_artifacts  # noqa: F401
+        import canon  # noqa: F401
     except ModuleNotFoundError:
         import pwd
 
@@ -33,7 +33,7 @@ def _enable_library() -> None:
 
 
 _enable_library()
-from adaptive_artifacts.project import StoreBindingError, open_store  # noqa: E402
+from canon.project import StoreBindingError, open_store  # noqa: E402
 from dashboard.gates import apply_landing_needs, landings_for_snapshot  # noqa: E402
 from dashboard.model import ModelError, Snapshot, load_snapshot  # noqa: E402
 
@@ -96,8 +96,6 @@ def main(argv: list[str]) -> int:
     try:
         target = open_store(directory)
     except StoreBindingError:
-        return 0
-    if target.contract_path is None:
         return 0
     signal.signal(signal.SIGALRM, _give_up)
     signal.alarm(TIMEOUT)

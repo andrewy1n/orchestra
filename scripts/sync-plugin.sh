@@ -11,7 +11,6 @@ mkdir -p "$(dirname "$DEST")"
 rm -rf "$DEST"
 mkdir -p \
   "$DEST/skills" \
-  "$DEST/contract" \
   "$DEST/scripts" \
   "$DEST/dashboard" \
   "$DEST/bin" \
@@ -21,7 +20,6 @@ mkdir -p \
   "$DEST/.cursor-plugin"
 
 cp -a "$ROOT/skills/." "$DEST/skills/"
-cp -a "$ROOT/contract/." "$DEST/contract/"
 # Skills invoke these by path, so an install without them is a broken install.
 # Copy the directory rather than naming files: a hand-maintained list is how
 # close_batch.py came to be missing from every install in the first place.

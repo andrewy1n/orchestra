@@ -1,6 +1,6 @@
 """Native adapters for Claude Code, Cursor, and OpenCode.
 
-A native host gets the same portable skill and contract payload as the
+A native host gets the same portable skill payload as the
 generic adapter, plus two host-shaped additions:
 
 * files under ``hosts/<provider>/`` are merged at the install root instead of
@@ -13,7 +13,7 @@ generic adapter, plus two host-shaped additions:
 
 Hooks are optional by design: a host payload may omit them (or the entire
 ``hosts/<provider>/`` directory) and installation still succeeds. The skills
-call ``adaptive-artifacts hook-start`` themselves when no hook exists.
+call ``orchestra hook-start`` themselves when no hook exists.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from installer.model import Action, ApplyResult, Plan, RemoveResult, VerifyResul
 
 
 class NativeAdapter(BaseAdapter):
-    """Skills, contract, host files merged at the root, generated agent."""
+    """Skills, host files merged at the root, generated agent."""
 
     def desired_entries(self) -> dict[str, Path]:
         entries = super().desired_entries()

@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orchestra"
 version = "0.1.0"
-description = "Orchestra CLI: acceptance checks, bundled contract, project field, and session metrics"
+description = "Orchestra CLI: acceptance checks, phase suite, reviewer briefs, and session metrics"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["adaptive-artifacts @ git+https://github.com/andrewy1n/adaptive-artifacts"]
+dependencies = ["canon @ git+https://github.com/andrewy1n/adaptive-artifacts"]
 
 [project.optional-dependencies]
 evidence = ["affidavit @ git+https://github.com/andrewy1n/affidavit"]
@@ -22,10 +22,8 @@ orchestra = "orchestra.cli:main"
 packages = ["orchestra"]
 
 [tool.setuptools.package-data]
-# `data/project-design.json` and `_scripts/` are symlinks in the checkout so
-# the contract and the session scripts keep one source of truth. The wheel
-# builder dereferences them into real files.
-orchestra = ["data/*.json", "_scripts/*.py", "schemas/*.json"]
+# `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
+orchestra = ["_scripts/*.py", "schemas/*.json"]
 
 [project.entry-points."canon.schemas"]
 plan = "orchestra:schemas/plan.json"

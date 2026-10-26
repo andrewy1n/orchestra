@@ -14,3 +14,6 @@ __pycache__/
 # Tier-2 background suite logs (phase worktree).
 .tier2/
 .suite/
+
+# Views render on demand.
+.artifacts/views/

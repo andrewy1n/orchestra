@@ -4,13 +4,13 @@ Reads a close-request JSON describing the work-item's active acceptances,
 each criterion's evidence, and the transition to apply.
 
 For `method` `tdd` or `check`, the binary check-run must already exist
-(from `aff check`). The request references that runner-produced
+(from `orchestra check`). The request references that runner-produced
 `check_run_id` and copies its `result` for the refusal gate — this
-script does not invent pass/fail or emit a `project:check-run` create
+script does not invent pass/fail or emit a `aff:check-run` create
 for those methods.
 
 On a `done` transition, each referenced check-run is loaded from the
-artifact store (same discovery as `aff check`: store from process cwd,
+artifact store (same discovery as `orchestra check`: store from process cwd,
 `--cwd` for git ancestry only) and matched on criterion_id, runner,
 result, and revision when the request carries them. Fabricated ids or
 field mismatches refuse the batch.
@@ -22,12 +22,12 @@ store's revisions (or a dirty red with `diff_sha256`), unless the
 request includes a finding escape.
 
 For `method` `manual`, the request carries `result` / `revision` /
-`signed_by` and this script emits one `project:check-run` create per
+`signed_by` and this script emits one `aff:check-run` create per
 entry (linked `informed_by` both its acceptance and the
 execution-report when there is one).
 
-An optional `project:finding` and the work-item transition follow, in
-that order -- ready to feed straight into `adaptive-artifacts apply`.
+An optional `aff:finding` and the work-item transition follow, in
+that order -- ready to feed straight into `canon apply`.
 
 What it enforces: closing to `done` while a criterion is unmet or was
 never checked requires a `finding` in the same request, or the batch
@@ -45,8 +45,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from adaptive_artifacts.project import open_store
-from adaptive_artifacts.store import StoreError
+from canon.project import open_store
+from canon.store import StoreError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -109,7 +109,7 @@ def default_load_check_run(
 ) -> dict[str, Any]:
     """Load a check-run from the store opened for the primary cwd."""
     try:
-        return _open_project(store_root).get(check_run_id, "project:check-run")
+        return _open_project(store_root).get(check_run_id, "aff:check-run")
     except StoreError as exc:
         raise LookupError(str(exc)) from exc
 
@@ -121,7 +121,7 @@ def default_load_acceptance(
 ) -> dict[str, Any]:
     """Load an acceptance from the store opened for the primary cwd."""
     try:
-        return _open_project(store_root).get(acceptance_id, "project:acceptance")
+        return _open_project(store_root).get(acceptance_id, "plan:acceptance")
     except StoreError as exc:
         raise LookupError(str(exc)) from exc
 
@@ -134,12 +134,12 @@ def default_list_oracle_amendments(
     """Active oracle-amendment records whose payload.acceptance is the id or the subject."""
     try:
         project = _open_project(store_root)
-        records = project.list("project:oracle-amendment")
+        records = project.list("aff:oracle-amendment")
     except StoreError:
         return []
     refs = {str(acceptance_id)}
     try:
-        refs.add(str(project.get(acceptance_id, "project:acceptance")["subject"]))
+        refs.add(str(project.get(acceptance_id, "plan:acceptance")["subject"]))
     except StoreError:
         pass
     matched: list[dict[str, Any]] = []
@@ -158,14 +158,14 @@ def _payload(record: dict[str, Any]) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
-def parse_oracle_hashes(raw: str | None) -> dict[str, str]:
-    """Parse ``relpath:sha256:<hex>[,…]`` into ``{relpath: sha256:<hex>}``."""
-    text = (raw or "").strip()
-    if not text:
+def parse_oracle_hashes(raw: list[str] | str | None) -> dict[str, str]:
+    """Parse ``relpath:sha256:<hex>`` entries into ``{relpath: sha256:<hex>}``."""
+    if not raw:
         return {}
+    parts = raw.split(",") if isinstance(raw, str) else list(raw)
     out: dict[str, str] = {}
-    for part in text.split(","):
-        chunk = part.strip()
+    for part in parts:
+        chunk = str(part).strip()
         if not chunk:
             continue
         idx = chunk.find(_HASH_SEP)
@@ -184,10 +184,9 @@ def is_oracle_backed(acceptance_payload: dict[str, Any]) -> bool:
     ``oracle_hashes`` must parse to at least one ``relpath:sha256:<hex>`` entry.
     Placeholder or unparseable strings are treated as legacy (gates skipped).
     """
-    test_ids = str(acceptance_payload.get("test_ids") or "").strip()
-    if not test_ids:
+    if not acceptance_payload.get("test_ids"):
         return False
-    return bool(parse_oracle_hashes(str(acceptance_payload.get("oracle_hashes") or "")))
+    return bool(parse_oracle_hashes(acceptance_payload.get("oracle_hashes")))
 
 
 def _sha256_digest(data: bytes) -> str:
@@ -468,7 +467,7 @@ def _approved_amendment_covers_tree(
         payload = _payload(record)
         if str(payload.get("status") or "") != "approved":
             continue
-        new_hashes = parse_oracle_hashes(str(payload.get("new_hashes") or ""))
+        new_hashes = parse_oracle_hashes(payload.get("new_hashes"))
         if new_hashes and new_hashes == tree_hashes:
             return True
     return False
@@ -624,7 +623,7 @@ def _enforce_oracle_gates(
             "import/collection-only red is refused"
         )
 
-    frozen = parse_oracle_hashes(str(acceptance_payload.get("oracle_hashes") or ""))
+    frozen = parse_oracle_hashes(acceptance_payload.get("oracle_hashes"))
     if not frozen:
         raise CloseRefused(
             f"criterion {criterion_id!r}: oracle_hashes freeze field is empty "
@@ -841,16 +840,16 @@ def build_batch(
             "method": method,
             "signed_by": entry.get("signed_by", ""),
         }
-        rels = [f"informed_by:{entry['criterion_id']}"]
+        informed_by = [entry["criterion_id"]]
         if execution_report_id:
-            rels.append(f"informed_by:{execution_report_id}")
+            informed_by.append(execution_report_id)
+        payload["informed_by"] = informed_by
         ops.append(
             {
                 "op": "create",
-                "type": "project:check-run",
+                "type": "aff:check-run",
                 "subject": subject,
                 "payload": payload,
-                "rel": rels,
             }
         )
 
@@ -872,7 +871,7 @@ def build_batch(
         ops.append(
             {
                 "op": "create",
-                "type": "project:finding",
+                "type": "aff:finding",
                 "subject": subject,
                 "payload": finding_payload,
                 "body": finding_body,
@@ -882,7 +881,7 @@ def build_batch(
     ops.append(
         {
             "op": "update",
-            "type": "project:work-item",
+            "type": "plan:work-item",
             "id": work_item_id,
             "transition": transition,
             "expected_revision": "@current",

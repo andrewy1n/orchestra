@@ -1,10 +1,10 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["fastapi", "uvicorn", "textual>=0.80", "adaptive-artifacts"]
+# dependencies = ["fastapi", "uvicorn", "textual>=0.80", "canon"]
 #
 # [tool.uv.sources]
-# adaptive-artifacts = { path = "../../../adaptive-artifacts", editable = true }
+# canon = { path = "../../../adaptive-artifacts", editable = true }
 # ///
 """Loopback FastAPI server for the project's artifact store.
 
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from adaptive_artifacts.project import StoreBindingError, open_store  # noqa: E402
+from canon.project import StoreBindingError, open_store  # noqa: E402
 from dashboard.web.app import create_app  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -38,9 +38,6 @@ def main(argv: list[str] | None = None) -> int:
         target = open_store(Path.cwd())
     except StoreBindingError as exc:
         print(exc, file=sys.stderr)
-        return 1
-    if target.contract_path is None:
-        print(f"No artifact store for {target.project_root}.", file=sys.stderr)
         return 1
 
     import uvicorn

@@ -16,12 +16,12 @@ import sys
 _EVIDENCE_EXTRA = re.compile(r"""\bextra\s*==\s*(['"])evidence\1""")
 
 
-def _adaptive_artifacts_importable() -> bool:
+def _canon_importable() -> bool:
     try:
-        importlib.import_module("adaptive_artifacts")
+        importlib.import_module("canon")
     except ImportError:
         for name in list(sys.modules):
-            if name == "adaptive_artifacts" or name.startswith("adaptive_artifacts."):
+            if name == "canon" or name.startswith("canon."):
                 sys.modules.pop(name, None)
         return False
     return True
@@ -50,14 +50,14 @@ def _runtime_requirement_specs() -> list[str]:
 
 
 def ensure_runtime_deps() -> None:
-    """Install runtime dependencies unless ``adaptive_artifacts`` already imports.
+    """Install runtime dependencies unless ``canon`` already imports.
 
     Drops every requirement whose marker names the evidence extra, then runs
     ``uv pip install --python`` this interpreter on what remains. Never installs
     the evidence extra. An interpreter that can already import
-    ``adaptive_artifacts`` skips the install so host tests do not use the network.
+    ``canon`` skips the install so host tests do not use the network.
     """
-    if _adaptive_artifacts_importable():
+    if _canon_importable():
         return
     specs = _runtime_requirement_specs()
     if not specs:

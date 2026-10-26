@@ -1,4 +1,4 @@
-"""Dismiss human Needs-you items via the adaptive-artifacts CLI.
+"""Dismiss human Needs-you items via the canon library.
 
 Human-gate clears always pass the displayed record revision as
 ``--expected-revision`` (never ``@current``). ``correct`` has no
@@ -13,8 +13,8 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from adaptive_artifacts.project import Project
-from adaptive_artifacts.store import StoreError
+from canon.project import Project
+from canon.store import StoreError
 from dashboard.model import NeedsYouItem
 
 HUMAN_DISMISSIBLE = frozenset({
@@ -85,8 +85,6 @@ def _operation(args: list[str]) -> dict[str, Any]:
             operation["payload"] = json.loads(value)
         elif flag == "--body":
             operation["body"] = value
-        elif flag == "--rel":
-            operation.setdefault("rels", []).append(value)
     return operation
 
 
@@ -140,7 +138,7 @@ def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
 
 
 def _question_approve_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "project:continuity-question"
+    record_type = item.record_type or "plan:continuity-question"
     args = [
         "update", "--type", record_type, "--id", item.id,
         "--transition", "answered", "--expected-revision", _displayed_revision(item),
@@ -173,13 +171,13 @@ def _question_reject_args(item: NeedsYouItem, note: str | None) -> list[str]:
     )
     subject = f"plan-rejected:{scope}"[:120]
     return [
-        "create", "--type", "project:finding", "--subject", subject,
+        "create", "--type", "aff:finding", "--subject", subject,
         "--payload", json.dumps(payload), "--body", body,
     ]
 
 
 def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "project:finding"
+    record_type = item.record_type or "aff:finding"
     payload: dict[str, str] = {"needs": "none"}
     if note:
         payload["resolution_note"] = note
@@ -192,7 +190,7 @@ def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
 
 def _check_sign_args(item: NeedsYouItem, signer: str, note: str | None) -> list[str]:
     # correct has no --expected-revision; revision is guarded in dismiss_item.
-    record_type = item.record_type or "project:check-run"
+    record_type = item.record_type or "aff:check-run"
     _displayed_revision(item)
     payload: dict[str, str] = {"signed_by": signer}
     if note:
@@ -210,7 +208,7 @@ def dismiss_command(
     action: str | None = None,
     note: str | None = None,
 ) -> list[str]:
-    """Return the adaptive-artifacts argv (after root/store/contract) for this item.
+    """Return the canon argv (after root/store) for this item.
 
     Never emits ``--expected-revision @current``. Approve/accept/sign include
     note fields when ``note`` is provided. Reject returns a ``create`` finding
@@ -230,10 +228,10 @@ def dismiss_command(
 
 def _current_revision(target: Project, item: NeedsYouItem) -> str:
     record_type = item.record_type or {
-        "blocking-question": "project:continuity-question",
-        "open-question": "project:continuity-question",
-        "needs-human": "project:finding",
-        "unsigned-check": "project:check-run",
+        "blocking-question": "plan:continuity-question",
+        "open-question": "plan:continuity-question",
+        "needs-human": "aff:finding",
+        "unsigned-check": "aff:check-run",
     }.get(item.kind, "")
     try:
         record = target.get(item.id, record_type or None)
@@ -257,7 +255,7 @@ def dismiss_item(
     action: str | None = None,
     note: str | None = None,
 ) -> None:
-    """Invoke adaptive-artifacts to clear a human-dismissible Needs-you item.
+    """Invoke canon to clear a human-dismissible Needs-you item.
 
     Raises DismissRefused for non-human kinds and DismissError when the CLI
     fails or the displayed revision is stale. Does not retry with ``@current``.
