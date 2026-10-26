@@ -107,22 +107,8 @@ def uv_script_source_ok(script_dir: Path, relative: str) -> bool:
         return False
 
 
-SKILLS_PENDING = {
-    "test_assess_routing.py::test_engage_documents_backlog_item_list_create_supersede",
-    "test_assess_routing.py::test_engage_routes_feedback_through_settle_phase",
-    "test_retry_loop.py::test_plan_phase_consumes_next_plan",
-    "test_settle_phase_skill.py::test_kinds_and_focus_documents_human_dismissible_clears",
-    "test_settle_phase_skill.py::test_kinds_documents_milestone_hierarchy",
-    "test_settle_phase_skill.py::test_plan_phase_opens_a_blocking_plan_review_question",
-    "test_settle_phase_skill.py::test_settle_phase_writes_specification_design_decisions_phase_and_questions",
-    "test_verify_authority.py::test_skill_does_not_document_hand_create_for_tdd_or_check_methods",
-}
-
-
 def pytest_collection_modifyitems(items):
     for item in items:
-        if f"{item.path.name}::{item.name}" in SKILLS_PENDING:
-            item.add_marker(pytest.mark.xfail(strict=False, reason="skills migrate on phase/canon-skills"))
         if item.path.name in ("test_tmux_integration.py", "test_e2e_dashboard.py", "test_tmux_entry.py"):
             item.add_marker(pytest.mark.tmux)
 

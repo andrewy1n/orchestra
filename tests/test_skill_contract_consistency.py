@@ -20,7 +20,6 @@ def _skill_files():
     return skill_markdown_files(SKILLS_ROOT)
 
 
-@pytest.mark.xfail(strict=False, reason="skills migrate on phase/canon-skills")
 @pytest.mark.parametrize("skill_file", _skill_files(), ids=lambda p: str(p.relative_to(SKILLS_ROOT)))
 def test_skill_invocations_are_permitted_by_schemas(skill_file):
     violations = check_skill_text(skill_file.read_text(), DEFS)
