@@ -9,7 +9,7 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import reviewer
+from orchestra import reviewer, view_cli
 
 try:
     from adaptive_artifacts.project import StoreBindingError, open_store
@@ -46,6 +46,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    view_cli.add_parsers(sub)
 
     check = sub.add_parser(
         "check",
@@ -834,6 +835,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "run":
             return _cmd_store_run(args)
         return _cmd_store_ensure(args)
+    if args.command in view_cli.COMMANDS:
+        return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
     return 2
 
