@@ -90,6 +90,18 @@ def schema_defs() -> dict[str, dict]:
     return defs
 
 
+def closed_effort(cli, defs, subject: str) -> dict:
+    """An effort the dashboard treats as no longer live."""
+    effort = create_generic_record(cli, defs, "plan:effort", subject=subject)
+    result = cli(
+        "supersede", "--type", "plan:effort", "--id", effort["id"],
+        "--expected-revision", effort["revision"],
+        "--payload", json.dumps({**effort["payload"], "status": "closed"}),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["record"]
+
+
 def csv(value: str | None) -> list[str]:
     return [part.strip() for part in (value or "").split(",") if part.strip()]
 
@@ -192,7 +204,9 @@ def ensure_refs(cli, defs, record_def: dict, given: dict) -> None:
             found = cli("list", "--type", target_type, "--subject", subject)
             if found.returncode == 0 and json.loads(found.stdout).get("records"):
                 continue
-            create_generic_record(cli, defs, target_type, subject=subject)
+            assert target_type != "plan:decision", f"create decision {subject!r} before the record that cites it"
+            context = {k: given[k] for k in ("effort",) if k in given and k in defs[target_type]["fields"]}
+            create_generic_record(cli, defs, target_type, subject=subject, extra_payload=context or None)
 
 
 def create_generic_record(
@@ -214,6 +228,8 @@ def create_generic_record(
     subject = subject or unique_subject(record_def)
     payload: dict[str, Any] = {}
     for field, form in record_def["required"].items():
+        if extra_payload and field in extra_payload:
+            continue
         payload[field] = _generic_value(cli, defs, field, form, target_cache)
     if extra_payload:
         payload.update(extra_payload)

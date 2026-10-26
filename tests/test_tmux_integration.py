@@ -310,6 +310,7 @@ def test_prefix_a_popup_keys_only_walks_tabs_phase_sections_phase_detail_and_det
     rels: list[str] = []
     for name in ("px-first", "px-second"):
         payload = {"title": f"title of {name}", "phase": "px-later", "kind": "deliver", "assignee": "", "effort": EFFORT}
+        h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
         args = ["create", "--type", "plan:work-item", "--subject", name, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
         created = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
         assert created.returncode == 0, created.stdout + created.stderr

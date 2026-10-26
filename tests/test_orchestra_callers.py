@@ -19,7 +19,7 @@ CLAIM_ID = "claim-widget"
 _OLD_MODULES = ("orchestra.aa", "orchestra.aa_resolve", "dashboard.artifact_store")
 _OLD_NAMES = frozenset({"aa_command", "resolve_aa_command"})
 _RESOLUTION_MARKERS = ("SE_WORKFLOW_STORE", "store-binding.json", "store-binding.local.json")
-_CLI_NAMES = frozenset({"adaptive-artifacts", "canon", "artifacts.py"})
+_CLI_NAMES = frozenset({"adaptive-artifacts", "artifacts.py"})
 
 
 def _python_files(directory: Path) -> list[Path]:

@@ -78,7 +78,7 @@ def _launch(launcher: Path, repo: Path, probe: Path, result: Path) -> subprocess
     env = os.environ.copy()
     env.pop("SE_WORKFLOW_UV", None)
     env.pop("ARTIFACTS_STORE", None)
-    env["PYTHONPATH"] = str(probe)
+    env["PYTHONPATH"] = os.pathsep.join([str(probe), os.environ.get("PYTHONPATH", "")])
     env["DASHBOARD_IMPORT_RESULT"] = str(result)
     return subprocess.run(
         [str(launcher)],

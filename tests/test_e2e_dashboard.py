@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, CONTRACT_PATH, REPO_ROOT, make_git_repo, run_cli
+from conftest import CANON_ROOT, REPO_ROOT, SCHEMAS, make_git_repo, run_cli
 from test_dashboard_status import _goal, _work_item
 
 pytestmark = pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux is not installed")
@@ -44,13 +44,10 @@ def home(tmp_path):
 def adopted(home):
     repo = make_git_repo()
     try:
-        (repo / ".artifacts").mkdir()
-        shutil.copy(CONTRACT_PATH, repo / ".artifacts" / "project-design.json")
         store = home / ".artifacts" / repo.name
-        for args in (["resolve"], ["--store", str(store), "init"]):
-            result = run_cli(*args, root=repo)
-            assert result.returncode == 0, result.stdout + result.stderr
-        assert (store / "meta.json").is_file() and not (repo / ".artifacts" / "meta.json").exists()
+        result = run_cli("--store", str(store), "init", "--schemas", SCHEMAS, root=repo)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert (store / "config.json").is_file() and not (repo / ".artifacts" / "config.json").exists()
         yield repo, store
     finally:
         shutil.rmtree(repo, ignore_errors=True)
@@ -84,7 +81,7 @@ def test_e2e_side_pane_and_status_follow_every_lifecycle_step(home, adopted, sid
     def cli(*args: str) -> subprocess.CompletedProcess:
         return run_cli("--store", str(store), *args, root=repo)
 
-    defs = h.record_defs_by_id(json.loads((repo / ".artifacts" / "resolved-contract.json").read_text()))
+    defs = h.schema_defs()
 
     def expect(status: str, needs: bool = False, **tasks: list[str]) -> None:
         finished = tasks.pop("done", [])

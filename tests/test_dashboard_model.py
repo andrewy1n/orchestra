@@ -35,6 +35,7 @@ def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> 
 
 def _work_item(cli, defs, effort: str, subject: str, phase: str, *rels: str, assignee: str = "") -> dict:
     payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": assignee, "effort": effort}
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
     args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
@@ -69,6 +70,7 @@ def _seed_models(cli, defs):
     withdrawn = _work_item(cli, defs, "alpha", "a-withdrawn", "a-one")
     h.transition(cli, "plan:work-item", withdrawn, "withdrawn")
     _work_item(cli, defs, "beta", "b-ready", "b-one")
+    h.closed_effort(cli, defs, "gone")
     _work_item(cli, defs, "gone", "gone-ready", "gone-phase")
 
 
@@ -177,7 +179,7 @@ def test_unsigned_check_reads_as_its_criterion_and_task_not_a_record_id(store, c
 def test_needs_you_items_carry_record_type_and_full_body(store, cli, defs):
     _goal(cli, defs, "alpha")
     _record(cli, defs, "plan:continuity-question", "alpha",
-            {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "which renderer"},
+            {"owner": "ayin", "blocking": True, "scope": "which renderer"},
             "Pick the PDF renderer before the render task starts.")
     _record(cli, defs, "aff:finding", "f-human",
             {"claim": "human decides", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"})
@@ -357,16 +359,13 @@ def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     assert model.change_token(target) != before
 
 
-def test_raises_a_model_error_when_the_store_fails(store, monkeypatch):
-    target = _target(store)
+def test_raises_a_model_error_when_the_store_read_fails(store, monkeypatch):
+    def fail(target, *args):
+        raise model.ModelError("list failed")
 
-    def fail(*args, **kwargs):
-        raise model.StoreError("boom")
-
-    monkeypatch.setattr(target, "list", fail)
-    monkeypatch.setattr(type(target), "records", fail)
+    monkeypatch.setattr(model, "_run", fail)
     with pytest.raises(model.ModelError):
-        model.load_snapshot(target)
+        model.load_snapshot(_target(store))
 
 
 def test_store_with_no_goals_has_no_efforts(store):
@@ -389,6 +388,7 @@ def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
 
 
 def _record(cli, defs, record_type: str, subject: str, payload: dict, body: str | None = None, *rels: str) -> dict:
+    h.ensure_refs(cli, defs, defs[record_type], payload)
     args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     body = body if body is not None else h.generic_body(defs[record_type])
     if body:
@@ -762,6 +762,9 @@ def _spec(cli, defs, phase: str, requirements: str = "R1", *, weight: str = "lig
 
 
 def _design(cli, defs, phase: str, decisions: str = "", *, effort: str = "alpha") -> dict:
+    for subject in h.csv(decisions):
+        if not json.loads(cli("list", "--type", "plan:decision", "--subject", subject).stdout)["records"]:
+            _decision(cli, defs, subject, phase, "chosen", effort=effort)
     return _record(cli, defs, "plan:design", phase, {"phase": phase, "effort": effort, "decisions": h.csv(decisions)})
 
 
@@ -866,8 +869,8 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
     _phase(cli, defs, "alpha", "p-rows", 1, "in_progress")
     _phase(cli, defs, "alpha", "p-other", 2)
     _spec(cli, defs, "p-rows", "R1, R2", weight="full", body=ROW_SPEC)
-    _design(cli, defs, "p-rows", "use-columns")
     _decision(cli, defs, "use-columns", "p-rows", "two")
+    _design(cli, defs, "p-rows", "use-columns")
     _task(cli, defs, "row-a", "p-rows", "R1")
     _task(cli, defs, "row-b", "p-rows", "R1")
     _task(cli, defs, "row-c", "p-rows", "R2")
@@ -912,8 +915,8 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     _spec(cli, defs, "p-detail", "R1", body=_body(defs, "plan:specification", {
         "Requirements": "R1: the traced requirement",
     }))
-    _design(cli, defs, "p-detail", "design-only")
     _decision(cli, defs, "design-only", "p-detail", "nope")
+    _design(cli, defs, "p-detail", "design-only")
     _decision(cli, defs, "pick-a", "p-detail", "alpha")
     _decision(cli, defs, "pick-b", "p-detail", "beta")
     traced = _task(cli, defs, "trace-yes", "p-detail", "R1", "pick-a, pick-b")

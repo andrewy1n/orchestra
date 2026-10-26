@@ -143,10 +143,10 @@ def _seed_structured(cli, defs):
     assert done["lifecycle_state"] == "done"
     _phase(cli, defs, "alpha", "focus", 2, "in_progress")
     _spec(cli, defs, "focus", "R1, R2", weight="full", body=STRUCTURED_SPEC, non_goals="Keep it small.")
+    _decision(cli, defs, "use-panes", "focus", "tabbed")
     _record(cli, defs, "plan:design", "focus", {
         "phase": "focus", "effort": "alpha", "decisions": ["use-panes"],
     }, STRUCTURED_DESIGN)
-    _decision(cli, defs, "use-panes", "focus", "tabbed")
     _task(cli, defs, "focus-a", "focus", "R1")
     _task(cli, defs, "focus-b", "focus", "R2")
     _report(cli, defs, "focus", "pass", "none")

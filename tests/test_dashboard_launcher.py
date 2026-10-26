@@ -163,6 +163,10 @@ def test_canon_root_reaches_the_app(home, repo, tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
+@pytest.mark.skipif(
+    not (APP.parent / ".." / ".." / "adaptive-artifacts").resolve().is_dir(),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_renders_a_seeded_store_once_with_the_textual_app(home, store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "launchfx")

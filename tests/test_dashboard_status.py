@@ -45,6 +45,7 @@ def _goal(cli, defs, effort: str) -> None:
 
 def _work_item(cli, defs, effort: str, subject: str, *rels: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": f"{effort}-phase", "kind": "deliver", "assignee": "", "effort": effort}
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
     args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
@@ -110,6 +111,7 @@ def test_prints_one_line_per_live_effort(home, store, cli, resolved_contract):
 
 def test_prints_nothing_for_an_effort_without_a_goal(home, store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
+    h.closed_effort(cli, defs, "orphan")
     _work_item(cli, defs, "orphan", "orphan-ready")
     result = _run(home, str(store))
     assert (result.returncode, result.stdout) == (0, "")
@@ -118,6 +120,7 @@ def test_prints_nothing_for_an_effort_without_a_goal(home, store, cli, resolved_
 def test_every_line_names_a_snapshot_effort_with_matching_counts(home, seeded, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "calm")
+    h.closed_effort(cli, defs, "orphan")
     _work_item(cli, defs, "orphan", "orphan-ready")
     snapshot = dashboard_model.load_snapshot(open_store(seeded))
     expected = []

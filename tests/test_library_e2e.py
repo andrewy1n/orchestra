@@ -212,14 +212,12 @@ def _repository(directory: Path) -> tuple[Path, dict]:
 
 
 def _close_command(repo: Path, request: dict) -> tuple[int, str]:
-    command = shutil.which("orchestra")
-    if command is None:
-        return 127, "orchestra command not on PATH"
+    command = str(Path(__file__).resolve().parents[1] / "bin" / "orchestra")
     path = repo / "close-request.json"
     path.write_text(json.dumps(request), encoding="utf-8")
     out = repo / "close-batch.ndjson"
     result = _run(
-        [command, "close-batch", "--input", str(path), "--out", str(out), "--cwd", str(repo)],
+        [sys.executable, command, "close-batch", "--input", str(path), "--out", str(out), "--cwd", str(repo)],
         repo,
         _env(),
     )

@@ -50,6 +50,7 @@ WIDTHS = (60, 120)
 
 def _work_item(cli, defs, effort, subject, phase, *rels, assignee=""):
     payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": assignee, "effort": effort}
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
     args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
@@ -342,7 +343,7 @@ def test_paint_tolerates_missing_effort_tabs(seeded):
 
 def test_once_keeps_the_phase_column_when_wide(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
         env={**os.environ, "COLUMNS": "120"},
     )
     assert result.returncode == 0, result.stderr
@@ -505,7 +506,7 @@ def test_failed_activity_line_uses_the_error_colour_and_a_cross(store, width):
 def test_once_marks_failed_activity_with_a_cross(store):
     _seed_failed_check(store)
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
     )
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
@@ -827,7 +828,7 @@ def test_tab_labels_are_the_word_and_a_dim_parenthetical_tally(seeded, width):
 
 def test_tab_row_once_tally_shows_number_keys(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
         env={**os.environ, "COLUMNS": "120"},
     )
     assert result.returncode == 0, result.stderr
@@ -1035,6 +1036,7 @@ def test_status_tab_is_per_effort_tab(seeded, cli, defs, width):
 
 
 def _record(cli, defs, record_type, subject, payload, body=None, *rels):
+    h.ensure_refs(cli, defs, defs[record_type], payload)
     args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     body = body if body is not None else h.generic_body(defs[record_type])
     if body:
@@ -1889,7 +1891,7 @@ def test_q_quits(seeded):
 
 def test_once_prints_a_plain_text_frame(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
     )
     assert result.returncode == 0, result.stderr
     out = result.stdout
@@ -1901,7 +1903,7 @@ def test_once_prints_a_plain_text_frame(seeded):
 
 def test_once_without_a_store_exits_one(tmp_path):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(tmp_path),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(tmp_path),
     )
     assert result.returncode == 1
     assert "store" in result.stdout + result.stderr
@@ -2453,7 +2455,7 @@ def test_effort_finished_mid_session_moves_last_and_dims(finished, cli):
 def test_once_lists_finished_efforts_last(finished):
     store, _ = finished
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.index("ship beta") < result.stdout.index("ship alpha")
@@ -2755,8 +2757,8 @@ def test_evidence_strip_marks_the_current_stage_and_fits(store, cli, defs):
     _evidence_goal(cli, defs)
     _phase(cli, defs, "alpha", "strip", 1, "in_progress")
     _spec(cli, defs, "strip", "R1", weight="full", non_goals="No new screen.")
-    _design(cli, defs, "strip", "use-columns")
     _decision(cli, defs, "use-columns", "strip", "two")
+    _design(cli, defs, "strip", "use-columns")
     _task(cli, defs, "strip-task", "strip", "R1", done=True)
     _report(cli, defs, "strip", "fail", "ports disagree")
     _phase(cli, defs, "alpha", "plain", 2, "in_progress")
@@ -2918,7 +2920,7 @@ def test_evidence_simple_phase_matches_the_previous_frame(seeded):
 
     _run(seeded, 60, scenario)
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
     )
     assert result.returncode == 0, result.stderr
     out = result.stdout

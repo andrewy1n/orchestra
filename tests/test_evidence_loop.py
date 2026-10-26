@@ -32,6 +32,7 @@ def _body(record_def: dict, fills: dict[str, str] | None = None) -> str | None:
 
 def _create(cli, defs, record_type: str, subject: str, payload: dict, *, fills=None, rel=None) -> dict:
     payload = h.with_rels(cli, payload, rel)
+    h.ensure_refs(cli, defs, defs[record_type], payload)
     args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
     body = _body(defs[record_type], fills)
     if body:
@@ -146,6 +147,11 @@ def _scaffold(cli, defs, phase: str, task: str, *, requirements: str | None = "R
             {"weight": "light", "phase": phase, "effort": EFFORT, "requirements": h.csv(requirements)},
             fills={"Requirements": f"{requirements}: the requirement under test."},
         )
+        if not json.loads(cli("list", "--type", "plan:decision", "--subject", "release-ready").stdout)["records"]:
+            _create(
+                cli, defs, "plan:decision", "release-ready",
+                {"choice": "ship", "alternatives": "wait", "phase": phase, "effort": EFFORT},
+            )
         _create(
             cli, defs, "plan:design", phase,
             {"phase": phase, "effort": EFFORT, "decisions": ["release-ready"]},

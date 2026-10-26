@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 
 import pytest
 
@@ -35,6 +36,7 @@ def _expect(cli, **sections: list[str]) -> str:
 
 def _work_item(cli, defs, subject: str, *rels: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": PHASE, "kind": "deliver", "assignee": "", "effort": EFFORT}
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
     args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
@@ -124,7 +126,7 @@ def test_once_prints_the_selector_line_and_wave_strip(store, cli, resolved_contr
     _work_item(cli, defs, "item-a")
     script = REPO_ROOT / "dashboard" / "__main__.py"
     result = subprocess.run(
-        ["uv", "run", "--script", str(script), "--once"],
+        [sys.executable, str(script), "--once"],
         capture_output=True, text=True, cwd=str(store),
     )
     assert result.returncode == 0, result.stderr
