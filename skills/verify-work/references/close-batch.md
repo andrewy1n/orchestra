@@ -17,7 +17,7 @@ and no `finding` was given. It also refuses a pass-only `tdd` `done`
 without valid request-carried red evidence (and no `finding`). For
 oracle-backed `tdd`, do not close when the claim is in
 `.affidavit/manifest.json` and `aff verdict` exits non-zero. Do not
-`create`/`supersede` `project:oracle-amendment`. Close-batch still
+`create`/`supersede` `aff:oracle-amendment`. Close-batch still
 refuses without a qualifying assertion-level red for frozen tests.
 Do not hand-write the batch to route around a refusal.
 
@@ -36,14 +36,14 @@ CLI: `orchestra close-batch` (see
 1. Active acceptances only (superseded definitions are retired):
 
 ```bash
-adaptive-artifacts list --type project:acceptance --subject "<task-slug>" --state active
+canon list --type plan:acceptance --subject "<task-slug>" --state active
 ```
 
 2. Most recent execution-report (omit / leave `execution_report_id`
    `null` when verified without one):
 
 ```bash
-adaptive-artifacts list --type project:execution-report --subject "<task-slug>" --full --order-by recorded_at
+canon list --type run:execution-report --subject "<task-slug>" --full --order-by recorded_at
 ```
 
    Take the last entry (`recorded_at` sorts oldest first).
@@ -53,7 +53,7 @@ adaptive-artifacts list --type project:execution-report --subject "<task-slug>" 
    and pick a prior runner fail for that criterion as the red:
 
 ```bash
-adaptive-artifacts list --type project:check-run --subject "<task-slug>" --full --order-by recorded_at
+canon list --type aff:check-run --subject "<task-slug>" --full --order-by recorded_at
 ```
 
    Copy from the red: `red_check_run_id`, `red_result` (`fail`),
@@ -170,13 +170,13 @@ orchestra close-batch \
    no `finding`, or pass-only `tdd` without valid red/ancestry);
    stderr names criteria; go back to step 3 — do **not** `apply`.
    Exit `1` → malformed JSON; fix and retry.
-5. Only after exit `0`, apply — one `project:check-run` create per
+5. Only after exit `0`, apply — one `aff:check-run` create per
    `manual` criterion (`informed_by` acceptance + execution-report);
    `tdd`/`check` check-runs already exist from `orchestra check`. Then
    the `finding` if given, then the work-item transition:
 
 ```bash
-adaptive-artifacts apply /tmp/close-batch.ndjson
+canon apply /tmp/close-batch.ndjson
 ```
 
-6. Regenerate views and validate (verify-work step 8).
+6. Validate (verify-work step 8).

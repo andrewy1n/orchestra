@@ -12,17 +12,17 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, make_git_repo
+from conftest import CANON_ROOT, REPO_ROOT, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import model as dashboard_model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard-status"
 
 
 def _run(home: Path, *args: str, stdin: str | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    env = dict(os.environ, HOME=str(home), ADAPTIVE_ARTIFACTS_BIN=str(AA_ROOT / "bin" / "adaptive-artifacts"))
+    env = dict(os.environ, HOME=str(home), CANON_ROOT=str(CANON_ROOT))
     return subprocess.run(
         [str(SCRIPT), *args], capture_output=True, text=True, env=env, timeout=30,
         input=stdin if stdin is not None else "", cwd=str(cwd or REPO_ROOT),
@@ -38,17 +38,16 @@ def home(tmp_path):
 
 def _goal(cli, defs, effort: str) -> None:
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject=effort,
+        cli, defs, "plan:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
     )
 
 
 def _work_item(cli, defs, effort: str, subject: str, *rels: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": f"{effort}-phase", "kind": "deliver", "assignee": "", "effort": effort}
-    args = ["create", "--type", "project:work-item", "--subject", subject, "--payload", json.dumps(payload)]
-    for rel in rels:
-        args.extend(["--rel", rel])
-    result = cli(*args, "--body", h.generic_body(defs["project:work-item"]))
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
+    args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
 
@@ -58,20 +57,20 @@ def seeded(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "seg")
     running = _work_item(cli, defs, "seg", "seg-running")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     _work_item(cli, defs, "seg", "seg-ready-1")
     _work_item(cli, defs, "seg", "seg-ready-2")
     _work_item(cli, defs, "seg", "seg-waiting", f"depends_on:{running['id']}")
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject="seg",
+        cli, defs, "plan:continuity-question", subject="seg",
         extra_payload={"blocking": True, "scope": "seg-scope"},
     )
     h.create_generic_record(
-        cli, defs, "project:finding", subject="seg-finding",
+        cli, defs, "aff:finding", subject="seg-finding",
         extra_payload={"claim": "a human must decide", "needs": "human", "effort": "seg"},
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="seg-check",
+        cli, defs, "aff:check-run", subject="seg-check",
         extra_payload={"method": "manual", "signed_by": "", "result": "pass", "effort": "seg"},
     )
     return store
@@ -112,6 +111,7 @@ def test_prints_one_line_per_live_effort(home, store, cli, resolved_contract):
 
 def test_prints_nothing_for_an_effort_without_a_goal(home, store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
+    h.closed_effort(cli, defs, "orphan")
     _work_item(cli, defs, "orphan", "orphan-ready")
     result = _run(home, str(store))
     assert (result.returncode, result.stdout) == (0, "")
@@ -120,6 +120,7 @@ def test_prints_nothing_for_an_effort_without_a_goal(home, store, cli, resolved_
 def test_every_line_names_a_snapshot_effort_with_matching_counts(home, seeded, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "calm")
+    h.closed_effort(cli, defs, "orphan")
     _work_item(cli, defs, "orphan", "orphan-ready")
     snapshot = dashboard_model.load_snapshot(open_store(seeded))
     expected = []
@@ -141,10 +142,8 @@ def test_prints_nothing_without_a_store(home):
 
 def test_prints_nothing_when_the_cli_fails(home):
     repo = make_git_repo()
-    store = repo / ".artifacts"
-    store.mkdir()
-    (store / "resolved-contract.json").write_text(json.dumps({"views": [{"id": "project:handoff"}]}))
-    (store / "meta.json").write_text(json.dumps({"contract": str(store / "resolved-contract.json")}))
+    (repo / ".artifacts").mkdir()
+    (repo / ".artifacts" / "config.json").write_text("{not json")
     result = _run(home, str(repo))
     assert (result.returncode, result.stdout) == (0, "")
 

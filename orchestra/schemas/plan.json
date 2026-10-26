@@ -1,0 +1,381 @@
+{
+  "namespace": "plan",
+  "version": "0.1.0",
+  "types": {
+    "effort": {
+      "purpose": "Live outcome of this effort",
+      "lifecycle": "current",
+      "fields": {
+        "goal": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "optional": true
+        },
+        "merged_from": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        }
+      }
+    },
+    "position": {
+      "purpose": "Live position: current phase and what is in flight",
+      "lifecycle": "current",
+      "fields": {
+        "position": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "phase": {
+          "ref": "plan:phase",
+          "optional": true
+        },
+        "status": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "optional": true
+        }
+      }
+    },
+    "milestone": {
+      "purpose": "A time-bounded outcome that groups phases within an effort",
+      "lifecycle": "staged",
+      "fields": {
+        "title": {
+          "type": "string"
+        },
+        "ordinal": {
+          "type": "integer"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        }
+      },
+      "sections": [
+        "Outcome",
+        "Exit criteria"
+      ]
+    },
+    "phase": {
+      "purpose": "The plan for one phase of the project: problem, approach, and exit criteria",
+      "lifecycle": "staged",
+      "fields": {
+        "title": {
+          "type": "string"
+        },
+        "ordinal": {
+          "type": "integer"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "milestone": {
+          "ref": "plan:milestone",
+          "optional": true
+        }
+      },
+      "sections": [
+        "Problem",
+        "Approach",
+        "Exit criteria"
+      ]
+    },
+    "work-item": {
+      "purpose": "A unit of work with a staged lifecycle and dependencies on other work",
+      "lifecycle": "staged",
+      "fields": {
+        "title": {
+          "type": "string"
+        },
+        "phase": {
+          "ref": "plan:phase"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "assignee": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "executor": {
+          "enum": [
+            "inline",
+            "subagent"
+          ],
+          "optional": true
+        },
+        "requirements": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        },
+        "decisions": {
+          "list": {
+            "ref": "plan:decision"
+          },
+          "optional": true
+        },
+        "size": {
+          "enum": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ],
+          "optional": true
+        },
+        "estimate_minutes": {
+          "type": "integer",
+          "optional": true
+        },
+        "attempts": {
+          "type": "integer",
+          "optional": true
+        }
+      },
+      "sections": [
+        "Description"
+      ]
+    },
+    "acceptance": {
+      "purpose": "What done means for this change. Oracle-backed when test_ids and oracle_hashes are present: test_ids lists pytest node ids; oracle_hashes lists relpath:sha256:<hex> for the files those ids live in.",
+      "lifecycle": "current",
+      "fields": {
+        "criterion": {
+          "type": "string",
+          "optional": true
+        },
+        "method": {
+          "enum": [
+            "tdd",
+            "check",
+            "manual"
+          ]
+        },
+        "phase": {
+          "ref": "plan:phase"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "verify_command": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string",
+          "optional": true
+        },
+        "requirement": {
+          "type": "string",
+          "optional": true
+        },
+        "test_ids": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        },
+        "oracle_hashes": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        }
+      }
+    },
+    "constraint": {
+      "purpose": "A confirmed constraint that is not a choice and has no alternatives",
+      "lifecycle": "current",
+      "fields": {
+        "statement": {
+          "type": "string"
+        },
+        "applies_to": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        }
+      },
+      "sections": [
+        "Basis"
+      ]
+    },
+    "decision": {
+      "purpose": "An adopted choice among alternatives",
+      "lifecycle": "current",
+      "fields": {
+        "choice": {
+          "type": "string"
+        },
+        "alternatives": {
+          "type": "string"
+        },
+        "phase": {
+          "ref": "plan:phase"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "contradicted_by": {
+          "list": {
+            "ref": "plan:decision",
+            "pin": true
+          },
+          "optional": true
+        }
+      },
+      "sections": [
+        "Rationale",
+        "Counter-argument"
+      ]
+    },
+    "continuity-question": {
+      "purpose": "A blocker that stops dispatch or resume",
+      "lifecycle": "question",
+      "fields": {
+        "owner": {
+          "type": "string"
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string",
+          "optional": true
+        },
+        "question": {
+          "type": "string",
+          "optional": true
+        }
+      }
+    },
+    "specification": {
+      "purpose": "What must be true for this phase",
+      "lifecycle": "current",
+      "fields": {
+        "weight": {
+          "enum": [
+            "light",
+            "full"
+          ]
+        },
+        "phase": {
+          "ref": "plan:phase"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "requirements": {
+          "list": {
+            "type": "string"
+          }
+        }
+      },
+      "sections": [
+        "Requirements",
+        "Acceptance criteria",
+        "Constraints",
+        "Non-goals",
+        "Invariants",
+        "Assumptions"
+      ]
+    },
+    "design": {
+      "purpose": "How the specification should work",
+      "lifecycle": "current",
+      "fields": {
+        "phase": {
+          "ref": "plan:phase"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "decisions": {
+          "list": {
+            "ref": "plan:decision"
+          }
+        }
+      },
+      "sections": [
+        "Architecture",
+        "Interfaces",
+        "Decisions",
+        "Invariants",
+        "Assumptions",
+        "Tradeoffs",
+        "Risks"
+      ]
+    },
+    "feedback": {
+      "purpose": "An external signal engage can route into specify. Nothing collects it.",
+      "lifecycle": "event",
+      "fields": {
+        "source": {
+          "type": "string"
+        },
+        "signal": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "phase": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "sections": [
+        "Signal"
+      ]
+    },
+    "backlog-item": {
+      "purpose": "Deferred work parked on an effort until promoted or dismissed",
+      "lifecycle": "current",
+      "fields": {
+        "effort": {
+          "ref": "plan:effort"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "promoted",
+            "dismissed"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "optional": true
+        },
+        "phase": {
+          "ref": "plan:phase",
+          "optional": true
+        }
+      }
+    }
+  },
+  "migrations": []
+}

@@ -128,7 +128,7 @@ describe("side-rail-home calm rail", () => {
       open: [
         {
           id: "j1",
-          record_type: "project:finding",
+          record_type: "aff:finding",
           subject: "open-finding",
           open: true,
         },
@@ -136,7 +136,7 @@ describe("side-rail-home calm rail", () => {
       rest: [
         {
           id: "j2",
-          record_type: "project:failed-attempt",
+          record_type: "run:failed-attempt",
           subject: "closed",
           open: false,
         },
@@ -195,13 +195,13 @@ describe("side-rail-home calm rail", () => {
       open: [
         {
           id: "j-open",
-          record_type: "project:finding",
+          record_type: "aff:finding",
           subject: "find-me",
           open: true,
         },
         {
           id: "j-open-2",
-          record_type: "project:continuity-question",
+          record_type: "plan:continuity-question",
           subject: "ask",
           open: true,
         },
@@ -250,7 +250,7 @@ describe("side-rail-home calm rail", () => {
             open: [
               {
                 id: "j1",
-                record_type: "project:finding",
+                record_type: "aff:finding",
                 subject: "x",
                 open: true,
               },
@@ -274,7 +274,7 @@ describe("side-rail-journal-screen", () => {
     open: [
       {
         id: "j-open",
-        record_type: "project:finding",
+        record_type: "aff:finding",
         subject: "open-finding",
         text: "open body",
         open: true,
@@ -283,7 +283,7 @@ describe("side-rail-journal-screen", () => {
     rest: [
       {
         id: "j-earlier",
-        record_type: "project:failed-attempt",
+        record_type: "run:failed-attempt",
         subject: "earlier-attempt",
         text: "closed body",
         open: false,
@@ -341,8 +341,8 @@ describe("side-rail-journal-screen", () => {
       "j-earlier",
     ]);
     expect(rows.map((r) => r.dataset.recordType)).toEqual([
-      "project:finding",
-      "project:failed-attempt",
+      "aff:finding",
+      "run:failed-attempt",
     ]);
     expect(rows[0]!.textContent).toMatch(/open-finding|open body/);
     expect(rows[1]!.textContent).toMatch(/earlier-attempt|closed body/);
@@ -382,7 +382,7 @@ describe("side-rail-journal-screen", () => {
     const recordPayload = {
       record: {
         id: "j-open",
-        record_type: "project:finding",
+        record_type: "aff:finding",
         subject: "open-finding",
         body: "Record from journal row",
       },

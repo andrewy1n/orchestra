@@ -9,11 +9,11 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import reviewer
+from orchestra import reviewer, view_cli
 
 try:
-    from adaptive_artifacts.project import StoreBindingError, open_store
-    from adaptive_artifacts.store import StoreError
+    from canon.project import StoreBindingError, open_store
+    from canon.store import StoreError
 except ModuleNotFoundError:
     StoreBindingError = None
     open_store = None
@@ -31,25 +31,27 @@ except ModuleNotFoundError:
     git_head = None
     run_check = None
 
-from orchestra.contract import contract_path
-from orchestra.project_field import STOPPED, rewrite_project_field
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
+
+
+STORE_SCHEMAS = ("plan", "run", "aff")
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="orchestra",
         description=(
-            "orchestra CLI: checks, contracts, reviewer briefs, phase suite, "
+            "orchestra CLI: checks, reviewer briefs, phase suite, "
             "and store access through the artifact library."
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    view_cli.add_parsers(sub)
 
     check = sub.add_parser(
         "check",
-        help="Run an acceptance verify_command and write a project:check-run",
+        help="Run an acceptance verify_command and write an aff:check-run",
     )
     check.add_argument("--acceptance", required=True, help="Acceptance record id")
     check.add_argument(
@@ -170,38 +172,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Redirect the whole install under DIR (tests, throwaway homes)",
     )
 
-    contract = sub.add_parser(
-        "contract",
-        help="Print the bundled project-design contract",
-    )
-    contract.add_argument(
-        "--path",
-        action="store_true",
-        help="Print the contract file path instead of its contents",
-    )
-    contract.add_argument(
-        "--write",
-        metavar="PATH",
-        default=None,
-        help="Write the bundled contract to PATH",
-    )
-
-    project_field = sub.add_parser(
-        "project-field",
-        help="Align a design file's project field with orchestra",
-    )
-    project_field_sub = project_field.add_subparsers(dest="action", required=True)
-    rewrite = project_field_sub.add_parser(
-        "rewrite",
-        help="Rewrite the project field in place when it is affidavit",
-    )
-    rewrite.add_argument("design", help="Path to a project-design.json")
-    rewrite.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the outcome as JSON instead of one word",
-    )
-
     sessions = sub.add_parser(
         "sessions",
         help="Summarize Claude Code session transcripts",
@@ -269,26 +239,26 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_parser = sub.add_parser(
         "suite",
-        help="Phase suite: contracted policy, background run, collect, record",
+        help="Phase suite: configured policy, background run, collect, record",
     )
     suite_sub = suite_parser.add_subparsers(dest="action", required=True)
 
     suite_policy = suite_sub.add_parser(
         "policy",
-        help="Print the contracted phase_gate.suite policy as JSON",
+        help="Print the configured phase_gate.suite policy as JSON",
     )
     suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
 
     suite_start = suite_sub.add_parser(
         "start",
-        help="Start the contracted suite in a detached tmux session",
+        help="Start the configured suite in a detached tmux session",
     )
     _add_suite_job_arguments(suite_start)
     suite_start.add_argument(
         "--command",
         dest="suite_command",
         default=None,
-        help="Override the contracted suite command",
+        help="Override the configured suite command",
     )
 
     suite_poll = suite_sub.add_parser(
@@ -305,7 +275,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_record = suite_sub.add_parser(
         "record",
-        help="Collect a finished suite and write its project:check-run",
+        help="Collect a finished suite and write its aff:check-run",
     )
     _add_suite_job_arguments(suite_record)
     suite_record.add_argument(
@@ -338,7 +308,7 @@ def _build_parser() -> argparse.ArgumentParser:
     store_path.add_argument(
         "--json",
         action="store_true",
-        help="Print the resolved root, store, contract, and binding as JSON",
+        help="Print the resolved root, store, and binding as JSON",
     )
     store_run = store_sub.add_parser(
         "run",
@@ -352,7 +322,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     store_ensure = store_sub.add_parser(
         "ensure",
-        help="Create .artifacts/ and write the bundled design when absent",
+        help="Create the store with the plan, run, and aff schemas when absent",
     )
     store_ensure.add_argument("--cwd", default=None, help="Directory (default: cwd)")
     store_ensure.add_argument(
@@ -480,7 +450,7 @@ def _load_review_records(
     records: list[dict[str, object]] = []
     failures: list[str] = []
     for kind in sorted(reviewer.ALLOWED_KINDS):
-        record_type = f"project:{kind}"
+        record_type = f"plan:{kind}"
         try:
             rows = project.list(record_type)
         except StoreError as exc:
@@ -664,7 +634,6 @@ def _dispatch_store(project, argv: list[str]) -> tuple[object, int]:
             record_type=record_type,
             subject=subject,
             payload=json.loads(payload_text),
-            rels=flags.get("--rel") or None,
             body=body,
         )
         return {"ok": True, "op": "create", "record": record}, 0
@@ -687,7 +656,6 @@ def _cmd_store_path(args: argparse.Namespace) -> int:
             {
                 "root": str(project.project_root),
                 "store": str(project.store_path),
-                "contract": str(project.contract_path) if project.contract_path else None,
                 "binding": project.binding.location,
             }
         )
@@ -715,36 +683,36 @@ def _cmd_store_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
+    from canon.store import Store
+    from canon.sync import init_store
+
     root = _git_root(_cwd(args))
     artifacts = root / ".artifacts"
-    design = artifacts / "project-design.json"
-    try:
-        artifacts.mkdir(parents=True, exist_ok=True)
-        if not design.is_file():
-            design.write_text(contract_path().read_text(encoding="utf-8"), encoding="utf-8")
-    except (OSError, ValueError) as exc:
-        print(f"orchestra store ensure: {exc}", file=sys.stderr)
-        return 2
-    store_path = None
-    store_ready = False
     try:
         project = open_store(root)
-    except (OSError, StoreBindingError):
+    except StoreBindingError:
         project = None
-    if project is not None:
-        store_path = project.store_path
-        store_ready = (project.store_path / "meta.json").is_file()
+    except OSError as exc:
+        print(f"orchestra store ensure: {exc}", file=sys.stderr)
+        return 2
+    if project is None:
+        try:
+            artifacts.mkdir(parents=True, exist_ok=True)
+            init_store(Store(artifacts), list(STORE_SCHEMAS))
+            project = open_store(root)
+        except (OSError, StoreError, StoreBindingError) as exc:
+            print(f"orchestra store ensure: {exc}", file=sys.stderr)
+            return 2
     payload = {
         "root": str(root),
         "artifacts": str(artifacts),
-        "design": str(design),
-        "store": str(store_path) if store_path else None,
-        "store_ready": store_ready,
+        "store": str(project.store_path),
+        "store_ready": (project.store_path / "config.json").is_file(),
     }
     if args.json:
         _print_json(payload)
     else:
-        print(payload["store"] or payload["artifacts"])
+        print(payload["store"])
     return 0
 
 
@@ -778,36 +746,6 @@ def main(argv: list[str] | None = None) -> int:
         from orchestra.install import main as install_main
 
         return install_main(args)
-    if args.command == "contract":
-        try:
-            path = contract_path()
-            text = path.read_text(encoding="utf-8")
-            json.loads(text)
-            if args.write is not None:
-                destination = Path(args.write).expanduser()
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_text(text, encoding="utf-8")
-                print(destination)
-                return 0
-        except (OSError, ValueError) as exc:
-            print(f"orchestra contract: {exc}", file=sys.stderr)
-            return 1
-        if args.path:
-            print(path)
-            return 0
-        print(text, end="" if text.endswith("\n") else "\n")
-        return 0
-    if args.command == "project-field":
-        try:
-            outcome = rewrite_project_field(args.design)
-        except (OSError, ValueError) as exc:
-            print(f"orchestra project-field: {exc}", file=sys.stderr)
-            return 2
-        if args.json:
-            print(json.dumps({"op": "project-field", "path": args.design, "outcome": outcome}))
-        else:
-            print(outcome)
-        return 1 if outcome == STOPPED else 0
     if args.command == "sessions":
         try:
             if args.action == "report":
@@ -834,6 +772,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "run":
             return _cmd_store_run(args)
         return _cmd_store_ensure(args)
+    if args.command in view_cli.COMMANDS:
+        return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
     return 2
 

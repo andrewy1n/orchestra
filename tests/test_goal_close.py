@@ -4,20 +4,23 @@ from __future__ import annotations
 
 import json
 
+from canon.project import open_store
+
 import helpers as h
+from orchestra import views
 
 
 def _effort(cli, defs, effort: str) -> tuple[dict, dict]:
     goal = h.create_generic_record(
-        cli, defs, "project:active-goal", subject=effort,
-        extra_payload={"goal": f"goal of {effort}", "kind": "deliver", "scope": "effort"},
+        cli, defs, "plan:effort", subject=effort,
+        extra_payload={"goal": f"goal of {effort}", "kind": "deliver"},
     )
     phase = h.create_generic_record(
-        cli, defs, "project:phase", subject=f"{effort}-phase",
+        cli, defs, "plan:phase", subject=f"{effort}-phase",
         extra_payload={"title": "only phase", "ordinal": 1, "effort": effort},
     )
     position = h.create_generic_record(
-        cli, defs, "project:current-position", subject=effort,
+        cli, defs, "plan:position", subject=effort,
         extra_payload={"position": f"position of {effort}", "scope": "effort", "effort": effort, "phase": phase["subject"]},
     )
     return goal, position
@@ -38,28 +41,29 @@ def _render(cli, *args: str) -> str:
     return result.stdout
 
 
-def test_closed_effort_leaves_handoff_brief_and_dashboard(store, cli, resolved_contract):
+def _handoff(store) -> str:
+    return views.render_view(views.VIEWS["handoff"], views.load_records(open_store(store)))
+
+
+def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _effort(cli, defs, "open-effort")
     goal, position = _effort(cli, defs, "done-effort")
-    _close(cli, "project:active-goal", goal)
-    _close(cli, "project:current-position", position)
+    _close(cli, "plan:effort", goal)
+    _close(cli, "plan:position", position)
 
-    for args in (("handoff",), ("view", "--id", "project:dashboard"), ("view", "--id", "project:brief")):
-        rendered = _render(cli, *args)
-        assert "done-effort" not in rendered, (args, rendered)
-    handoff = _render(cli, "handoff")
+    handoff = _handoff(store)
+    assert "done-effort" not in handoff
     assert "goal of open-effort" in handoff and "position of open-effort" in handoff
-    assert "goal of open-effort" in _render(cli, "view", "--id", "project:dashboard")
     assert _render(cli, "validate")
 
 
-def test_reopened_effort_returns_to_handoff_brief_and_dashboard(store, cli, resolved_contract):
+def test_reopened_effort_returns_to_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     goal, position = _effort(cli, defs, "back-effort")
-    _close(cli, "project:active-goal", goal)
-    _close(cli, "project:current-position", position)
-    for record_type, subject in (("project:active-goal", "back-effort"), ("project:current-position", "back-effort")):
+    _close(cli, "plan:effort", goal)
+    _close(cli, "plan:position", position)
+    for record_type, subject in (("plan:effort", "back-effort"), ("plan:position", "back-effort")):
         closed = json.loads(_render(cli, "list", "--type", record_type, "--subject", subject, "--state", "active", "--full"))["records"][0]
         result = cli(
             "supersede", "--type", record_type, "--id", closed["id"], "--expected-revision", closed["revision"],
@@ -67,8 +71,7 @@ def test_reopened_effort_returns_to_handoff_brief_and_dashboard(store, cli, reso
         )
         assert result.returncode == 0, result.stdout + result.stderr
 
-    for args in (("handoff",), ("view", "--id", "project:dashboard"), ("view", "--id", "project:brief")):
-        assert "back-effort" in _render(cli, *args), args
+    assert "back-effort" in _handoff(store)
     assert _render(cli, "validate")
 
 
@@ -77,7 +80,7 @@ def test_status_rejects_values_other_than_open_or_closed(store, cli, resolved_co
     goal, _ = _effort(cli, defs, "some-effort")
     payload = {**goal["payload"], "status": "finished"}
     result = cli(
-        "supersede", "--type", "project:active-goal", "--id", goal["id"],
+        "supersede", "--type", "plan:effort", "--id", goal["id"],
         "--expected-revision", goal["revision"], "--payload", json.dumps(payload),
     )
     assert result.returncode != 0

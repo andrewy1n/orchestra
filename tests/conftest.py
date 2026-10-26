@@ -1,9 +1,7 @@
-"""Shared fixtures for the se-workflow contract/skill test suite.
+"""Shared fixtures for the orchestra test suite.
 
-Everything here drives the public `adaptive-artifacts` CLI as a subprocess —
-never the runtime's Python modules directly — because the runtime's storage
-layer is being rewritten underneath this contract and only the CLI's
-observable behavior is a stable target.
+Stores are built and driven with the `canon` CLI as a subprocess against
+temporary git repositories.
 """
 
 from __future__ import annotations
@@ -11,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -22,36 +21,90 @@ os.environ.setdefault("TEXTUAL_ANIMATIONS", "none")
 
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parent
-CONTRACT_PATH = REPO_ROOT / "contract" / "project-design.json"
 
-_DEFAULT_AA_ROOT = Path.home() / "adaptive-artifacts"
-AA_ROOT = Path(os.environ.get("ADAPTIVE_ARTIFACTS_ROOT", str(_DEFAULT_AA_ROOT))).expanduser().resolve()
-CLI = AA_ROOT / "tools" / "artifacts.py"
+_DEFAULT_CANON_ROOT = Path.home() / "adaptive-artifacts"
+CANON_ROOT = Path(os.environ.get("CANON_ROOT", str(_DEFAULT_CANON_ROOT))).expanduser().resolve()
+CANON_SRC = CANON_ROOT / "src"
+CANON_CMD = [sys.executable, "-m", "canon"]
+
+
+def _affidavit_root() -> Path:
+    if os.environ.get("AFFIDAVIT_ROOT"):
+        return Path(os.environ["AFFIDAVIT_ROOT"]).expanduser()
+    for base in (Path.home() / "affidavit" / ".worktrees" / "canon", Path.home() / "affidavit"):
+        if (base / "affidavit" / "schemas" / "aff.json").is_file():
+            return base
+    return Path.home() / "affidavit"
+
+
+AFFIDAVIT_ROOT = _affidavit_root()
+
+
+def _aff_schema() -> Path:
+    return AFFIDAVIT_ROOT / "affidavit" / "schemas" / "aff.json"
+
+
+def _configure_environment() -> None:
+    os.environ["CANON_ROOT"] = str(CANON_ROOT)
+    os.environ["AFFIDAVIT_ROOT"] = str(AFFIDAVIT_ROOT)
+    paths = [str(CANON_SRC), str(REPO_ROOT)]
+    existing = os.environ.get("PYTHONPATH", "")
+    if existing:
+        paths.append(existing)
+    os.environ["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(paths))
+    for path in reversed(paths):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    if not os.environ.get("CANON_SCHEMA_PATH"):
+        schemas = REPO_ROOT / "orchestra" / "schemas"
+        os.environ["CANON_SCHEMA_PATH"] = os.pathsep.join(
+            [str(schemas / "plan.json"), str(schemas / "run.json"), str(_aff_schema())]
+        )
+    shim_dir = Path(tempfile.mkdtemp(prefix="canon-shim-"))
+    shim = shim_dir / "canon"
+    shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" -m canon "$@"\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IXUSR)
+    os.environ["PATH"] = f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+    _SHIM_DIRS.append(shim_dir)
+
+
+_SHIM_DIRS: list[Path] = []
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "tmux: drives a real tmux server; run serially")
-    if not CLI.is_file():
+    if not (CANON_SRC / "canon").is_dir():
         raise pytest.UsageError(
-            f"adaptive-artifacts CLI not found at {CLI}. "
-            "Set ADAPTIVE_ARTIFACTS_ROOT to a checkout of adaptive-artifacts "
-            "(the sibling runtime repo) or check one out at "
-            f"{_DEFAULT_AA_ROOT}."
+            f"canon not found at {CANON_SRC}. Set CANON_ROOT to a canon checkout "
+            f"or check one out at {_DEFAULT_CANON_ROOT}."
         )
-    if not CONTRACT_PATH.is_file():
-        raise pytest.UsageError(f"se-workflow contract not found at {CONTRACT_PATH}.")
+    _configure_environment()
+
+
+def pytest_unconfigure(config):
+    for directory in _SHIM_DIRS:
+        shutil.rmtree(directory, ignore_errors=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _preimport_affidavit_binding():
     """Let binding capture the real run_verdict before any test patches it."""
-    root = Path.home() / "affidavit"
+    root = AFFIDAVIT_ROOT
     if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
         sys.path.insert(0, str(root))
     try:
         import affidavit.binding  # noqa: F401
     except ImportError:
         pass
+
+
+def uv_script_source_ok(script_dir: Path, relative: str) -> bool:
+    """True when the uv script's `canon` path source resolves to a canon checkout."""
+    pyproject = (script_dir / relative / "pyproject.toml")
+    try:
+        return 'name = "canon"' in pyproject.resolve().read_text()
+    except OSError:
+        return False
 
 
 def pytest_collection_modifyitems(items):
@@ -61,7 +114,7 @@ def pytest_collection_modifyitems(items):
 
 
 def run_cli(*args: str, root: Path | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    cmd = [sys.executable, str(CLI)]
+    cmd = list(CANON_CMD)
     if root is not None:
         cmd.extend(["--root", str(root)])
     cmd.extend(args)
@@ -81,35 +134,40 @@ def make_git_repo() -> Path:
     return root
 
 
-def load_current_contract() -> dict:
-    """Read the live se-workflow contract from disk, un-cached.
-
-    Called at collection time (for parametrization) and again inside tests
-    that build a store, so a concurrently-edited contract is always read
-    fresh rather than pinned to whatever it looked like at import time.
-    """
-    return json.loads(CONTRACT_PATH.read_text())
+SCHEMAS = "plan,run,aff"
 
 
-def resolve_contract(root: Path) -> dict:
-    """Resolve the current on-disk contract via the CLI and return it as a dict.
-
-    `root` must already have `.artifacts/project-design.json` in place; the
-    resolved contract lands next to it at `.artifacts/resolved-contract.json`.
-    """
-    result = run_cli("resolve", root=root)
-    assert result.returncode == 0, f"resolve failed: {result.stdout}\n{result.stderr}"
-    return json.loads((root / ".artifacts" / "resolved-contract.json").read_text())
+def write_config(store: Path) -> Path:
+    """A minimal canon store marker, with no schemas."""
+    store.mkdir(parents=True, exist_ok=True)
+    (store / "config.json").write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {}}))
+    return store
 
 
-def build_store() -> Path:
+def resolve_contract(root: Path | None = None) -> dict:
+    import helpers as h
+
+    return {"records": list(h.schema_defs().values())}
+
+
+def build_store(drop: frozenset[str] | set[str] = frozenset()) -> Path:
+    """A git repo with a canon store; `drop` names unqualified types left out of the schemas."""
     root = make_git_repo()
-    design_dir = root / ".artifacts"
-    design_dir.mkdir()
-    (design_dir / "project-design.json").write_text(CONTRACT_PATH.read_text())
-    resolve_result = run_cli("resolve", root=root)
-    assert resolve_result.returncode == 0, resolve_result.stdout + resolve_result.stderr
-    init_result = run_cli("init", root=root)
+    env = dict(os.environ)
+    if drop:
+        trimmed = Path(tempfile.mkdtemp(prefix="canon-trimmed-"))
+        paths = []
+        for source in os.environ["CANON_SCHEMA_PATH"].split(os.pathsep):
+            module = json.loads(Path(source).read_text())
+            module["types"] = {k: v for k, v in module["types"].items() if k not in drop}
+            target = trimmed / Path(source).name
+            target.write_text(json.dumps(module))
+            paths.append(str(target))
+        env["CANON_SCHEMA_PATH"] = os.pathsep.join(paths)
+    init_result = subprocess.run(
+        [*CANON_CMD, "--root", str(root), "init", "--schemas", SCHEMAS],
+        capture_output=True, text=True, env=env,
+    )
     assert init_result.returncode == 0, init_result.stdout + init_result.stderr
     return root
 
@@ -128,9 +186,11 @@ def store_template():
 
 
 @pytest.fixture(scope="session")
-def resolved_contract(store_template):
-    """The current resolved contract, resolved once per session."""
-    return resolve_contract(store_template)
+def resolved_contract():
+    """The record type definitions of the schema modules, in the legacy contract shape."""
+    import helpers as h
+
+    return {"records": list(h.schema_defs().values())}
 
 
 _STAMPED: dict = {}
@@ -146,7 +206,7 @@ def stamped_store(store: Path, name: str, build):
         def cli(*args):
             return run_cli(*args, root=root)
 
-        _STAMPED[name] = (root, build(root, cli, h.record_defs_by_id(resolve_contract(root))))
+        _STAMPED[name] = (root, build(root, cli, h.schema_defs()))
     root, extra = _STAMPED[name]
     shutil.rmtree(store)
     shutil.copytree(root, store, symlinks=True)

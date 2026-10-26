@@ -26,11 +26,11 @@ def test_settle_phase_skill_is_discoverable():
 def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
     written = {inv["type"] for inv in extract_invocations(_text("settle-phase")) if inv["subcommand"] in WRITES}
     assert written == {
-        "project:specification",
-        "project:design",
-        "project:decision",
-        "project:phase",
-        "project:continuity-question",
+        "plan:specification",
+        "plan:design",
+        "plan:decision",
+        "plan:phase",
+        "plan:continuity-question",
     }
 
 
@@ -41,7 +41,7 @@ def test_engage_routes_new_phases_through_settle_phase():
 def test_plan_phase_opens_a_blocking_plan_review_question():
     reviews = [
         inv for inv in extract_invocations(_text("plan-phase"))
-        if inv["subcommand"] == "create" and inv["type"] == "project:continuity-question"
+        if inv["subcommand"] == "create" and inv["type"] == "plan:continuity-question"
     ]
     # Initial plan review plus optional re-open after next:plan deltas.
     assert reviews
@@ -63,19 +63,19 @@ def test_kinds_and_focus_documents_human_dismissible_clears():
     answered = [
         inv for inv in asserts
         if inv["subcommand"] == "update"
-        and inv["type"] == "project:continuity-question"
+        and inv["type"] == "plan:continuity-question"
         and inv["transition"] == "answered"
     ]
     finding_clear = [
         inv for inv in asserts
         if inv["subcommand"] == "update"
-        and inv["type"] == "project:finding"
+        and inv["type"] == "aff:finding"
         and inv.get("payload", {}).get("needs") == "none"
     ]
     signed = [
         inv for inv in asserts
         if inv["subcommand"] == "correct"
-        and inv["type"] == "project:check-run"
+        and inv["type"] == "aff:check-run"
         and inv.get("payload", {}).get("signed_by")
     ]
     assert answered and finding_clear and signed
@@ -96,46 +96,46 @@ def test_skills_that_open_human_gates_document_matching_clears():
     settle = extract_invocations(_text("settle-phase"))
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "project:continuity-question"
+        and inv["type"] == "plan:continuity-question"
         and inv["transition"] == "answered"
         for inv in settle
     )
     plan = extract_invocations(_text("plan-phase"))
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "project:continuity-question"
+        and inv["type"] == "plan:continuity-question"
         and inv["transition"] == "answered"
         for inv in plan
     )
     verify = extract_invocations(_text("verify-work"))
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "project:continuity-question"
+        and inv["type"] == "plan:continuity-question"
         and inv["transition"] == "answered"
         for inv in verify
     )
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "project:finding"
+        and inv["type"] == "aff:finding"
         and (inv.get("payload") or {}).get("needs") == "none"
         for inv in verify
     )
     assert any(
         inv["subcommand"] == "correct"
-        and inv["type"] == "project:check-run"
+        and inv["type"] == "aff:check-run"
         and (inv.get("payload") or {}).get("signed_by")
         for inv in verify
     )
     execute = extract_invocations(_text("execute-phase"))
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "project:continuity-question"
+        and inv["type"] == "plan:continuity-question"
         and inv["transition"] == "answered"
         for inv in execute
     )
     assert any(
         inv["subcommand"] == "correct"
-        and inv["type"] == "project:check-run"
+        and inv["type"] == "aff:check-run"
         and (inv.get("payload") or {}).get("signed_by")
         for inv in execute
     )
@@ -143,5 +143,5 @@ def test_skills_that_open_human_gates_document_matching_clears():
 
 def test_kinds_documents_milestone_hierarchy():
     text = _kinds()
-    assert "project:milestone" in text
+    assert "plan:milestone" in text
     assert "milestone" in text.lower()

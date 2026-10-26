@@ -9,7 +9,7 @@ description: >-
 
 # Verify work
 
-Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+Requires `canon` and `orchestra` on PATH and a live
 orchestra store. If missing,
 follow [ensure-store.md](references/ensure-store.md). Follow
 [kinds-and-focus.md](references/kinds-and-focus.md). Parent session
@@ -53,22 +53,22 @@ mechanical — not agent prose:
 Treat as verified only when those hold. Frozen hashes are close
 authority — do not mark `verified` from narrative. Parent alone
 writes assessments. Do not `create`/`supersede`
-`project:oracle-amendment`. Wire close-batch with green
+`aff:oracle-amendment`. Wire close-batch with green
 `check_run_id`, request-carried red fields, and the acceptance id —
 do not invent hash or red fields. When the claim is in
 `.affidavit/manifest.json`, run `aff verdict`; non-zero → not done.
 
 ## Two modes
 
-A phase with an active `project:specification` is **structured**:
-verify → [assess.md](references/assess.md) → `project:release`
+A phase with an active `plan:specification` is **structured**:
+verify → [assess.md](references/assess.md) → `run:release`
 `state` `ready` only when every requirement is verified. No
 specification for this phase, and incidental work, are **simple**:
 pass/fail check-runs only — no assessment or release. `kind`
 `incidental` is simple even if another phase has a specification.
 
 ```bash
-adaptive-artifacts list --type project:specification --subject "<phase-slug>" --state active
+canon list --type plan:specification --subject "<phase-slug>" --state active
 ```
 
 ## Steps
@@ -79,25 +79,25 @@ adaptive-artifacts list --type project:specification --subject "<phase-slug>" --
    the family with `list --subject <task-slug>` (exact-or-prefix),
    not `get` on one id. Confirm `payload.effort` is the focus (or
    sole-goal default). If a subagent ran the check, evidence is the
-   latest `project:execution-report` for that subject — read the
+   latest `run:execution-report` for that subject — read the
    record, not chat memory; trust only after you can point at a
    command, test name, diff, or metric table in its body; re-run when
    cheap. No execution-report (verified in this session without
    dispatch) → skip to step 2.
 2. Capture diagnose/eval facts **before** closing:
 
-   - `repair` — useful observations → `project:investigation-observation`;
-     known root cause → `project:finding` with `## Evidence`,
+   - `repair` — useful observations → `aff:investigation-observation`;
+     known root cause → `aff:finding` with `## Evidence`,
      `## Consequence`, `## Follow-up` (all required, non-empty)
    - `evaluate` — comparative / delta / inconclusive → finding the
      same way; do not encode that in `check-run.result`
 
 ```bash
-adaptive-artifacts create --type project:investigation-observation \
+canon create --type aff:investigation-observation \
   --subject "<task-slug>" \
   --payload '{"source":"<cmd or log>","observed_time":"<iso>","environment":"<repo/rev>","what_was_observed":"<fact>","effort":"<effort-slug>"}'
 
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "<task-slug>" \
   --payload '{"claim":"<cause or comparison>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"<effort-slug>","needs":"human"}' \
   --body "## Evidence
@@ -118,16 +118,16 @@ adaptive-artifacts create --type project:finding \
    when the user decides (kinds-and-focus, Needs-you clears):
 
 ```bash
-adaptive-artifacts update --type project:finding --id <finding-id> \
+canon update --type aff:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 ```
 
-   If this finding overturns a prior `project:decision`, add
-   `--rel contradicts:<decision-record-id>` on the `create`. Use
-   plain `create --rel contradicts:...` — `contradict` subcommand only
-   works on types with `contradiction: separate_record` (finding
-   itself, not the decision).
+   If this finding overturns a prior `plan:decision`, supersede that
+   decision (see `settle-phase`) and cite the finding's subject in the
+   new decision's `## Rationale`. If it contradicts an earlier
+   `aff:finding`, put the earlier finding's record id in
+   `contradicted_by` (a JSON array) in the new finding's payload.
 
 ## Verify
 
@@ -158,7 +158,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 ```
 
      Exit 0 accepts; non-zero → leave `in_progress`. Do not
-     `create --type project:check-run` for `tdd`/`check`. Keep the
+     `create --type aff:check-run` for `tdd`/`check`. Keep the
      runner's `id` and `result` for Assess / close.
 
    - `manual` — user-visible; do not mark pass without evidence the
@@ -170,11 +170,9 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 4. For `manual` only, when a binary result exists:
 
 ```bash
-adaptive-artifacts create --type project:check-run \
+canon create --type aff:check-run \
   --subject "<task-slug>" \
-  --payload '{"criterion_id":"<acceptance-record-id>","revision":"<git sha or dirty>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":""}' \
-  --rel informed_by:<acceptance-record-id> \
-  --rel informed_by:<execution-report-id>
+  --payload '{"criterion_id":"<acceptance-record-id>","revision":"<git sha or dirty>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}'
 ```
 
    Prefer `git rev-parse HEAD` after a commit. Leave `signed_by` `""`
@@ -182,7 +180,7 @@ adaptive-artifacts create --type project:check-run \
    When the user signs:
 
 ```bash
-adaptive-artifacts correct --type project:check-run --id <check-run-id> \
+canon correct --type aff:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
@@ -191,7 +189,7 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
    requirement and that `evidence_kind`. `fail` means the check ran
    and the requirement was not met — not that the design is wrong.
    When the acceptance has `requirement`, put that id and an
-   `evidence_kind` from the contract enum on the check-run (runner or
+   `evidence_kind` from the schema enum on the check-run (runner or
    manual create). Still no `level`/`next`.
 
    **Structured work:** after check-runs, follow
@@ -202,10 +200,10 @@ adaptive-artifacts correct --type project:check-run --id <check-run-id> \
 
 5. On **pass** (simple: binary gate met or evaluate finding accepted;
    structured: Assess `verified` for each requirement this work-item
-   covers):
+   covers), orchestra moves the work-item to `done`:
 
 ```bash
-adaptive-artifacts update --type project:work-item --id <id> \
+canon update --type plan:work-item --id <id> \
   --transition done --expected-revision <revision>
 ```
 
@@ -215,7 +213,7 @@ adaptive-artifacts update --type project:work-item --id <id> \
    the transition:
 
 ```bash
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "<task-slug>" \
   --payload '{"claim":"<task-slug> closed done with an unmet or unverified criterion","basis":"<why it was closed anyway>","invalidated_when":"<what would undo this acceptance>","effort":"<effort-slug>","needs":"human"}' \
   --body "## Evidence
@@ -240,18 +238,18 @@ adaptive-artifacts create --type project:finding \
    `next` `execute`; do not tell the parent to run a suite the
    acceptance does not name. Parent (`execute-phase`) re-dispatches
    or creates fix tasks — this skill does not.
-7. On **abandoned** approach: `create --type project:failed-attempt`
+7. On **abandoned** approach: `create --type run:failed-attempt`
    with `attempted_action`, `retry_when`, `effort`. If the whole task
    is dropped, transition to `withdrawn` instead of `done`; else
    leave `in_progress`.
 
 ```bash
-adaptive-artifacts update --type project:work-item --id <id> \
+canon update --type plan:work-item --id <id> \
   --transition withdrawn --expected-revision <revision>
 ```
 
-8. Regenerate views (`handoff`, `project:plan`, `project:verification`,
-   `project:brief`) and `adaptive-artifacts validate`.
+8. Run `canon validate`. To show state, print `orchestra view
+   verification --effort <focus>`.
 
 ## Close
 
@@ -276,7 +274,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 ## Do not
 
 - Dual-write CI as records if CI already owns the result
-- `create --type project:check-run` for `tdd`/`check` — only
+- `create --type aff:check-run` for `tdd`/`check` — only
   `orchestra check` (or an already runner-produced id)
 - Invent pass/fail in a close-request for `tdd`/`check` without a
   runner `check_run_id`
@@ -294,12 +292,12 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Treat a failing concurrency test as proof the design is wrong
 - Send every failure to `execute`; escalate by failure count; insert
   `plan`/`integration` under a repeated implementation failure
-- Write `project:release` with `state` other than `ready`, or deploy
+- Write `run:release` with `state` other than `ready`, or deploy
 - Write assessment or release for incidental / no-specification phases
 - Tell the parent to run a suite the acceptance does not name
 - Edit the tree from a verification task when its check fails
 - Route `manual` through `orchestra check`
 - Mark oracle-backed `verified` without mechanical oracle verify
 - Invent `oracle_hashes` or a signed amendment; `create`/`supersede`
-  `project:oracle-amendment`
+  `aff:oracle-amendment`
 - Treat a non-zero `aff verdict` as done

@@ -9,7 +9,7 @@ SOURCE_ENV = "ORCHESTRA_INSTALL_SOURCE"
 
 
 def source_root() -> Path:
-    """Repository root holding ``skills/``, ``contract/``, ``agents/``, ``hosts/``.
+    """Repository root holding ``skills/``, ``agents/``, ``hosts/``.
 
     ``ORCHESTRA_INSTALL_SOURCE`` lets tests point at a fixture tree; otherwise
     the checkout containing this package is the source of truth.

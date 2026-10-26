@@ -1,4 +1,4 @@
-"""Store opening follows adaptive_artifacts.project.open_store."""
+"""Store opening follows canon.project.open_store."""
 
 from __future__ import annotations
 
@@ -7,18 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from adaptive_artifacts.project import StoreBindingError, open_store
-from conftest import make_git_repo
+from canon.project import StoreBindingError, open_store
+from conftest import make_git_repo, write_config
 
 
-def _meta(store: Path, contract: Path | None = None) -> None:
-    store.mkdir(parents=True, exist_ok=True)
-    contract = contract or (store / "resolved-contract.json")
-    if not contract.is_file():
-        contract.write_text(json.dumps({"views": [{"id": "project:dashboard"}]}))
-    (store / "meta.json").write_text(
-        json.dumps({"store_version": 1, "contract": str(contract), "contract_digest": "sha256:test"})
-    )
+def _meta(store: Path) -> None:
+    write_config(store)
 
 
 def _binding(path: Path, value: str) -> None:
@@ -87,7 +81,7 @@ def test_explicit_store_argument_beats_binding(home, repo):
 def test_bound_missing_store_raises_without_fallthrough(home, repo):
     _meta(home / ".artifacts" / repo.name)
     _binding(repo / ".artifacts" / "store-binding.json", "local")
-    with pytest.raises(StoreBindingError, match="no meta.json"):
+    with pytest.raises(StoreBindingError, match="no config.json"):
         open_store(repo)
 
 
@@ -98,10 +92,7 @@ def test_invalid_binding_value_raises(home, repo):
         open_store(repo)
 
 
-def test_open_store_exposes_contract_path(home, repo):
-    contract = repo / ".artifacts" / "resolved-contract.json"
-    _meta(repo / ".artifacts", contract)
+def test_open_store_exposes_project_root(home, repo):
+    _meta(repo / ".artifacts")
     project = open_store(repo)
-    assert project.contract_path is not None
-    assert project.contract_path.resolve() == contract.resolve()
     assert project.project_root.resolve() == repo.resolve()

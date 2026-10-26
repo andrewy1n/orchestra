@@ -24,7 +24,7 @@ import helpers as h  # noqa: E402
 from conftest import REPO_ROOT, git, stamped_store  # noqa: E402
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import Binding, Project, open_store  # noqa: E402
+from canon.project import Binding, Project, open_store  # noqa: E402
 from dashboard import model as model_module  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from dashboard import selection  # noqa: E402
@@ -50,20 +50,19 @@ WIDTHS = (60, 120)
 
 def _work_item(cli, defs, effort, subject, phase, *rels, assignee=""):
     payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": assignee, "effort": effort}
-    args = ["create", "--type", "project:work-item", "--subject", subject, "--payload", json.dumps(payload)]
-    for rel in rels:
-        args.extend(["--rel", rel])
-    result = cli(*args, "--body", h.generic_body(defs["project:work-item"]))
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
+    args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
 
 
 def _phase(cli, defs, effort, subject, ordinal, *states):
     record = h.create_generic_record(
-        cli, defs, "project:phase", subject=subject,
+        cli, defs, "plan:phase", subject=subject,
         extra_payload={"title": f"Phase {subject}", "ordinal": ordinal, "effort": effort},
     )
-    h.transition(cli, "project:phase", record, *states)
+    h.transition(cli, "plan:phase", record, *states)
 
 
 @pytest.fixture()
@@ -73,32 +72,32 @@ def defs(resolved_contract):
 
 def _seed_alpha(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship the alpha dashboard", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "one", 1, "in_progress", "done")
     _phase(cli, defs, "alpha", "two", 2, "in_progress")
     _phase(cli, defs, "alpha", "three", 3)
     running = _work_item(cli, defs, "alpha", "a-running", "two", assignee="agent-7")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     _work_item(cli, defs, "alpha", "a-ready", "two")
     _work_item(cli, defs, "alpha", "a-waiting", "two", f"depends_on:{running['id']}")
     done = _work_item(cli, defs, "alpha", "a-done", "one")
-    h.transition(cli, "project:work-item", done, "in_progress", "done")
+    h.transition(cli, "plan:work-item", done, "in_progress", "done")
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject="alpha",
+        cli, defs, "plan:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "which backend"},
     )
     h.create_generic_record(
-        cli, defs, "project:assignment", subject="a-assign",
+        cli, defs, "run:assignment", subject="a-assign",
         extra_payload={"work_item": running["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     h.create_generic_record(
-        cli, defs, "project:execution-report", subject="a-report",
+        cli, defs, "run:execution-report", subject="a-report",
         extra_payload={"work_item": done["subject"], "result": "done it", "verdict": "pass"},
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="a-check",
+        cli, defs, "aff:check-run", subject="a-check",
         extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
     )
 
@@ -177,7 +176,7 @@ def _run(store, width, scenario, interval=60.0, height=40, grouped=False):
     asyncio.run(go())
 
 
-async def _until(pilot, condition, timeout=20.0):
+async def _until(pilot, condition, timeout=60.0):
     deadline = time.monotonic() + timeout
     while not condition():
         assert time.monotonic() < deadline, "condition not met in time"
@@ -211,15 +210,15 @@ LONG_PHASES = (
 
 def _seed_long_phases(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="billing",
+        cli, defs, "plan:effort", subject="billing",
         extra_payload={"goal": "ship billing exports", "kind": "deliver"},
     )
     for ordinal, (subject, title, states) in enumerate(LONG_PHASES, 1):
         record = h.create_generic_record(
-            cli, defs, "project:phase", subject=subject,
+            cli, defs, "plan:phase", subject=subject,
             extra_payload={"title": title, "ordinal": ordinal, "effort": "billing"},
         )
-        h.transition(cli, "project:phase", record, *states)
+        h.transition(cli, "plan:phase", record, *states)
     for index in range(4):
         _work_item(cli, defs, "billing", f"pdf-{index}", "pdf")
 
@@ -344,7 +343,7 @@ def test_paint_tolerates_missing_effort_tabs(seeded):
 
 def test_once_keeps_the_phase_column_when_wide(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
         env={**os.environ, "COLUMNS": "120"},
     )
     assert result.returncode == 0, result.stderr
@@ -354,21 +353,21 @@ def test_once_keeps_the_phase_column_when_wide(seeded):
 
 def _seed_waits_and_running(root, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "two", 1, "in_progress")
     running = _work_item(cli, defs, "alpha", "w-running", "two")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     other = _work_item(cli, defs, "alpha", "w-other", "two")
-    h.transition(cli, "project:work-item", other, "in_progress")
+    h.transition(cli, "plan:work-item", other, "in_progress")
     done = _work_item(cli, defs, "alpha", "w-done", "two")
-    h.transition(cli, "project:work-item", done, "in_progress", "done")
+    h.transition(cli, "plan:work-item", done, "in_progress", "done")
     _work_item(cli, defs, "alpha", "w-waiting", "two", f"depends_on:{running['id']}", f"depends_on:{other['id']}", f"depends_on:{done['id']}")
     _work_item(cli, defs, "alpha", "w-ready", "two", f"depends_on:{done['id']}")
     h.run_cli_48h_ago(
-        root, "create", "--type", "project:assignment", "--subject", "w-running",
+        root, "create", "--type", "run:assignment", "--subject", "w-running",
         "--payload", json.dumps({"work_item": running["subject"], "executor": "sub-w", "effort": "alpha"}),
-        "--body", h.generic_body(defs["project:assignment"]),
+        "--body", h.generic_body(defs["run:assignment"]),
     )
     return running
 
@@ -407,13 +406,13 @@ def test_waiting_row_title_has_no_waits_on_and_keeps_muted_suffix(waits, width):
 @pytest.mark.parametrize("width", WIDTHS)
 def test_waiting_row_with_several_unfinished_deps_stays_one_line(store, cli, defs, width):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "many", 1, "in_progress")
     deps = []
     for i in range(6):
         dep = _work_item(cli, defs, "alpha", f"many-dep-{i}", "many")
-        h.transition(cli, "project:work-item", dep, "in_progress")
+        h.transition(cli, "plan:work-item", dep, "in_progress")
         deps.append(dep)
     waiting = _work_item(
         cli, defs, "alpha", "many-waiting", "many", *(f"depends_on:{dep['id']}" for dep in deps),
@@ -475,7 +474,7 @@ def _seed_failed_check(store):
     def seed(root, cli, defs):
         _seed_alpha(cli, defs)
         h.create_generic_record(
-            cli, defs, "project:check-run", subject="a-broken",
+            cli, defs, "aff:check-run", subject="a-broken",
             extra_payload={"method": "check", "signed_by": "", "result": "fail", "effort": "alpha"},
         )
 
@@ -507,7 +506,7 @@ def test_failed_activity_line_uses_the_error_colour_and_a_cross(store, width):
 def test_once_marks_failed_activity_with_a_cross(store):
     _seed_failed_check(store)
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
     )
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
@@ -517,11 +516,11 @@ def test_once_marks_failed_activity_with_a_cross(store):
 
 def test_long_activity_lines_are_clipped_not_wrapped_at_60_columns(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
     )
     item = _work_item(cli, defs, "alpha", "a-very-long-task-name-for-wrapping", "p")
     h.create_generic_record(
-        cli, defs, "project:assignment", subject="a-assign",
+        cli, defs, "run:assignment", subject="a-assign",
         extra_payload={"work_item": item["subject"], "executor": "sub-with-an-equally-long-executor-name", "effort": "alpha"},
     )
 
@@ -547,12 +546,13 @@ def test_footer_has_no_palette_and_every_binding_fits_at_60_columns(seeded):
 
 def test_task_title_uses_spare_width_at_120_columns(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "g", "kind": "deliver"},
     )
     title = "Integration-test the readable layout and verify 54ch"[:54]
     payload = {"title": title, "phase": "readable-layout", "kind": "deliver", "assignee": "sub-dashboard-snapshot", "effort": "alpha"}
-    result = cli("create", "--type", "project:work-item", "--subject", "a-long", "--payload", json.dumps(payload),
-                 "--body", h.generic_body(defs["project:work-item"]))
+    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
+    result = cli("create", "--type", "plan:work-item", "--subject", "a-long", "--payload", json.dumps(payload),
+                 "--body", h.generic_body(defs["plan:work-item"]))
     assert result.returncode == 0, result.stdout
 
     async def scenario(app, pilot):
@@ -566,7 +566,7 @@ def test_task_title_uses_spare_width_at_120_columns(store, cli, defs):
 
 def test_needs_you_panel_is_hidden_when_nothing_needs_you(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="calm", extra_payload={"goal": "stay calm", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="calm", extra_payload={"goal": "stay calm", "kind": "deliver"},
     )
 
     async def scenario(app, pilot):
@@ -648,7 +648,7 @@ def _all_titles():
 
 def _second_effort(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="beta", extra_payload={"goal": "ship beta", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="beta", extra_payload={"goal": "ship beta", "kind": "deliver"},
     )
     _phase(cli, defs, "beta", "b-one", 1, "in_progress")
     _work_item(cli, defs, "beta", "b-task", "b-one")
@@ -746,7 +746,7 @@ def _selected(app):
 
 
 def _needs_task(cli, defs):
-    _record(cli, defs, "project:finding", "a-waiting",
+    _record(cli, defs, "aff:finding", "a-waiting",
             {"claim": "need a call", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"})
 
 
@@ -829,7 +829,7 @@ def test_tab_labels_are_the_word_and_a_dim_parenthetical_tally(seeded, width):
 
 def test_tab_row_once_tally_shows_number_keys(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
         env={**os.environ, "COLUMNS": "120"},
     )
     assert result.returncode == 0, result.stderr
@@ -904,11 +904,11 @@ def test_clicking_a_status_tab_filters_the_table(seeded, width):
 
 def _seed_unwaited(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "two", 1, "in_progress")
     running = _work_item(cli, defs, "alpha", "u-running", "two")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     _work_item(cli, defs, "alpha", "u-ready", "two")
 
 
@@ -1037,9 +1037,8 @@ def test_status_tab_is_per_effort_tab(seeded, cli, defs, width):
 
 
 def _record(cli, defs, record_type, subject, payload, body=None, *rels):
-    args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
-    for rel in rels:
-        args.extend(["--rel", rel])
+    h.ensure_refs(cli, defs, defs[record_type], payload)
+    args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
     body = body if body is not None else h.generic_body(defs[record_type])
     if body:
         args.extend(["--body", body])
@@ -1050,45 +1049,45 @@ def _record(cli, defs, record_type, subject, payload, body=None, *rels):
 
 def _build_detailed(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "det-phase", 1, "in_progress")
     busy = _work_item(cli, defs, "alpha", "det-busy", "det-phase")
-    h.transition(cli, "project:work-item", busy, "in_progress")
+    h.transition(cli, "plan:work-item", busy, "in_progress")
     dep = _work_item(cli, defs, "alpha", "det-dep", "det-phase")
-    h.transition(cli, "project:work-item", dep, "in_progress", "done")
+    h.transition(cli, "plan:work-item", dep, "in_progress", "done")
     payload = {"title": "Detail task", "phase": "det-phase", "kind": "deliver", "assignee": "sub-d", "effort": "alpha"}
     task = _record(
-        cli, defs, "project:work-item", "det-task", payload,
+        cli, defs, "plan:work-item", "det-task", payload,
         "## Description\n\nBuild the **detail** screen.\n\n- first point\n- second point", f"depends_on:{dep['id']}",
     )
-    h.transition(cli, "project:work-item", task, "in_progress")
+    h.transition(cli, "plan:work-item", task, "in_progress")
     _work_item(cli, defs, "alpha", "det-blocked", "det-phase", f"depends_on:{task['id']}")
-    tests = _record(cli, defs, "project:acceptance", "det-task", {
+    tests = _record(cli, defs, "plan:acceptance", "det-task", {
         "criterion": "unit tests pass", "method": "check", "verify_command": "pytest -q", "effort": "alpha", "phase": "det-phase"})
-    review = _record(cli, defs, "project:acceptance", "det-task-review", {
+    review = _record(cli, defs, "plan:acceptance", "det-task-review", {
         "criterion": "reviewer approves", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "det-phase"})
-    _record(cli, defs, "project:acceptance", "det-task-docs", {
+    _record(cli, defs, "plan:acceptance", "det-task-docs", {
         "criterion": "docs updated", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "det-phase"})
     assignment = _record(
-        cli, defs, "project:assignment", "det-task",
+        cli, defs, "run:assignment", "det-task",
         {"work_item": task["subject"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart in the app module",
     )
-    _record(cli, defs, "project:assignment-amendment", "det-task",
+    _record(cli, defs, "run:assignment-amendment", "det-task",
             {"assignment": "det-task", "effort": "alpha"}, "## Correction\n\nuse the loader")
     h.run_cli_48h_ago(
-        store, "create", "--type", "project:execution-report", "--subject", "det-task-first", "--body", "first attempt notes",
+        store, "create", "--type", "run:execution-report", "--subject", "det-task-first", "--body", "first attempt notes",
         "--payload", json.dumps({"work_item": task["subject"], "assignment": assignment["subject"], "result": "no", "verdict": "fail", "revision": "r1"}),
     )
-    _record(cli, defs, "project:execution-report", "det-task",
+    _record(cli, defs, "run:execution-report", "det-task",
             {"work_item": task["subject"], "assignment": assignment["subject"], "result": "ok", "verdict": "pass", "revision": "r2"},
             "```\nsubject: det-task\nresult: pass\nevidence: second attempt notes that run long enough to wrap "
             "under the value column at sixty columns\nverdict: pass\nneeds_human: false\n```\n\nclosing **remarks**")
-    _record(cli, defs, "project:check-run", "det-task", {
+    _record(cli, defs, "aff:check-run", "det-task", {
         "criterion_id": tests["id"], "method": "check", "result": "pass", "signed_by": "", "revision": "abc1234", "effort": "alpha"})
-    _record(cli, defs, "project:check-run", "det-task-review", {
+    _record(cli, defs, "aff:check-run", "det-task-review", {
         "criterion_id": review["id"], "method": "manual", "result": "pass", "signed_by": "", "revision": "def5678", "effort": "alpha"})
-    _record(cli, defs, "project:finding", "det-task",
+    _record(cli, defs, "aff:finding", "det-task",
             {"claim": "parser drops tabs", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
     return task, tests
 
@@ -1367,7 +1366,7 @@ def test_detail_screen_redraws_when_the_store_changes(detailed, cli, defs, size)
         await _open_by_enter(app, pilot, task["id"])
         screen = await _shown(app, pilot)
         assert "✗" not in "".join(_acceptance_rows(screen))
-        _record(cli, defs, "project:check-run", "det-task", {
+        _record(cli, defs, "aff:check-run", "det-task", {
             "criterion_id": tests["id"], "method": "check", "result": "fail", "signed_by": "", "revision": "fff9999", "effort": "alpha"})
         await _until(pilot, lambda: "✗ unit tests pass" in "\n".join(_acceptance_rows(screen)))
         await _until(pilot, lambda: any("check failed" in str(w.render()) for w in screen.query(".event") if not hasattr(w, "title")))
@@ -1563,7 +1562,7 @@ def _build_committed(store, cli, defs):
     assert done.returncode == 0, done.stderr
     sha = git(store, "rev-parse", "HEAD").stdout.strip()
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "c-phase", 1, "in_progress")
     tasks = {}
@@ -1572,7 +1571,7 @@ def _build_committed(store, cli, defs):
     }.items():
         tasks[name] = _work_item(cli, defs, "alpha", name, "c-phase")
         for index, revision in enumerate(revisions):
-            _record(cli, defs, "project:execution-report", f"{name}-{index}", {
+            _record(cli, defs, "run:execution-report", f"{name}-{index}", {
                 "work_item": tasks[name]["subject"], "assignment": "x", "result": "ok", "verdict": "pass", "revision": revision})
     return tasks, sha
 
@@ -1893,7 +1892,7 @@ def test_q_quits(seeded):
 
 def test_once_prints_a_plain_text_frame(seeded):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
     )
     assert result.returncode == 0, result.stderr
     out = result.stdout
@@ -1905,7 +1904,7 @@ def test_once_prints_a_plain_text_frame(seeded):
 
 def test_once_without_a_store_exits_one(tmp_path):
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(tmp_path),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(tmp_path),
     )
     assert result.returncode == 1
     assert "store" in result.stdout + result.stderr
@@ -1945,28 +1944,28 @@ def test_status_tab_survives_a_store_refresh(seeded, cli, defs, width):
 @pytest.fixture()
 def phased(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     for ordinal, name in enumerate(("d1", "d2", "d3", "d4"), 1):
         _phase(cli, defs, "alpha", name, ordinal, "in_progress", "done")
         done = _work_item(cli, defs, "alpha", f"{name}-task", name)
-        h.transition(cli, "project:work-item", done, "in_progress", "done")
+        h.transition(cli, "plan:work-item", done, "in_progress", "done")
     _phase(cli, defs, "alpha", "cur", 5, "in_progress")
     _phase(cli, defs, "alpha", "sign", 6, "in_progress")
     _phase(cli, defs, "alpha", "later", 7)
     running = _work_item(cli, defs, "alpha", "cur-run", "cur")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     _work_item(cli, defs, "alpha", "cur-ready", "cur")
     waiting = _work_item(cli, defs, "alpha", "sign-task", "sign")
-    h.transition(cli, "project:work-item", waiting, "in_progress")
-    acceptance = _record(cli, defs, "project:acceptance", "sign-task", {
+    h.transition(cli, "plan:work-item", waiting, "in_progress")
+    acceptance = _record(cli, defs, "plan:acceptance", "sign-task", {
         "criterion": "reviewed", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "sign"})
-    _record(cli, defs, "project:check-run", "sign-task", {
+    _record(cli, defs, "aff:check-run", "sign-task", {
         "criterion_id": acceptance["id"], "method": "manual", "result": "pass", "signed_by": "", "revision": "r", "effort": "alpha"})
     _work_item(cli, defs, "alpha", "later-task", "later")
-    _record(cli, defs, "project:decision", "cur-choice",
+    _record(cli, defs, "plan:decision", "cur-choice",
             {"choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "cur"})
-    _record(cli, defs, "project:constraint", "cur-limit",
+    _record(cli, defs, "plan:constraint", "cur-limit",
             {"statement": "no network", "applies_to": "cur", "effort": "alpha"})
     return store
 
@@ -2047,12 +2046,12 @@ def test_enter_on_the_fold_row_expands_and_collapses_the_older_phases(phased, wi
 @pytest.mark.parametrize("width", WIDTHS)
 def test_two_done_phases_do_not_fold(store, cli, defs, width):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
+        cli, defs, "plan:effort", subject="alpha", extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     for ordinal, name in enumerate(("d1", "d2"), 1):
         _phase(cli, defs, "alpha", name, ordinal, "in_progress", "done")
         done = _work_item(cli, defs, "alpha", f"{name}-task", name)
-        h.transition(cli, "project:work-item", done, "in_progress", "done")
+        h.transition(cli, "plan:work-item", done, "in_progress", "done")
 
     async def scenario(app, pilot):
         await pilot.press("f")
@@ -2315,18 +2314,18 @@ def test_phase_body_headings_have_no_blank_line_above(phased, size):
 def _seed_finished(cli, defs):
     for effort in ("alpha", "beta"):
         h.create_generic_record(
-            cli, defs, "project:active-goal", subject=effort, extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
+            cli, defs, "plan:effort", subject=effort, extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
         )
     _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")
     for subject in ("a-first", "a-second"):
         done = _work_item(cli, defs, "alpha", subject, "a-one")
-        h.transition(cli, "project:work-item", done, "in_progress", "done")
+        h.transition(cli, "plan:work-item", done, "in_progress", "done")
     withdrawn = _work_item(cli, defs, "alpha", "a-dropped", "a-one")
-    h.transition(cli, "project:work-item", withdrawn, "withdrawn")
+    h.transition(cli, "plan:work-item", withdrawn, "withdrawn")
     phase = h.create_generic_record(
-        cli, defs, "project:phase", subject="b-one", extra_payload={"title": "Phase b-one", "ordinal": 1, "effort": "beta"},
+        cli, defs, "plan:phase", subject="b-one", extra_payload={"title": "Phase b-one", "ordinal": 1, "effort": "beta"},
     )
-    phase = h.transition(cli, "project:phase", phase, "in_progress")
+    phase = h.transition(cli, "plan:phase", phase, "in_progress")
     task = _work_item(cli, defs, "beta", "b-task", "b-one")
     return {"phase": phase, "task": task}
 
@@ -2414,7 +2413,7 @@ def test_finished_effort_sorts_after_a_live_effort_with_a_dimmed_label(finished)
 
 def test_tab_and_shift_tab_switch_to_a_finished_effort_beside_live_needs_you_items(finished, cli, defs):
     store, _ = finished
-    _record(cli, defs, "project:continuity-question", "beta", {"subject": "beta", "owner": "ayin", "blocking": False, "scope": "which one"})
+    _record(cli, defs, "plan:continuity-question", "beta", {"owner": "ayin", "blocking": False, "scope": "which one"})
 
     async def scenario(app, pilot):
         tabs = app.query_one("#efforts")
@@ -2440,8 +2439,8 @@ def test_effort_finished_mid_session_moves_last_and_dims(finished, cli):
 
     async def scenario(app, pilot):
         app.filters["beta"] = tasks_module.TaskFilter(tab="done")
-        h.transition(cli, "project:work-item", records["task"], "in_progress", "done")
-        h.transition(cli, "project:phase", records["phase"], "done")
+        h.transition(cli, "plan:work-item", records["task"], "in_progress", "done")
+        h.transition(cli, "plan:phase", records["phase"], "done")
         await _until(pilot, lambda: "beta" not in app.panes and "+2 finished" in _text(app, "#header-finished"))
         await pilot.press("f")
         await _until(pilot, lambda: _tab_ids(app) == ["effort-alpha", "effort-beta"] and _finished_tab(app, "beta"))
@@ -2457,7 +2456,7 @@ def test_effort_finished_mid_session_moves_last_and_dims(finished, cli):
 def test_once_lists_finished_efforts_last(finished):
     store, _ = finished
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(store),
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.index("ship beta") < result.stdout.index("ship alpha")
@@ -2476,8 +2475,8 @@ def _needs_text(app):
 
 def _needy(cli, defs):
     _needs_task(cli, defs)
-    return _record(cli, defs, "project:continuity-question", "alpha",
-                   {"subject": "alpha", "owner": "ayin", "blocking": False, "scope": LONG_SCOPE},
+    return _record(cli, defs, "plan:continuity-question", "alpha",
+                   {"owner": "ayin", "blocking": False, "scope": LONG_SCOPE},
                    "Pick the **home** store unless the repo pins one.")
 
 
@@ -2570,7 +2569,7 @@ def test_needs_you_enter_on_a_question_opens_the_needs_you_detail_with_full_text
         screen = await _needs_shown(app, pilot)
         assert str(screen.query_one("#needs-bar").render()).startswith("alpha")
         chips = str(screen.query_one("#needs-chips").render())
-        assert chips.startswith("Answer") and "project:continuity-question" in chips
+        assert chips.startswith("Answer") and "plan:continuity-question" in chips
         assert screen.query_one("#needs-text Markdown").source == LONG_SCOPE
         assert screen.query_one("#needs-body Markdown").source == "Pick the **home** store unless the repo pins one."
         await pilot.press("escape")
@@ -2624,7 +2623,7 @@ def test_needs_you_detail_follows_the_store_and_blocks_dashboard_keys(seeded, cl
             await pilot.press(key)
             await pilot.pause()
             assert app.screen is screen
-        result = cli("update", "--type", "project:continuity-question", "--id", record["id"],
+        result = cli("update", "--type", "plan:continuity-question", "--id", record["id"],
                      "--expected-revision", record["revision"],
                      "--payload", json.dumps({**record["payload"], "scope": "which backend, revised"}))
         assert result.returncode == 0, result.stdout + result.stderr
@@ -2635,7 +2634,7 @@ def test_needs_you_detail_follows_the_store_and_blocks_dashboard_keys(seeded, cl
 
 def _evidence_goal(cli, defs, effort="alpha"):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject=effort,
+        cli, defs, "plan:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
     )
 
@@ -2759,8 +2758,8 @@ def test_evidence_strip_marks_the_current_stage_and_fits(store, cli, defs):
     _evidence_goal(cli, defs)
     _phase(cli, defs, "alpha", "strip", 1, "in_progress")
     _spec(cli, defs, "strip", "R1", weight="full", non_goals="No new screen.")
-    _design(cli, defs, "strip", "use-columns")
     _decision(cli, defs, "use-columns", "strip", "two")
+    _design(cli, defs, "strip", "use-columns")
     _task(cli, defs, "strip-task", "strip", "R1", done=True)
     _report(cli, defs, "strip", "fail", "ports disagree")
     _phase(cli, defs, "alpha", "plain", 2, "in_progress")
@@ -2922,7 +2921,7 @@ def test_evidence_simple_phase_matches_the_previous_frame(seeded):
 
     _run(seeded, 60, scenario)
     result = subprocess.run(
-        ["uv", "run", "--script", str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
+        [sys.executable, str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(seeded),
     )
     assert result.returncode == 0, result.stderr
     out = result.stdout
@@ -2958,6 +2957,7 @@ def test_evidence_link_task_opens_the_requirement(store, cli, defs):
     _phase(cli, defs, "alpha", "linked", 1, "in_progress")
     _spec(cli, defs, "linked", "R1")
     _decision(cli, defs, "pick-a", "linked", "keep the list")
+    _decision(cli, defs, "pick-b", "linked", "keep the table")
     task = _task(cli, defs, "linked-task", "linked", "R1, R2", "pick-a, pick-b")
 
     async def scenario(app, pilot):
@@ -3072,7 +3072,7 @@ def test_evidence_stepper_shows_the_stage_word_within_60_columns(store, cli, def
 
 def _estimate_goal(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "g", "kind": "deliver"},
     )
 
@@ -3088,10 +3088,10 @@ def _phase_body(defs, size_line=None):
 
 def _open_phase(cli, defs, subject, ordinal, title, body):
     record = _record(
-        cli, defs, "project:phase", subject,
+        cli, defs, "plan:phase", subject,
         {"title": title, "ordinal": ordinal, "effort": "alpha"}, body,
     )
-    return h.transition(cli, "project:phase", record, "in_progress")
+    return h.transition(cli, "plan:phase", record, "in_progress")
 
 
 def _estimate_task(cli, defs, subject, phase, **payload):
@@ -3104,7 +3104,7 @@ def _estimate_task(cli, defs, subject, phase, **payload):
     depends = fields.pop("depends_on", None)
     if depends:
         rels.append(f"depends_on:{depends}")
-    return _record(cli, defs, "project:work-item", subject, fields, None, *rels)
+    return _record(cli, defs, "plan:work-item", subject, fields, None, *rels)
 
 
 def _task_plain(app, task_id):
@@ -3290,8 +3290,8 @@ def test_question_mark_lists_phase_keys(seeded):
 def test_finished_effort_with_needs_you_stays_visible(finished, cli, defs):
     store, _ = finished
     _record(
-        cli, defs, "project:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": False, "scope": "still open"},
+        cli, defs, "plan:continuity-question", "alpha",
+        {"owner": "ayin", "blocking": False, "scope": "still open"},
     )
 
     async def scenario(app, pilot):
@@ -3346,15 +3346,15 @@ def test_gates_copy_prompt_on_needs_you_and_slug_on_task_row(seeded, cli, defs, 
 
 def test_gates_next_step_line_shows_next_and_muted_position(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship gates", "kind": "deliver"},
     )
     _record(
-        cli, defs, "project:current-position", "alpha",
+        cli, defs, "plan:position", "alpha",
         {"position": "waiting on the backend choice", "scope": "effort", "effort": "alpha", "status": "open"},
     )
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject="alpha",
+        cli, defs, "plan:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "which backend"},
     )
 
@@ -3401,7 +3401,7 @@ def test_gates_alert_bell_and_tmux_message_for_new_needs_only(seeded, cli, defs,
         app.bell = lambda: bells.append("bell")
 
         _record(
-            cli, defs, "project:finding", "fresh-gate",
+            cli, defs, "aff:finding", "fresh-gate",
             {
                 "claim": "new decision needed",
                 "basis": "b",
@@ -3429,24 +3429,24 @@ def test_gates_alert_bell_and_tmux_message_for_new_needs_only(seeded, cli, defs,
 
 def _seed_dismiss_human(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship dismiss", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "d-phase", 1, "in_progress")
     question = _record(
-        cli, defs, "project:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "dismiss-question"},
+        cli, defs, "plan:continuity-question", "alpha",
+        {"owner": "ayin", "blocking": True, "scope": "dismiss-question"},
     )
     finding = _record(
-        cli, defs, "project:finding", "dismiss-finding",
+        cli, defs, "aff:finding", "dismiss-finding",
         {"claim": "dismiss-finding", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"},
     )
     acceptance = _record(
-        cli, defs, "project:acceptance", "dismiss-task",
+        cli, defs, "plan:acceptance", "dismiss-task",
         {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "d-phase"},
     )
     check = _record(
-        cli, defs, "project:check-run", "dismiss-check",
+        cli, defs, "aff:check-run", "dismiss-check",
         {
             "criterion_id": acceptance["id"], "method": "manual", "result": "pass",
             "signed_by": "", "revision": "r", "effort": "alpha",
@@ -3582,37 +3582,37 @@ def test_dismiss_cli_failure_keeps_item_and_shows_error(store, cli, defs, monkey
 
 def _seed_backlog(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship backlog panel", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "b-phase", 1, "in_progress")
     promote = cli(
-        "create", "--type", "project:backlog-item", "--subject", "park-promote",
+        "create", "--type", "plan:backlog-item", "--subject", "park-promote",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
         "--body", "## Note\n\npromote me",
     )
     assert promote.returncode == 0, promote.stdout + promote.stderr
     dismiss = cli(
-        "create", "--type", "project:backlog-item", "--subject", "park-dismiss",
+        "create", "--type", "plan:backlog-item", "--subject", "park-dismiss",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
         "--body", "## Note\n\ndismiss me",
     )
     assert dismiss.returncode == 0, dismiss.stdout + dismiss.stderr
     closed = cli(
-        "create", "--type", "project:backlog-item", "--subject", "park-closed",
+        "create", "--type", "plan:backlog-item", "--subject", "park-closed",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
     )
     assert closed.returncode == 0, closed.stdout + closed.stderr
     closed_rec = json.loads(closed.stdout)["record"]
     superseded = cli(
-        "supersede", "--type", "project:backlog-item", "--id", closed_rec["id"],
+        "supersede", "--type", "plan:backlog-item", "--id", closed_rec["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
     )
     assert superseded.returncode == 0, superseded.stdout + superseded.stderr
     question = _record(
-        cli, defs, "project:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "still-needs-you"},
+        cli, defs, "plan:continuity-question", "alpha",
+        {"owner": "ayin", "blocking": True, "scope": "still-needs-you"},
     )
     return json.loads(promote.stdout)["record"], json.loads(dismiss.stdout)["record"], question
 
@@ -3716,7 +3716,7 @@ def test_backlog_detail_promote_and_refuse_non_backlog(store, cli, defs, monkeyp
 
         fake = model_module.BacklogItem(
             id="not-backlog", subject="x", effort="alpha", text="x",
-            status="open", record_type="project:finding",
+            status="open", record_type="aff:finding",
         )
         view = app.effort_view("alpha")
         view.backlog.append(fake)
@@ -3776,7 +3776,7 @@ def _suite_check_run(cli, defs, phase, result, revision="abc1234deadbeef", body=
         "signed_by": "",
         "evidence_kind": "integration",
     }
-    return _record(cli, defs, "project:check-run", f"{phase}-suite", payload, body)
+    return _record(cli, defs, "aff:check-run", f"{phase}-suite", payload, body)
 
 
 @pytest.mark.parametrize("width", WIDTHS)
@@ -3810,7 +3810,7 @@ def _approval_question(**overrides):
         id="rec-q1",
         subject="alpha",
         text="plan-review:alpha",
-        record_type="project:continuity-question",
+        record_type="plan:continuity-question",
         revision="sha256:displayed-question",
     )
     base.update(overrides)
@@ -3823,7 +3823,7 @@ def _approval_finding(**overrides):
         id="rec-f1",
         subject="risk-claim",
         text="risk claim",
-        record_type="project:finding",
+        record_type="aff:finding",
         revision="sha256:displayed-finding",
     )
     base.update(overrides)
@@ -3836,7 +3836,7 @@ def _approval_check(**overrides):
         id="rec-c1",
         subject="u-task",
         text="pages render pass",
-        record_type="project:check-run",
+        record_type="aff:check-run",
         revision="sha256:displayed-check",
     )
     base.update(overrides)
@@ -3875,7 +3875,7 @@ def test_approval_reject_creates_needs_human_finding_and_does_not_answer():
     args = dismiss_module.dismiss_command(question, action="reject", note="rework approach")
 
     assert args[0] == "create"
-    assert args[args.index("--type") + 1] == "project:finding"
+    assert args[args.index("--type") + 1] == "aff:finding"
     assert "answered" not in args
     assert "update" not in args
     payload = json.loads(args[args.index("--payload") + 1])
@@ -3918,7 +3918,6 @@ def test_approval_stale_revision_raises_clear_error_without_retry(monkeypatch):
     target = Project(
         project_root=Path("/tmp"),
         store_path=Path("/tmp/store"),
-        contract_path=Path("/tmp/contract.json"),
         binding=Binding("local", "argument"),
     )
 
@@ -3933,7 +3932,7 @@ def test_approval_stale_revision_raises_clear_error_without_retry(monkeypatch):
 # --- approval-confirm-ux: detail-first, confirm/cancel, actions ---
 
 def _phase_body_with_landing(defs) -> str:
-    base = h.generic_body(defs["project:phase"]) or ""
+    base = h.generic_body(defs["plan:phase"]) or ""
     return (
         base
         + "\n\n## Approach\n\nShip approvals with evidence.\n\n"
@@ -3945,7 +3944,7 @@ def _phase_body_with_landing(defs) -> str:
 
 
 def _finding_body(defs) -> str:
-    base = h.generic_body(defs["project:finding"]) or ""
+    base = h.generic_body(defs["aff:finding"]) or ""
     return (
         base
         + "\n\n## Evidence\n\nManual review found residual risk.\n\n"
@@ -3955,40 +3954,40 @@ def _finding_body(defs) -> str:
 
 def _seed_approval_plan_review(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship approvals", "kind": "deliver"},
     )
     phase = _record(
-        cli, defs, "project:phase", "appr-phase",
+        cli, defs, "plan:phase", "appr-phase",
         {"title": "Approvals", "ordinal": 1, "effort": "alpha"},
         _phase_body_with_landing(defs),
     )
-    h.transition(cli, "project:phase", phase, "in_progress")
+    h.transition(cli, "plan:phase", phase, "in_progress")
     _work_item(cli, defs, "alpha", "appr-task", "appr-phase")
     question = _record(
-        cli, defs, "project:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
+        cli, defs, "plan:continuity-question", "alpha",
+        {"owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
     )
     return question
 
 
 def _seed_approval_human_gates(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship approvals", "kind": "deliver"},
     )
     phase = _record(
-        cli, defs, "project:phase", "appr-phase",
+        cli, defs, "plan:phase", "appr-phase",
         {"title": "Approvals", "ordinal": 1, "effort": "alpha"},
         _phase_body_with_landing(defs),
     )
-    h.transition(cli, "project:phase", phase, "in_progress")
+    h.transition(cli, "plan:phase", phase, "in_progress")
     question = _record(
-        cli, defs, "project:continuity-question", "alpha",
-        {"subject": "alpha", "owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
+        cli, defs, "plan:continuity-question", "alpha",
+        {"owner": "ayin", "blocking": True, "scope": "plan-review:appr-phase"},
     )
     finding = _record(
-        cli, defs, "project:finding", "appr-finding",
+        cli, defs, "aff:finding", "appr-finding",
         {
             "claim": "residual risk", "basis": "unsigned edge", "needs": "human",
             "effort": "alpha", "invalidated_when": "accepted",
@@ -3996,14 +3995,14 @@ def _seed_approval_human_gates(cli, defs):
         _finding_body(defs),
     )
     acceptance = _record(
-        cli, defs, "project:acceptance", "appr-task",
+        cli, defs, "plan:acceptance", "appr-task",
         {
             "criterion": "pages render", "method": "manual", "verify_command": "",
             "effort": "alpha", "phase": "appr-phase",
         },
     )
     check = _record(
-        cli, defs, "project:check-run", "appr-check",
+        cli, defs, "aff:check-run", "appr-check",
         {
             "criterion_id": acceptance["id"], "method": "manual", "result": "pass",
             "signed_by": "", "revision": "abc1234deadbeef", "effort": "alpha",

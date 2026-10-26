@@ -1,4 +1,4 @@
-"""Promote and dismiss backlog items via the adaptive-artifacts CLI."""
+"""Promote and dismiss backlog items via the canon library."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from adaptive_artifacts.project import Project
+from canon.project import Project
 from dashboard.model import BacklogItem
 
-BACKLOG_TYPE = "project:backlog-item"
+BACKLOG_TYPE = "plan:backlog-item"
 
 
 class BacklogError(Exception):
@@ -95,12 +95,12 @@ def _supersede_args(item: BacklogItem, status: str, *, phase: str | None = None)
 
 
 def promote_command(item: BacklogItem, *, phase: str | None = None) -> list[str]:
-    """Return adaptive-artifacts argv to supersede status=promoted."""
+    """Return canon argv to supersede status=promoted."""
     return _supersede_args(item, "promoted", phase=phase)
 
 
 def dismiss_command(item: BacklogItem) -> list[str]:
-    """Return adaptive-artifacts argv to supersede status=dismissed."""
+    """Return canon argv to supersede status=dismissed."""
     return _supersede_args(item, "dismissed")
 
 

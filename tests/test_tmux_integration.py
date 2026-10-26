@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, git
+from conftest import CANON_ROOT, REPO_ROOT, git
 from test_dashboard_status import _goal, _work_item
 
 pytestmark = pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux is not installed")
@@ -31,10 +31,10 @@ def seeded(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, EFFORT)
     running = _work_item(cli, defs, EFFORT, "fx-running")
-    h.transition(cli, "project:work-item", running, "in_progress")
+    h.transition(cli, "plan:work-item", running, "in_progress")
     _work_item(cli, defs, EFFORT, "fx-ready")
     h.create_generic_record(
-        cli, defs, "project:finding", subject="fx-finding",
+        cli, defs, "aff:finding", subject="fx-finding",
         extra_payload={"claim": "a human must decide", "needs": "human", "effort": EFFORT},
     )
     return store
@@ -88,9 +88,9 @@ def test_prefix_s_opens_a_side_pane_with_the_pane_repo_dashboard_and_a_stepper_t
     titles = ("Gather the inputs", "Shape the store", "Draw the dashboard", "Wire every tmux binding into the popup and the side pane")
     for ordinal, title in enumerate(titles, 1):
         phase = h.create_generic_record(
-            cli, defs, "project:phase", subject=f"sx-{ordinal}", extra_payload={"title": title, "ordinal": ordinal, "effort": EFFORT},
+            cli, defs, "plan:phase", subject=f"sx-{ordinal}", extra_payload={"title": title, "ordinal": ordinal, "effort": EFFORT},
         )
-        h.transition(cli, "project:phase", phase, *{1: ("in_progress", "done"), 2: ("in_progress",)}.get(ordinal, ()))
+        h.transition(cli, "plan:phase", phase, *{1: ("in_progress", "done"), 2: ("in_progress",)}.get(ordinal, ()))
     side = tmux.open_side_pane("main")
 
     def capture() -> str:
@@ -130,17 +130,17 @@ def test_prefix_a_popup_renders_the_pane_repo_dashboard_with_waiting_running_tim
     tmux, seeded, cli, resolved_contract,
 ):
     defs = h.record_defs_by_id(resolved_contract)
-    listed = cli("list", "--type", "project:work-item", "--subject", "fx-running")
+    listed = cli("list", "--type", "plan:work-item", "--subject", "fx-running")
     assert listed.returncode == 0, listed.stdout + listed.stderr
     running = json.loads(listed.stdout)["records"][0]
     _work_item(cli, defs, EFFORT, "fx-waiting", f"depends_on:{running['id']}")
     h.run_cli_48h_ago(
-        seeded, "create", "--type", "project:assignment", "--subject", "fx-running",
+        seeded, "create", "--type", "run:assignment", "--subject", "fx-running",
         "--payload", json.dumps({"work_item": running["subject"], "executor": "sub-fx", "effort": EFFORT}),
-        "--body", h.generic_body(defs["project:assignment"]),
+        "--body", h.generic_body(defs["run:assignment"]),
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="fx-broken",
+        cli, defs, "aff:check-run", subject="fx-broken",
         extra_payload={"method": "check", "result": "fail", "signed_by": "", "revision": "abc1234", "effort": EFFORT},
     )
     tmux.press("A")
@@ -162,12 +162,12 @@ def test_prefix_a_popup_redraws_as_a_task_moves_from_ready_to_running_to_done(tm
     opening = tmux.screen_text(["ready", "title of fx-moving"])
     assert "ready" in opening and "title of fx-moving" in opening, opening[-2000:]
 
-    task = h.transition(cli, "project:work-item", task, "in_progress")
+    task = h.transition(cli, "plan:work-item", task, "in_progress")
     tmux.output = b""
     running = tmux.screen_text(["running"])
     assert "running" in running, running[-2000:]
 
-    h.transition(cli, "project:work-item", task, "done")
+    h.transition(cli, "plan:work-item", task, "done")
     done = _refreshed(tmux, "Done (1)")
     assert "Done (1)" in done, done[-2000:]
     assert len(tmux("list-panes", "-t", "main", "-F", "#{pane_id}").split()) == 1
@@ -177,12 +177,12 @@ def test_prefix_a_popup_detail_screen_follows_a_task_through_its_lifecycle_and_e
     defs = h.record_defs_by_id(resolved_contract)
     task = _work_item(cli, defs, EFFORT, "fx-moving")
     criterion = h.create_generic_record(
-        cli, defs, "project:acceptance", subject="fx-moving",
+        cli, defs, "plan:acceptance", subject="fx-moving",
         extra_payload={"criterion": "unit tests pass", "method": "check", "verify_command": "pytest -q", "effort": EFFORT, "phase": f"{EFFORT}-phase"},
     )
-    listed = cli("list", "--type", "project:work-item", "--subject", "fx-running")
+    listed = cli("list", "--type", "plan:work-item", "--subject", "fx-running")
     assert listed.returncode == 0, listed.stdout + listed.stderr
-    h.transition(cli, "project:work-item", json.loads(listed.stdout)["records"][0], "done")
+    h.transition(cli, "plan:work-item", json.loads(listed.stdout)["records"][0], "done")
     tmux.press("A")
     assert "title of fx-moving" in tmux.screen_text(["title of fx-moving"])
     tmux.output = b""
@@ -190,23 +190,23 @@ def test_prefix_a_popup_detail_screen_follows_a_task_through_its_lifecycle_and_e
     opening = tmux.screen_text(["Acceptance", "unit tests pass", "ready"])
     assert all(n in opening for n in ("Acceptance", "unit tests pass", "ready")), opening[-2000:]
 
-    task = h.transition(cli, "project:work-item", task, "in_progress")
+    task = h.transition(cli, "plan:work-item", task, "in_progress")
     tmux.output = b""
     running = tmux.screen_text(["running"])
     assert "running" in running, running[-2000:]
 
     h.create_generic_record(
-        cli, defs, "project:execution-report", subject="fx-moving",
+        cli, defs, "run:execution-report", subject="fx-moving",
         extra_payload={"work_item": task["subject"], "result": "ok", "verdict": "pass", "revision": "r1"},
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="fx-moving",
+        cli, defs, "aff:check-run", subject="fx-moving",
         extra_payload={"criterion_id": criterion["id"], "method": "check", "result": "pass", "signed_by": "", "revision": "abc1234", "effort": EFFORT},
     )
     checked = _refreshed(tmux, "check passed", "✓ unit tests pass")
     assert all(n in checked for n in ("check passed", "✓ unit tests pass")), checked[-2000:]
 
-    h.transition(cli, "project:work-item", task, "done")
+    h.transition(cli, "plan:work-item", task, "done")
     done = _refreshed(tmux, "done")
     assert "done" in done, done[-2000:]
 
@@ -225,11 +225,11 @@ def test_prefix_a_popup_switches_status_tabs_filters_copies_a_slug_and_opens_a_c
     sha = git(seeded, "rev-parse", "HEAD").stdout.strip()
     shipped = _work_item(cli, defs, EFFORT, "fx-shipped")
     h.create_generic_record(
-        cli, defs, "project:execution-report", subject="fx-shipped",
+        cli, defs, "run:execution-report", subject="fx-shipped",
         extra_payload={"work_item": shipped["subject"], "result": "ok", "verdict": "pass", "revision": sha},
     )
     old = _work_item(cli, defs, EFFORT, "fx-old")
-    h.transition(cli, "project:work-item", old, "in_progress", "done")
+    h.transition(cli, "plan:work-item", old, "in_progress", "done")
     tmux("set-option", "-s", "set-clipboard", "on")
 
     def full_screen(needles: list[str]) -> str:
@@ -304,16 +304,15 @@ def test_prefix_a_popup_switches_status_tabs_filters_copies_a_slug_and_opens_a_c
 def test_prefix_a_popup_keys_only_walks_tabs_phase_sections_phase_detail_and_detail_links_back_with_esc(tmux, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     h.create_generic_record(
-        cli, defs, "project:phase", subject="px-later",
+        cli, defs, "plan:phase", subject="px-later",
         extra_payload={"title": "Phase px-later", "ordinal": 1, "effort": EFFORT},
     )
     rels: list[str] = []
     for name in ("px-first", "px-second"):
         payload = {"title": f"title of {name}", "phase": "px-later", "kind": "deliver", "assignee": "", "effort": EFFORT}
-        args = ["create", "--type", "project:work-item", "--subject", name, "--payload", json.dumps(payload)]
-        for rel in rels:
-            args.extend(["--rel", rel])
-        created = cli(*args, "--body", h.generic_body(defs["project:work-item"]))
+        h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
+        args = ["create", "--type", "plan:work-item", "--subject", name, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+        created = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
         assert created.returncode == 0, created.stdout + created.stderr
         rels = [f"depends_on:{json.loads(created.stdout)['record']['id']}"]
 
@@ -389,11 +388,11 @@ def test_prefix_a_popup_walks_six_tabs_counts_needs_you_reads_unsigned_checks_re
 ):
     defs = h.record_defs_by_id(resolved_contract)
     criterion = h.create_generic_record(
-        cli, defs, "project:acceptance", subject="fx-ready",
+        cli, defs, "plan:acceptance", subject="fx-ready",
         extra_payload={"criterion": "pages render on mobile", "method": "manual", "verify_command": "", "effort": EFFORT, "phase": f"{EFFORT}-phase"},
     )
     h.create_generic_record(
-        cli, defs, "project:check-run", subject="fx-check",
+        cli, defs, "aff:check-run", subject="fx-check",
         extra_payload={"criterion_id": criterion["id"], "method": "manual", "result": "pass", "signed_by": "", "revision": "abc1234", "effort": EFFORT},
     )
 
@@ -457,7 +456,7 @@ def test_prefix_a_popup_walks_six_tabs_counts_needs_you_reads_unsigned_checks_re
 
 
 def test_status_segment_counts_match_the_seeded_store(home, seeded):
-    env = dict(os.environ, HOME=str(home), ADAPTIVE_ARTIFACTS_BIN=str(AA_ROOT / "bin" / "adaptive-artifacts"))
+    env = dict(os.environ, HOME=str(home), CANON_ROOT=str(CANON_ROOT))
     expected = f"{EFFORT} · 1 running · 1 ready · 1 needs you\n"
     by_arg = subprocess.run([str(STATUS), str(seeded)], capture_output=True, text=True, env=env, timeout=30, input="")
     by_json = subprocess.run(
@@ -474,9 +473,8 @@ def test_status_right_gates_needs_segment_shows_flag_count_when_on(tmux, seeded)
     env = dict(
         os.environ,
         HOME=str(tmux.env["HOME"]),
-        ADAPTIVE_ARTIFACTS_BIN=str(AA_ROOT / "bin" / "adaptive-artifacts"),
+        CANON_ROOT=str(CANON_ROOT),
     )
-    tmux("set-environment", "-g", "ADAPTIVE_ARTIFACTS_BIN", str(AA_ROOT / "bin" / "adaptive-artifacts"))
     direct = subprocess.run(
         [str(STATUS), "--tmux", str(seeded)], capture_output=True, text=True, env=env, timeout=30, input="",
     )
@@ -518,20 +516,20 @@ def test_prefix_a_popup_walks_needs_you_into_task_and_question_details_and_lists
 ):
     defs = h.record_defs_by_id(resolved_contract)
     h.create_generic_record(
-        cli, defs, "project:finding", subject="fx-ready",
+        cli, defs, "aff:finding", subject="fx-ready",
         extra_payload={"claim": "pick the fx-ready rollout", "needs": "human", "effort": EFFORT},
     )
     h.create_generic_record(
-        cli, defs, "project:continuity-question", subject=EFFORT,
+        cli, defs, "plan:continuity-question", subject=EFFORT,
         extra_payload={"blocking": False, "scope": "which store should the dashboard read when the home store and the repo store disagree about every open task quokka"},
     )
     _goal(cli, defs, "donefx")
     phase = h.create_generic_record(
-        cli, defs, "project:phase", subject="donefx-phase", extra_payload={"title": "Phase donefx", "ordinal": 1, "effort": "donefx"},
+        cli, defs, "plan:phase", subject="donefx-phase", extra_payload={"title": "Phase donefx", "ordinal": 1, "effort": "donefx"},
     )
-    h.transition(cli, "project:phase", phase, "in_progress", "done")
+    h.transition(cli, "plan:phase", phase, "in_progress", "done")
     for name in ("dx-first", "dx-second"):
-        h.transition(cli, "project:work-item", _work_item(cli, defs, "donefx", name), "in_progress", "done")
+        h.transition(cli, "plan:work-item", _work_item(cli, defs, "donefx", name), "in_progress", "done")
 
     def press(keys: bytes, *needles: str, absent: tuple[str, ...] = ()) -> str:
         os.write(tmux.client_fd, keys)
@@ -563,7 +561,7 @@ def test_prefix_a_popup_walks_needs_you_into_task_and_question_details_and_lists
     press(b"\x1b", "Needs you 3", absent=("Description",))
     focus_needs()
     press((b"k" if question < linked else b"j") * abs(question - linked))
-    press(b"\r", "question", "project:continuity-question", "quokka", absent=("Needs you 3",))
+    press(b"\r", "question", "plan:continuity-question", "quokka", absent=("Needs you 3",))
     press(b"\x1b", "Needs you 3", absent=("quokka",))
     press(b"\x1b", "Needs you 3")
 

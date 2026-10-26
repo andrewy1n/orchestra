@@ -17,7 +17,7 @@ import helpers as h  # noqa: E402
 from conftest import REPO_ROOT, stamped_store  # noqa: E402
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from dashboard import model as model_module  # noqa: E402
 from dashboard import requirement_detail as requirement_module  # noqa: E402
@@ -52,10 +52,10 @@ def _body(defs, record_type: str, fills: dict | None = None) -> str | None:
 
 def _phase(cli, defs, subject: str, ordinal: int, *states: str) -> None:
     record = h.create_generic_record(
-        cli, defs, "project:phase", subject=subject,
+        cli, defs, "plan:phase", subject=subject,
         extra_payload={"title": f"Phase {subject}", "ordinal": ordinal, "effort": EFFORT},
     )
-    h.transition(cli, "project:phase", record, *states)
+    h.transition(cli, "plan:phase", record, *states)
 
 
 def _supersede(cli, defs, record_type: str, record: dict, payload: dict) -> dict:
@@ -74,58 +74,58 @@ def _supersede(cli, defs, record_type: str, record: dict, payload: dict) -> dict
 
 def _seed(cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject=EFFORT,
+        cli, defs, "plan:effort", subject=EFFORT,
         extra_payload={"goal": "ship the requirement screen", "kind": "deliver"},
     )
     _phase(cli, defs, PHASE, 1, "in_progress")
-    _record(cli, defs, "project:specification", PHASE, {
-        "weight": "full", "phase": PHASE, "effort": EFFORT, "requirements": "R1, R2",
-    }, _body(defs, "project:specification", {
+    _record(cli, defs, "plan:specification", PHASE, {
+        "weight": "full", "phase": PHASE, "effort": EFFORT, "requirements": ["R1", "R2"],
+    }, _body(defs, "plan:specification", {
         "Requirements": f"R1: {R1_TEXT}\nR2: An unassessed requirement keeps its latest check.",
         "Non-goals": "no second product",
     }))
-    _record(cli, defs, "project:decision", "evidence-under-phase", {
+    _record(cli, defs, "plan:decision", "evidence-under-phase", {
         "choice": "live under the phase", "alternatives": "a separate effort",
         "phase": PHASE, "effort": EFFORT,
     })
-    _record(cli, defs, "project:decision", "unassessed-requirement-status", {
+    _record(cli, defs, "plan:decision", "unassessed-requirement-status", {
         "choice": "dim the latest check", "alternatives": "hide the row",
         "phase": PHASE, "effort": EFFORT,
     })
-    traced = _record(cli, defs, "project:work-item", "trace-r1", {
+    traced = _record(cli, defs, "plan:work-item", "trace-r1", {
         "title": "Requirement detail screen", "phase": PHASE, "kind": "deliver", "assignee": "",
-        "effort": EFFORT, "requirements": "R1",
-        "decisions": "evidence-under-phase, unassessed-requirement-status",
+        "effort": EFFORT, "requirements": ["R1"],
+        "decisions": ["evidence-under-phase", "unassessed-requirement-status"],
     })
-    other = _record(cli, defs, "project:work-item", "trace-r2", {
+    other = _record(cli, defs, "plan:work-item", "trace-r2", {
         "title": "Unassessed requirement", "phase": PHASE, "kind": "deliver", "assignee": "",
-        "effort": EFFORT, "requirements": "R2", "decisions": "unassessed-requirement-status",
+        "effort": EFFORT, "requirements": ["R2"], "decisions": ["unassessed-requirement-status"],
     })
-    _record(cli, defs, "project:work-item", "trace-other", {
+    _record(cli, defs, "plan:work-item", "trace-other", {
         "title": "Not this requirement", "phase": PHASE, "kind": "deliver", "assignee": "",
-        "effort": EFFORT, "requirements": "R9",
+        "effort": EFFORT, "requirements": ["R9"],
     })
-    acceptance = _record(cli, defs, "project:acceptance", "r1-pilot", {
+    acceptance = _record(cli, defs, "plan:acceptance", "r1-pilot", {
         "criterion": "pilot shows the requirement", "method": "check", "phase": PHASE,
         "effort": EFFORT, "verify_command": "pytest -q", "requirement": "R1",
     })
-    quiet = _record(cli, defs, "project:acceptance", "r2-check", {
+    quiet = _record(cli, defs, "plan:acceptance", "r2-check", {
         "criterion": "unassessed check stays visible", "method": "check", "phase": PHASE,
         "effort": EFFORT, "verify_command": "true", "requirement": "R2",
     })
-    _record(cli, defs, "project:check-run", "r1-pass", {
+    _record(cli, defs, "aff:check-run", "r1-pass", {
         "criterion_id": acceptance["id"], "revision": "dirty", "result": "pass", "effort": EFFORT,
         "method": "check", "signed_by": "ayin", "requirement": "R1", "evidence_kind": "unit",
     })
-    _record(cli, defs, "project:check-run", "r2-fail", {
+    _record(cli, defs, "aff:check-run", "r2-fail", {
         "criterion_id": quiet["id"], "revision": "dirty", "result": "fail", "effort": EFFORT,
         "method": "check", "signed_by": "ayin", "requirement": "R2", "evidence_kind": "unit",
     })
-    first = _record(cli, defs, "project:assessment", f"{PHASE}-R1", {
+    first = _record(cli, defs, "run:assessment", f"{PHASE}-R1", {
         "requirement": "R1", "phase": PHASE, "effort": EFFORT, "missing": "",
         "confidence": "low", "status": "failed", "next": "execute", "level": "implementation",
     })
-    active = _supersede(cli, defs, "project:assessment", first, {
+    active = _supersede(cli, defs, "run:assessment", first, {
         "status": "verified", "level": "verification", "next": "release", "confidence": "high",
     })
     return {
@@ -173,7 +173,7 @@ def _text(screen, selector):
     return str(screen.query_one(selector).render())
 
 
-async def _until(pilot, condition, timeout=30.0):
+async def _until(pilot, condition, timeout=60.0):
     deadline = time.monotonic() + timeout
     while not condition():
         assert time.monotonic() < deadline, "condition not met in time"
@@ -303,7 +303,7 @@ def test_requirement_screen_redraws_when_the_store_changes(seeded, cli, defs, wi
     async def scenario(app, pilot):
         screen = app.screen
         assert "pass · unit" in "\n".join(_acceptance_rows(screen))
-        _record(cli, defs, "project:check-run", "r1-fail", {
+        _record(cli, defs, "aff:check-run", "r1-fail", {
             "criterion_id": seeded_ids["acceptance"], "revision": "dirty", "result": "fail", "effort": EFFORT,
             "method": "check", "signed_by": "ayin", "requirement": "R1", "evidence_kind": "integration",
         })

@@ -18,11 +18,11 @@ _RUNNER_METHODS = frozenset({"tdd", "check"})
 
 _FORBIDDEN_FIXTURE = """\
 ```bash
-adaptive-artifacts create --type project:check-run \\
+canon create --type aff:check-run \\
   --subject "<task-slug>" \\
   --payload '{"criterion_id":"<acceptance-id>","result":"pass","method":"tdd","runner":"aff"}'
 
-adaptive-artifacts create --type project:check-run \\
+canon create --type aff:check-run \\
   --subject "<phase-slug>-suite" \\
   --payload '{"criterion_id":"<phase-slug>-suite","result":"pass","method":"check","evidence_kind":"integration","runner":"aff"}'
 ```
@@ -34,7 +34,7 @@ orchestra check --acceptance <acceptance-id> --cwd <repo-or-worktree>
 
 orchestra suite record --phase "<phase-slug>" --effort "<focus>" --cwd <phase-worktree>
 
-adaptive-artifacts create --type project:check-run \\
+canon create --type aff:check-run \\
   --subject "<task-slug>" \\
   --payload '{"criterion_id":"<acceptance-id>","result":"pass","method":"manual","signed_by":""}'
 
@@ -64,12 +64,12 @@ def aff_runner_create_violations(text: str) -> list[str]:
     for inv in extract_invocations(text):
         if inv.get("subcommand") != "create":
             continue
-        if inv.get("type") != "project:check-run":
+        if inv.get("type") != "aff:check-run":
             continue
         payload = _payload(inv)
         method = payload.get("method")
         if method in _RUNNER_METHODS and payload.get("runner") == "aff":
-            found.append(f"create project:check-run method {method} runner aff")
+            found.append(f"create aff:check-run method {method} runner aff")
     return found
 
 

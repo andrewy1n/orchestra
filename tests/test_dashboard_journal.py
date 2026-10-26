@@ -18,7 +18,7 @@ from conftest import REPO_ROOT, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard import app as app_module  # noqa: E402
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import journal  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import pager  # noqa: E402
@@ -30,24 +30,24 @@ from test_dashboard_pager import STUB_PAGER  # noqa: E402
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject=effort,
+        cli, defs, "plan:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": kind},
     )
 
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> None:
     record = h.create_generic_record(
-        cli, defs, "project:phase", subject=subject,
+        cli, defs, "plan:phase", subject=subject,
         extra_payload={"title": f"title of {subject}", "ordinal": ordinal, "effort": effort},
     )
-    h.transition(cli, "project:phase", record, *states)
+    h.transition(cli, "plan:phase", record, *states)
 
 
 def _work_item(cli, defs, effort: str, subject: str, phase: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": "", "effort": effort}
     result = cli(
-        "create", "--type", "project:work-item", "--subject", subject,
-        "--payload", json.dumps(payload), "--body", h.generic_body(defs["project:work-item"]),
+        "create", "--type", "plan:work-item", "--subject", subject,
+        "--payload", json.dumps(payload), "--body", h.generic_body(defs["plan:work-item"]),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
@@ -80,48 +80,48 @@ def _seed_journal(cli, defs, effort: str = "alpha") -> None:
     task_b = _work_item(cli, defs, effort, "j-task-b", "p-two")
     _work_item(cli, defs, effort, "j-task-c", "p-one")
     assignment = _record(
-        cli, defs, "project:assignment", "j-task-a",
+        cli, defs, "run:assignment", "j-task-a",
         {"work_item": task_a["subject"], "executor": "sub", "effort": effort},
         "## Orientation\n\ndo the work",
     )
     _record(
-        cli, defs, "project:assignment-amendment", "j-task-a",
+        cli, defs, "run:assignment-amendment", "j-task-a",
         {"assignment": assignment["subject"], "effort": effort},
         "## Correction\n\nuse the other path\n\nmore detail",
     )
     _record(
-        cli, defs, "project:failed-attempt", "j-task-a",
+        cli, defs, "run:failed-attempt", "j-task-a",
         {"attempted_action": "tried x", "retry_when": "later", "effort": effort},
     )
     _record(
-        cli, defs, "project:investigation-observation", "j-task-c",
+        cli, defs, "aff:investigation-observation", "j-task-c",
         {"what_was_observed": "saw y", "effort": effort, "environment": "e", "observed_time": "t", "source": "s"},
     )
     _record(
-        cli, defs, "project:investigation-observation", "j-task-b",
+        cli, defs, "aff:investigation-observation", "j-task-b",
         {"what_was_observed": "closed by finding", "effort": effort, "environment": "e", "observed_time": "t", "source": "s"},
     )
     _record(
-        cli, defs, "project:finding", "j-task-b",
+        cli, defs, "aff:finding", "j-task-b",
         {"claim": "root cause", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
     )
     _record(
-        cli, defs, "project:finding", "j-task-a",
+        cli, defs, "aff:finding", "j-task-a",
         {"claim": "agent claim", "basis": "b", "needs": "agent", "effort": effort, "invalidated_when": "w"},
     )
     _record(
-        cli, defs, "project:continuity-question", effort,
+        cli, defs, "plan:continuity-question", effort,
         {"owner": "user", "blocking": True, "scope": "plan-review:p-one"},
     )
     open_q = _record(
-        cli, defs, "project:continuity-question", effort,
+        cli, defs, "plan:continuity-question", effort,
         {"owner": "user", "blocking": False, "scope": "effort-wide"},
     )
     answered = _record(
-        cli, defs, "project:continuity-question", effort,
+        cli, defs, "plan:continuity-question", effort,
         {"owner": "user", "blocking": True, "scope": "old-scope"},
     )
-    h.transition(cli, "project:continuity-question", answered, "answered")
+    h.transition(cli, "plan:continuity-question", answered, "answered")
     del open_q, task_b
 
 
@@ -133,35 +133,35 @@ def test_journal_load_returns_types_phase_and_one_line_text(store, cli, defs):
         by_type.setdefault(item.record_type, []).append(item)
 
     assert set(by_type) == set(journal.JOURNAL_TYPES)
-    attempt = by_type["project:failed-attempt"][0]
+    attempt = by_type["run:failed-attempt"][0]
     assert attempt.phase == "p-one"
     assert attempt.text == "tried x · don't retry · retry when later"
     assert attempt.open is False
 
-    obs_open = next(i for i in by_type["project:investigation-observation"] if i.subject == "j-task-c")
+    obs_open = next(i for i in by_type["aff:investigation-observation"] if i.subject == "j-task-c")
     assert obs_open.text == "saw y"
     assert obs_open.open is True
-    obs_closed = next(i for i in by_type["project:investigation-observation"] if i.subject == "j-task-b")
+    obs_closed = next(i for i in by_type["aff:investigation-observation"] if i.subject == "j-task-b")
     assert obs_closed.open is False
 
-    human = next(i for i in by_type["project:finding"] if i.subject == "j-task-b")
+    human = next(i for i in by_type["aff:finding"] if i.subject == "j-task-b")
     assert human.text == "root cause · needs human"
     assert human.open is True
-    agent = next(i for i in by_type["project:finding"] if i.subject == "j-task-a")
+    agent = next(i for i in by_type["aff:finding"] if i.subject == "j-task-a")
     assert agent.open is False
 
-    plan = next(i for i in by_type["project:continuity-question"] if i.phase == "p-one")
+    plan = next(i for i in by_type["plan:continuity-question"] if i.phase == "p-one")
     assert "title of p-one" in plan.text
     assert "plan-review:" not in plan.text
     assert plan.open is True
 
-    effort_q = next(i for i in by_type["project:continuity-question"] if i.phase is None and "effort-wide" in i.text)
+    effort_q = next(i for i in by_type["plan:continuity-question"] if i.phase is None and "effort-wide" in i.text)
     assert effort_q.open is True
-    answered = next(i for i in by_type["project:continuity-question"] if "old-scope" in i.text)
+    answered = next(i for i in by_type["plan:continuity-question"] if "old-scope" in i.text)
     assert answered.open is False
     assert "answered" in answered.text
 
-    amendment = by_type["project:assignment-amendment"][0]
+    amendment = by_type["run:assignment-amendment"][0]
     assert amendment.phase == "p-one"
     assert amendment.text.startswith("use the other path")
     assert "j-task-a" in amendment.text
@@ -173,19 +173,19 @@ def test_journal_order_open_first_newest_first(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     _work_item(cli, defs, "alpha", "j-task", "p-one")
     older = h.run_cli_48h_ago(
-        store, "create", "--type", "project:continuity-question", "--subject", "alpha",
+        store, "create", "--type", "plan:continuity-question", "--subject", "alpha",
         "--payload", json.dumps({"owner": "user", "blocking": True, "scope": "older-open"}),
     )
     newer = _record(
-        cli, defs, "project:continuity-question", "alpha",
+        cli, defs, "plan:continuity-question", "alpha",
         {"owner": "user", "blocking": False, "scope": "newer-open"},
     )
     _record(
-        cli, defs, "project:failed-attempt", "j-task",
+        cli, defs, "run:failed-attempt", "j-task",
         {"attempted_action": "tried", "retry_when": "", "effort": "alpha"},
     )
     finding = _record(
-        cli, defs, "project:finding", "j-task",
+        cli, defs, "aff:finding", "j-task",
         {"claim": "needs a human", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"},
     )
     items = journal.load_journal(_target(store), "alpha")
@@ -206,7 +206,7 @@ def test_journal_scope_phase_plus_effort_only_open_questions(store, cli, defs):
     scoped = journal.journal_scope(items, "p-one")
     phases = {i.phase for i in scoped}
     assert phases <= {"p-one", None}
-    assert any(i.phase is None and i.open and i.record_type == "project:continuity-question" for i in scoped)
+    assert any(i.phase is None and i.open and i.record_type == "plan:continuity-question" for i in scoped)
     assert all(i.phase == "p-one" or (i.phase is None and i.open) for i in scoped)
     assert not any(i.phase == "p-two" for i in scoped)
     assert not any(i.phase is None and not i.open for i in scoped)
@@ -241,13 +241,13 @@ def test_journal_load_drops_orphan_effort_when_several_goals(store, cli, defs):
     }
     # Create via CLI then strip effort is hard; create with effort then correct away is also hard.
     # Seed a record whose payload.effort is beta while subject is j-task — filtered out of alpha.
-    _record(cli, defs, "project:failed-attempt", "j-task", {**orphan, "effort": "beta"})
+    _record(cli, defs, "run:failed-attempt", "j-task", {**orphan, "effort": "beta"})
     _record(
-        cli, defs, "project:failed-attempt", "j-task",
+        cli, defs, "run:failed-attempt", "j-task",
         {"attempted_action": "alpha try", "retry_when": "", "effort": "alpha"},
     )
     items = journal.load_journal(_target(store), "alpha")
-    attempts = [i for i in items if i.record_type == "project:failed-attempt"]
+    attempts = [i for i in items if i.record_type == "run:failed-attempt"]
     assert [i.text for i in attempts] == ["alpha try · don't retry"]
 
 
@@ -258,19 +258,19 @@ LONG_ORIENTATION = "## Orientation\n\n" + "\n".join(f"orientation line {i}" for 
 
 def _build_agent_task(store, cli, defs):
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="alpha",
+        cli, defs, "plan:effort", subject="alpha",
         extra_payload={"goal": "ship it", "kind": "deliver"},
     )
     _phase(cli, defs, "alpha", "agent-phase", 1, "in_progress")
     task = _work_item(cli, defs, "alpha", "agent-task", "agent-phase")
-    h.transition(cli, "project:work-item", task, "in_progress")
+    h.transition(cli, "plan:work-item", task, "in_progress")
     older = h.run_cli_48h_ago(
-        store, "create", "--type", "project:assignment", "--subject", "agent-task-old",
+        store, "create", "--type", "run:assignment", "--subject", "agent-task-old",
         "--body", "## Orientation\n\nold orientation\n\n## Requirements\n\nold rest",
         "--payload", json.dumps({"work_item": task["subject"], "executor": "old-exec", "effort": "alpha"}),
     )
     h.run_cli_48h_ago(
-        store, "create", "--type", "project:execution-report", "--subject", "agent-task-old-report",
+        store, "create", "--type", "run:execution-report", "--subject", "agent-task-old-report",
         "--body", "old report body",
         "--payload", json.dumps({
             "work_item": task["subject"], "assignment": older["subject"],
@@ -278,17 +278,17 @@ def _build_agent_task(store, cli, defs):
         }),
     )
     assignment = _record(
-        cli, defs, "project:assignment", "agent-task",
+        cli, defs, "run:assignment", "agent-task",
         {"work_item": task["subject"], "executor": "new-exec", "effort": "alpha"},
         LONG_ORIENTATION + "\n\n## Requirements\n\nR8: collapse to eight lines.",
     )
     _record(
-        cli, defs, "project:assignment-amendment", "agent-task",
+        cli, defs, "run:assignment-amendment", "agent-task",
         {"assignment": "agent-task", "effort": "alpha"},
         "## Correction\n\n" + "\n".join(f"correction line {i}" for i in range(1, 11)),
     )
     _record(
-        cli, defs, "project:execution-report", "agent-task",
+        cli, defs, "run:execution-report", "agent-task",
         {
             "work_item": task["subject"], "assignment": assignment["subject"],
             "result": "ok", "verdict": "pass", "revision": "r2",
@@ -444,11 +444,11 @@ def _seed_repair_panel(cli, defs, effort: str = "alpha", open_count: int = 2) ->
     created = []
     for index in range(open_count):
         created.append(_record(
-            cli, defs, "project:continuity-question", effort,
+            cli, defs, "plan:continuity-question", effort,
             {"owner": "user", "blocking": False, "scope": f"open-{index}"},
         ))
     _record(
-        cli, defs, "project:finding", "jp-task",
+        cli, defs, "aff:finding", "jp-task",
         {"claim": "phase finding", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
     )
     return created
@@ -475,7 +475,7 @@ def test_journal_panel_shows_for_evaluate_kind(store, cli, defs):
     _phase(cli, defs, "eval", "e-phase", 1, "in_progress")
     _work_item(cli, defs, "eval", "e-task", "e-phase")
     _record(
-        cli, defs, "project:finding", "e-task",
+        cli, defs, "aff:finding", "e-task",
         {"claim": "eval claim", "basis": "b", "needs": "human", "effort": "eval", "invalidated_when": "w"},
     )
 
@@ -492,7 +492,7 @@ def test_journal_panel_hidden_for_deliver_kind(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     _work_item(cli, defs, "alpha", "jp-task", "p-one")
     _record(
-        cli, defs, "project:finding", "jp-task",
+        cli, defs, "aff:finding", "jp-task",
         {"claim": "hidden claim", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"},
     )
 
@@ -508,7 +508,7 @@ def test_journal_panel_hidden_for_incidental_kind(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     _work_item(cli, defs, "alpha", "jp-task", "p-one")
     _record(
-        cli, defs, "project:finding", "jp-task",
+        cli, defs, "aff:finding", "jp-task",
         {"claim": "incidental claim", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"},
     )
 
@@ -523,7 +523,7 @@ def test_journal_panel_hidden_when_repair_has_no_open_items(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     _work_item(cli, defs, "alpha", "jp-task", "p-one")
     _record(
-        cli, defs, "project:failed-attempt", "jp-task",
+        cli, defs, "run:failed-attempt", "jp-task",
         {"attempted_action": "tried", "retry_when": "", "effort": "alpha"},
     )
 
@@ -538,7 +538,7 @@ def test_journal_panel_caps_five_rows_plus_more(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     for index in range(7):
         _record(
-            cli, defs, "project:continuity-question", "alpha",
+            cli, defs, "plan:continuity-question", "alpha",
             {"owner": "user", "blocking": False, "scope": f"many-{index}"},
         )
 
@@ -555,7 +555,7 @@ def test_journal_panel_caps_five_rows_plus_more(store, cli, defs):
 def test_journal_panel_scoped_to_selected_phase(store, cli, defs):
     _seed_repair_panel(cli, defs, open_count=1)
     _record(
-        cli, defs, "project:continuity-question", "alpha",
+        cli, defs, "plan:continuity-question", "alpha",
         {"owner": "user", "blocking": True, "scope": "plan-review:p-two"},
     )
 
@@ -775,13 +775,13 @@ def test_journal_detail_opens_on_enter_with_type_subject_payload_body(journal_ui
         await pilot.press("J")
         screen = await _journal_shown(app, pilot)
         table = screen.query_one("#journal-table", JournalTable)
-        amendment = next(i for i in table.items if i.record_type == "project:assignment-amendment")
+        amendment = next(i for i in table.items if i.record_type == "run:assignment-amendment")
         table.move_cursor(row=table._keys.index(amendment.id))
         await pilot.pause()
         await pilot.press("enter")
         detail = await _record_shown(app, pilot)
         assert detail.record is not None
-        assert detail.record["record_type"] == "project:assignment-amendment"
+        assert detail.record["record_type"] == "run:assignment-amendment"
         assert "j-task-a" in (detail.record.get("subject") or "")
         assert "assignment" in model._payload(detail.record)
         body_src = detail.query_one("#record-body Markdown").source
@@ -800,7 +800,7 @@ def test_journal_detail_enter_on_linked_task_opens_task_detail(journal_ui):
         await pilot.press("J")
         screen = await _journal_shown(app, pilot)
         table = screen.query_one("#journal-table", JournalTable)
-        linked = next(i for i in table.items if i.task_id and i.record_type == "project:failed-attempt")
+        linked = next(i for i in table.items if i.task_id and i.record_type == "run:failed-attempt")
         table.move_cursor(row=table._keys.index(linked.id))
         await pilot.pause()
         await pilot.press("enter")

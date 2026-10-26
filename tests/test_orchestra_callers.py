@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from conftest import AFFIDAVIT_ROOT
 from orchestra import close_batch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,21 +80,21 @@ def _open_store_bindings(tree: ast.AST) -> tuple[set[str], set[str]]:
     aliases: set[str] = set()
     modules: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "adaptive_artifacts.project":
+        if isinstance(node, ast.ImportFrom) and node.module == "canon.project":
             for alias in node.names:
                 if alias.name == "open_store":
                     aliases.add(alias.asname or alias.name)
                 elif alias.name == "*":
                     aliases.add("open_store")
-        elif isinstance(node, ast.ImportFrom) and node.module == "adaptive_artifacts":
+        elif isinstance(node, ast.ImportFrom) and node.module == "canon":
             for alias in node.names:
                 if alias.name == "project":
                     modules.add(alias.asname or alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name == "adaptive_artifacts.project":
+                if alias.name == "canon.project":
                     modules.add(alias.asname or alias.name)
-                elif alias.name == "adaptive_artifacts":
+                elif alias.name == "canon":
                     bound = alias.asname or alias.name
                     modules.add(f"{bound}.project")
     return aliases, modules
@@ -162,7 +163,7 @@ def _module(name: str):
     try:
         return importlib.import_module(name)
     except ImportError:
-        fallback = Path.home() / "affidavit"
+        fallback = AFFIDAVIT_ROOT
         if (fallback / "affidavit" / "__init__.py").is_file() and str(fallback) not in sys.path:
             sys.path.insert(0, str(fallback))
         try:
@@ -306,7 +307,7 @@ def _oracle_request() -> dict:
         "payload": {
             "method": "tdd",
             "effort": "effort-1",
-            "test_ids": "tests/test_oracle_probe.py::test_expected_behavior",
+            "test_ids": ["tests/test_oracle_probe.py::test_expected_behavior"],
             "oracle_hashes": f"tests/test_oracle_probe.py:sha256:{digest}",
         },
     }
@@ -386,17 +387,17 @@ def _normalize_dep(spec: str) -> str:
 
 
 def test_r1():
-    """R1: modules under orchestra/ open the store with adaptive_artifacts.project.open_store."""
+    """R1: modules under orchestra/ open the store with canon.project.open_store."""
     offenders, callers = _store_access(ROOT / "orchestra")
     assert not offenders, "orchestra opens the store another way: " + "; ".join(offenders)
-    assert callers, "no orchestra module calls adaptive_artifacts.project.open_store"
+    assert callers, "no orchestra module calls canon.project.open_store"
 
 
 def test_r2():
-    """R2: modules under dashboard/ open the store with adaptive_artifacts.project.open_store."""
+    """R2: modules under dashboard/ open the store with canon.project.open_store."""
     offenders, callers = _store_access(ROOT / "dashboard")
     assert not offenders, "dashboard opens the store another way: " + "; ".join(offenders)
-    assert callers, "no dashboard module calls adaptive_artifacts.project.open_store"
+    assert callers, "no dashboard module calls canon.project.open_store"
 
 
 def test_r3():
@@ -502,7 +503,7 @@ def test_r9(tmp_path, monkeypatch):
 
 
 def test_r10():
-    """R10: pyproject.toml declares a dependency on adaptive-artifacts."""
+    """R10: pyproject.toml declares a dependency on canon."""
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     names = _dependency_names(text)
-    assert "adaptive-artifacts" in names, f"project.dependencies={names!r}"
+    assert "canon" in names, f"project.dependencies={names!r}"

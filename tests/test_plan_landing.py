@@ -48,7 +48,7 @@ def test_plan_review_stays_closed_until_landing_is_present():
     flat = _flat(text)
     gate = "Do not open the plan-review question until those are present"
     # Final plan-review create (step 10), not the earlier next:plan re-open example.
-    question_at = flat.rindex("adaptive-artifacts create --type project:continuity-question")
+    question_at = flat.rindex("canon create --type plan:continuity-question")
     gate_at = flat.rindex(gate)
     assert gate_at < question_at
     window = flat[gate_at:question_at]

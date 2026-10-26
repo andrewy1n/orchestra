@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from adaptive_artifacts.contract import ContractError
-from adaptive_artifacts.project import StoreBindingError, open_store
-from adaptive_artifacts.store import StoreError
-from adaptive_artifacts.validation import ValidationError
+from canon.project import StoreBindingError, open_store
+from canon.store import StoreError
+from canon.validation import ValidationError
 
 __all__ = [
     "StoreBindingError",
@@ -44,7 +43,6 @@ def create_record(
     record_type: str,
     subject: str,
     payload: dict[str, Any],
-    rels: list[str] | None = None,
     body: str | None = None,
 ) -> dict[str, Any]:
     project = open_store(root)
@@ -53,8 +51,7 @@ def create_record(
             record_type=record_type,
             subject=subject,
             payload=payload,
-            rels=rels,
             body=body,
         )
-    except (StoreError, ContractError, ValidationError) as exc:
+    except (StoreError, ValidationError) as exc:
         raise RuntimeError(str(exc)) from exc

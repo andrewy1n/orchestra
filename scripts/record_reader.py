@@ -8,27 +8,24 @@ import subprocess
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 
-from adaptive_artifacts.project import open_store
-from adaptive_artifacts.store import StoreError
+from canon.project import open_store
+from canon.store import StoreError
 
-DEFAULT_TYPES = tuple(
-    f"project:{name}"
-    for name in (
-        "acceptance",
-        "active-goal",
-        "assignment",
-        "assignment-amendment",
-        "check-run",
-        "constraint",
-        "continuity-question",
-        "current-position",
-        "decision",
-        "execution-report",
-        "finding",
-        "investigation-observation",
-        "phase",
-        "work-item",
-    )
+DEFAULT_TYPES = (
+    "plan:acceptance",
+    "plan:effort",
+    "run:assignment",
+    "run:assignment-amendment",
+    "aff:check-run",
+    "plan:constraint",
+    "plan:continuity-question",
+    "plan:position",
+    "plan:decision",
+    "run:execution-report",
+    "aff:finding",
+    "aff:investigation-observation",
+    "plan:phase",
+    "plan:work-item",
 )
 
 

@@ -3,12 +3,12 @@
 Use from plan-phase steps 5–7. List the phase specification first:
 
 ```bash
-adaptive-artifacts list --type project:specification --where payload.phase=<current-phase-slug> --state active
+canon list --type plan:specification --where payload.phase=<current-phase-slug> --state active
 ```
 
 For every `deliver` / `repair` task, payloads include `requirements`
 (atomic ids this task implements) and each acceptance's `requirement`
-(exactly one of those ids). When a `project:specification` exists,
+(exactly one of those ids). When a `plan:specification` exists,
 take id texts from it and set `decisions` to the decision subjects the
 task follows. When none exists, write the id'd list in `## Description`
 and still stamp `requirements` / `requirement`. Omit `criterion` (or
@@ -16,60 +16,34 @@ and still stamp `requirements` / `requirement`. Omit `criterion` (or
 `<task-slug>-<short suffix>`. `incidental` may omit `requirements`,
 `decisions`, and `requirement`.
 
-## Independent task (bundle)
+## Independent task
 
-Bodies inline since `capture` takes JSON, not a file flag; use plain
-`create --body-file` if Description needs more than a few lines.
+Use `create --body-file` when Description needs more than a few lines.
 
 ```bash
-adaptive-artifacts capture --bundle project:specified-work --records "$(cat <<'EOF'
-[
-  {
-    "type": "project:work-item",
-    "subject": "<task-slug>",
-    "payload": {
-      "title": "<short title>",
-      "phase": "<current-phase-slug>",
-      "kind": "deliver",
-      "assignee": "",
-      "effort": "<effort-slug>",
-      "executor": "subagent",
-      "size": "M",
-      "estimate_minutes": 10,
-      "requirements": "R1,R2",
-      "decisions": "<decision-a>,<decision-b>"
-    },
-    "body": "## Description\n\nR1: <observable behavior>\nR2: <observable behavior>\n\n## Approach\n\n<implementation recipe>"
-  },
-  {
-    "type": "project:acceptance",
-    "subject": "<task-slug>",
-    "payload": {
-      "method": "tdd",
-      "phase": "<current-phase-slug>",
-      "effort": "<effort-slug>",
-      "verify_command": "<command that proves R1>",
-      "requirement": "R1"
-    }
-  },
-  {
-    "type": "project:acceptance",
-    "subject": "<task-slug>-perf",
-    "payload": {
-      "method": "check",
-      "phase": "<current-phase-slug>",
-      "effort": "<effort-slug>",
-      "verify_command": "<command that proves R2>",
-      "requirement": "R2"
-    }
-  }
-]
-EOF
-)"
+canon create --type plan:work-item \
+  --subject "<task-slug>" \
+  --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
+  --body "## Description
+
+R1: <observable behavior>
+R2: <observable behavior>
+
+## Approach
+
+<implementation recipe>"
+
+canon create --type plan:acceptance \
+  --subject "<task-slug>" \
+  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R1>","requirement":"R1"}'
+
+canon create --type plan:acceptance \
+  --subject "<task-slug>-perf" \
+  --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R2>","requirement":"R2"}'
 ```
 
-Drop the second acceptance when there is only one requirement — the
-bundle needs at least one `work-item` and one `acceptance`.
+Drop the second acceptance when there is only one requirement. A task
+needs at least one `plan:work-item` and one `plan:acceptance`.
 
 Set `kind` and `phase` from the effort (`phase` is `""` when
 incidental). Set `executor` to `inline` or `subagent` (same within a
@@ -85,15 +59,15 @@ literal command (empty string for `manual` with no script).
 - `incidental` — one observable done-check; usually `check` or
   `manual`; exempt from atomic requirement ids.
 
-## Dependent task (create + --rel)
+## Dependent task
 
-Needs another same-phase task done first — create outside the bundle
-so the dependency edge can be set at creation:
+Needs another same-phase task done first. Create the prerequisite
+first, then list its subject in `depends_on`:
 
 ```bash
-adaptive-artifacts create --type project:work-item \
+canon create --type plan:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":"R1,R2","decisions":"<decision-a>,<decision-b>"}' \
+  --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -101,18 +75,17 @@ R2: <observable behavior>
 
 ## Approach
 
-<implementation recipe>" \
-  --rel depends_on:<prerequisite-work-item-id>
+<implementation recipe>"
 
-adaptive-artifacts create --type project:acceptance \
+canon create --type plan:acceptance \
   --subject "<task-slug>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R1"}'
 ```
 
 ## Verification task
 
-For a `deliver` or `repair` phase, create last, with one
-`--rel depends_on:` per other work-item. One thin acceptance per exit
+For a `deliver` or `repair` phase, create last, with every other
+work-item subject in `depends_on`. One thin acceptance per exit
 criterion (suffixed subjects), each naming exactly one requirement id.
 Acceptances come from phase exit criteria; at least one is an
 integration check through the real entry point. A `verify_command`
@@ -121,9 +94,9 @@ without a `-k` filter for this phase, is not a verification
 acceptance.
 
 ```bash
-adaptive-artifacts create --type project:work-item \
+canon create --type plan:work-item \
   --subject "verify-<phase-slug>" \
-  --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":"R1,R2","decisions":"<decision-a>,<decision-b>"}' \
+  --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
 
 Prove the phase exit criteria hold together: run the integration
@@ -131,18 +104,23 @@ check through the real entry point, then every other phase check.
 
 ## Approach
 
-<implementation recipe>" \
-  --rel depends_on:<work-item-id-1> \
-  --rel depends_on:<work-item-id-2>
+<implementation recipe>"
 
-adaptive-artifacts create --type project:acceptance \
+canon create --type plan:acceptance \
   --subject "verify-<phase-slug>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R1"}'
 
-adaptive-artifacts create --type project:acceptance \
+canon create --type plan:acceptance \
   --subject "verify-<phase-slug>-<criterion-suffix>" \
   --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R2"}'
 ```
 
 A task that later joins the phase gets a `depends_on` edge on the
-verification task (`update --rel`) so the gate still waits for it.
+verification task so the gate still waits for it. Update the
+verification work-item's `depends_on` with the full array:
+
+```bash
+canon update --type plan:work-item --id <verification-work-item-id> \
+  --expected-revision <revision> \
+  --payload '{"depends_on":["<task-slug-1>","<task-slug-2>","<new-task-slug>"]}'
+```

@@ -319,10 +319,9 @@ class BaseAdapter:
                 relative = f"skills/{child.name}"
                 if is_allowed(relative, self.provider.id):
                     entries[relative] = child
-        for name in ("contract", "agents"):
-            candidate = source / name
-            if candidate.exists() and is_allowed(name, self.provider.id):
-                entries[name] = candidate
+        candidate = source / "agents"
+        if candidate.exists() and is_allowed("agents", self.provider.id):
+            entries["agents"] = candidate
         host = source / "hosts" / self.provider.id
         relative_host = f"hosts/{self.provider.id}"
         if host.exists() and is_allowed(relative_host, self.provider.id):

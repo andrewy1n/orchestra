@@ -19,7 +19,7 @@ ENSURE_STORE = REPO_ROOT / "skills" / "ensure-store.md"
 
 _TYPES = "feat|fix|docs|refactor|test|chore"
 _SUBJECT = re.compile(rf"^(?:{_TYPES})\([^()\s]+\): \S.*$")
-_FENCE_RE = re.compile(r"```(?:bash)?\n(.*?)```", re.DOTALL)
+_FENCE_RE = re.compile(r"```[a-z]*\n(.*?)```", re.DOTALL)
 _HEREDOC_COMMIT_RE = re.compile(
     r"""commit -m "\$\(cat <<'EOF'\n(.*?)\nEOF\n\)\"""",
     re.DOTALL,

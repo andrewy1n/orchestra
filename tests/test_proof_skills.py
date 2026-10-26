@@ -1,4 +1,4 @@
-"""Skills require ## Proof and assemble project:proof-packet at phase end."""
+"""Skills require ## Proof and assemble run:proof-packet at phase end."""
 
 from __future__ import annotations
 
@@ -24,13 +24,13 @@ def test_settle_and_plan_require_proof_section():
 
 def test_execute_assembles_proof_packet():
     text = _text("execute-phase")
-    assert "project:proof-packet" in text
+    assert "run:proof-packet" in text
     assert "## Look" in text and "## Machine" in text
     assert "## Attention" in text and "## Diff" in text
     assert "Refuse to say the phase is complete without" in text or "Refuse to say the phase is complete" in text
     assert "proof-packet" in text
     assert "payload.revision" in text
-    assert "Call the phase complete" in text or "without a `project:proof-packet`" in text
+    assert "Call the phase complete" in text or "without a `run:proof-packet`" in text
 
 
 def test_execute_aff_hooks_and_incidental():

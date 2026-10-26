@@ -1,7 +1,7 @@
 {
   "name": "orchestra",
   "version": "0.2.0",
-  "description": "Software-engineering skills: classify work (deliver/repair/evaluate/incidental), plan a focused effort as records, execute with parallel subagents, verify with checks or findings. Requires the adaptive-artifacts plugin.",
+  "description": "Software-engineering skills: classify work (deliver/repair/evaluate/incidental), plan a focused effort as records, execute with parallel subagents, verify with checks or findings.",
   "author": {
     "name": "andrewy1n",
     "email": "andrewyingo@gmail.com"
@@ -16,8 +16,5 @@
     "tdd",
     "artifacts",
     "verification"
-  ],
-  "dependencies": [
-    "adaptive-artifacts"
   ]
 }

@@ -10,7 +10,7 @@ from session_aggregate import aggregate
 TARGETS = ROOT / "skills" / "analyze-sessions" / "targets.md"
 HEADINGS = [
     "orchestra skills",
-    "artifact contract",
+    "record schemas",
     "CLAUDE.md and steering files",
     "automated checks",
 ]

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, git, resolve_contract, run_cli
+from conftest import CANON_ROOT, REPO_ROOT, git, resolve_contract, run_cli
 
 from orchestra.policy import dirty_pass_decision, manual_refuse_message, map_process_outcome
 
@@ -18,8 +18,7 @@ BIN = REPO_ROOT / "bin" / "orchestra"
 
 def _cli_env() -> dict[str, str]:
     env = dict(os.environ)
-    env["ADAPTIVE_ARTIFACTS_ROOT"] = str(AA_ROOT)
-    env["ADAPTIVE_ARTIFACTS_BIN"] = str(AA_ROOT / "tools" / "artifacts.py")
+    env["CANON_ROOT"] = str(CANON_ROOT)
     return env
 
 
@@ -56,7 +55,7 @@ def _seed_acceptance(
     h.create_generic_record(
         cli,
         defs,
-        "project:phase",
+        "plan:phase",
         subject=phase_subject,
         extra_payload={"title": phase_subject, "ordinal": 1, "effort": "workflow-loop"},
     )
@@ -71,7 +70,7 @@ def _seed_acceptance(
     result = cli(
         "create",
         "--type",
-        "project:acceptance",
+        "plan:acceptance",
         "--subject",
         subject,
         "--payload",
@@ -85,7 +84,7 @@ def _seed_acceptance(
 
 
 def _list_check_runs(store: Path) -> list[dict]:
-    result = run_cli("list", "--type", "project:check-run", root=store)
+    result = run_cli("list", "--type", "aff:check-run", root=store)
     assert result.returncode == 0, result.stdout + result.stderr
     payload = json.loads(result.stdout)
     return payload.get("records") or payload.get("items") or []
@@ -181,7 +180,7 @@ def test_cli_integration_pass_check_run(store, cli, resolved_contract):
     assert record["payload"]["exit_code"] == 0
     assert "duration_s" in record["payload"]
     assert "output_sha256" in record["payload"]
-    assert acceptance["id"] in (record.get("relationships") or {}).get("informed_by", [])
+    assert acceptance["id"] in record["payload"].get("informed_by", [])
 
 
 def test_check_writes_runner_orchestra(store, cli, resolved_contract):
@@ -346,7 +345,7 @@ def test_failing_node_ids_recorded_on_pytest_assertion_fail(
     assert record["payload"]["result"] == "fail"
     raw = record["payload"].get("failing_node_ids")
     assert raw, "expected failing_node_ids on fail"
-    nodes = json.loads(raw)
+    nodes = raw
     assert isinstance(nodes, list) and nodes
     assert any("test_oracle_assertion_red_probe" in n for n in nodes)
 
@@ -440,7 +439,7 @@ def test_check_store_cwd_discovery_ignores_worktree(
     assert result.returncode == 0, result.stdout + result.stderr
     record = _parse_check_stdout(result)
     assert record["payload"]["revision"] == worktree_head
-    stored = run_cli("get", "--type", "project:check-run", "--id", record["id"], root=store)
+    stored = run_cli("get", "--type", "aff:check-run", "--id", record["id"], root=store)
     assert stored.returncode == 0, stored.stdout + stored.stderr
 
 

@@ -85,7 +85,7 @@ def _record_summary(ids, by_id, ambiguous):
         "efforts": sorted({r["effort"] for r in matched if r["effort"]}),
         "tasks": sorted({
             r["subject"] for r in matched
-            if r["record_type"] == "project:work-item" and r["subject"]
+            if r["record_type"] == "plan:work-item" and r["subject"]
         }),
         "ambiguous": len(ambiguous),
     }

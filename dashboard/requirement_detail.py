@@ -14,7 +14,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, OptionList, Static
 from textual.widgets.option_list import Option
 
-from adaptive_artifacts.project import Project
+from canon.project import Project
 from dashboard import model
 from dashboard.display import STATUS_GLYPH, clip, palette_from
 from dashboard.task_detail import TaskDetailScreen

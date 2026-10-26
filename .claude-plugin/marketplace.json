@@ -4,20 +4,12 @@
     "name": "andrewy1n",
     "email": "andrewyingo@gmail.com"
   },
-  "description": "Software-engineering loop on adaptive-artifacts: classify, plan focused effort, execute, verify. Lists both orchestra and adaptive-artifacts.",
+  "description": "Software-engineering loop on canon: classify, plan focused effort, execute, verify.",
   "plugins": [
     {
       "name": "orchestra",
       "source": "./",
-      "description": "Classify work, plan a focused effort as records, execute with parallel subagents, verify with checks or findings. Requires adaptive-artifacts."
-    },
-    {
-      "name": "adaptive-artifacts",
-      "source": {
-        "source": "github",
-        "repo": "andrewy1n/adaptive-artifacts"
-      },
-      "description": "Experimental 0.1.0. Agent-designed project artifacts: contracts, typed records, derived views, session hooks."
+      "description": "Classify work, plan a focused effort as records, execute with parallel subagents, verify with checks or findings."
     }
   ]
 }

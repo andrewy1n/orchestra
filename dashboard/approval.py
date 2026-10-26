@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from adaptive_artifacts.project import Project
-from adaptive_artifacts.store import StoreError
+from canon.project import Project
+from canon.store import StoreError
 from dashboard.dismiss import (
     ACTION_ACCEPT,
     ACTION_APPROVE,
@@ -151,7 +151,7 @@ def _check_evidence(
     acceptance_text = ""
     criterion_id = str(payload.get("criterion_id") or "").strip()
     if criterion_id:
-        acceptance = _cli_json(target, "get", "--id", criterion_id, "--type", "project:acceptance")
+        acceptance = _cli_json(target, "get", "--id", criterion_id, "--type", "plan:acceptance")
         if acceptance:
             acceptance_text = str(_payload(acceptance).get("criterion") or "").strip()
             if acceptance.get("body"):
@@ -217,11 +217,11 @@ def evidence_panels(
 ) -> list[tuple[str, str]]:
     """Kind-specific evidence panels for the Needs-you detail screen."""
     if item.kind == "needs-human":
-        record = _cli_json(target, "get", "--id", item.id, "--type", item.record_type or "project:finding")
+        record = _cli_json(target, "get", "--id", item.id, "--type", item.record_type or "aff:finding")
         return _finding_evidence(item, record)
     if item.kind == "unsigned-check":
         record = _cli_json(
-            target, "get", "--id", item.id, "--type", item.record_type or "project:check-run",
+            target, "get", "--id", item.id, "--type", item.record_type or "aff:check-run",
         )
         return _check_evidence(target, item, root, record)
     if item.kind in ("blocking-question", "open-question"):

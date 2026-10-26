@@ -11,13 +11,13 @@ Fix goes in `skills/*/SKILL.md`.
 - Skill never invoked (`skills[].name`, `skills[].sessions`, `sessions`) -> fix its trigger description or remove it, because no session reaches it.
 - Not for: tool errors that repeat across all skills.
 
-## artifact contract
+## record schemas
 
-Fix goes in `contract/project-design.json` and the record shapes.
+Fix goes in the schema modules (`orchestra/schemas/*.json`) and the record shapes.
 
 - High share of records tied to several efforts (`caveats.ambiguous_share`, `caveats.ambiguous_records`) -> add a session id or effort field to the record shape, because the join cannot pick one effort.
 - Records that cannot attach to any session (`caveats.attached_records`, `caveats.bad_input_lines`) -> fix the record shape so it carries a join key, because the reader drops or miscounts them.
-- Effort with high shared cost and few exclusive sessions (`efforts.*.cost_shared`, `efforts.*.cost_exclusive`, `efforts.*.exclusive_sessions`) -> split the effort subject in the contract, because sessions overlap and cost is double counted.
+- Effort with high shared cost and few exclusive sessions (`efforts.*.cost_shared`, `efforts.*.cost_exclusive`, `efforts.*.exclusive_sessions`) -> split the effort subject in the store, because sessions overlap and cost is double counted.
 - Not for: a single noisy session in `outliers.cost`.
 
 ## CLAUDE.md and steering files

@@ -46,7 +46,7 @@ HOOKS_PAYLOAD = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "adaptive-artifacts hook-start",
+                        "command": "orchestra hook-start",
                         "timeout": 30,
                     }
                 ]
@@ -57,7 +57,7 @@ HOOKS_PAYLOAD = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "adaptive-artifacts hook-stop",
+                        "command": "orchestra hook-stop",
                         "timeout": 30,
                     }
                 ]
@@ -93,8 +93,6 @@ def source(tmp_path: Path) -> Path:
         reference = skill_dir / "references"
         reference.mkdir()
         (reference / "ensure-store.md").write_text("shared\n", encoding="utf-8")
-    (root / "contract").mkdir()
-    (root / "contract" / "project-design.json").write_text("{}\n", encoding="utf-8")
     (root / "agents").mkdir()
     (root / "agents" / "se-reviewer.md").write_text("reviewer\n", encoding="utf-8")
     (root / "agents" / "reviewer.prompt.md").write_text(
@@ -333,10 +331,10 @@ def test_flags_help_lists_documented_flags(source, project):
 
 
 def test_allowlist_declares_documented_roots():
-    assert COPY_ALLOWLIST == ("skills", "contract", "agents")
+    assert COPY_ALLOWLIST == ("skills", "agents")
     assert DENY_ROOTS == (".artifacts", ".worktrees", "dashboard")
     assert is_allowed("skills/init/SKILL.md", "claude")
-    assert is_allowed("contract", "claude")
+    assert not is_allowed("contract", "claude")
     assert is_allowed("agents/se-reviewer.md", "claude")
     assert is_allowed("hosts/claude/plugin.json", "claude")
 
@@ -359,7 +357,7 @@ def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, proje
         assert not any(part in DENY_ROOTS for part in parts), relative
         assert parts[0] == ".claude", relative
 
-    assert (home / ".claude" / "contract" / "project-design.json").is_file()
+    assert not (home / ".claude" / "contract").exists()
     assert (home / ".claude" / "agents" / "se-reviewer.md").is_file()
     assert (home / ".claude" / "hooks" / "hooks.json").is_file()
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
@@ -513,7 +511,7 @@ def test_native_claude_installs_skills_agent_and_hooks(source, project, home):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".claude"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
-    assert (root / "contract" / "project-design.json").is_file()
+    assert not (root / "contract").exists()
     assert (root / "hooks" / "hooks.json").is_file()
     meta, body = frontmatter(root / "agents" / "se-reviewer.md")
     canonical = load_agent(source)
@@ -618,8 +616,8 @@ def test_hooks_are_installed_for_every_supported_native_host(source, project, ho
     assert proc.returncode == 0, proc.stdout + proc.stderr
     settings = json.loads((home / ".claude" / "settings.json").read_text())
     assert hook_commands(settings) == [
-        "adaptive-artifacts hook-start",
-        "adaptive-artifacts hook-stop",
+        "orchestra hook-start",
+        "orchestra hook-stop",
     ]
     assert (home / ".cursor" / "hooks.json").is_file()
     assert (home / ".opencode" / "plugins" / "plugin.js").is_file()

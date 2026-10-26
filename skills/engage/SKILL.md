@@ -6,7 +6,7 @@ description: >-
   settle-phase, plan-phase, execute-phase, or verify-work. Use when
   the user has work but has not named a phase skill, when the work is
   a bug, one-off, integration test, or metric comparison, or when a
-  project:feedback record names an effort to specify.
+  plan:feedback record names an effort to specify.
 ---
 
 # Engage
@@ -19,9 +19,9 @@ Do not plan, implement, or verify in this skill.
 
 ## Steps
 
-1. If views were not injected and `.artifacts/` exists:
-   `adaptive-artifacts hook-start`. Read handoff. List live goal
-   subjects with their goal text and phases.
+1. If the handoff was not injected and `.artifacts/` exists, run
+   `orchestra handoff`. Read it. List live goal subjects with their
+   goal text and phases.
 2. Classify the ask (first match):
 
    | The text is about… | kind |
@@ -62,16 +62,16 @@ Do not plan, implement, or verify in this skill.
    Needs-you clears). Do not refuse to route solely because those items
    are open — list and remind, then continue routing.
 
-   Also list open `project:backlog-item` records for this focus
+   Also list open `plan:backlog-item` records for this focus
    (`payload.status=open`). Show them; do not treat them as Needs-you.
 
 ```bash
-adaptive-artifacts list --type project:backlog-item \
+canon list --type plan:backlog-item \
   --where payload.effort=<focus> --where payload.status=open --state active
 ```
 
    - **Park** — user defers work for later: create a backlog-item
-     (parent writer). Do not create `project:feedback` for parking.
+     (parent writer). Do not create `plan:feedback` for parking.
    - **Promote** — user starts a parked item: supersede to
      `promoted` (optional `phase`), then route to `settle-phase` with
      `phase: new` for structured work, or an incidental work-item
@@ -80,30 +80,30 @@ adaptive-artifacts list --type project:backlog-item \
    - **Dismiss** — user drops a parked item: supersede to `dismissed`.
 
 ```bash
-adaptive-artifacts create --type project:backlog-item \
+canon create --type plan:backlog-item \
   --subject "<item-slug>" \
   --payload '{"effort":"<effort-slug>","status":"open","source":"<optional>"}' \
   --body "<parked description>"
 
-adaptive-artifacts supersede --type project:backlog-item --id <id> \
+canon supersede --type plan:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
 
-adaptive-artifacts supersede --type project:backlog-item --id <id> \
+canon supersede --type plan:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```
 
 4. Records?
 
-   A `project:feedback` record is new intent for the effort it names
+   A `plan:feedback` record is new intent for the effort it names
    (`payload.effort`). Route it through `settle-phase` (specify), even
    when tasks for that effort already exist. Do not collect feedback.
-   Do not create `project:feedback`. Feedback is not a standing
-   backlog; use `project:backlog-item` to park deferred work.
+   Do not create `plan:feedback`. Feedback is not a standing
+   backlog; use `plan:backlog-item` to park deferred work.
 
 ```bash
-adaptive-artifacts list --type project:feedback
+canon list --type plan:feedback
 ```
 
    - `incidental` + fits this chat + not interrupting another live
@@ -140,4 +140,4 @@ adaptive-artifacts list --type project:feedback
 - Supersede another subject’s goal or position
 - Write work-items here
 - Add a fifth kind
-- Collect feedback or create `project:feedback`
+- Collect feedback or create `plan:feedback`

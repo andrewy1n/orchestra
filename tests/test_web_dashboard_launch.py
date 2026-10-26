@@ -20,11 +20,13 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import pytest
+
 import helpers as h
-from conftest import AA_ROOT, REPO_ROOT, run_cli
+from conftest import CANON_ROOT, REPO_ROOT, run_cli, uv_script_source_ok
 
 sys.path.insert(0, str(REPO_ROOT))
-from adaptive_artifacts.project import open_store  # noqa: E402
+from canon.project import open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
@@ -40,7 +42,6 @@ def _free_port() -> int:
 def _env(home: Path | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-    env.setdefault("ADAPTIVE_ARTIFACTS_BIN", str(AA_ROOT / "bin" / "adaptive-artifacts"))
     if home is not None:
         env["HOME"] = str(home)
     return env
@@ -163,6 +164,10 @@ def _get(port: int, path: str) -> tuple[int, str, bytes]:
     assert False, f"GET {path} on 127.0.0.1:{port} failed: {last}"
 
 
+@pytest.mark.skipif(
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r1_loopback(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
@@ -207,26 +212,26 @@ def _snapshot(target):
     return loaded
 
 
+@pytest.mark.skipif(
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     defs = h.record_defs_by_id(resolved_contract)
     home = tmp_path / "home"
     home_store = home / ".artifacts" / store.name
     shutil.copytree(store / ".artifacts", home_store)
-    meta_path = home_store / "meta.json"
-    meta = json.loads(meta_path.read_text())
-    meta["contract"] = str((home_store / "resolved-contract.json").resolve())
-    meta_path.write_text(json.dumps(meta))
     h.create_generic_record(
-        cli, defs, "project:active-goal", subject="local-effort",
+        cli, defs, "plan:effort", subject="local-effort",
         extra_payload={"goal": "local goal", "kind": "deliver"},
     )
 
     def home_cli(*args):
-        return run_cli("--store", str(home_store), "--contract", meta["contract"], *args, root=store)
+        return run_cli("--store", str(home_store), *args, root=store)
 
     h.create_generic_record(
-        home_cli, defs, "project:active-goal", subject="global-effort",
+        home_cli, defs, "plan:effort", subject="global-effort",
         extra_payload={"goal": "global goal", "kind": "deliver"},
     )
     (store / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))
@@ -250,6 +255,10 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
         _stop(proc)
 
 
+@pytest.mark.skipif(
+    not uv_script_source_ok(SCRIPT.parent.parent, "../../adaptive-artifacts"),
+    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
+)
 def test_r30_serves_build(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     page = (

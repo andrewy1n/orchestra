@@ -1,12 +1,12 @@
 /**
  * orchestra hook adapter for OpenCode.
  *
- * View injection is an optimization, not a correctness requirement: the
- * orchestra skills call `adaptive-artifacts hook-start` themselves when views
- * were not injected. This plugin makes that automatic on OpenCode.
+ * Handoff injection is an optimization, not a correctness requirement: the
+ * orchestra skills call `orchestra hook-start` themselves when the handoff
+ * was not injected. This plugin makes that automatic on OpenCode.
  *
  * It is optional. Delete this file (or install on a host without plugin
- * support) and the skills still work; `adaptive-artifacts hook-stop` just
+ * support) and the skills still work; `orchestra hook-stop` just
  * runs later or from the skill.
  */
 
@@ -15,7 +15,7 @@ import { Plugin } from "@opencode/plugin"
 
 function runHook(command, cwd) {
   return new Promise((resolve) => {
-    const child = spawn("adaptive-artifacts", [command], {
+    const child = spawn("orchestra", [command], {
       cwd,
       stdio: "ignore",
     })

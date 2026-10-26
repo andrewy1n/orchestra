@@ -1,7 +1,7 @@
 """The CLI exposes the reviewer, suite, and store surface skills call by name.
 
-A skill must be able to run the phase-end reviewer, the contracted suite, and
-store-bound ``adaptive-artifacts`` calls with ``orchestra`` alone. These tests
+A skill must be able to run the phase-end reviewer, the configured suite, and
+store-bound ``canon`` calls with ``orchestra`` alone. These tests
 pin the subcommands the skills name and smoke-call each one without touching a
 real store or tmux server.
 """
@@ -48,13 +48,13 @@ def completed(args: tuple[str, ...], stdout: str = "", returncode: int = 0):
 
 
 def make_design(path: Path, suite_policy: dict | None = None) -> Path:
-    design = path / ".artifacts" / "project-design.json"
-    design.parent.mkdir(parents=True, exist_ok=True)
-    body: dict = {"project": "orchestra"}
+    config = path / ".artifacts" / "config.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    settings: dict = {}
     if suite_policy is not None:
-        body["phase_gate"] = {"suite": suite_policy}
-    design.write_text(json.dumps(body))
-    return design
+        settings["run"] = {"phase_gate": {"suite": suite_policy}}
+    config.write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": settings}))
+    return config
 
 
 def finished_suite(work: Path, phase: str = "p1", exit_code: str = "0") -> None:
@@ -85,24 +85,24 @@ def test_top_level_help_names_the_runtime_surface(capsys):
 def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     records = [
         {
-            "record_type": "project:work-item",
+            "record_type": "plan:work-item",
             "subject": "tabs",
             "title": "Implement tabs",
             "body": "Implement the status tabs.",
         },
         {
-            "record_type": "project:acceptance",
+            "record_type": "plan:acceptance",
             "subject": "tabs",
             "criterion": "Tabs render both filters.",
         },
         {
-            "record_type": "project:requirement",
+            "record_type": "plan:requirement",
             "subject": "R6",
             "title": "R6",
             "body": "Name commands, not modules.",
         },
         {
-            "record_type": "project:execution-report",
+            "record_type": "run:execution-report",
             "subject": "tabs",
             "body": "SECRET_BUILDER_NOTES",
         },
@@ -253,7 +253,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
     assert json.loads(out)["record"]["id"] == "rec-suite"
     assert len(recorded) == 1
     created = recorded[0]
-    assert created["record_type"] == "project:check-run"
+    assert created["record_type"] == "aff:check-run"
     assert created["subject"] == "p1-suite"
     assert created["payload"]["result"] == "pass"
     assert created["payload"]["effort"] == "packaging"
@@ -263,13 +263,9 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
 
 def _store_repo(tmp_path: Path) -> Path:
     repo = make_git_repo()
-    design = make_design(repo)
-    (repo / ".artifacts" / "meta.json").write_text(
-        json.dumps({"contract": "project-design.json"})
-    )
+    assert make_design(repo).is_file()
     git(repo, "add", ".artifacts")
     git(repo, "commit", "-qm", "store")
-    assert design.is_file()
     return repo
 
 
@@ -278,11 +274,10 @@ def test_store_path_smoke(tmp_path, capsys):
     code, out, err = run(["store", "path", "--cwd", str(repo), "--json"], capsys)
     assert code == 0, err
     target = json.loads(out)
-    from adaptive_artifacts.project import open_store
+    from canon.project import open_store
 
     project = open_store(repo)
     assert target["store"] == str(project.store_path)
-    assert target["contract"] == (str(project.contract_path) if project.contract_path else None)
     assert target["binding"] == project.binding.location
 
     code, out, err = run(["store", "path", "--cwd", str(repo)], capsys)
@@ -301,27 +296,24 @@ def test_store_run_smoke(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
     code, out, err = run(
-        ["store", "run", "--cwd", str(repo), "--", "list", "--type", "project:work-item"],
+        ["store", "run", "--cwd", str(repo), "--", "list", "--type", "plan:work-item"],
         capsys,
     )
     assert code == 0, err
     assert json.loads(out) == {"records": [], "count": 0}
-    assert calls == ["project:work-item"]
+    assert calls == ["plan:work-item"]
 
 
-def test_store_ensure_writes_a_design_once(tmp_path, capsys):
-    fresh = tmp_path / "fresh"
-    fresh.mkdir()
+def test_store_ensure_creates_a_canon_store_once(tmp_path, capsys):
+    fresh = make_git_repo()
     code, out, err = run(["store", "ensure", "--cwd", str(fresh), "--json"], capsys)
     assert code == 0, err
     ensured = json.loads(out)
-    design = Path(ensured["design"])
-    assert design.is_file()
-    assert design.read_text() == (REPO_ROOT / "contract" / "project-design.json").read_text()
-    assert ensured["store_ready"] is False
+    config = Path(ensured["store"]) / "config.json"
+    assert ensured["store_ready"] is True
+    assert set(json.loads(config.read_text())["schemas"]) == {"plan", "run", "aff"}
 
-    # An existing design is never overwritten.
-    design.write_text('{"project": "someone-else"}')
+    config.write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {"kept": True}}))
     code, out, err = run(["store", "ensure", "--cwd", str(fresh)], capsys)
     assert code == 0, err
-    assert design.read_text() == '{"project": "someone-else"}'
+    assert json.loads(config.read_text())["settings"] == {"kept": True}

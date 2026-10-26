@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 
 #: Top-level roots copied for every provider.
-COPY_ALLOWLIST: tuple[str, ...] = ("skills", "contract", "agents")
+COPY_ALLOWLIST: tuple[str, ...] = ("skills", "agents")
 
 #: Per-provider roots, relative to the repository root.
 HOST_ALLOWLIST = "hosts/{provider}"

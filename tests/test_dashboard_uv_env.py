@@ -1,6 +1,6 @@
 """The dashboard process uses the orchestra environment.
 
-Modules under dashboard/ open the store with adaptive_artifacts.project.open_store.
+Modules under dashboard/ open the store with canon.project.open_store.
 The process dashboard/bin/dashboard and dashboard/bin/web start must be able to
 import that module, because one orchestra dependency covers both trees.
 """
@@ -19,7 +19,7 @@ LAUNCHERS = (
 )
 
 # Loaded into the launched interpreter via PYTHONPATH. Records whether that
-# process can import adaptive_artifacts.project, then exits before the app.
+# process can import canon.project, then exits before the app.
 _PROBE = """
 import json
 import os
@@ -45,7 +45,7 @@ argv0 = sys.argv[0] if sys.argv else ""
 if result and _entry(argv0):
     error = ""
     try:
-        import adaptive_artifacts.project
+        import canon.project
         ok = True
     except Exception as exc:
         ok = False
@@ -66,7 +66,7 @@ def _repo(path: Path) -> None:
         raise RuntimeError(init.stderr.strip() or "git init failed")
     store = path / ".artifacts"
     store.mkdir()
-    (store / "meta.json").write_text(json.dumps({"store_version": 1}), encoding="utf-8")
+    (store / "config.json").write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {}}), encoding="utf-8")
 
 
 def _probe(path: Path) -> None:
@@ -78,7 +78,7 @@ def _launch(launcher: Path, repo: Path, probe: Path, result: Path) -> subprocess
     env = os.environ.copy()
     env.pop("SE_WORKFLOW_UV", None)
     env.pop("ARTIFACTS_STORE", None)
-    env["PYTHONPATH"] = str(probe)
+    env["PYTHONPATH"] = os.pathsep.join([str(probe), os.environ.get("PYTHONPATH", "")])
     env["DASHBOARD_IMPORT_RESULT"] = str(result)
     return subprocess.run(
         [str(launcher)],
@@ -92,7 +92,7 @@ def _launch(launcher: Path, repo: Path, probe: Path, result: Path) -> subprocess
 
 
 def test_r2(tmp_path: Path) -> None:
-    """R2: the process the dashboard launchers start can import adaptive_artifacts.project."""
+    """R2: the process the dashboard launchers start can import canon.project."""
     repo = tmp_path / "repo"
     probe = tmp_path / "probe"
     _repo(repo)
@@ -116,5 +116,5 @@ def test_r2(tmp_path: Path) -> None:
             )
 
     assert not failures, (
-        "dashboard process cannot import adaptive_artifacts.project\n" + "\n".join(failures)
+        "dashboard process cannot import canon.project\n" + "\n".join(failures)
     )

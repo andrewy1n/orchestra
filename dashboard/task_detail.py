@@ -18,7 +18,7 @@ from textual.widget import Widget
 from textual.widgets import Collapsible, Footer, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
-from adaptive_artifacts.project import Project
+from canon.project import Project
 from dashboard import model, pager
 from dashboard.commit import CommitScreen, latest_revision, load_commit, stat_width
 from dashboard.display import (
@@ -70,19 +70,15 @@ def link_options(detail: model.TaskDetail, colors: dict[str, str]) -> list[Optio
         text = Text("Phase: ", no_wrap=True, overflow="ellipsis")
         text.append(detail.phase, style=colors["muted"])
         options.append(Option(text, id=f"{PHASE_PREFIX}{detail.phase}"))
-    for requirement in _csv(detail.requirements):
+    for requirement in detail.requirements:
         text = Text("Requirement: ", no_wrap=True, overflow="ellipsis")
         text.append(requirement, style=colors["muted"])
         options.append(Option(text, id=f"req:{detail.phase}:{requirement}"))
-    for decision in _csv(detail.decisions):
+    for decision in detail.decisions:
         text = Text("Decision: ", no_wrap=True, overflow="ellipsis")
         text.append(decision, style=colors["muted"])
         options.append(Option(text, id=f"decision:{decision}"))
     return options
-
-
-def _csv(value: str) -> list[str]:
-    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 def description_source(body: str) -> str:

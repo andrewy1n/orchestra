@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "adaptive-artifacts hook-start",
+            "command": "orchestra hook-start --claude",
             "timeout": 30
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "adaptive-artifacts hook-stop",
+            "command": "orchestra hook-stop --claude",
             "timeout": 30
           }
         ]

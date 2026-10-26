@@ -15,8 +15,8 @@ pane_key="$(option @dashboard-pane-key S)"
 tmux bind-key "$popup_key" display-popup -E -w 80% -h 80% -d '#{pane_current_path}' "\"$launcher\""
 tmux bind-key "$pane_key" split-window -h -l 40% -c '#{pane_current_path}' "\"$launcher\""
 
-if [ -n "${ADAPTIVE_ARTIFACTS_BIN:-}" ]; then
-  tmux set-environment -g ADAPTIVE_ARTIFACTS_BIN "$ADAPTIVE_ARTIFACTS_BIN"
+if [ -n "${CANON_BIN:-}" ]; then
+  tmux set-environment -g CANON_BIN "$CANON_BIN"
 fi
 
 if [ "$(option @dashboard-status-right on)" = "on" ]; then

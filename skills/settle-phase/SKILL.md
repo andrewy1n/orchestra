@@ -12,7 +12,7 @@ description: >-
 
 # Settle the phase
 
-Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+Requires `canon` and `orchestra` on PATH and a live
 orchestra store. If missing,
 follow [ensure-store.md](references/ensure-store.md). Follow
 [kinds-and-focus.md](references/kinds-and-focus.md). Parent session writes
@@ -45,7 +45,7 @@ Do not write work-items, acceptance, or code in this skill. That is
 
 ## Steps
 
-1. `adaptive-artifacts hook-start` if views were not injected. Resolve
+1. Run `orchestra handoff` if the handoff was not injected. Resolve
    **focus**, **kind**, and the **phase** slug. If `engage` handed off
    `phase: new`, create the phase now (`init` step 7 shape) with
    `ordinal` = highest existing ordinal for this effort plus one, and
@@ -54,17 +54,17 @@ Do not write work-items, acceptance, or code in this skill. That is
    `milestone` to that subject. Create a milestone first only when the
    user wants a new time-bounded group for several phases.
 2. Read context: the phase record, milestones for this effort,
-   `project:decision` and `project:constraint` records with
+   `plan:decision` and `plan:constraint` records with
    `payload.effort` = focus, assessments for this phase, and the code
    paths the phase names or implies.
 
 ```bash
-adaptive-artifacts list --type project:milestone --where payload.effort=<focus> --state active --full
-adaptive-artifacts list --type project:decision --where payload.effort=<focus> --state active --full
-adaptive-artifacts list --type project:constraint --where payload.effort=<focus> --state active --full
-adaptive-artifacts list --type project:assessment --where payload.phase=<phase-slug> --state active --full
-adaptive-artifacts list --type project:specification --where payload.phase=<phase-slug> --state active --full
-adaptive-artifacts list --type project:design --where payload.phase=<phase-slug> --state active --full
+canon list --type plan:milestone --where payload.effort=<focus> --state active --full
+canon list --type plan:decision --where payload.effort=<focus> --state active --full
+canon list --type plan:constraint --where payload.effort=<focus> --state active --full
+canon list --type run:assessment --where payload.phase=<phase-slug> --state active --full
+canon list --type plan:specification --where payload.phase=<phase-slug> --state active --full
+canon list --type plan:design --where payload.phase=<phase-slug> --state active --full
 ```
 
 3. Present two or three approaches. For each: a short name, what it
@@ -75,8 +75,8 @@ adaptive-artifacts list --type project:design --where payload.phase=<phase-slug>
    questions are fine; do not reopen choices already recorded as
    decisions unless the user asks.
 5. Structured work only, before the decision step: one
-   `project:specification` whose subject is the phase slug. Payload
-   `requirements` is the stable ids comma-separated (`R1,R2`). The
+   `plan:specification` whose subject is the phase slug. Payload
+   `requirements` is the stable ids as a JSON array (`["R1","R2"]`). The
    Requirements section uses those ids (`R1: …`). Each id is
    **atomic**: one observable behavior per id. Split compound
    surfaces (commas, "and"-bundled checks, multiple observables under
@@ -88,16 +88,16 @@ adaptive-artifacts list --type project:design --where payload.phase=<phase-slug>
    create it when the phase has none.
 
 ```bash
-adaptive-artifacts create --type project:specification \
+canon create --type plan:specification \
   --subject "<phase-slug>" \
-  --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":"R1,R2"}' \
+  --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":["R1","R2"]}' \
   --body-file "<specification-body.md>"
 ```
 
 ```bash
-adaptive-artifacts supersede --type project:specification --id <specification-id> \
+canon supersede --type plan:specification --id <specification-id> \
   --expected-revision <revision> \
-  --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":"R1,R2"}' \
+  --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":["R1","R2"]}' \
   --body-file "<specification-body.md>"
 ```
 
@@ -113,7 +113,7 @@ adaptive-artifacts supersede --type project:specification --id <specification-id
    the strongest case for the best rejected option, not a strawman:
 
 ```bash
-adaptive-artifacts create --type project:decision \
+canon create --type plan:decision \
   --subject "<decision-topic>" \
   --payload '{"choice":"<adopted>","alternatives":"<rejected options>","phase":"<phase-slug>","effort":"<effort-slug>"}' \
   --body-file "<decision-body.md>"
@@ -124,15 +124,15 @@ adaptive-artifacts create --type project:decision \
    supersedes it instead of adding a second:
 
 ```bash
-adaptive-artifacts supersede --type project:decision --id <decision-id> \
+canon supersede --type plan:decision --id <decision-id> \
   --expected-revision <revision> \
   --payload '{"choice":"<adopted>","alternatives":"<rejected options>","phase":"<phase-slug>","effort":"<effort-slug>"}' \
   --body-file "<decision-body.md>"
 ```
 
 7. Structured work only, after the decisions, so `decisions` names
-   them: one `project:design` with the same subject (the phase slug).
-   Payload `decisions` is those decision subjects, comma-separated.
+   them: one `plan:design` with the same subject (the phase slug).
+   Payload `decisions` is those decision subjects as a JSON array.
    Required sections hold the architecture, interfaces, invariants,
    assumptions, tradeoffs, and risks. Decisions remain the choices a
    later reader would re-open. When an assessment for this phase has
@@ -141,16 +141,16 @@ adaptive-artifacts supersede --type project:decision --id <decision-id> \
    phase has none.
 
 ```bash
-adaptive-artifacts create --type project:design \
+canon create --type plan:design \
   --subject "<phase-slug>" \
-  --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":"<decision-subject>,<decision-subject>"}' \
+  --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":["<decision-subject>","<decision-subject>"]}' \
   --body-file "<design-body.md>"
 ```
 
 ```bash
-adaptive-artifacts supersede --type project:design --id <design-id> \
+canon supersede --type plan:design --id <design-id> \
   --expected-revision <revision> \
-  --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":"<decision-subject>,<decision-subject>"}' \
+  --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":["<decision-subject>","<decision-subject>"]}' \
   --body-file "<design-body.md>"
 ```
 
@@ -164,7 +164,7 @@ adaptive-artifacts supersede --type project:design --id <design-id> \
    transition:
 
 ```bash
-adaptive-artifacts update --type project:phase --id <phase-id> \
+canon update --type plan:phase --id <phase-id> \
   --expected-revision <revision> --body-file "<phase-body.md>"
 ```
 
@@ -182,7 +182,7 @@ adaptive-artifacts update --type project:phase --id <phase-id> \
    planning, open a continuity-question on the focus:
 
 ```bash
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"<who answers>","blocking":true,"scope":"<what it blocks>"}'
 ```
@@ -191,11 +191,11 @@ adaptive-artifacts create --type project:continuity-question \
    Needs-you clears):
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
-10. Regenerate views and `adaptive-artifacts validate`. Show the user
+10. Run `canon validate`. Show the user
     the specification, the design, the decisions, and the phase
     approach. Next is `plan-phase` for this phase, including after a
     `next` `design` supersede.

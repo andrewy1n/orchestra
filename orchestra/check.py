@@ -11,10 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from adaptive_artifacts.contract import ContractError
-from adaptive_artifacts.project import StoreBindingError, open_store
-from adaptive_artifacts.store import StoreError
-from adaptive_artifacts.validation import ValidationError
+from canon.project import StoreBindingError, open_store
+from canon.store import StoreError
+from canon.validation import ValidationError
 from orchestra.policy import (
     dirty_pass_decision,
     manual_refuse_message,
@@ -154,7 +153,7 @@ def run_check(
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     try:
-        acceptance = project.get(acceptance_id, "project:acceptance")
+        acceptance = project.get(acceptance_id, "plan:acceptance")
     except StoreError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
@@ -230,21 +229,21 @@ def run_check(
     if result == "fail":
         failing_nodes = parse_failing_node_ids(output)
         if failing_nodes:
-            check_payload["failing_node_ids"] = json.dumps(failing_nodes)
+            check_payload["failing_node_ids"] = list(failing_nodes)
 
-    rels = [f"informed_by:{acceptance['id']}"]
+    informed_by = [acceptance["id"]]
     if execution_report:
-        rels.append(f"informed_by:{execution_report}")
+        informed_by.append(execution_report)
+    check_payload["informed_by"] = informed_by
 
     try:
         record = project.create(
-            record_type="project:check-run",
+            record_type="aff:check-run",
             subject=acceptance.get("subject") or acceptance["id"],
             payload=check_payload,
-            rels=rels,
             body=_body_tail(output),
         )
-    except (StoreError, ContractError, ValidationError, OSError) as exc:
+    except (StoreError, ValidationError, OSError) as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     cli_exit = {"pass": 0, "fail": 1, "blocked": 2}[result]

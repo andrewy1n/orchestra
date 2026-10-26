@@ -17,29 +17,29 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Input, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
-from adaptive_artifacts.project import Project
+from canon.project import Project
 from dashboard import model
 from dashboard import pager
 from dashboard.display import REDRAW_SECONDS, clip, palette_from, relative_time
 from dashboard.task_detail import TaskDetailScreen
 
 JOURNAL_TYPES = (
-    "project:failed-attempt",
-    "project:investigation-observation",
-    "project:finding",
-    "project:continuity-question",
-    "project:assignment-amendment",
+    "run:failed-attempt",
+    "aff:investigation-observation",
+    "aff:finding",
+    "plan:continuity-question",
+    "run:assignment-amendment",
 )
 PLAN_REVIEW_PREFIX = "plan-review:"
 FINDING_OPEN_STATES = ("asserted", "supported", "disputed")
 KIND_JOURNAL = frozenset({"repair", "evaluate"})
 SEPARATOR_KEY = "__separator__"
 TYPE_LABEL = {
-    "project:failed-attempt": ("✗", "attempt"),
-    "project:investigation-observation": ("◉", "observation"),
-    "project:finding": ("!", "finding"),
-    "project:continuity-question": ("?", "question"),
-    "project:assignment-amendment": ("△", "amendment"),
+    "run:failed-attempt": ("✗", "attempt"),
+    "aff:investigation-observation": ("◉", "observation"),
+    "aff:finding": ("!", "finding"),
+    "plan:continuity-question": ("?", "question"),
+    "run:assignment-amendment": ("△", "amendment"),
 }
 
 
@@ -168,28 +168,28 @@ def _assignment_task(
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
-    aliases = model._merge_aliases(model._list(target, "project:active-goal"))
+    aliases = model._merge_aliases(model._list(target, "plan:effort"))
     goals = [
-        record for record in model._list(target, "project:active-goal")
+        record for record in model._list(target, "plan:effort")
         if record.get("lifecycle_state") == "active"
         and model._payload(record).get("status") != "closed"
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
     tasks = model._remapped(
-        _soft_list(target, "project:work-item", where=(f"payload.effort={effort}",)),
+        _soft_list(target, "plan:work-item", where=(f"payload.effort={effort}",)),
         aliases,
     )
     if not tasks:
         tasks = [
-            record for record in model._remapped(_soft_list(target, "project:work-item"), aliases)
+            record for record in model._remapped(_soft_list(target, "plan:work-item"), aliases)
             if model._payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
     phases = model._remapped(
-        _soft_list(target, "project:phase", where=(f"payload.effort={effort}",)),
+        _soft_list(target, "plan:phase", where=(f"payload.effort={effort}",)),
         aliases,
     )
     phase_titles = {
@@ -197,7 +197,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         for record in phases
     }
 
-    assignments_listed = model._remapped(_soft_list(target, "project:assignment"), aliases)
+    assignments_listed = model._remapped(_soft_list(target, "run:assignment"), aliases)
     assignments: dict[str, dict[str, Any]] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
@@ -206,24 +206,24 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     listed: dict[str, list[dict[str, Any]]] = {}
     for record_type in JOURNAL_TYPES:
         raw = model._remapped(_soft_list(target, record_type), aliases)
-        by_subject = record_type == "project:continuity-question"
+        by_subject = record_type == "plan:continuity-question"
         listed[record_type] = [
             record for record in raw
             if record.get("lifecycle_state") not in model.INACTIVE_STATES
             and _belongs_to_effort(record, effort, sole_goal=sole_goal, by_subject=by_subject)
         ]
 
-    finding_subjects = {record["subject"] for record in listed["project:finding"]}
+    finding_subjects = {record["subject"] for record in listed["aff:finding"]}
     items: list[JournalItem] = []
 
-    for record in listed["project:failed-attempt"]:
+    for record in listed["run:failed-attempt"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
             model._recorded_at(record), _attempt_text(model._payload(record)), False, task_id,
         ))
 
-    for record in listed["project:investigation-observation"]:
+    for record in listed["aff:investigation-observation"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         open_item = record["subject"] not in finding_subjects
         items.append(JournalItem(
@@ -233,7 +233,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
             open_item, task_id,
         ))
 
-    for record in listed["project:finding"]:
+    for record in listed["aff:finding"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
@@ -241,7 +241,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
             _finding_open(record), task_id,
         ))
 
-    for record in listed["project:continuity-question"]:
+    for record in listed["plan:continuity-question"]:
         scope = model._payload(record).get("scope") or ""
         slug = _plan_review_slug(scope)
         phase = slug if slug is not None else None
@@ -251,7 +251,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
             _question_open(record), "",
         ))
 
-    for record in listed["project:assignment-amendment"]:
+    for record in listed["run:assignment-amendment"]:
         phase, task_id, task_subject = _assignment_task(
             record, assignments, tasks_by_id, tasks_by_subject,
         )
@@ -272,7 +272,7 @@ def journal_scope(items: list[JournalItem], phase: str | None) -> list[JournalIt
     for item in items:
         if item.phase == phase:
             scoped.append(item)
-        elif item.phase is None and item.open and item.record_type == "project:continuity-question":
+        elif item.phase is None and item.open and item.record_type == "plan:continuity-question":
             scoped.append(item)
     return scoped
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import tempfile
+from pathlib import Path
 
 import helpers as h
 from conftest import REPO_ROOT
@@ -14,7 +16,6 @@ EXECUTE_SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 REQUIRED_WORK_ITEM = {"title", "phase", "kind", "assignee", "effort"}
 REQUIRED_ACCEPTANCE = {"method", "phase", "effort", "verify_command", "requirement"}
 WRITES = {"create", "update", "supersede", "capture"}
-BRIEF_VIEWS = ("brief", "plan", "verification")
 
 
 def _text() -> str:
@@ -36,12 +37,8 @@ def _payloads(text: str, record_type: str) -> list[dict]:
     return payloads
 
 
-def _design() -> dict:
-    return json.loads((REPO_ROOT / "contract" / "project-design.json").read_text())
-
-
 def _record(name: str) -> dict:
-    return next(record for record in _design()["records"] if record["name"] == name)
+    return h.record_def(name)
 
 
 def test_trace_fields_are_optional_in_the_contract():
@@ -62,12 +59,6 @@ def test_criterion_optional_in_contract():
     assert "criterion" in acceptance["optional_payload"]
     required = set(acceptance["payload"]) - set(acceptance["optional_payload"])
     assert "criterion" not in required
-
-    design = _design()
-    for view_name in BRIEF_VIEWS:
-        view = next(v for v in design["views"] if v["name"] == view_name)
-        role = next(r for r in view["roles"] if r["name"] == "acceptance")
-        assert "criterion" not in role["requires_payload"], view_name
 
 
 def test_execute_phase_requires_original_text_briefs():
@@ -98,8 +89,8 @@ def test_skill_requires_atomic_ids_and_thin_acceptances():
 
 def test_create_and_capture_examples_match_atomic_thin_shape():
     text = _text()
-    work_items = _payloads(text, "project:work-item")
-    acceptances = _payloads(text, "project:acceptance")
+    work_items = _payloads(text, "plan:work-item")
+    acceptances = _payloads(text, "plan:acceptance")
     assert work_items and acceptances
 
     covered: set[str] = set()
@@ -122,17 +113,17 @@ def test_create_and_capture_examples_match_atomic_thin_shape():
     for inv in extract_invocations(text):
         if inv["subcommand"] in WRITES and inv["type"]:
             written.add(inv["type"])
-        if inv["type"] == "project:work-item":
+        if inv["type"] == "plan:work-item":
             assert all(rel.split(":", 1)[0] == "depends_on" for rel in inv["rels"])
         for part in inv["records"] or []:
             if inv["subcommand"] != "capture":
                 continue
             written.add(part.get("type"))
-            if part.get("type") == "project:acceptance":
+            if part.get("type") == "plan:acceptance":
                 acceptance_subjects.append(part["subject"])
                 assert "criterion" not in part["payload"] or part["payload"].get("criterion") == ""
-    assert "project:assessment" not in written
-    assert "project:integration-report" not in written
+    assert "run:assessment" not in written
+    assert "run:integration-report" not in written
     assert "<task-slug>" in acceptance_subjects
     assert "<task-slug>-perf" in acceptance_subjects
 
@@ -140,7 +131,7 @@ def test_create_and_capture_examples_match_atomic_thin_shape():
 def test_plan_phase_trace_invocations_are_contract_legal(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     bundles = {bundle["id"]: bundle for bundle in resolved_contract.get("bundles", [])}
-    violations = check_skill_text(_text(), defs, bundles)
+    violations = check_skill_text(_text(), defs)
     assert not violations, "\n".join(violations)
 
 
@@ -155,7 +146,7 @@ def test_plan_phase_oracle_author_and_freeze():
     # Freeze update example is contract-shaped.
     freeze_payloads = [
         p
-        for p in _payloads(_text(), "project:acceptance")
+        for p in _payloads(_text(), "plan:acceptance")
         if p.get("test_ids") and p.get("oracle_hashes")
     ]
     assert freeze_payloads
@@ -175,12 +166,12 @@ def test_execute_phase_oracle_amendment_and_frozen_oracle(resolved_contract):
     assert "status" in flat and "requested" in flat and "approved" in flat
     defs = h.record_defs_by_id(resolved_contract)
     bundles = {bundle["id"]: bundle for bundle in resolved_contract.get("bundles", [])}
-    violations = check_skill_text(text, defs, bundles)
+    violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "project:oracle-amendment"
+        if inv["subcommand"] == "create" and inv["type"] == "aff:oracle-amendment"
     ]
     assert creates and creates[0]["payload"]
     payload = creates[0]["payload"]
@@ -200,14 +191,14 @@ def test_verify_work_mechanical_oracle_backed():
 
 
 def test_thin_deliver_cli_capture(store, cli, resolved_contract):
-    """Thin deliver acceptance (no criterion prose) via real create + capture."""
+    """Thin deliver acceptance (no criterion prose) via real create + apply."""
     defs = h.record_defs_by_id(resolved_contract)
     phase = "thin-deliver-phase"
     effort = "thin-deliver-effort"
     h.create_generic_record(
         cli,
         defs,
-        "project:phase",
+        "plan:phase",
         subject=phase,
         extra_payload={"title": "Thin deliver phase", "ordinal": 1, "effort": effort},
     )
@@ -222,7 +213,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
     created = cli(
         "create",
         "--type",
-        "project:acceptance",
+        "plan:acceptance",
         "--subject",
         "thin-deliver-create",
         "--payload",
@@ -235,7 +226,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
 
     records = [
         {
-            "type": "project:work-item",
+            "type": "plan:work-item",
             "subject": "thin-deliver-capture",
             "payload": {
                 "title": "Thin capture task",
@@ -246,12 +237,12 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
                 "executor": "inline",
                 "size": "S",
                 "estimate_minutes": 5,
-                "requirements": "R1",
+                "requirements": ["R1"],
             },
             "body": "## Description\n\nR1: thin acceptance works through CLI capture.\n",
         },
         {
-            "type": "project:acceptance",
+            "type": "plan:acceptance",
             "subject": "thin-deliver-capture",
             "payload": {
                 "method": "check",
@@ -262,15 +253,14 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
             },
         },
     ]
-    captured = cli(
-        "capture",
-        "--bundle",
-        "project:specified-work",
-        "--records",
-        json.dumps(records),
+    batch = Path(tempfile.mkdtemp(prefix="plan-trace-")) / "batch.ndjson"
+    batch.write_text(
+        "\n".join(json.dumps({"op": "create", **record}) for record in records) + "\n",
+        encoding="utf-8",
     )
+    captured = cli("apply", str(batch))
     assert captured.returncode == 0, captured.stdout + captured.stderr
-    listed = cli("list", "--type", "project:acceptance", "--subject", "thin-deliver-capture", "--full")
+    listed = cli("list", "--type", "plan:acceptance", "--subject", "thin-deliver-capture", "--full")
     assert listed.returncode == 0, listed.stdout + listed.stderr
     accs = json.loads(listed.stdout)["records"]
     assert len(accs) == 1
