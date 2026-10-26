@@ -11,26 +11,28 @@ description: >-
 
 # Execute the focused effort
 
-Requires `adaptive-artifacts` and `orchestra` on PATH and a live
+Requires `canon` and `orchestra` on PATH and a live
 orchestra store. If missing,
 follow [ensure-store.md](references/ensure-store.md) then `init` (if no goal
 for the focus) and `plan-phase`. Follow
 [kinds-and-focus.md](references/kinds-and-focus.md). Follow `verify-work`
 after each task finishes (subagent return or inline).
 
-**Single-writer:** only this parent may write via `adaptive-artifacts`.
+**Single-writer:** only this parent may write via `canon`.
 Subagents never write — including under any future `--read-only`
 executor mode (that mode names what may be *read*; a subagent write
 would race `--expected-revision`).
 
 Task lifecycle is `planned -> in_progress -> done` (or `withdrawn`).
+Orchestra moves a work-item to `in_progress` (step 4) and to `done`
+(`verify-work`). The planner creates work-items.
 `derived.ready` / `derived.wave` are engine-computed from `depends_on`
 — never write them.
 
-Each dispatch is recorded: `project:assignment`, optional
-`project:assignment-amendment`, then `project:execution-report`
+Each dispatch is recorded: `run:assignment`, optional
+`run:assignment-amendment`, then `run:execution-report`
 (evidence verbatim). Executors take method / verify_command /
-findings / constraints from the `project:brief` view — not from
+findings / constraints from `orchestra brief <task-slug>` — not from
 retyping those into the assignment. The assignment's `## Orientation`
 carries territory/concurrency notes and quotes (verbatim, by id)
 work-item Description/Approach, linked requirement text, design
@@ -39,14 +41,14 @@ or treat empty/legacy `criterion` as the lead claim.
 
 ## Steps
 
-1. `adaptive-artifacts hook-start` if views were not injected. Resolve
-   **focus**. Read `project:plan` section `## <focus>` and blocking
+1. Run `orchestra handoff` if the handoff was not injected. Resolve
+   **focus**. Read `orchestra view plan --effort <focus>` and blocking
    `continuity-question`s for that subject. Do not dispatch while a
    blocking question is open on this focus. A question with `scope`
    `plan-review:<phase-slug>` gates only that phase; clear on approve:
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
@@ -59,15 +61,15 @@ adaptive-artifacts update --type project:continuity-question --id <question-id> 
 2. Select dispatchable work-items (plan view omits `derived.ready`/`wave`):
 
 ```bash
-adaptive-artifacts list --type project:work-item --state planned \
+canon list --type plan:work-item --state planned \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --where derived.ready=true
 ```
 
    For `incidental`, drop `payload.phase` (it is `""`) and expect at
-   most one result. `current-phase-slug` is the `project:phase` for
+   most one result. `current-phase-slug` is the `plan:phase` for
    this effort with `lifecycle_state` `in_progress` — never
-   `current-position.payload.scope`. If none exist, stop and point to
+   `plan:position` `scope`. If none exist, stop and point to
    `plan-phase`. If several phases are `in_progress`, use the one
    named in context; ask if none is named.
 
@@ -75,7 +77,7 @@ adaptive-artifacts list --type project:work-item --state planned \
    `## Landing` from the phase body:
 
 ```bash
-adaptive-artifacts get --type project:phase --id <phase-id>
+canon get --type plan:phase --id <phase-id>
 ```
 
    When `## Landing` is present, ensure branch `phase/<phase-slug>`
@@ -149,13 +151,14 @@ git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phas
    from `list`/`get`:
 
 ```bash
-adaptive-artifacts update --type project:work-item --id <id> \
+canon update --type plan:work-item --id <id> \
   --transition in_progress \
   --expected-revision <revision> \
   --payload '{"assignee":"<assignee>"}'
 ```
 
-   Regenerate the brief, then create the assignment. Orientation
+   Print the brief with `orchestra brief <task-slug>`, then create the
+   assignment. Orientation
    quotes only (copy, do not paraphrase):
 
    - work-item `## Description` and `## Approach`
@@ -182,20 +185,20 @@ adaptive-artifacts update --type project:work-item --id <id> \
    silently rewrite a frozen oracle.
 
 ```bash
-adaptive-artifacts list --type project:specification \
+canon list --type plan:specification \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --state active --full
 
-adaptive-artifacts list --type project:design \
+canon list --type plan:design \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --state active --full
 
-adaptive-artifacts list --type project:decision \
+canon list --type plan:decision \
   --where payload.effort=<focus> --state active --full
 
-adaptive-artifacts view --id project:brief --out views/brief.md
+orchestra brief <task-slug>
 
-adaptive-artifacts create --type project:assignment \
+canon create --type run:assignment \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
   --body "## Orientation
@@ -227,7 +230,7 @@ Do not edit them. An oracle hash or test-id change is a signed amendment in `.af
    Omit the Frozen oracle section when no acceptance is oracle-backed.
 
    **Oracle amendment (parent only):** do not edit the frozen file; do
-   not `create`/`supersede` `project:oracle-amendment` or update
+   not `create`/`supersede` `aff:oracle-amendment` or update
    acceptance `oracle_hashes`/`test_ids`. Parent adds a signed
    amendment in `.affidavit/manifest.json`, then:
 
@@ -249,7 +252,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
      `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>` for that
      work-item; current checkout when Landing is absent) — plus task
      `subject`/title, `kind`, focus `effort`
-   - `## <task-slug>` from `views/brief.md` — verbatim
+   - the output of `orchestra brief <task-slug>` — verbatim
    - assignment `## Orientation` from step 4
    - kind instruction:
      - `deliver` / `incidental` — implement (except verification task)
@@ -259,7 +262,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    - follow `## Approach`; do not ask for an implementation recipe
    - verification task (depends_on every other phase work-item): run
      phase checks; return `fail`; do not edit the tree
-   - return the evidence block below; never call `adaptive-artifacts`
+   - return the evidence block below; never call `canon`
      or edit `.artifacts/`
 
    **`inline`:** this session implements with the same brief,
@@ -318,7 +321,7 @@ EOF
    Inline: record the same amendment and keep implementing:
 
 ```bash
-adaptive-artifacts create --type project:assignment-amendment \
+canon create --type run:assignment-amendment \
   --subject "<task-slug>" \
   --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
@@ -331,7 +334,7 @@ adaptive-artifacts create --type project:assignment-amendment \
    verbatim — it is the record, not raw material to cherry-pick:
 
 ```bash
-adaptive-artifacts create --type project:execution-report \
+canon create --type run:execution-report \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","assignment":"<task-slug>","result":"<pass|fail|blocked|abandoned>","verdict":"<pass|fail|delta|inconclusive>","revision":"<git sha or dirty>"}' \
   --body "<the evidence block, verbatim>"
@@ -375,7 +378,7 @@ git -C <repo>/.worktrees/<phase-slug> merge task/<phase-slug>/<task-slug>
    merge.
 
 ```bash
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<focus>" \
   --payload '{"owner":"user","blocking":true,"scope":"merge:<task-slug>"}'
 ```
@@ -399,7 +402,7 @@ adaptive-artifacts create --type project:continuity-question \
    An empty task list is not proof the phase is done. Skip
    reviewer/suite for incidental. Reopen later: kinds-and-focus,
    Closing and reopening.
-9. Regenerate views (including `project:brief`); `adaptive-artifacts validate`.
+9. Run `canon validate`.
 
 ## Record versus bind
 
@@ -421,7 +424,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Let subagents write records (any executor mode) — store is single-writer
 - Restate `criterion` / verify_command / findings in Orientation, or
   paraphrase work-item / requirement claims — quote by id; brief owns the rest
-- Skip `project:execution-report` and derive check-runs from chat memory
+- Skip `run:execution-report` and derive check-runs from chat memory
 - Ask for an implementation recipe when `## Approach` is present
 - Spawn a subagent for `inline`, or spawn when the wave disagrees on executor
 - Dispatch when `derived.ready` is false, or another focus's work
@@ -434,8 +437,8 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
   when code or claims changed
 - Merge without passing review at phase-head, or without required suite
   at phase-head when `phase_gate.suite.gate` is `required`
-- Waive / skip / override contracted `phase_gate.suite` policy
-- Let the reviewer call `adaptive-artifacts` or write `.artifacts`
+- Waive / skip / override configured `phase_gate.suite` policy
+- Let the reviewer call `canon` or write `.artifacts`
 - Re-run the reviewer more than once after fix tasks for the same phase-end
 - Fix-and-rerun inside the suite step (`required` → fix tasks + re-run at
   new head; `advisory` → finding only)
@@ -457,7 +460,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Skip the retryable `in_progress` pass
 - Put a whole-suite command on a per-task `verify_command`
 - Let an executor edit frozen oracle files; `create`/`supersede`
-  `project:oracle-amendment`; or `create`/`correct` a task check-run
+  `aff:oracle-amendment`; or `create`/`correct` a task check-run
   with method `tdd`/`check` (those come from `orchestra check`). Suite
   (`orchestra suite record`) and `manual`/`review` stay parent writes
 - Let a subagent sign an amendment or write `test_ids` / `oracle_hashes`

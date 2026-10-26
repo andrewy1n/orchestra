@@ -11,7 +11,7 @@ description: >-
 
 # Plan the current effort
 
-Requires `adaptive-artifacts` and `orchestra` on PATH. Follow
+Requires `canon` and `orchestra` on PATH. Follow
 [ensure-store.md](references/ensure-store.md) in the **current work repo**
 before writing records. Follow [kinds-and-focus.md](references/kinds-and-focus.md).
 Do not copy this plugin into the project.
@@ -22,30 +22,33 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 
 ## Rules
 
-- Records + derived `project:plan` view are plan authority.
+- Records are plan authority. `orchestra view plan` is derived.
 - Materialize **this focus** only; for `deliver`/`repair`/`evaluate`,
-  **this phase only**. Future phases stay placeholder `project:phase`
+  **this phase only**. Future phases stay placeholder `plan:phase`
   bodies — no work-items yet.
 - Same `subject` (task slug) for a work-item and its acceptance(s).
   `payload.effort` = focus; `payload.phase` = current phase slug (must
-  match a real `project:phase` subject) or `""` for incidental.
+  match a real `plan:phase` subject) or `""` for incidental.
 - Several acceptances: first uses task slug; extras use
   `<task-slug>-<short suffix>`. Do not pick a task slug that is a
   prefix of another in the same phase.
 - `deliver`/`repair` work-items carry atomic requirement ids in
-  `requirements` (comma-separated; never compound). From specification
+  `requirements` (JSON array of atomic ids; never compound). From specification
   when it exists (also set `decisions`); else id'd list in
   `## Description`. Each acceptance names exactly one id in
   `requirement`. `incidental` may omit; `evaluate` follows campaign
   rules.
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text, not a re-summary field.
-- Do not write `project:assessment` or `project:integration-report`.
+- Do not write `run:assessment` or `run:integration-report`.
 - Lifecycle only: `planned` → `in_progress` → `done` / `withdrawn`.
-  Never write `stage`, `live`, `ready`, or `wave`.
-- Dependencies: `--rel depends_on:<work-item-id>`. `derived.ready` /
-  `derived.wave` are engine-computed — never write them. Bundles
-  cannot carry `--rel` — use `create` for dependent tasks.
+  Never write `stage`, `live`, `ready`, or `wave`. This skill creates
+  work-items and promotes the phase to `in_progress`. `execute-phase`
+  and `verify-work` move work-items to `in_progress` and `done`.
+- Dependencies: `payload.depends_on`, a JSON array of work-item
+  subjects. Create each prerequisite first; canon rejects an unknown
+  subject. `derived.ready` / `derived.wave` are engine-computed —
+  never write them.
 - Every `deliver`/`repair` phase ends with a **verification task**
   that `depends_on` every other work-item; acceptances cover exit
   criteria; at least one is an integration check through the real
@@ -63,7 +66,7 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 - Decisions change via `supersede`, never `update` to `superseded`.
 - Parent writes records. Only subagent here: phase-scoped
   **oracle-author** (step 8, deliver/repair) — tests only, no
-  `adaptive-artifacts`. Parent runs `orchestra check` and freezes
+  `canon`. Parent runs `orchestra check` and freezes
   fields. Never hand Approach / implementation hints to the
   oracle-author. Freeze only after assertion-level red.
 - Never supersede another subject's goal or position.
@@ -74,14 +77,15 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
    for that), consume before a fresh full plan: list those
    assessments, add missing task(s) for the uncovered requirement
    (shapes in [task-shapes.md](references/task-shapes.md), including
-   `depends_on` and a verification-task edge via `update --rel` when
-   needed), regenerate views, re-open plan review for the delta:
+   `depends_on` and a verification-task edge via `update --payload`
+   with the full `depends_on` array when needed), re-open plan review
+   for the delta:
 
 ```bash
-adaptive-artifacts list --type project:assessment --state active \
+canon list --type run:assessment --state active \
   --where payload.phase=<current-phase-slug> --where payload.next=plan
 
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
@@ -89,37 +93,37 @@ adaptive-artifacts create --type project:continuity-question \
    On approval, clear at the event; stop until then — do not dispatch:
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
    No `next: plan` assessment → continue with step 1.
 
-1. `adaptive-artifacts hook-start` if views not in context. Resolve
-   **focus** and **kind**. Use the `## <focus>` plan section.
-2. If this focus has no `active-goal`, create it (`init` step 6) for
+1. Run `orchestra handoff` if the handoff is not in context. Resolve
+   **focus** and **kind**. Read `orchestra view plan --effort <focus>`.
+2. If this focus has no `plan:effort`, create it (`init` step 6) for
    **this subject only**. If closed, reopen first (kinds-and-focus).
    Resolve current phase: named in context, else `in_progress`, else
-   lowest-`ordinal` `planned` — never `current-position.payload.scope`.
+   lowest-`ordinal` `planned` — never `plan:position` `scope`.
    If several fit and none named, ask. `engage` `phase: new` → create
    in step 3 with `ordinal` = max existing + 1. Approach must be
-   settled (a `project:decision` for this phase, or fixed in chat);
+   settled (a `plan:decision` for this phase, or fixed in chat);
    else `settle-phase` or ask to skip. Skip settle check for incidental.
 
 ```bash
-adaptive-artifacts list --type project:decision --where payload.phase=<current-phase-slug> --state active
+canon list --type plan:decision --where payload.phase=<current-phase-slug> --state active
 ```
 
 3. Promote the current phase to `in_progress` with its real plan:
 
 ```bash
-adaptive-artifacts get --type project:phase --id <phase-id>
+canon get --type plan:phase --id <phase-id>
 ```
 
    If `planned`, replace placeholder body and transition:
 
 ```bash
-adaptive-artifacts update --type project:phase --id <phase-id> \
+canon update --type plan:phase --id <phase-id> \
   --transition in_progress \
   --expected-revision "<revision>" \
   --body-file "<phase-plan.md>"
@@ -140,37 +144,35 @@ adaptive-artifacts update --type project:phase --id <phase-id> \
    Leave the effort position alone until the phase closes.
 
 ```bash
-adaptive-artifacts create --type project:current-position \
+canon create --type plan:position \
   --subject "<phase-slug>" \
   --payload '{"position":"<what this phase is doing now>","scope":"phase","effort":"<effort-slug>","phase":"<phase-slug>"}'
 ```
 
-4. For each durable choice, `create --type project:decision` with
+4. For each durable choice, `create --type plan:decision` with
    `choice`, `alternatives`, `phase`, `effort` and body
    `## Rationale` / `## Counter-argument`. Skip trivia.
-5. Independent tasks (or the one incidental): capture work-item +
+5. Independent tasks (or the one incidental): create work-item +
    acceptance(s) — see [task-shapes.md](references/task-shapes.md)
    (Independent task).
-6. Dependent tasks: create with `--rel depends_on:...` — see
+6. Dependent tasks: create with `depends_on` in the payload — see
    [task-shapes.md](references/task-shapes.md) (Dependent task).
 7. Verification task last (`deliver`/`repair`) — see
    [task-shapes.md](references/task-shapes.md) (Verification task).
 8. Oracle author (`deliver`/`repair` only) — see
    [oracle-author.md](references/oracle-author.md).
-9. Regenerate views:
+9. Validate:
 
 ```bash
-adaptive-artifacts handoff --out views/handoff.md
-adaptive-artifacts view --id project:plan --out views/plan.md
-adaptive-artifacts validate
+canon validate
 ```
 
-10. Show the user the focus task list, with the verification task and
+10. Show the user the focus task list (`orchestra view plan --effort <focus>`), with the verification task and
     which exit criterion each of its acceptances covers. Query
     `derived.ready`/`wave` directly if useful (plan view omits them):
 
 ```bash
-adaptive-artifacts list --type project:work-item \
+canon list --type plan:work-item \
   --where payload.effort=<effort-slug> --where payload.phase=<current-phase-slug>
 ```
 
@@ -181,7 +183,7 @@ adaptive-artifacts list --type project:work-item \
     tdd acceptance has non-empty `test_ids` and `oracle_hashes`.
 
 ```bash
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
@@ -191,6 +193,6 @@ adaptive-artifacts create --type project:continuity-question \
     `execute-phase` run:
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
