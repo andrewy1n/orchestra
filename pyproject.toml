@@ -25,4 +25,8 @@ packages = ["orchestra"]
 # `data/project-design.json` and `_scripts/` are symlinks in the checkout so
 # the contract and the session scripts keep one source of truth. The wheel
 # builder dereferences them into real files.
-orchestra = ["data/*.json", "_scripts/*.py"]
+orchestra = ["data/*.json", "_scripts/*.py", "schemas/*.json"]
+
+[project.entry-points."canon.schemas"]
+plan = "orchestra:schemas/plan.json"
+run = "orchestra:schemas/run.json"
