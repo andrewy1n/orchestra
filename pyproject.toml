@@ -19,12 +19,12 @@ orchestra = "orchestra.cli:main"
 [tool.setuptools]
 # The package lives at the repo root; `bin/orchestra` and skills import it
 # with the checkout on PYTHONPATH in the source layout.
-packages = ["orchestra"]
+packages = ["orchestra", "orchestra.schemas"]
 
 [tool.setuptools.package-data]
 # `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
 orchestra = ["_scripts/*.py", "schemas/*.json"]
 
 [project.entry-points."canon.schemas"]
-plan = "orchestra:schemas/plan.json"
-run = "orchestra:schemas/run.json"
+plan = "orchestra.schemas"
+run = "orchestra.schemas"
