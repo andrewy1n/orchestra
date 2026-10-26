@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-54e6aa7d-586f-48a3-851d-afdbffe6d4ec",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "phase-proof-packet",
+    "requirement": "R4",
+    "verify_command": "python3 -m pytest tests/test_proof_skills.py::test_execute_assembles_proof_packet -q"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-19T03:54:18+00:00",
+  "relationships": {},
+  "revision": "sha256:95cc239fc2a671e0051dd639257f978d02abafa5ba8fd8ecbb8e57c0d10a1620",
+  "subject": "proof-skills-execute",
+  "time": {
+    "as_of": "2026-10-19T03:54:18+00:00"
+  }
+}
+---
+

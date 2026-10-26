@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-d32c9db3-448d-4fca-a0aa-d8b10bb49c8a",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/test_web_dashboard.py:sha256:d06a1bb5cd28b12fc30f00f4dfdd0132141c8b11cebde9607bfbb2ff37dee102"
+    ],
+    "phase": "web-dashboard",
+    "requirement": "R22",
+    "test_ids": [
+      "tests/test_web_dashboard.py::test_r22_reject_note"
+    ],
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_web_dashboard.py::test_r22_reject_note -q"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-19T06:37:11+00:00",
+  "relationships": {},
+  "revision": "sha256:2f60e556827844b727faa964d65d3146aaaafc061bac4769f77361b5a297a0e9",
+  "subject": "web-write-api-r22",
+  "time": {
+    "as_of": "2026-10-19T06:15:53+00:00"
+  }
+}
+---
+

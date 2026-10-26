@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-2ad10a07-f300-4aee-b79c-4cabb9cb3e3f",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Focused dashboard tasks/app tests that formerly expected row waits on pass against the dropped form",
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "waits-on-compact",
+    "requirement": "R3",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_tasks.py tests/test_dashboard_app.py -q -k 'waits or title_cell or waiting_row'"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-10T08:25:55+00:00",
+  "relationships": {},
+  "revision": "sha256:27314a1e5ec896c4d07dcf2a8ba7be64fd7dfec3d487a40b78b6c74a9b622d07",
+  "subject": "verify-waits-on-compact-suite",
+  "time": {
+    "as_of": "2026-10-10T08:25:55+00:00"
+  }
+}
+---
+

@@ -1,0 +1,67 @@
+---
+{
+  "id": "rec-9eacddaf-278f-40f9-8075-a96dface5b29",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "cross-harness-install-review",
+    "effort": "packaging",
+    "evidence_kind": "review",
+    "method": "review",
+    "result": "fail",
+    "revision": "48bcc343f9edcfd9338a6a497293aabd9cd52300",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "cross-harness-install-review"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-18T23:49:43+00:00",
+  "relationships": {},
+  "revision": "sha256:2ba41c804a9f58c594f659944ebe4b8805dedb05bc2c75ad3d78d711105a172b",
+  "subject": "cross-harness-install-review",
+  "time": {
+    "observed": "2026-10-18T23:49:43+00:00",
+    "recorded": "2026-10-18T23:49:43+00:00"
+  }
+}
+---
+
+verdict: NEEDS_WORK
+findings:
+  - task: portable-skill-refs
+    kind: spec-gap
+    expected: R1 requires every advertised skill directory to contain every file its instructions reference, and no referenced path to leave the directory.
+    observed: `skills/execute-phase/SKILL.md:422` tells the parent to dispatch `agents/se-reviewer.md`, which lives at the host/plugin root (the installer generates it under `<host>/agents/`), not inside `skills/execute-phase/`. A skills-only install through the `npx skills add` tail ships no `agents/` tree, so the instruction dangles. `tests/test_skill_portability.py` only checks markdown links and backticked paths beginning `./`, `../`, or `references/`, so the bare `agents/se-reviewer.md` is never examined; the phase tests pass while R1 is unmet.
+    severity: major
+  - task: cli-package
+    kind: behavior-bug
+    expected: R5/R7 — `orchestra` installs as a console script and runs from PATH in an unrelated cwd, with the documented `uv tool install` serving `check`, `contract`, `project-field`, and `sessions`.
+    observed: `orchestra/cli.py:11` eagerly imports `orchestra.close_batch`, and `orchestra/close_batch.py:49` imports `affidavit.oracle_red` at module import. `pyproject.toml` declares no dependencies. With `HOME` empty, `AFFIDAVIT_ROOT` unset, and no `aff` on PATH, `python3 -m orchestra.cli --help` fails with `ModuleNotFoundError: No module named 'affidavit'`, so even `contract`, `project-field`, and `sessions` cannot start. `tests/test_cli_packaging.py` passes only because `orchestra/__init__.py` finds the developer's `~/affidavit` checkout; `cli_env` does not isolate HOME or strip `aff` from PATH.
+    severity: major
+  - task: cli-package
+    kind: invariant-violation
+    expected: Design invariant — "The `orchestra` CLI is the only runtime surface the skills assume"; R6/R7 replace file-path calls with named commands.
+    observed: skills still instruct importable module APIs the CLI does not expose: `skills/execute-phase/SKILL.md:418` (`orchestra.reviewer.build_reviewer_brief`), `:501`/`:514` (`orchestra.suite.load_suite_policy`, `start_suite_background`, `poll_suite`/`collect_suite`), `:377`/`:958` (`orchestra.suite.record_suite_check_run`), and `shared/ensure-store.md:13,17` (`orchestra.aa`). `orchestra/cli.py:_build_parser` exposes only `check`, `close-batch`, `install`, `contract`, `project-field`, and `sessions`. A `uv tool install` puts the package in an isolated venv, so these module calls have no documented invocation from a work repo; the invariant and the "call by name" story are not met.
+    severity: judgment
+  - task: native-adapters
+    kind: spec-gap
+    expected: R13 — the reviewer agent is generated per host from one canonical prompt and restriction set; the design makes `agents/reviewer.prompt.md` the sole authored source, and existing plugin installs keep working.
+    observed: the pre-existing `agents/se-reviewer.md` remains in the same `agents/` directory with a divergent description/body (still carrying the "Cursor equivalent" section and the "before the phase suite" wording), and `agents/reviewer.prompt.md` declares the same agent name `se-reviewer`. Native adapters pop `agents/` and generate from the new prompt, so installed hosts differ from a Claude/Cursor plugin install, which discovers both files as agents; `skills/execute-phase/SKILL.md:422` dispatches the stale file, `GenericSkillsAdapter` fallback copies both files into a skills-kind host, and `orchestra/reviewer.py:427` still describes its stub as mirroring the old file.
+    severity: minor
+  - task: install-docs
+    kind: spec-gap
+    expected: R15 documentation should describe an install matching the generated `references/` layout and the installer.
+    observed: the pre-existing "Codex / other Agent Skills hosts" section (README around line 110) still says to copy only init/plan-phase/execute-phase/verify-work/engage and to keep `skills/kinds-and-focus.md` / `skills/ensure-store.md` "two levels above each `SKILL.md`"; that predates the per-skill `references/` payload and omits `settle-phase` and `analyze-sessions`. The Quick start also still advertises `bin/orchestra check`. The new host-matrix and install-command section itself matches `installer/providers.json`.
+    severity: minor
+  - task: native-adapters
+    kind: behavior-bug
+    expected: R12 — Claude, Cursor, and OpenCode hook adapters are installed where the host reads them, and installation still succeeds when a host has no hook support.
+    observed: the Claude payload is written to `.claude/hooks/hooks.json`, and the tests assert only that the file exists. Claude project hooks are read from `.claude/settings.json`, and the installer never installs `.claude-plugin/plugin.json` or a plugin-root `hooks/` directory, so the file is inert for both project and global installs. Cursor's `.cursor/hooks.json` and OpenCode's `plugin.js` match the matrix paths. Hooks are optional and skills self-start, so impact is limited, but R12 is proven only by file presence for Claude.
+    severity: judgment
+integration:
+  interfaces: `orchestra install` (argparse) -> `orchestra/install.py` -> `installer.runner` -> `installer/providers.json` + adapter registry (native claude/cursor/opencode, `SkillsCliAdapter` for codex/gemini/copilot/cline/windsurf, `GenericSkillsAdapter` fallback), with `.orchestra-install.json` registration and the `skills`/`contract`/`agents`/`hosts/<id>` allowlist. `pyproject.toml` adds the `orchestra` console script -> `orchestra.cli:main`; new `contract`, `project-field`, and `sessions` subcommands delegate to `orchestra.contract`, `orchestra.project_field`, and `orchestra.sessions`; `bin/orchestra` remains the checkout shim. `shared/*.md` -> `scripts/build_skills.py` -> `skills/<name>/references/*.md` plus root compatibility copies, with `--check` drift. `agents/reviewer.prompt.md` -> `installer/agents.py` -> per-host generated agent entries; host files under `hosts/<id>/` are merged at the install root. README matrix is coupled to `installer/providers.json` by `tests/test_readme_matrix.py`.
+  assumptions: The brief contained no execution-report, check-run, assessment, or assignment material. Host-specific discovery paths and `npx skills add` behavior were taken from the phase's stated assumptions. I did not run the pip-install packaging or temp-HOME integration tests (reviewer read-only rules forbid package installs); I did run the non-install phase tests (`test_skill_portability`, `test_readme_matrix`, `test_agent_generation`, `test_installer`: 74 passed) and a clean-HOME CLI repro showing the affidavit import failure.
+  invariants: Generated references are byte-identical to `shared/` (build check and tests pass). Checkout-path and `<plugin>` references are gone from skill bodies (R6 test passes), but a skill still names `agents/se-reviewer.md` outside its directory (R1 fails). Copy allowlist excludes top-level `.artifacts`, `.worktrees`, and `dashboard` (tests pass); nested denied names inside `skills/` or `hosts/<id>` are not filtered. Idempotent install/uninstall leaves one marker per host (tests pass). The "CLI is the only runtime surface" invariant fails via module API references. Store writes remain parent-only; the new installer and generated-agent code do not write records. Existing plugin installs are not fully unchanged: `agents/` now carries a second `se-reviewer` definition.
+  conflicts: Stale README guidance conflicts with the per-skill `references/` payload; the canonical reviewer prompt now exists in two divergent forms (`agents/reviewer.prompt.md` and `agents/se-reviewer.md`), with the skill dispatching the stale one; the installed console script depends on an undeclared `affidavit` import; Claude's installed hook path does not match its project/plugin hook locations.

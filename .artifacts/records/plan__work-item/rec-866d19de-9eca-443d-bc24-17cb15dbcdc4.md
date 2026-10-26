@@ -1,0 +1,51 @@
+---
+{
+  "id": "rec-866d19de-9eca-443d-bc24-17cb15dbcdc4",
+  "lifecycle_state": "done",
+  "payload": {
+    "assignee": "web-ui-detail",
+    "decisions": [
+      "web-dashboard-toolchain",
+      "web-dashboard-styling"
+    ],
+    "depends_on": [
+      "web-ui-side"
+    ],
+    "effort": "dashboard",
+    "estimate_minutes": 18,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "web-dashboard",
+    "requirements": [
+      "R14",
+      "R15",
+      "R16",
+      "R17",
+      "R18",
+      "R19"
+    ],
+    "size": "L",
+    "title": "Open phase, task, requirement, record, and item details"
+  },
+  "record_type": "plan:work-item",
+  "recorded_at": "2026-10-19T07:43:15+00:00",
+  "relationships": {},
+  "revision": "sha256:1359917df9d5af901f0d03c105a21b8d77dc7d23283c747a3413e5907651c1ec",
+  "subject": "web-ui-detail"
+}
+---
+
+## Description
+
+R14: Opening a phase shows the payload of GET /api/phase, including the tabs dashboard.model.tabs_for returns for that phase.
+R15: Opening a task shows the payload of GET /api/task.
+R16: Opening a requirement shows the payload of GET /api/requirement.
+R17: Opening a record shows the payload of GET /api/record.
+R18: Opening a Needs you item shows the payload of GET /api/needs.
+R19: Opening a backlog item shows the payload of GET /api/backlog.
+
+## Approach
+
+- Hash routes open overlays for a phase, task, requirement, record, Needs you item, and backlog item.
+- Each overlay renders the payload of the matching GET route. The phase overlay includes the tabs `tabs_for` returned.
+- Make the R14 through R19 cases in `dashboard/web/ui/src/detail.test.ts` pass.

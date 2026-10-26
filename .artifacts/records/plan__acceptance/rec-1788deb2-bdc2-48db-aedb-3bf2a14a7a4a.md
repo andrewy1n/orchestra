@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-1788deb2-bdc2-48db-aedb-3bf2a14a7a4a",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "deep-links",
+    "requirement": "R1",
+    "verify_command": "npm --prefix dashboard/web/ui exec -- vitest run src/deepLinks.test.ts -t R1"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-20T04:36:58+00:00",
+  "relationships": {},
+  "revision": "sha256:25b6f0338bab6f9600758df24ea5725617f698f45e2a3f1b5b7acde988dad230",
+  "subject": "deep-links-wire",
+  "time": {
+    "as_of": "2026-10-20T04:36:58+00:00"
+  }
+}
+---
+

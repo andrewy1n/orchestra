@@ -1,0 +1,26 @@
+---
+{
+  "id": "rec-0b7a32e0-cead-4d84-b55f-8e34fb0953ef",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "phase": "dashboard-package",
+    "position": "Done: dashboard code moved to dashboard/, task code split into tasks.py and task_detail.py.",
+    "scope": "phase",
+    "status": "closed"
+  },
+  "record_type": "plan:position",
+  "recorded_at": "2026-10-02T19:24:09+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-3eb193e3-139f-42d1-b427-6c0da2097bc7"
+    ]
+  },
+  "revision": "sha256:e38e612b4e88cd97cf32f51170d81bc2abf8634e20947502d98e7c8dc3868292",
+  "subject": "dashboard-package",
+  "time": {
+    "as_of": "2026-10-02T19:24:09+00:00"
+  }
+}
+---
+

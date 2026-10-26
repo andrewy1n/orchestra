@@ -1,0 +1,42 @@
+---
+{
+  "id": "rec-af26b8e7-bd20-4f6e-bc40-d2177be242ae",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "assignment": "rename-identity-surfaces",
+    "result": "pass",
+    "revision": "8c627a74e0bd084d4ebd103a6657af05bcf9d0e3",
+    "verdict": "pass",
+    "work_item": "rename-identity-surfaces"
+  },
+  "provenance": {
+    "sources": [
+      "rename-identity-surfaces"
+    ]
+  },
+  "record_type": "run:execution-report",
+  "recorded_at": "2026-10-15T08:11:28+00:00",
+  "relationships": {},
+  "revision": "sha256:c2f670433bd3a2fe5a81e6b1a89c34f9edee05d2878a5e395ec9fe244a52500c",
+  "subject": "rename-identity-surfaces",
+  "time": {
+    "observed": "2026-10-15T08:11:28+00:00",
+    "recorded": "2026-10-15T08:11:28+00:00"
+  }
+}
+---
+
+subject: rename-identity-surfaces
+kind: deliver
+result: pass
+revision: 8c627a74e0bd084d4ebd103a6657af05bcf9d0e3
+evidence: plugin/marketplace names affidavit; contract project affidavit; ensure-store gate; helper checks pass
+observations: Updated manifests, contract, skills/docs, sync-plugin DEST; live store design + meta digest repinned on primary.
+root_cause:
+verdict: pass
+metrics:
+claim:
+needs_human: false
+attempted_action:
+retry_when:
+blocker:

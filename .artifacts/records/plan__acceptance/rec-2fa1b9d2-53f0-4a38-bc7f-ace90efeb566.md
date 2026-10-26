@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-2fa1b9d2-53f0-4a38-bc7f-ace90efeb566",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "The dry run lists candidates that each cite a metric and a session reference, and the user accepts the list.",
+    "effort": "session-analysis",
+    "method": "manual",
+    "phase": "analysis-skill",
+    "verify_command": ""
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-02T02:08:05+00:00",
+  "relationships": {},
+  "revision": "sha256:39bda55bdff40f17be5fdba3398a4c388b74f5846973e716852189780d76cfb5",
+  "subject": "as-dry-run",
+  "time": {
+    "as_of": "2026-10-02T02:08:05+00:00"
+  }
+}
+---
+

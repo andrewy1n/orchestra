@@ -1,0 +1,34 @@
+---
+{
+  "id": "rec-dfe81afd-d54a-415f-aeac-ff017f09b152",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "acceptance": "oracle-red-cli-surface-invoke",
+    "effort": "workflow-loop",
+    "new_hashes": [
+      "tests/test_close_batch.py:sha256:7c3e4fb8bce676e86467458df4f8340c842dce44257db576ddb45c5ebc3c67be"
+    ],
+    "old_hashes": [
+      "tests/test_close_batch.py:sha256:49f1c79e817a0c5da733e9e23904fae945b2cf96a2956662179a305578f9b8ff"
+    ],
+    "phase": "evidence-authority",
+    "status": "approved"
+  },
+  "record_type": "aff:oracle-amendment",
+  "recorded_at": "2026-10-23T20:15:08+00:00",
+  "relationships": {},
+  "revision": "sha256:dace205ba9482623b1f3d44004d6a2e3cbaa71a8b54cca669ab2bf984c171f48",
+  "subject": "oracle-red-cli-surface-invoke",
+  "time": {
+    "as_of": "2026-10-21T06:53:25+00:00"
+  }
+}
+---
+
+## Reason
+
+After RUNNER_MARKER flipped to orchestra, claim-gate and oracle-red acceptances could not reach their gates while the frozen helper still defaulted RUNNER to aff. Parent ratifies a one-line helper stamp flip. payload.acceptance is the acceptance record id so close-batch hash-drift matching works.
+
+## Change
+
+In tests/test_close_batch.py set module helper RUNNER from "aff" to "orchestra".

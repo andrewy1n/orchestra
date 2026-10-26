@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-bc6eeb64-10b5-4bca-a8d0-6b0d84553830",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-20f81a2f-2df9-4e5d-9eec-63da3defeec3",
+    "duration_s": 0.18715,
+    "effort": "workflow-loop",
+    "exit_code": 5,
+    "informed_by": [
+      "rec-20f81a2f-2df9-4e5d-9eec-63da3defeec3",
+      "rec-d743a134-d1c7-4edd-be42-2f1df9584789"
+    ],
+    "method": "tdd",
+    "output_sha256": "d34456332a2062c684272209bf8288b802a32f58146c555c2ad4ea14e97b1407",
+    "requirement": "R5",
+    "result": "fail",
+    "revision": "b3159b685f2992638a84ad36d56a81f9ed8e8151",
+    "runner": "se-workflow",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "close-red-first-methods"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-10T23:49:15+00:00",
+  "relationships": {},
+  "revision": "sha256:da98a7fbdacfbff98abad195d4f0ce101d13504cdc83f0f1ed0c3c1d830f911c",
+  "subject": "close-red-first-methods",
+  "time": {
+    "observed": "2026-10-10T23:49:15+00:00",
+    "recorded": "2026-10-10T23:49:15+00:00"
+  }
+}
+---
+
+16 deselected in 0.01s

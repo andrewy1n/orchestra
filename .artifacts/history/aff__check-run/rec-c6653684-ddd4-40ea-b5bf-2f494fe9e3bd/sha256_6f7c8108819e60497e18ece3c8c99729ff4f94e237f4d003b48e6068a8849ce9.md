@@ -1,0 +1,33 @@
+---
+{
+  "id": "rec-c6653684-ddd4-40ea-b5bf-2f494fe9e3bd",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-fa22cc2f-06e1-491e-a277-9c9ab01fa21e",
+    "effort": "session-analysis",
+    "informed_by": [
+      "rec-fa22cc2f-06e1-491e-a277-9c9ab01fa21e",
+      "rec-619ca945-b160-4fd3-a4ef-d7abf2496e07"
+    ],
+    "method": "tdd",
+    "result": "pass",
+    "revision": "dirty",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "rj-join"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-02T01:48:58+00:00",
+  "relationships": {},
+  "revision": "sha256:6f7c8108819e60497e18ece3c8c99729ff4f94e237f4d003b48e6068a8849ce9",
+  "subject": "rj-join",
+  "time": {
+    "observed": "2026-10-02T01:48:58+00:00",
+    "recorded": "2026-10-02T01:48:58+00:00"
+  }
+}
+---
+

@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-4c85a8d1-dde4-448b-bfe6-aee86654a15e",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "A failing verification returns fail without editing, and verify-work leaves the work-item in progress with assessment next execute",
+    "effort": "workflow-loop",
+    "method": "tdd",
+    "phase": "verify-budget",
+    "requirement": "R4",
+    "verify_command": "uv run --with pytest python -m pytest tests/test_verify_budget.py -q -k verification_failure"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-09T22:37:53+00:00",
+  "relationships": {},
+  "revision": "sha256:f610c9e992bac77049e7ca71147849b0ffca206b7022cf07da40f6e72ab73e83",
+  "subject": "budget-instructions-stop",
+  "time": {
+    "as_of": "2026-10-09T22:37:53+00:00"
+  }
+}
+---
+

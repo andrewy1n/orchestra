@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-5d6b2aba-f785-4ba1-a96c-ad8c0926b48d",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-14838183-7e65-45e7-8ac1-41a2ff0e912b",
+    "duration_s": 0.859333,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-14838183-7e65-45e7-8ac1-41a2ff0e912b"
+    ],
+    "method": "tdd",
+    "output_sha256": "70e2fde983e6c77304072a431785ef41f35c169a1796879290ccec488c8f8911",
+    "requirement": "R6",
+    "result": "pass",
+    "revision": "50303893af61c747620551cd512239752b0528a1",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "tests-claim-chain"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-16T19:31:37+00:00",
+  "relationships": {},
+  "revision": "sha256:26aca051a28fa05ce5ddb2f692e46b6c9277204a05c0722b7b04ffa881edc32e",
+  "subject": "tests-claim-chain",
+  "time": {
+    "observed": "2026-10-16T19:31:37+00:00",
+    "recorded": "2026-10-16T19:31:37+00:00"
+  }
+}
+---
+
+.................                                                        [100%]
+17 passed in 0.37s

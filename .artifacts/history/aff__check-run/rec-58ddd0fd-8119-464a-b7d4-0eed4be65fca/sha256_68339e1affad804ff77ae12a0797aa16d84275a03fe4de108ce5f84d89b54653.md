@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-58ddd0fd-8119-464a-b7d4-0eed4be65fca",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-da67502b-5f52-4d4d-a298-122e688b553e",
+    "duration_s": 1.313038,
+    "effort": "packaging",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-da67502b-5f52-4d4d-a298-122e688b553e",
+      "rec-036e467c-a355-4987-9d8f-239bfa256a01"
+    ],
+    "method": "check",
+    "output_sha256": "b3438ac0ad6a9fcf4302f4e01c4853bd38dbbfbef9283eed9cd2733be6db438d",
+    "requirement": "R9",
+    "result": "pass",
+    "revision": "730fa7a169a44a5bc9925078ce10ff6d4244e711",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "installer-core-idempotent"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-18T23:07:31+00:00",
+  "relationships": {},
+  "revision": "sha256:68339e1affad804ff77ae12a0797aa16d84275a03fe4de108ce5f84d89b54653",
+  "subject": "installer-core-idempotent",
+  "time": {
+    "observed": "2026-10-18T23:07:31+00:00",
+    "recorded": "2026-10-18T23:07:31+00:00"
+  }
+}
+---
+
+....                                                                     [100%]
+4 passed, 17 deselected in 0.82s

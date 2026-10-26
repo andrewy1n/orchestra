@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-86e9d013-1acf-4238-9acf-d2ecf6b7e60f",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "plan-review:verification-policy"
+  },
+  "record_type": "plan:continuity-question",
+  "recorded_at": "2026-10-15T08:47:11+00:00",
+  "relationships": {},
+  "revision": "sha256:d5757dc3a64d48f422ea06260568c843d710d85351240785d525c057c5a1b72d",
+  "subject": "workflow-loop"
+}
+---
+

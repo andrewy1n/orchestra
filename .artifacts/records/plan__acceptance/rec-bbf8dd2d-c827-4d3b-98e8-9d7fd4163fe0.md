@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-bbf8dd2d-c827-4d3b-98e8-9d7fd4163fe0",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "side-rail-calm",
+    "requirement": "R9",
+    "verify_command": "npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R9"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-20T03:40:27+00:00",
+  "relationships": {},
+  "revision": "sha256:178dc0fd6a9fa68b16fc1155956cc63a5f27bca39c1d52a427cb28ea23191d94",
+  "subject": "side-rail-journal-screen-r9",
+  "time": {
+    "as_of": "2026-10-20T03:40:27+00:00"
+  }
+}
+---
+

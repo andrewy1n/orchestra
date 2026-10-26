@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-2cbc54ce-57d5-48a8-abba-3089d4c8fd20",
+  "lifecycle_state": "done",
+  "payload": {
+    "effort": "dashboard",
+    "ordinal": 9,
+    "title": "Task table focus and resize"
+  },
+  "record_type": "plan:phase",
+  "recorded_at": "2026-10-02T03:16:18+00:00",
+  "relationships": {},
+  "revision": "sha256:93a73140a4e5429c59395a133851f0b18c1aedf564d45e0d2398291deb592a39",
+  "subject": "bugfix-table-state"
+}
+---
+
+## Problem
+
+Two task-table defects in `scripts/dashboard_app.py`:
+
+1. Picking a status tab with no tasks hides the table, which drops focus. Picking a non-empty tab shows the table again but never refocuses it (`select_status_tab`). Arrows and j/k then do nothing, and enter opens or toggles row 0 through the app binding.
+2. Narrowing the window keeps the wide column set (phase, assignee) and clips titles behind a horizontal scrollbar until the next reload or `r`. The resize repaint does not rebuild columns from the new width.
+
+## Approach
+
+- Refocus the task table after a status tab change when the table is visible and no Input has focus, reusing `focus_tasks`.
+- On resize, repaint each pane from the new app width after layout settles, so `task_columns` sees the new width and `EffortPane.on_resize` does not repaint from a stale width.
+- Add Textual pilot tests in `tests/test_dashboard_app.py` for both, then one popup test in `tests/test_tmux_integration.py` that walks the keys.
+
+## Exit criteria
+
+- Pilot test: pick an empty tab, pick Active, press down, and the cursor is on row 1; enter opens that row.
+- Pilot test: resize from 120 to 60 columns and the table shows only status, task, wave without a reload; resize back and phase and assignee return.
+- tmux popup test covers both and passes; the full suite passes.

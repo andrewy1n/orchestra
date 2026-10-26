@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-0bdea4e5-41dd-48bf-9f4d-b4fbf66cd996",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "effort": "workflow-loop",
+    "phase": "evidence-authority",
+    "position": "plan ready for review; oracles frozen",
+    "scope": "phase"
+  },
+  "record_type": "plan:position",
+  "recorded_at": "2026-10-21T06:39:24+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-5e084e4e-dc54-4828-8deb-7e4f8c6a79d5"
+    ]
+  },
+  "revision": "sha256:e51358bda87bcaaecd77250ae8102da0ba1a1bd998bf5aac1d98be4c82fc7fa5",
+  "subject": "evidence-authority",
+  "time": {
+    "as_of": "2026-10-21T06:35:41+00:00"
+  }
+}
+---
+

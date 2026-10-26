@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-967f4dc8-c14d-4f0f-b094-fdd4e4ed50d4",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-2803f0e2-8159-46ac-90b0-d9cec7762a4a",
+    "effort": "dashboard",
+    "evidence_kind": "acceptance",
+    "informed_by": [
+      "rec-2803f0e2-8159-46ac-90b0-d9cec7762a4a",
+      "rec-3cfa831c-d800-4439-9fd7-77b52cb2ca33"
+    ],
+    "method": "tdd",
+    "requirement": "R7",
+    "result": "pass",
+    "revision": "dirty",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "matrix-ui-strip"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-09T23:08:30+00:00",
+  "relationships": {},
+  "revision": "sha256:d7a3fd11c1193ca23ef922a8420547858a30fa828365039ef92ce22db7c8890b",
+  "subject": "matrix-ui-strip",
+  "time": {
+    "observed": "2026-10-09T23:08:30+00:00",
+    "recorded": "2026-10-09T23:08:30+00:00"
+  }
+}
+---
+

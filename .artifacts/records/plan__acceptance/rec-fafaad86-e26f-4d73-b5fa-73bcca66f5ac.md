@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-fafaad86-e26f-4d73-b5fa-73bcca66f5ac",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "cross-harness-install",
+    "requirement": "R1",
+    "verify_command": "python3 -m pytest tests/test_skill_portability.py -q"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-18T22:31:44+00:00",
+  "relationships": {},
+  "revision": "sha256:5129bc0db04dcb28353d21a3a06aa14995823eb029c0c9091daf7b01ecad8ad9",
+  "subject": "verify-cross-harness-install",
+  "time": {
+    "as_of": "2026-10-18T22:31:44+00:00"
+  }
+}
+---
+

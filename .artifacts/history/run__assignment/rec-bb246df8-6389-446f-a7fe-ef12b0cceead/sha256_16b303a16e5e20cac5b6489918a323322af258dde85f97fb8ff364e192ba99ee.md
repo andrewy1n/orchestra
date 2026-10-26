@@ -1,0 +1,29 @@
+---
+{
+  "id": "rec-bb246df8-6389-446f-a7fe-ef12b0cceead",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "effort": "dashboard",
+    "executor": "task-graph-ui-agent",
+    "work_item": "task-graph-ui"
+  },
+  "provenance": {
+    "sources": [
+      "task-graph-ui"
+    ]
+  },
+  "record_type": "run:assignment",
+  "recorded_at": "2026-10-20T05:04:17+00:00",
+  "relationships": {},
+  "revision": "sha256:16b303a16e5e20cac5b6489918a323322af258dde85f97fb8ff364e192ba99ee",
+  "subject": "task-graph-ui",
+  "time": {
+    "observed": "2026-10-20T05:04:17+00:00",
+    "recorded": "2026-10-20T05:04:17+00:00"
+  }
+}
+---
+
+## Orientation
+
+Graph UI landed with depends enrichment in the same revision.

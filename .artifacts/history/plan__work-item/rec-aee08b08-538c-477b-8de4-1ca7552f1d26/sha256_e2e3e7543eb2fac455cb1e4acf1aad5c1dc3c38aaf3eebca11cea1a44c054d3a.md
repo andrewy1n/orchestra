@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-aee08b08-538c-477b-8de4-1ca7552f1d26",
+  "lifecycle_state": "in_progress",
+  "payload": {
+    "assignee": "inline",
+    "decisions": [
+      "installer-wizard-approach",
+      "installer-detection-both-scopes"
+    ],
+    "depends_on": [
+      "installer-cli-flags"
+    ],
+    "effort": "packaging",
+    "estimate_minutes": 7,
+    "executor": "inline",
+    "kind": "deliver",
+    "phase": "installer-wizard",
+    "requirements": [
+      "R18"
+    ],
+    "size": "S",
+    "title": "Document the installer wizard and detection"
+  },
+  "record_type": "plan:work-item",
+  "recorded_at": "2026-10-19T03:31:07+00:00",
+  "relationships": {},
+  "revision": "sha256:e2e3e7543eb2fac455cb1e4acf1aad5c1dc3c38aaf3eebca11cea1a44c054d3a",
+  "subject": "installer-docs"
+}
+---
+
+## Description
+
+R18: README documents the wizard, detection, the new default, and the new flags.
+
+## Approach
+
+Update the README install section to describe the TTY wizard, project/global detection labels, the detected-hosts default, the no-detection refusal, and `--list`, `--scope`, `--interactive`, and `--non-interactive`/`--yes`. Keep the existing host matrix and per-provider commands intact. Extend `DOCUMENTED_FLAGS` in `tests/test_readme_matrix.py` with the new flags and add a focused `test_readme_documents_wizard_flags` assertion for the wizard and detection text. Do not change install behavior in this task.

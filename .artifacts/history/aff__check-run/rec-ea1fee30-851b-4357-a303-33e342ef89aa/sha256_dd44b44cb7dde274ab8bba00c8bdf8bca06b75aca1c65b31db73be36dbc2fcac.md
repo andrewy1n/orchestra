@@ -1,0 +1,48 @@
+---
+{
+  "id": "rec-ea1fee30-851b-4357-a303-33e342ef89aa",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-7b6d6bac-572f-42c3-8fe7-ec6de93c3559",
+    "duration_s": 2.209807,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-7b6d6bac-572f-42c3-8fe7-ec6de93c3559",
+      "rec-7700e7bd-e826-4fff-8242-7ad0f42862e9"
+    ],
+    "method": "check",
+    "output_sha256": "73ab2c569cb6d760b712e2e40f6f5b3340384bee8fbaec44cef5ef3f1bccdca8",
+    "requirement": "R7",
+    "result": "pass",
+    "revision": "4dfbd2b07cc25406bee4e3bae5161f5dd4790522",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "web-ui-main-r7"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-19T07:35:52+00:00",
+  "relationships": {},
+  "revision": "sha256:dd44b44cb7dde274ab8bba00c8bdf8bca06b75aca1c65b31db73be36dbc2fcac",
+  "subject": "web-ui-main-r7",
+  "time": {
+    "observed": "2026-10-19T07:35:52+00:00",
+    "recorded": "2026-10-19T07:35:52+00:00"
+  }
+}
+---
+
+ RUN  v5.0.5 /home/andrewyin/orchestra/.worktrees/web-dashboard
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  00:35:51
+   Duration  1.28s (environment 69%, transform 17%, tests 7%, import 6%, worker 1%)
+
+npm warn "R7" is being parsed as a normal command line argument.
+npm warn Unknown cli config "--t". This will stop working in the next major version of npm.

@@ -1,0 +1,51 @@
+---
+{
+  "id": "rec-683ff3dc-5bf3-4997-8ab6-54e88b27f516",
+  "lifecycle_state": "planned",
+  "payload": {
+    "assignee": "",
+    "decisions": [
+      "library-facade",
+      "store-resolution",
+      "call-style",
+      "three-repos"
+    ],
+    "depends_on": [
+      "project-ops"
+    ],
+    "effort": "library-boundary",
+    "estimate_minutes": 18,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "aa-library",
+    "requirements": [
+      "R14",
+      "R20",
+      "R21"
+    ],
+    "size": "L",
+    "title": "Command create and get use open_store"
+  },
+  "record_type": "plan:work-item",
+  "recorded_at": "2026-10-21T08:48:24+00:00",
+  "relationships": {},
+  "revision": "sha256:22afe5ea3bcff5cfdd2e6f76a9a460f1aea9d8cdafd7b72fe3662e49f2fa3642",
+  "subject": "command-facade"
+}
+---
+
+## Description
+
+R14: The adaptive-artifacts package does not read `SE_WORKFLOW_STORE`.
+R20: `adaptive-artifacts create` without `--store` writes into the store `open_store` would open for the process working directory.
+R21: `adaptive-artifacts get` without `--store` reads from that same store.
+
+## Approach
+
+In `_apply_paths`, when `--store` is omitted, select the store with `open_store` for `--root` or the process working directory. When `--store` is passed, that path still wins and binding files are not read. Map `StoreBindingError` onto the command's existing store-open error JSON.
+
+`cmd_create` and `cmd_get` call `Project.create` and `Project.get`. `cmd_apply` calls `Project.apply`. `cmd_list` keeps its query flags and runs them against the store `open_store` returned. Every other command keeps its body and only changes how the store path and contract path are chosen.
+
+Stop using `default_store_path`'s git-common-dir fallback for command path selection, so the command and `open_store` pick the same directory. Do not add a read of `SE_WORKFLOW_STORE`.
+
+Update existing command fixtures that depended on a worktree falling through to the main checkout's store: give them a binding file or `meta.json` in the worktree. Do not edit frozen oracle files. Do not edit orchestra or affidavit.

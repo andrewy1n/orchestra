@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-d7f1c886-279e-41e4-ad0a-9b83cf8d4a5f",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-c70acbe0-be38-4b79-a60b-9ff96e705e35",
+    "duration_s": 0.650325,
+    "effort": "library-boundary",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-c70acbe0-be38-4b79-a60b-9ff96e705e35"
+    ],
+    "method": "check",
+    "output_sha256": "3f2a7d474201c0ea38d8bf1671a9f35e691f355933bdef622342047561fb3da4",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "b1fbb43a3a24e4f8750bc7e729efd5d1836c47b2",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-claim-clocks"
+    ]
+  },
+  "record_type": "aff:check-run",
+  "recorded_at": "2026-10-23T09:34:13+00:00",
+  "relationships": {},
+  "revision": "sha256:0b8e7a0e9b032e11174e3db9beaf6bfdf3aded769cf10c6c9bf87ce65da92ffe",
+  "subject": "verify-claim-clocks",
+  "time": {
+    "observed": "2026-10-23T09:34:13+00:00",
+    "recorded": "2026-10-23T09:34:13+00:00"
+  }
+}
+---
+
+.........                                                                [100%]
+9 passed in 0.05s

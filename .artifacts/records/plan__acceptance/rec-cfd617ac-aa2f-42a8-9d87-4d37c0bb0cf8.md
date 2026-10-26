@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-cfd617ac-aa2f-42a8-9d87-4d37c0bb0cf8",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "phase-proof-packet",
+    "requirement": "R7",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_proof_dashboard.py -q"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-19T03:59:29+00:00",
+  "relationships": {},
+  "revision": "sha256:3f71d0a7f615e6e1f28aeadd377bbe90525350c4e6f236890aaddf0a08e2dd24",
+  "subject": "proof-dashboard-ui",
+  "time": {
+    "as_of": "2026-10-19T03:54:19+00:00"
+  }
+}
+---
+

@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-c559dd9b-03f5-4cb5-8d62-8dff85a9ad2e",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Model and task tests for default selection, follow/pin, merged activity, scoped counts, and All-phases grouping pass",
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "phase-selector",
+    "requirement": "R1",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py tests/test_dashboard_tasks.py -q"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-05T17:39:26+00:00",
+  "relationships": {},
+  "revision": "sha256:b3cb620eecfb32b936c4571ed13e9b73753c61805cec39dfe898e30076cd8d80",
+  "subject": "verify-phase-selector-model",
+  "time": {
+    "as_of": "2026-10-05T17:39:26+00:00"
+  }
+}
+---
+

@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-8fd2727a-4e1b-4fcf-bff9-fe3f092710c2",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "side-rail-calm",
+    "requirement": "R3",
+    "verify_command": "npm --prefix dashboard/web/ui exec -- vitest run src/sideRailCalm.test.ts -t R3"
+  },
+  "record_type": "plan:acceptance",
+  "recorded_at": "2026-10-20T03:40:28+00:00",
+  "relationships": {},
+  "revision": "sha256:74e99948fbbd95c5d383053605ec2aa98009807314655e1daebf370f9efbad19",
+  "subject": "verify-side-rail-calm-teaser",
+  "time": {
+    "as_of": "2026-10-20T03:40:28+00:00"
+  }
+}
+---
+
