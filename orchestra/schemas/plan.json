@@ -158,7 +158,7 @@
       ]
     },
     "acceptance": {
-      "purpose": "What done means for this change. Oracle-backed when test_ids and oracle_hashes are present: test_ids = comma-separated pytest node ids; oracle_hashes = comma-separated relpath:sha256:<hex> for files those ids live in.",
+      "purpose": "What done means for this change. Oracle-backed when test_ids and oracle_hashes are present: test_ids lists pytest node ids; oracle_hashes lists relpath:sha256:<hex> for the files those ids live in.",
       "lifecycle": "current",
       "fields": {
         "criterion": {
