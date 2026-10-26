@@ -156,7 +156,7 @@ def test_runner_records_suite_check_run_payload_fields():
     assert payload["evidence_kind"] == EVIDENCE_KIND == "integration"
     assert payload["method"] == METHOD
     assert payload["runner"] == "orchestra"
-    assert json.loads(payload["failing_node_ids"]) == [
+    assert payload["failing_node_ids"] == [
         "tests/test_foo.py::test_a",
         "tests/test_bar.py::test_b",
     ]

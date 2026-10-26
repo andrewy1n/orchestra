@@ -43,8 +43,6 @@ DOCUMENTED_COMMANDS = (
     "check",
     "close-batch",
     "install",
-    "contract",
-    "project-field",
     "sessions",
     "review-brief",
     "suite",

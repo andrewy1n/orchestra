@@ -223,7 +223,7 @@ def test_r4_token(store, cli, defs):
     _seed(cli, defs)
     target = open_store(store)
     with _running(store) as (base, served):
-        assert Path(served.store).resolve() == Path(target.store_path).resolve()
+        assert Path(served.store_path).resolve() == Path(target.store_path).resolve()
         payload = _get_json(base, "/api/token")
         assert payload["token"] == model.change_token(target)
 
