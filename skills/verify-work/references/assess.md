@@ -4,7 +4,7 @@ Skip for simple work (no phase specification, and incidental).
 Structured work runs Assess after check-runs and before verify-work
 step 5.
 
-Write one `project:assessment` per requirement the check-runs speak
+Write one `run:assessment` per requirement the check-runs speak
 to. Subject is `<phase-slug>-<requirement-id>`. Reason names the
 cause in words — the check-run does not. Payload: `requirement`,
 `status`, `level` (omit only when `status` is `verified`), `next`,
@@ -18,7 +18,7 @@ with the previous assessment before choosing `level` (see Evidence
 escalation).
 
 ```bash
-adaptive-artifacts list --type project:assessment --subject "<phase-slug>-<requirement-id>" --state active --full
+canon list --type run:assessment --subject "<phase-slug>-<requirement-id>" --state active --full
 ```
 
 Choose the first `next` the evidence supports. Do not send every
@@ -41,7 +41,7 @@ column matches. Read the phase integration report before using
 integration rows:
 
 ```bash
-adaptive-artifacts list --type project:integration-report --where payload.phase=<phase-slug> --full
+canon list --type run:integration-report --where payload.phase=<phase-slug> --full
 ```
 
 `insufficient`: set `missing` to the absent check. Prefer first
@@ -49,7 +49,7 @@ missing kind: acceptance, integration, unit, property, fuzz, review.
 A passing check of a different kind does not force `verified`.
 
 `environment` / `unknown`: `next` is `verify`, never `execute`. Open
-a blocking `project:continuity-question` and a finding with
+a blocking `plan:continuity-question` and a finding with
 `needs` `human` (same two writes as repeated `specification` below).
 Leave work-item `in_progress`.
 
@@ -60,7 +60,7 @@ suite the acceptance does not name; run that acceptance's
 `verify_command`.
 
 ```bash
-adaptive-artifacts create --type project:assessment \
+canon create --type run:assessment \
   --subject "<phase-slug>-<requirement-id>" \
   --payload '{"requirement":"<requirement-id>","status":"failed","level":"implementation","next":"execute","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
   --body "## Evidence
@@ -82,7 +82,7 @@ with that row's fields and `confidence` `low`. Integration uses
 otherwise `next` `integrate`.
 
 ```bash
-adaptive-artifacts create --type project:assessment \
+canon create --type run:assessment \
   --subject "<phase-slug>-<requirement-id>" \
   --payload '{"requirement":"<requirement-id>","status":"insufficient","level":"verification","next":"verify","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":"acceptance"}' \
   --body "## Evidence
@@ -99,7 +99,7 @@ acceptance
 ```
 
 ```bash
-adaptive-artifacts create --type project:assessment \
+canon create --type run:assessment \
   --subject "<phase-slug>-<requirement-id>" \
   --payload '{"requirement":"<requirement-id>","status":"blocked","level":"environment","next":"verify","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":"<absent environment fact, or empty>"}' \
   --body "## Evidence
@@ -121,7 +121,7 @@ requirements, write `verified` only after mechanical oracle verify
 holds; name those facts in `## Evidence`.
 
 ```bash
-adaptive-artifacts create --type project:assessment \
+canon create --type run:assessment \
   --subject "<phase-slug>-<requirement-id>" \
   --payload '{"requirement":"<requirement-id>","status":"verified","next":"release","confidence":"high","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
   --body "## Evidence
@@ -154,7 +154,7 @@ previous cause is resolved and the requirement passes → `verified`,
 omit `level`.
 
 ```bash
-adaptive-artifacts supersede --type project:assessment --id <assessment-id> \
+canon supersede --type run:assessment --id <assessment-id> \
   --expected-revision <revision> \
   --payload '{"requirement":"<requirement-id>","status":"failed","level":"design","next":"design","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
   --body "## Evidence
@@ -176,11 +176,11 @@ or set `next` `execute`. Open a blocking continuity-question and a
 finding with `needs` `human` (same for `environment` / `unknown`):
 
 ```bash
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"user","blocking":true,"scope":"assess:<phase-slug>-<requirement-id>"}'
 
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "<phase-slug>-<requirement-id>" \
   --payload '{"claim":"<requirement-id> needs a human: specification repeated without new evidence, or the level is environment or unknown","basis":"<the assessments and check-runs>","invalidated_when":"<a new evidence_kind, a named cause, or a human answer>","effort":"<effort-slug>","needs":"human"}' \
   --body "## Evidence
@@ -200,10 +200,10 @@ When the user answers or decides the finding, clear at the event
 (kinds-and-focus, Needs-you clears):
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 
-adaptive-artifacts update --type project:finding --id <finding-id> \
+canon update --type aff:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 ```
@@ -211,14 +211,14 @@ adaptive-artifacts update --type project:finding --id <finding-id> \
 ## Release
 
 When every assessment for the phase is `verified`, create
-`project:release` with `state` `ready`. Every specification
+`run:release` with `state` `ready`. Every specification
 requirement id must have an active `verified` assessment. Do not
 write `merged`, `deployed`, or any other state. Do not deploy.
 
 ```bash
-adaptive-artifacts list --type project:assessment --where payload.phase=<phase-slug> --state active --full
+canon list --type run:assessment --where payload.phase=<phase-slug> --state active --full
 
-adaptive-artifacts create --type project:release \
+canon create --type run:release \
   --subject "<phase-slug>" \
   --payload '{"state":"ready","phase":"<phase-slug>","effort":"<effort-slug>"}'
 ```

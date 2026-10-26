@@ -28,19 +28,19 @@ Reviewer writes no store records. Parent creates them.
 2. Host `se-reviewer` if available; else read-only/explore subagent
    with [se-reviewer.md](references/se-reviewer.md). Refuse reviewer
    store writes or tree mutation.
-3. Create `project:check-run` (`method: review`,
+3. Create `aff:check-run` (`method: review`,
    `evidence_kind: review`, `revision` = phase head; `PASS`→`pass`,
-   `NEEDS_WORK`→`fail`) and one `project:finding` per NEEDS_WORK
+   `NEEDS_WORK`→`fail`) and one `aff:finding` per NEEDS_WORK
    (`needs: none` when a fix task is created; `needs: human` for
    `severity: judgment` or no fix).
 
 ```bash
-adaptive-artifacts create --type project:check-run \
+canon create --type aff:check-run \
   --subject "<phase-slug>-review" \
-  --payload '{"criterion_id":"<phase-review-acceptance-id>","revision":"<phase-head-sha>","result":"<pass|fail>","effort":"<focus>","method":"review","signed_by":"","evidence_kind":"review"}' \
+  --payload '{"criterion_id":"<phase-slug>-review","revision":"<phase-head-sha>","result":"<pass|fail>","effort":"<focus>","method":"review","signed_by":"","evidence_kind":"review"}' \
   --body "<reviewer output, verbatim>"
 
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "review-<task-or-phase>-<kind>" \
   --payload '{"claim":"<kind> on <task>: <expected>","basis":"<observed>","invalidated_when":"fix lands and reviewer re-run passes, or human clears","effort":"<focus>","needs":"<none|human>"}' \
   --body "## Evidence
@@ -62,13 +62,13 @@ Create a fix work-item under the retry budget, or answer Needs you."
    `retry_max_fix_tasks`. Never reopen `done`. After fixes verify,
    re-run the reviewer **once** on the new diff. Budget exhausted →
    Needs-you path; stop.
-5. One `project:integration-report` from the reviewer's `integration`
+5. One `run:integration-report` from the reviewer's `integration`
    map. Skip when incidental or no multi-task implementation wave.
    `pass` only when verdict is `PASS` and those sections hold — a
    clean git merge is not enough.
 
 ```bash
-adaptive-artifacts create --type project:integration-report \
+canon create --type run:integration-report \
   --subject "<phase-slug>" \
   --payload '{"phase":"<phase-slug>","effort":"<focus>","result":"<pass|fail|blocked>","revision":"<phase-head-sha>"}' \
   --body "## Interfaces
@@ -94,8 +94,8 @@ phase head: leave phase `in_progress` and stop (or fix/escalate).
 ## Suite
 
 After reviewer passes and the integration-report is written. Do not
-waive `phase_gate.suite` — change the contract instead. Load with
-`orchestra suite policy`. Missing / `mode=none` → skip.
+waive `phase_gate.suite` — a human changes `settings.run.phase_gate` in
+`.artifacts/config.json` instead. Load with `orchestra suite policy`. Missing / `mode=none` → skip.
 `mode=external` or `gate=deferred` → do not run locally (`deferred` =
 Landing human stop). For `smoke`/`full` with a `command`: run via
 `orchestra suite start` / `poll` / `collect` / `record` in the phase
@@ -124,7 +124,7 @@ orchestra suite record \
   --effort "<focus>" \
   --cwd <phase-worktree>
 
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "suite-advisory-<phase-slug>" \
   --payload '{"claim":"advisory suite fail for <phase-slug>-suite","basis":"<exit_code and failing node ids>","invalidated_when":"suite check-run passes at phase head, or human clears","effort":"<focus>","needs":"none"}' \
   --body "## Evidence
@@ -145,20 +145,20 @@ Advisory finding only when `gate=advisory` and the suite failed.
 ## Phase gate
 
 ```bash
-adaptive-artifacts list --type project:work-item \
+canon list --type plan:work-item \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
 
-adaptive-artifacts list --type project:acceptance \
+canon list --type plan:acceptance \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
 
-adaptive-artifacts list --type project:check-run \
+canon list --type aff:check-run \
   --where payload.criterion_id=<acceptance-id> --order-by recorded_at
 
-adaptive-artifacts list --type project:check-run \
+canon list --type aff:check-run \
   --where payload.method=review --where payload.effort=<focus> \
   --order-by recorded_at
 
-adaptive-artifacts list --type project:check-run \
+canon list --type aff:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
 ```
@@ -178,7 +178,7 @@ incidental):
 User signs an unsigned manual check:
 
 ```bash
-adaptive-artifacts correct --type project:check-run --id <check-run-id> \
+canon correct --type aff:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
@@ -198,7 +198,7 @@ phase-head. Machine = pointers only. With
 `aff audit --base <base> --head <revision>` into Machine/Attention.
 
 ```bash
-adaptive-artifacts create --type project:proof-packet \
+canon create --type run:proof-packet \
   --subject "<phase-slug>" \
   --payload '{"phase":"<phase-slug>","effort":"<focus>","revision":"<phase-head-sha>","base":"<base-sha>","kind":"<demo|commands|claims|audit-triage|mixed>"}' \
   --body-file "<proof-packet-body.md>"
@@ -236,19 +236,18 @@ At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch t
 
 Close the phase; close phase position (`subject` = phase slug,
 `status: closed`); update effort position narrative (`subject` =
-focus). Never change `current-position.scope` (`supersede` rejects
-scope drift). Set `phase` to the next phase the narrative names —
-pointer only; current phase is still derived from `project:phase`
+focus). Keep `scope` identical to the predecessor's. Set `phase`
+to the next phase the narrative names — pointer only; current phase is still derived from `plan:phase`
 state:
 
 ```bash
-adaptive-artifacts update --type project:phase --id <phase-id> \
+canon update --type plan:phase --id <phase-id> \
   --transition done --expected-revision <revision>
 
-adaptive-artifacts supersede --type project:current-position --id <phase-position-id> \
+canon supersede --type plan:position --id <phase-position-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 
-adaptive-artifacts supersede --type project:current-position --id <effort-position-id> \
+canon supersede --type plan:position --id <effort-position-id> \
   --expected-revision <revision> \
   --payload '{"position":"<phase-slug> done; next up: <next-phase-slug>","scope":"<unchanged from predecessor>","effort":"<focus>","phase":"<next-phase-slug>"}'
 ```
@@ -276,10 +275,10 @@ the effort (`status: closed` on goal and position; `supersede` merges
 payload so other fields carry over):
 
 ```bash
-adaptive-artifacts supersede --type project:active-goal --id <goal-id> \
+canon supersede --type plan:effort --id <goal-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 
-adaptive-artifacts supersede --type project:current-position --id <position-id> \
+canon supersede --type plan:position --id <position-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 ```
 

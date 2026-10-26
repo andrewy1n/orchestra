@@ -7,12 +7,12 @@ still chooses `level` / `next`; the budget only decides when to stop.
 ## Re-dispatch selection
 
 ```bash
-adaptive-artifacts list --type project:work-item --state in_progress \
+canon list --type plan:work-item --state in_progress \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug>
 ```
 
-For each result, load the latest `project:assessment` (structured) or
-latest `project:check-run` (simple). Retry when assessment `next` is
+For each result, load the latest `run:assessment` (structured) or
+latest `aff:check-run` (simple). Retry when assessment `next` is
 `execute`, or check-run `result` is `fail`. Skip a task whose executor
 is still running for the current assignment, or that has an open
 blocking `continuity-question` with `scope` `retry:<task-slug>`.
@@ -37,11 +37,11 @@ When a per-task or per-phase fix-task budget is exhausted, do not
 re-dispatch. Open Needs you and stop selecting it:
 
 ```bash
-adaptive-artifacts create --type project:continuity-question \
+canon create --type plan:continuity-question \
   --subject "<focus>" \
   --payload '{"owner":"user","blocking":true,"scope":"retry:<task-slug>"}'
 
-adaptive-artifacts create --type project:finding \
+canon create --type aff:finding \
   --subject "retry-<task-slug>" \
   --payload '{"claim":"retry budget exhausted for <task-slug> after <attempts> re-dispatches","basis":"<attempts, check-runs, assessments>","invalidated_when":"human raises the budget or withdraws the task","effort":"<focus>","needs":"human"}' \
   --body "## Evidence
@@ -61,10 +61,10 @@ When the user answers or clears the finding, clear at the event
 (kinds-and-focus, Needs-you clears):
 
 ```bash
-adaptive-artifacts update --type project:continuity-question --id <question-id> \
+canon update --type plan:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 
-adaptive-artifacts update --type project:finding --id <finding-id> \
+canon update --type aff:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 ```
@@ -75,12 +75,12 @@ For each retryable task still inside budget: record an
 `assignment-amendment` whose `## Correction` quotes the failing
 check-run evidence (runner output tail) and the assessment's
 `## Reason` when present; set `attempts` to prior+1 (absent → 0, so
-first re-dispatch writes `1`); create a fresh `project:assignment`
+first re-dispatch writes `1`); create a fresh `run:assignment`
 and dispatch as in execute-phase steps 4–5 (same executor mode).
 Work-item stays `in_progress` — never reopen `done`.
 
 ```bash
-adaptive-artifacts create --type project:assignment-amendment \
+canon create --type run:assignment-amendment \
   --subject "<task-slug>" \
   --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
@@ -95,11 +95,11 @@ Re-dispatch after failure.
 
 <assessment ## Reason when present, else omit>"
 
-adaptive-artifacts update --type project:work-item --id <id> \
+canon update --type plan:work-item --id <id> \
   --expected-revision <revision> \
   --payload '{"attempts":1}'
 
-adaptive-artifacts create --type project:assignment \
+canon create --type run:assignment \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
   --body "## Orientation
@@ -116,16 +116,16 @@ Then dispatch with that mode through execution-report + `verify-work`.
 When the closing verification task fails and the cause is another
 task's code, create a new fix work-item in the same phase — never
 reopen `done`. The fix has no `depends_on`. Approach comes from the
-failure; acceptance is the failing check. Then add `depends_on` from
-the verification task to the fix so `derived.ready` re-gates
-verification. Count against `retry_max_fix_tasks`. If that budget is
+failure; acceptance is the failing check. Then add the fix's subject to
+the verification task's `depends_on` (send the full array) so
+`derived.ready` re-gates verification. Count against `retry_max_fix_tasks`. If that budget is
 exhausted, use the budget-exhaustion Needs-you path above
 (`scope: retry:<verification-slug>` or `retry:<fix-slug>`) instead.
 
 ```bash
-adaptive-artifacts create --type project:work-item \
+canon create --type plan:work-item \
   --subject "fix-<failing-area>" \
-  --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<focus>","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":"<ids>","decisions":"<ids>"}' \
+  --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<focus>","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
   --body "## Description
 
 Fix the failure that blocked closing verification.
@@ -134,13 +134,13 @@ Fix the failure that blocked closing verification.
 
 <from the failing check-run / node ids>"
 
-adaptive-artifacts create --type project:acceptance \
+canon create --type plan:acceptance \
   --subject "fix-<failing-area>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<focus>","verify_command":"<command>","requirement":"<id>"}'
 
-adaptive-artifacts update --type project:work-item --id <verification-work-item-id> \
+canon update --type plan:work-item --id <verification-work-item-id> \
   --expected-revision <revision> \
-  --rel depends_on:<fix-work-item-id>
+  --payload '{"depends_on":["<existing-dependency-slug>","<fix-work-item-slug>"]}'
 ```
 
 Never transition a `done` work-item back to `in_progress` or

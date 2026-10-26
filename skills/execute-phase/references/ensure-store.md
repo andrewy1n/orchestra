@@ -5,42 +5,38 @@ repo into the work project. The store is created in the **current
 working tree** the first time `init`, `plan-phase`, or `engage` needs
 records.
 
-Requires `adaptive-artifacts` and `orchestra` on PATH. Call both by
-name. Never resolve a checkout path or a plugin root to run them.
+Requires `canon` and `orchestra` on PATH. Call both by name. Never
+resolve a checkout path or a plugin root to run them.
 
 ## Which store
 
 Dashboard and `orchestra store` resolve **one** store: `local`
 (`<repo>/.artifacts`) or `global` (`~/.artifacts/<repo-name>`). See
-the README (store binding). Skills that shell out to
-`adaptive-artifacts` should use the resolved store — pass `--store`
-and `--contract` explicitly, or call through `orchestra store run --
-<args>` — so a personal shell function that forces
-`--store ~/.artifacts/$proj`
-cannot redirect writes. For a new work repo, `init` creates the
-**local** store under `<repo>/.artifacts`; pin it with
-`.artifacts/store-binding.json` `{"store":"local"}` when you want that
-choice shared across clones.
+the README (store binding). Skills that shell out to `canon` should
+use the resolved store — pass `--store` explicitly, or call through
+`orchestra store run -- <args>` — so a personal shell function that
+forces `--store ~/.artifacts/$proj` cannot redirect writes. For a new
+work repo, `init` creates the **local** store under
+`<repo>/.artifacts`; pin it with `.artifacts/store-binding.json`
+`{"store":"local"}` when you want that choice shared across clones.
 
 ## Runtime commands
 
-The bundled design and the runtime entry points are named commands,
-not files inside a checkout:
+These are named commands, not files inside a checkout:
 
-- `orchestra contract` prints the bundled design. Add `--write <path>`
-  to write it.
-- `orchestra project-field rewrite <design.json>` aligns the design's
-  `"project"` field.
+- `canon` writes and reads store records.
+- `orchestra handoff`, `orchestra view plan|status|verification`, and
+  `orchestra brief <work-item>` print derived views. They write no
+  files.
 - `orchestra check` and `orchestra close-batch` run acceptance and
   close work.
 - `orchestra review-brief` builds the phase-end reviewer brief.
   `orchestra suite policy`, `orchestra suite start`,
   `orchestra suite poll`, `orchestra suite collect`, and
-  `orchestra suite record` run the contracted phase suite and write
+  `orchestra suite record` run the configured phase suite and write
   its check-run.
 - `orchestra store path` prints the resolved store;
-  `orchestra store run -- <args>` runs `adaptive-artifacts` against it.
-- `adaptive-artifacts` writes and reads store records.
+  `orchestra store run -- <args>` runs `canon` against it.
 - `aff` judges a claim in `.affidavit/manifest.json`.
 
 Do not hardcode a plugin directory or a home checkout in a command.
@@ -48,72 +44,65 @@ Do not hardcode a plugin directory or a home checkout in a command.
 ## Reference fields
 
 A payload field that names another record holds that record's
-**subject**, never its `rec-…` id. This covers `milestone`, `phase`,
-`work_item`, `assignment`, and `acceptance`. For example, an
-execution-report sets `"assignment":"<task-slug>"`.
+**subject**, never its `rec-…` id. This covers `effort`, `milestone`,
+`phase`, `work_item`, `assignment`, `acceptance`, and each entry of
+`depends_on`. For example, an execution-report sets
+`"assignment":"<task-slug>"`.
 
-`adaptive-artifacts` does not check these fields when it writes. A
-wrong value is accepted, then fails store validation at session end.
-Check the value before you write it.
+`canon` checks every reference when it writes. A write fails when no
+record of the target type has that subject. Write the target record
+first. An empty string skips the check.
 
-Two inputs take the record id instead: `--rel <name>:<id>` and a
-check-run `criterion_id`.
+Pinned fields take a record id instead: `informed_by` and
+`contradicted_by` (JSON arrays of ids). The check-run `criterion_id`
+is a plain string: an acceptance id, or a phase-level criterion such
+as `<phase-slug>-review` or `<phase-slug>-suite`.
+
+List fields are JSON arrays: `requirements`, `decisions`, `test_ids`,
+`oracle_hashes`, `failing_node_ids`, `claim_ids`, `old_hashes`,
+`new_hashes`, `merged_from`, `depends_on`.
 
 ## First run in a work repo
 
-The current project id is `orchestra`.
+A store is marked by `.artifacts/config.json`. If it exists, the store
+is ready. Do not run `init` again.
 
-If `.artifacts/project-design.json` exists, align its `"project"` field
-with `orchestra project-field rewrite .artifacts/project-design.json`
-from the work repo:
-
-```bash
-orchestra project-field rewrite .artifacts/project-design.json
-```
-
-The command does not ask. It returns one of three outcomes:
-
-- `current` — `"project"` is already `orchestra`. The file is unchanged.
-- `rewritten` — `"project"` was `affidavit` and is now `orchestra` in
-  place. Do not ask again. Continue.
-- `stopped` — `"project"` is any other value. The file is unchanged.
-  **Stop.** Do not overlay or replace the design.
-
-When the outcome is `current` or `rewritten`, check that the design
-lists a `phase` record, a `constraint` record, an `assignment` record,
-and an `execution-report` record, and that `work-item` has
-`required_sections`. A design is current only when it also lists
-`specification`, `design`, `assessment`, `integration-report`,
-`release`, `feedback`, `backlog-item`, and `milestone`. If those are
-missing, the bundled contract is newer (it predates staged task
-lifecycle, phase records, dependency edges, the
-assignment/execution-report dispatch loop, the evidence-loop records,
-backlog capture, or milestones): show the user and replace
-`.artifacts/project-design.json` only if they approve,
-then `adaptive-artifacts resolve`. Do not replace on a no. This is a
-one-time upgrade check at first touch, not a standing gate — once the
-design is current, nothing in the other skills re-checks it before
-dispatching.
-
-If the design file does not exist yet:
+If it does not exist, run this from the work repo:
 
 ```bash
-orchestra store ensure
-adaptive-artifacts resolve
-adaptive-artifacts init
+canon init --schemas plan,run,aff
 ```
 
-`orchestra store ensure` creates `.artifacts/` in the current
-worktree and writes the bundled design there when it is missing. It
-does not overwrite an existing design. `adaptive-artifacts init`
-needs a git repo. If cwd is not git, leave design-only and tell the
-user. Do not write a plan document or extra skill copies.
+`canon init` needs a git repo. If cwd is not git, say so and stop. Do
+not write a plan document or extra skill copies.
+
+After you upgrade orchestra or affidavit, bring the store schemas up
+to date:
+
+```bash
+canon schemas sync
+```
+
+`canon` validates against the schema snapshots in
+`.artifacts/schemas/`, not against the installed tools.
+
+## Phase gate
+
+The phase suite policy lives in `.artifacts/config.json` under
+`settings.run.phase_gate`:
+
+```json
+{"settings": {"run": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}}}
+```
+
+Read it with `orchestra suite policy`. Do not waive it. A human
+changes it in `config.json`.
 
 ## Committing store writes
 
 `validate` accepts an uncommitted record rewrite when the record matches
 its own op log, so an `update`, `supersede`, or `close` batch does not
-have to be committed before validating or before `hook-stop` runs.
+have to be committed before validating or before the Stop hook runs.
 
 Still commit store writes as part of the work they belong to — the
 record diff is what shows a reader what changed and why. The subject
@@ -137,5 +126,5 @@ A record edited by hand, outside the runtime, fails validation:
 record revision tamper detected: .artifacts/records/.../rec-....md
 ```
 
-Fix that by redoing the edit through `adaptive-artifacts update` rather
-than by hand-patching the file.
+Fix that by redoing the edit through `canon update` rather than by
+hand-patching the file.

@@ -1,13 +1,14 @@
 # orchestra
 
-Agent skills for a software-engineering loop on adaptive-artifacts:
+Agent skills for a software-engineering loop on canon:
 classify the ask, plan only the focused effort, execute independent
 tasks with parallel subagents, verify with TDD, checks, or findings.
 Install this repo as a plugin. It is not a template you copy into
 other projects.
 
-Requires the **adaptive-artifacts** plugin (`adaptive-artifacts` on PATH).
-Install that dependency before this plugin (see Install below).
+Requires the **canon** CLI (`canon` on PATH). canon is the record
+store. orchestra, affidavit, and the planner each ship a schema module
+that canon loads. Install canon before this plugin (see Install below).
 
 The plan is a derived view over records. Only the **focused effort**
 is written; for delivery-shaped work, only the **current phase** is
@@ -15,7 +16,7 @@ materialized as `work-item` + `acceptance`.
 
 ## Quick start
 
-1. Install the **adaptive-artifacts** and **orchestra** plugins (see Install).
+1. Install **canon** and the **orchestra** plugin (see Install).
 2. Install [uv](https://docs.astral.sh/uv/getting-started/installation/). It runs the dashboard and fetches Textual.
 3. Add the dashboard keys to tmux. Pick one:
    - With [TPM](https://github.com/tmux-plugins/tpm), add this to `~/.tmux.conf`, then press prefix + `I`:
@@ -30,7 +31,7 @@ materialized as `work-item` + `acceptance`.
      run-shell ~/orchestra/orchestra.tmux
      ```
 
-4. In your project, run the `init` skill once. It creates the store the dashboard reads.
+4. In your project, run the `init` skill once. It runs `canon init --schemas plan,run,aff` and creates the store the dashboard reads.
 5. Press prefix + `A` for a popup or prefix + `S` for a side pane.
 
 A Claude Code plugin install alone does not give you the tmux keys. Use TPM or a clone for step 3.
@@ -51,7 +52,7 @@ Run acceptance checks with `orchestra check --acceptance <id>` (see
 
 Focus is a subject string (which effort this chat is on). An effort
 is a product area; new work in it is a new phase. Optional
-`project:milestone` records group phases under a time-bounded
+`plan:milestone` records group phases under a time-bounded
 outcome; focus stays the effort. Other live goals stay live; a
 finished effort closes with `status: closed`. A merged effort lists
 the old slugs in `merged_from`. Each running phase keeps its own
@@ -60,26 +61,24 @@ Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-foc
 
 ## Install
 
-Requires **adaptive-artifacts** (`adaptive-artifacts` on PATH). Neither
-plugin is in Anthropic's official marketplace.
+Requires **canon** (`canon` on PATH). The orchestra plugin is not in
+Anthropic's official marketplace.
 
-### uv tool install (adaptive-artifacts)
+### uv tool install (canon)
 
-To put the runtime CLI on PATH without a sibling checkout:
+Install canon first. It provides the `canon` command:
 
 ```bash
 uv tool install "git+https://github.com/andrewy1n/adaptive-artifacts.git@<ref>"
 ```
 
-Replace `<ref>` with a branch, tag, or commit. Plugin and git-checkout
-install paths below still work.
-PyPI publish for adaptive-artifacts is deferred until the package format
-settles and outsiders use it.
+Replace `<ref>` with a branch, tag, or commit. The GitHub repository
+keeps its old name for now. PyPI publish is deferred until the package
+format settles and outsiders use it.
 
 ### Claude Code
 
-The orchestra marketplace lists both plugins. Installing orchestra
-pulls `adaptive-artifacts` as a declared dependency (same marketplace):
+Install canon (above), then add the orchestra marketplace and plugin:
 
 ```bash
 claude plugin marketplace add andrewy1n/orchestra
@@ -90,19 +89,12 @@ Install id is `orchestra@orchestra`. If a marketplace with that name
 already points elsewhere: `claude plugin marketplace remove orchestra`
 then add again.
 
-To install only the runtime (without orchestra), use its own
-marketplace: `claude plugin marketplace add andrewy1n/adaptive-artifacts`
-then `claude plugin install adaptive-artifacts@adaptive-artifacts -y`.
-
 ### Cursor
 
-Cursor does not auto-install Claude-style plugin dependencies. Clone
-or sync **both** repos and put `adaptive-artifacts` on PATH:
+Install canon with `uv tool install` (above), then clone and sync
+orchestra:
 
 ```bash
-git clone https://github.com/andrewy1n/adaptive-artifacts.git
-# put adaptive-artifacts/bin on PATH (see that repo's README)
-
 git clone https://github.com/andrewy1n/orchestra.git
 ./scripts/sync-plugin.sh
 ```
@@ -123,13 +115,13 @@ host's skills directory: `engage`, `init`, `settle-phase`, `plan-phase`,
 self-contained: its `SKILL.md` and its `references/` folder travel together.
 The generated `references/` copies already contain `kinds-and-focus.md`,
 `ensure-store.md`, and `se-reviewer.md`, so no shared file needs to sit two
-levels above a `SKILL.md`. Keep `contract/project-design.json` next to the
-`skills/` directory (the installer writes it at the host root).
+levels above a `SKILL.md`. Install canon with `uv tool install` (above)
+so `canon` is on PATH.
 
 ## Install with the CLI
 
 The installer writes one host payload per provider. Native hosts get
-`skills/`, `contract/`, and their host-shaped files; `kind: skills` hosts
+`skills/` and their host-shaped files; `kind: skills` hosts
 delegate to `npx skills add`. It is idempotent: one registration per host
 per install scope, and a second run changes nothing.
 
@@ -150,7 +142,7 @@ uv tool install "git+https://github.com/andrewy1n/orchestra.git@<ref>"
 
 Replace `<ref>` with a branch, tag, or commit. The console script serves the
 subcommands listed under [CLI](#cli). Host installs run from a checkout as
-`./bin/orchestra install`, because the installer reads `skills/`, `contract/`,
+`./bin/orchestra install`, because the installer reads `skills/`,
 `agents/`, and `hosts/` from that tree.
 
 ### Host matrix
@@ -181,8 +173,10 @@ Claude merges `SessionStart` and `Stop` hooks into `.claude/settings.json`
 project and user hooks. Cursor writes `.cursor/hooks.json`, and OpenCode
 writes `plugins/plugin.js` under its root (`.opencode/plugins/plugin.js` for
 a project install, `~/.config/opencode/plugins/plugin.js` with `--global`).
-A host payload that omits hooks still installs cleanly: the skills call
-`adaptive-artifacts hook-start` themselves when views were not injected.
+`orchestra hook-start` injects the handoff, and `orchestra hook-stop`
+validates the store and blocks only on new errors. A host payload that
+omits hooks still installs cleanly: the skills call `orchestra handoff`
+themselves when the handoff was not injected.
 
 ### Detect and choose
 
@@ -284,11 +278,12 @@ In whatever repo you are building:
 | `execute-phase` | Dispatch ready work in waves to subagents |
 | `verify-work` | Show a task is done (check-run and/or finding) |
 
-On first use, `init`, `plan-phase`, or `engage` writes the bundled
-contract into that repo's `.artifacts/` and inits the store. Skills
-stay in the plugin.
+On first use, `init`, `plan-phase`, or `engage` runs
+`canon init --schemas plan,run,aff` in that repo. The store is marked
+by `.artifacts/config.json`. Skills stay in the plugin. After a tool
+upgrade, run `canon schemas sync`.
 
-`init` writes goal, kind, and a `project:phase` record for every phase
+`init` writes goal, kind, and a `plan:phase` record for every phase
 it can currently name (all `planned`) — not work-items. `plan-phase`
 materializes this focus's tasks and promotes the current phase to
 `in_progress` with its real plan in the body.
@@ -317,11 +312,7 @@ for plan review.
 A one-shot that fits in one chat and is not an interrupt gets no
 records. An interrupt or a chore that may span chats gets
 `kind=incidental` on its **own** subject. Subagents must not call
-`adaptive-artifacts` (single-writer store).
-
-Existing stores created before staged task lifecycle,
-phase records, and dependency edges existed need a human-approved
-contract replace (`ensure-store.md`).
+`canon` (single-writer store).
 
 ## Lifecycle
 
@@ -371,31 +362,31 @@ is verified. `ready` means the evidence is sufficient. It does not mean
 merged or deployed. Do not write `merged`, `deployed`, or any other
 state. Do not deploy.
 
-A `project:feedback` record is new intent `engage` can route, with no
+A `plan:feedback` record is new intent `engage` can route, with no
 collector. Route it through `settle-phase` (specify), even when tasks
 for that effort already exist. Do not collect feedback. Do not create
-`project:feedback`. Feedback is not a standing backlog.
+`plan:feedback`. Feedback is not a standing backlog.
 
-A `project:backlog-item` parks deferred work on an effort until it is
+A `plan:backlog-item` parks deferred work on an effort until it is
 promoted or dismissed. `engage` lists open items (`status=open`) after
 naming focus. Park = create; promote = supersede to `promoted` then
 `settle-phase` with a new phase (or an incidental work-item when that
 kind fits); dismiss = supersede to `dismissed`.
 
 ```bash
-adaptive-artifacts create --type project:backlog-item \
+canon create --type plan:backlog-item \
   --subject "<item-slug>" \
   --payload '{"effort":"<effort-slug>","status":"open","source":"<optional>"}' \
   --body "<parked description>"
 
-adaptive-artifacts list --type project:backlog-item \
+canon list --type plan:backlog-item \
   --where payload.effort=<focus> --where payload.status=open --state active
 
-adaptive-artifacts supersede --type project:backlog-item --id <id> \
+canon supersede --type plan:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
 
-adaptive-artifacts supersede --type project:backlog-item --id <id> \
+canon supersede --type plan:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```
@@ -425,19 +416,22 @@ skill's `references/` directory, so an installed skill is self-contained.
 ## CLI
 
 The `orchestra` console script (and `bin/orchestra` in a checkout) dispatches
-subcommands and shells to `adaptive-artifacts` for store reads/writes:
+subcommands and shells to `canon` for store reads/writes:
 
 | Command | Effect |
 |---|---|
-| `check` | Run an acceptance's `verify_command` and write a `project:check-run`. |
+| `check` | Run an acceptance's `verify_command` and write an `aff:check-run`. |
 | `close-batch` | Build the NDJSON apply batch that closes a work-item. |
 | `install` | Install the payload for one or more agent hosts. |
-| `contract` | Print or write the bundled `project-design.json`. |
-| `project-field` | Align a design file's `project` field with orchestra. |
+| `handoff` | Print the handoff markdown. Writes no file. |
+| `view` | Print the `plan`, `status`, or `verification` view. Writes no file. |
+| `brief` | Print one work-item's brief. Writes no file. |
+| `hook-start` | SessionStart hook: inject the handoff. |
+| `hook-stop` | Stop hook: validate, and block only on errors new to the session. |
 | `sessions` | Summarize Claude Code session transcripts. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
-| `suite` | Read, run, collect, and record the contracted phase suite. |
-| `store` | Resolve the bound store and run `adaptive-artifacts` through it. |
+| `suite` | Read, run, collect, and record the configured phase suite. |
+| `store` | Resolve the bound store and run `canon` through it. |
 
 `bin/aff` is the verdict binary from `~/affidavit`.
 
@@ -449,7 +443,7 @@ orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 ```
 
 `check` runs the acceptance's `verify_command` (methods `tdd` / `check`
-only), writes a `project:check-run` with revision and runner metadata,
+only), writes an `aff:check-run` with revision and runner metadata,
 and refuses `method=manual` (use human `signed_by` sign-off instead).
 
 ## Dashboard in tmux
@@ -547,7 +541,7 @@ It needs `uv`. The first run downloads `textual`.
 `dashboard/bin/dashboard --interval S` sets the seconds between change checks
 (default 2).
 
-The launcher (and `orchestra.aa`) pick **one** store for the git
+The launcher (and `orchestra store`) pick **one** store for the git
 toplevel — local (`<toplevel>/.artifacts`) or global
 (`~/.artifacts/<toplevel name>`), never both.
 
@@ -556,21 +550,21 @@ Resolution order:
 1. `$SE_WORKFLOW_STORE` (`local` or `global`).
 2. `<toplevel>/.artifacts/store-binding.local.json` (gitignored override).
 3. `<toplevel>/.artifacts/store-binding.json` (committed default).
-4. Default: local if it has `meta.json`, else global if it has
-   `meta.json`, else none.
+4. Default: local if it has `config.json`, else global if it has
+   `config.json`, else none.
 
 Binding files are JSON: `{"store":"local"}` or `{"store":"global"}`.
-A set binding that points at a path without `meta.json` fails; it does
+A set binding that points at a path without `config.json` fails; it does
 not fall through to the other store. This repository pins local in
 `.artifacts/store-binding.json`.
 
-If a personal shell function wraps `adaptive-artifacts` and forces
+If a personal shell function wraps `canon` and forces
 `--store ~/.artifacts/<name>`, it bypasses this binding for bare CLI
-calls. Prefer `command adaptive-artifacts`, or pass `--store` /
-`--contract` from the resolved target.
+calls. Prefer `command canon`, or pass `--store` from the resolved
+target.
 
 It runs the app from the toplevel. The process imports the
-adaptive-artifacts library and opens the store through that import.
+canon library and opens the store through that import.
 
 Dismissing an unsigned manual check signs it with `$SE_WORKFLOW_SIGNED_BY`,
 else `$USER` / `$USERNAME`, else `dashboard`.
@@ -628,8 +622,8 @@ echo "$input" | ~/orchestra/dashboard/bin/dashboard-status
 
 ## Testing
 
-The suite in `tests/` needs a sibling checkout of `adaptive-artifacts`
-(the runtime this contract resolves against) and `pytest`:
+The suite in `tests/` needs a checkout of canon (the record store) and
+`pytest`:
 
 ```bash
 python3 -m pip install --user pytest   # if not already available
@@ -648,39 +642,42 @@ That full chain is the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
-pass, `execute-phase` honors the contracted suite policy — agents must
-not waive it; change the project design instead.
+pass, `execute-phase` honors the configured suite policy — agents must
+not waive it; a human changes `settings.run.phase_gate` in
+`.artifacts/config.json` instead.
 
 `phase_gate.suite` fields:
 
 | Field | Values | Behavior |
 |---|---|---|
-| `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the contracted `command` in a detached tmux window in the phase worktree; `external` does not run locally |
+| `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached tmux window in the phase worktree; `external` does not run locally |
 | `gate` | `required`, `advisory`, `deferred` | `required` blocks Landing merge on missing/failing suite@head; `advisory` records the check-run (and a finding on fail) without blocking; `deferred` is a Landing human stop with no local run |
 
-The bundled `contract/project-design.json` defaults to `mode=none`
-(skip) for consumers. When a suite is configured (`mode` not `none`
-and `command` set) and `gate` is omitted, gate defaults to `required`.
-This repo's live `.artifacts/project-design.json` sets `mode=full` and
-`gate=advisory` with the full-suite command above. The suite check-run
+`phase_gate` lives in `.artifacts/config.json` under
+`settings.run.phase_gate`. A new store defaults to `mode=none` (skip).
+When a suite is configured (`mode` not `none` and `command` set) and
+`gate` is omitted, gate defaults to `required`. This repo's live
+`.artifacts/config.json` sets `mode=full` and `gate=advisory` with the
+full-suite command above. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 
-By default it looks for the runtime at `~/adaptive-artifacts`. Point it
-elsewhere with `ADAPTIVE_ARTIFACTS_ROOT`:
+By default it looks for canon at `~/canon`. Point it
+elsewhere with `CANON_ROOT`. `CANON_SCHEMA_PATH` adds schema module files
+by path (a colon-separated list), so a test store can use the `plan`,
+`run`, and `aff` modules from a checkout without installing the tools:
 
 ```bash
-ADAPTIVE_ARTIFACTS_ROOT=/path/to/adaptive-artifacts python3 -m pytest tests -q
+CANON_ROOT=/path/to/canon python3 -m pytest tests -q
+CANON_SCHEMA_PATH=orchestra/schemas/plan.json:orchestra/schemas/run.json:/path/to/affidavit/affidavit/schemas/aff.json \
+  CANON_ROOT=/path/to/canon python3 -m pytest tests -q
 ```
 
-Every test drives `adaptive-artifacts`'s public CLI against a fresh,
-disposable, git-backed store built from this repo's own
-`contract/project-design.json` — nothing here touches a real store, and
-nothing hardcodes today's record types, since the contract is expected
-to keep growing. `test_contract_self_consistency.py` proves every
-declared record type, lifecycle transition, bundle relationship, and
-payload reference actually works end to end. `test_skill_contract_consistency.py`
-extracts every `adaptive-artifacts` invocation documented under `skills/`
-and asserts the contract actually permits it — a red result there names
-a skill instructing an operation (a record type, transition, `--rel`,
-or bundle membership) the contract does not currently allow.
+Every test drives `canon`'s public CLI against a fresh, disposable,
+git-backed store created with `canon init --schemas plan,run,aff` —
+nothing here touches a real store. The schema modules under
+`orchestra/schemas/` are the type reference. `test_skill_contract_consistency.py`
+extracts every `canon` invocation documented under `skills/` and asserts
+the schema modules actually permit it — a red result there names a skill
+instructing an operation (a record type, field, or transition) the
+schemas do not allow.
