@@ -3,7 +3,7 @@
 This drives a real ``opencode serve`` process against a temporary HOME. The
 installer writes the plugin to the global OpenCode config root, the server
 loads it, and creating/removing a session must run the fake
-``adaptive-artifacts`` hook commands in the project directory.
+``orchestra`` hook commands in the project directory.
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
     plugin = home / ".config" / "opencode" / "plugins" / "plugin.js"
     assert plugin.is_file()
 
-    hook = fake_bin / "adaptive-artifacts"
+    hook = fake_bin / "orchestra"
     hook.write_text(FAKE_HOOK, encoding="utf-8")
     hook.chmod(0o755)
 
