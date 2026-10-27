@@ -1,16 +1,16 @@
 ---
 {
   "id": "rec-eee4d36c-fdad-4817-a3f1-1cf84b0ec249",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
     "effort": "monorepo",
     "ordinal": 4,
     "title": "Host cutover"
   },
   "record_type": "score:phase",
-  "recorded_at": "2026-10-27T07:46:13+00:00",
+  "recorded_at": "2026-10-27T21:08:45+00:00",
   "relationships": {},
-  "revision": "sha256:88357fbf657ddd2ecdda4ad80c7cc10cb7fa32d42c32a8706ef57b0b14abc1b8",
+  "revision": "sha256:6dd0f9af80de8476190980db3947d8d6b4a214a000a6f01cfe9920f5b048b632",
   "subject": "monorepo-cutover"
 }
 ---
