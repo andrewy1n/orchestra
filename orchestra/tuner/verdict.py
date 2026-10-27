@@ -14,10 +14,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
-from affidavit.amendment import authorize
-from affidavit.evidence_kind import kind_allows_runner
-from affidavit.human_claim import verify_claim_signature
-from affidavit.manifest import (
+from orchestra.tuner.amendment import authorize
+from orchestra.tuner.evidence_kind import kind_allows_runner
+from orchestra.tuner.human_claim import verify_claim_signature
+from orchestra.tuner.manifest import (
     Claim,
     Manifest,
     frozen_support_files,
@@ -28,8 +28,8 @@ from affidavit.manifest import (
     resolve_commit,
     runner_digest,
 )
-from affidavit.provenance import check_provenance
-from affidavit.runner import run_tests
+from orchestra.tuner.provenance import check_provenance
+from orchestra.tuner.runner import run_tests
 
 
 def run_verdict(

@@ -55,7 +55,7 @@ def test_page_text_writes_outside_store_stub_sees_contents_then_deletes(stub_pag
     recorded_path_line, _, contents = out.read_text(encoding="utf-8").partition("\n")
     recorded = Path(recorded_path_line)
     assert recorded.suffix == ".md"
-    assert ".artifacts" not in recorded.parts
+    assert ".canon" not in recorded.parts
     assert recorded.parent.resolve() == Path(tempfile.gettempdir()).resolve()
     assert contents == text
     assert not recorded.exists()

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from canon.project import Project, open_store
-from canon.store import StaleWriteError, Store, StoreError
+from orchestra.canon.project import Project, open_store
+from orchestra.canon.store import StaleWriteError, Store, StoreError
 from conftest import make_task
 
 
@@ -16,7 +16,7 @@ def history_revisions(project, record):
 
 def test_open_store_returns_a_project(project, repo):
     assert isinstance(project, Project)
-    assert project.store_path == (repo / ".artifacts").resolve()
+    assert project.store_path == (repo / ".canon").resolve()
     assert project.binding.location == "local"
     assert set(project.schemas().types) >= {"alpha:task", "beta:review"}
 
@@ -109,7 +109,7 @@ def test_supersede_failure_leaves_the_original_untouched(project):
 
 
 def test_chain_state_matches_the_materialized_record(project):
-    from canon import oplog
+    from orchestra.canon import oplog
 
     task = make_task(project, "t")
     project.update(task["id"], payload={"owner": "ann"})

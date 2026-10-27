@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-59db4225-ccae-4eb8-b66a-5ae39fc0f6df",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-47250685-0161-4993-80af-7bd73bdce32b",
+    "duration_s": 0.151222,
+    "effort": "workflow-loop",
+    "exit_code": 4,
+    "informed_by": [
+      "rec-47250685-0161-4993-80af-7bd73bdce32b",
+      "rec-5481359a-9fa2-4eab-85db-b718307a2fe4"
+    ],
+    "method": "tdd",
+    "output_sha256": "911696da2fc64b69e421beaac80a0338c683be98c6bcb290ab681afe2a4edcd2",
+    "requirement": "R5",
+    "result": "fail",
+    "revision": "e5b769d5e7bf6a24f52d7ec7abc6b77190aad96a",
+    "runner": "se-workflow",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-phase-reviewer-gate"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-11T06:54:06+00:00",
+  "relationships": {},
+  "revision": "sha256:7b89872e4392069a756989364c48c67f3930748db6539d1a5d8dbdfc8574428f",
+  "subject": "verify-phase-reviewer-gate",
+  "time": {
+    "observed": "2026-10-11T06:54:06+00:00",
+    "recorded": "2026-10-11T06:54:06+00:00"
+  }
+}
+---
+
+no tests ran in 0.00s
+ERROR: file or directory not found: tests/test_phase_reviewer.py

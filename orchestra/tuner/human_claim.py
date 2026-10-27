@@ -6,14 +6,14 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from affidavit.amendment import _principals
+from orchestra.tuner.amendment import _principals
 
-NAMESPACE = "affidavit-claim"
+NAMESPACE = "tuner-claim"
 
 
 def canonical_payload(claim_id: str, text: str) -> bytes:
     """UTF-8 bytes a human signs for one claim."""
-    return f"affidavit-claim v1\nclaim: {claim_id}\ntext: {text}\n".encode("utf-8")
+    return f"tuner-claim v1\nclaim: {claim_id}\ntext: {text}\n".encode("utf-8")
 
 
 def verify_claim_signature(

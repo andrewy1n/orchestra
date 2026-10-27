@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-8c8cd3b5-eac9-461a-b480-58bd3af0f8fe",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "load_journal and ordered return correct types, phase scope, open-first ordering, and one-line text for seeded stores; missing types do not error",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "journal-view",
+    "requirement": "R2",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py tests/test_dashboard_journal.py -q -k 'journal and (load or order or scope or missing)'"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-09T20:50:48+00:00",
+  "relationships": {},
+  "revision": "sha256:5f451f6ac5f007a74d6fbb892dd75e45db974a4d90a276a8302a116c67af422a",
+  "subject": "journal-model",
+  "time": {
+    "as_of": "2026-10-09T20:50:48+00:00"
+  }
+}
+---
+

@@ -46,7 +46,7 @@ def _root_from_hook(data: dict[str, Any], fmt: str) -> Path:
 
 
 def _open_project(root: Path):
-    from canon.project import StoreBindingError, open_store
+    from orchestra.canon.project import StoreBindingError, open_store
 
     try:
         return open_store(root)

@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-48ee479b-442e-4ce5-9c7c-d4dcdb02e4af",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-7bd7b9f7-ab98-40b6-9831-a074659941f7",
+    "duration_s": 2.900457,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-7bd7b9f7-ab98-40b6-9831-a074659941f7",
+      "rec-d50f8ab8-92db-4ae2-9c0b-964f16b1259d"
+    ],
+    "method": "tdd",
+    "output_sha256": "ae232909cbcde95391b07dd8f1ce769aa5c7d07962586bdb07ad95f1a05c3b7e",
+    "requirement": "R8",
+    "result": "pass",
+    "revision": "0077727e7e8d3b25e53d5aa1722b5c8f9ca58577",
+    "runner": "se-workflow",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "retry-dashboard"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-11T06:34:32+00:00",
+  "relationships": {},
+  "revision": "sha256:4e4b66548880f0237c3cf21f97448a821b24e18281665e370efdbf9df4e1f20a",
+  "subject": "retry-dashboard",
+  "time": {
+    "observed": "2026-10-11T06:34:32+00:00",
+    "recorded": "2026-10-11T06:34:32+00:00"
+  }
+}
+---
+
+.....                                                                    [100%]
+5 passed, 340 deselected in 2.61s

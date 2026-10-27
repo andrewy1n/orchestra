@@ -23,10 +23,10 @@ def _flat(text: str) -> str:
 def _work_item_payloads(text: str) -> list[dict]:
     payloads = []
     for inv in extract_invocations(text):
-        if inv["type"] == "plan:work-item" and inv["payload"]:
+        if inv["type"] == "score:work-item" and inv["payload"]:
             payloads.append(inv["payload"])
         for part in inv["records"] or []:
-            if part.get("type") == "plan:work-item":
+            if part.get("type") == "score:work-item":
                 payloads.append(part["payload"])
     return payloads
 
@@ -50,11 +50,11 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
     assert payloads
     assert {payload["executor"] for payload in payloads} <= {"inline", "subagent"}
     for inv in extract_invocations(raw):
-        if inv["subcommand"] == "create" and inv["type"] == "plan:work-item":
+        if inv["subcommand"] == "create" and inv["type"] == "score:work-item":
             assert "## Approach" in inv["raw"]
             assert "implementation recipe" in inv["raw"]
         for part in inv["records"] or []:
-            if part.get("type") == "plan:work-item":
+            if part.get("type") == "score:work-item":
                 assert "## Approach" in part["body"]
                 assert "implementation recipe" in part["body"]
 
@@ -85,12 +85,12 @@ def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_presen
     question = next(
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "plan:continuity-question"
+        if inv["subcommand"] == "create" and inv["type"] == "score:continuity-question"
     )
     assert question["payload"]["blocking"] is True
     assert question["payload"]["scope"].startswith("plan-review:")
     # Final plan-review create (step 10), not the earlier next:plan re-open example.
-    question_at = flat.rindex("canon create --type plan:continuity-question")
+    question_at = flat.rindex("canon create --type score:continuity-question")
     gate_at = flat.rindex(gate)
     assert gate_at < question_at
     window = flat[gate_at:question_at]

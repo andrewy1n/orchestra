@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 def _enable_library() -> None:
     try:
-        import canon  # noqa: F401
+        import orchestra.canon  # noqa: F401
     except ModuleNotFoundError:
         import pwd
 
@@ -27,7 +27,7 @@ def _enable_library() -> None:
 
 
 _enable_library()
-from canon.project import StoreBindingError, open_store  # noqa: E402
+from orchestra.canon.project import StoreBindingError, open_store  # noqa: E402
 
 APP = Path(__file__).resolve().parent.parent / "__main__.py"
 

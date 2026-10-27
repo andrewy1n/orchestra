@@ -1,0 +1,50 @@
+---
+{
+  "id": "rec-2a9ceac6-e488-420f-a408-69ecbdb7c4dd",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-111eddcd-d564-4ec9-9857-c55931bc3ccd",
+    "diff_sha256": "0f8d6d7525693b98d86ae479204bdc2322db4574966834057733cac4da9aa701",
+    "duration_s": 0.567032,
+    "effort": "workflow-loop",
+    "exit_code": 1,
+    "failing_node_ids": [
+      "tests/test_task_worktrees.py::test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch"
+    ],
+    "informed_by": [
+      "rec-111eddcd-d564-4ec9-9857-c55931bc3ccd"
+    ],
+    "method": "tdd",
+    "output_sha256": "5d28a56948e2897b0eb265d6408490a04d5b37b037fed72a82f2b86784cb2388",
+    "requirement": "R23",
+    "result": "fail",
+    "revision": "dirty",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "phase-end-cleanup-r23"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-21T05:21:13+00:00",
+  "relationships": {},
+  "revision": "sha256:c60da1d10bab7733c4803a60ebbfae2b67906e29c44e9159660a1c2809a333b4",
+  "subject": "phase-end-cleanup-r23",
+  "time": {
+    "observed": "2026-10-21T05:21:13+00:00",
+    "recorded": "2026-10-21T05:21:13+00:00"
+  }
+}
+---
+
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch ___
+tests/test_task_worktrees.py:189: in test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch
+    assert (
+E   assert 'At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.' in '# Phase end Parent-only. Run after the closing verification task is `done`, when no same-focus `planned`/`in_progress...ected-revision <revision> --payload \'{"status":"closed"}\' ``` Reopen later: kinds-and-focus, Closing and reopening. '
+=========================== short test summary info ============================
+FAILED tests/test_task_worktrees.py::test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch
+1 failed in 0.05s

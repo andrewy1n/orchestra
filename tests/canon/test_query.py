@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from canon.query import QueryError, parse_where, resolve_path
+from orchestra.canon.query import QueryError, parse_where, resolve_path
 from conftest import make_task
 
 

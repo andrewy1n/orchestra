@@ -13,20 +13,20 @@ _PATH_ATTRS = ("store_path", "store", "store_root", "path", "root")
 
 def load_open_store():
     try:
-        from canon.project import open_store
+        from orchestra.canon.project import open_store
     except (ImportError, AttributeError) as exc:
         raise AssertionError(
-            "canon.project.open_store is not available"
+            "orchestra.canon.project.open_store is not available"
         ) from exc
     if not callable(open_store):
-        raise AssertionError("canon.project.open_store is not available")
+        raise AssertionError("orchestra.canon.project.open_store is not available")
     return open_store
 
 
 def isolate(monkeypatch, home: Path) -> None:
     monkeypatch.setenv("HOME", str(home))
     for name in (
-        "ARTIFACTS_STORE",
+        "CANON_STORE",
         "GIT_DIR",
         "GIT_WORK_TREE",
         "GIT_INDEX_FILE",
@@ -74,17 +74,17 @@ def write_config(store: Path) -> None:
 
 
 def write_binding(root: Path, filename: str, value: str) -> None:
-    path = root / ".artifacts" / filename
+    path = root / ".canon" / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"store": value}) + "\n", encoding="utf-8")
 
 
 def local_store(root: Path) -> Path:
-    return root / ".artifacts"
+    return root / ".canon"
 
 
 def global_store(home: Path, root: Path) -> Path:
-    return home / ".artifacts" / root.name
+    return home / ".canon" / root.name
 
 
 def file_set(root: Path) -> set[str]:
@@ -161,7 +161,7 @@ def test_r1_git_toplevel(tmp_path, monkeypatch):
     assert toplevel == repo.resolve()
     assert toplevel != nested.resolve()
     write_config(local_store(repo))
-    write_config(nested / ".artifacts")
+    write_config(nested / ".canon")
     assert_store(open_store(nested), local_store(repo))
 
     worktree = tmp_path / "wt"
@@ -184,8 +184,8 @@ def test_r2_outside_git(tmp_path, monkeypatch):
     directory = tmp_path / "outside"
     directory.mkdir()
     assert git_toplevel(directory) is None
-    write_config(directory / ".artifacts")
-    assert_store(open_store(directory), directory / ".artifacts")
+    write_config(directory / ".canon")
+    assert_store(open_store(directory), directory / ".canon")
 
 
 def test_r3_store_argument(tmp_path, monkeypatch):
@@ -211,7 +211,7 @@ def test_r4_artifacts_store_env(tmp_path, monkeypatch):
     write_config(global_store(home, repo))
     write_binding(repo, "store-binding.local.json", "local")
     write_binding(repo, "store-binding.json", "global")
-    monkeypatch.setenv("ARTIFACTS_STORE", str(chosen))
+    monkeypatch.setenv("CANON_STORE", str(chosen))
     assert_store(open_store(repo), chosen)
 
 
@@ -299,7 +299,7 @@ def test_r10_env_missing_config(tmp_path, monkeypatch):
     write_binding(repo, "store-binding.json", "global")
     before_local = file_set(local_store(repo))
     before_global = file_set(global_store(home, repo))
-    monkeypatch.setenv("ARTIFACTS_STORE", str(chosen))
+    monkeypatch.setenv("CANON_STORE", str(chosen))
     with pytest.raises(Exception):
         open_store(repo)
     assert file_set(local_store(repo)) == before_local

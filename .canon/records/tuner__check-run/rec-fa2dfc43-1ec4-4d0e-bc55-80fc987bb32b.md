@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-fa2dfc43-1ec4-4d0e-bc55-80fc987bb32b",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-1f969ece-cd7e-42c2-944a-899e5ff0f266",
+    "effort": "dashboard",
+    "evidence_kind": "unit",
+    "informed_by": [
+      "rec-1f969ece-cd7e-42c2-944a-899e5ff0f266",
+      "rec-e0565029-6595-4f64-9d80-0859f511d6af"
+    ],
+    "method": "tdd",
+    "requirement": "R1",
+    "result": "fail",
+    "revision": "dirty",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "estimate-contract"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-05T05:59:32+00:00",
+  "relationships": {},
+  "revision": "sha256:3091ec5aebd2761ec8d8d7f007ecdb988f08d88e7ac937113beda5ec4a7f217a",
+  "subject": "estimate-contract",
+  "time": {
+    "observed": "2026-10-05T05:59:32+00:00",
+    "recorded": "2026-10-05T05:59:32+00:00"
+  }
+}
+---
+

@@ -1,11 +1,11 @@
-"""`.artifacts/config.json`: the marker and namespace list of a store."""
+"""`.canon/config.json`: the marker and namespace list of a store."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from canon.paths import validate_namespace
+from orchestra.canon.paths import validate_namespace
 
 FORMAT = "canon/1"
 CONFIG_NAME = "config.json"

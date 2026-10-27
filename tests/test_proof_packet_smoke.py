@@ -9,7 +9,7 @@ from dashboard import model
 
 
 def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
-    assert h.record_def("proof-packet")["id"] == "run:proof-packet"
+    assert h.record_def("proof-packet")["id"] == "conductor:proof-packet"
 
     look = "open dashboard phase detail Proof for phase-proof-packet"
     sample = (

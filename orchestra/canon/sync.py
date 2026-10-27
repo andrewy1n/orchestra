@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from canon.config import new_config
-from canon.migrate import apply_steps, migration_path, version_tuple
-from canon.modules import InstalledModule, discover
-from canon.schema import SchemaError, SchemaSet, load_module, major
-from canon.store import Store, StoreError
-from canon.validation import validate_store
+from orchestra.canon.config import new_config
+from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
+from orchestra.canon.modules import InstalledModule, discover
+from orchestra.canon.schema import SchemaError, SchemaSet, load_module, major
+from orchestra.canon.store import Store, StoreError
+from orchestra.canon.validation import validate_store
 
 
 def _need(installed: dict[str, InstalledModule], namespace: str) -> InstalledModule:

@@ -12,17 +12,17 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, REPO_ROOT, make_git_repo
+from conftest import REPO_ROOT, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
-from canon.project import open_store  # noqa: E402
+from orchestra.canon.project import open_store  # noqa: E402
 from dashboard import model as dashboard_model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard-status"
 
 
 def _run(home: Path, *args: str, stdin: str | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    env = dict(os.environ, HOME=str(home), CANON_ROOT=str(CANON_ROOT))
+    env = dict(os.environ, HOME=str(home))
     return subprocess.run(
         [str(SCRIPT), *args], capture_output=True, text=True, env=env, timeout=30,
         input=stdin if stdin is not None else "", cwd=str(cwd or REPO_ROOT),
@@ -38,16 +38,16 @@ def home(tmp_path):
 
 def _goal(cli, defs, effort: str) -> None:
     h.create_generic_record(
-        cli, defs, "plan:effort", subject=effort,
+        cli, defs, "score:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
     )
 
 
 def _work_item(cli, defs, effort: str, subject: str, *rels: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": f"{effort}-phase", "kind": "deliver", "assignee": "", "effort": effort}
-    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
-    args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
-    result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
+    h.ensure_refs(cli, defs, defs["score:work-item"], payload)
+    args = ["create", "--type", "score:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["score:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
 
@@ -57,20 +57,20 @@ def seeded(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "seg")
     running = _work_item(cli, defs, "seg", "seg-running")
-    h.transition(cli, "plan:work-item", running, "in_progress")
+    h.transition(cli, "score:work-item", running, "in_progress")
     _work_item(cli, defs, "seg", "seg-ready-1")
     _work_item(cli, defs, "seg", "seg-ready-2")
     _work_item(cli, defs, "seg", "seg-waiting", f"depends_on:{running['id']}")
     h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="seg",
+        cli, defs, "score:continuity-question", subject="seg",
         extra_payload={"blocking": True, "scope": "seg-scope"},
     )
     h.create_generic_record(
-        cli, defs, "aff:finding", subject="seg-finding",
+        cli, defs, "tuner:finding", subject="seg-finding",
         extra_payload={"claim": "a human must decide", "needs": "human", "effort": "seg"},
     )
     h.create_generic_record(
-        cli, defs, "aff:check-run", subject="seg-check",
+        cli, defs, "tuner:check-run", subject="seg-check",
         extra_payload={"method": "manual", "signed_by": "", "result": "pass", "effort": "seg"},
     )
     return store
@@ -142,8 +142,8 @@ def test_prints_nothing_without_a_store(home):
 
 def test_prints_nothing_when_the_cli_fails(home):
     repo = make_git_repo()
-    (repo / ".artifacts").mkdir()
-    (repo / ".artifacts" / "config.json").write_text("{not json")
+    (repo / ".canon").mkdir()
+    (repo / ".canon" / "config.json").write_text("{not json")
     result = _run(home, str(repo))
     assert (result.returncode, result.stdout) == (0, "")
 

@@ -1,7 +1,7 @@
 """Orchestra skills name record versus bind. Aff stays mode-free.
 
 ``verify-work`` says when to record an evidence-observation versus when
-to ``aff bind`` that observation to a claim. ``execute-phase`` says when
+to ``orchestra verify bind`` that observation to a claim. ``execute-phase`` says when
 bind or recheck is required before a manifest claim is earned. A
 documented path shows claim → evidence-binding → evidence-observation.
 No aff work-kind, mode flag, or policy switch encodes that choice.
@@ -21,17 +21,13 @@ SKILLS = REPO_ROOT / "skills"
 EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
 VERIFY = SKILLS / "verify-work" / "SKILL.md"
 
-_AFFIDAVIT_ROOT = Path(
-    os.environ.get("AFFIDAVIT_ROOT", str(Path.home() / "affidavit"))
-).expanduser()
-
 _AFF_SWITCH = re.compile(
     r"record-versus-bind|record_versus_bind|record-vs-bind|record_vs_bind|--mode\b|--policy\b"
 )
 _SECTION = re.compile(r"record versus bind|record vs\.? bind", re.I)
-_AFF_BIND = re.compile(r"(?<![\w.-])aff bind\b")
-_AFF_RECHECK = re.compile(r"(?<![\w.-])aff recheck\b")
-_AFF_TRAIL = re.compile(r"(?<![\w.-])aff trail\b")
+_AFF_BIND = re.compile(r"(?<![\w.-])orchestra verify bind\b")
+_AFF_RECHECK = re.compile(r"(?<![\w.-])orchestra verify recheck\b")
+_AFF_TRAIL = re.compile(r"(?<![\w.-])orchestra verify trail\b")
 _LINKAGE = re.compile(
     r"claim(?:[-\s]+id)?>?\s*(?:→|->)\s*<?evidence-binding(?:-id)?>?"
     r"\s*(?:→|->)\s*<?evidence-observation(?:-id)?>?",
@@ -62,7 +58,7 @@ _MODE_PATTERNS = (
 _FORBIDDEN_FIXTURE = """\
 ```bash
 aff --mode record --cwd <repo-or-worktree>
-aff verdict --mode bind --claim <claim-id>
+orchestra verify verdict --mode bind --claim <claim-id>
 aff record-versus-bind --cwd <repo-or-worktree>
 ```
 
@@ -73,15 +69,15 @@ _ALLOWED_FIXTURE = """\
 ## Record versus bind
 
 Techniques and audit may record an unbound evidence-observation.
-Earning a manifest claim requires `aff bind` (and `aff recheck` when
+Earning a manifest claim requires `orchestra verify bind` (and `orchestra verify recheck` when
 the binding must be judged again) before treating that manifest claim
-as earned. Inspect what was recorded with `aff trail`.
+as earned. Inspect what was recorded with `orchestra verify trail`.
 
 claim → evidence-binding → evidence-observation
 """
 
 
-def invented_aff_mode_violations(text: str) -> list[str]:
+def invented_tuner_mode_violations(text: str) -> list[str]:
     """Aff invocations that invent a record-versus-bind mode or work-kind."""
     found: list[str] = []
     seen: set[str] = set()
@@ -95,7 +91,7 @@ def invented_aff_mode_violations(text: str) -> list[str]:
 def scan_skills(skills_root: Path) -> list[str]:
     violations: list[str] = []
     for path in sorted(skills_root.rglob("*.md")):
-        for item in invented_aff_mode_violations(path.read_text()):
+        for item in invented_tuner_mode_violations(path.read_text()):
             violations.append(f"{path.relative_to(skills_root)}: {item}")
     return violations
 
@@ -113,7 +109,7 @@ def _window_has(text: str, patterns: list[re.Pattern[str]], span: int = 800) -> 
 
 
 def missing_record_versus_bind(text: str) -> list[str]:
-    """Gaps in when to record an evidence-observation versus when to aff bind."""
+    """Gaps in when to record an evidence-observation versus when to orchestra verify bind."""
     missing: list[str] = []
     if not _SECTION.search(text):
         missing.append("section 'Record versus bind'")
@@ -132,9 +128,9 @@ def missing_record_versus_bind(text: str) -> list[str]:
         re.compile(r"observations?|claim", re.I),
     ]
     if not _window_has(text, bind_terms, span=400):
-        missing.append("when to `aff bind` an observation to a claim")
+        missing.append("when to `orchestra verify bind` an observation to a claim")
     if not _AFF_TRAIL.search(text):
-        missing.append("`aff trail`")
+        missing.append("`orchestra verify trail`")
     return missing
 
 
@@ -142,9 +138,9 @@ def missing_earned_rule(text: str) -> list[str]:
     """Gaps in when bind or recheck is required before a claim is earned."""
     missing: list[str] = []
     if not _AFF_BIND.search(text):
-        missing.append("`aff bind`")
+        missing.append("`orchestra verify bind`")
     if not _AFF_RECHECK.search(text):
-        missing.append("`aff recheck`")
+        missing.append("`orchestra verify recheck`")
     earned = re.compile(r"earn(?:ed|ing)?", re.I)
     if not _window_has(text, [_AFF_BIND, earned], span=400) and not _window_has(
         text, [_AFF_RECHECK, earned], span=400
@@ -175,7 +171,7 @@ def _subparsers(help_text: str) -> list[str]:
     return names
 
 
-def _collect_aff_help(binary: Path) -> str:
+def _collect_verify_help(binary: Path) -> str:
     seen: set[tuple[str, ...]] = set()
     chunks: list[str] = []
 
@@ -184,7 +180,7 @@ def _collect_aff_help(binary: Path) -> str:
             return
         seen.add(args)
         result = subprocess.run(
-            [sys.executable, str(binary), *args, "--help"],
+            [sys.executable, str(binary), "verify", *args, "--help"],
             capture_output=True,
             text=True,
             check=False,
@@ -197,16 +193,16 @@ def _collect_aff_help(binary: Path) -> str:
     return "\n".join(chunks)
 
 
-def aff_policy_switches() -> list[str]:
+def tuner_policy_switches() -> list[str]:
     """Work-kind, mode flag, or policy switch that encodes record-versus-bind."""
     hits: list[str] = []
-    for rel in ("affidavit/cli.py", "affidavit/evidence_kind.py"):
-        text = (_AFFIDAVIT_ROOT / rel).read_text()
+    for rel in ("orchestra/tuner/cli.py", "orchestra/tuner/evidence_kind.py"):
+        text = (REPO_ROOT / rel).read_text()
         for token in sorted(set(_AFF_SWITCH.findall(text))):
             hits.append(f"{rel}: {token}")
-    help_text = _collect_aff_help(_AFFIDAVIT_ROOT / "bin" / "aff")
+    help_text = _collect_verify_help(REPO_ROOT / "bin" / "orchestra")
     for token in sorted(set(_AFF_SWITCH.findall(help_text))):
-        hits.append(f"aff --help: {token}")
+        hits.append(f"orchestra verify --help: {token}")
     return hits
 
 
@@ -226,7 +222,7 @@ def policy_gaps() -> list[str]:
     return gaps
 
 
-def test_verify_work_names_when_to_record_an_observation_versus_aff_bind():
+def test_verify_work_names_when_to_record_an_observation_versus_tuner_bind():
     missing = missing_record_versus_bind(VERIFY.read_text())
     assert not missing, "verify-work missing: " + "; ".join(missing)
 
@@ -241,18 +237,18 @@ def test_verify_or_execute_skill_shows_claim_binding_observation_linkage():
     assert found, (
         "verify-work or execute-phase must show "
         "claim → evidence-binding → evidence-observation "
-        "on a path that also runs `aff bind`"
+        "on a path that also runs `orchestra verify bind`"
     )
 
 
-def test_aff_has_no_record_versus_bind_mode_and_policy_lives_in_skills():
-    problems = [f"aff encodes record-versus-bind via {item}" for item in aff_policy_switches()]
+def test_tuner_has_no_record_versus_bind_mode_and_policy_lives_in_skills():
+    problems = [f"aff encodes record-versus-bind via {item}" for item in tuner_policy_switches()]
     problems.extend(scan_skills(SKILLS))
     problems.extend(policy_gaps())
     assert not problems, "\n".join(problems)
 
 
-def test_fixture_skill_inventing_an_aff_mode_fails_the_scanner(tmp_path: Path):
+def test_fixture_skill_inventing_an_tuner_mode_fails_the_scanner(tmp_path: Path):
     bad_root = tmp_path / "bad"
     bad = bad_root / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)

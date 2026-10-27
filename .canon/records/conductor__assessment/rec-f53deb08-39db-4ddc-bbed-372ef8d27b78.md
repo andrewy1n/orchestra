@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-f53deb08-39db-4ddc-bbed-372ef8d27b78",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "workflow-loop",
+    "missing": "",
+    "next": "release",
+    "phase": "verification-policy",
+    "requirement": "R6",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-15T08:59:53+00:00",
+  "relationships": {},
+  "revision": "sha256:cd4cec1c7a2d923a40aa10b77b88b7ab9234673824cb129aea40e6f21523091b",
+  "subject": "verification-policy-R6",
+  "time": {
+    "as_of": "2026-10-15T08:59:53+00:00"
+  }
+}
+---
+
+## Evidence
+
+check-run rec-e98d300b (pass @ c681c76) for phase-gate-contract-repo: mode=full gate=advisory pytest in command.
+
+## Missing
+
+none
+
+## Reason
+
+Requirement R6 is met by the phase-gate-contract change and its passing checks.

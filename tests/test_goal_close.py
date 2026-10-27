@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from canon.project import open_store
+from orchestra.canon.project import open_store
 
 import helpers as h
 from orchestra import views
@@ -12,15 +12,15 @@ from orchestra import views
 
 def _effort(cli, defs, effort: str) -> tuple[dict, dict]:
     goal = h.create_generic_record(
-        cli, defs, "plan:effort", subject=effort,
+        cli, defs, "score:effort", subject=effort,
         extra_payload={"goal": f"goal of {effort}", "kind": "deliver"},
     )
     phase = h.create_generic_record(
-        cli, defs, "plan:phase", subject=f"{effort}-phase",
+        cli, defs, "score:phase", subject=f"{effort}-phase",
         extra_payload={"title": "only phase", "ordinal": 1, "effort": effort},
     )
     position = h.create_generic_record(
-        cli, defs, "plan:position", subject=effort,
+        cli, defs, "score:position", subject=effort,
         extra_payload={"position": f"position of {effort}", "scope": "effort", "effort": effort, "phase": phase["subject"]},
     )
     return goal, position
@@ -49,8 +49,8 @@ def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _effort(cli, defs, "open-effort")
     goal, position = _effort(cli, defs, "done-effort")
-    _close(cli, "plan:effort", goal)
-    _close(cli, "plan:position", position)
+    _close(cli, "score:effort", goal)
+    _close(cli, "score:position", position)
 
     handoff = _handoff(store)
     assert "done-effort" not in handoff
@@ -61,9 +61,9 @@ def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
 def test_reopened_effort_returns_to_the_handoff(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     goal, position = _effort(cli, defs, "back-effort")
-    _close(cli, "plan:effort", goal)
-    _close(cli, "plan:position", position)
-    for record_type, subject in (("plan:effort", "back-effort"), ("plan:position", "back-effort")):
+    _close(cli, "score:effort", goal)
+    _close(cli, "score:position", position)
+    for record_type, subject in (("score:effort", "back-effort"), ("score:position", "back-effort")):
         closed = json.loads(_render(cli, "list", "--type", record_type, "--subject", subject, "--state", "active", "--full"))["records"][0]
         result = cli(
             "supersede", "--type", record_type, "--id", closed["id"], "--expected-revision", closed["revision"],
@@ -80,7 +80,7 @@ def test_status_rejects_values_other_than_open_or_closed(store, cli, resolved_co
     goal, _ = _effort(cli, defs, "some-effort")
     payload = {**goal["payload"], "status": "finished"}
     result = cli(
-        "supersede", "--type", "plan:effort", "--id", goal["id"],
+        "supersede", "--type", "score:effort", "--id", goal["id"],
         "--expected-revision", goal["revision"], "--payload", json.dumps(payload),
     )
     assert result.returncode != 0

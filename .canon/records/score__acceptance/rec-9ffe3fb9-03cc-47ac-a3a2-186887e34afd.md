@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-9ffe3fb9-03cc-47ac-a3a2-186887e34afd",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "cross-harness-install",
+    "requirement": "R5",
+    "verify_command": "python3 -m pytest tests/test_cli_packaging.py -q -k path"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-18T22:30:58+00:00",
+  "relationships": {},
+  "revision": "sha256:f75c858b629d443d00b0bba0478db4bb798405e4b4430be959055a46dcd68c96",
+  "subject": "cli-package",
+  "time": {
+    "as_of": "2026-10-18T22:30:58+00:00"
+  }
+}
+---
+

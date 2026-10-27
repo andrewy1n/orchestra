@@ -88,5 +88,5 @@ def test_phase_chip_shows_proof_ready():
 
 
 def test_soft_and_full_types_include_proof_packet():
-    assert "run:proof-packet" in model.FULL_TYPES
-    assert "run:proof-packet" in model.SOFT_TYPES
+    assert "conductor:proof-packet" in model.FULL_TYPES
+    assert "conductor:proof-packet" in model.SOFT_TYPES

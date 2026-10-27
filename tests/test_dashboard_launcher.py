@@ -11,14 +11,14 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, REPO_ROOT, make_git_repo, uv_script_source_ok, write_config
+from conftest import REPO_ROOT, make_git_repo, write_config
 from test_dashboard_status import _goal, _work_item
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "dashboard"
 
 FAKE_UV = """#!/usr/bin/env python3
 import json, os, sys
-print(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd(), "canon_root": os.environ.get("CANON_ROOT")}))
+print(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd()}))
 """
 APP = REPO_ROOT / "dashboard" / "__main__.py"
 
@@ -67,7 +67,7 @@ def _exec_record(result: subprocess.CompletedProcess) -> dict:
 
 
 def test_runs_the_app_through_uv_from_the_repo_root(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     sub = repo / "a" / "b"
     sub.mkdir(parents=True)
     record = _exec_record(_run(sub, home, uv=_fake_uv(tmp_path / "uv")))
@@ -76,37 +76,37 @@ def test_runs_the_app_through_uv_from_the_repo_root(home, repo, tmp_path):
 
 
 def test_passes_extra_args_to_the_app(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     argv = _exec_record(_run(repo, home, "--once", "--interval", "5", uv=_fake_uv(tmp_path / "uv")))["argv"]
     assert argv == ["run", "--script", str(APP), "--once", "--interval", "5"]
 
 
 def test_runs_with_a_home_store_and_no_repo_store(home, repo, tmp_path):
-    _write_store(home / ".artifacts" / repo.name)
+    _write_store(home / ".canon" / repo.name)
     assert _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))["argv"][:2] == ["run", "--script"]
 
 
 def test_runs_with_a_repo_store_when_home_dir_has_no_meta(home, repo, tmp_path):
-    (home / ".artifacts" / repo.name).mkdir(parents=True)
-    _write_store(repo / ".artifacts")
+    (home / ".canon" / repo.name).mkdir(parents=True)
+    _write_store(repo / ".canon")
     assert _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))["argv"][:2] == ["run", "--script"]
 
 
 def test_does_not_require_the_dashboard_view(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     result = _run(repo, home, uv=_fake_uv(tmp_path / "uv"))
     assert result.returncode == 0 and "dashboard view" not in result.stdout
 
 
 def test_finds_uv_on_path(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     _fake_uv(tmp_path / "bin" / "uv")
     record = _exec_record(_run(repo, home, path=f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"))
     assert record["argv"] == ["run", "--script", str(APP)]
 
 
 def test_finds_uv_in_the_home_local_bin(home, repo):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     _fake_uv(home / ".local" / "bin" / "uv")
     bare = tmp_bare_path(home)
     assert _exec_record(_run(repo, home, path=bare))["argv"] == ["run", "--script", str(APP)]
@@ -123,7 +123,7 @@ def tmp_bare_path(home: Path) -> str:
 
 
 def test_prints_install_hint_when_uv_is_missing(home, repo):
-    _write_store(repo / ".artifacts")
+    _write_store(repo / ".canon")
     result = _run(repo, home, path=tmp_bare_path(home))
     assert result.returncode == 1
     assert "uv" in result.stdout and "install" in result.stdout.lower()
@@ -133,40 +133,30 @@ def test_prints_no_store_message(home, repo, tmp_path):
     result = _run(repo, home, uv=_fake_uv(tmp_path / "uv"))
     assert result.returncode == 1
     assert "no artifact store" in result.stdout.lower()
-    assert str(repo / ".artifacts") in result.stdout
-    assert str(home / ".artifacts" / repo.name) in result.stdout
+    assert str(repo / ".canon") in result.stdout
+    assert str(home / ".canon" / repo.name) in result.stdout
     assert '"argv"' not in result.stdout
 
 
 def test_committed_local_binding_uses_repo_when_home_store_exists(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
-    _write_store(home / ".artifacts" / repo.name)
-    (repo / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "local"}))
+    _write_store(repo / ".canon")
+    _write_store(home / ".canon" / repo.name)
+    (repo / ".canon" / "store-binding.json").write_text(json.dumps({"store": "local"}))
     assert _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))["argv"][:2] == ["run", "--script"]
 
 
 def test_bound_global_without_config_prints_binding_error(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
-    (repo / ".artifacts" / "store-binding.json").write_text(json.dumps({"store": "global"}))
+    _write_store(repo / ".canon")
+    (repo / ".canon" / "store-binding.json").write_text(json.dumps({"store": "global"}))
     result = _run(repo, home, uv=_fake_uv(tmp_path / "uv"))
     assert result.returncode == 1
     assert "store-binding.json" in result.stdout
-    assert str(home / ".artifacts" / repo.name) in result.stdout
+    assert str(home / ".canon" / repo.name) in result.stdout
     assert "config.json" in result.stdout
     assert '"argv"' not in result.stdout
 
 
-def test_canon_root_reaches_the_app(home, repo, tmp_path):
-    _write_store(repo / ".artifacts")
-    record = _exec_record(_run(repo, home, uv=_fake_uv(tmp_path / "uv")))
-    assert record["canon_root"] == str(CANON_ROOT)
-
-
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
-@pytest.mark.skipif(
-    not uv_script_source_ok(APP.parent, "../../adaptive-artifacts"),
-    reason="the script's uv source path ../../adaptive-artifacts is absent in a worktree layout",
-)
 def test_renders_a_seeded_store_once_with_the_textual_app(home, store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, "launchfx")
@@ -179,7 +169,7 @@ def test_renders_a_seeded_store_once_with_the_textual_app(home, store, cli, reso
 
 
 def _run_real(cwd: Path, home: Path, cache: str) -> subprocess.CompletedProcess:
-    env = dict(os.environ, HOME=str(home), UV_CACHE_DIR=cache, CANON_ROOT=str(CANON_ROOT))
+    env = dict(os.environ, HOME=str(home), UV_CACHE_DIR=cache)
     env.pop("SE_WORKFLOW_UV", None)
     return subprocess.run(
         [str(SCRIPT), "--once"], capture_output=True, text=True, cwd=str(cwd), env=env,

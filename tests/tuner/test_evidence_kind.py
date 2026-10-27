@@ -5,9 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
-AFF = Path(__file__).resolve().parents[1] / "bin" / "aff"
+VERIFY = [sys.executable, str(Path(__file__).resolve().parents[2] / "bin" / "orchestra"), "verify"]
 CLAIM = "claim-widget"
 ORACLE_REL = "tests/test_widget.py"
 NODE = f"{ORACLE_REL}::test_widget"
@@ -15,7 +16,7 @@ ORACLE = b"def test_widget():\n    from app import value\n    assert value == 1\
 APP_RED = b"value = 0\n"
 APP_GREEN = b"value = 1\n"
 ALLOW = (
-    b'owner namespaces="affidavit-amendment" '
+    b'owner namespaces="tuner-amendment" '
     b"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyOneaaaaaaaaaaaaaaaaaaa\n"
 )
 
@@ -42,10 +43,10 @@ def _manifest(evidence_kind: str | None, runner: list[str] | None) -> dict:
 
 
 def _write(root: Path, *, app: bytes, manifest: dict) -> None:
-    affidavit = root / ".affidavit"
-    affidavit.mkdir(exist_ok=True)
-    (affidavit / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    (affidavit / "allowed_signers").write_bytes(ALLOW)
+    tuner = root / ".tuner"
+    tuner.mkdir(exist_ok=True)
+    (tuner / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (tuner / "allowed_signers").write_bytes(ALLOW)
     (root / "pytest.ini").write_text("[pytest]\n")
     oracle = root / ORACLE_REL
     oracle.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +77,7 @@ def _repo(root: Path, evidence_kind: str | None, runner: list[str] | None = None
 
 def _verdict(root: Path, head: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(AFF), "verdict", "--at", head, CLAIM],
+        [*VERIFY, "verdict", "--at", head, CLAIM],
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -90,7 +91,7 @@ def _payload(proc: subprocess.CompletedProcess[str]) -> dict:
 
 def _interaction_runner() -> list[str]:
     proc = subprocess.run(
-        [str(AFF), "runner-template", "interaction"],
+        [*VERIFY, "runner-template", "interaction"],
         capture_output=True,
         text=True,
     )
@@ -119,7 +120,7 @@ def test_r1_manifest_claim_may_declare_evidence_kind(tmp_path: Path) -> None:
 
 
 def test_r2_interaction_claim_fails_under_default_unit_runner(tmp_path: Path) -> None:
-    """R2: aff verdict fails an interaction claim whose witness runs under the default unit runner."""
+    """R2: orchestra verify verdict fails an interaction claim whose witness runs under the default unit runner."""
     root = tmp_path / "repo"
     head = _repo(root, "interaction")
     proc = _verdict(root, head)
@@ -136,7 +137,7 @@ def test_r2_interaction_claim_fails_under_default_unit_runner(tmp_path: Path) ->
 
 
 def test_r3_interaction_claim_passes_under_interaction_runner(tmp_path: Path) -> None:
-    """R3: aff verdict passes an interaction claim whose witness runs under the interaction template."""
+    """R3: orchestra verify verdict passes an interaction claim whose witness runs under the interaction template."""
     runner = _interaction_runner()
     root = tmp_path / "repo"
     head = _repo(root, "interaction", runner)

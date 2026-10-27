@@ -9,8 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from canon.project import open_store
-from conftest import AFFIDAVIT_ROOT
+from orchestra.canon.project import open_store
 from orchestra import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -19,14 +18,7 @@ _CLOSE_MUST_NOT_START = {"aff", "canon"}
 
 
 def _env() -> dict[str, str]:
-    env = os.environ.copy()
-    root = AFFIDAVIT_ROOT
-    if (root / "affidavit" / "__init__.py").is_file():
-        previous = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = str(root) if not previous else str(root) + os.pathsep + previous
-        if str(root) not in sys.path:
-            sys.path.insert(0, str(root))
-    return env
+    return os.environ.copy()
 
 
 def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -41,9 +33,9 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def _sign_claim(key: Path) -> str:
-    payload = f"affidavit-claim v1\nclaim: {CLAIM_ID}\ntext: {CLAIM_TEXT}\n".encode()
+    payload = f"tuner-claim v1\nclaim: {CLAIM_ID}\ntext: {CLAIM_TEXT}\n".encode()
     result = subprocess.run(
-        ["ssh-keygen", "-Y", "sign", "-f", str(key), "-n", "affidavit-claim"],
+        ["ssh-keygen", "-Y", "sign", "-f", str(key), "-n", "tuner-claim"],
         input=payload,
         capture_output=True,
         check=False,
@@ -63,16 +55,16 @@ def _allowlist(key: Path) -> bytes:
     if public.returncode != 0:
         raise RuntimeError(public.stderr.strip() or "ssh-keygen -y failed")
     blob = " ".join(public.stdout.split()[:2])
-    return f'reviewer namespaces="affidavit-claim" {blob}\n'.encode()
+    return f'reviewer namespaces="tuner-claim" {blob}\n'.encode()
 
 
 def _init_store(repo: Path, env: dict[str, str]) -> None:
-    initialized = _run(["canon", "init", "--schemas", "plan,run,aff"], repo, env)
+    initialized = _run(["canon", "init", "--schemas", "score,conductor,tuner"], repo, env)
     if initialized.returncode != 0:
         raise RuntimeError(initialized.stdout + initialized.stderr)
-    _create(repo, env, "plan:effort", "library-boundary", {"goal": "library boundary", "kind": "deliver"})
+    _create(repo, env, "score:effort", "library-boundary", {"goal": "library boundary", "kind": "deliver"})
     _create(
-        repo, env, "plan:phase", "library-e2e",
+        repo, env, "score:phase", "library-e2e",
         {"title": "Library e2e", "ordinal": 1, "effort": "library-boundary"},
         "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n",
     )
@@ -127,10 +119,10 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     if generated.returncode != 0:
         raise RuntimeError(generated.stderr.strip() or "ssh-keygen failed")
 
-    affidavit = repo / ".affidavit"
-    affidavit.mkdir()
-    (affidavit / "allowed_signers").write_bytes(_allowlist(key))
-    (affidavit / "manifest.json").write_text(
+    tuner = repo / ".tuner"
+    tuner.mkdir()
+    (tuner / "allowed_signers").write_bytes(_allowlist(key))
+    (tuner / "manifest.json").write_text(
         json.dumps({"claims": [], "amendments": []}) + "\n",
         encoding="utf-8",
     )
@@ -146,7 +138,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
         "witness": "human",
         "signature": _sign_claim(key),
     }
-    (affidavit / "manifest.json").write_text(
+    (tuner / "manifest.json").write_text(
         json.dumps({"claims": [claim], "amendments": []}, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -158,7 +150,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     acceptance = _create(
         repo,
         env,
-        "plan:acceptance",
+        "score:acceptance",
         CLAIM_ID,
         {
             "method": "check",
@@ -171,7 +163,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     check_run = _create(
         repo,
         env,
-        "aff:check-run",
+        "tuner:check-run",
         "close-check",
         {
             "criterion_id": acceptance["id"],
@@ -183,7 +175,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
             "runner": "orchestra",
         },
     )
-    from affidavit.binding import bind_observation
+    from orchestra.tuner.binding import bind_observation
 
     bind_observation(
         repo,
@@ -228,13 +220,13 @@ def _assert_created_records(repo: Path, request: dict) -> None:
     """open_store reads the records canon create wrote."""
     project = open_store(repo)
     acceptance_id = request["acceptance_ids"][0]
-    acceptance = project.get(acceptance_id, "plan:acceptance")
+    acceptance = project.get(acceptance_id, "score:acceptance")
     assert acceptance["id"] == acceptance_id
     assert acceptance["subject"] == CLAIM_ID
     assert acceptance["payload"]["method"] == "check"
     assert acceptance["payload"]["claim"] == CLAIM_ID
     check_run_id = request["criteria"][0]["check_run_id"]
-    check_run = project.get(check_run_id, "aff:check-run")
+    check_run = project.get(check_run_id, "tuner:check-run")
     assert check_run["id"] == check_run_id
     assert check_run["payload"]["criterion_id"] == acceptance_id
     assert check_run["payload"]["result"] == "pass"

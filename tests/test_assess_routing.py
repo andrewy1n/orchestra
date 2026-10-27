@@ -63,7 +63,7 @@ def test_verify_and_assess_are_separate_steps():
     assert "`insufficient` — the criterion was not exercised." in flat
     assert "A failing concurrency test does not itself claim the design is wrong." in flat
 
-    check_runs = _writes("verify-work", "aff:check-run", {"create"})
+    check_runs = _writes("verify-work", "tuner:check-run", {"create"})
     assert check_runs
     for inv in check_runs:
         assert "level" not in inv["payload"]
@@ -98,7 +98,7 @@ def test_routing_table_chooses_next_from_the_evidence():
     assert "acceptance, integration, unit, property, fuzz, review" in _normalized(text)
 
     by_next = {(inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
-               for inv in _writes("verify-work", "run:assessment")}
+               for inv in _writes("verify-work", "conductor:assessment")}
     assert ("implementation", "execute", "failed") in by_next
     assert ("design", "design", "failed") in by_next
     assert ("verification", "verify", "insufficient") in by_next
@@ -122,18 +122,18 @@ def test_evidence_escalation_ladder():
     assert "needs` `human`" in text or '`needs` `human`' in text
 
     raised = [
-        inv for inv in _writes("verify-work", "run:assessment", {"supersede"})
+        inv for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
         if inv["payload"].get("level") == "design" and inv["payload"]["next"] == "design"
     ]
     assert len(raised) == 1
     assert "The evidence did not increase." in raised[0]["raw"]
     assert "implementation" not in raised[0]["payload"].values()
 
-    questions = _writes("verify-work", "plan:continuity-question", {"create"})
+    questions = _writes("verify-work", "score:continuity-question", {"create"})
     assert len(questions) == 1
     assert questions[0]["payload"]["blocking"] is True
     findings = [
-        inv for inv in _writes("verify-work", "aff:finding", {"create"})
+        inv for inv in _writes("verify-work", "tuner:finding", {"create"})
         if "specification repeated" in inv["payload"]["claim"]
     ]
     assert len(findings) == 1
@@ -147,12 +147,12 @@ def test_release_ready_only_when_every_requirement_is_verified():
     assert "When every assessment for the phase is `verified`" in text
     assert "Do not write `merged`, `deployed`, or any other state" in text
     assert "Do not deploy." in text
-    releases = _writes("verify-work", "run:release", {"create"})
+    releases = _writes("verify-work", "conductor:release", {"create"})
     assert len(releases) == 1
     assert releases[0]["payload"]["state"] == "ready"
     assert set(releases[0]["payload"]) >= {"state", "phase", "effort"}
     for inv in extract_invocations(text):
-        if inv["type"] == "run:release" and inv["payload"]:
+        if inv["type"] == "conductor:release" and inv["payload"]:
             assert inv["payload"]["state"] == "ready"
 
 
@@ -160,11 +160,11 @@ def test_two_modes_skip_assessment_and_release():
     text = _normalized(_text("verify-work"))
     assert "A phase with no specification, and incidental work, skip assessment and release" in text
     assert "keep pass/fail check-runs" in text
-    assert "Do not write `run:assessment` or `run:release` on that path." in text
+    assert "Do not write `conductor:assessment` or `conductor:release` on that path." in text
 
 
 def test_assessment_examples_carry_required_fields_and_sections():
-    for inv in _writes("verify-work", "run:assessment"):
+    for inv in _writes("verify-work", "conductor:assessment"):
         payload = inv["payload"]
         for field in ("requirement", "status", "next", "confidence", "phase", "effort"):
             assert field in payload
@@ -182,49 +182,49 @@ def test_assessment_examples_carry_required_fields_and_sections():
 
 def test_engage_routes_feedback_through_settle_phase():
     text = _text("engage")
-    assert "A `plan:feedback` record is new intent for the effort it names" in text
+    assert "A `score:feedback` record is new intent for the effort it names" in text
     assert "Route it through `settle-phase` (specify)" in text
     assert "Do not collect feedback." in text
     lists = [
         inv for inv in extract_invocations(text)
-        if inv["subcommand"] == "list" and inv["type"] == "plan:feedback"
+        if inv["subcommand"] == "list" and inv["type"] == "score:feedback"
     ]
     assert len(lists) == 1
     assert not [
         inv for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "plan:feedback"
+        if inv["subcommand"] == "create" and inv["type"] == "score:feedback"
     ]
 
 
 def test_engage_documents_backlog_item_list_create_supersede():
     text = _text("engage")
-    assert "Do not create `plan:feedback`" in text
-    assert "plan:backlog-item" in text
+    assert "Do not create `score:feedback`" in text
+    assert "score:backlog-item" in text
     assert "**Park**" in text or "Park" in text
     assert "promoted" in text and "dismissed" in text
     invs = extract_invocations(text)
     backlog_lists = [
         inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "plan:backlog-item"
+        if inv["subcommand"] == "list" and inv["type"] == "score:backlog-item"
     ]
     assert len(backlog_lists) == 1
     assert "payload.status=open" in backlog_lists[0]["raw"]
     creates = [
         inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "plan:backlog-item"
+        if inv["subcommand"] == "create" and inv["type"] == "score:backlog-item"
     ]
     assert len(creates) == 1
     assert creates[0]["payload"]["status"] == "open"
     assert creates[0]["payload"]["effort"]
     supersedes = [
         inv for inv in invs
-        if inv["subcommand"] == "supersede" and inv["type"] == "plan:backlog-item"
+        if inv["subcommand"] == "supersede" and inv["type"] == "score:backlog-item"
     ]
     statuses = {inv["payload"]["status"] for inv in supersedes if inv["payload"]}
     assert statuses == {"promoted", "dismissed"}
     assert not [
         inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "plan:feedback"
+        if inv["subcommand"] == "create" and inv["type"] == "score:feedback"
     ]
 
 
@@ -256,30 +256,30 @@ def test_documented_invocations_are_contract_legal(contract_indexes, skill_name)
 
 def test_assessment_and_check_run_enums_match_the_contract(contract_indexes):
     defs, _ = contract_indexes
-    assessment_enum = defs["run:assessment"]["payload_enum"]
-    check_enum = defs["aff:check-run"]["payload_enum"]
+    assessment_enum = defs["conductor:assessment"]["payload_enum"]
+    check_enum = defs["tuner:check-run"]["payload_enum"]
     assert check_enum["result"] == ["pass", "fail", "blocked", "insufficient"]
     assert check_enum["method"] == ["tdd", "check", "manual", "review"]
-    assert defs["plan:acceptance"]["payload_enum"]["method"] == [
+    assert defs["score:acceptance"]["payload_enum"]["method"] == [
         "tdd", "check", "manual",
     ]
     evidence_kinds = set(check_enum["evidence_kind"])
     results = set(check_enum["result"])
     methods = set(check_enum["method"])
-    for inv in _writes("verify-work", "aff:check-run", {"create"}):
+    for inv in _writes("verify-work", "tuner:check-run", {"create"}):
         kind = inv["payload"].get("evidence_kind")
         if kind is not None:
             assert kind in evidence_kinds
         assert inv["payload"]["result"] in results
         assert inv["payload"]["method"] in methods
-    for inv in _writes("verify-work", "run:assessment"):
+    for inv in _writes("verify-work", "conductor:assessment"):
         payload = inv["payload"]
         assert payload["status"] in assessment_enum["status"]
         assert payload["next"] in assessment_enum["next"]
         assert payload["confidence"] in assessment_enum["confidence"]
         if "level" in payload:
             assert payload["level"] in assessment_enum["level"]
-    release_states = set(defs["run:release"]["payload_enum"]["state"])
-    for inv in _writes("verify-work", "run:release", {"create"}):
+    release_states = set(defs["conductor:release"]["payload_enum"]["state"])
+    for inv in _writes("verify-work", "conductor:release", {"create"}):
         assert inv["payload"]["state"] in release_states
         assert inv["payload"]["state"] == "ready"

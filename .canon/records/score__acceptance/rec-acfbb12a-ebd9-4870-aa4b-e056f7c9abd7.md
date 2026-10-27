@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-acfbb12a-ebd9-4870-aa4b-e056f7c9abd7",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "cross-harness-install",
+    "requirement": "R9",
+    "verify_command": "python3 -m pytest tests/test_installer.py -q -k idempotent"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-18T22:32:53+00:00",
+  "relationships": {},
+  "revision": "sha256:de65bd5e5001ccf88c44318f1e26c2dc8ad7106c9db51759a6f75a6c21f22ece",
+  "subject": "verify-cross-harness-install-idempotent",
+  "time": {
+    "as_of": "2026-10-18T22:32:53+00:00"
+  }
+}
+---
+

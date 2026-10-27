@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from canon.lifecycle import LIFECYCLES, Lifecycle
-from canon.store import StoreError
+from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
+from orchestra.canon.store import StoreError
 
 NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")

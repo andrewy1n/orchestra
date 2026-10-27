@@ -1,0 +1,26 @@
+---
+{
+  "id": "rec-0562be42-3b32-43cb-bccc-fcd60eee887c",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "phase": "journal-view",
+    "position": "journal-view plan approved; ready for execute after prior UX deps",
+    "scope": "phase",
+    "status": "closed"
+  },
+  "record_type": "score:position",
+  "recorded_at": "2026-10-10T00:08:13+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-214e4e33-f72b-4aed-bced-7e71015a63d2"
+    ]
+  },
+  "revision": "sha256:9a288c9a6108edf079711a862d0e592861b2fb2d0baca7eded21f98ec35b1f43",
+  "subject": "journal-view",
+  "time": {
+    "as_of": "2026-10-10T00:08:13+00:00"
+  }
+}
+---
+

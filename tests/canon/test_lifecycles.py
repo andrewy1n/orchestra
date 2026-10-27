@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from canon.lifecycle import LIFECYCLES, terminal_success_state
-from canon.store import StoreError
-from canon.validation import ValidationError
+from orchestra.canon.lifecycle import LIFECYCLES, terminal_success_state
+from orchestra.canon.store import StoreError
+from orchestra.canon.validation import ValidationError
 from conftest import make_task
 
 PATHS = {

@@ -28,19 +28,19 @@ Reviewer writes no store records. Parent creates them.
 2. Host `se-reviewer` if available; else read-only/explore subagent
    with [se-reviewer.md](references/se-reviewer.md). Refuse reviewer
    store writes or tree mutation.
-3. Create `aff:check-run` (`method: review`,
+3. Create `tuner:check-run` (`method: review`,
    `evidence_kind: review`, `revision` = phase head; `PASS`→`pass`,
-   `NEEDS_WORK`→`fail`) and one `aff:finding` per NEEDS_WORK
+   `NEEDS_WORK`→`fail`) and one `tuner:finding` per NEEDS_WORK
    (`needs: none` when a fix task is created; `needs: human` for
    `severity: judgment` or no fix).
 
 ```bash
-canon create --type aff:check-run \
+canon create --type tuner:check-run \
   --subject "<phase-slug>-review" \
   --payload '{"criterion_id":"<phase-slug>-review","revision":"<phase-head-sha>","result":"<pass|fail>","effort":"<focus>","method":"review","signed_by":"","evidence_kind":"review"}' \
   --body "<reviewer output, verbatim>"
 
-canon create --type aff:finding \
+canon create --type tuner:finding \
   --subject "review-<task-or-phase>-<kind>" \
   --payload '{"claim":"<kind> on <task>: <expected>","basis":"<observed>","invalidated_when":"fix lands and reviewer re-run passes, or human clears","effort":"<focus>","needs":"<none|human>"}' \
   --body "## Evidence
@@ -62,13 +62,13 @@ Create a fix work-item under the retry budget, or answer Needs you."
    `retry_max_fix_tasks`. Never reopen `done`. After fixes verify,
    re-run the reviewer **once** on the new diff. Budget exhausted →
    Needs-you path; stop.
-5. One `run:integration-report` from the reviewer's `integration`
+5. One `conductor:integration-report` from the reviewer's `integration`
    map. Skip when incidental or no multi-task implementation wave.
    `pass` only when verdict is `PASS` and those sections hold — a
    clean git merge is not enough.
 
 ```bash
-canon create --type run:integration-report \
+canon create --type conductor:integration-report \
   --subject "<phase-slug>" \
   --payload '{"phase":"<phase-slug>","effort":"<focus>","result":"<pass|fail|blocked>","revision":"<phase-head-sha>"}' \
   --body "## Interfaces
@@ -94,8 +94,8 @@ phase head: leave phase `in_progress` and stop (or fix/escalate).
 ## Suite
 
 After reviewer passes and the integration-report is written. Do not
-waive `phase_gate.suite` — a human changes `settings.run.phase_gate` in
-`.artifacts/config.json` instead. Load with `orchestra suite policy`. Missing / `mode=none` → skip.
+waive `phase_gate.suite` — a human changes `settings.conductor.phase_gate` in
+`.canon/config.json` instead. Load with `orchestra suite policy`. Missing / `mode=none` → skip.
 `mode=external` or `gate=deferred` → do not run locally (`deferred` =
 Landing human stop). For `smoke`/`full` with a `command`: run via
 `orchestra suite start` / `poll` / `collect` / `record` in the phase
@@ -124,7 +124,7 @@ orchestra suite record \
   --effort "<focus>" \
   --cwd <phase-worktree>
 
-canon create --type aff:finding \
+canon create --type tuner:finding \
   --subject "suite-advisory-<phase-slug>" \
   --payload '{"claim":"advisory suite fail for <phase-slug>-suite","basis":"<exit_code and failing node ids>","invalidated_when":"suite check-run passes at phase head, or human clears","effort":"<focus>","needs":"none"}' \
   --body "## Evidence
@@ -145,20 +145,20 @@ Advisory finding only when `gate=advisory` and the suite failed.
 ## Phase gate
 
 ```bash
-canon list --type plan:work-item \
+canon list --type score:work-item \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
 
-canon list --type plan:acceptance \
+canon list --type score:acceptance \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
 
-canon list --type aff:check-run \
+canon list --type tuner:check-run \
   --where payload.criterion_id=<acceptance-id> --order-by recorded_at
 
-canon list --type aff:check-run \
+canon list --type tuner:check-run \
   --where payload.method=review --where payload.effort=<focus> \
   --order-by recorded_at
 
-canon list --type aff:check-run \
+canon list --type tuner:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
 ```
@@ -178,7 +178,7 @@ incidental):
 User signs an unsigned manual check:
 
 ```bash
-canon correct --type aff:check-run --id <check-run-id> \
+canon correct --type tuner:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
@@ -194,11 +194,11 @@ Incidental / no-Landing still get a packet when code or claims
 changed. Read `## Proof` on the phase for `kind` (default `claims`).
 `base` = Landing base (or merge-base with main); `revision` =
 phase-head. Machine = pointers only. With
-`.affidavit/manifest.json`, also `aff trail` and
-`aff audit --base <base> --head <revision>` into Machine/Attention.
+`.tuner/manifest.json`, also `orchestra verify trail` and
+`orchestra verify audit --base <base> --head <revision>` into Machine/Attention.
 
 ```bash
-canon create --type run:proof-packet \
+canon create --type conductor:proof-packet \
   --subject "<phase-slug>" \
   --payload '{"phase":"<phase-slug>","effort":"<focus>","revision":"<phase-head-sha>","base":"<base-sha>","kind":"<demo|commands|claims|audit-triage|mixed>"}' \
   --body-file "<proof-packet-body.md>"
@@ -212,14 +212,14 @@ this phase-head. Head moves after fixes → new packet.
 ## Landing merge and close
 
 With Landing: commit phase branch from worktree (exclude
-`.artifacts`); from primary checkout merge into `main`; store commit
+`.canon`); from primary checkout merge into `main`; store commit
 on `main` follows phase close. Push only when Landing names push as a
 human stop — otherwise do not push. No Landing → skip branch commit,
 merge, and store commit. Commit subject `type(scope): summary`; body
 1–2 sentences why.
 
 ```bash
-git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.artifacts'
+git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.canon'
 git -C <repo>/.worktrees/<phase-slug> commit -m "$(cat <<'EOF'
 feat(<phase-slug>): <summary>
 
@@ -237,17 +237,17 @@ At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch t
 Close the phase; close phase position (`subject` = phase slug,
 `status: closed`); update effort position narrative (`subject` =
 focus). Keep `scope` identical to the predecessor's. Set `phase`
-to the next phase the narrative names — pointer only; current phase is still derived from `plan:phase`
+to the next phase the narrative names — pointer only; current phase is still derived from `score:phase`
 state:
 
 ```bash
-canon update --type plan:phase --id <phase-id> \
+canon update --type score:phase --id <phase-id> \
   --transition done --expected-revision <revision>
 
-canon supersede --type plan:position --id <phase-position-id> \
+canon supersede --type score:position --id <phase-position-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 
-canon supersede --type plan:position --id <effort-position-id> \
+canon supersede --type score:position --id <effort-position-id> \
   --expected-revision <revision> \
   --payload '{"position":"<phase-slug> done; next up: <next-phase-slug>","scope":"<unchanged from predecessor>","effort":"<focus>","phase":"<next-phase-slug>"}'
 ```
@@ -255,7 +255,7 @@ canon supersede --type plan:position --id <effort-position-id> \
 Then store commit on `main` (Landing only):
 
 ```bash
-git -C <primary-checkout> add -- .artifacts
+git -C <primary-checkout> add -- .canon
 git -C <primary-checkout> commit -m "$(cat <<'EOF'
 chore(<phase-slug>): record the store
 
@@ -275,10 +275,10 @@ the effort (`status: closed` on goal and position; `supersede` merges
 payload so other fields carry over):
 
 ```bash
-canon supersede --type plan:effort --id <goal-id> \
+canon supersede --type score:effort --id <goal-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 
-canon supersede --type plan:position --id <position-id> \
+canon supersede --type score:position --id <position-id> \
   --expected-revision <revision> --payload '{"status":"closed"}'
 ```
 

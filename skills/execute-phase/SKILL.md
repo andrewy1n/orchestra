@@ -29,8 +29,8 @@ Orchestra moves a work-item to `in_progress` (step 4) and to `done`
 `derived.ready` / `derived.wave` are engine-computed from `depends_on`
 — never write them.
 
-Each dispatch is recorded: `run:assignment`, optional
-`run:assignment-amendment`, then `run:execution-report`
+Each dispatch is recorded: `conductor:assignment`, optional
+`conductor:assignment-amendment`, then `conductor:execution-report`
 (evidence verbatim). Executors take method / verify_command /
 findings / constraints from `orchestra brief <task-slug>` — not from
 retyping those into the assignment. The assignment's `## Orientation`
@@ -48,7 +48,7 @@ or treat empty/legacy `criterion` as the lead claim.
    `plan-review:<phase-slug>` gates only that phase; clear on approve:
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
@@ -61,15 +61,15 @@ canon update --type plan:continuity-question --id <question-id> \
 2. Select dispatchable work-items (plan view omits `derived.ready`/`wave`):
 
 ```bash
-canon list --type plan:work-item --state planned \
+canon list --type score:work-item --state planned \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --where derived.ready=true
 ```
 
    For `incidental`, drop `payload.phase` (it is `""`) and expect at
-   most one result. `current-phase-slug` is the `plan:phase` for
+   most one result. `current-phase-slug` is the `score:phase` for
    this effort with `lifecycle_state` `in_progress` — never
-   `plan:position` `scope`. If none exist, stop and point to
+   `score:position` `scope`. If none exist, stop and point to
    `plan-phase`. If several phases are `in_progress`, use the one
    named in context; ask if none is named.
 
@@ -77,7 +77,7 @@ canon list --type plan:work-item --state planned \
    `## Landing` from the phase body:
 
 ```bash
-canon get --type plan:phase --id <phase-id>
+canon get --type score:phase --id <phase-id>
 ```
 
    When `## Landing` is present, ensure branch `phase/<phase-slug>`
@@ -90,9 +90,9 @@ git worktree add <repo>/.worktrees/<phase-slug> phase/<phase-slug>
 ```
 
    When Landing is present, code writes only under the worktree and
-   store writes on the primary checkout (on `main`). `.artifacts`
+   store writes on the primary checkout (on `main`). `.canon`
    stays on that primary checkout. Phase-branch commits exclude
-   `.artifacts`. When Landing is absent, a missing Landing section
+   `.canon`. When Landing is absent, a missing Landing section
    stays in the current checkout (incidental too); do not create a
    branch or worktree. When Landing is absent, execute-phase does not
    create a `task/<phase-slug>/<task-slug>` branch. When Landing is
@@ -151,7 +151,7 @@ git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phas
    from `list`/`get`:
 
 ```bash
-canon update --type plan:work-item --id <id> \
+canon update --type score:work-item --id <id> \
   --transition in_progress \
   --expected-revision <revision> \
   --payload '{"assignee":"<assignee>"}'
@@ -185,20 +185,20 @@ canon update --type plan:work-item --id <id> \
    silently rewrite a frozen oracle.
 
 ```bash
-canon list --type plan:specification \
+canon list --type score:specification \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --state active --full
 
-canon list --type plan:design \
+canon list --type score:design \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
   --state active --full
 
-canon list --type plan:decision \
+canon list --type score:decision \
   --where payload.effort=<focus> --state active --full
 
 orchestra brief <task-slug>
 
-canon create --type run:assignment \
+canon create --type conductor:assignment \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
   --body "## Orientation
@@ -224,21 +224,21 @@ Write root: `<repo>/.worktrees/<phase-slug>--<task-slug>` for a task other than 
 ### Frozen oracle (do not edit)
 
 Files listed in acceptance oracle_hashes for this task are frozen.
-Do not edit them. An oracle hash or test-id change is a signed amendment in `.affidavit/manifest.json`. aff verdict accepts or rejects it. A non-zero exit means the acceptance is not done."
+Do not edit them. An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`. orchestra verify verdict accepts or rejects it. A non-zero exit means the acceptance is not done."
 ```
 
    Omit the Frozen oracle section when no acceptance is oracle-backed.
 
    **Oracle amendment (parent only):** do not edit the frozen file; do
-   not `create`/`supersede` `aff:oracle-amendment` or update
+   not `create`/`supersede` `tuner:oracle-amendment` or update
    acceptance `oracle_hashes`/`test_ids`. Parent adds a signed
-   amendment in `.affidavit/manifest.json`, then:
+   amendment in `.tuner/manifest.json`, then:
 
 ```bash
-aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
+orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 ```
 
-   `<claim-id>` is that claim's `id` in `.affidavit/manifest.json`.
+   `<claim-id>` is that claim's `id` in `.tuner/manifest.json`.
    Exit 0 accepts; non-zero → acceptance not done; leave `in_progress`.
 
 5. Dispatch by the shared `payload.executor`.
@@ -263,7 +263,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    - verification task (depends_on every other phase work-item): run
      phase checks; return `fail`; do not edit the tree
    - return the evidence block below; never call `canon`
-     or edit `.artifacts/`
+     or edit `.canon/`
 
    **`inline`:** this session implements with the same brief,
    orientation, and kind instructions; still writes the
@@ -275,7 +275,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    SHA. The per-task commit for a task other than the work-item that
    depends_on every other phase work-item runs in that task worktree.
    That per-task commit stages with `git add -A` excluding
-   `.artifacts`. That commit excludes `.artifacts`. Put that commit
+   `.canon`. That commit excludes `.canon`. Put that commit
    SHA in evidence `revision`. A passing check-run for a task other
    than the work-item that depends_on every other phase work-item
    records that task's commit as its revision. When a task other than
@@ -287,7 +287,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    naming the task slug.
 
 ```bash
-git -C <repo>/.worktrees/<phase-slug>--<task-slug> add -A -- . ':!.artifacts'
+git -C <repo>/.worktrees/<phase-slug>--<task-slug> add -A -- . ':!.canon'
 git -C <repo>/.worktrees/<phase-slug>--<task-slug> commit -m "$(cat <<'EOF'
 feat(<scope>): <summary>
 
@@ -321,7 +321,7 @@ EOF
    Inline: record the same amendment and keep implementing:
 
 ```bash
-canon create --type run:assignment-amendment \
+canon create --type conductor:assignment-amendment \
   --subject "<task-slug>" \
   --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
@@ -334,7 +334,7 @@ canon create --type run:assignment-amendment \
    verbatim — it is the record, not raw material to cherry-pick:
 
 ```bash
-canon create --type run:execution-report \
+canon create --type conductor:execution-report \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","assignment":"<task-slug>","result":"<pass|fail|blocked|abandoned>","verdict":"<pass|fail|delta|inconclusive>","revision":"<git sha or dirty>"}' \
   --body "<the evidence block, verbatim>"
@@ -349,8 +349,8 @@ canon create --type run:execution-report \
    and the suite check-run (`orchestra suite record`, subject
    `<phase-slug>-suite`) stay parent writes.
 
-   When the acceptance claim is in `.affidavit/manifest.json`, run
-   `aff verdict` before `done` (same command as step 4). Non-zero →
+   When the acceptance claim is in `.tuner/manifest.json`, run
+   `orchestra verify verdict` before `done` (same command as step 4). Non-zero →
    leave `in_progress`.
 
    Do not supersede or re-derive readiness — dependents flip
@@ -378,7 +378,7 @@ git -C <repo>/.worktrees/<phase-slug> merge task/<phase-slug>/<task-slug>
    merge.
 
 ```bash
-canon create --type plan:continuity-question \
+canon create --type score:continuity-question \
   --subject "<focus>" \
   --payload '{"owner":"user","blocking":true,"scope":"merge:<task-slug>"}'
 ```
@@ -407,15 +407,15 @@ canon create --type plan:continuity-question \
 ## Record versus bind
 
 Unbound evidence-observation does not earn a manifest claim.
-Path: claim id → `aff bind` → evidence-observation; then `aff recheck`
-before treating the claim as earned. Inspect with `aff trail`.
+Path: claim id → `orchestra verify bind` → evidence-observation; then `orchestra verify recheck`
+before treating the claim as earned. Inspect with `orchestra verify trail`.
 
 ```bash
-aff trail --cwd <repo-or-worktree>
-aff bind --cwd <repo-or-worktree> \
+orchestra verify trail --cwd <repo-or-worktree>
+orchestra verify bind --cwd <repo-or-worktree> \
   --observation <evidence-observation-id> \
   --claim <claim-id> --base <base-rev> --head <head-rev>
-aff recheck --cwd <repo-or-worktree> --claim <claim-id>
+orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 ```
 
 ## Do not
@@ -424,7 +424,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Let subagents write records (any executor mode) — store is single-writer
 - Restate `criterion` / verify_command / findings in Orientation, or
   paraphrase work-item / requirement claims — quote by id; brief owns the rest
-- Skip `run:execution-report` and derive check-runs from chat memory
+- Skip `conductor:execution-report` and derive check-runs from chat memory
 - Ask for an implementation recipe when `## Approach` is present
 - Spawn a subagent for `inline`, or spawn when the wave disagrees on executor
 - Dispatch when `derived.ready` is false, or another focus's work
@@ -438,14 +438,14 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Merge without passing review at phase-head, or without required suite
   at phase-head when `phase_gate.suite.gate` is `required`
 - Waive / skip / override configured `phase_gate.suite` policy
-- Let the reviewer call `canon` or write `.artifacts`
+- Let the reviewer call `canon` or write `.canon`
 - Re-run the reviewer more than once after fix tasks for the same phase-end
 - Fix-and-rerun inside the suite step (`required` → fix tasks + re-run at
   new head; `advisory` → finding only)
 - Create a branch or worktree without Landing; create a task branch or
   task worktree for the work-item that depends_on every other phase
   work-item; let code leave the worktree when Landing is present;
-  write `.artifacts` off the primary checkout or include it in a task
+  write `.canon` off the primary checkout or include it in a task
   or phase commit
 - Skip the per-task commit when Landing is present and that task's
   code changed; create an empty commit when there is nothing to commit
@@ -460,7 +460,7 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Skip the retryable `in_progress` pass
 - Put a whole-suite command on a per-task `verify_command`
 - Let an executor edit frozen oracle files; `create`/`supersede`
-  `aff:oracle-amendment`; or `create`/`correct` a task check-run
+  `tuner:oracle-amendment`; or `create`/`correct` a task check-run
   with method `tdd`/`check` (those come from `orchestra check`). Suite
   (`orchestra suite record`) and `manual`/`review` stay parent writes
 - Let a subagent sign an amendment or write `test_ids` / `oracle_hashes`

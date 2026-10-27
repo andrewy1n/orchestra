@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from canon.oplog import _seq_name, read_ops
-from canon.paths import PathValidationError, type_dir_name, validate_namespace, validate_record_type
-from canon.record_file import dump_record, prepare_record
-from canon.revision import with_revision
-from canon.schema import SchemaSet, ref_targets
-from canon.store import Store, StoreError
-from canon.validation import validate_store
+from orchestra.canon.oplog import _seq_name, read_ops
+from orchestra.canon.paths import PathValidationError, type_dir_name, validate_namespace, validate_record_type
+from orchestra.canon.record_file import dump_record, prepare_record
+from orchestra.canon.revision import with_revision
+from orchestra.canon.schema import SchemaSet, ref_targets
+from orchestra.canon.store import Store, StoreError
+from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]
 

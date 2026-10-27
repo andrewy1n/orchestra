@@ -22,7 +22,7 @@ Bash is read-only in practice:
 - Forbidden: any mutating command (`rm`, `mv`, `cp` into the tree, `git add`,
   `git commit`, `git checkout` that changes files, redirects that write,
   `sed -i`, package installs, chmod, etc.).
-- Forbidden: `canon` and any write into `.artifacts/` (records,
+- Forbidden: `canon` and any write into `.canon/` (records,
   log, history). Reviewer writes **no store records**. The parent session is
   the single writer.
 

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from canon import cli as canon_cli
+from orchestra.canon import cli as canon_cli
 from conftest import PLAN_BODY, make_task
 
 
@@ -259,8 +259,8 @@ def test_the_declared_mutating_commands_cover_every_writing_subcommand():
     parser = canon_cli.build_parser()
     sub = next(a for a in parser._actions if a.dest == "command")
     commands = set(sub.choices)
-    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "migrate-legacy", "merge"}
-    assert canon_cli.MUTATING_COMMANDS == {"init", "create", "update", "supersede", "correct", "apply", "migrate-legacy", "merge"}
+    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "merge"}
+    assert canon_cli.MUTATING_COMMANDS == {"init", "create", "update", "supersede", "correct", "apply", "merge"}
 
 
 def test_commands_report_a_missing_store(cli, repo):

@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-d813f2a7-bee5-4cc2-a215-4f3a07cb04ed",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "plan-review:evidence-technique-ingest"
+  },
+  "record_type": "score:continuity-question",
+  "recorded_at": "2026-10-18T09:53:11+00:00",
+  "relationships": {},
+  "revision": "sha256:bf797e831a29ecd119ba4c7c7fc67cceaa823abc342b0d125d478600fc646d18",
+  "subject": "evidence-layer"
+}
+---
+

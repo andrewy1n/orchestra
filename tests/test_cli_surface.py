@@ -48,11 +48,11 @@ def completed(args: tuple[str, ...], stdout: str = "", returncode: int = 0):
 
 
 def make_design(path: Path, suite_policy: dict | None = None) -> Path:
-    config = path / ".artifacts" / "config.json"
+    config = path / ".canon" / "config.json"
     config.parent.mkdir(parents=True, exist_ok=True)
     settings: dict = {}
     if suite_policy is not None:
-        settings["run"] = {"phase_gate": {"suite": suite_policy}}
+        settings["conductor"] = {"phase_gate": {"suite": suite_policy}}
     config.write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": settings}))
     return config
 
@@ -85,24 +85,24 @@ def test_top_level_help_names_the_runtime_surface(capsys):
 def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     records = [
         {
-            "record_type": "plan:work-item",
+            "record_type": "score:work-item",
             "subject": "tabs",
             "title": "Implement tabs",
             "body": "Implement the status tabs.",
         },
         {
-            "record_type": "plan:acceptance",
+            "record_type": "score:acceptance",
             "subject": "tabs",
             "criterion": "Tabs render both filters.",
         },
         {
-            "record_type": "plan:requirement",
+            "record_type": "score:requirement",
             "subject": "R6",
             "title": "R6",
             "body": "Name commands, not modules.",
         },
         {
-            "record_type": "run:execution-report",
+            "record_type": "conductor:execution-report",
             "subject": "tabs",
             "body": "SECRET_BUILDER_NOTES",
         },
@@ -253,7 +253,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
     assert json.loads(out)["record"]["id"] == "rec-suite"
     assert len(recorded) == 1
     created = recorded[0]
-    assert created["record_type"] == "aff:check-run"
+    assert created["record_type"] == "tuner:check-run"
     assert created["subject"] == "p1-suite"
     assert created["payload"]["result"] == "pass"
     assert created["payload"]["effort"] == "packaging"
@@ -264,7 +264,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
 def _store_repo(tmp_path: Path) -> Path:
     repo = make_git_repo()
     assert make_design(repo).is_file()
-    git(repo, "add", ".artifacts")
+    git(repo, "add", ".canon")
     git(repo, "commit", "-qm", "store")
     return repo
 
@@ -274,7 +274,7 @@ def test_store_path_smoke(tmp_path, capsys):
     code, out, err = run(["store", "path", "--cwd", str(repo), "--json"], capsys)
     assert code == 0, err
     target = json.loads(out)
-    from canon.project import open_store
+    from orchestra.canon.project import open_store
 
     project = open_store(repo)
     assert target["store"] == str(project.store_path)
@@ -282,7 +282,7 @@ def test_store_path_smoke(tmp_path, capsys):
 
     code, out, err = run(["store", "path", "--cwd", str(repo)], capsys)
     assert code == 0
-    assert out.strip() == str(repo / ".artifacts")
+    assert out.strip() == str(repo / ".canon")
 
 
 def test_store_run_smoke(tmp_path, monkeypatch, capsys):
@@ -296,12 +296,12 @@ def test_store_run_smoke(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
     code, out, err = run(
-        ["store", "run", "--cwd", str(repo), "--", "list", "--type", "plan:work-item"],
+        ["store", "run", "--cwd", str(repo), "--", "list", "--type", "score:work-item"],
         capsys,
     )
     assert code == 0, err
     assert json.loads(out) == {"records": [], "count": 0}
-    assert calls == ["plan:work-item"]
+    assert calls == ["score:work-item"]
 
 
 def test_store_ensure_creates_a_canon_store_once(tmp_path, capsys):
@@ -311,7 +311,7 @@ def test_store_ensure_creates_a_canon_store_once(tmp_path, capsys):
     ensured = json.loads(out)
     config = Path(ensured["store"]) / "config.json"
     assert ensured["store_ready"] is True
-    assert set(json.loads(config.read_text())["schemas"]) == {"plan", "run", "aff"}
+    assert set(json.loads(config.read_text())["schemas"]) == {"score", "conductor", "tuner"}
 
     config.write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {"kept": True}}))
     code, out, err = run(["store", "ensure", "--cwd", str(fresh)], capsys)

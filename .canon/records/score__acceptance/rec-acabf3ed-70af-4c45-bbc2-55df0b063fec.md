@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-acabf3ed-70af-4c45-bbc2-55df0b063fec",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Dashboard dismiss pilots pass through the Textual app entry point for human-dismissible kinds and refuse non-human kinds",
+    "effort": "workflow-loop",
+    "method": "tdd",
+    "phase": "needs-you-close",
+    "requirement": "R4",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k dismiss"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-10T08:19:11+00:00",
+  "relationships": {},
+  "revision": "sha256:5f780fcd652ee0e45857500372671a44cf1f9c33e8a57b4f6041c5c83fc5b0cb",
+  "subject": "verify-needs-you-close",
+  "time": {
+    "as_of": "2026-10-10T08:19:11+00:00"
+  }
+}
+---
+

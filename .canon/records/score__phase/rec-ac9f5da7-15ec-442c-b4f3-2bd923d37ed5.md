@@ -1,0 +1,45 @@
+---
+{
+  "id": "rec-ac9f5da7-15ec-442c-b4f3-2bd923d37ed5",
+  "lifecycle_state": "done",
+  "payload": {
+    "effort": "evidence-layer",
+    "ordinal": 6,
+    "title": "Signed verdict attestation from CI"
+  },
+  "record_type": "score:phase",
+  "recorded_at": "2026-10-18T03:37:26+00:00",
+  "relationships": {},
+  "revision": "sha256:a8fc055a34a7af9683bdcc4d6bf935cc9058848f961e143be4624d11075e9450",
+  "subject": "signed-verdict"
+}
+---
+
+## Problem
+
+If the agent runs `aff verdict` in its own shell, it can still report a pass it did not earn. A merge gate that reads a log line trusts the agent.
+
+## Approach
+
+Adopt `verdict-attestation`. Wave 1: `attest-core` (R1–R3) and `attest-ci` (R4) as subagents. Wave 2: `verify-signed-verdict`. SSH-sign namespace `affidavit-verdict`; bind commit, manifest hash, runner digest, claim results; ship a fixture workflow. Phase-end reviewer skipped.
+
+## Exit criteria
+
+- Emit produces a signed attestation; verify rejects tamper and wrong commit/manifest binds.
+- CI action runs on a fixture repo.
+
+## Landing
+
+- **branch:** `phase/signed-verdict`
+- **worktree:** `/home/andrewyin/affidavit--signed-verdict`
+- **base:** `main`
+- **close:** commit code on the phase branch; merge that branch into `main`; commit the store on the primary checkout
+- **push:** not a stop (do not push)
+
+## Run
+
+One sitting. No human stops. Every task is `subagent`.
+
+Wave 1 is `attest-core` (22) and `attest-ci` (10), so 22 minutes. Wave 2 is `verify-signed-verdict` (10). Phase elapsed is 32 minutes.
+
+Wave 1: `attest-core` owns `affidavit/attestation.py`, CLI emit/verify, and tests; `attest-ci` owns `.github/workflows/` (or `actions/`) only.

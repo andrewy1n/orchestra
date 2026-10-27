@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from affidavit.amendment import authorize, canonical_payload
+from orchestra.tuner.amendment import authorize, canonical_payload
 
 
 def _generate_key(directory: Path, name: str) -> tuple[Path, str]:
@@ -24,7 +24,7 @@ def _generate_key(directory: Path, name: str) -> tuple[Path, str]:
 
 
 def _allowlist(principal: str, blob: str) -> bytes:
-    return f'{principal} namespaces="affidavit-amendment" {blob}\n'.encode()
+    return f'{principal} namespaces="tuner-amendment" {blob}\n'.encode()
 
 
 def _claim(claim_id: str, tests: list[str], hashes: dict[str, str]) -> dict:
@@ -62,7 +62,7 @@ def _sign(key_path: Path, amendment: dict) -> dict:
             "-f",
             str(key_path),
             "-n",
-            "affidavit-amendment",
+            "tuner-amendment",
         ],
         input=payload,
         check=True,
@@ -97,7 +97,7 @@ def test_canonical_payload_orders_hashes_and_omits_signature():
     )
     amendment["signature"] = "not-part-of-the-payload"
     assert canonical_payload(amendment) == (
-        "affidavit-amendment v1\n"
+        "tuner-amendment v1\n"
         "claim: R1\n"
         "old_tests: tests/test_mod.py::test_a,tests/test_mod.py::test_b\n"
         "new_tests: tests/test_mod.py::test_b\n"
@@ -277,7 +277,7 @@ def test_canonical_payload_includes_support_and_runner_when_present():
     amendment["new_runner_digest"] = "sha256:new"
     amendment["signature"] = "not-part-of-the-payload"
     assert canonical_payload(amendment) == (
-        "affidavit-amendment v1\n"
+        "tuner-amendment v1\n"
         "claim: R1\n"
         "old_tests: tests/test_mod.py::test_a\n"
         "new_tests: tests/test_mod.py::test_a\n"

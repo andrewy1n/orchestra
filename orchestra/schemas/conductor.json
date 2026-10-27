@@ -1,0 +1,239 @@
+{
+  "namespace": "conductor",
+  "version": "1.0.0",
+  "types": {
+    "failed-attempt": {
+      "purpose": "An approach that should not be retried as-is",
+      "lifecycle": "event",
+      "fields": {
+        "attempted_action": {
+          "type": "string"
+        },
+        "retry_when": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "informed_by": {
+          "list": {
+            "ref": [
+              "score:acceptance",
+              "conductor:execution-report"
+            ],
+            "pin": true
+          },
+          "optional": true
+        }
+      }
+    },
+    "assignment": {
+      "purpose": "What the orchestrator handed an executor for a work-item",
+      "lifecycle": "event",
+      "fields": {
+        "work_item": {
+          "ref": "score:work-item"
+        },
+        "executor": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort"
+        }
+      },
+      "sections": [
+        "Orientation"
+      ]
+    },
+    "assignment-amendment": {
+      "purpose": "A mid-flight correction to an assignment already in progress",
+      "lifecycle": "event",
+      "fields": {
+        "assignment": {
+          "ref": "conductor:assignment"
+        },
+        "effort": {
+          "ref": "score:effort"
+        }
+      },
+      "sections": [
+        "Correction"
+      ]
+    },
+    "execution-report": {
+      "purpose": "What an executor returned for its assignment, body verbatim",
+      "lifecycle": "event",
+      "fields": {
+        "work_item": {
+          "ref": "score:work-item"
+        },
+        "assignment": {
+          "ref": "conductor:assignment"
+        },
+        "result": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort",
+          "optional": true
+        }
+      }
+    },
+    "integration-report": {
+      "purpose": "Semantic integration of parallel work, distinct from a git merge",
+      "lifecycle": "event",
+      "fields": {
+        "phase": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "blocked"
+          ]
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "sections": [
+        "Interfaces",
+        "Assumptions",
+        "Invariants",
+        "Conflicts"
+      ]
+    },
+    "proof-packet": {
+      "purpose": "Human-facing phase-end proof: how to look, machine pointers, attention leftovers, and diff summary",
+      "lifecycle": "event",
+      "fields": {
+        "phase": {
+          "ref": "score:phase"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "base": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "demo",
+            "commands",
+            "claims",
+            "audit-triage",
+            "mixed"
+          ]
+        }
+      },
+      "sections": [
+        "Look",
+        "Machine",
+        "Attention",
+        "Diff"
+      ]
+    },
+    "assessment": {
+      "purpose": "Given the check-runs, what the requirement's evidence means and which stage is next. A check-run does not carry this.",
+      "lifecycle": "current",
+      "fields": {
+        "requirement": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "failed",
+            "insufficient",
+            "blocked"
+          ]
+        },
+        "level": {
+          "enum": [
+            "implementation",
+            "design",
+            "plan",
+            "specification",
+            "integration",
+            "verification",
+            "environment",
+            "unknown"
+          ],
+          "optional": true
+        },
+        "next": {
+          "enum": [
+            "specify",
+            "design",
+            "plan",
+            "execute",
+            "integrate",
+            "verify",
+            "release"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "low"
+          ]
+        },
+        "phase": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "missing": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "sections": [
+        "Evidence",
+        "Missing",
+        "Reason"
+      ]
+    },
+    "release": {
+      "purpose": "Ready means every requirement is verified. It is not deployment. The other states exist for a later phase.",
+      "lifecycle": "current",
+      "fields": {
+        "state": {
+          "enum": [
+            "ready",
+            "merged",
+            "artifact",
+            "deploying",
+            "deployed",
+            "failed"
+          ]
+        },
+        "phase": {
+          "type": "string"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "revision": {
+          "type": "string",
+          "optional": true
+        }
+      }
+    }
+  },
+  "migrations": []
+}

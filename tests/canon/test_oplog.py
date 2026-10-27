@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from canon import oplog
-from canon.store import CHECKPOINT_THRESHOLD, StaleWriteError, Store, StoreError
+from orchestra.canon import oplog
+from orchestra.canon.store import CHECKPOINT_THRESHOLD, StaleWriteError, Store, StoreError
 
 RECORD_TYPE = "ns:kind"
 

@@ -1,4 +1,4 @@
-"""bin/aff verdict re-executes frozen oracles and ignores the artifact store."""
+"""orchestra verify verdict re-executes frozen oracles and ignores the artifact store."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ import hashlib
 import json
 import subprocess
 import textwrap
+import sys
 from pathlib import Path
 
-from affidavit.amendment import canonical_payload
+from orchestra.tuner.amendment import canonical_payload
 
-AFF = Path(__file__).resolve().parents[1] / "bin" / "aff"
+VERIFY = [sys.executable, str(Path(__file__).resolve().parents[2] / "bin" / "orchestra"), "verify"]
 CLAIM = "claim-widget"
 NODE = "tests/test_widget.py::test_widget"
 ORACLE_REL = "tests/test_widget.py"
@@ -21,7 +22,7 @@ APP_STILL_RED = b"value = 2\n"
 APP_GREEN = b"value = 1\n"
 ORACLE_COLLECTION = b"import missing_mod_xyz\n\ndef test_widget():\n    assert True\n"
 ALLOW = (
-    b'owner namespaces="affidavit-amendment" '
+    b'owner namespaces="tuner-amendment" '
     b"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKeyOneaaaaaaaaaaaaaaaaaaa\n"
 )
 
@@ -86,10 +87,10 @@ def _write_tree(
     manifest: dict,
     extra: dict[str, bytes] | None = None,
 ) -> None:
-    affidavit = root / ".affidavit"
-    affidavit.mkdir(exist_ok=True)
-    (affidavit / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    (affidavit / "allowed_signers").write_bytes(allowlist)
+    tuner = root / ".tuner"
+    tuner.mkdir(exist_ok=True)
+    (tuner / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (tuner / "allowed_signers").write_bytes(allowlist)
     (root / "pytest.ini").write_text("[pytest]\n")
     oracle_path = root / ORACLE_REL
     oracle_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,7 +177,7 @@ def _run(
     process_cwd: Path | None = None,
     flag_cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    cmd = [str(AFF), "verdict"]
+    cmd = [*VERIFY, "verdict"]
     if flag_cwd is not None:
         cmd.extend(["--cwd", str(flag_cwd)])
     cmd.extend(["--at", at])
@@ -212,7 +213,7 @@ def _generate_key(directory: Path) -> tuple[Path, str]:
 
 
 def _allowlist(principal: str, blob: str) -> bytes:
-    return f'{principal} namespaces="affidavit-amendment" {blob}\n'.encode()
+    return f'{principal} namespaces="tuner-amendment" {blob}\n'.encode()
 
 
 def _sign(key_path: Path, amendment: dict) -> dict:
@@ -224,7 +225,7 @@ def _sign(key_path: Path, amendment: dict) -> dict:
             "-f",
             str(key_path),
             "-n",
-            "affidavit-amendment",
+            "tuner-amendment",
         ],
         input=canonical_payload(amendment),
         check=True,
@@ -250,10 +251,10 @@ def _corrupt(signature: str) -> str:
 
 
 def _forged_check_run(root: Path, result: str) -> None:
-    dest = root / ".artifacts" / "records" / "aff__check-run"
+    dest = root / ".canon" / "records" / "tuner__check-run"
     dest.mkdir(parents=True, exist_ok=True)
     record = {
-        "record_type": "aff:check-run",
+        "record_type": "tuner:check-run",
         "id": "rec-forged",
         "subject": CLAIM,
         "payload": {
@@ -652,7 +653,7 @@ def _fixture_repo(
 
 
 def test_verdict_ignores_pytest_stdout() -> None:
-    source = (Path(__file__).resolve().parents[1] / "affidavit" / "verdict.py").read_text()
+    source = (Path(__file__).resolve().parents[2] / "orchestra" / "tuner" / "verdict.py").read_text()
     assert "_FAILED_RE" not in source
     assert "is_assertion_level_failure" not in source
 

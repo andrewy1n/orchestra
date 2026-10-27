@@ -1,3 +1,3 @@
-from canon.cli import main
+from orchestra.canon.cli import main
 
 raise SystemExit(main())

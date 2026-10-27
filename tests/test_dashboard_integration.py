@@ -16,9 +16,9 @@ PHASE = "flow-phase-1"
 
 def _work_item(cli, defs, subject: str, *rels: str) -> dict:
     payload = {"title": f"title of {subject}", "phase": PHASE, "kind": "deliver", "assignee": "", "effort": EFFORT}
-    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
-    args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
-    result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
+    h.ensure_refs(cli, defs, defs["score:work-item"], payload)
+    args = ["create", "--type", "score:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["score:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
 
@@ -26,14 +26,14 @@ def _work_item(cli, defs, subject: str, *rels: str) -> dict:
 def test_once_prints_the_selector_line_and_wave_strip(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     h.create_generic_record(
-        cli, defs, "plan:effort", subject=EFFORT,
+        cli, defs, "score:effort", subject=EFFORT,
         extra_payload={"goal": "ship the flow", "kind": "deliver"},
     )
     phase = h.create_generic_record(
-        cli, defs, "plan:phase", subject=PHASE,
+        cli, defs, "score:phase", subject=PHASE,
         extra_payload={"title": "first phase", "ordinal": 1, "effort": EFFORT},
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
+    h.transition(cli, "score:phase", phase, "in_progress")
     _work_item(cli, defs, "item-a")
     script = REPO_ROOT / "dashboard" / "__main__.py"
     result = subprocess.run(
@@ -58,7 +58,7 @@ def test_gates_once_shows_action_verbs_next_step_and_landing(store, cli, resolve
     git(store, "checkout", "-q", "main")
 
     h.create_generic_record(
-        cli, defs, "plan:effort", subject=EFFORT,
+        cli, defs, "score:effort", subject=EFFORT,
         extra_payload={"goal": "ship human gates", "kind": "deliver"},
     )
     body = (
@@ -70,33 +70,33 @@ def test_gates_once_shows_action_verbs_next_step_and_landing(store, cli, resolve
         "## Exit criteria\n\nSelector shows landing.\n"
     )
     result = cli(
-        "create", "--type", "plan:phase", "--subject", phase_slug,
+        "create", "--type", "score:phase", "--subject", phase_slug,
         "--payload", json.dumps({"title": "Gates phase", "ordinal": 1, "effort": EFFORT}),
         "--body", body,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     phase = json.loads(result.stdout)["record"]
-    h.transition(cli, "plan:phase", phase, "in_progress")
+    h.transition(cli, "score:phase", phase, "in_progress")
 
     payload = {
         "title": "quiet runner", "phase": phase_slug, "kind": "deliver",
         "assignee": "", "effort": EFFORT, "estimate_minutes": 10,
     }
     result = cli(
-        "create", "--type", "plan:work-item", "--subject", "quiet-run",
+        "create", "--type", "score:work-item", "--subject", "quiet-run",
         "--payload", json.dumps(payload),
-        "--body", h.generic_body(defs["plan:work-item"]),
+        "--body", h.generic_body(defs["score:work-item"]),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     task = json.loads(result.stdout)["record"]
-    h.transition(cli, "plan:work-item", task, "in_progress")
+    h.transition(cli, "score:work-item", task, "in_progress")
     h.run_cli_48h_ago(
-        store, "create", "--type", "run:assignment", "--subject", "quiet-run",
+        store, "create", "--type", "conductor:assignment", "--subject", "quiet-run",
         "--payload", json.dumps({"work_item": task["subject"], "executor": "agent", "effort": EFFORT}),
-        "--body", h.generic_body(defs["run:assignment"]),
+        "--body", h.generic_body(defs["conductor:assignment"]),
     )
     h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject=EFFORT,
+        cli, defs, "score:continuity-question", subject=EFFORT,
         extra_payload={"blocking": True, "scope": f"plan-review:{phase_slug}"},
     )
 

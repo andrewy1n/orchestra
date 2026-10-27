@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-3426f5bf-9ffc-4d4e-9dcd-4acc18f09deb",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "plan-review:aa-cli-surface"
+  },
+  "record_type": "score:continuity-question",
+  "recorded_at": "2026-10-14T09:17:03+00:00",
+  "relationships": {},
+  "revision": "sha256:f9ee32842b97ff949efb1e99d31ba6d837edecbeb87cd5c5318deabbfa6992f9",
+  "subject": "aa-cli-ergonomics"
+}
+---
+

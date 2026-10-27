@@ -21,14 +21,14 @@ Parent then, for each such acceptance:
 2. Run `orchestra check --acceptance <acceptance-id> --cwd <repo-or-worktree>`
    (expect fail).
 3. Freeze **only** when that fail is assertion-level (use
-   `affidavit.oracle_red.is_assertion_level_red` on the check-run, or
+   `tuner.oracle_red.is_assertion_level_red` on the check-run, or
    equivalent: `result=fail` with assertion failure for a failing node
    — not ImportError / collection ERROR alone).
 4. On assertion-level red, parent writes freeze fields and the derived
    `verify_command`:
 
 ```bash
-canon update --type plan:acceptance --id <acceptance-id> \
+canon update --type score:acceptance --id <acceptance-id> \
   --expected-revision <revision> \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}'
 ```

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from affidavit.manifest import MANIFEST_PATH
+from orchestra.tuner.manifest import MANIFEST_PATH
 
 
 class AuthoringError(Exception):

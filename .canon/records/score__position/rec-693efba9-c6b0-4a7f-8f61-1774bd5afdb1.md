@@ -1,0 +1,21 @@
+---
+{
+  "id": "rec-693efba9-c6b0-4a7f-8f61-1774bd5afdb1",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "effort": "evidence-layer",
+    "phase": "runner-adapter",
+    "position": "in progress; waiting on plan review",
+    "scope": "phase"
+  },
+  "record_type": "score:position",
+  "recorded_at": "2026-10-18T00:17:42+00:00",
+  "relationships": {},
+  "revision": "sha256:cd6987090cc83c158d2dce4083d30acd20eb46948cfd7a26d6b7afdbac273b1d",
+  "subject": "runner-adapter",
+  "time": {
+    "as_of": "2026-10-17T23:38:40+00:00"
+  }
+}
+---
+

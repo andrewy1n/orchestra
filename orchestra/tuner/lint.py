@@ -11,8 +11,8 @@ import tempfile
 from pathlib import Path
 from typing import Sequence
 
-from affidavit.manifest import MANIFEST_PATH, load_manifest, resolve_commit
-from affidavit.runner import run_tests
+from orchestra.tuner.manifest import MANIFEST_PATH, load_manifest, resolve_commit
+from orchestra.tuner.runner import run_tests
 
 
 def find_no_assert(paths: Sequence[Path | str]) -> list[str]:

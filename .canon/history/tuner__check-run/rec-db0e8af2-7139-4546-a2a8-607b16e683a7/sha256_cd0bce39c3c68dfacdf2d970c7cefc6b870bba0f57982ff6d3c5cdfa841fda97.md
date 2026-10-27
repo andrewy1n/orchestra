@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-db0e8af2-7139-4546-a2a8-607b16e683a7",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-bf2a6f65-d5f0-4838-ad1f-4c257fcf5ce1",
+    "duration_s": 0.391025,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-bf2a6f65-d5f0-4838-ad1f-4c257fcf5ce1",
+      "rec-fa852d42-fbce-4c10-973a-071450ccfdb5"
+    ],
+    "method": "tdd",
+    "output_sha256": "7dc2ffee998ab4a0654db27405685923f44980c85488ce5d1136163896309a03",
+    "requirement": "R2",
+    "result": "pass",
+    "revision": "3e813f617e5811a742014ffc95c70e6709dfc281",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "fix-phase-gate-defaults"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-15T09:18:14+00:00",
+  "relationships": {},
+  "revision": "sha256:cd0bce39c3c68dfacdf2d970c7cefc6b870bba0f57982ff6d3c5cdfa841fda97",
+  "subject": "fix-phase-gate-defaults",
+  "time": {
+    "observed": "2026-10-15T09:18:14+00:00",
+    "recorded": "2026-10-15T09:18:14+00:00"
+  }
+}
+---
+
+....                                                                     [100%]
+4 passed, 113 deselected in 0.16s

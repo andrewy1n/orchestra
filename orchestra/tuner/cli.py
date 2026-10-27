@@ -1,4 +1,4 @@
-"""Subcommand dispatcher for the aff CLI."""
+"""Subcommand dispatcher for `orchestra verify`."""
 
 from __future__ import annotations
 
@@ -7,16 +7,16 @@ import json
 import sys
 from pathlib import Path
 
-from affidavit.attestation import emit, verify
-from affidavit.audit import AuditError, run_audit
-from affidavit.authoring import AuthoringError, add_claim, freeze
-from affidavit.binding import BindingError, bind_observation, recheck, unbind
-from affidavit.evidence_kind import TEMPLATES
-from affidavit.lint import find_claim_findings, find_new_skips, find_no_assert
-from affidavit.manifest import ManifestError
-from affidavit.observation import list_observations, maybe_record_verdict_observation
-from affidavit.oracle_red import is_assertion_level_red
-from affidavit.verdict import run_verdict
+from orchestra.tuner.attestation import emit, verify
+from orchestra.tuner.audit import AuditError, run_audit
+from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
+from orchestra.tuner.binding import BindingError, bind_observation, recheck, unbind
+from orchestra.tuner.evidence_kind import TEMPLATES
+from orchestra.tuner.lint import find_claim_findings, find_new_skips, find_no_assert
+from orchestra.tuner.manifest import ManifestError
+from orchestra.tuner.observation import list_observations, maybe_record_verdict_observation
+from orchestra.tuner.oracle_red import is_assertion_level_red
+from orchestra.tuner.verdict import run_verdict
 
 
 def _read_json(path: str | None) -> dict:
@@ -27,8 +27,8 @@ def _read_json(path: str | None) -> dict:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="aff",
-        description="aff CLI: verdict, attestation, and witness lint.",
+        prog="orchestra verify",
+        description="Verdict, attestation, and witness lint.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -195,7 +195,7 @@ def _build_parser() -> argparse.ArgumentParser:
     audit.add_argument(
         "--probes",
         default=None,
-        help="Probe declaration JSON (default: .affidavit/probes.json at head)",
+        help="Probe declaration JSON (default: .tuner/probes.json at head)",
     )
 
     trail = sub.add_parser(

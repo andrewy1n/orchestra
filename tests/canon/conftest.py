@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+SRC = Path(__file__).resolve().parents[2]
 
 ALPHA: dict[str, Any] = {
     "namespace": "alpha",
@@ -143,7 +143,7 @@ class Site:
         env = os.environ.copy()
         env["PYTHONPATH"] = os.pathsep.join([str(SRC), str(self.root)])
         env.pop("CANON_READONLY", None)
-        env.pop("ARTIFACTS_STORE", None)
+        env.pop("CANON_STORE", None)
         return env
 
 
@@ -153,7 +153,7 @@ def isolated_environment(monkeypatch, tmp_path):
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     for name in (
-        "ARTIFACTS_STORE",
+        "CANON_STORE",
         "CANON_READONLY",
         "CANON_SCHEMA_PATH",
         "GIT_DIR",
@@ -200,7 +200,7 @@ class Cli:
         self.monkeypatch = monkeypatch
 
     def __call__(self, *args: str, stdin: str | None = None, root: Path | None = None) -> CliResult:
-        from canon import cli
+        from orchestra.canon import cli
 
         out, err = io.StringIO(), io.StringIO()
         if stdin is not None:
@@ -228,7 +228,7 @@ def cli(repo, site, monkeypatch):
 
 @pytest.fixture
 def project(cli, repo):
-    from canon.project import open_store
+    from orchestra.canon.project import open_store
 
     cli.ok("init", "--schemas", "alpha,beta")
     return open_store(repo)

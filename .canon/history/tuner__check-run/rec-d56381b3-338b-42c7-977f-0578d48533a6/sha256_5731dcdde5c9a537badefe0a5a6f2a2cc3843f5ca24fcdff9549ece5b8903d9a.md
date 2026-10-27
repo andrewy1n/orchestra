@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-d56381b3-338b-42c7-977f-0578d48533a6",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-918209be-d62b-4b51-ae01-3ebf361b6e6d",
+    "duration_s": 0.47093,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-918209be-d62b-4b51-ae01-3ebf361b6e6d"
+    ],
+    "method": "check",
+    "output_sha256": "915abf6e3013302ef73970c963eb3c6ab123954f7590724a18abe0f03b651f65",
+    "requirement": "R5",
+    "result": "pass",
+    "revision": "8119e8e0cc031286ad62da0fd4ba9750b7223749",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "suite-docs-tests"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-15T09:23:54+00:00",
+  "relationships": {},
+  "revision": "sha256:5731dcdde5c9a537badefe0a5a6f2a2cc3843f5ca24fcdff9549ece5b8903d9a",
+  "subject": "suite-docs-tests",
+  "time": {
+    "observed": "2026-10-15T09:23:54+00:00",
+    "recorded": "2026-10-15T09:23:54+00:00"
+  }
+}
+---
+
+................                                                         [100%]
+16 passed in 0.24s

@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-982fcf31-6ef8-41aa-97a6-03ec860bfccb",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Pilot tests at 60 and 120 columns narrow the table by typed text, clear it with Esc, hide and show done tasks with d, keep both across a store refresh, and show them in the panel title",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "dashboard-actions",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-02T03:16:26+00:00",
+  "relationships": {},
+  "revision": "sha256:27db9baa054b16aa2eab2b1050a958302998581e952c649957aa17841900ab2c",
+  "subject": "task-list-filters",
+  "time": {
+    "as_of": "2026-09-30T20:59:21+00:00"
+  }
+}
+---
+

@@ -39,10 +39,6 @@ def test_body_links_existing_targets_md():
     assert (SKILL_DIR / "targets.md").is_file()
 
 
-def test_no_artifact_store_command():
-    assert not any("adaptive-artifacts" in l for l in SKILL.read_text().splitlines())
-
-
 def test_skill_stays_under_80_lines():
     assert len(SKILL.read_text().splitlines()) < 80
 

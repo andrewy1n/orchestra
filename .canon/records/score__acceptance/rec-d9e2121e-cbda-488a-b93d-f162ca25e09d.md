@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-d9e2121e-cbda-488a-b93d-f162ca25e09d",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Requirement rows join by phase and id with text, traced task count, status from the latest assessment, and unassessed with the latest check result when no assessment exists",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "evidence-view",
+    "requirement": "R2",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py -q -k 'evidence and requirement'"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-05T04:07:28+00:00",
+  "relationships": {},
+  "revision": "sha256:b3b48d15471096cec34ce2bd823deef5e2266433b1d5e00a2c243e330071a65a",
+  "subject": "evidence-model",
+  "time": {
+    "as_of": "2026-10-05T04:07:28+00:00"
+  }
+}
+---
+

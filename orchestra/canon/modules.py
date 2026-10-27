@@ -9,7 +9,7 @@ from importlib import metadata, resources
 from pathlib import Path
 from typing import Any
 
-from canon.schema import SchemaError, validate_module
+from orchestra.canon.schema import SchemaError, validate_module
 
 GROUP = "canon.schemas"
 PATH_ENV = "CANON_SCHEMA_PATH"

@@ -515,7 +515,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "aff:check-run"
+        if inv["subcommand"] == "create" and inv["type"] == "tuner:check-run"
     ]
     suite_creates = [
         inv

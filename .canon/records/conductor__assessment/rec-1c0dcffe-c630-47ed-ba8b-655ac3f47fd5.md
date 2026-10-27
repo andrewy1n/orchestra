@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-1c0dcffe-c630-47ed-ba8b-655ac3f47fd5",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "confidence": "high",
+    "effort": "evidence-layer",
+    "missing": "",
+    "next": "release",
+    "phase": "oracle-provenance",
+    "requirement": "R2",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-18T03:45:19+00:00",
+  "relationships": {},
+  "revision": "sha256:621f6ea2f857ee92e9d74b71359f01892909c3a1d2c6660662cea637b83e934f",
+  "subject": "oracle-provenance-R2",
+  "time": {
+    "as_of": "2026-10-18T03:44:51+00:00"
+  }
+}
+---
+
+## Evidence
+
+Assertion-level red rec-1318166f-4cc7-4cf8-824a-05752f5712a2 (dirty) on frozen tests/test_provenance.py; green rec-7faccc65-f80f-491f-90b9-40b0ce155e05 at 62db733ebc97851acd532d5103e2ae04130945cb; oracle file unchanged on the phase branch (diff vs main touches only affidavit/).
+
+## Missing
+
+none
+
+## Reason
+
+R2 met.

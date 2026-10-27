@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-a11805b7-bc3c-4f57-bcb4-db7d8ffa9ed9",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Full non-tmux and tmux test suites pass",
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "phase-selector",
+    "requirement": "R4",
+    "verify_command": "uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m not tmux && uv run --with textual --with pytest python -m pytest tests -q -m tmux"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-05T17:39:28+00:00",
+  "relationships": {},
+  "revision": "sha256:2f490346d90957f55ca4d6783f8f55330436f23ed985c1a3039bad2e8bccb048",
+  "subject": "verify-phase-selector-suite",
+  "time": {
+    "as_of": "2026-10-05T17:39:28+00:00"
+  }
+}
+---
+

@@ -20,7 +20,7 @@ from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
 from dashboard import approval, backlog, dismiss, journal, model
-from canon.project import Project
+from orchestra.canon.project import Project
 
 
 def jsonable(value: Any) -> Any:

@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-32f00d17-d4df-4b3d-8848-cd9bdc0c2ec5",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-6d2b9680-5f62-4979-8450-8b3f99e1707b",
+    "effort": "dashboard",
+    "evidence_kind": "unit",
+    "informed_by": [
+      "rec-6d2b9680-5f62-4979-8450-8b3f99e1707b",
+      "rec-7e1754f9-20a7-4789-960c-0fdc43ed1735"
+    ],
+    "method": "tdd",
+    "requirement": "R10",
+    "result": "pass",
+    "revision": "dirty",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "evidence-model-legacy"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-05T04:31:19+00:00",
+  "relationships": {},
+  "revision": "sha256:5bd4630da987e0759d831b10000a4bcf71529dbec6dc62af3c34f8e57e1275f3",
+  "subject": "evidence-model-legacy",
+  "time": {
+    "observed": "2026-10-05T04:31:19+00:00",
+    "recorded": "2026-10-05T04:31:19+00:00"
+  }
+}
+---
+

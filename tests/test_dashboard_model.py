@@ -13,31 +13,31 @@ import helpers as h
 from conftest import REPO_ROOT, build_store, make_git_repo, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from canon.project import Binding, Project, open_store  # noqa: E402
+from orchestra.canon.project import Binding, Project, open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import selection  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
     h.create_generic_record(
-        cli, defs, "plan:effort", subject=effort,
+        cli, defs, "score:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": kind},
     )
 
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> None:
     record = h.create_generic_record(
-        cli, defs, "plan:phase", subject=subject,
+        cli, defs, "score:phase", subject=subject,
         extra_payload={"title": f"title of {subject}", "ordinal": ordinal, "effort": effort},
     )
-    h.transition(cli, "plan:phase", record, *states)
+    h.transition(cli, "score:phase", record, *states)
 
 
 def _work_item(cli, defs, effort: str, subject: str, phase: str, *rels: str, assignee: str = "") -> dict:
     payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": assignee, "effort": effort}
-    h.ensure_refs(cli, defs, defs["plan:work-item"], payload)
-    args = ["create", "--type", "plan:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
-    result = cli(*args, "--body", h.generic_body(defs["plan:work-item"]))
+    h.ensure_refs(cli, defs, defs["score:work-item"], payload)
+    args = ["create", "--type", "score:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["score:work-item"]))
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
 
@@ -62,13 +62,13 @@ def _seed_models(cli, defs):
     _phase(cli, defs, "alpha", "a-two", 2, "in_progress")
     _phase(cli, defs, "beta", "b-one", 1)
     running = _work_item(cli, defs, "alpha", "a-running", "a-two", assignee="agent-7")
-    h.transition(cli, "plan:work-item", running, "in_progress")
+    h.transition(cli, "score:work-item", running, "in_progress")
     _work_item(cli, defs, "alpha", "a-ready", "a-two")
     _work_item(cli, defs, "alpha", "a-waiting", "a-two", f"depends_on:{running['id']}")
     done = _work_item(cli, defs, "alpha", "a-done", "a-one")
-    h.transition(cli, "plan:work-item", done, "in_progress", "done")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
     withdrawn = _work_item(cli, defs, "alpha", "a-withdrawn", "a-one")
-    h.transition(cli, "plan:work-item", withdrawn, "withdrawn")
+    h.transition(cli, "score:work-item", withdrawn, "withdrawn")
     _work_item(cli, defs, "beta", "b-ready", "b-one")
     h.closed_effort(cli, defs, "gone")
     _work_item(cli, defs, "gone", "gone-ready", "gone-phase")
@@ -116,37 +116,37 @@ def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cl
     _goal(cli, defs, "alpha")
     for blocking, scope in ((True, "block-scope"), (False, "open-scope")):
         h.create_generic_record(
-            cli, defs, "plan:continuity-question", subject="alpha",
+            cli, defs, "score:continuity-question", subject="alpha",
             extra_payload={"blocking": blocking, "scope": scope},
         )
     answered = h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="alpha",
+        cli, defs, "score:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "answered-scope"},
     )
-    h.transition(cli, "plan:continuity-question", answered, "answered")
+    h.transition(cli, "score:continuity-question", answered, "answered")
     h.create_generic_record(
-        cli, defs, "aff:finding", subject="f-human",
+        cli, defs, "tuner:finding", subject="f-human",
         extra_payload={"claim": "human decides", "needs": "human", "effort": "alpha"},
     )
     h.create_generic_record(
-        cli, defs, "aff:finding", subject="f-agent",
+        cli, defs, "tuner:finding", subject="f-agent",
         extra_payload={"claim": "agent decides", "needs": "agent", "effort": "alpha"},
     )
     retracted = h.create_generic_record(
-        cli, defs, "aff:finding", subject="f-retracted",
+        cli, defs, "tuner:finding", subject="f-retracted",
         extra_payload={"claim": "retracted claim", "needs": "human", "effort": "alpha"},
     )
-    h.transition(cli, "aff:finding", retracted, "retracted")
+    h.transition(cli, "tuner:finding", retracted, "retracted")
     check_payload = {"method": "manual", "signed_by": "", "result": "pass", "effort": "alpha"}
-    h.create_generic_record(cli, defs, "aff:check-run", subject="c-unsigned", extra_payload=check_payload)
+    h.create_generic_record(cli, defs, "tuner:check-run", subject="c-unsigned", extra_payload=check_payload)
     h.create_generic_record(
-        cli, defs, "aff:check-run", subject="c-signed", extra_payload={**check_payload, "signed_by": "ayin"},
+        cli, defs, "tuner:check-run", subject="c-signed", extra_payload={**check_payload, "signed_by": "ayin"},
     )
     h.create_generic_record(
-        cli, defs, "aff:check-run", subject="c-automatic", extra_payload={**check_payload, "method": "check"},
+        cli, defs, "tuner:check-run", subject="c-automatic", extra_payload={**check_payload, "method": "check"},
     )
-    corrected = h.create_generic_record(cli, defs, "aff:check-run", subject="c-corrected", extra_payload=check_payload)
-    result = cli("correct", "--type", "aff:check-run", "--id", corrected["id"], "--payload", json.dumps({"signed_by": "ayin"}))
+    corrected = h.create_generic_record(cli, defs, "tuner:check-run", subject="c-corrected", extra_payload=check_payload)
+    result = cli("correct", "--type", "tuner:check-run", "--id", corrected["id"], "--payload", json.dumps({"signed_by": "ayin"}))
     assert result.returncode == 0, result.stdout + result.stderr
 
     items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
@@ -161,12 +161,12 @@ def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cl
 
 def test_unsigned_check_reads_as_its_criterion_and_task_not_a_record_id(store, cli, defs):
     _goal(cli, defs, "alpha")
-    acceptance = _record(cli, defs, "plan:acceptance", "u-task-perf",
+    acceptance = _record(cli, defs, "score:acceptance", "u-task-perf",
                          {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha",
                           "phase": "a-one"})
     check_payload = {"method": "manual", "signed_by": "", "result": "pass", "revision": "r", "effort": "alpha"}
-    _record(cli, defs, "aff:check-run", "u-check", {**check_payload, "criterion_id": acceptance["id"]})
-    _record(cli, defs, "aff:check-run", "u-orphan", {**check_payload, "criterion_id": "rec-missing"})
+    _record(cli, defs, "tuner:check-run", "u-check", {**check_payload, "criterion_id": acceptance["id"]})
+    _record(cli, defs, "tuner:check-run", "u-orphan", {**check_payload, "criterion_id": "rec-missing"})
 
     items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
     assert sorted((item.subject, item.text) for item in items) == [
@@ -178,16 +178,16 @@ def test_unsigned_check_reads_as_its_criterion_and_task_not_a_record_id(store, c
 
 def test_needs_you_items_carry_record_type_and_full_body(store, cli, defs):
     _goal(cli, defs, "alpha")
-    _record(cli, defs, "plan:continuity-question", "alpha",
+    _record(cli, defs, "score:continuity-question", "alpha",
             {"owner": "ayin", "blocking": True, "scope": "which renderer"},
             "Pick the PDF renderer before the render task starts.")
-    _record(cli, defs, "aff:finding", "f-human",
+    _record(cli, defs, "tuner:finding", "f-human",
             {"claim": "human decides", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"})
 
     items = {item.kind: item for item in _effort(model.load_snapshot(_target(store)), "alpha").needs_you}
-    assert items["blocking-question"].record_type == "plan:continuity-question"
+    assert items["blocking-question"].record_type == "score:continuity-question"
     assert items["blocking-question"].body.strip() == "Pick the PDF renderer before the render task starts."
-    assert items["needs-human"].record_type == "aff:finding"
+    assert items["needs-human"].record_type == "tuner:finding"
     assert "placeholder text for Follow-up." in items["needs-human"].body
 
 
@@ -198,14 +198,14 @@ def test_needs_you_items_link_to_the_task_with_the_longest_matching_slug(store, 
     render = _work_item(cli, defs, "alpha", "pdf-render", "a-one")
     _work_item(cli, defs, "beta", "pdf-render-check", "b-one")
     finding = {"basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"}
-    _record(cli, defs, "aff:finding", "pdf-render", {**finding, "claim": "exact"})
-    _record(cli, defs, "aff:finding", "pdf-render-check", {**finding, "claim": "prefix"})
-    _record(cli, defs, "aff:finding", "pdfx-render", {**finding, "claim": "no boundary"})
-    _record(cli, defs, "aff:finding", "pdf-other", {**finding, "claim": "short prefix"})
-    acceptance = _record(cli, defs, "plan:acceptance", "pdf-render-perf",
+    _record(cli, defs, "tuner:finding", "pdf-render", {**finding, "claim": "exact"})
+    _record(cli, defs, "tuner:finding", "pdf-render-check", {**finding, "claim": "prefix"})
+    _record(cli, defs, "tuner:finding", "pdfx-render", {**finding, "claim": "no boundary"})
+    _record(cli, defs, "tuner:finding", "pdf-other", {**finding, "claim": "short prefix"})
+    acceptance = _record(cli, defs, "score:acceptance", "pdf-render-perf",
                          {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha",
                           "phase": "a-one"})
-    _record(cli, defs, "aff:check-run", "u-check",
+    _record(cli, defs, "tuner:check-run", "u-check",
             {"method": "manual", "signed_by": "", "result": "pass", "revision": "r", "effort": "alpha",
              "criterion_id": acceptance["id"]})
 
@@ -223,7 +223,7 @@ def test_needs_you_effort_level_question_links_to_no_task(store, cli, defs):
     _goal(cli, defs, "alpha")
     _work_item(cli, defs, "alpha", "alpha-task", "a-one")
     h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="alpha",
+        cli, defs, "score:continuity-question", subject="alpha",
         extra_payload={"blocking": False, "scope": "effort scope"},
     )
 
@@ -239,19 +239,19 @@ def test_needs_you_item_defaults_keep_the_four_field_constructor_working():
 def test_approval_needs_you_items_carry_displayed_revision(store, cli, defs):
     _goal(cli, defs, "alpha")
     question = h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="alpha",
+        cli, defs, "score:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "plan-review:alpha"},
     )
     finding = h.create_generic_record(
-        cli, defs, "aff:finding", subject="f-human",
+        cli, defs, "tuner:finding", subject="f-human",
         extra_payload={"claim": "human decides", "needs": "human", "effort": "alpha"},
     )
     acceptance = _record(
-        cli, defs, "plan:acceptance", "u-task",
+        cli, defs, "score:acceptance", "u-task",
         {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "a-one"},
     )
     check = _record(
-        cli, defs, "aff:check-run", "u-check",
+        cli, defs, "tuner:check-run", "u-check",
         {
             "criterion_id": acceptance["id"], "method": "manual", "result": "pass",
             "signed_by": "", "revision": "r", "effort": "alpha",
@@ -274,19 +274,19 @@ def test_recent_activity_lists_last_24h_newest_first_and_resolves_reports_to_the
     _goal(cli, defs, "beta")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     h.create_generic_record(
-        cli, defs, "run:assignment", subject="a-assign",
+        cli, defs, "conductor:assignment", subject="a-assign",
         extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     h.create_generic_record(
-        cli, defs, "run:execution-report", subject="a-report",
+        cli, defs, "conductor:execution-report", subject="a-report",
         extra_payload={"work_item": item["subject"], "result": "done it", "verdict": "pass"},
     )
     h.create_generic_record(
-        cli, defs, "aff:check-run", subject="a-check",
+        cli, defs, "tuner:check-run", subject="a-check",
         extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
     )
     h.run_cli_48h_ago(
-        store, "create", "--type", "aff:check-run", "--subject", "a-old-check",
+        store, "create", "--type", "tuner:check-run", "--subject", "a-old-check",
         "--payload", json.dumps({
             "method": "check", "signed_by": "", "result": "pass", "effort": "alpha",
             "criterion_id": "c-1", "revision": "r-1",
@@ -307,19 +307,19 @@ def test_activity_marks_failed_check_runs_and_failed_reports_only(store, cli, de
     _goal(cli, defs, "alpha")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     h.create_generic_record(
-        cli, defs, "run:assignment", subject="a-assign",
+        cli, defs, "conductor:assignment", subject="a-assign",
         extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
     )
     for subject, result, verdict in (
         ("a-report-pass", "pass", "pass"), ("a-report-result-fail", "fail", "pass"), ("a-report-verdict-fail", "pass", "fail"),
     ):
         h.create_generic_record(
-            cli, defs, "run:execution-report", subject=subject,
+            cli, defs, "conductor:execution-report", subject=subject,
             extra_payload={"work_item": item["subject"], "result": result, "verdict": verdict},
         )
     for subject, result in (("a-check-pass", "pass"), ("a-check-fail", "fail")):
         h.create_generic_record(
-            cli, defs, "aff:check-run", subject=subject,
+            cli, defs, "tuner:check-run", subject=subject,
             extra_payload={"method": "check", "signed_by": "", "result": result, "effort": "alpha"},
         )
 
@@ -333,7 +333,7 @@ def test_activity_marks_failed_check_runs_and_failed_reports_only(store, cli, de
 def test_activity_window_follows_the_supplied_clock(store, cli, defs):
     _goal(cli, defs, "alpha")
     h.create_generic_record(
-        cli, defs, "aff:check-run", subject="a-check",
+        cli, defs, "tuner:check-run", subject="a-check",
         extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
     )
     later = datetime.now(timezone.utc) + timedelta(hours=25)
@@ -355,7 +355,7 @@ def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     target = _target(store)
     before = model.change_token(target)
-    h.transition(cli, "plan:work-item", item, "in_progress")
+    h.transition(cli, "score:work-item", item, "in_progress")
     assert model.change_token(target) != before
 
 
@@ -375,11 +375,11 @@ def test_store_with_no_goals_has_no_efforts(store):
 def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
     _goal(cli, defs, "open-one")
     closed = h.create_generic_record(
-        cli, defs, "plan:effort", subject="closed-one",
+        cli, defs, "score:effort", subject="closed-one",
         extra_payload={"goal": "ship closed-one", "kind": "deliver"},
     )
     result = cli(
-        "supersede", "--type", "plan:effort", "--id", closed["id"],
+        "supersede", "--type", "score:effort", "--id", closed["id"],
         "--expected-revision", closed["revision"], "--payload", json.dumps({**closed["payload"], "status": "closed"}),
     )
     assert result.returncode == 0, result.stdout + result.stderr
@@ -401,49 +401,49 @@ def _record(cli, defs, record_type: str, subject: str, payload: dict, body: str 
 @pytest.fixture()
 def detail_store(store, cli, defs):
     dep = _work_item(cli, defs, "alpha", "d-dep", "a-one")
-    h.transition(cli, "plan:work-item", dep, "in_progress", "done")
+    h.transition(cli, "score:work-item", dep, "in_progress", "done")
     task = _work_item(cli, defs, "alpha", "d-task", "a-one", f"depends_on:{dep['id']}", assignee="sub-d")
-    h.transition(cli, "plan:work-item", task, "in_progress")
+    h.transition(cli, "score:work-item", task, "in_progress")
     blocked = _work_item(cli, defs, "alpha", "d-blocked", "a-two", f"depends_on:{task['id']}")
     sibling = _work_item(cli, defs, "alpha", "d-task-other", "a-one")
-    _record(cli, defs, "plan:acceptance", "d-task",
+    _record(cli, defs, "score:acceptance", "d-task",
             {"criterion": "first", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
-    signoff = _record(cli, defs, "plan:acceptance", "d-task-signoff",
+    signoff = _record(cli, defs, "score:acceptance", "d-task-signoff",
                       {"criterion": "second", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "a-one"})
-    _record(cli, defs, "plan:acceptance", "d-task-other",
+    _record(cli, defs, "score:acceptance", "d-task-other",
             {"criterion": "foreign", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
-    first = _record(cli, defs, "plan:acceptance", "d-task-first",
+    first = _record(cli, defs, "score:acceptance", "d-task-first",
                     {"criterion": "third", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
     h.run_cli_48h_ago(
-        store, "create", "--type", "aff:check-run", "--subject", "d-task-signoff", "--payload",
+        store, "create", "--type", "tuner:check-run", "--subject", "d-task-signoff", "--payload",
         json.dumps({"criterion_id": signoff["id"], "method": "manual", "result": "fail", "signed_by": "",
                     "revision": "rev-early", "effort": "alpha"}),
     )
-    _record(cli, defs, "aff:check-run", "d-task-signoff",
+    _record(cli, defs, "tuner:check-run", "d-task-signoff",
             {"criterion_id": signoff["id"], "method": "manual", "result": "pass", "signed_by": "ayin",
              "revision": "rev-late", "effort": "alpha"})
-    _record(cli, defs, "aff:check-run", "d-task-other",
+    _record(cli, defs, "tuner:check-run", "d-task-other",
             {"criterion_id": "x", "method": "check", "result": "pass", "signed_by": "", "revision": "r", "effort": "alpha"})
-    _record(cli, defs, "aff:check-run", "d-task-first",
+    _record(cli, defs, "tuner:check-run", "d-task-first",
             {"criterion_id": first["id"], "method": "check", "result": "pass", "signed_by": "", "revision": "r2", "effort": "beta"})
-    assignment = _record(cli, defs, "run:assignment", "d-task",
+    assignment = _record(cli, defs, "conductor:assignment", "d-task",
                          {"work_item": task["subject"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart here")
-    _record(cli, defs, "run:assignment-amendment", "d-task",
+    _record(cli, defs, "conductor:assignment-amendment", "d-task",
             {"assignment": "d-task", "effort": "alpha"}, "## Correction\n\nuse this")
-    _record(cli, defs, "run:execution-report", "d-task",
+    _record(cli, defs, "conductor:execution-report", "d-task",
             {"work_item": task["subject"], "assignment": assignment["subject"], "result": "pass", "verdict": "pass", "revision": "abc"},
             "evidence body")
-    _record(cli, defs, "run:execution-report", "d-task-other",
+    _record(cli, defs, "conductor:execution-report", "d-task-other",
             {"work_item": sibling["subject"], "assignment": "x", "result": "pass", "verdict": "pass", "revision": "zzz"}, "foreign body")
-    _record(cli, defs, "aff:finding", "d-task",
+    _record(cli, defs, "tuner:finding", "d-task",
             {"claim": "a claim", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
-    _record(cli, defs, "aff:finding", "d-task-other",
+    _record(cli, defs, "tuner:finding", "d-task-other",
             {"claim": "foreign claim", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
-    _record(cli, defs, "plan:decision", "d-task-choice",
+    _record(cli, defs, "score:decision", "d-task-choice",
             {"choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "a-one"})
-    _record(cli, defs, "run:failed-attempt", "d-task",
+    _record(cli, defs, "conductor:failed-attempt", "d-task",
             {"attempted_action": "tried x", "retry_when": "later", "effort": "alpha"})
-    _record(cli, defs, "aff:investigation-observation", "d-task",
+    _record(cli, defs, "tuner:investigation-observation", "d-task",
             {"what_was_observed": "saw y", "effort": "alpha", "environment": "e", "observed_time": "t", "source": "s"})
     return store, task, dep, blocked
 
@@ -530,11 +530,11 @@ def test_detail_of_an_unknown_id_raises_a_model_error(store):
 
 def _signoff_task(cli, defs, effort, phase, subject, manual_signed_by=None, result="pass"):
     task = _work_item(cli, defs, effort, subject, phase)
-    h.transition(cli, "plan:work-item", task, "in_progress")
-    acceptance = _record(cli, defs, "plan:acceptance", subject,
+    h.transition(cli, "score:work-item", task, "in_progress")
+    acceptance = _record(cli, defs, "score:acceptance", subject,
                          {"criterion": "reviewed", "method": "manual", "verify_command": "", "effort": effort, "phase": phase})
     if manual_signed_by is not None:
-        _record(cli, defs, "aff:check-run", subject,
+        _record(cli, defs, "tuner:check-run", subject,
                 {"criterion_id": acceptance["id"], "method": "manual", "result": result,
                  "signed_by": manual_signed_by, "revision": "r", "effort": effort})
     return task
@@ -551,14 +551,14 @@ def test_phase_awaits_sign_off_when_every_open_task_waits_only_on_an_unsigned_ma
         _phase(cli, defs, "alpha", name, ordinal, "in_progress")
     _signoff_task(cli, defs, "alpha", "p-wait", "t-wait", manual_signed_by="")
     plain = _work_item(cli, defs, "alpha", "t-plain", "p-plain")
-    h.transition(cli, "plan:work-item", plain, "in_progress")
+    h.transition(cli, "score:work-item", plain, "in_progress")
     _signoff_task(cli, defs, "alpha", "p-mixed", "t-mixed", manual_signed_by="")
     plain = _work_item(cli, defs, "alpha", "t-other", "p-mixed")
-    h.transition(cli, "plan:work-item", plain, "in_progress")
+    h.transition(cli, "score:work-item", plain, "in_progress")
     _signoff_task(cli, defs, "alpha", "p-signed", "t-signed", manual_signed_by="ayin")
     _signoff_task(cli, defs, "alpha", "p-failed", "t-failed", manual_signed_by="", result="fail")
     finished = _work_item(cli, defs, "alpha", "t-finished", "p-done")
-    h.transition(cli, "plan:work-item", finished, "in_progress", "done")
+    h.transition(cli, "score:work-item", finished, "in_progress", "done")
     assert _awaiting(store) == {
         "p-wait": True, "p-plain": False, "p-mixed": False, "p-signed": False, "p-failed": False, "p-done": False,
     }
@@ -568,7 +568,7 @@ def test_a_phase_with_a_done_task_and_one_task_awaiting_sign_off_is_awaiting(sto
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     finished = _work_item(cli, defs, "alpha", "t-finished", "p-one")
-    h.transition(cli, "plan:work-item", finished, "in_progress", "done")
+    h.transition(cli, "score:work-item", finished, "in_progress", "done")
     _signoff_task(cli, defs, "alpha", "p-one", "t-wait", manual_signed_by="")
     assert _awaiting(store) == {"p-one": True}
 
@@ -579,13 +579,13 @@ def test_phase_detail_carries_body_decisions_constraints_and_tasks(store, cli, d
     _phase(cli, defs, "alpha", "p-two", 2)
     task = _work_item(cli, defs, "alpha", "t-one", "p-one")
     _work_item(cli, defs, "alpha", "t-elsewhere", "p-two")
-    _record(cli, defs, "plan:decision", "p-one-choice",
+    _record(cli, defs, "score:decision", "p-one-choice",
             {"choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "p-one"})
-    _record(cli, defs, "plan:decision", "p-two-choice",
+    _record(cli, defs, "score:decision", "p-two-choice",
             {"choice": "go right", "alternatives": "left", "effort": "alpha", "phase": "p-two"})
-    _record(cli, defs, "plan:constraint", "p-one-limit",
+    _record(cli, defs, "score:constraint", "p-one-limit",
             {"statement": "no network", "applies_to": "p-one", "effort": "alpha"})
-    _record(cli, defs, "plan:constraint", "other-limit",
+    _record(cli, defs, "score:constraint", "other-limit",
             {"statement": "elsewhere", "applies_to": "p-two", "effort": "alpha"})
     detail = model.load_phase_detail(_target(store), "alpha", "p-one")
     assert (detail.subject, detail.title, detail.state, detail.awaiting_signoff) == ("p-one", "title of p-one", "in_progress", False)
@@ -633,7 +633,7 @@ def test_finished_efforts_sort_after_live_ones(store, cli, defs):
         _goal(cli, defs, effort)
     _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")
     done = _work_item(cli, defs, "alpha", "a-done", "a-one")
-    h.transition(cli, "plan:work-item", done, "in_progress", "done")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
     _phase(cli, defs, "beta", "b-one", 1, "in_progress")
     _work_item(cli, defs, "beta", "b-ready", "b-one")
     snapshot = model.load_snapshot(_target(store))
@@ -644,7 +644,7 @@ def test_finished_efforts_sort_after_live_ones(store, cli, defs):
 
 def _assign(cli, defs, work_item: str, executor: str) -> dict:
     return h.create_generic_record(
-        cli, defs, "run:assignment", subject=f"{executor}-assign",
+        cli, defs, "conductor:assignment", subject=f"{executor}-assign",
         extra_payload={"work_item": work_item, "executor": executor, "effort": "alpha"},
     )
 
@@ -652,10 +652,10 @@ def _assign(cli, defs, work_item: str, executor: str) -> dict:
 def test_waits_on_lists_only_unfinished_dependency_slugs_in_dependency_order(store, cli, defs):
     _goal(cli, defs, "alpha")
     done = _work_item(cli, defs, "alpha", "w-done", "p-one")
-    h.transition(cli, "plan:work-item", done, "in_progress", "done")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
     later = _work_item(cli, defs, "alpha", "w-later", "p-one")
     active = _work_item(cli, defs, "alpha", "w-active", "p-one")
-    h.transition(cli, "plan:work-item", active, "in_progress")
+    h.transition(cli, "score:work-item", active, "in_progress")
     _work_item(
         cli, defs, "alpha", "w-task", "p-one",
         f"depends_on:{later['id']}", f"depends_on:{done['id']}", f"depends_on:{active['id']}",
@@ -689,11 +689,11 @@ def test_task_rows_include_depends_on_task_ids(store, cli, defs):
 def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, cli, defs):
     _goal(cli, defs, "alpha")
     running = _work_item(cli, defs, "alpha", "r-running", "p-one")
-    h.transition(cli, "plan:work-item", running, "in_progress")
+    h.transition(cli, "score:work-item", running, "in_progress")
     h.run_cli_48h_ago(
-        store, "create", "--type", "run:assignment", "--subject", "old-assign",
+        store, "create", "--type", "conductor:assignment", "--subject", "old-assign",
         "--payload", json.dumps({"work_item": running["subject"], "executor": "old", "effort": "alpha"}),
-        "--body", h.generic_body(defs["run:assignment"]),
+        "--body", h.generic_body(defs["conductor:assignment"]),
     )
     latest = _assign(cli, defs, "r-running", "new")
     tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
@@ -706,9 +706,9 @@ def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
     _assign(cli, defs, ready["subject"], "ready")
     done = _work_item(cli, defs, "alpha", "r-done", "p-one")
     _assign(cli, defs, done["subject"], "done")
-    h.transition(cli, "plan:work-item", done, "in_progress", "done")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
     unassigned = _work_item(cli, defs, "alpha", "r-unassigned", "p-one")
-    h.transition(cli, "plan:work-item", unassigned, "in_progress")
+    h.transition(cli, "score:work-item", unassigned, "in_progress")
     tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
     assert [tasks[s].running_since for s in ("r-ready", "r-done", "r-unassigned")] == [None, None, None]
 
@@ -720,13 +720,13 @@ def test_task_row_defaults_leave_waits_on_empty_and_running_since_unset():
 
 def _merged_store(cli, defs):
     h.create_generic_record(
-        cli, defs, "plan:effort", subject="merged",
+        cli, defs, "score:effort", subject="merged",
         extra_payload={"goal": "ship merged", "kind": "deliver", "merged_from": ["old-a", "old-b"]},
     )
     _phase(cli, defs, "merged", "m-one", 1, "in_progress")
     task = _work_item(cli, defs, "merged", "m-task", "m-one")
-    h.transition(cli, "plan:work-item", task, "in_progress")
-    _record(cli, defs, "aff:check-run", "m-task",
+    h.transition(cli, "score:work-item", task, "in_progress")
+    _record(cli, defs, "tuner:check-run", "m-task",
             {"criterion_id": "x", "method": "manual", "result": "pass", "signed_by": "", "revision": "r", "effort": "old-a"})
     return task
 
@@ -755,21 +755,21 @@ def _body(defs, record_type: str, fills: dict | None = None) -> str | None:
 def _spec(cli, defs, phase: str, requirements: str = "R1", *, weight: str = "light", body: str | None = None, non_goals: str = "none", effort: str = "alpha") -> dict:
     if body is None:
         lines = "\n".join(f"{part.strip()}: text of {part.strip()}" for part in requirements.split(",") if part.strip())
-        body = _body(defs, "plan:specification", {"Requirements": lines, "Non-goals": non_goals})
-    return _record(cli, defs, "plan:specification", phase, {
+        body = _body(defs, "score:specification", {"Requirements": lines, "Non-goals": non_goals})
+    return _record(cli, defs, "score:specification", phase, {
         "weight": weight, "phase": phase, "effort": effort, "requirements": h.csv(requirements),
     }, body)
 
 
 def _design(cli, defs, phase: str, decisions: str = "", *, effort: str = "alpha") -> dict:
     for subject in h.csv(decisions):
-        if not json.loads(cli("list", "--type", "plan:decision", "--subject", subject).stdout)["records"]:
+        if not json.loads(cli("list", "--type", "score:decision", "--subject", subject).stdout)["records"]:
             _decision(cli, defs, subject, phase, "chosen", effort=effort)
-    return _record(cli, defs, "plan:design", phase, {"phase": phase, "effort": effort, "decisions": h.csv(decisions)})
+    return _record(cli, defs, "score:design", phase, {"phase": phase, "effort": effort, "decisions": h.csv(decisions)})
 
 
 def _decision(cli, defs, subject: str, phase: str, choice: str, *, effort: str = "alpha") -> dict:
-    return _record(cli, defs, "plan:decision", subject, {
+    return _record(cli, defs, "score:decision", subject, {
         "choice": choice, "alternatives": "other", "phase": phase, "effort": effort,
     })
 
@@ -780,21 +780,21 @@ def _task(cli, defs, subject: str, phase: str, requirements: str = "", decisions
         payload["requirements"] = h.csv(requirements)
     if decisions:
         payload["decisions"] = h.csv(decisions)
-    record = _record(cli, defs, "plan:work-item", subject, payload)
+    record = _record(cli, defs, "score:work-item", subject, payload)
     if done:
-        record = h.transition(cli, "plan:work-item", record, "in_progress", "done")
+        record = h.transition(cli, "score:work-item", record, "in_progress", "done")
     return record
 
 
 def _accept(cli, defs, subject: str, phase: str, requirement: str, *, effort: str = "alpha") -> dict:
-    return _record(cli, defs, "plan:acceptance", subject, {
+    return _record(cli, defs, "score:acceptance", subject, {
         "criterion": subject, "method": "check", "phase": phase, "effort": effort,
         "verify_command": "true", "requirement": requirement,
     })
 
 
 def _check(cli, defs, subject: str, acceptance_id: str, result: str, requirement: str, evidence_kind: str) -> dict:
-    return _record(cli, defs, "aff:check-run", subject, {
+    return _record(cli, defs, "tuner:check-run", subject, {
         "criterion_id": acceptance_id, "revision": "dirty", "result": result, "effort": "alpha",
         "method": "check", "signed_by": "ayin", "requirement": requirement, "evidence_kind": evidence_kind,
     })
@@ -808,7 +808,7 @@ def _assessment(cli, defs, phase: str, requirement: str, **fields) -> dict:
     payload.update(fields)
     if payload.get("status") == "verified":
         payload.pop("level", None)
-    return _record(cli, defs, "run:assessment", f"{phase}-{requirement}", payload)
+    return _record(cli, defs, "conductor:assessment", f"{phase}-{requirement}", payload)
 
 
 def _supersede(cli, defs, record_type: str, record: dict, payload: dict) -> dict:
@@ -825,14 +825,14 @@ def _supersede(cli, defs, record_type: str, record: dict, payload: dict) -> dict
 
 
 def _report(cli, defs, phase: str, result: str, conflicts: str = "none", *, subject: str | None = None, effort: str = "alpha") -> dict:
-    body = _body(defs, "run:integration-report", {"Conflicts": conflicts})
-    return _record(cli, defs, "run:integration-report", subject or f"{phase}-report", {
+    body = _body(defs, "conductor:integration-report", {"Conflicts": conflicts})
+    return _record(cli, defs, "conductor:integration-report", subject or f"{phase}-report", {
         "phase": phase, "effort": effort, "result": result, "revision": "dirty",
     }, body)
 
 
 def _release(cli, defs, phase: str, state: str, *, effort: str = "alpha") -> dict:
-    return _record(cli, defs, "run:release", phase, {"state": state, "phase": phase, "effort": effort})
+    return _record(cli, defs, "conductor:release", phase, {"state": state, "phase": phase, "effort": effort})
 
 
 ROW_SPEC = """## Non-goals
@@ -876,12 +876,12 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
     _task(cli, defs, "row-c", "p-rows", "R2")
     _task(cli, defs, "row-d", "p-rows", "R10")
     verified = _assessment(cli, defs, "p-rows", "R1", status="verified", next="release", confidence="high")
-    _supersede(cli, defs, "run:assessment", verified, {
+    _supersede(cli, defs, "conductor:assessment", verified, {
         "status": "failed", "level": "design", "next": "design", "confidence": "high",
     })
     own = _accept(cli, defs, "row-c-check", "p-rows", "R2")
     h.run_cli_48h_ago(
-        store, "create", "--type", "aff:check-run", "--subject", "row-c-pass",
+        store, "create", "--type", "tuner:check-run", "--subject", "row-c-pass",
         "--payload", json.dumps({
             "criterion_id": own["id"], "revision": "dirty", "result": "pass", "effort": "alpha",
             "method": "check", "signed_by": "ayin", "requirement": "R2", "evidence_kind": "unit",
@@ -912,7 +912,7 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
 def test_evidence_requirement_detail_includes_superseded_assessments(store, cli, defs, monkeypatch):
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-detail", 1, "in_progress")
-    _spec(cli, defs, "p-detail", "R1", body=_body(defs, "plan:specification", {
+    _spec(cli, defs, "p-detail", "R1", body=_body(defs, "score:specification", {
         "Requirements": "R1: the traced requirement",
     }))
     _decision(cli, defs, "design-only", "p-detail", "nope")
@@ -924,7 +924,7 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     acceptance = _accept(cli, defs, "trace-yes-acc", "p-detail", "R1")
     _accept(cli, defs, "other-acc", "p-detail", "R2")
     h.run_cli_48h_ago(
-        store, "create", "--type", "aff:check-run", "--subject", "trace-early",
+        store, "create", "--type", "tuner:check-run", "--subject", "trace-early",
         "--payload", json.dumps({
             "criterion_id": acceptance["id"], "revision": "dirty", "result": "fail", "effort": "alpha",
             "method": "check", "signed_by": "ayin", "requirement": "R1", "evidence_kind": "integration",
@@ -934,7 +934,7 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     first = _assessment(
         cli, defs, "p-detail", "R1", status="failed", level="implementation", next="execute", confidence="low",
     )
-    second = _supersede(cli, defs, "run:assessment", first, {
+    second = _supersede(cli, defs, "conductor:assessment", first, {
         "status": "failed", "level": "design", "next": "design", "confidence": "high",
     })
 
@@ -948,7 +948,7 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     monkeypatch.setattr(model, "_run", spy)
     detail = model.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
     assert any(
-        "run:assessment" in args and "--state" in args and "superseded" in args for args in calls
+        "conductor:assessment" in args and "--state" in args and "superseded" in args for args in calls
     )
     assert (detail.phase, detail.id, detail.text, detail.status, detail.next) == (
         "p-detail", "R1", "the traced requirement", "failed", "design",
@@ -968,9 +968,9 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
     for ordinal, subject in enumerate(("act", "act-pass", "act-block", "act-bad", "act-ok", "act-old"), 1):
         _phase(cli, defs, "alpha", subject, ordinal)
         _spec(cli, defs, subject, "R1, R2, R3" if subject == "act" else "R1")
-    old_body = _body(defs, "run:assessment")
+    old_body = _body(defs, "conductor:assessment")
     h.run_cli_48h_ago(
-        store, "create", "--type", "run:assessment", "--subject", "act-old-R9",
+        store, "create", "--type", "conductor:assessment", "--subject", "act-old-R9",
         "--payload", json.dumps({
             "requirement": "R9", "status": "failed", "level": "implementation", "next": "execute",
             "confidence": "high", "phase": "act-old", "effort": "alpha", "missing": "",
@@ -978,14 +978,14 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
         "--body", old_body,
     )
     h.run_cli_48h_ago(
-        store, "create", "--type", "run:integration-report", "--subject", "act-old-report",
+        store, "create", "--type", "conductor:integration-report", "--subject", "act-old-report",
         "--payload", json.dumps({"phase": "act-old", "effort": "alpha", "result": "fail", "revision": "dirty"}),
-        "--body", _body(defs, "run:integration-report"),
+        "--body", _body(defs, "conductor:integration-report"),
     )
     previous = _assessment(
         cli, defs, "act", "R1", status="failed", level="implementation", next="execute", confidence="high",
     )
-    _supersede(cli, defs, "run:assessment", previous, {
+    _supersede(cli, defs, "conductor:assessment", previous, {
         "status": "failed", "level": "design", "next": "design", "confidence": "low",
     })
     _assessment(cli, defs, "act", "R2", status="verified", next="release", confidence="high")
@@ -1021,7 +1021,7 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
 def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
     _goal(cli, defs, "alpha")
     h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="alpha",
+        cli, defs, "score:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "hold"},
     )
     cases = {
@@ -1043,9 +1043,9 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
     _report(cli, defs, "n-fail", "fail", "ports disagree")
     _report(cli, defs, "n-blocked", "blocked", "stuck")
     h.run_cli_48h_ago(
-        store, "create", "--type", "run:integration-report", "--subject", "n-pass-old",
+        store, "create", "--type", "conductor:integration-report", "--subject", "n-pass-old",
         "--payload", json.dumps({"phase": "n-pass", "effort": "alpha", "result": "fail", "revision": "dirty"}),
-        "--body", _body(defs, "run:integration-report", {"Conflicts": "old"}),
+        "--body", _body(defs, "conductor:integration-report", {"Conflicts": "old"}),
     )
     _report(cli, defs, "n-pass", "pass", "clean", subject="n-pass-new")
 
@@ -1136,7 +1136,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
 
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-matrix", 1, "in_progress")
-    _spec(cli, defs, "p-matrix", "R1, R2, R3, R4, R5", weight="full", body=_body(defs, "plan:specification", {
+    _spec(cli, defs, "p-matrix", "R1, R2, R3, R4, R5", weight="full", body=_body(defs, "score:specification", {
         "Requirements": "\n".join([
             "R1: verified row",
             "R2: failed check row",
@@ -1205,12 +1205,12 @@ def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-full", 1, "in_progress")
     _phase(cli, defs, "alpha", "p-plain", 2, "in_progress")
-    _spec(cli, defs, "p-full", "R1", body=_body(defs, "plan:specification", {
+    _spec(cli, defs, "p-full", "R1", body=_body(defs, "score:specification", {
         "Requirements": "R1: structured holds",
         "Non-goals": "none",
     }))
-    design_body = _body(defs, "plan:design", {"Architecture": "one pane per tab"})
-    _record(cli, defs, "plan:design", "p-full", {
+    design_body = _body(defs, "score:design", {"Architecture": "one pane per tab"})
+    _record(cli, defs, "score:design", "p-full", {
         "phase": "p-full", "effort": "alpha", "decisions": ["pick-cols"],
     }, design_body)
     full = model.load_phase_detail(_target(store), "alpha", "p-full")
@@ -1251,7 +1251,7 @@ def test_phase_screen_tabs_when_specification_type_is_missing():
 def test_phase_screen_simple_detail_carries_body_and_constraints(store, cli, defs):
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-simple", 1, "in_progress")
-    _record(cli, defs, "plan:constraint", "simple-limit", {
+    _record(cli, defs, "score:constraint", "simple-limit", {
         "statement": "stay offline", "applies_to": "p-simple", "effort": "alpha",
     })
     detail = model.load_phase_detail(_target(store), "alpha", "p-simple")
@@ -1267,19 +1267,19 @@ def test_phase_screen_decision_log_scopes_and_history(store, cli, defs):
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-early", 1, "in_progress")
     _phase(cli, defs, "alpha", "p-late", 2, "in_progress")
-    early_body = _body(defs, "plan:decision", {
+    early_body = _body(defs, "score:decision", {
         "Rationale": "early wins", "Counter-argument": "maybe late",
     })
-    late_body = _body(defs, "plan:decision", {
+    late_body = _body(defs, "score:decision", {
         "Rationale": "late wins", "Counter-argument": "maybe early",
     })
-    _record(cli, defs, "plan:decision", "choose-early", {
+    _record(cli, defs, "score:decision", "choose-early", {
         "choice": "left", "alternatives": "right", "effort": "alpha", "phase": "p-early",
     }, early_body)
-    first = _record(cli, defs, "plan:decision", "choose-late", {
+    first = _record(cli, defs, "score:decision", "choose-late", {
         "choice": "old", "alternatives": "new", "effort": "alpha", "phase": "p-late",
     }, late_body)
-    second = _supersede(cli, defs, "plan:decision", first, {"choice": "new"})
+    second = _supersede(cli, defs, "score:decision", first, {"choice": "new"})
 
     phase_log = model.load_decision_log(_target(store), "alpha", "p-late", history=False)
     assert [title for title, _ in phase_log.groups] == ["title of p-late"]
@@ -1311,7 +1311,7 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
 
     root = build_store({"specification", "design", "assessment", "integration-report", "release"})
     try:
-        rejected = run_cli("list", "--type", "run:assessment", root=root)
+        rejected = run_cli("list", "--type", "conductor:assessment", root=root)
         assert rejected.returncode != 0
         defs = h.schema_defs()
 
@@ -1328,7 +1328,7 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
         real = model._run
 
         def boom(target, *args):
-            if "plan:work-item" in args:
+            if "score:work-item" in args:
                 raise model.ModelError("work-item failed")
             return real(target, *args)
 
@@ -1340,10 +1340,10 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
 
 
 def test_list_skips_types_absent_from_store_schemas(monkeypatch):
-    """Foreign stores lack plan:phase; the dashboard skips undeclared types instead of listing them."""
+    """Foreign stores lack score:phase; the dashboard skips undeclared types instead of listing them."""
     from types import SimpleNamespace
 
-    target = SimpleNamespace(schemas=lambda: SimpleNamespace(types={"plan:effort": object()}))
+    target = SimpleNamespace(schemas=lambda: SimpleNamespace(types={"score:effort": object()}))
     calls: list[tuple[str, ...]] = []
 
     def boom(tgt, *args):
@@ -1351,13 +1351,13 @@ def test_list_skips_types_absent_from_store_schemas(monkeypatch):
         raise model.ModelError("list should not be called for undeclared types")
 
     monkeypatch.setattr(model, "_run", boom)
-    assert model._list(target, "plan:phase") == []
-    assert model._list(target, "plan:work-item") == []
+    assert model._list(target, "score:phase") == []
+    assert model._list(target, "score:work-item") == []
     assert calls == []
 
     with pytest.raises(model.ModelError, match="should not be called"):
-        model._list(target, "plan:effort")
-    assert calls == [("list", "--type", "plan:effort")]
+        model._list(target, "score:effort")
+    assert calls == [("list", "--type", "score:effort")]
 
 
 def test_evidence_stage_returns_each_rule(store, cli, defs):
@@ -1541,12 +1541,12 @@ def test_estimate_view_row_fields(store, cli, defs):
 
     _goal(cli, defs, "alpha")
     body = "## Problem\n\nplaceholder.\n\n## Approach\n\nSize: more than one sitting.\n\n## Exit criteria\n\nplaceholder.\n"
-    _record(cli, defs, "plan:phase", "p-snap", {"title": "Snap", "ordinal": 1, "effort": "alpha"}, body)
-    _record(cli, defs, "plan:work-item", "snap-task", {
+    _record(cli, defs, "score:phase", "p-snap", {"title": "Snap", "ordinal": 1, "effort": "alpha"}, body)
+    _record(cli, defs, "score:work-item", "snap-task", {
         "title": "Snap task", "phase": "p-snap", "kind": "deliver", "assignee": "", "effort": "alpha",
         "size": "L", "estimate_minutes": 25, "executor": "inline",
     })
-    _record(cli, defs, "plan:work-item", "snap-zero", {
+    _record(cli, defs, "score:work-item", "snap-zero", {
         "title": "Snap zero", "phase": "p-snap", "kind": "deliver", "assignee": "", "effort": "alpha",
         "estimate_minutes": 0, "executor": "inline",
     })
@@ -1997,15 +1997,15 @@ def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):
         "## Exit criteria\n\nplaceholder.\n"
     )
     phase = _record(
-        cli, defs, "plan:phase", "p-land",
+        cli, defs, "score:phase", "p-land",
         {"title": "Land", "ordinal": 1, "effort": "alpha"}, body,
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
+    h.transition(cli, "score:phase", phase, "in_progress")
     task = _work_item(cli, defs, "alpha", "land-run", "p-land")
-    h.transition(cli, "plan:work-item", task, "in_progress")
+    h.transition(cli, "score:work-item", task, "in_progress")
     assignment = _assign(cli, defs, "land-run", "agent")
     amendment = _record(
-        cli, defs, "run:assignment-amendment", "land-run",
+        cli, defs, "conductor:assignment-amendment", "land-run",
         {"assignment": assignment["subject"], "effort": "alpha"},
         "## Correction\n\nlater",
     )
@@ -2026,11 +2026,11 @@ def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
         _phase(cli, defs, effort, f"{effort}-phase", 1, "in_progress")
         _work_item(cli, defs, effort, f"{effort}-task", f"{effort}-phase")
         _record(
-            cli, defs, "aff:finding", f"{effort}-task",
+            cli, defs, "tuner:finding", f"{effort}-task",
             {"claim": f"{effort} claim", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
         )
         _record(
-            cli, defs, "plan:continuity-question", effort,
+            cli, defs, "score:continuity-question", effort,
             {"owner": "user", "blocking": False, "scope": "effort-open"},
         )
 
@@ -2043,7 +2043,7 @@ def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
         scoped = selection.scoped(view, f"{effort}-phase")
         assert all(
             item.phase == f"{effort}-phase"
-            or (item.phase is None and item.record_type == "plan:continuity-question")
+            or (item.phase is None and item.record_type == "score:continuity-question")
             for item in scoped.journal_open
         )
         open_items, _ = journal_mod.ordered(journal_mod.load_journal(_target(store), effort))
@@ -2058,7 +2058,7 @@ def test_journal_kind_deliver_and_incidental_skip_journal_open(store, cli, defs,
         _phase(cli, defs, effort, f"{effort}-phase", 1, "in_progress")
         _work_item(cli, defs, effort, f"{effort}-task", f"{effort}-phase")
         _record(
-            cli, defs, "aff:finding", f"{effort}-task",
+            cli, defs, "tuner:finding", f"{effort}-task",
             {"claim": f"{effort} claim", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
         )
 
@@ -2085,7 +2085,7 @@ def _backlog(cli, defs, subject: str, effort: str, *, status: str = "open", sour
     if phase:
         payload["phase"] = phase
     args = [
-        "create", "--type", "plan:backlog-item", "--subject", subject,
+        "create", "--type", "score:backlog-item", "--subject", subject,
         "--payload", json.dumps(payload),
     ]
     if body:
@@ -2102,18 +2102,18 @@ def test_backlog_open_items_group_by_effort_and_skip_closed(store, cli, defs):
     _backlog(cli, defs, "park-b", "beta", body="## Note\n\ndo beta later")
     promoted = _backlog(cli, defs, "park-promoted", "alpha")
     cli(
-        "supersede", "--type", "plan:backlog-item", "--id", promoted["id"],
+        "supersede", "--type", "score:backlog-item", "--id", promoted["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "promoted"}),
     )
     dismissed = _backlog(cli, defs, "park-dismissed", "alpha")
     cli(
-        "supersede", "--type", "plan:backlog-item", "--id", dismissed["id"],
+        "supersede", "--type", "score:backlog-item", "--id", dismissed["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
     )
     question = h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject="alpha",
+        cli, defs, "score:continuity-question", subject="alpha",
         extra_payload={"blocking": True, "scope": "still-a-gate"},
     )
 
@@ -2175,15 +2175,15 @@ def test_attempt_snapshot_reads_payload_and_run_facts(store, cli, defs):
         "## Exit criteria\n\nplaceholder.\n"
     )
     phase = _record(
-        cli, defs, "plan:phase", "p-attempt",
+        cli, defs, "score:phase", "p-attempt",
         {"title": "Attempt", "ordinal": 1, "effort": "alpha"}, body,
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
-    retried = _record(cli, defs, "plan:work-item", "attempt-task", {
+    h.transition(cli, "score:phase", phase, "in_progress")
+    retried = _record(cli, defs, "score:work-item", "attempt-task", {
         "title": "Retried task", "phase": "p-attempt", "kind": "deliver",
         "assignee": "", "effort": "alpha", "attempts": 1,
     })
-    _record(cli, defs, "plan:work-item", "fresh-task", {
+    _record(cli, defs, "score:work-item", "fresh-task", {
         "title": "Fresh task", "phase": "p-attempt", "kind": "deliver",
         "assignee": "", "effort": "alpha",
     })
@@ -2246,14 +2246,14 @@ def test_suite_status_label_pass_fail_running():
 def test_suite_phase_row_from_snapshot(store, cli, defs):
     _goal(cli, defs, "alpha")
     phase = _record(
-        cli, defs, "plan:phase", "sp",
+        cli, defs, "score:phase", "sp",
         {"title": "Suite phase", "ordinal": 1, "effort": "alpha"},
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
-    _record(cli, defs, "plan:work-item", "sp-task", {
+    h.transition(cli, "score:phase", phase, "in_progress")
+    _record(cli, defs, "score:work-item", "sp-task", {
         "title": "Task", "phase": "sp", "kind": "deliver", "assignee": "", "effort": "alpha",
     })
-    _record(cli, defs, "aff:check-run", "sp-suite", {
+    _record(cli, defs, "tuner:check-run", "sp-suite", {
         "criterion_id": "suite", "revision": "abc1234deadbeef", "result": "pass",
         "effort": "alpha", "method": "check", "signed_by": "", "evidence_kind": "integration",
     })

@@ -6,7 +6,7 @@ each criterion's evidence, and the transition to apply.
 For `method` `tdd` or `check`, the binary check-run must already exist
 (from `orchestra check`). The request references that runner-produced
 `check_run_id` and copies its `result` for the refusal gate — this
-script does not invent pass/fail or emit a `aff:check-run` create
+script does not invent pass/fail or emit a `tuner:check-run` create
 for those methods.
 
 On a `done` transition, each referenced check-run is loaded from the
@@ -22,11 +22,11 @@ store's revisions (or a dirty red with `diff_sha256`), unless the
 request includes a finding escape.
 
 For `method` `manual`, the request carries `result` / `revision` /
-`signed_by` and this script emits one `aff:check-run` create per
+`signed_by` and this script emits one `tuner:check-run` create per
 entry (linked `informed_by` both its acceptance and the
 execution-report when there is one).
 
-An optional `aff:finding` and the work-item transition follow, in
+An optional `tuner:finding` and the work-item transition follow, in
 that order -- ready to feed straight into `canon apply`.
 
 What it enforces: closing to `done` while a criterion is unmet or was
@@ -45,8 +45,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from canon.project import open_store
-from canon.store import StoreError
+from orchestra.canon.project import open_store
+from orchestra.canon.store import StoreError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -66,9 +66,9 @@ class CloseRefused(Exception):
 
 
 class OracleAdapterUnavailable(Exception):
-    """Oracle-backed close needs the affidavit library.
+    """Oracle-backed close needs the tuner library.
 
-    An installed Orchestra CLI serves every other subcommand without affidavit
+    An installed Orchestra CLI serves every other subcommand without tuner
     importable; this gate refuses clearly when the import fails.
     """
 
@@ -109,7 +109,7 @@ def default_load_check_run(
 ) -> dict[str, Any]:
     """Load a check-run from the store opened for the primary cwd."""
     try:
-        return _open_project(store_root).get(check_run_id, "aff:check-run")
+        return _open_project(store_root).get(check_run_id, "tuner:check-run")
     except StoreError as exc:
         raise LookupError(str(exc)) from exc
 
@@ -121,7 +121,7 @@ def default_load_acceptance(
 ) -> dict[str, Any]:
     """Load an acceptance from the store opened for the primary cwd."""
     try:
-        return _open_project(store_root).get(acceptance_id, "plan:acceptance")
+        return _open_project(store_root).get(acceptance_id, "score:acceptance")
     except StoreError as exc:
         raise LookupError(str(exc)) from exc
 
@@ -134,12 +134,12 @@ def default_list_oracle_amendments(
     """Active oracle-amendment records whose payload.acceptance is the id or the subject."""
     try:
         project = _open_project(store_root)
-        records = project.list("aff:oracle-amendment")
+        records = project.list("tuner:oracle-amendment")
     except StoreError:
         return []
     refs = {str(acceptance_id)}
     try:
-        refs.add(str(project.get(acceptance_id, "plan:acceptance")["subject"]))
+        refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
     except StoreError:
         pass
     matched: list[dict[str, Any]] = []
@@ -443,16 +443,16 @@ def _enforce_red_first_from_store(
 
 
 def _assertion_level_red(record: dict[str, Any]) -> bool:
-    """Ask affidavit whether red failed at assertion level.
+    """Ask tuner whether red failed at assertion level.
 
     The import stays inside this function so ``orchestra --help`` does not
-    import affidavit. A missing import raises OracleAdapterUnavailable.
+    import tuner. A missing import raises OracleAdapterUnavailable.
     """
     try:
-        from affidavit.oracle_red import is_assertion_level_red
+        from orchestra.tuner.oracle_red import is_assertion_level_red
     except ImportError as exc:
         raise OracleAdapterUnavailable(
-            "affidavit is not importable; close-batch needs affidavit to "
+            "tuner is not importable; close-batch needs tuner to "
             "classify assertion-level red for oracle-backed acceptances"
         ) from exc
     return bool(is_assertion_level_red(record))
@@ -474,12 +474,12 @@ def _approved_amendment_covers_tree(
 
 
 def _manifest_claim_ids(cwd: Path) -> set[str] | None:
-    """Claim ids in ``.affidavit/manifest.json``, or None when it is absent.
+    """Claim ids in ``.tuner/manifest.json``, or None when it is absent.
 
     An empty set means the manifest exists but lists no usable claims, so a
     non-empty ``payload.claim`` is not listed and must refuse.
     """
-    path = cwd / ".affidavit" / "manifest.json"
+    path = cwd / ".tuner" / "manifest.json"
     if not path.is_file():
         return None
     try:
@@ -496,18 +496,18 @@ def _manifest_claim_ids(cwd: Path) -> set[str] | None:
     return ids
 
 
-def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
-    """Refuse unless affidavit verdict and recheck both pass for the claim.
+def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
+    """Refuse unless tuner verdict and recheck both pass for the claim.
 
     Imports stay inside this function so ``orchestra --help`` does not import
-    affidavit. A missing import raises an error that names affidavit.
+    tuner. A missing import raises an error that names tuner.
     """
     try:
-        from affidavit.binding import recheck
-        from affidavit.verdict import run_verdict
+        from orchestra.tuner.binding import recheck
+        from orchestra.tuner.verdict import run_verdict
     except ImportError as exc:
         raise CloseRefused(
-            f"affidavit is not importable; cannot run verdict or recheck "
+            f"tuner is not importable; cannot run verdict or recheck "
             f"for claim {claim_id!r}"
         ) from exc
     failed: list[str] = []
@@ -532,7 +532,7 @@ def _run_aff_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         clocks = " and ".join(failed)
         suffix = f" ({'; '.join(details)})" if details else ""
         raise CloseRefused(
-            f"affidavit {clocks} refused for claim {claim_id!r} "
+            f"tuner {clocks} refused for claim {claim_id!r} "
             f"at revision {revision!r}{suffix}"
         )
 
@@ -544,7 +544,7 @@ def _enforce_claim_gates(
     cwd: Path,
     load_acceptance: AcceptanceLoader,
 ) -> None:
-    """Manifest-backed acceptances need affidavit verdict and recheck on done.
+    """Manifest-backed acceptances need tuner verdict and recheck on done.
 
     The claim id comes only from the acceptance payload field ``claim``.
     An acceptance that cannot be loaded refuses, and so does a claim id
@@ -571,7 +571,7 @@ def _enforce_claim_gates(
         if claim_id not in claim_ids:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: claim {claim_id!r} is not "
-                "listed in .affidavit/manifest.json"
+                "listed in .tuner/manifest.json"
             )
         revision: Any = None
         green = green_by_criterion.get(criterion_id)
@@ -582,9 +582,9 @@ def _enforce_claim_gates(
         if not revision:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: claim {claim_id!r} requires "
-                "a close revision for affidavit verdict"
+                "a close revision for tuner verdict"
             )
-        _run_aff_claim_gate(claim_id, cwd=cwd, revision=str(revision))
+        _run_tuner_claim_gate(claim_id, cwd=cwd, revision=str(revision))
 
 
 def _enforce_oracle_gates(
@@ -727,7 +727,7 @@ def build_batch(
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method={method!r} must "
                     "reference a runner-produced check_run_id (from "
-                    "aff check); do not invent pass/fail"
+                    "orchestra check); do not invent pass/fail"
                 )
             if "result" not in entry:
                 raise CloseRequestError(
@@ -847,7 +847,7 @@ def build_batch(
         ops.append(
             {
                 "op": "create",
-                "type": "aff:check-run",
+                "type": "tuner:check-run",
                 "subject": subject,
                 "payload": payload,
             }
@@ -871,7 +871,7 @@ def build_batch(
         ops.append(
             {
                 "op": "create",
-                "type": "aff:finding",
+                "type": "tuner:finding",
                 "subject": subject,
                 "payload": finding_payload,
                 "body": finding_body,
@@ -881,7 +881,7 @@ def build_batch(
     ops.append(
         {
             "op": "update",
-            "type": "plan:work-item",
+            "type": "score:work-item",
             "id": work_item_id,
             "transition": transition,
             "expected_revision": "@current",

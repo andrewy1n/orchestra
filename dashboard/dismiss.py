@@ -13,8 +13,8 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from canon.project import Project
-from canon.store import StoreError
+from orchestra.canon.project import Project
+from orchestra.canon.store import StoreError
 from dashboard.model import NeedsYouItem
 
 HUMAN_DISMISSIBLE = frozenset({
@@ -138,7 +138,7 @@ def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
 
 
 def _question_approve_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "plan:continuity-question"
+    record_type = item.record_type or "score:continuity-question"
     args = [
         "update", "--type", record_type, "--id", item.id,
         "--transition", "answered", "--expected-revision", _displayed_revision(item),
@@ -171,13 +171,13 @@ def _question_reject_args(item: NeedsYouItem, note: str | None) -> list[str]:
     )
     subject = f"plan-rejected:{scope}"[:120]
     return [
-        "create", "--type", "aff:finding", "--subject", subject,
+        "create", "--type", "tuner:finding", "--subject", subject,
         "--payload", json.dumps(payload), "--body", body,
     ]
 
 
 def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "aff:finding"
+    record_type = item.record_type or "tuner:finding"
     payload: dict[str, str] = {"needs": "none"}
     if note:
         payload["resolution_note"] = note
@@ -190,7 +190,7 @@ def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
 
 def _check_sign_args(item: NeedsYouItem, signer: str, note: str | None) -> list[str]:
     # correct has no --expected-revision; revision is guarded in dismiss_item.
-    record_type = item.record_type or "aff:check-run"
+    record_type = item.record_type or "tuner:check-run"
     _displayed_revision(item)
     payload: dict[str, str] = {"signed_by": signer}
     if note:
@@ -228,10 +228,10 @@ def dismiss_command(
 
 def _current_revision(target: Project, item: NeedsYouItem) -> str:
     record_type = item.record_type or {
-        "blocking-question": "plan:continuity-question",
-        "open-question": "plan:continuity-question",
-        "needs-human": "aff:finding",
-        "unsigned-check": "aff:check-run",
+        "blocking-question": "score:continuity-question",
+        "open-question": "score:continuity-question",
+        "needs-human": "tuner:finding",
+        "unsigned-check": "tuner:check-run",
     }.get(item.kind, "")
     try:
         record = target.get(item.id, record_type or None)

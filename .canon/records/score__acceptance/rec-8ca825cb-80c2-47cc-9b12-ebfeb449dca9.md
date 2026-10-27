@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-8ca825cb-80c2-47cc-9b12-ebfeb449dca9",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Verbs, plan-review recognition, prompt text, next-step rules, landing state, Merge branch item, and quiet rule hold in model and gates tests",
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "human-gates",
+    "requirement": "R5",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_model.py tests/test_dashboard_gates.py -q -k gates"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-09T20:44:18+00:00",
+  "relationships": {},
+  "revision": "sha256:460b9f80810970f4010745056843776071bd7863e185fd129aa80a6a1445ed6d",
+  "subject": "verify-human-gates-model",
+  "time": {
+    "as_of": "2026-10-09T20:44:18+00:00"
+  }
+}
+---
+

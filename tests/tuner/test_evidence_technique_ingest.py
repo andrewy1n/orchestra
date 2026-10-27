@@ -13,10 +13,10 @@ import sys
 from pathlib import Path
 
 from conftest import run_cli
-from test_verdict import AFF, _commit, _init
+from test_verdict import VERIFY, _commit, _init
 
-OBS_TYPE = "aff:evidence-observation"
-BINDING_TYPE = "aff:evidence-binding"
+OBS_TYPE = "tuner:evidence-observation"
+BINDING_TYPE = "tuner:evidence-binding"
 AUDIT_TECHNIQUE = "audit"
 PROBES_TECHNIQUE = "probes"
 PROBE_ID = "value-print"
@@ -49,9 +49,9 @@ def _env() -> dict[str, str]:
     return env
 
 
-def _aff(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _tuner(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(AFF), *args],
+        [*VERIFY, *args],
         cwd=str(cwd) if cwd else None,
         env=_env(),
         capture_output=True,
@@ -71,7 +71,7 @@ def _seed_subject(root: Path, *, probes: bool) -> tuple[str, str]:
     """Commit a one-line source change; optionally declare an unclaimed probe."""
     files = {"pytest.ini": PYTEST_INI, "app.py": BASE_APP}
     if probes:
-        files[".affidavit/probes.json"] = json.dumps(PROBE_CLI, indent=2) + "\n"
+        files[".tuner/probes.json"] = json.dumps(PROBE_CLI, indent=2) + "\n"
     _write(root, files)
     base = _commit(root, "technique-ingest base")
     _write(root, {"app.py": HEAD_APP})
@@ -80,7 +80,7 @@ def _seed_subject(root: Path, *, probes: bool) -> tuple[str, str]:
 
 
 def _audit(root: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
-    return _aff("audit", "--cwd", str(root), "--base", base, "--head", head)
+    return _tuner("audit", "--cwd", str(root), "--base", base, "--head", head)
 
 
 def _advisory(proc: subprocess.CompletedProcess[str]) -> dict:
@@ -194,7 +194,7 @@ def _bound_observation_ids(root: Path) -> set[str]:
 
 
 def _trail(root: Path, *args: str) -> list[dict]:
-    proc = _aff("trail", "--cwd", str(root), *args)
+    proc = _tuner("trail", "--cwd", str(root), *args)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     items = json.loads(proc.stdout)
     assert isinstance(items, list)
@@ -202,7 +202,7 @@ def _trail(root: Path, *args: str) -> list[dict]:
 
 
 def test_r1_audit_records_evidence_observation(store: Path) -> None:
-    """R1: aff audit with a usable store creates an audit evidence-observation."""
+    """R1: orchestra verify audit with a usable store creates an audit evidence-observation."""
     base, head = _seed_subject(store, probes=False)
     before = _list_observations(store)
     proc = _audit(store, base, head)
@@ -271,14 +271,14 @@ def test_r4_audit_creates_no_evidence_binding(store: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     after = _list_bindings(store)
     assert len(after) == len(before), (
-        "aff audit must not create an evidence-binding; "
+        "orchestra verify audit must not create an evidence-binding; "
         f"before={len(before)} after={len(after)}"
     )
     assert {row["id"] for row in after} == before_ids
 
 
 def test_r5_trail_technique_filters_audit_and_probes(store: Path) -> None:
-    """R5: aff trail --technique restricts the list to audit and probes ids."""
+    """R5: orchestra verify trail --technique restricts the list to audit and probes ids."""
     base, head = _seed_subject(store, probes=True)
     before = _list_observations(store)
     proc = _audit(store, base, head)
@@ -308,11 +308,11 @@ def test_r5_trail_technique_filters_audit_and_probes(store: Path) -> None:
 
 
 def test_r6_audit_without_store_matches_prephase(tmp_path: Path) -> None:
-    """R6: without a usable store, aff audit stays advisory JSON and exits 0."""
+    """R6: without a usable store, orchestra verify audit stays advisory JSON and exits 0."""
     root = tmp_path / "no-store"
     _init(root)
     base, head = _seed_subject(root, probes=True)
-    assert not (root / ".artifacts").exists()
+    assert not (root / ".canon").exists()
     proc = _audit(root, base, head)
     payload = _advisory(proc)
     assert payload["base"] == base
@@ -322,12 +322,12 @@ def test_r6_audit_without_store_matches_prephase(tmp_path: Path) -> None:
     assert any(diff.get("probe") == PROBE_ID for diff in payload["diffs"])
     assert payload["survivors"] == []
     assert not (
-        root / ".artifacts" / "records" / "aff__evidence-observation"
+        root / ".canon" / "records" / "tuner__evidence-observation"
     ).exists()
 
 
 def test_r7_fixture_trail_visible_unbound_observations(store: Path) -> None:
-    """R7: seeded store subject; aff audit leaves trail-visible unbound observations."""
+    """R7: seeded store subject; orchestra verify audit leaves trail-visible unbound observations."""
     base, head = _seed_subject(store, probes=True)
     before_obs = _list_observations(store)
     before_bind = _bound_observation_ids(store)

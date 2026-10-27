@@ -11,14 +11,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
-from affidavit.manifest import (
+from orchestra.tuner.manifest import (
     DEFAULT_RUNNER,
     ManifestError,
     load_manifest,
     resolve_commit,
 )
-from affidavit.observation import maybe_record_observation
-from affidavit.runner import run_tests
+from orchestra.tuner.observation import maybe_record_observation
+from orchestra.tuner.runner import run_tests
 
 HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -36,7 +36,7 @@ class AuditError(Exception):
     """Usage or git failure that should exit 2."""
 
 
-PROBES_PATH = ".affidavit/probes.json"
+PROBES_PATH = ".tuner/probes.json"
 
 
 def run_audit(
@@ -50,7 +50,7 @@ def run_audit(
 ) -> dict[str, Any]:
     """Label source hunks between ``base`` and ``head``; optionally plant mutants.
 
-    Also runs declared probes from ``.affidavit/probes.json`` at head (or
+    Also runs declared probes from ``.tuner/probes.json`` at head (or
     ``probes_path`` when given) and reports unclaimed differences. Returns
     an advisory JSON-shaped dict. Does not affect verdict.
     """
@@ -324,8 +324,8 @@ def _source_hunks(root: Path, base: str, head: str) -> list[_Hunk]:
             head,
             "--",
             ".",
-            ":(exclude).artifacts",
-            ":(exclude).affidavit",
+            ":(exclude).canon",
+            ":(exclude).tuner",
         ],
         capture_output=True,
         text=True,
@@ -398,9 +398,9 @@ def _parse_diff(diff_text: str) -> list[_Hunk]:
 
 
 def _is_source_path(path: str) -> bool:
-    if path.startswith(".artifacts/") or path == ".artifacts":
+    if path.startswith(".canon/") or path == ".canon":
         return False
-    if path.startswith(".affidavit/") or path == ".affidavit":
+    if path.startswith(".tuner/") or path == ".tuner":
         return False
     if path.startswith("docs/") or "/docs/" in path:
         return False

@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-2e6f3bf6-bce0-4fce-b17a-b313291a0a60",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "evidence-authority",
+    "requirement": "R5",
+    "verify_command": "python3 -m pytest tests/test_close_batch.py -q -k 'verdict or recheck or manifest or claim_gate'"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-21T06:29:25+00:00",
+  "relationships": {},
+  "revision": "sha256:d905c4635dfbea1ab99538e4a38138dafba612f1e4533a399e49e11aad7b6a13",
+  "subject": "verify-evidence-authority-claim-gate",
+  "time": {
+    "as_of": "2026-10-21T06:29:25+00:00"
+  }
+}
+---
+

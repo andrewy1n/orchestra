@@ -1,7 +1,7 @@
 ---
 name: verify-work
 description: >-
-  Captures aff check-run evidence, assesses what it means for
+  Captures check-run evidence, assesses what it means for
   each requirement, and closes a work-item when its requirement(s)
   are met. Use when a task needs to be shown done, a campaign was run,
   a bug was diagnosed, or a subagent returned verification evidence.
@@ -43,32 +43,32 @@ are both non-empty. For oracle-backed `tdd`, verification is
 mechanical — not agent prose:
 
 - Assertion-level red check-run for those frozen tests at a base
-  revision (`affidavit.oracle_red.is_assertion_level_red`)
+  revision (`tuner.oracle_red.is_assertion_level_red`)
 - Green check-run at head whose `revision` equals or descends from
   that red (same ancestry rules)
 - At green, oracle file contents match frozen `oracle_hashes`, or a
-  signed amendment in `.affidavit/manifest.json` that `aff verdict`
+  signed amendment in `.tuner/manifest.json` that `orchestra verify verdict`
   accepts
 
 Treat as verified only when those hold. Frozen hashes are close
 authority — do not mark `verified` from narrative. Parent alone
 writes assessments. Do not `create`/`supersede`
-`aff:oracle-amendment`. Wire close-batch with green
+`tuner:oracle-amendment`. Wire close-batch with green
 `check_run_id`, request-carried red fields, and the acceptance id —
 do not invent hash or red fields. When the claim is in
-`.affidavit/manifest.json`, run `aff verdict`; non-zero → not done.
+`.tuner/manifest.json`, run `orchestra verify verdict`; non-zero → not done.
 
 ## Two modes
 
-A phase with an active `plan:specification` is **structured**:
-verify → [assess.md](references/assess.md) → `run:release`
+A phase with an active `score:specification` is **structured**:
+verify → [assess.md](references/assess.md) → `conductor:release`
 `state` `ready` only when every requirement is verified. No
 specification for this phase, and incidental work, are **simple**:
 pass/fail check-runs only — no assessment or release. `kind`
 `incidental` is simple even if another phase has a specification.
 
 ```bash
-canon list --type plan:specification --subject "<phase-slug>" --state active
+canon list --type score:specification --subject "<phase-slug>" --state active
 ```
 
 ## Steps
@@ -79,25 +79,25 @@ canon list --type plan:specification --subject "<phase-slug>" --state active
    the family with `list --subject <task-slug>` (exact-or-prefix),
    not `get` on one id. Confirm `payload.effort` is the focus (or
    sole-goal default). If a subagent ran the check, evidence is the
-   latest `run:execution-report` for that subject — read the
+   latest `conductor:execution-report` for that subject — read the
    record, not chat memory; trust only after you can point at a
    command, test name, diff, or metric table in its body; re-run when
    cheap. No execution-report (verified in this session without
    dispatch) → skip to step 2.
 2. Capture diagnose/eval facts **before** closing:
 
-   - `repair` — useful observations → `aff:investigation-observation`;
-     known root cause → `aff:finding` with `## Evidence`,
+   - `repair` — useful observations → `tuner:investigation-observation`;
+     known root cause → `tuner:finding` with `## Evidence`,
      `## Consequence`, `## Follow-up` (all required, non-empty)
    - `evaluate` — comparative / delta / inconclusive → finding the
      same way; do not encode that in `check-run.result`
 
 ```bash
-canon create --type aff:investigation-observation \
+canon create --type tuner:investigation-observation \
   --subject "<task-slug>" \
   --payload '{"source":"<cmd or log>","observed_time":"<iso>","environment":"<repo/rev>","what_was_observed":"<fact>","effort":"<effort-slug>"}'
 
-canon create --type aff:finding \
+canon create --type tuner:finding \
   --subject "<task-slug>" \
   --payload '{"claim":"<cause or comparison>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"<effort-slug>","needs":"human"}' \
   --body "## Evidence
@@ -118,15 +118,15 @@ canon create --type aff:finding \
    when the user decides (kinds-and-focus, Needs-you clears):
 
 ```bash
-canon update --type aff:finding --id <finding-id> \
+canon update --type tuner:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 ```
 
-   If this finding overturns a prior `plan:decision`, supersede that
+   If this finding overturns a prior `score:decision`, supersede that
    decision (see `settle-phase`) and cite the finding's subject in the
    new decision's `## Rationale`. If it contradicts an earlier
-   `aff:finding`, put the earlier finding's record id in
+   `tuner:finding`, put the earlier finding's record id in
    `contradicted_by` (a JSON array) in the new finding's payload.
 
 ## Verify
@@ -151,14 +151,14 @@ orchestra check --acceptance <acceptance-record-id> \
   --execution-report <execution-report-record-id>
 ```
 
-     When the claim is in `.affidavit/manifest.json`, also:
+     When the claim is in `.tuner/manifest.json`, also:
 
 ```bash
-aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
+orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 ```
 
      Exit 0 accepts; non-zero → leave `in_progress`. Do not
-     `create --type aff:check-run` for `tdd`/`check`. Keep the
+     `create --type tuner:check-run` for `tdd`/`check`. Keep the
      runner's `id` and `result` for Assess / close.
 
    - `manual` — user-visible; do not mark pass without evidence the
@@ -170,7 +170,7 @@ aff verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 4. For `manual` only, when a binary result exists:
 
 ```bash
-canon create --type aff:check-run \
+canon create --type tuner:check-run \
   --subject "<task-slug>" \
   --payload '{"criterion_id":"<acceptance-record-id>","revision":"<git sha or dirty>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}'
 ```
@@ -180,7 +180,7 @@ canon create --type aff:check-run \
    When the user signs:
 
 ```bash
-canon correct --type aff:check-run --id <check-run-id> \
+canon correct --type tuner:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
@@ -203,7 +203,7 @@ canon correct --type aff:check-run --id <check-run-id> \
    covers), orchestra moves the work-item to `done`:
 
 ```bash
-canon update --type plan:work-item --id <id> \
+canon update --type score:work-item --id <id> \
   --transition done --expected-revision <revision>
 ```
 
@@ -213,7 +213,7 @@ canon update --type plan:work-item --id <id> \
    the transition:
 
 ```bash
-canon create --type aff:finding \
+canon create --type tuner:finding \
   --subject "<task-slug>" \
   --payload '{"claim":"<task-slug> closed done with an unmet or unverified criterion","basis":"<why it was closed anyway>","invalidated_when":"<what would undo this acceptance>","effort":"<effort-slug>","needs":"human"}' \
   --body "## Evidence
@@ -238,13 +238,13 @@ canon create --type aff:finding \
    `next` `execute`; do not tell the parent to run a suite the
    acceptance does not name. Parent (`execute-phase`) re-dispatches
    or creates fix tasks — this skill does not.
-7. On **abandoned** approach: `create --type run:failed-attempt`
+7. On **abandoned** approach: `create --type conductor:failed-attempt`
    with `attempted_action`, `retry_when`, `effort`. If the whole task
    is dropped, transition to `withdrawn` instead of `done`; else
    leave `in_progress`.
 
 ```bash
-canon update --type plan:work-item --id <id> \
+canon update --type score:work-item --id <id> \
   --transition withdrawn --expected-revision <revision>
 ```
 
@@ -260,21 +260,21 @@ use that batch for assessment fields — check-runs then Assess.
 ## Record versus bind
 
 Unbound evidence-observation does not earn a manifest claim.
-Path: claim id → `aff bind` → evidence-observation; then `aff recheck`
-before treating the claim as earned. Inspect with `aff trail`.
+Path: claim id → `orchestra verify bind` → evidence-observation; then `orchestra verify recheck`
+before treating the claim as earned. Inspect with `orchestra verify trail`.
 
 ```bash
-aff trail --cwd <repo-or-worktree>
-aff bind --cwd <repo-or-worktree> \
+orchestra verify trail --cwd <repo-or-worktree>
+orchestra verify bind --cwd <repo-or-worktree> \
   --observation <evidence-observation-id> \
   --claim <claim-id> --base <base-rev> --head <head-rev>
-aff recheck --cwd <repo-or-worktree> --claim <claim-id>
+orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 ```
 
 ## Do not
 
 - Dual-write CI as records if CI already owns the result
-- `create --type aff:check-run` for `tdd`/`check` — only
+- `create --type tuner:check-run` for `tdd`/`check` — only
   `orchestra check` (or an already runner-produced id)
 - Invent pass/fail in a close-request for `tdd`/`check` without a
   runner `check_run_id`
@@ -292,12 +292,12 @@ aff recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Treat a failing concurrency test as proof the design is wrong
 - Send every failure to `execute`; escalate by failure count; insert
   `plan`/`integration` under a repeated implementation failure
-- Write `run:release` with `state` other than `ready`, or deploy
+- Write `conductor:release` with `state` other than `ready`, or deploy
 - Write assessment or release for incidental / no-specification phases
 - Tell the parent to run a suite the acceptance does not name
 - Edit the tree from a verification task when its check fails
 - Route `manual` through `orchestra check`
 - Mark oracle-backed `verified` without mechanical oracle verify
 - Invent `oracle_hashes` or a signed amendment; `create`/`supersede`
-  `aff:oracle-amendment`
-- Treat a non-zero `aff verdict` as done
+  `tuner:oracle-amendment`
+- Treat a non-zero `orchestra verify verdict` as done

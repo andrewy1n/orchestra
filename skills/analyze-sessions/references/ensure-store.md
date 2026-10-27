@@ -11,13 +11,13 @@ resolve a checkout path or a plugin root to run them.
 ## Which store
 
 Dashboard and `orchestra store` resolve **one** store: `local`
-(`<repo>/.artifacts`) or `global` (`~/.artifacts/<repo-name>`). See
+(`<repo>/.canon`) or `global` (`~/.canon/<repo-name>`). See
 the README (store binding). Skills that shell out to `canon` should
 use the resolved store — pass `--store` explicitly, or call through
 `orchestra store run -- <args>` — so a personal shell function that
-forces `--store ~/.artifacts/$proj` cannot redirect writes. For a new
+forces `--store ~/.canon/$proj` cannot redirect writes. For a new
 work repo, `init` creates the **local** store under
-`<repo>/.artifacts`; pin it with `.artifacts/store-binding.json`
+`<repo>/.canon`; pin it with `.canon/store-binding.json`
 `{"store":"local"}` when you want that choice shared across clones.
 
 ## Runtime commands
@@ -37,7 +37,7 @@ These are named commands, not files inside a checkout:
   its check-run.
 - `orchestra store path` prints the resolved store;
   `orchestra store run -- <args>` runs `canon` against it.
-- `aff` judges a claim in `.affidavit/manifest.json`.
+- `aff` judges a claim in `.tuner/manifest.json`.
 
 Do not hardcode a plugin directory or a home checkout in a command.
 
@@ -64,19 +64,19 @@ List fields are JSON arrays: `requirements`, `decisions`, `test_ids`,
 
 ## First run in a work repo
 
-A store is marked by `.artifacts/config.json`. If it exists, the store
+A store is marked by `.canon/config.json`. If it exists, the store
 is ready. Do not run `init` again.
 
 If it does not exist, run this from the work repo:
 
 ```bash
-canon init --schemas plan,run,aff
+canon init --schemas score,conductor,tuner
 ```
 
 `canon init` needs a git repo. If cwd is not git, say so and stop. Do
 not write a plan document or extra skill copies.
 
-After you upgrade orchestra or affidavit, bring the store schemas up
+After you upgrade orchestra or tuner, bring the store schemas up
 to date:
 
 ```bash
@@ -84,15 +84,15 @@ canon schemas sync
 ```
 
 `canon` validates against the schema snapshots in
-`.artifacts/schemas/`, not against the installed tools.
+`.canon/schemas/`, not against the installed tools.
 
 ## Phase gate
 
-The phase suite policy lives in `.artifacts/config.json` under
-`settings.run.phase_gate`:
+The phase suite policy lives in `.canon/config.json` under
+`settings.conductor.phase_gate`:
 
 ```json
-{"settings": {"run": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}}}
+{"settings": {"conductor": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}}}
 ```
 
 Read it with `orchestra suite policy`. Do not waive it. A human
@@ -111,7 +111,7 @@ is `type(scope): summary`, where type is `feat`, `fix`, `docs`,
 on why:
 
 ```bash
-git add .artifacts && git commit -m "$(cat <<'EOF'
+git add .canon && git commit -m "$(cat <<'EOF'
 chore(records): <what changed>
 
 Commit the store write so a reader can see what changed and why.
@@ -123,7 +123,7 @@ EOF
 A record edited by hand, outside the runtime, fails validation:
 
 ```
-record revision tamper detected: .artifacts/records/.../rec-....md
+record revision tamper detected: .canon/records/.../rec-....md
 ```
 
 Fix that by redoing the edit through `canon update` rather than by

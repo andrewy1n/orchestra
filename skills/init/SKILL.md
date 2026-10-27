@@ -2,7 +2,7 @@
 name: init
 description: >-
   Adopts the current git repo into the orchestra store: live goal,
-  and a plan:phase record for every phase you can currently name. Does not write work-items or a plan
+  and a score:phase record for every phase you can currently name. Does not write work-items or a plan
   document.
   Specification and design are written by `settle-phase`, not `init`. Use
   when starting this workflow on an existing or empty project, when
@@ -31,7 +31,7 @@ If the user already has this focus's tasks, use `plan-phase`.
   section, but "not yet scoped" is real content for a phase that
   hasn't started — do not fabricate success criteria or dependencies
   for it.
-- Every phase you can currently name gets a `plan:phase` record,
+- Every phase you can currently name gets a `score:phase` record,
   `planned`, ordinal in sequence. None of them start `in_progress`
   here — `plan-phase` promotes the one it's about to materialize work
   for. Incidental work gets **no** phase record at all.
@@ -48,9 +48,9 @@ If the user already has this focus's tasks, use `plan-phase`.
 - Existing docs (README, git log, other project docs) are input.
   Confirm with the user before writing records. Do not ingest them
   as replicas.
-- Current-claims (`plan:effort`, `plan:position`, `decision`,
+- Current-claims (`score:effort`, `score:position`, `decision`,
   `constraint`) change via `supersede` (new id), never `update` to
-  `superseded`, never payload-only `update`. `plan:phase` is a
+  `superseded`, never payload-only `update`. `score:phase` is a
   different trait (staged lifecycle) — it changes via `update
   --transition`, never `supersede`.
 - Parent writes records. Do not spawn subagents here.
@@ -88,10 +88,10 @@ If the user already has this focus's tasks, use `plan-phase`.
    Ask only what is still missing after the proposal. If the user
    starts listing tasks or acceptance, stop and point to `plan-phase`.
 6. Same `subject` for goal and position (the focus slug). Create
-   `plan:effort` for that subject only:
+   `score:effort` for that subject only:
 
 ```bash
-canon create --type plan:effort \
+canon create --type score:effort \
   --subject "<effort-slug>" \
   --payload '{"goal":"<live outcome>","kind":"deliver"}'
 ```
@@ -99,10 +99,10 @@ canon create --type plan:effort \
    `kind` is the effort kind from step 5.
 
 7. For each milestone in step 5 (skip when none), `create --type
-   plan:milestone`, `ordinal` starting at 1:
+   score:milestone`, `ordinal` starting at 1:
 
 ```bash
-canon create --type plan:milestone \
+canon create --type score:milestone \
   --subject "<milestone-slug>" \
   --payload '{"title":"<milestone title>","ordinal":1,"effort":"<effort-slug>"}' \
   --body-file "<milestone-body.md>"
@@ -112,7 +112,7 @@ canon create --type plan:milestone \
    every section needs non-empty text.
 
    Then for each phase in step 5's list (skip entirely for
-   incidental), `create --type plan:phase`, `ordinal` starting at
+   incidental), `create --type score:phase`, `ordinal` starting at
    1 across the effort (not per milestone). Include optional
    `milestone` when the phase belongs to one. Give a later phase's
    Approach/Exit-criteria a short honest placeholder ("decide at
@@ -121,7 +121,7 @@ canon create --type plan:milestone \
    more than a couple of lines:
 
 ```bash
-canon create --type plan:phase \
+canon create --type score:phase \
   --subject "<phase-slug>" \
   --payload '{"title":"<phase title>","ordinal":1,"effort":"<effort-slug>","milestone":"<milestone-slug>"}' \
   --body-file "<phase-body.md>"
@@ -134,49 +134,49 @@ canon create --type plan:phase \
    verified, for example "`<cmd>` renders X against a seeded store
    (integration test)", not only the outcome.
 
-8. Create `plan:position` on the same subject as step 6.
+8. Create `score:position` on the same subject as step 6.
    `scope` is a **stable** value for this subject (e.g. "effort or
    repo") — never the current phase slug. Keep it identical across
    `supersede` calls. `phase` is
-   a required payload reference to a real `plan:phase` subject —
+   a required payload reference to a real `score:phase` subject —
    set it to the first phase from step 5's list (the one step 7 just
    created at `ordinal: 1`). That is a pointer for this record, not an
    authority: which phase is actually current is still derived by
-   querying `plan:phase` for this effort with
+   querying `score:phase` for this effort with
    `lifecycle_state=in_progress` (nothing is `in_progress` yet this
    early — `plan-phase` promotes it) — never read off this field.
    `position` is a short "where we are now" narrative (may name the
    current phase in prose) — do not restate the phase list, that's
-   what the `plan:phase` records are for. If a position already
+   what the `score:phase` records are for. If a position already
    exists **for this subject**, supersede it with `--expected-revision`,
    keeping `scope` identical to the predecessor's and `phase` current.
    Do not touch other subjects.
 
 ```bash
-canon create --type plan:position \
+canon create --type score:position \
   --subject "<effort-slug>" \
   --payload '{"position":"<short now-statement>","scope":"<effort or repo>","effort":"<effort-slug>","phase":"<first-phase-slug>"}'
 ```
 
 9. For each confirmed durable choice among alternatives,
-   `create --type plan:decision` with `choice`, `alternatives`,
+   `create --type score:decision` with `choice`, `alternatives`,
    `phase`, `effort` payload and a body with `## Rationale` and
    `## Counter-argument` sections (both required, both non-empty —
    state the real counter-argument, not a strawman):
 
 ```bash
-canon create --type plan:decision \
+canon create --type score:decision \
   --subject "<decision-topic>" \
   --payload '{"choice":"<adopted>","alternatives":"<a, b>","phase":"<phase-slug>","effort":"<effort-slug>"}' \
   --body-file "<decision-body.md>"
 ```
 
    For a confirmed constraint that is **not** a choice — no real
-   alternative existed — use `plan:constraint` instead, with a
+   alternative existed — use `score:constraint` instead, with a
    `## Basis` section:
 
 ```bash
-canon create --type plan:constraint \
+canon create --type score:constraint \
   --subject "<constraint-slug>" \
   --payload '{"statement":"<the constraint>","applies_to":"<what it binds>","effort":"<effort-slug>"}' \
   --body "## Basis
@@ -184,7 +184,7 @@ canon create --type plan:constraint \
 <why this is confirmed, not a choice>"
 ```
 
-10. For each confirmed blocker: `create --type plan:continuity-question`
+10. For each confirmed blocker: `create --type score:continuity-question`
     with `subject` = focus, `owner`, `blocking` true/false, `scope`.
 11. Do **not** create `work-item`, `acceptance`, `specification`, or
     `design`. Specification and design are written by `settle-phase`,
@@ -204,7 +204,7 @@ canon validate
 
 - Materialize future phases as work-items or full plans — a
   placeholder Problem/Approach/Exit-criteria body is enough
-- Write `plan:specification` or `plan:design` — `settle-phase`
+- Write `score:specification` or `score:design` — `settle-phase`
   writes those
 - Write a roadmap document
 - Run research or planner subagents

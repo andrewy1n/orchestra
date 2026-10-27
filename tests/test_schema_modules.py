@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 WORKTREE = Path(__file__).resolve().parents[1]
-OWN = {"plan", "run"}
-NAMESPACES = {"plan", "run", "aff"}
+OWN = {"score", "conductor", "tuner"}
+NAMESPACES = {"score", "conductor", "tuner"}
 LIFECYCLES = {"current", "staged", "event", "question", "claim"}
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
 TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
@@ -14,10 +14,11 @@ SCALARS = {"string", "integer", "number", "boolean"}
 
 
 def _module_paths():
-    paths = {ns: WORKTREE / "orchestra" / "schemas" / f"{ns}.json" for ns in OWN}
-    sibling = WORKTREE.parents[2] / "affidavit" / ".worktrees" / "canon"
-    paths["aff"] = sibling / "affidavit" / "schemas" / "aff.json"
-    return paths
+    return {
+        "score": WORKTREE / "orchestra" / "schemas" / "score.json",
+        "conductor": WORKTREE / "orchestra" / "schemas" / "conductor.json",
+        "tuner": WORKTREE / "orchestra" / "tuner" / "schemas" / "tuner.json",
+    }
 
 
 def _load():
@@ -104,7 +105,3 @@ def test_ref_targets_are_known_types(modules):
                     if ns in modules:
                         assert target in known, f"{tname}.{fname} -> {target}"
 
-
-def test_sibling_modules_are_checked_when_present(modules):
-    if NAMESPACES - set(modules):
-        pytest.skip("sibling affidavit worktree absent")

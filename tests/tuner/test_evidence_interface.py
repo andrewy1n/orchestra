@@ -1,4 +1,4 @@
-"""Evidence-interface oracles: store-backed observations and aff trail (R1–R4)."""
+"""Evidence-interface oracles: store-backed observations and orchestra verify trail (R1–R4)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 from conftest import run_cli
 from test_verdict import (
-    AFF,
+    VERIFY,
     APP_GREEN,
     APP_RED,
     CLAIM,
@@ -22,7 +22,7 @@ from test_verdict import (
     ALLOW,
 )
 
-RECORD_TYPE = "aff:evidence-observation"
+RECORD_TYPE = "tuner:evidence-observation"
 
 
 def _env() -> dict[str, str]:
@@ -30,9 +30,9 @@ def _env() -> dict[str, str]:
     return env
 
 
-def _aff(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _tuner(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(AFF), *args],
+        [*VERIFY, *args],
         cwd=str(cwd) if cwd else None,
         env=_env(),
         capture_output=True,
@@ -64,7 +64,7 @@ def _seed_verdict_subject(root: Path) -> tuple[str, str]:
 def _verdict(
     root: Path, base: str, head: str
 ) -> subprocess.CompletedProcess[str]:
-    return _aff(
+    return _tuner(
         "verdict",
         "--cwd",
         str(root),
@@ -132,7 +132,7 @@ def test_r1_store_accepts_evidence_observation(store: Path) -> None:
 
 
 def test_r2_verdict_records_one_evidence_observation(store: Path) -> None:
-    """R2 / observation-cli: passing aff verdict creates one evidence-observation."""
+    """R2 / observation-cli: passing orchestra verify verdict creates one evidence-observation."""
     base, head = _seed_verdict_subject(store)
     before = _list_evidence_observations(store)
     proc = _verdict(store, base, head)
@@ -158,22 +158,22 @@ def test_r2_verdict_without_store_matches_prephase_semantics(tmp_path: Path) -> 
 
     root = tmp_path / "no-store"
     base, head = _repo(root, base_app=APP_RED, head_app=APP_GREEN)
-    assert not (root / ".artifacts").exists()
+    assert not (root / ".canon").exists()
     proc = _verdict(root, base, head)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert _payload(proc) == {
         "result": "pass",
         "claims": [{"id": CLAIM, "result": "pass"}],
     }
-    assert not (root / ".artifacts" / "records" / "aff__evidence-observation").exists()
+    assert not (root / ".canon" / "records" / "tuner__evidence-observation").exists()
 
 
-def test_r3_aff_trail_lists_observations_as_json(store: Path) -> None:
-    """R3 / observation-cli-trail: aff trail prints JSON; filterable by claim id."""
-    proc = _aff("trail", "--cwd", str(store))
+def test_r3_tuner_trail_lists_observations_as_json(store: Path) -> None:
+    """R3 / observation-cli-trail: orchestra verify trail prints JSON; filterable by claim id."""
+    proc = _tuner("trail", "--cwd", str(store))
     assert proc.returncode == 0, proc.stdout + proc.stderr
     items = json.loads(proc.stdout)
-    assert isinstance(items, list), "aff trail must print a JSON list"
+    assert isinstance(items, list), "orchestra verify trail must print a JSON list"
 
     create = run_cli(
         "create",
@@ -196,7 +196,7 @@ def test_r3_aff_trail_lists_observations_as_json(store: Path) -> None:
     assert create.returncode == 0, create.stdout + create.stderr
     seeded = json.loads(create.stdout)["record"]
 
-    listed = _aff("trail", "--cwd", str(store))
+    listed = _tuner("trail", "--cwd", str(store))
     assert listed.returncode == 0, listed.stdout + listed.stderr
     items = json.loads(listed.stdout)
     assert isinstance(items, list)
@@ -204,13 +204,13 @@ def test_r3_aff_trail_lists_observations_as_json(store: Path) -> None:
     match = next(item for item in items if _observation_id(item) == seeded["id"])
     assert _technique(match) == "verdict"
 
-    filtered = _aff("trail", "--cwd", str(store), "--claim", CLAIM)
+    filtered = _tuner("trail", "--cwd", str(store), "--claim", CLAIM)
     assert filtered.returncode == 0, filtered.stdout + filtered.stderr
     claimed = json.loads(filtered.stdout)
     assert isinstance(claimed, list)
     assert any(_observation_id(item) == seeded["id"] for item in claimed)
 
-    other = _aff("trail", "--cwd", str(store), "--claim", "claim-does-not-exist")
+    other = _tuner("trail", "--cwd", str(store), "--claim", "claim-does-not-exist")
     assert other.returncode == 0, other.stdout + other.stderr
     assert seeded["id"] not in {
         _observation_id(item) for item in json.loads(other.stdout)
@@ -233,7 +233,7 @@ def test_r4_verdict_trail_and_subsequent_verdict_pass(store: Path) -> None:
     obs = created[0]
     assert obs["payload"]["technique"] == "verdict"
 
-    trail = _aff("trail", "--cwd", str(store))
+    trail = _tuner("trail", "--cwd", str(store))
     assert trail.returncode == 0, trail.stdout + trail.stderr
     items = json.loads(trail.stdout)
     assert isinstance(items, list)

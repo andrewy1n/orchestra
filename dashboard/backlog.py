@@ -6,10 +6,10 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from canon.project import Project
+from orchestra.canon.project import Project
 from dashboard.model import BacklogItem
 
-BACKLOG_TYPE = "plan:backlog-item"
+BACKLOG_TYPE = "score:backlog-item"
 
 
 class BacklogError(Exception):

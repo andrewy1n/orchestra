@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-35c32ec7-df9d-44ae-9d4b-1da771b510ef",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "evidence-layer",
+    "method": "check",
+    "phase": "evidence-kind",
+    "requirement": "R3",
+    "verify_command": "python3 -m pytest tests/test_evidence_kind.py::test_r3_interaction_claim_passes_under_interaction_runner -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-18T03:47:47+00:00",
+  "relationships": {},
+  "revision": "sha256:685f46b4b7442580e3259fda46eeb69d2bcbaebc1e3b12d6630bd5d6565f7103",
+  "subject": "verify-evidence-kind-r3",
+  "time": {
+    "as_of": "2026-10-18T03:47:47+00:00"
+  }
+}
+---
+

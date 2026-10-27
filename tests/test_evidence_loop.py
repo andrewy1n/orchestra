@@ -1,4 +1,4 @@
-"""Drive the evidence loop through the adaptive-artifacts CLI on a fresh store.
+"""Drive the evidence loop through the canon CLI on a fresh store.
 
 Each scenario builds its own git-backed store from the worktree contract
 (the `cli` fixture) and asserts `validate` accepts it. Record bodies come
@@ -57,7 +57,7 @@ def _records(cli, record_type: str) -> list[dict]:
 
 def _phase(cli, defs, subject: str) -> dict:
     return _create(
-        cli, defs, "plan:phase", subject,
+        cli, defs, "score:phase", subject,
         {"title": f"title of {subject}", "ordinal": 1, "effort": EFFORT},
     )
 
@@ -72,8 +72,8 @@ def _work_item(cli, defs, subject: str, phase: str, *, requirements: str | None 
     }
     if requirements is not None:
         payload["requirements"] = h.csv(requirements)
-    record = _create(cli, defs, "plan:work-item", subject, payload)
-    return h.transition(cli, "plan:work-item", record, "in_progress")
+    record = _create(cli, defs, "score:work-item", subject, payload)
+    return h.transition(cli, "score:work-item", record, "in_progress")
 
 
 def _acceptance(cli, defs, subject: str, phase: str, *, requirement: str | None = None) -> dict:
@@ -86,7 +86,7 @@ def _acceptance(cli, defs, subject: str, phase: str, *, requirement: str | None 
     }
     if requirement is not None:
         payload["requirement"] = requirement
-    return _create(cli, defs, "plan:acceptance", subject, payload)
+    return _create(cli, defs, "score:acceptance", subject, payload)
 
 
 def _check_run(
@@ -106,7 +106,7 @@ def _check_run(
     if evidence_kind is not None:
         payload["evidence_kind"] = evidence_kind
     record = _create(
-        cli, defs, "aff:check-run", subject, payload,
+        cli, defs, "tuner:check-run", subject, payload,
         rel=[f"informed_by:{acceptance_id}"],
     )
     assert "level" not in record["payload"]
@@ -122,14 +122,14 @@ def _assessment(cli, defs, phase: str, requirement: str, payload: dict) -> dict:
         "missing": "",
     }
     full.update(payload)
-    return _create(cli, defs, "run:assessment", f"{phase}-{requirement}", full)
+    return _create(cli, defs, "conductor:assessment", f"{phase}-{requirement}", full)
 
 
 def _supersede_assessment(cli, defs, record: dict, payload: dict, reason: str) -> dict:
-    body = _body(defs["run:assessment"], {"Reason": reason})
+    body = _body(defs["conductor:assessment"], {"Reason": reason})
     result = cli(
         "supersede",
-        "--type", "run:assessment",
+        "--type", "conductor:assessment",
         "--id", record["id"],
         "--expected-revision", record["revision"],
         "--payload", json.dumps({**record["payload"], **payload}),
@@ -143,17 +143,17 @@ def _scaffold(cli, defs, phase: str, task: str, *, requirements: str | None = "R
     _phase(cli, defs, phase)
     if requirements is not None:
         _create(
-            cli, defs, "plan:specification", phase,
+            cli, defs, "score:specification", phase,
             {"weight": "light", "phase": phase, "effort": EFFORT, "requirements": h.csv(requirements)},
             fills={"Requirements": f"{requirements}: the requirement under test."},
         )
-        if not json.loads(cli("list", "--type", "plan:decision", "--subject", "release-ready").stdout)["records"]:
+        if not json.loads(cli("list", "--type", "score:decision", "--subject", "release-ready").stdout)["records"]:
             _create(
-                cli, defs, "plan:decision", "release-ready",
+                cli, defs, "score:decision", "release-ready",
                 {"choice": "ship", "alternatives": "wait", "phase": phase, "effort": EFFORT},
             )
         _create(
-            cli, defs, "plan:design", phase,
+            cli, defs, "score:design", phase,
             {"phase": phase, "effort": EFFORT, "decisions": ["release-ready"]},
         )
     work_item = _work_item(cli, defs, task, phase, requirements=requirements)
@@ -163,12 +163,12 @@ def _scaffold(cli, defs, phase: str, task: str, *, requirements: str | None = "R
 
 def test_check_run_result_and_method_are_contract_enums(cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    check_def = defs["aff:check-run"]
+    check_def = defs["tuner:check-run"]
     assert check_def["payload_enum"]["result"] == [
         "pass", "fail", "blocked", "insufficient",
     ]
     assert check_def["payload_enum"]["method"] == ["tdd", "check", "manual", "review"]
-    assert defs["plan:acceptance"]["payload_enum"]["method"] == [
+    assert defs["score:acceptance"]["payload_enum"]["method"] == [
         "tdd", "check", "manual",
     ]
     for field in (
@@ -181,7 +181,7 @@ def test_check_run_result_and_method_are_contract_enums(cli, resolved_contract):
     _phase(cli, defs, phase)
     acceptance = _acceptance(cli, defs, "enum-task", phase)
     bad_result = cli(
-        "create", "--type", "aff:check-run", "--subject", "bad-result",
+        "create", "--type", "tuner:check-run", "--subject", "bad-result",
         "--payload", json.dumps({
             "criterion_id": acceptance["id"],
             "revision": "dirty",
@@ -194,7 +194,7 @@ def test_check_run_result_and_method_are_contract_enums(cli, resolved_contract):
     )
     assert bad_result.returncode != 0
     bad_method = cli(
-        "create", "--type", "aff:check-run", "--subject", "bad-method",
+        "create", "--type", "tuner:check-run", "--subject", "bad-method",
         "--payload", json.dumps({
             "criterion_id": acceptance["id"],
             "revision": "dirty",
@@ -210,15 +210,15 @@ def test_check_run_result_and_method_are_contract_enums(cli, resolved_contract):
 
 def test_happy_path_reaches_release_ready(cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    check_def = defs["aff:check-run"]
+    check_def = defs["tuner:check-run"]
     assert "result" in check_def.get("payload_enum", {})
     assert "unit" in check_def["payload_enum"]["evidence_kind"]
-    release_states = defs["run:release"]["payload_enum"]["state"]
+    release_states = defs["conductor:release"]["payload_enum"]["state"]
     assert "ready" in release_states and "deployed" in release_states
 
     phase, task = "happy-phase", "happy-task"
     work_item, acceptance = _scaffold(cli, defs, phase, task)
-    spec = _records(cli, "plan:specification")[0]
+    spec = _records(cli, "score:specification")[0]
     assert spec["payload"]["requirements"] == ["R1"]
     assert work_item["payload"]["requirements"] == ["R1"]
     assert acceptance["payload"]["requirement"] == "R1"
@@ -240,13 +240,13 @@ def test_happy_path_reaches_release_ready(cli, resolved_contract):
     assert "level" not in assessment["payload"]
 
     release = _create(
-        cli, defs, "run:release", phase,
+        cli, defs, "conductor:release", phase,
         {"state": "ready", "phase": phase, "effort": EFFORT},
     )
     assert release["payload"]["state"] == "ready"
     assert release["payload"]["state"] != "deployed"
 
-    closed = h.transition(cli, "plan:work-item", work_item, "done")
+    closed = h.transition(cli, "score:work-item", work_item, "done")
     assert closed["lifecycle_state"] == "done"
     _assert_valid(cli)
 
@@ -259,8 +259,8 @@ def test_implementation_failure_stays_in_progress(cli, resolved_contract):
         cli, defs, task, acceptance["id"], "fail", requirement="R1", evidence_kind="unit",
     )
     assert check["payload"]["result"] == "fail"
-    assert "level" not in defs["aff:check-run"]["payload"]
-    assert "next" not in defs["aff:check-run"]["payload"]
+    assert "level" not in defs["tuner:check-run"]["payload"]
+    assert "next" not in defs["tuner:check-run"]["payload"]
 
     assessment = _assessment(cli, defs, phase, "R1", {
         "status": "failed",
@@ -272,7 +272,7 @@ def test_implementation_failure_stays_in_progress(cli, resolved_contract):
     assert assessment["payload"]["next"] == "execute"
     assert assessment["record_type"] != check["record_type"]
 
-    stored = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
+    stored = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
     assert stored["lifecycle_state"] == "in_progress"
     _assert_valid(cli)
 
@@ -295,7 +295,7 @@ def test_design_failure_does_not_close_the_work_item(cli, resolved_contract):
     assert assessment["payload"]["level"] == "design"
     assert assessment["payload"]["next"] == "design"
 
-    stored = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
+    stored = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
     assert stored["lifecycle_state"] == "in_progress"
     assert stored["lifecycle_state"] != "done"
     _assert_valid(cli)
@@ -335,7 +335,7 @@ def test_repeat_without_new_evidence_supersedes_to_design(cli, resolved_contract
     assert successor["payload"]["next"] == "design"
     assert first["id"] in successor["relationships"]["supersedes"]
 
-    predecessor = json.loads(cli("get", "--type", "run:assessment", "--id", first["id"]).stdout)
+    predecessor = json.loads(cli("get", "--type", "conductor:assessment", "--id", first["id"]).stdout)
     assert predecessor["lifecycle_state"] == "superseded"
     _assert_valid(cli)
 
@@ -346,7 +346,7 @@ def test_new_evidence_kind_stays_on_execute(cli, resolved_contract):
     assert "stay at `implementation` / `execute`" in text
 
     defs = h.record_defs_by_id(resolved_contract)
-    kinds = defs["aff:check-run"]["payload_enum"]["evidence_kind"]
+    kinds = defs["tuner:check-run"]["payload_enum"]["evidence_kind"]
     assert "unit" in kinds and "integration" in kinds
 
     phase, task = "evidence-phase", "evidence-task"
@@ -378,20 +378,20 @@ def test_new_evidence_kind_stays_on_execute(cli, resolved_contract):
 
 def test_integration_fail_then_pass_is_a_new_record(cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    results = defs["run:integration-report"]["payload_enum"]["result"]
+    results = defs["conductor:integration-report"]["payload_enum"]["result"]
     assert "fail" in results and "pass" in results
 
     phase = "integrate-phase"
     _phase(cli, defs, phase)
     failed = _create(
-        cli, defs, "run:integration-report", phase,
+        cli, defs, "conductor:integration-report", phase,
         {"phase": phase, "effort": EFFORT, "result": "fail", "revision": "dirty"},
     )
     assert failed["payload"]["result"] == "fail"
 
     edited = cli(
         "update",
-        "--type", "run:integration-report",
+        "--type", "conductor:integration-report",
         "--id", failed["id"],
         "--expected-revision", failed["revision"],
         "--payload", json.dumps({"result": "pass"}),
@@ -400,17 +400,17 @@ def test_integration_fail_then_pass_is_a_new_record(cli, resolved_contract):
     assert json.loads(edited.stdout)["error"] == "append_only"
 
     passed = _create(
-        cli, defs, "run:integration-report", phase,
+        cli, defs, "conductor:integration-report", phase,
         {"phase": phase, "effort": EFFORT, "result": "pass", "revision": "dirty"},
     )
     assert passed["id"] != failed["id"]
     assert passed["payload"]["result"] == "pass"
 
     unchanged = json.loads(
-        cli("get", "--type", "run:integration-report", "--id", failed["id"]).stdout
+        cli("get", "--type", "conductor:integration-report", "--id", failed["id"]).stdout
     )
     assert unchanged["payload"]["result"] == "fail"
-    assert {record["payload"]["result"] for record in _records(cli, "run:integration-report")} == {
+    assert {record["payload"]["result"] for record in _records(cli, "conductor:integration-report")} == {
         "fail", "pass",
     }
     _assert_valid(cli)
@@ -435,7 +435,7 @@ def test_insufficient_evidence_is_not_forced_verified(cli, resolved_contract):
     assert check["payload"]["evidence_kind"] != assessment["payload"]["missing"]
     assert check["payload"]["result"] == "pass"
 
-    stored = json.loads(cli("get", "--type", "run:assessment", "--id", assessment["id"]).stdout)
+    stored = json.loads(cli("get", "--type", "conductor:assessment", "--id", assessment["id"]).stdout)
     assert stored["lifecycle_state"] == "active"
     assert stored["payload"]["status"] == "insufficient"
     assert stored["payload"]["level"] == "verification"
@@ -448,7 +448,7 @@ def test_simple_mode_pass_omits_requirement_and_evidence_kind(cli, resolved_cont
     defs = h.record_defs_by_id(resolved_contract)
     phase, task = "simple-phase", "simple-task"
     _work, acceptance = _scaffold(cli, defs, phase, task, requirements=None)
-    assert _records(cli, "plan:specification") == []
+    assert _records(cli, "score:specification") == []
 
     check = _check_run(cli, defs, task, acceptance["id"], "pass")
     assert check["payload"]["result"] == "pass"
@@ -456,6 +456,6 @@ def test_simple_mode_pass_omits_requirement_and_evidence_kind(cli, resolved_cont
     assert "evidence_kind" not in check["payload"]
     assert "level" not in check["payload"] and "next" not in check["payload"]
 
-    assert _records(cli, "run:assessment") == []
-    assert _records(cli, "run:release") == []
+    assert _records(cli, "conductor:assessment") == []
+    assert _records(cli, "conductor:release") == []
     _assert_valid(cli)

@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-a7ead56b-fe80-4a0d-a5ae-9b34a976c46f",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "The six skills document only contract-legal writes for specification, design, trace fields, integration-report, and assessment routing.",
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "evidence-loop",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_skill_contract_consistency.py tests/test_discuss_skill.py tests/test_plan_trace.py tests/test_integrate_rules.py tests/test_assess_routing.py -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-05T01:56:38+00:00",
+  "relationships": {},
+  "revision": "sha256:aef8eee85f3a0304f9235cc434bdb44d4ccbbb2cc818458eb98ec9c5c0e409b3",
+  "subject": "verify-evidence-loop-skills",
+  "time": {
+    "as_of": "2026-10-05T01:56:38+00:00"
+  }
+}
+---
+

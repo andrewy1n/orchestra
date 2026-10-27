@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from canon.schema import TypeDef
+from orchestra.canon.schema import TypeDef
 
 
 def now() -> str:

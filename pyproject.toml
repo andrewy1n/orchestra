@@ -5,26 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orchestra"
 version = "0.1.0"
-description = "Orchestra CLI: acceptance checks, phase suite, reviewer briefs, and session metrics"
+description = "Product planning through verified code, run by agents"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["canon @ git+https://github.com/andrewy1n/adaptive-artifacts"]
-
-[project.optional-dependencies]
-evidence = ["affidavit @ git+https://github.com/andrewy1n/affidavit"]
+dependencies = []
 
 [project.scripts]
 orchestra = "orchestra.cli:main"
+canon = "orchestra.canon.cli:main"
 
 [tool.setuptools]
 # The package lives at the repo root; `bin/orchestra` and skills import it
 # with the checkout on PYTHONPATH in the source layout.
-packages = ["orchestra", "orchestra.schemas"]
+packages = ["orchestra", "orchestra.schemas", "orchestra.canon", "orchestra.tuner", "orchestra.tuner.schemas"]
 
 [tool.setuptools.package-data]
 # `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
 orchestra = ["_scripts/*.py", "schemas/*.json"]
+"orchestra.tuner" = ["schemas/*.json"]
 
 [project.entry-points."canon.schemas"]
-plan = "orchestra.schemas"
-run = "orchestra.schemas"
+score = "orchestra.schemas"
+conductor = "orchestra.schemas"
+tuner = "orchestra.tuner.schemas"

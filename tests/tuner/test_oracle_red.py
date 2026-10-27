@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from affidavit.oracle_red import is_assertion_level_failure, is_assertion_level_red
+from orchestra.tuner.oracle_red import is_assertion_level_failure, is_assertion_level_red
 
 # Realistic pytest tails (fixture shapes pinned by design).
 

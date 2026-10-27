@@ -43,11 +43,10 @@ _BARE_OUTSIDE_PATH = re.compile(
 _CHECKOUT_PATH = re.compile(
     r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|canon)\b"
 )
-_CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/(?:orchestra|aff)\b")
-_AFFIDAVIT_HOME = re.compile(r"~/affidavit\b")
+_CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/orchestra\b")
 _PLUGIN_ROOT = re.compile(r"<plugin>")
 #: Importable module APIs (`orchestra.reviewer`, `orchestra.suite.poll_suite`,
-#: `orchestra.aa`) are not a runtime surface an installed CLI exposes.
+#: `orchestra.store`) are not a runtime surface an installed CLI exposes.
 _MODULE_API = re.compile(r"`?\borchestra\.([a-z_][A-Za-z0-9_]*)")
 
 
@@ -120,8 +119,6 @@ def runtime_call_errors(text: str) -> list[str]:
     errors: list[str] = []
     if _PLUGIN_ROOT.search(text):
         errors.append("names a <plugin> root for a runtime call")
-    if _AFFIDAVIT_HOME.search(text):
-        errors.append("names a ~/affidavit checkout path")
     if _CHECKOUT_PATH.search(text):
         errors.append("names a path-qualified runtime command")
     if _CHECKOUT_RELATIVE.search(text):
@@ -222,7 +219,6 @@ def test_paths_runtime_calls_use_named_commands_only():
     "text",
     [
         "Run `<plugin>/bin/orchestra check`.\n",
-        "Run `~/affidavit/bin/aff verdict`.\n",
         "Run `bin/orchestra close-batch`.\n",
         "Run `/usr/local/bin/canon validate`.\n",
     ],
@@ -234,7 +230,7 @@ def test_paths_planted_runtime_checkout_paths_are_rejected(text: str):
 def test_paths_named_runtime_commands_are_allowed():
     text = (
         "Run `orchestra check`, `orchestra close-batch`, "
-        "`canon validate`, and `aff verdict`.\n"
+        "`canon validate`, and `orchestra verify verdict`.\n"
     )
     assert runtime_call_errors(text) == []
 
@@ -253,7 +249,7 @@ def test_runtime_references_name_cli_commands_not_module_apis():
     [
         "Build the brief with `orchestra.reviewer.build_reviewer_brief`.\n",
         "Poll with `orchestra.suite.poll_suite`.\n",
-        "Call through `orchestra.aa`.\n",
+        "Call through `orchestra.store`.\n",
     ],
 )
 def test_runtime_module_api_references_are_rejected(text: str):

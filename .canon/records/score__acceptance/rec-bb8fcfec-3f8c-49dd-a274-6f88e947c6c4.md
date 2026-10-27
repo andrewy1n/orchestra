@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-bb8fcfec-3f8c-49dd-a274-6f88e947c6c4",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "~/orchestra contains the seven skill directories and dashboard/, and both plugin manifests are named orchestra",
+    "effort": "evidence-layer",
+    "method": "check",
+    "phase": "orchestration-split",
+    "requirement": "R2",
+    "verify_command": "cd ~/orchestra && test -d skills/engage && test -d skills/discuss && test -d skills/plan-phase && test -d skills/execute-phase && test -d skills/verify-work && test -d skills/init && test -d skills/analyze-sessions && test -d dashboard && python3 -c \"import json; from pathlib import Path; names=[json.loads(Path(p).read_text())[\\\"name\\\"] for p in [\\\".cursor-plugin/plugin.json\\\",\\\".claude-plugin/plugin.json\\\"]]; assert names==[\\\"orchestra\\\",\\\"orchestra\\\"]\""
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-17T07:37:16+00:00",
+  "relationships": {},
+  "revision": "sha256:8633233c7cc7f1730686d34c6cd501f4b7a9f6beb11e91516f8a39c159da49e5",
+  "subject": "scaffold-orchestra-layout",
+  "time": {
+    "as_of": "2026-10-17T07:37:16+00:00"
+  }
+}
+---
+

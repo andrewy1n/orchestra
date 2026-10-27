@@ -72,10 +72,10 @@ def test_skills_run_orchestra_check_and_close_batch():
     assert "is the verdict command on PATH" in verify
 
 
-def test_execute_phase_and_verify_work_run_aff_verdict_for_a_manifest_claim():
+def test_execute_phase_and_verify_work_run_verify_verdict_for_a_manifest_claim():
     for path in (EXECUTE, VERIFY):
         text = path.read_text()
-        assert "aff verdict" in text, path
-        assert ".affidavit/manifest.json" in text, path
+        assert "orchestra verify verdict" in text, path
+        assert ".tuner/manifest.json" in text, path
         assert _NOT_DONE in text, path
-        assert re.search(r"aff verdict\b[^\n]*<claim-id>", text), path
+        assert re.search(r"orchestra verify verdict\b[^\n]*<claim-id>", text), path

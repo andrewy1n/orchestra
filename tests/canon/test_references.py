@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from canon.validation import ValidationError
+from orchestra.canon.validation import ValidationError
 from conftest import make_task
 
 
@@ -189,8 +189,8 @@ def test_validate_reports_a_reference_that_stopped_resolving(project):
     make_task(project, "t")
     entry = log(project)
     path = project.store_path / "records" / "alpha__log" / f"{entry['id']}.md"
-    from canon.record_file import dump_record, load_record
-    from canon.revision import with_revision
+    from orchestra.canon.record_file import dump_record, load_record
+    from orchestra.canon.revision import with_revision
 
     record = load_record(path.read_text(), path)
     record["payload"]["task"] = "ghost"

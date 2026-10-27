@@ -2,7 +2,7 @@
 verify-work `close` procedure.
 
 The pure `build_batch` tests exercise the refusal policy directly; the
-`test_end_to_end_*` tests drive the real `adaptive-artifacts` CLI (via the
+`test_end_to_end_*` tests drive the real `canon` CLI (via the
 shared `cli`/`resolved_contract` fixtures) to prove the emitted NDJSON is
 actually accepted by `apply` and lands the record shape the skill promises.
 
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import AFFIDAVIT_ROOT, REPO_ROOT, build_store
+from conftest import REPO_ROOT, build_store
 from orchestra import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"
@@ -149,23 +149,6 @@ def _ancestry_repo(tmp_path: Path) -> tuple[Path, str, str]:
     return repo, red_sha, green_sha
 
 
-def _affidavit_checkout() -> Path | None:
-    root = AFFIDAVIT_ROOT
-    if (root / "affidavit" / "__init__.py").is_file():
-        return root
-    return None
-
-
-def _ensure_affidavit_importable() -> None:
-    """In-process close tests call affidavit; the checkout is not an installed dep."""
-    root = _affidavit_checkout()
-    if root is not None and str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-
-
-_ensure_affidavit_importable()
-
-
 def _run_script(
     request: dict,
     tmp_path: Path,
@@ -179,14 +162,6 @@ def _run_script(
     cmd = [sys.executable, str(CLI), "close-batch", "--input", str(input_path), "--out", str(out_path)]
     if cwd is not None:
         cmd.extend(["--cwd", str(cwd)])
-    env = None
-    checkout = _affidavit_checkout()
-    if checkout is not None:
-        env = os.environ.copy()
-        current = env.get("PYTHONPATH", "")
-        prefix = str(checkout)
-        if prefix not in current.split(os.pathsep):
-            env["PYTHONPATH"] = prefix + (os.pathsep + current if current else "")
     # process_cwd is the primary checkout (store discovery); --cwd is code HEAD.
     if process_cwd is None:
         process_cwd = build_store()
@@ -195,7 +170,6 @@ def _run_script(
         capture_output=True,
         text=True,
         cwd=str(process_cwd),
-        env=env,
     )
     return result, out_path
 
@@ -231,7 +205,7 @@ def test_all_pass_runner_batch_is_only_the_transition():
     assert [op["op"] for op in ops] == ["update"]
     assert ops[-1] == {
         "op": "update",
-        "type": "plan:work-item",
+        "type": "score:work-item",
         "id": "rec-wi",
         "transition": "done",
         "expected_revision": "@current",
@@ -242,7 +216,7 @@ def test_manual_pass_batch_is_one_check_run_then_the_transition():
     ops = _build(_manual_request())
     assert [op["op"] for op in ops] == ["create", "update"]
     check_run = ops[0]
-    assert check_run["type"] == "aff:check-run"
+    assert check_run["type"] == "tuner:check-run"
     assert check_run["subject"] == "task-1"
     assert check_run["payload"]["result"] == "pass"
     assert check_run["payload"]["method"] == "manual"
@@ -308,10 +282,10 @@ def test_finding_permits_the_close_and_needs_is_forced_to_human():
         },
     )
     ops = _build(request)
-    finding_op = next(op for op in ops if op["type"] == "aff:finding")
+    finding_op = next(op for op in ops if op["type"] == "tuner:finding")
     assert finding_op["payload"]["needs"] == "human"
     assert ops[-1]["op"] == "update" and ops[-1]["transition"] == "done"
-    assert not any(op.get("type") == "aff:check-run" for op in ops)
+    assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
 
 def test_no_execution_report_omits_the_second_informed_by_on_manual():
@@ -400,35 +374,35 @@ def test_cli_malformed_json_exits_1(tmp_path):
 
 
 def _build_work_item_family(cli, defs, subject: str, effort: str, *, method: str = "tdd"):
-    phase = h.create_generic_record(cli, defs, "plan:phase", extra_payload={"effort": effort})
+    phase = h.create_generic_record(cli, defs, "score:phase", extra_payload={"effort": effort})
     work_item = h.create_generic_record(
         cli,
         defs,
-        "plan:work-item",
+        "score:work-item",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "kind": "deliver"},
     )
     work_item = h._apply_transition(
-        cli, defs["plan:work-item"], "plan:work-item", work_item, "in_progress"
+        cli, defs["score:work-item"], "score:work-item", work_item, "in_progress"
     )
     acceptance = h.create_generic_record(
         cli,
         defs,
-        "plan:acceptance",
+        "score:acceptance",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "method": method},
     )
     assignment = h.create_generic_record(
         cli,
         defs,
-        "run:assignment",
+        "conductor:assignment",
         subject=subject,
         extra_payload={"effort": effort, "work_item": subject},
     )
     execution_report = h.create_generic_record(
         cli,
         defs,
-        "run:execution-report",
+        "conductor:execution-report",
         subject=subject,
         extra_payload={
             "work_item": subject,
@@ -472,13 +446,13 @@ def _seed_runner_check_run(
     args = [
         "create",
         "--type",
-        "aff:check-run",
+        "tuner:check-run",
         "--subject",
         subject,
         "--payload",
         json.dumps({**payload, "informed_by": [acceptance["id"], execution_report["id"]]}),
     ]
-    check_body = body if body is not None else h.generic_body(defs["aff:check-run"])
+    check_body = body if body is not None else h.generic_body(defs["tuner:check-run"])
     if check_body:
         args.extend(["--body", check_body])
     created = cli(*args)
@@ -539,11 +513,11 @@ def test_end_to_end_all_pass_closes_the_work_item_to_done(
     assert applied["applied"] == 1
     assert applied["failed"] == 0
 
-    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "done"
 
     check_runs = json.loads(
-        cli("list", "--type", "aff:check-run", "--subject", subject, "--full").stdout
+        cli("list", "--type", "tuner:check-run", "--subject", subject, "--full").stdout
     )["records"]
     assert len(check_runs) == 2
     by_id = {cr["id"]: cr for cr in check_runs}
@@ -586,7 +560,7 @@ def test_end_to_end_refusal_leaves_the_work_item_in_progress(
     assert result.returncode == 2
     assert not out_path.exists()
 
-    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "in_progress"
 
 
@@ -601,12 +575,12 @@ def test_cli_claim_gate_refuses_unknown_claim(
         cli, defs, subject, effort, method="check"
     )
     current = json.loads(
-        cli("get", "--type", "plan:acceptance", "--id", acceptance["id"]).stdout
+        cli("get", "--type", "score:acceptance", "--id", acceptance["id"]).stdout
     )
     updated = cli(
         "update",
         "--type",
-        "plan:acceptance",
+        "score:acceptance",
         "--id",
         acceptance["id"],
         "--expected-revision",
@@ -687,11 +661,11 @@ def test_end_to_end_failing_criterion_with_finding_closes_and_surfaces_needs_hum
     applied = json.loads(apply_result.stdout)
     assert applied["applied"] == 2
 
-    final_work_item = json.loads(cli("get", "--type", "plan:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
     assert final_work_item["lifecycle_state"] == "done"
 
     findings = json.loads(
-        cli("list", "--type", "aff:finding", "--subject", subject, "--full").stdout
+        cli("list", "--type", "tuner:finding", "--subject", subject, "--full").stdout
     )["records"]
     assert len(findings) == 1
     assert findings[0]["payload"]["needs"] == "human"
@@ -852,7 +826,7 @@ def test_red_first_escape_permits_tdd_done_without_red_and_forces_human():
         },
     )
     ops = _build(request)
-    finding_op = next(op for op in ops if op["type"] == "aff:finding")
+    finding_op = next(op for op in ops if op["type"] == "tuner:finding")
     assert finding_op["payload"]["needs"] == "human"
     assert ops[-1]["transition"] == "done"
 
@@ -1282,19 +1256,19 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
 
 def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    phase = h.create_generic_record(cli, defs, "plan:phase")
+    phase = h.create_generic_record(cli, defs, "score:phase")
     acceptance = h.create_generic_record(
-        cli, defs, "plan:acceptance", extra_payload={"phase": phase["subject"]}
+        cli, defs, "score:acceptance", extra_payload={"phase": phase["subject"]}
     )
     other = h.create_generic_record(
-        cli, defs, "plan:acceptance", extra_payload={"phase": phase["subject"]}
+        cli, defs, "score:acceptance", extra_payload={"phase": phase["subject"]}
     )
 
     def amend(acceptance_ref: str) -> dict:
         return h.create_generic_record(
             cli,
             defs,
-            "aff:oracle-amendment",
+            "tuner:oracle-amendment",
             extra_payload={
                 "acceptance": acceptance_ref,
                 "phase": phase["subject"],
@@ -1432,7 +1406,7 @@ def test_oracle_legacy_without_freeze_fields_skips_gates(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
-# -- CLI: oracle freeze / assertion-level via real bin/aff close-batch ------
+# -- CLI: oracle freeze / assertion-level via real orchestra close-batch ------
 
 
 def _build_oracle_work_item_family(
@@ -1445,21 +1419,21 @@ def _build_oracle_work_item_family(
     oracle_hashes: list[str] = ORACLE_HASHES_V1,
 ):
     """Work-item family whose acceptance carries oracle freeze fields."""
-    phase = h.create_generic_record(cli, defs, "plan:phase", extra_payload={"effort": effort})
+    phase = h.create_generic_record(cli, defs, "score:phase", extra_payload={"effort": effort})
     work_item = h.create_generic_record(
         cli,
         defs,
-        "plan:work-item",
+        "score:work-item",
         subject=subject,
         extra_payload={"effort": effort, "phase": phase["subject"], "kind": "deliver"},
     )
     work_item = h._apply_transition(
-        cli, defs["plan:work-item"], "plan:work-item", work_item, "in_progress"
+        cli, defs["score:work-item"], "score:work-item", work_item, "in_progress"
     )
     acceptance = h.create_generic_record(
         cli,
         defs,
-        "plan:acceptance",
+        "score:acceptance",
         subject=subject,
         extra_payload={
             "effort": effort,
@@ -1472,14 +1446,14 @@ def _build_oracle_work_item_family(
     assignment = h.create_generic_record(
         cli,
         defs,
-        "run:assignment",
+        "conductor:assignment",
         subject=subject,
         extra_payload={"effort": effort, "work_item": subject},
     )
     execution_report = h.create_generic_record(
         cli,
         defs,
-        "run:execution-report",
+        "conductor:execution-report",
         subject=subject,
         extra_payload={
             "work_item": subject,
@@ -1709,7 +1683,7 @@ def test_close_batch_accepts_orchestra_runner_stamp():
     assert ops[-1]["transition"] == "done"
 
 
-def test_close_batch_refuses_aff_runner_stamp():
+def test_close_batch_refuses_tuner_runner_stamp():
     """R4: stored check-run with runner aff is not runner-produced."""
     request = _request(
         criteria=[
@@ -1729,16 +1703,16 @@ def test_close_batch_refuses_aff_runner_stamp():
     assert "aff" in msg or "not runner-produced" in msg
 
 
-# -- claim gate: affidavit verdict / recheck (evidence-authority) ---------
+# -- claim gate: tuner verdict / recheck (evidence-authority) ---------
 
 
 CLAIM_ID = "claim-widget"
 _CLOSE_LIBRARY_MODULES = frozenset(
-    {"affidavit.oracle_red", "affidavit.verdict", "affidavit.binding"}
+    {"orchestra.tuner.oracle_red", "orchestra.tuner.verdict", "orchestra.tuner.binding"}
 )
 
 
-def _close_batch_affidavit_imports() -> list[tuple[int, str, bool]]:
+def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
     path = REPO_ROOT / "orchestra" / "close_batch.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: list[tuple[int, str, bool]] = []
@@ -1757,36 +1731,36 @@ def _close_batch_affidavit_imports() -> list[tuple[int, str, bool]]:
         def visit_Import(self, node: ast.Import) -> None:
             local = self._function_depth > 0
             for alias in node.names:
-                if alias.name == "affidavit" or alias.name.startswith("affidavit."):
+                if alias.name == "orchestra.tuner" or alias.name.startswith("orchestra.tuner."):
                     found.append((node.lineno, alias.name, local))
 
         def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
             if not node.module:
                 return
             local = self._function_depth > 0
-            if node.module == "affidavit":
+            if node.module == "orchestra.tuner":
                 for alias in node.names:
-                    found.append((node.lineno, f"affidavit.{alias.name}", local))
-            elif node.module.startswith("affidavit."):
+                    found.append((node.lineno, f"orchestra.tuner.{alias.name}", local))
+            elif node.module.startswith("orchestra.tuner."):
                 found.append((node.lineno, node.module, local))
 
     Visitor().visit(tree)
     return found
 
 
-def test_close_batch_affidavit_import_is_function_local():
-    """A function-local close import of affidavit is allowed; a module-level import is not."""
-    imports = _close_batch_affidavit_imports()
+def test_close_batch_tuner_import_is_function_local():
+    """A function-local close import of tuner is allowed; a module-level import is not."""
+    imports = _close_batch_tuner_imports()
     module_level = [f"{lineno}: {module}" for lineno, module, local in imports if not local]
-    assert module_level == [], "module-level affidavit import: " + "; ".join(module_level)
+    assert module_level == [], "module-level tuner import: " + "; ".join(module_level)
     local_modules = {module for _, module, local in imports if local}
     assert local_modules >= _CLOSE_LIBRARY_MODULES
 
 
 def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
-    aff_dir = repo / ".affidavit"
-    aff_dir.mkdir(parents=True, exist_ok=True)
-    (aff_dir / "manifest.json").write_text(
+    tuner_dir = repo / ".tuner"
+    tuner_dir.mkdir(parents=True, exist_ok=True)
+    (tuner_dir / "manifest.json").write_text(
         json.dumps(
             {
                 "claims": [
@@ -1804,8 +1778,7 @@ def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
     )
 
 
-def _patch_affidavit(monkeypatch, module_name: str, attr: str, fn) -> None:
-    _ensure_affidavit_importable()
+def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
     module = importlib.import_module(module_name)
     monkeypatch.setattr(module, attr, fn)
 
@@ -1836,18 +1809,18 @@ def _claim_gate_check_request() -> dict:
 
 
 def test_claim_gate_refuses_done_when_verdict_not_pass(tmp_path, monkeypatch):
-    """Manifest claim requires affidavit verdict result pass at the close revision."""
+    """Manifest claim requires tuner verdict result pass at the close revision."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -1864,18 +1837,18 @@ def test_claim_gate_refuses_done_when_verdict_not_pass(tmp_path, monkeypatch):
 
 
 def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
-    """Manifest claim requires affidavit recheck result pass."""
+    """Manifest claim requires tuner recheck result pass."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -1897,15 +1870,15 @@ def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(
     """Both failing clocks are named in one refusal."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -1922,18 +1895,18 @@ def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(
 
 
 def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeypatch):
-    """Manifest claim closes when affidavit verdict and recheck both pass."""
+    """Manifest claim closes when tuner verdict and recheck both pass."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -1957,10 +1930,10 @@ def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
         seen.extend(claim_ids)
         return {"result": "fail"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -1999,8 +1972,8 @@ def test_claim_gate_ignores_payload_claim_id(tmp_path, monkeypatch):
         recheck_seen.append(claim_id)
         return {"result": "fail"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(monkeypatch, "affidavit.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
 
     def load_acceptance(_aid):
         return {
@@ -2033,10 +2006,10 @@ def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, mon
         seen.extend(claim_ids)
         return {"result": "fail"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -2074,15 +2047,15 @@ def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
     unknown = "claim-not-in-manifest"
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -2109,20 +2082,20 @@ def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
 def test_claim_gate_refuses_claim_when_manifest_lists_none(tmp_path, monkeypatch):
     """R9: a present manifest with no claims still refuses an unlisted claim."""
     repo, _sha = _oracle_repo(tmp_path)
-    aff_dir = repo / ".affidavit"
-    aff_dir.mkdir()
-    (aff_dir / "manifest.json").write_text(
+    tuner_dir = repo / ".tuner"
+    tuner_dir.mkdir()
+    (tuner_dir / "manifest.json").write_text(
         json.dumps({"claims": [], "amendments": []}), encoding="utf-8"
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -2135,16 +2108,16 @@ def test_claim_gate_refuses_claim_when_manifest_lists_none(tmp_path, monkeypatch
         )
 
 
-def _block_affidavit_import():
+def _block_tuner_import():
     saved = {
         key: sys.modules.pop(key)
         for key in list(sys.modules)
-        if key == "affidavit" or key.startswith("affidavit.")
+        if key == "orchestra.tuner" or key.startswith("orchestra.tuner.")
     }
 
     class _Block:
         def find_spec(self, fullname, path, target=None):
-            if fullname == "affidavit" or fullname.startswith("affidavit."):
+            if fullname == "orchestra.tuner" or fullname.startswith("orchestra.tuner."):
                 raise ImportError(fullname)
             return None
 
@@ -2153,17 +2126,17 @@ def _block_affidavit_import():
     return saved, blocker
 
 
-def _restore_affidavit_import(saved, blocker) -> None:
+def _restore_tuner_import(saved, blocker) -> None:
     if blocker in sys.meta_path:
         sys.meta_path.remove(blocker)
     sys.modules.update(saved)
 
 
-def test_claim_gate_refuses_when_affidavit_is_not_importable(tmp_path):
-    """A claim-backed close names affidavit when affidavit is not importable."""
+def test_claim_gate_refuses_when_tuner_is_not_importable(tmp_path):
+    """A claim-backed close names tuner when tuner is not importable."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
-    saved, blocker = _block_affidavit_import()
+    saved, blocker = _block_tuner_import()
     request = _claim_gate_check_request()
     try:
         with pytest.raises(close_batch.CloseRefused) as excinfo:
@@ -2173,30 +2146,30 @@ def test_claim_gate_refuses_when_affidavit_is_not_importable(tmp_path):
                 load_acceptance=lambda _aid: _claim_gate_acceptance(),
             )
     finally:
-        _restore_affidavit_import(saved, blocker)
-    assert "affidavit" in str(excinfo.value).lower()
+        _restore_tuner_import(saved, blocker)
+    assert "tuner" in str(excinfo.value).lower()
 
 
-def test_oracle_red_refuses_when_affidavit_is_not_importable(tmp_path):
-    """Oracle-backed close names affidavit when the classifier cannot be imported."""
+def test_oracle_red_refuses_when_tuner_is_not_importable(tmp_path):
+    """Oracle-backed close names tuner when the classifier cannot be imported."""
     repo, green_sha = _oracle_repo(tmp_path)
     entry = _tdd_with_dirty_red(
         revision=green_sha,
         **_assertion_red_fields(),
     )
     request = _request(criteria=[entry])
-    saved, blocker = _block_affidavit_import()
+    saved, blocker = _block_tuner_import()
     try:
         with pytest.raises(close_batch.CloseRefused) as excinfo:
             _build_oracle(request, cwd=repo)
     finally:
-        _restore_affidavit_import(saved, blocker)
+        _restore_tuner_import(saved, blocker)
     msg = str(excinfo.value).lower()
-    assert "affidavit" in msg
+    assert "tuner" in msg
 
 
-def test_oracle_backed_close_calls_assertion_level_red_not_aff(tmp_path, monkeypatch):
-    """Assertion-level red comes from affidavit, and close does not start aff."""
+def test_oracle_backed_close_calls_assertion_level_red_not_tuner(tmp_path, monkeypatch):
+    """Assertion-level red comes from tuner, and close does not start aff."""
     repo, green_sha = _oracle_repo(tmp_path)
     entry = _tdd_with_dirty_red(
         revision=green_sha,
@@ -2209,16 +2182,16 @@ def test_oracle_backed_close_calls_assertion_level_red_not_aff(tmp_path, monkeyp
         calls.append(check_run)
         return True
 
-    _patch_affidavit(monkeypatch, "affidavit.oracle_red", "is_assertion_level_red", classify)
+    _patch_tuner(monkeypatch, "orchestra.tuner.oracle_red", "is_assertion_level_red", classify)
 
-    aff_calls: list[list[str]] = []
+    tuner_calls: list[list[str]] = []
     real_run = subprocess.run
 
     def spy(cmd, **kwargs):
         argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
         name = Path(argv[0]).name if argv else ""
         if name == "aff":
-            aff_calls.append(argv)
+            tuner_calls.append(argv)
             return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
         return real_run(cmd, **kwargs)
 
@@ -2227,7 +2200,7 @@ def test_oracle_backed_close_calls_assertion_level_red_not_aff(tmp_path, monkeyp
     ops = _build_oracle(request, cwd=repo)
     assert ops[-1]["transition"] == "done"
     assert calls, "expected is_assertion_level_red"
-    assert aff_calls == []
+    assert tuner_calls == []
 
 
 def test_oracle_red_refuses_when_classifier_returns_false(tmp_path, monkeypatch):
@@ -2238,9 +2211,9 @@ def test_oracle_red_refuses_when_classifier_returns_false(tmp_path, monkeypatch)
         **_assertion_red_fields(),
     )
     request = _request(criteria=[entry])
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.oracle_red",
+        "orchestra.tuner.oracle_red",
         "is_assertion_level_red",
         lambda check_run: False,
     )

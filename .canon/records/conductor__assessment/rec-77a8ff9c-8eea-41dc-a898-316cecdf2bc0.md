@@ -1,0 +1,38 @@
+---
+{
+  "id": "rec-77a8ff9c-8eea-41dc-a898-316cecdf2bc0",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "confidence": "high",
+    "effort": "evidence-layer",
+    "next": "release",
+    "phase": "evidence-technique-ingest",
+    "requirement": "R1",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-18T10:07:15+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-4363505f-12aa-48c9-9da6-f37f554075a6"
+    ]
+  },
+  "revision": "sha256:dbe6f3c7a31b1105b14f8980480b34814956b05fb4ede4a80ef99ef377b8f81d",
+  "subject": "evidence-technique-ingest-R1-dup-36ee919d",
+  "time": {
+    "as_of": "2026-10-18T10:03:30+00:00"
+  }
+}
+---
+
+## Evidence
+
+audit-ingest green at aece39455aa6cffc45472d4eafc7f79005af2c94
+
+## Missing
+
+none
+
+## Reason
+
+R1 verified.

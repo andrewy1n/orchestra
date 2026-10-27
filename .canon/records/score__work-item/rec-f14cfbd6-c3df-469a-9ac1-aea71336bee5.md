@@ -1,0 +1,38 @@
+---
+{
+  "id": "rec-f14cfbd6-c3df-469a-9ac1-aea71336bee5",
+  "lifecycle_state": "done",
+  "payload": {
+    "assignee": "",
+    "decisions": [
+      "proof-owner-orchestra",
+      "proof-packet-new-type",
+      "proof-gate-packet-not-signature",
+      "proof-dashboard-phase-detail"
+    ],
+    "effort": "workflow-loop",
+    "estimate_minutes": 40,
+    "executor": "inline",
+    "kind": "deliver",
+    "phase": "phase-proof-packet",
+    "requirements": [
+      "R7"
+    ],
+    "size": "M",
+    "title": "Show proof packet on dashboard phase detail"
+  },
+  "record_type": "score:work-item",
+  "recorded_at": "2026-10-19T04:02:21+00:00",
+  "relationships": {},
+  "revision": "sha256:d09e62c60fe49b34b60bc24274b90db4c73aa8f7bc9a1e9ee11aa728c030d3a0",
+  "subject": "proof-dashboard-ui"
+}
+---
+
+## Description
+
+R7: Dashboard phase detail loads latest proof-packet and shows Look and Attention as Proof surface with chip; not Needs-you.
+
+## Approach
+
+Extend dashboard/model.py FULL_TYPES/SOFT_TYPES and PhaseDetail with proof fields from latest project:proof-packet for the phase. Add Proof tab (or overview block) in phase_screen.py; chip when packet present. Tests assert Look/Attention render and proof-packet is not in NEEDS_ORDER.

@@ -10,7 +10,6 @@ from installer.detect import HostStatus, detect_hosts, detected_ids
 from installer.matrix import MatrixError, load_matrix
 from installer.model import InstallReport, InstallRequest, Plan, Provider
 from installer.paths import source_root as default_source_root
-from installer.runtime_deps import ensure_runtime_deps
 from installer.wizard import (
     WizardCancelled,
     WizardSelectionError,
@@ -150,8 +149,6 @@ def _print_remove(result) -> None:
 
 def run(request: InstallRequest) -> int:
     """Execute one installer request; return a process exit code."""
-    if not (request.list_only or request.dry_run or request.uninstall):
-        ensure_runtime_deps()
     try:
         providers = load_matrix()
     except MatrixError as exc:

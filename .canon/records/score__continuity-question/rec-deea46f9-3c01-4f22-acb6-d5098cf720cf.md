@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-deea46f9-3c01-4f22-acb6-d5098cf720cf",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "plan-review:evidence-authority"
+  },
+  "record_type": "score:continuity-question",
+  "recorded_at": "2026-10-21T06:35:40+00:00",
+  "relationships": {},
+  "revision": "sha256:30808c72e4a6fc1db7d3f72a342c318a40196665d2c3a38af607f6eb706cff80",
+  "subject": "workflow-loop"
+}
+---
+

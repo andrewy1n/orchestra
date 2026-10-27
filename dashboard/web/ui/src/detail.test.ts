@@ -286,7 +286,7 @@ describe("web-dashboard detail", () => {
     const recordPayload = {
       record: {
         id: "rec-journal-1",
-        record_type: "aff:finding",
+        record_type: "tuner:finding",
         subject: "open-finding",
         body: "Record payload marker",
       },
@@ -300,7 +300,7 @@ describe("web-dashboard detail", () => {
       await openAndSettle(href);
       expect(document.querySelector('[data-detail="record"]')).toBeTruthy();
       const text = payloadText();
-      expect(text).toContain("aff:finding");
+      expect(text).toContain("tuner:finding");
       expect(text).toContain("Record payload marker");
       expect(text).toContain("open-finding");
     }

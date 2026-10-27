@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-6e4d8f33-f843-4db1-a990-e3c5ea1abbd7",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Green SHA must be equal to or git-descendant of red SHA; dirty red accepted only with non-empty diff_sha256",
+    "effort": "workflow-loop",
+    "method": "tdd",
+    "phase": "red-first",
+    "requirement": "R3",
+    "verify_command": "uv run --with pytest python -m pytest tests/test_close_batch.py -q -k red_first_order"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-10T23:44:06+00:00",
+  "relationships": {},
+  "revision": "sha256:19968efb55c22ca6d7e71ac2efbf4f9960e1605c850389395cda6b745626a5b5",
+  "subject": "close-red-first-order",
+  "time": {
+    "as_of": "2026-10-10T23:44:06+00:00"
+  }
+}
+---
+

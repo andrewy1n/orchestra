@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from canon.record_file import RECORD_SUFFIX
+from orchestra.canon.record_file import RECORD_SUFFIX
 
 SAFE_SEGMENT = re.compile(r"^[a-z][a-z0-9-]*$")
 RECORD_ID = re.compile(

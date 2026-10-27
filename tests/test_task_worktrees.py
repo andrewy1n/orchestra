@@ -45,7 +45,7 @@ def test_r3_per_task_commit_runs_in_that_task_worktree():
 
 def test_r4_per_task_commit_stages_with_git_add_excluding_artifacts():
     text = _flat(SKILL)
-    assert "That per-task commit stages with `git add -A` excluding `.artifacts`." in text
+    assert "That per-task commit stages with `git add -A` excluding `.canon`." in text
 
 
 def test_r5_verify_work_runs_in_that_task_worktree():

@@ -18,7 +18,7 @@ from textual.widget import Widget
 from textual.widgets import Collapsible, Footer, Markdown, OptionList, Static
 from textual.widgets.option_list import Option
 
-from canon.project import Project
+from orchestra.canon.project import Project
 from dashboard import model, pager
 from dashboard.commit import CommitScreen, latest_revision, load_commit, stat_width
 from dashboard.display import (

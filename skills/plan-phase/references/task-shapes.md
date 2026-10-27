@@ -3,12 +3,12 @@
 Use from plan-phase steps 5–7. List the phase specification first:
 
 ```bash
-canon list --type plan:specification --where payload.phase=<current-phase-slug> --state active
+canon list --type score:specification --where payload.phase=<current-phase-slug> --state active
 ```
 
 For every `deliver` / `repair` task, payloads include `requirements`
 (atomic ids this task implements) and each acceptance's `requirement`
-(exactly one of those ids). When a `plan:specification` exists,
+(exactly one of those ids). When a `score:specification` exists,
 take id texts from it and set `decisions` to the decision subjects the
 task follows. When none exists, write the id'd list in `## Description`
 and still stamp `requirements` / `requirement`. Omit `criterion` (or
@@ -21,7 +21,7 @@ and still stamp `requirements` / `requirement`. Omit `criterion` (or
 Use `create --body-file` when Description needs more than a few lines.
 
 ```bash
-canon create --type plan:work-item \
+canon create --type score:work-item \
   --subject "<task-slug>" \
   --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
   --body "## Description
@@ -33,17 +33,17 @@ R2: <observable behavior>
 
 <implementation recipe>"
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "<task-slug>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R1>","requirement":"R1"}'
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "<task-slug>-perf" \
   --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R2>","requirement":"R2"}'
 ```
 
 Drop the second acceptance when there is only one requirement. A task
-needs at least one `plan:work-item` and one `plan:acceptance`.
+needs at least one `score:work-item` and one `score:acceptance`.
 
 Set `kind` and `phase` from the effort (`phase` is `""` when
 incidental). Set `executor` to `inline` or `subagent` (same within a
@@ -65,7 +65,7 @@ Needs another same-phase task done first. Create the prerequisite
 first, then list its subject in `depends_on`:
 
 ```bash
-canon create --type plan:work-item \
+canon create --type score:work-item \
   --subject "<task-slug>" \
   --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
   --body "## Description
@@ -77,7 +77,7 @@ R2: <observable behavior>
 
 <implementation recipe>"
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "<task-slug>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R1"}'
 ```
@@ -94,7 +94,7 @@ without a `-k` filter for this phase, is not a verification
 acceptance.
 
 ```bash
-canon create --type plan:work-item \
+canon create --type score:work-item \
   --subject "verify-<phase-slug>" \
   --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
@@ -106,11 +106,11 @@ check through the real entry point, then every other phase check.
 
 <implementation recipe>"
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "verify-<phase-slug>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R1"}'
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "verify-<phase-slug>-<criterion-suffix>" \
   --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R2"}'
 ```
@@ -120,7 +120,7 @@ verification task so the gate still waits for it. Update the
 verification work-item's `depends_on` with the full array:
 
 ```bash
-canon update --type plan:work-item --id <verification-work-item-id> \
+canon update --type score:work-item --id <verification-work-item-id> \
   --expected-revision <revision> \
   --payload '{"depends_on":["<task-slug-1>","<task-slug-2>","<new-task-slug>"]}'
 ```

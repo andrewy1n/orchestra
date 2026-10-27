@@ -24,11 +24,11 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 
 - Records are plan authority. `orchestra view plan` is derived.
 - Materialize **this focus** only; for `deliver`/`repair`/`evaluate`,
-  **this phase only**. Future phases stay placeholder `plan:phase`
+  **this phase only**. Future phases stay placeholder `score:phase`
   bodies — no work-items yet.
 - Same `subject` (task slug) for a work-item and its acceptance(s).
   `payload.effort` = focus; `payload.phase` = current phase slug (must
-  match a real `plan:phase` subject) or `""` for incidental.
+  match a real `score:phase` subject) or `""` for incidental.
 - Several acceptances: first uses task slug; extras use
   `<task-slug>-<short suffix>`. Do not pick a task slug that is a
   prefix of another in the same phase.
@@ -40,7 +40,7 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   rules.
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text, not a re-summary field.
-- Do not write `run:assessment` or `run:integration-report`.
+- Do not write `conductor:assessment` or `conductor:integration-report`.
 - Lifecycle only: `planned` → `in_progress` → `done` / `withdrawn`.
   Never write `stage`, `live`, `ready`, or `wave`. This skill creates
   work-items and promotes the phase to `in_progress`. `execute-phase`
@@ -82,10 +82,10 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
    for the delta:
 
 ```bash
-canon list --type run:assessment --state active \
+canon list --type conductor:assessment --state active \
   --where payload.phase=<current-phase-slug> --where payload.next=plan
 
-canon create --type plan:continuity-question \
+canon create --type score:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
@@ -93,7 +93,7 @@ canon create --type plan:continuity-question \
    On approval, clear at the event; stop until then — do not dispatch:
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
@@ -101,29 +101,29 @@ canon update --type plan:continuity-question --id <question-id> \
 
 1. Run `orchestra handoff` if the handoff is not in context. Resolve
    **focus** and **kind**. Read `orchestra view plan --effort <focus>`.
-2. If this focus has no `plan:effort`, create it (`init` step 6) for
+2. If this focus has no `score:effort`, create it (`init` step 6) for
    **this subject only**. If closed, reopen first (kinds-and-focus).
    Resolve current phase: named in context, else `in_progress`, else
-   lowest-`ordinal` `planned` — never `plan:position` `scope`.
+   lowest-`ordinal` `planned` — never `score:position` `scope`.
    If several fit and none named, ask. `engage` `phase: new` → create
    in step 3 with `ordinal` = max existing + 1. Approach must be
-   settled (a `plan:decision` for this phase, or fixed in chat);
+   settled (a `score:decision` for this phase, or fixed in chat);
    else `settle-phase` or ask to skip. Skip settle check for incidental.
 
 ```bash
-canon list --type plan:decision --where payload.phase=<current-phase-slug> --state active
+canon list --type score:decision --where payload.phase=<current-phase-slug> --state active
 ```
 
 3. Promote the current phase to `in_progress` with its real plan:
 
 ```bash
-canon get --type plan:phase --id <phase-id>
+canon get --type score:phase --id <phase-id>
 ```
 
    If `planned`, replace placeholder body and transition:
 
 ```bash
-canon update --type plan:phase --id <phase-id> \
+canon update --type score:phase --id <phase-id> \
   --transition in_progress \
   --expected-revision "<revision>" \
   --body-file "<phase-plan.md>"
@@ -144,12 +144,12 @@ canon update --type plan:phase --id <phase-id> \
    Leave the effort position alone until the phase closes.
 
 ```bash
-canon create --type plan:position \
+canon create --type score:position \
   --subject "<phase-slug>" \
   --payload '{"position":"<what this phase is doing now>","scope":"phase","effort":"<effort-slug>","phase":"<phase-slug>"}'
 ```
 
-4. For each durable choice, `create --type plan:decision` with
+4. For each durable choice, `create --type score:decision` with
    `choice`, `alternatives`, `phase`, `effort` and body
    `## Rationale` / `## Counter-argument`. Skip trivia.
 5. Independent tasks (or the one incidental): create work-item +
@@ -172,7 +172,7 @@ canon validate
     `derived.ready`/`wave` directly if useful (plan view omits them):
 
 ```bash
-canon list --type plan:work-item \
+canon list --type score:work-item \
   --where payload.effort=<effort-slug> --where payload.phase=<current-phase-slug>
 ```
 
@@ -183,7 +183,7 @@ canon list --type plan:work-item \
     tdd acceptance has non-empty `test_ids` and `oracle_hashes`.
 
 ```bash
-canon create --type plan:continuity-question \
+canon create --type score:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
@@ -193,6 +193,6 @@ canon create --type plan:continuity-question \
     `execute-phase` run:
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```

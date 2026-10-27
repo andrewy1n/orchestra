@@ -55,7 +55,7 @@ def test_redispatch_records_assignment_amendment_with_failure_evidence():
     amendments = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "run:assignment-amendment"
+        if inv["subcommand"] == "create" and inv["type"] == "conductor:assignment-amendment"
     ]
     assert amendments
     # At least one amendment example quotes failure evidence in the body template.
@@ -74,7 +74,7 @@ def test_redispatch_increments_attempts():
         inv
         for inv in extract_invocations(text)
         if inv["subcommand"] == "update"
-        and inv["type"] == "plan:work-item"
+        and inv["type"] == "score:work-item"
         and "attempts" in (inv.get("payload") or {})
     ]
     assert updates, "execute-phase must document incrementing payload attempts on re-dispatch"
@@ -92,13 +92,13 @@ def test_fix_task_depends_on_and_no_reopen_done():
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "plan:work-item"
+        if inv["subcommand"] == "create" and inv["type"] == "score:work-item"
     ]
     assert creates, "execute-phase must create a fix work-item"
     assert "update --rel" in text or any(
         inv.get("rel") or "depends_on" in (inv.get("raw") or "")
         for inv in extract_invocations(text)
-        if inv["type"] == "plan:work-item"
+        if inv["type"] == "score:work-item"
     )
 
 
@@ -118,7 +118,7 @@ def test_budget_defaults_overrides_and_exhaustion():
         inv
         for inv in extract_invocations(text)
         if inv["subcommand"] == "create"
-        and inv["type"] == "plan:continuity-question"
+        and inv["type"] == "score:continuity-question"
         and "retry:" in str(inv.get("payload") or {})
     ]
     assert questions
@@ -126,14 +126,14 @@ def test_budget_defaults_overrides_and_exhaustion():
         inv
         for inv in extract_invocations(text)
         if inv["subcommand"] == "create"
-        and inv["type"] == "aff:finding"
+        and inv["type"] == "tuner:finding"
         and (inv.get("payload") or {}).get("needs") == "human"
     ]
     assert findings
     # Clear documented next to the gate.
     assert any(
         inv["subcommand"] == "update"
-        and inv["type"] == "plan:continuity-question"
+        and inv["type"] == "score:continuity-question"
         and inv["transition"] == "answered"
         for inv in extract_invocations(text)
     )
@@ -149,7 +149,7 @@ def test_plan_phase_consumes_next_plan():
     assert "plan-review" in flat
     assert any(
         inv["subcommand"] == "create"
-        and inv["type"] == "plan:continuity-question"
+        and inv["type"] == "score:continuity-question"
         and "plan-review:" in str(inv.get("payload") or {})
         for inv in extract_invocations(text)
     )

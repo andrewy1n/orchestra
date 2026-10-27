@@ -19,7 +19,7 @@ LAUNCHERS = (
 )
 
 # Loaded into the launched interpreter via PYTHONPATH. Records whether that
-# process can import canon.project, then exits before the app.
+# process can import orchestra.canon.project, then exits before the app.
 _PROBE = """
 import json
 import os
@@ -45,7 +45,7 @@ argv0 = sys.argv[0] if sys.argv else ""
 if result and _entry(argv0):
     error = ""
     try:
-        import canon.project
+        import orchestra.canon.project
         ok = True
     except Exception as exc:
         ok = False
@@ -64,7 +64,7 @@ def _repo(path: Path) -> None:
     init = subprocess.run(["git", "init", "-q"], cwd=path, capture_output=True, text=True)
     if init.returncode != 0:
         raise RuntimeError(init.stderr.strip() or "git init failed")
-    store = path / ".artifacts"
+    store = path / ".canon"
     store.mkdir()
     (store / "config.json").write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {}}), encoding="utf-8")
 
@@ -77,7 +77,7 @@ def _probe(path: Path) -> None:
 def _launch(launcher: Path, repo: Path, probe: Path, result: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.pop("SE_WORKFLOW_UV", None)
-    env.pop("ARTIFACTS_STORE", None)
+    env.pop("CANON_STORE", None)
     env["PYTHONPATH"] = os.pathsep.join([str(probe), os.environ.get("PYTHONPATH", "")])
     env["DASHBOARD_IMPORT_RESULT"] = str(result)
     return subprocess.run(
@@ -92,7 +92,7 @@ def _launch(launcher: Path, repo: Path, probe: Path, result: Path) -> subprocess
 
 
 def test_r2(tmp_path: Path) -> None:
-    """R2: the process the dashboard launchers start can import canon.project."""
+    """R2: the process the dashboard launchers start can import orchestra.canon.project."""
     repo = tmp_path / "repo"
     probe = tmp_path / "probe"
     _repo(repo)
@@ -116,5 +116,5 @@ def test_r2(tmp_path: Path) -> None:
             )
 
     assert not failures, (
-        "dashboard process cannot import canon.project\n" + "\n".join(failures)
+        "dashboard process cannot import orchestra.canon.project\n" + "\n".join(failures)
     )

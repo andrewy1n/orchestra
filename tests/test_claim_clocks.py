@@ -1,8 +1,8 @@
 """Close-batch claim gates: claim id, verdict, and recheck contracts.
 
 The claim gate is driven only by the acceptance payload field ``claim``.
-A non-empty claim that is listed in ``.affidavit/manifest.json`` must run
-affidavit verdict at the green check-run revision and recheck for that
+A non-empty claim that is listed in ``.tuner/manifest.json`` must run
+tuner verdict at the green check-run revision and recheck for that
 claim before a ``done`` close is accepted. An acceptance that cannot be
 loaded, or a claim missing from the manifest, refuses the close.
 
@@ -19,7 +19,6 @@ from pathlib import Path
 
 import pytest
 
-from conftest import AFFIDAVIT_ROOT
 from orchestra import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -28,20 +27,10 @@ GREEN_REVISION = "green-rev-abc123"
 CHECK_RUN_ID = "rec-runner-cr"
 
 
-def _ensure_affidavit_importable() -> None:
-    """In-process close tests call affidavit; the checkout is not an installed dep."""
-    root = AFFIDAVIT_ROOT
-    if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-
-
-_ensure_affidavit_importable()
-
-
 def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
-    aff_dir = repo / ".affidavit"
-    aff_dir.mkdir(parents=True, exist_ok=True)
-    (aff_dir / "manifest.json").write_text(
+    tuner_dir = repo / ".tuner"
+    tuner_dir.mkdir(parents=True, exist_ok=True)
+    (tuner_dir / "manifest.json").write_text(
         json.dumps(
             {
                 "claims": [
@@ -59,8 +48,7 @@ def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
     )
 
 
-def _patch_affidavit(monkeypatch, module_name: str, attr: str, fn) -> None:
-    _ensure_affidavit_importable()
+def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
     module = importlib.import_module(module_name)
     monkeypatch.setattr(module, attr, fn)
 
@@ -175,8 +163,8 @@ def test_claim_id_read_only_from_payload_claim(tmp_path, monkeypatch):
         recheck_calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(monkeypatch, "affidavit.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
 
     refused = _refusal(
         lambda: _build(
@@ -219,8 +207,8 @@ def test_empty_claim_is_not_gated(tmp_path, monkeypatch):
         recheck_calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(monkeypatch, "affidavit.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
 
     refused = _refusal(
         lambda: _build(
@@ -258,10 +246,10 @@ def test_verdict_runs_at_green_revision(tmp_path, monkeypatch):
         calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_affidavit(monkeypatch, "affidavit.verdict", "run_verdict", run_verdict)
-    _patch_affidavit(
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -291,13 +279,13 @@ def test_recheck_runs_for_claim(tmp_path, monkeypatch):
         calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(monkeypatch, "affidavit.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
 
     ops = _build(
         _request(),
@@ -319,15 +307,15 @@ def test_verdict_only_failure_names_verdict(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -348,15 +336,15 @@ def test_recheck_only_failure_names_recheck(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -377,15 +365,15 @@ def test_both_failures_name_both(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -428,15 +416,15 @@ def test_unknown_claim_refuses(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _write_manifest_claim(repo)
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.verdict",
+        "orchestra.tuner.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_affidavit(
+    _patch_tuner(
         monkeypatch,
-        "affidavit.binding",
+        "orchestra.tuner.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )

@@ -1,0 +1,54 @@
+---
+{
+  "id": "rec-b5a4f64a-baa3-4622-8fee-8ac8dafe5616",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-554e4e13-762d-4e70-9082-9f345ef104c1",
+    "effort": "evidence-layer",
+    "evidence_kind": "review",
+    "informed_by": [
+      "rec-554e4e13-762d-4e70-9082-9f345ef104c1"
+    ],
+    "method": "review",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "780b98ed03d068aea39f95a1974c5294a2b1bfe9",
+    "signed_by": "parent"
+  },
+  "provenance": {
+    "sources": [
+      "audit-differential-review"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-18T04:25:13+00:00",
+  "relationships": {},
+  "revision": "sha256:4b6d214d5efb6cddace6bef9dc422b328891bbb017fa1e6fca38714623400965",
+  "subject": "audit-differential-review",
+  "time": {
+    "observed": "2026-10-18T04:25:13+00:00",
+    "recorded": "2026-10-18T04:25:13+00:00"
+  }
+}
+---
+
+# Phase-end review: audit-differential
+
+## Verdict
+PASS
+
+## Summary
+Declared probes extend aff audit without changing verdict. Unclaimed diffs surface; claim cites suppress. Red-first fixture reports the revision-on-tdd relaxation.
+
+## Findings
+none
+
+## Integration
+### interfaces
+aff audit --probes; .affidavit/probes.json; advisory diffs[] alongside blocks/mutants
+### assumptions
+Historical red-first SHAs remain in repo history; fixture probe imports scripts/close_batch.py at those revisions
+### invariants
+Claim-covered diffs stay quiet; unclaimed diffs appear in diffs
+### conflicts
+none

@@ -1,0 +1,20 @@
+---
+{
+  "id": "rec-11cf7e55-7ff8-4bcc-b204-42b4f40cbbd6",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "evidence-layer",
+    "phase": "phase-end-evidence",
+    "state": "ready"
+  },
+  "record_type": "conductor:release",
+  "recorded_at": "2026-10-18T04:20:03+00:00",
+  "relationships": {},
+  "revision": "sha256:0ad1967da11db7dc6a3c973a87d6c16d7bf01ad995518e5c52cf14a65eccdec4",
+  "subject": "phase-end-evidence",
+  "time": {
+    "as_of": "2026-10-18T04:20:03+00:00"
+  }
+}
+---
+

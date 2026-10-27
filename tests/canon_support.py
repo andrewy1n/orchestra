@@ -7,32 +7,26 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-CANON_ROOT = Path(
-    os.environ.get("CANON_ROOT", "/home/andrewyin/adaptive-artifacts/.worktrees/canon")
-)
-AFF_SCHEMA = Path(
-    "/home/andrewyin/affidavit/.worktrees/canon/affidavit/schemas/aff.json"
-)
 SCHEMA_PATH = os.pathsep.join(
     [
-        str(REPO / "orchestra" / "schemas" / "plan.json"),
-        str(REPO / "orchestra" / "schemas" / "run.json"),
-        str(AFF_SCHEMA),
+        str(REPO / "orchestra" / "schemas" / "score.json"),
+        str(REPO / "orchestra" / "schemas" / "conductor.json"),
+        str(REPO / "orchestra" / "tuner" / "schemas" / "tuner.json"),
     ]
 )
 
-if str(CANON_ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(CANON_ROOT / "src"))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 os.environ["CANON_SCHEMA_PATH"] = SCHEMA_PATH
 
-from canon.project import open_store  # noqa: E402
-from canon.store import Store  # noqa: E402
-from canon.sync import init_store  # noqa: E402
+from orchestra.canon.project import open_store  # noqa: E402
+from orchestra.canon.store import Store  # noqa: E402
+from orchestra.canon.sync import init_store  # noqa: E402
 
 
 def make_project(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    init_store(Store(root / ".artifacts"), ["plan", "run", "aff"])
+    init_store(Store(root / ".canon"), ["score", "conductor", "tuner"])
     return open_store(root)
 
 
@@ -46,24 +40,24 @@ def create(project, record_type: str, subject: str, payload: dict, body: str | N
 
 
 def seed_effort(project, effort: str = "alpha", phase: str = "p1") -> None:
-    create(project, "plan:effort", effort, {"goal": f"Goal of {effort}", "kind": "deliver"})
+    create(project, "score:effort", effort, {"goal": f"Goal of {effort}", "kind": "deliver"})
     create(
         project,
-        "plan:position",
+        "score:position",
         effort,
         {"position": "midway", "scope": "effort", "effort": effort},
     )
     create(
         project,
-        "plan:phase",
+        "score:phase",
         phase,
         {"title": "Phase one", "ordinal": 1, "effort": effort},
     )
 
 
 def point_effort_at(project, record_type: str, effort: str) -> None:
-    from canon.record_file import dump_record, load_record
-    from canon.revision import with_revision
+    from orchestra.canon.record_file import dump_record, load_record
+    from orchestra.canon.revision import with_revision
 
     namespace, _, name = record_type.partition(":")
     path = next((project.store_path / "records" / f"{namespace}__{name}").glob("*.md"))

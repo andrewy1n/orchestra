@@ -1,10 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["textual>=0.80", "canon"]
-#
-# [tool.uv.sources]
-# canon = { path = "../../adaptive-artifacts", editable = true }
+# dependencies = ["textual>=0.80"]
 # ///
 """Textual dashboard for the project's artifact store. `--once` prints one plain-text frame."""
 

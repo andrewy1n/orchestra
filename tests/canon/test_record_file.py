@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from canon.record_file import RecordFileError, dump_record, load_record, normalize_body, prepare_record
-from canon.revision import compute_revision, with_revision
-from canon.store import Store, StoreLockError
+from orchestra.canon.record_file import RecordFileError, dump_record, load_record, normalize_body, prepare_record
+from orchestra.canon.revision import compute_revision, with_revision
+from orchestra.canon.store import Store, StoreLockError
 
 
 def sample_record(**overrides) -> dict:
@@ -96,7 +96,7 @@ def test_tampered_record_is_detected(tmp_path):
     stored = store.create_record(sample_record())
     path = store.record_path("ns:kind", stored["id"])
     path.write_text(path.read_text().replace('"subject"', '"subject_x"'))
-    from canon.store import StoreError
+    from orchestra.canon.store import StoreError
 
     with pytest.raises(StoreError, match="tamper"):
         store.read_record("ns:kind", stored["id"])

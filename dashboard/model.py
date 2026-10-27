@@ -10,10 +10,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from canon.derive import attach_derived_all
-from canon.project import Project
-from canon.query import QueryError, parse_where, subject_matches, where_matches
-from canon.store import StoreError
+from orchestra.canon.derive import attach_derived_all
+from orchestra.canon.project import Project
+from orchestra.canon.query import QueryError, parse_where, subject_matches, where_matches
+from orchestra.canon.store import StoreError
 
 RECENT = timedelta(hours=24)
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
@@ -26,14 +26,14 @@ COUNTED_TASK_STATES = ("planned", "in_progress", "done")
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 TOKEN_DIRS = ("records", "history")
 FULL_TYPES = (
-    "plan:continuity-question", "aff:finding", "aff:check-run", "plan:work-item",
-    "plan:phase", "plan:specification", "run:assessment", "run:integration-report",
-    "run:proof-packet", "plan:backlog-item",
+    "score:continuity-question", "tuner:finding", "tuner:check-run", "score:work-item",
+    "score:phase", "score:specification", "conductor:assessment", "conductor:integration-report",
+    "conductor:proof-packet", "score:backlog-item",
 )
 SOFT_TYPES = frozenset({
-    "plan:specification", "plan:design", "run:assessment", "run:integration-report",
-    "run:proof-packet", "run:release", "plan:position", "plan:backlog-item",
-    "plan:milestone",
+    "score:specification", "score:design", "conductor:assessment", "conductor:integration-report",
+    "conductor:proof-packet", "conductor:release", "score:position", "score:backlog-item",
+    "score:milestone",
 })
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
 LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
@@ -125,7 +125,7 @@ class BacklogItem:
     source: str = ""
     phase: str = ""
     body: str = ""
-    record_type: str = "plan:backlog-item"
+    record_type: str = "score:backlog-item"
 
 
 @dataclass(frozen=True)
@@ -286,12 +286,12 @@ def _list(
 
 
 _SNAPSHOT_TYPES = (
-    "plan:effort", "plan:phase", "plan:milestone", "plan:work-item",
-    "plan:continuity-question",
-    "aff:finding", "aff:check-run", "run:assignment", "run:assignment-amendment",
-    "run:execution-report",
-    "plan:specification", "plan:design", "run:assessment", "run:integration-report", "run:release",
-    "plan:position", "plan:backlog-item",
+    "score:effort", "score:phase", "score:milestone", "score:work-item",
+    "score:continuity-question",
+    "tuner:finding", "tuner:check-run", "conductor:assignment", "conductor:assignment-amendment",
+    "conductor:execution-report",
+    "score:specification", "score:design", "conductor:assessment", "conductor:integration-report", "conductor:release",
+    "score:position", "score:backlog-item",
 )
 
 
@@ -876,7 +876,7 @@ def _backlog_items(records: list[dict[str, Any]]) -> list[BacklogItem]:
             source=payload.get("source") or "",
             phase=payload.get("phase") or "",
             body=record.get("body") or "",
-            record_type=record.get("record_type") or "plan:backlog-item",
+            record_type=record.get("record_type") or "score:backlog-item",
         ))
     items.sort(key=lambda item: (item.subject, item.id))
     return items
@@ -1185,21 +1185,21 @@ def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
     now = now or datetime.now(timezone.utc)
     token = change_token(target)
     listed = _list_all(target, _SNAPSHOT_TYPES)
-    aliases = _merge_aliases(listed["plan:effort"])
+    aliases = _merge_aliases(listed["score:effort"])
     listed = {record_type: _remapped(records, aliases) for record_type, records in listed.items()}
     goals = [
-        r for r in listed["plan:effort"]
+        r for r in listed["score:effort"]
         if r["lifecycle_state"] == "active" and _payload(r).get("status") != "closed"
     ]
-    phases = _by_effort(listed["plan:phase"])
-    milestones = _by_effort(listed.get("plan:milestone") or [])
-    all_tasks = listed["plan:work-item"]
+    phases = _by_effort(listed["score:phase"])
+    milestones = _by_effort(listed.get("score:milestone") or [])
+    all_tasks = listed["score:work-item"]
     tasks = _by_effort(all_tasks)
-    questions = _by_effort(listed["plan:continuity-question"], "subject")
-    findings = _by_effort(listed["aff:finding"])
-    checks_all = listed["aff:check-run"]
+    questions = _by_effort(listed["score:continuity-question"], "subject")
+    findings = _by_effort(listed["tuner:finding"])
+    checks_all = listed["tuner:check-run"]
     checks = _by_effort(checks_all)
-    acceptances_all = _remapped(_list(target, "plan:acceptance"), aliases)
+    acceptances_all = _remapped(_list(target, "score:acceptance"), aliases)
     acceptances = _by_effort(acceptances_all)
     acceptances_by_id = {record["id"]: record for record in acceptances_all}
     efforts_by_work_item = {}
@@ -1207,13 +1207,13 @@ def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
         entry = (_payload(task).get("effort"), task["subject"])
         efforts_by_work_item[task["id"]] = entry
         efforts_by_work_item.setdefault(task["subject"], entry)
-    specs = listed["plan:specification"]
-    designs = listed["plan:design"]
-    assessments = listed["run:assessment"]
-    integrations = listed["run:integration-report"]
-    releases = listed["run:release"]
-    backlog_by_effort = _by_effort(listed.get("plan:backlog-item") or [])
-    decisions = _remapped(_list(target, "plan:decision"), aliases) if designs else []
+    specs = listed["score:specification"]
+    designs = listed["score:design"]
+    assessments = listed["conductor:assessment"]
+    integrations = listed["conductor:integration-report"]
+    releases = listed["conductor:release"]
+    backlog_by_effort = _by_effort(listed.get("score:backlog-item") or [])
+    decisions = _remapped(_list(target, "score:decision"), aliases) if designs else []
     structured = _structured_phases(specs)
     specs_by_effort = _by_effort(specs)
     designs_by_effort = _by_effort(designs)
@@ -1222,12 +1222,12 @@ def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
     releases_by_effort = _by_effort(releases)
     decisions_by_effort = _by_effort(decisions)
     activity = _activity(
-        listed["run:assignment"], listed["run:execution-report"], checks_all,
+        listed["conductor:assignment"], listed["conductor:execution-report"], checks_all,
         efforts_by_work_item, now - RECENT, assessments, integrations, releases, structured,
     )
     positions = {
         record["subject"]: _payload(record).get("position", "")
-        for record in listed["plan:position"]
+        for record in listed["score:position"]
         if record["lifecycle_state"] == "active"
         and _payload(record).get("status") != "closed"
         and _payload(record).get("scope") == "effort"
@@ -1269,9 +1269,9 @@ def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
             milestones=milestone_rows,
             tasks=_task_rows(
                 effort_tasks,
-                listed["run:assignment"],
-                listed["run:assignment-amendment"],
-                listed["run:execution-report"],
+                listed["conductor:assignment"],
+                listed["conductor:assignment-amendment"],
+                listed["conductor:execution-report"],
                 effort_checks,
                 phases.get(effort, []),
             ),
@@ -1397,10 +1397,10 @@ class TaskDetail:
 
 
 RELATED_TEXT = {
-    "aff:finding": ("finding", "claim"),
-    "plan:decision": ("decision", "choice"),
-    "run:failed-attempt": ("failed-attempt", "attempted_action"),
-    "aff:investigation-observation": ("observation", "what_was_observed"),
+    "tuner:finding": ("finding", "claim"),
+    "score:decision": ("decision", "choice"),
+    "conductor:failed-attempt": ("failed-attempt", "attempted_action"),
+    "tuner:investigation-observation": ("observation", "what_was_observed"),
 }
 INACTIVE_STATES = ("superseded", "retracted")
 
@@ -1522,36 +1522,36 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     `get` yields the subject, effort, body, and outbound depends_on; one `list --subject --full`
     yields every record for the slug; one work-item `list` for the effort names linked tasks; one goal `list` maps merged efforts.
     """
-    item = _run(target, "get", "--type", "plan:work-item", "--id", work_item_id)
+    item = _run(target, "get", "--type", "score:work-item", "--id", work_item_id)
     if "subject" not in item:
-        raise ModelError(f"get plan:work-item {work_item_id} returned unreadable output")
-    aliases = _merge_aliases(_list(target, "plan:effort"))
+        raise ModelError(f"get score:work-item {work_item_id} returned unreadable output")
+    aliases = _merge_aliases(_list(target, "score:effort"))
     item = _remapped([item], aliases)[0]
     slug, payload = item["subject"], _payload(item)
     effort = payload.get("effort", "")
     records = _remapped(_run(target, "list", "--subject", slug, "--full").get("records", []), aliases)
-    efforts = _run(target, "list", "--type", "plan:work-item", "--where", f"payload.effort={effort}")
+    efforts = _run(target, "list", "--type", "score:work-item", "--where", f"payload.effort={effort}")
     rows = {row.id: row for row in _task_rows(efforts.get("records", []))}
     by_subject = {row.subject: row for row in rows.values()}
     mine = next((r for r in records if r["id"] == work_item_id), item)
-    others = [r["subject"] for r in records if r["record_type"] == "plan:work-item" and r["id"] != work_item_id]
+    others = [r["subject"] for r in records if r["record_type"] == "score:work-item" and r["id"] != work_item_id]
     names = {work_item_id, slug}
     of_type: dict[str, list[dict[str, Any]]] = {}
     for record in records:
         if record["id"] != work_item_id and _belongs(record, slug, effort, others):
             of_type.setdefault(record["record_type"], []).append(record)
-    assignments = [r for r in of_type.get("run:assignment", []) if _refers_to(r, "work_item", names)]
+    assignments = [r for r in of_type.get("conductor:assignment", []) if _refers_to(r, "work_item", names)]
     assignment_names = names | {r["id"] for r in assignments} | {r["subject"] for r in assignments}
-    amendments = [r for r in of_type.get("run:assignment-amendment", []) if _refers_to(r, "assignment", assignment_names)]
-    reports = [r for r in of_type.get("run:execution-report", []) if _refers_to(r, "work_item", names)]
-    checks = of_type.get("aff:check-run", [])
+    amendments = [r for r in of_type.get("conductor:assignment-amendment", []) if _refers_to(r, "assignment", assignment_names)]
+    reports = [r for r in of_type.get("conductor:execution-report", []) if _refers_to(r, "work_item", names)]
+    checks = of_type.get("tuner:check-run", [])
     latest = _latest_checks(checks)
     acceptances = [
         AcceptanceRow(
             r["id"], r["subject"], _payload(r).get("criterion", ""), _payload(r).get("method", ""),
             _payload(r).get("verify_command", ""), latest.get(r["id"]),
         )
-        for r in sorted(of_type.get("plan:acceptance", []), key=_recorded_at)
+        for r in sorted(of_type.get("score:acceptance", []), key=_recorded_at)
     ]
     related = [
         RelatedRecord(kind, r["id"], r["subject"], _payload(r).get(field, ""))
@@ -1665,9 +1665,9 @@ def load_decision_log(
     target: Project, effort: str, phase: str | None, history: bool,
 ) -> DecisionLog:
     """Phase- or effort-scoped decisions, with optional superseded chains (R7)."""
-    aliases = _merge_aliases(_list(target, "plan:effort"))
+    aliases = _merge_aliases(_list(target, "score:effort"))
     phase_records = [
-        record for record in _remapped(_list(target, "plan:phase"), aliases)
+        record for record in _remapped(_list(target, "score:phase"), aliases)
         if _payload(record).get("effort") == effort
     ]
     phase_records.sort(key=lambda record: (_payload(record).get("ordinal", 0), record["subject"]))
@@ -1677,14 +1677,14 @@ def load_decision_log(
     }
 
     listed = _remapped(
-        _list(target, "plan:decision", where=(f"payload.effort={effort}",), full=True),
+        _list(target, "score:decision", where=(f"payload.effort={effort}",), full=True),
         aliases,
     )
     by_id = {record["id"]: record for record in listed}
     if history:
         for record in _remapped(
             _list(
-                target, "plan:decision", state="superseded",
+                target, "score:decision", state="superseded",
                 where=(f"payload.effort={effort}",), full=True,
             ),
             aliases,
@@ -1720,30 +1720,30 @@ def load_decision_log(
 
 def load_phase_detail(target: Project, effort: str, phase_subject: str) -> PhaseDetail:
     """Load one phase with its body, decisions, constraints, and tasks."""
-    aliases = _merge_aliases(_list(target, "plan:effort"))
+    aliases = _merge_aliases(_list(target, "score:effort"))
 
     def by_effort(record_type: str) -> dict[str, list[dict[str, Any]]]:
         return _by_effort(_remapped(_list(target, record_type), aliases))
 
-    snapshot_phases = by_effort("plan:phase").get(effort, [])
+    snapshot_phases = by_effort("score:phase").get(effort, [])
     record = next((r for r in snapshot_phases if r["subject"] == phase_subject), None)
     if record is None:
         raise ModelError(f"phase {phase_subject} not found in {effort}")
-    item = _run(target, "get", "--type", "plan:phase", "--id", record["id"])
-    tasks = _by_effort(_list(target, "plan:work-item")).get(effort, [])
-    effort_acceptances = by_effort("plan:acceptance").get(effort, [])
-    effort_checks = by_effort("aff:check-run").get(effort, [])
-    decision_records = by_effort("plan:decision").get(effort, [])
+    item = _run(target, "get", "--type", "score:phase", "--id", record["id"])
+    tasks = _by_effort(_list(target, "score:work-item")).get(effort, [])
+    effort_acceptances = by_effort("score:acceptance").get(effort, [])
+    effort_checks = by_effort("tuner:check-run").get(effort, [])
+    decision_records = by_effort("score:decision").get(effort, [])
     row = next(
         (p for p in _phase_rows([record], tasks, effort_acceptances, effort_checks)),
         None,
     )
     phase_specs = _remapped(
-        _list(target, "plan:specification", where=(f"payload.phase={phase_subject}",), full=True),
+        _list(target, "score:specification", where=(f"payload.phase={phase_subject}",), full=True),
         aliases,
     )
     phase_designs = _remapped(
-        _list(target, "plan:design", where=(f"payload.phase={phase_subject}",), full=True),
+        _list(target, "score:design", where=(f"payload.phase={phase_subject}",), full=True),
         aliases,
     )
     spec = _newest(_for_phase(phase_specs, phase_subject, effort))
@@ -1753,9 +1753,9 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         phase_specs,
         phase_designs,
         decision_records, tasks, effort_acceptances, effort_checks,
-        by_effort("run:assessment").get(effort, []),
-        by_effort("run:integration-report").get(effort, []),
-        by_effort("run:release").get(effort, []),
+        by_effort("conductor:assessment").get(effort, []),
+        by_effort("conductor:integration-report").get(effort, []),
+        by_effort("conductor:release").get(effort, []),
     )
     decisions = [
         RelatedRecord("decision", r["id"], r["subject"], _payload(r).get("choice", ""))
@@ -1764,7 +1764,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     ]
     constraints = [
         RelatedRecord("constraint", r["id"], r["subject"], _payload(r).get("statement", ""))
-        for r in by_effort("plan:constraint").get(effort, [])
+        for r in by_effort("score:constraint").get(effort, [])
         if _payload(r).get("applies_to") == phase_subject and r["lifecycle_state"] not in INACTIVE_STATES
     ]
     payload = _payload(record)
@@ -1773,7 +1773,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     if milestone_slug:
         milestone_record = next(
             (
-                r for r in by_effort("plan:milestone").get(effort, [])
+                r for r in by_effort("score:milestone").get(effort, [])
                 if r["subject"] == milestone_slug and r["lifecycle_state"] in LIVE_PHASE_STATES
             ),
             None,
@@ -1785,7 +1785,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     proof_records = [
         r for r in _remapped(
             _list(
-                target, "run:proof-packet",
+                target, "conductor:proof-packet",
                 where=(f"payload.phase={phase_subject}",), full=True,
             ),
             aliases,
@@ -1824,14 +1824,14 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
 
 def load_requirement_detail(target: Project, effort: str, phase: str, requirement: str) -> RequirementDetail:
     """Load one requirement, including superseded assessments oldest first."""
-    aliases = _merge_aliases(_list(target, "plan:effort"))
+    aliases = _merge_aliases(_list(target, "score:effort"))
 
     def listed(record_type: str, state: str | None = None) -> list[dict[str, Any]]:
         return _remapped(_list(target, record_type, state=state), aliases)
 
-    specs = listed("plan:specification")
-    by_id = {record["id"]: record for record in listed("run:assessment")}
-    for record in listed("run:assessment", "superseded"):
+    specs = listed("score:specification")
+    by_id = {record["id"]: record for record in listed("conductor:assessment")}
+    for record in listed("conductor:assessment", "superseded"):
         by_id.setdefault(record["id"], record)
     history = [
         record for record in by_id.values()
@@ -1849,7 +1849,7 @@ def load_requirement_detail(target: Project, effort: str, phase: str, requiremen
     spec = _newest(_for_phase(specs, phase, effort))
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [
-        task for task in _traced_records(listed("plan:work-item"), phase, requirement)
+        task for task in _traced_records(listed("score:work-item"), phase, requirement)
         if _payload(task).get("effort") in (None, "", effort)
     ]
     traced.sort(key=lambda record: record["subject"])
@@ -1859,14 +1859,14 @@ def load_requirement_detail(target: Project, effort: str, phase: str, requiremen
             if subject not in subjects:
                 subjects.append(subject)
     acceptances = [
-        record for record in _for_phase(listed("plan:acceptance"), phase, effort)
+        record for record in _for_phase(listed("score:acceptance"), phase, effort)
         if _payload(record).get("requirement") == requirement
     ]
     acceptances.sort(key=_recorded_at)
-    latest_checks = _latest_checks(listed("aff:check-run"))
+    latest_checks = _latest_checks(listed("tuner:check-run"))
     return RequirementDetail(
         phase, requirement, text, status, nxt,
-        _choices(subjects, listed("plan:decision")),
+        _choices(subjects, listed("score:decision")),
         tuple(row for row in _task_rows(traced) if row.phase == phase),
         tuple(
             AcceptanceRow(

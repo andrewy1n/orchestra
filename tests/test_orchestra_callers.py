@@ -11,15 +11,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conftest import AFFIDAVIT_ROOT
 from orchestra import close_batch
 
 ROOT = Path(__file__).resolve().parents[1]
+CANON_ROOT = ROOT / "orchestra" / "canon"
 CLAIM_ID = "claim-widget"
-_OLD_MODULES = ("orchestra.aa", "orchestra.aa_resolve", "dashboard.artifact_store")
+_OLD_MODULES = ("orchestra.aa_resolve", "dashboard.artifact_store")
 _OLD_NAMES = frozenset({"aa_command", "resolve_aa_command"})
 _RESOLUTION_MARKERS = ("SE_WORKFLOW_STORE", "store-binding.json", "store-binding.local.json")
-_CLI_NAMES = frozenset({"adaptive-artifacts", "artifacts.py"})
+_CLI_NAMES = frozenset({"artifacts.py"})
 
 
 def _python_files(directory: Path) -> list[Path]:
@@ -80,7 +80,7 @@ def _open_store_bindings(tree: ast.AST) -> tuple[set[str], set[str]]:
     aliases: set[str] = set()
     modules: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "canon.project":
+        if isinstance(node, ast.ImportFrom) and node.module == "orchestra.canon.project":
             for alias in node.names:
                 if alias.name == "open_store":
                     aliases.add(alias.asname or alias.name)
@@ -92,7 +92,7 @@ def _open_store_bindings(tree: ast.AST) -> tuple[set[str], set[str]]:
                     modules.add(alias.asname or alias.name)
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name == "canon.project":
+                if alias.name == "orchestra.canon.project":
                     modules.add(alias.asname or alias.name)
                 elif alias.name == "canon":
                     bound = alias.asname or alias.name
@@ -150,6 +150,8 @@ def _store_access(directory: Path) -> tuple[list[str], list[str]]:
     offenders: list[str] = []
     callers: list[str] = []
     for path in _python_files(directory):
+        if CANON_ROOT in path.parents:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         rel = path.relative_to(ROOT).as_posix()
         if _calls_open_store(tree):
@@ -163,16 +165,10 @@ def _module(name: str):
     try:
         return importlib.import_module(name)
     except ImportError:
-        fallback = AFFIDAVIT_ROOT
-        if (fallback / "affidavit" / "__init__.py").is_file() and str(fallback) not in sys.path:
-            sys.path.insert(0, str(fallback))
-        try:
-            return importlib.import_module(name)
-        except ImportError:
-            return None
+        return None
 
 
-def _aff_argv(cmd) -> list[str] | None:
+def _tuner_argv(cmd) -> list[str] | None:
     if isinstance(cmd, bytes):
         argv = os.fsdecode(cmd).split()
     elif isinstance(cmd, str):
@@ -184,11 +180,11 @@ def _aff_argv(cmd) -> list[str] | None:
     return None
 
 
-def _patch_aff(monkeypatch, started: list[list[str]]) -> None:
+def _patch_tuner(monkeypatch, started: list[list[str]]) -> None:
     real_run = subprocess.run
 
     def spy(cmd, *args, **kwargs):
-        argv = _aff_argv(cmd)
+        argv = _tuner_argv(cmd)
         if argv is not None:
             started.append(argv)
             return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
@@ -230,7 +226,7 @@ def _claim_acceptance() -> dict:
 
 
 def _write_manifest(repo: Path) -> None:
-    directory = repo / ".affidavit"
+    directory = repo / ".tuner"
     directory.mkdir(parents=True)
     (directory / "manifest.json").write_text(
         json.dumps(
@@ -416,8 +412,8 @@ def test_r5(tmp_path, monkeypatch):
     """R5: close_batch calls is_assertion_level_red and does not start aff for that check."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "affidavit.oracle_red", "is_assertion_level_red", calls)
-    _patch_aff(monkeypatch, started)
+    _spy(monkeypatch, "orchestra.tuner.oracle_red", "is_assertion_level_red", calls)
+    _patch_tuner(monkeypatch, started)
     request, acceptance = _oracle_request()
     try:
         close_batch.build_batch(
@@ -429,44 +425,44 @@ def test_r5(tmp_path, monkeypatch):
         )
     except Exception:
         pass
-    aff_red = [cmd for cmd in started if "assertion-red" in cmd]
+    tuner_red = [cmd for cmd in started if "assertion-red" in cmd]
     assert calls, (
         "close_batch did not call is_assertion_level_red; "
         f"aff starts={started!r}"
     )
-    assert not aff_red, f"close_batch started aff for assertion-level red: {aff_red!r}"
+    assert not tuner_red, f"close_batch started aff for assertion-level red: {tuner_red!r}"
 
 
 def test_r6(tmp_path, monkeypatch):
     """R6: close_batch calls run_verdict for a manifest claim and does not start aff."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "affidavit.verdict", "run_verdict", calls)
-    _spy(monkeypatch, "affidavit.binding", "recheck", [])
-    _patch_aff(monkeypatch, started)
+    _spy(monkeypatch, "orchestra.tuner.verdict", "run_verdict", calls)
+    _spy(monkeypatch, "orchestra.tuner.binding", "recheck", [])
+    _patch_tuner(monkeypatch, started)
     _write_manifest(tmp_path)
     _run_claim_close(tmp_path)
-    aff_verdict = [cmd for cmd in started if "verdict" in cmd]
+    tuner_verdict = [cmd for cmd in started if "verdict" in cmd]
     assert calls, f"close_batch did not call run_verdict; aff starts={started!r}"
-    assert not aff_verdict, f"close_batch started aff for verdict: {aff_verdict!r}"
+    assert not tuner_verdict, f"close_batch started aff for verdict: {tuner_verdict!r}"
 
 
 def test_r7(tmp_path, monkeypatch):
     """R7: close_batch calls recheck for a manifest claim and does not start aff."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "affidavit.verdict", "run_verdict", [])
-    _spy(monkeypatch, "affidavit.binding", "recheck", calls)
-    _patch_aff(monkeypatch, started)
+    _spy(monkeypatch, "orchestra.tuner.verdict", "run_verdict", [])
+    _spy(monkeypatch, "orchestra.tuner.binding", "recheck", calls)
+    _patch_tuner(monkeypatch, started)
     _write_manifest(tmp_path)
     _run_claim_close(tmp_path)
-    aff_recheck = [cmd for cmd in started if "recheck" in cmd]
+    tuner_recheck = [cmd for cmd in started if "recheck" in cmd]
     assert calls, f"close_batch did not call recheck; aff starts={started!r}"
-    assert not aff_recheck, f"close_batch started aff for recheck: {aff_recheck!r}"
+    assert not tuner_recheck, f"close_batch started aff for recheck: {tuner_recheck!r}"
 
 
 def test_r9(tmp_path, monkeypatch):
-    """R9: a claim-backed close names affidavit when affidavit is not importable."""
+    """R9: a claim-backed close names tuner when tuner is not importable."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     aff = bin_dir / "aff"
@@ -477,24 +473,24 @@ def test_r9(tmp_path, monkeypatch):
     saved = {
         key: sys.modules.pop(key)
         for key in list(sys.modules)
-        if key == "affidavit" or key.startswith("affidavit.")
+        if key == "orchestra.tuner" or key.startswith("orchestra.tuner.")
     }
 
-    class _BlockAffidavit:
+    class _BlockTuner:
         def find_spec(self, fullname, path, target=None):
-            if fullname == "affidavit" or fullname.startswith("affidavit."):
+            if fullname == "orchestra.tuner" or fullname.startswith("orchestra.tuner."):
                 raise ModuleNotFoundError(f"No module named {fullname!r}")
             return None
 
-    blocker = _BlockAffidavit()
+    blocker = _BlockTuner()
     sys.meta_path.insert(0, blocker)
     repo = tmp_path / "repo"
     repo.mkdir()
     _write_manifest(repo)
     try:
         error = _run_claim_close(repo)
-        assert error is not None and "affidavit" in str(error).lower(), (
-            f"claim-backed close did not name affidavit: {error!r}"
+        assert error is not None and "tuner" in str(error).lower(), (
+            f"claim-backed close did not name tuner: {error!r}"
         )
     finally:
         if blocker in sys.meta_path:
@@ -503,7 +499,8 @@ def test_r9(tmp_path, monkeypatch):
 
 
 def test_r10():
-    """R10: pyproject.toml declares a dependency on canon."""
+    """R10: canon ships inside the orchestra distribution, not as a dependency."""
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     names = _dependency_names(text)
-    assert "canon" in names, f"project.dependencies={names!r}"
+    assert "canon" not in names, f"project.dependencies={names!r}"
+    assert '"orchestra.canon"' in text

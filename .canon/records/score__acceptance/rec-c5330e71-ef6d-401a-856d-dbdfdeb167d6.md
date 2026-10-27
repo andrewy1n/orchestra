@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-c5330e71-ef6d-401a-856d-dbdfdeb167d6",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "Done phase header rows show the disclosure marker and no check glyph",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "quiet-header",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k done_phases_collapse"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-03T09:53:37+00:00",
+  "relationships": {},
+  "revision": "sha256:4bf60646e652c1cbe255fb0dfedb4f9ad7b1b455af4d528190548366e6b2792f",
+  "subject": "header-chrome-headers",
+  "time": {
+    "as_of": "2026-10-03T09:53:37+00:00"
+  }
+}
+---
+

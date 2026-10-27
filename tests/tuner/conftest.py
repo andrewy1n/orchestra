@@ -1,4 +1,4 @@
-"""Shared fixtures: disposable git repos with a canon store (plan, run, aff)."""
+"""Shared fixtures: disposable git repos with a canon store (score, conductor, tuner)."""
 
 from __future__ import annotations
 
@@ -14,29 +14,26 @@ import pytest
 os.environ.setdefault("TEXTUAL_ANIMATIONS", "none")
 
 TESTS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = TESTS_DIR.parent
-
-_DEFAULT_CANON_ROOT = Path.home() / "adaptive-artifacts"
-CANON_ROOT = Path(os.environ.get("CANON_ROOT", str(_DEFAULT_CANON_ROOT))).expanduser().resolve()
-
+REPO_ROOT = TESTS_DIR.parents[1]
+SCHEMA_FILES = (
+    REPO_ROOT / "orchestra" / "schemas" / "score.json",
+    REPO_ROOT / "orchestra" / "schemas" / "conductor.json",
+    REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
+)
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "tmux: drives a real tmux server; run serially")
-    if not (CANON_ROOT / "src" / "canon").is_dir():
-        raise pytest.UsageError(
-            f"canon not found at {CANON_ROOT}. "
-            "Set CANON_ROOT to a checkout of canon (the adaptive-artifacts repo) "
-            f"or check one out at {_DEFAULT_CANON_ROOT}."
-        )
-    src = str(CANON_ROOT / "src")
+    root = str(REPO_ROOT)
     paths = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
-    if src not in paths:
-        os.environ["PYTHONPATH"] = os.pathsep.join([src, *paths])
-        sys.path.insert(0, src)
+    if root not in paths:
+        os.environ["PYTHONPATH"] = os.pathsep.join([root, *paths])
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    os.environ.setdefault("CANON_SCHEMA_PATH", os.pathsep.join(str(f) for f in SCHEMA_FILES))
 
 
 def run_cli(*args: str, root: Path | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    cmd = [sys.executable, "-m", "canon"]
+    cmd = [sys.executable, "-m", "orchestra.canon"]
     if root is not None:
         cmd.extend(["--root", str(root)])
     cmd.extend(args)
@@ -48,7 +45,7 @@ def git(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def make_git_repo() -> Path:
-    root = Path(tempfile.mkdtemp(prefix="affidavit-test-"))
+    root = Path(tempfile.mkdtemp(prefix="tuner-test-"))
     git(root, "init", "-q")
     git(root, "config", "user.email", "test@example.com")
     git(root, "config", "user.name", "test")
@@ -58,13 +55,13 @@ def make_git_repo() -> Path:
 
 def build_store() -> Path:
     root = make_git_repo()
-    init_result = run_cli("init", "--schemas", "plan,run,aff", root=root)
+    init_result = run_cli("init", "--schemas", "score,conductor,tuner", root=root)
     assert init_result.returncode == 0, init_result.stdout + init_result.stderr
     return root
 
 
 def copy_store(template: Path) -> Path:
-    root = Path(tempfile.mkdtemp(prefix="affidavit-test-"))
+    root = Path(tempfile.mkdtemp(prefix="tuner-test-"))
     shutil.copytree(template, root, symlinks=True, dirs_exist_ok=True)
     return root
 

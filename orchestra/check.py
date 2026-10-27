@@ -1,4 +1,4 @@
-"""Implement `aff check`: run verify_command and write a check-run."""
+"""Implement `orchestra check`: run verify_command and write a check-run."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from canon.project import StoreBindingError, open_store
-from canon.store import StoreError
-from canon.validation import ValidationError
+from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.store import StoreError
+from orchestra.canon.validation import ValidationError
 from orchestra.policy import (
     dirty_pass_decision,
     manual_refuse_message,
@@ -90,15 +90,15 @@ def run_verify_command(
             out += exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode("utf-8", "replace")
         if exc.stderr:
             out += exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode("utf-8", "replace")
-        out += f"\n[aff check] timed out after {timeout}s\n"
+        out += f"\n[orchestra check] timed out after {timeout}s\n"
         return None, duration, out, True, False
     except FileNotFoundError:
         duration = time.monotonic() - started
-        return None, duration, f"[aff check] command not found: {command!r}\n", False, True
+        return None, duration, f"[orchestra check] command not found: {command!r}\n", False, True
     except OSError as exc:
         duration = time.monotonic() - started
         # shell=True usually absorbs missing binaries as non-zero; treat other OS errors as blocked
-        return None, duration, f"[aff check] could not run command: {exc}\n", False, True
+        return None, duration, f"[orchestra check] could not run command: {exc}\n", False, True
 
 
 def _output_sha256(output: str) -> str:
@@ -153,7 +153,7 @@ def run_check(
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     try:
-        acceptance = project.get(acceptance_id, "plan:acceptance")
+        acceptance = project.get(acceptance_id, "score:acceptance")
     except StoreError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
@@ -238,7 +238,7 @@ def run_check(
 
     try:
         record = project.create(
-            record_type="aff:check-run",
+            record_type="tuner:check-run",
             subject=acceptance.get("subject") or acceptance["id"],
             payload=check_payload,
             body=_body_tail(output),

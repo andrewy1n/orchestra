@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from affidavit.manifest import (
+from orchestra.tuner.manifest import (
     ALLOWLIST_PATH,
     MANIFEST_PATH,
     Claim,

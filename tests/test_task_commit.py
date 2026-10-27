@@ -80,8 +80,8 @@ def test_execute_phase_requires_a_commit_per_task_before_verify():
 def test_task_commit_excludes_artifacts_on_the_phase_branch():
     text = _text()
     assert "<repo>/.worktrees/<phase-slug>--<task-slug>" in text
-    assert "That commit excludes `.artifacts`" in text
-    assert "add -A -- . ':!.artifacts'" in text
+    assert "That commit excludes `.canon`" in text
+    assert "add -A -- . ':!.canon'" in text
 
 
 def test_subject_with_an_empty_body_fails():

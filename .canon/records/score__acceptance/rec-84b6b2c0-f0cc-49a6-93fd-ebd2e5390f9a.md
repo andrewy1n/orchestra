@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-84b6b2c0-f0cc-49a6-93fd-ebd2e5390f9a",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "The full non-tmux and tmux test suites pass",
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "human-gates",
+    "requirement": "R11",
+    "verify_command": "uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m \"not tmux\" && uv run --with textual --with pytest python -m pytest tests -q -m tmux"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-09T20:44:19+00:00",
+  "relationships": {},
+  "revision": "sha256:56ac46318e75e292c5e7df830e0abaab6479144e23e95170911d8af787b96d43",
+  "subject": "verify-human-gates-suite",
+  "time": {
+    "as_of": "2026-10-09T20:44:19+00:00"
+  }
+}
+---
+

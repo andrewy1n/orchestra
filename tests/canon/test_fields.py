@@ -4,8 +4,8 @@ import copy
 
 import pytest
 
-from canon.schema import SchemaError, SchemaSet, validate_module
-from canon.validation import ValidationError
+from orchestra.canon.schema import SchemaError, SchemaSet, validate_module
+from orchestra.canon.validation import ValidationError
 from conftest import ALPHA, BETA, PLAN_BODY, make_task
 
 
@@ -89,14 +89,14 @@ def test_optional_fields_may_be_absent(project):
 
 
 def test_payload_must_be_an_object(project):
-    from canon.store import StoreError
+    from orchestra.canon.store import StoreError
 
     with pytest.raises(StoreError, match="JSON object"):
         project.create(record_type="alpha:config", subject="c", payload=["x"])
 
 
 def test_subject_is_required_and_has_no_whitespace(project):
-    from canon.store import StoreError
+    from orchestra.canon.store import StoreError
 
     with pytest.raises(StoreError, match="missing subject"):
         project.create(record_type="alpha:config", subject="", payload={"title": "t", "level": 1})

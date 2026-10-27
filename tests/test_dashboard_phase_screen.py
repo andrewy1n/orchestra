@@ -19,7 +19,7 @@ from conftest import REPO_ROOT, stamped_store  # noqa: E402
 import sys
 
 sys.path.insert(0, str(REPO_ROOT))
-from canon.project import open_store  # noqa: E402
+from orchestra.canon.project import open_store  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from dashboard import model as model_module  # noqa: E402
 from dashboard import pager  # noqa: E402
@@ -67,15 +67,15 @@ def defs(resolved_contract):
 
 def _phase(cli, defs, effort, subject, ordinal, *states):
     record = h.create_generic_record(
-        cli, defs, "plan:phase", subject=subject,
+        cli, defs, "score:phase", subject=subject,
         extra_payload={"title": f"Phase {subject}", "ordinal": ordinal, "effort": effort},
     )
-    h.transition(cli, "plan:phase", record, *states)
+    h.transition(cli, "score:phase", record, *states)
 
 
 def _goal(cli, defs, effort="alpha"):
     h.create_generic_record(
-        cli, defs, "plan:effort", subject=effort,
+        cli, defs, "score:effort", subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
     )
 
@@ -144,7 +144,7 @@ def _seed_structured(cli, defs):
     _phase(cli, defs, "alpha", "focus", 2, "in_progress")
     _spec(cli, defs, "focus", "R1, R2", weight="full", body=STRUCTURED_SPEC, non_goals="Keep it small.")
     _decision(cli, defs, "use-panes", "focus", "tabbed")
-    _record(cli, defs, "plan:design", "focus", {
+    _record(cli, defs, "score:design", "focus", {
         "phase": "focus", "effort": "alpha", "decisions": ["use-panes"],
     }, STRUCTURED_DESIGN)
     _task(cli, defs, "focus-a", "focus", "R1")
@@ -155,10 +155,10 @@ def _seed_structured(cli, defs):
     _task(cli, defs, "next-task", "next", "R1")
     _phase(cli, defs, "alpha", "simple", 4, "in_progress")
     _task(cli, defs, "simple-task", "simple")
-    _record(cli, defs, "plan:constraint", "simple-limit", {
+    _record(cli, defs, "score:constraint", "simple-limit", {
         "statement": "no network", "applies_to": "simple", "effort": "alpha",
     })
-    _record(cli, defs, "plan:decision", "simple-choice", {
+    _record(cli, defs, "score:decision", "simple-choice", {
         "choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "simple",
     })
 
@@ -340,10 +340,10 @@ def test_decision_expand_and_effort_history_toggles(structured, cli, defs):
     from test_dashboard_model import _supersede
 
     listed = json.loads(
-        cli("list", "--type", "plan:decision", "--where", "payload.phase=focus", "--full").stdout
+        cli("list", "--type", "score:decision", "--where", "payload.phase=focus", "--full").stdout
     )["records"]
     active = next(r for r in listed if r["subject"] == "use-panes")
-    _supersede(cli, defs, "plan:decision", active, {"choice": "tabbed-v2"})
+    _supersede(cli, defs, "score:decision", active, {"choice": "tabbed-v2"})
 
     async def scenario(app, pilot):
         app.select_phase("alpha", "focus")
@@ -607,7 +607,7 @@ def test_pager_pages_current_tab_and_removes_temp_file(structured, tmp_path, mon
         recorded_path_line, _, contents = out.read_text(encoding="utf-8").partition("\n")
         recorded = Path(recorded_path_line)
         assert recorded.suffix == ".md"
-        assert ".artifacts" not in recorded.parts
+        assert ".canon" not in recorded.parts
         assert "first holds" in contents or "Requirements" in contents or "Keep it small" in contents
         assert not recorded.exists()
 

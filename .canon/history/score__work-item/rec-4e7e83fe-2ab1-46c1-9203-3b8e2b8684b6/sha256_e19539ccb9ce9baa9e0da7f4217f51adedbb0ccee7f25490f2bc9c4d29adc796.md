@@ -1,0 +1,49 @@
+---
+{
+  "id": "rec-4e7e83fe-2ab1-46c1-9203-3b8e2b8684b6",
+  "lifecycle_state": "planned",
+  "payload": {
+    "assignee": "",
+    "decisions": [
+      "library-facade",
+      "store-resolution",
+      "call-style",
+      "three-repos"
+    ],
+    "depends_on": [
+      "open-store",
+      "project-ops",
+      "command-facade"
+    ],
+    "effort": "library-boundary",
+    "estimate_minutes": 8,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "aa-library",
+    "requirements": [
+      "R14",
+      "R20",
+      "R21"
+    ],
+    "size": "S",
+    "title": "Verify public store library and one opener"
+  },
+  "record_type": "score:work-item",
+  "recorded_at": "2026-10-21T08:48:25+00:00",
+  "relationships": {},
+  "revision": "sha256:e19539ccb9ce9baa9e0da7f4217f51adedbb0ccee7f25490f2bc9c4d29adc796",
+  "subject": "verify-aa-library"
+}
+---
+
+## Description
+
+Prove the phase exit criteria hold together: the command creates and reads a record with no `--store` in the store `open_store` would open, and the package does not read `SE_WORKFLOW_STORE`.
+
+R20: `adaptive-artifacts create` without `--store` writes into the store `open_store` would open for the process working directory.
+R21: `adaptive-artifacts get` without `--store` reads from that same store.
+R14: The adaptive-artifacts package does not read `SE_WORKFLOW_STORE`.
+
+## Approach
+
+Run the integration checks through the `adaptive-artifacts` command and the package scan. Do not edit the tree. Return fail if any check fails.

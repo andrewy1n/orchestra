@@ -1,10 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["fastapi", "uvicorn", "textual>=0.80", "canon"]
-#
-# [tool.uv.sources]
-# canon = { path = "../../../adaptive-artifacts", editable = true }
+# dependencies = ["fastapi", "uvicorn", "textual>=0.80"]
 # ///
 """Loopback FastAPI server for the project's artifact store.
 
@@ -18,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from canon.project import StoreBindingError, open_store  # noqa: E402
+from orchestra.canon.project import StoreBindingError, open_store  # noqa: E402
 from dashboard.web.app import create_app  # noqa: E402
 
 HOST = "127.0.0.1"

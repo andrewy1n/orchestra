@@ -11,7 +11,7 @@ import json
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, make_git_repo, run_cli
+from conftest import make_git_repo, run_cli
 
 _DEFS = h.schema_defs()
 _RECORD_IDS = sorted(_DEFS)
@@ -34,8 +34,8 @@ def _ref_cases():
     return cases
 
 
-def test_namespaces_cover_plan_run_aff():
-    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"plan", "run", "aff"}
+def test_namespaces_cover_score_conductor_tuner():
+    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"score", "conductor", "tuner"}
 
 
 @pytest.mark.parametrize("record_id", _RECORD_IDS)
@@ -97,9 +97,9 @@ def test_reference_to_a_real_record_is_accepted(cli, record_id, field):
 
 
 _APPROVAL_OPTIONAL_NOTES = (
-    ("plan:continuity-question", "answer"),
-    ("aff:check-run", "signed_note"),
-    ("aff:finding", "resolution_note"),
+    ("score:continuity-question", "answer"),
+    ("tuner:check-run", "signed_note"),
+    ("tuner:finding", "resolution_note"),
 )
 
 
@@ -119,14 +119,14 @@ def test_approval_optional_payload_note_fields_accepted(cli, record_id, field):
 
 
 def test_effort_has_no_scope_and_position_keeps_it():
-    assert "scope" not in _DEFS["plan:effort"]["fields"]
-    assert "scope" in _DEFS["plan:position"]["fields"]
+    assert "scope" not in _DEFS["score:effort"]["fields"]
+    assert "scope" in _DEFS["score:position"]["fields"]
 
 
 def test_staged_types_take_depends_on_subjects(cli):
-    first = h.create_generic_record(cli, _DEFS, "plan:work-item")
+    first = h.create_generic_record(cli, _DEFS, "score:work-item")
     second = h.create_generic_record(
-        cli, _DEFS, "plan:work-item", extra_payload={"depends_on": [first["subject"]]}
+        cli, _DEFS, "score:work-item", extra_payload={"depends_on": [first["subject"]]}
     )
     assert second["payload"]["depends_on"] == [first["subject"]]
 
@@ -135,7 +135,7 @@ def test_phase_gate_defaults_to_mode_none(tmp_path):
     from orchestra import suite
 
     repo = make_git_repo()
-    assert run_cli("init", "--schemas", "plan,run,aff", root=repo).returncode == 0
+    assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0
     policy = suite.load_suite_policy(repo)
     assert policy.mode == "none"
     assert policy.gate == "required"
@@ -145,11 +145,11 @@ def test_phase_gate_reads_store_config():
     from orchestra import suite
 
     repo = make_git_repo()
-    assert run_cli("init", "--schemas", "plan,run,aff", root=repo).returncode == 0
-    config_path = repo / ".artifacts" / "config.json"
+    assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0
+    config_path = repo / ".canon" / "config.json"
     config = json.loads(config_path.read_text())
     config["settings"] = {
-        "run": {"phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}}
+        "conductor": {"phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}}
     }
     config_path.write_text(json.dumps(config))
     policy = suite.load_suite_policy(repo)

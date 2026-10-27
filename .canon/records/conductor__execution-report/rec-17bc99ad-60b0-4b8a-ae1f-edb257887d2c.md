@@ -1,0 +1,36 @@
+---
+{
+  "id": "rec-17bc99ad-60b0-4b8a-ae1f-edb257887d2c",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "assignment": "kind-enforcement",
+    "result": "pass",
+    "revision": "2c6d4575f86acb22f0e6af5f4ce60051888bcb2d",
+    "verdict": "pass",
+    "work_item": "kind-enforcement"
+  },
+  "provenance": {
+    "sources": [
+      "kind-enforcement"
+    ]
+  },
+  "record_type": "conductor:execution-report",
+  "recorded_at": "2026-10-18T03:49:04+00:00",
+  "relationships": {},
+  "revision": "sha256:195d400816912bef19e6eefb9e47c7f406fde25626bffe9e0c660f2546e844ac",
+  "subject": "kind-enforcement",
+  "time": {
+    "observed": "2026-10-18T03:49:04+00:00",
+    "recorded": "2026-10-18T03:49:04+00:00"
+  }
+}
+---
+
+subject: kind-enforcement
+kind: deliver
+result: pass
+revision: 2c6d4575f86acb22f0e6af5f4ce60051888bcb2d
+evidence: python3 -m pytest tests/test_evidence_kind.py -q -> 3 passed in 5.89s; regression run of verdict/standalone_cli/runner/manifest/amendment/attestation/lint/provenance tests -> 70 passed in 21.76s
+observations: new affidavit/evidence_kind.py; Claim.evidence_kind in manifest.py; kind check in verdict.py; aff runner-template and ManifestError handling in cli.py
+verdict: pass
+needs_human: false

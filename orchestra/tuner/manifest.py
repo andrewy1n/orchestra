@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-MANIFEST_PATH = ".affidavit/manifest.json"
-ALLOWLIST_PATH = ".affidavit/allowed_signers"
+MANIFEST_PATH = ".tuner/manifest.json"
+ALLOWLIST_PATH = ".tuner/allowed_signers"
 DEFAULT_RUNNER = (
     "python3",
     "-m",
@@ -85,7 +85,7 @@ def merge_base(cwd: Path | str, at: str, main: str = "main") -> str:
 
 
 def load_manifest(cwd: Path | str, revision: str) -> Manifest:
-    """Load ``.affidavit/manifest.json`` from ``revision``.
+    """Load ``.tuner/manifest.json`` from ``revision``.
 
     ``claims`` become ``Claim`` values (id, text, node-id tests, and
     ``oracle_hashes``). ``amendments`` are returned as parsed objects with
@@ -106,7 +106,7 @@ def load_manifest(cwd: Path | str, revision: str) -> Manifest:
 
 
 def load_allowlist(cwd: Path | str, revision: str) -> bytes:
-    """Return the raw ``.affidavit/allowed_signers`` blob at ``revision``."""
+    """Return the raw ``.tuner/allowed_signers`` blob at ``revision``."""
     commit = resolve_commit(cwd, revision)
     try:
         return _show_blob(cwd, commit, ALLOWLIST_PATH)
@@ -187,7 +187,7 @@ def _parse_claim(raw: Any, index: int) -> Claim:
         raise ManifestError(f"claims[{index}].tests must be a list of node ids")
     if not isinstance(hashes, dict):
         raise ManifestError(f"claims[{index}].oracle_hashes must be an object")
-    from affidavit.evidence_kind import DEFAULT_KIND, KINDS
+    from orchestra.tuner.evidence_kind import DEFAULT_KIND, KINDS
 
     kind = raw.get("evidence_kind", DEFAULT_KIND)
     if kind not in KINDS:

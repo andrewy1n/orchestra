@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from canon.merge import MergeError, merge_store
-from canon.oplog import fold, read_ops
-from canon.project import open_store
-from canon.record_file import load_record
-from canon.revision import compute_revision
-from canon.store import Store
+from orchestra.canon.merge import MergeError, merge_store
+from orchestra.canon.oplog import fold, read_ops
+from orchestra.canon.project import open_store
+from orchestra.canon.record_file import load_record
+from orchestra.canon.revision import compute_revision
+from orchestra.canon.store import Store
 from conftest import ALPHA, BETA, PLAN_BODY, make_git_repo
 
 
@@ -243,7 +243,7 @@ class TestAborts:
 
 
 def test_invalid_result_exits_with_validation_status(cli, project, source, monkeypatch):
-    monkeypatch.setattr("canon.merge.validate_store", lambda *a, **k: ["boom"])
+    monkeypatch.setattr("orchestra.canon.merge.validate_store", lambda *a, **k: ["boom"])
     result = cli("merge", str(source.store_path), "--format", "json")
     assert result.code == 4
     assert result.json["status"] == "invalid" and result.json["errors"] == ["boom"]

@@ -1,4 +1,4 @@
-"""Dirty-pass and result-mapping policy for aff check."""
+"""Dirty-pass and result-mapping policy for orchestra check."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def dirty_pass_decision(
 
 def manual_refuse_message() -> str:
     return (
-        "Acceptance method is manual; aff check does not run it. "
+        "Acceptance method is manual; orchestra check does not run it. "
         "Record a check-run with method=manual and set signed_by for human sign-off "
         "(see verify-work)."
     )

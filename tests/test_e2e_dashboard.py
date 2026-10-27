@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import CANON_ROOT, REPO_ROOT, SCHEMAS, make_git_repo, run_cli
+from conftest import REPO_ROOT, SCHEMAS, make_git_repo, run_cli
 from test_dashboard_status import _goal, _work_item
 
 pytestmark = pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux is not installed")
@@ -44,10 +44,10 @@ def home(tmp_path):
 def adopted(home):
     repo = make_git_repo()
     try:
-        store = home / ".artifacts" / repo.name
+        store = home / ".canon" / repo.name
         result = run_cli("--store", str(store), "init", "--schemas", SCHEMAS, root=repo)
         assert result.returncode == 0, result.stdout + result.stderr
-        assert (store / "config.json").is_file() and not (repo / ".artifacts" / "config.json").exists()
+        assert (store / "config.json").is_file() and not (repo / ".canon" / "config.json").exists()
         yield repo, store
     finally:
         shutil.rmtree(repo, ignore_errors=True)
@@ -69,7 +69,7 @@ def side_pane(home, adopted, tmp_path):
 
 
 def _status(home: Path, repo: Path) -> str:
-    env = dict(os.environ, HOME=str(home), CANON_ROOT=str(CANON_ROOT))
+    env = dict(os.environ, HOME=str(home))
     result = subprocess.run([str(STATUS), str(repo)], capture_output=True, text=True, env=env, timeout=30, input="")
     assert result.returncode == 0, result.stderr
     return result.stdout
@@ -100,34 +100,34 @@ def test_e2e_side_pane_and_status_follow_every_lifecycle_step(home, adopted, sid
 
     _goal(cli, defs, EFFORT)
     phase = h.create_generic_record(
-        cli, defs, "plan:phase", subject=PHASE,
+        cli, defs, "score:phase", subject=PHASE,
         extra_payload={"title": "first phase", "ordinal": 1, "effort": EFFORT},
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
+    h.transition(cli, "score:phase", phase, "in_progress")
     a = _work_item(cli, defs, EFFORT, "a")
     b = _work_item(cli, defs, EFFORT, "b", f"depends_on:{a['id']}")
     _work_item(cli, defs, EFFORT, "c", f"depends_on:{b['id']}")
     expect("1 ready", ready=["a"], waiting=["b", "c"])
 
-    a = h.transition(cli, "plan:work-item", a, "in_progress")
+    a = h.transition(cli, "score:work-item", a, "in_progress")
     expect("1 running", running=["a"], waiting=["b", "c"])
 
-    h.transition(cli, "plan:work-item", a, "done")
+    h.transition(cli, "score:work-item", a, "done")
     expect("1 ready", ready=["b"], waiting=["c"], done=["a"])
 
     question = h.create_generic_record(
-        cli, defs, "plan:continuity-question", subject=EFFORT,
+        cli, defs, "score:continuity-question", subject=EFFORT,
         extra_payload={"blocking": True, "scope": f"{EFFORT}-scope"},
     )
     expect("1 ready · 1 needs you", needs=True, ready=["b"], waiting=["c"], done=["a"])
 
-    h.transition(cli, "plan:continuity-question", question, "answered")
+    h.transition(cli, "score:continuity-question", question, "answered")
     expect("1 ready", ready=["b"], waiting=["c"], done=["a"])
 
-    b = h.transition(cli, "plan:work-item", b, "in_progress")
+    b = h.transition(cli, "score:work-item", b, "in_progress")
     expect("1 running", running=["b"], waiting=["c"], done=["a"])
 
-    h.transition(cli, "plan:work-item", b, "done")
+    h.transition(cli, "score:work-item", b, "done")
     expect("1 ready", ready=["c"], done=["a", "b"])
 
 
@@ -160,7 +160,7 @@ def _assessment(cli, defs, requirement: str, **fields) -> dict:
     payload.update(fields)
     if payload.get("status") == "verified":
         payload.pop("level", None)
-    return _create(cli, defs, "run:assessment", f"{PHASE_EV}-{requirement}", payload)
+    return _create(cli, defs, "conductor:assessment", f"{PHASE_EV}-{requirement}", payload)
 
 
 def _supersede_assessment(cli, defs, record: dict, **fields) -> dict:
@@ -168,9 +168,9 @@ def _supersede_assessment(cli, defs, record: dict, **fields) -> dict:
     if payload.get("status") == "verified":
         payload.pop("level", None)
     result = cli(
-        "supersede", "--type", "run:assessment", "--id", record["id"],
+        "supersede", "--type", "conductor:assessment", "--id", record["id"],
         "--expected-revision", record["revision"], "--payload", json.dumps(payload),
-        "--body", h.generic_body(defs["run:assessment"]),
+        "--body", h.generic_body(defs["conductor:assessment"]),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
@@ -183,16 +183,16 @@ def test_prefix_a_popup_evidence_view_shows_unassessed_then_a_design_route_then_
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, EFFORT_EV)
     phase = h.create_generic_record(
-        cli, defs, "plan:phase", subject=PHASE_EV,
+        cli, defs, "score:phase", subject=PHASE_EV,
         extra_payload={"title": "Evidence phase", "ordinal": 1, "effort": EFFORT_EV},
     )
-    h.transition(cli, "plan:phase", phase, "in_progress")
-    _create(cli, defs, "plan:specification", PHASE_EV, {
+    h.transition(cli, "score:phase", phase, "in_progress")
+    _create(cli, defs, "score:specification", PHASE_EV, {
         "weight": "light", "phase": PHASE_EV, "effort": EFFORT_EV, "requirements": ["R1", "R2"],
-    }, _sections(defs["plan:specification"], {
+    }, _sections(defs["score:specification"], {
         "Requirements": f"R1: {REQ_TEXT}\nR2: the second requirement holds",
     }))
-    _create(cli, defs, "plan:work-item", "ev-task", {
+    _create(cli, defs, "score:work-item", "ev-task", {
         "title": "title of ev-task", "phase": PHASE_EV, "kind": "deliver", "assignee": "",
         "effort": EFFORT_EV, "requirements": ["R1"],
     })
@@ -251,7 +251,7 @@ def test_prefix_a_popup_evidence_view_shows_unassessed_then_a_design_route_then_
             cli, defs, routed, status="verified", next="release", confidence="high",
         )
         _assessment(cli, defs, "R2", status="verified", next="release", confidence="high")
-        _create(cli, defs, "run:release", PHASE_EV, {"state": "ready", "phase": PHASE_EV, "effort": EFFORT_EV})
+        _create(cli, defs, "conductor:release", PHASE_EV, {"state": "ready", "phase": PHASE_EV, "effort": EFFORT_EV})
         shown(" · release", "Release ready", absent=("Needs you", "unassessed"))
         press(b"]", "R 2/2 verified")
         press(b"[", " · release")

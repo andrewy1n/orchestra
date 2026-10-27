@@ -22,10 +22,10 @@ def _flat(text: str) -> str:
 def _work_item_payloads(text: str) -> list[dict]:
     payloads = []
     for inv in extract_invocations(text):
-        if inv["type"] == "plan:work-item" and inv["payload"]:
+        if inv["type"] == "score:work-item" and inv["payload"]:
             payloads.append(inv["payload"])
         for part in inv["records"] or []:
-            if part.get("type") == "plan:work-item":
+            if part.get("type") == "score:work-item":
                 payloads.append(part["payload"])
     return payloads
 

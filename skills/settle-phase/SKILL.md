@@ -54,17 +54,17 @@ Do not write work-items, acceptance, or code in this skill. That is
    `milestone` to that subject. Create a milestone first only when the
    user wants a new time-bounded group for several phases.
 2. Read context: the phase record, milestones for this effort,
-   `plan:decision` and `plan:constraint` records with
+   `score:decision` and `score:constraint` records with
    `payload.effort` = focus, assessments for this phase, and the code
    paths the phase names or implies.
 
 ```bash
-canon list --type plan:milestone --where payload.effort=<focus> --state active --full
-canon list --type plan:decision --where payload.effort=<focus> --state active --full
-canon list --type plan:constraint --where payload.effort=<focus> --state active --full
-canon list --type run:assessment --where payload.phase=<phase-slug> --state active --full
-canon list --type plan:specification --where payload.phase=<phase-slug> --state active --full
-canon list --type plan:design --where payload.phase=<phase-slug> --state active --full
+canon list --type score:milestone --where payload.effort=<focus> --state active --full
+canon list --type score:decision --where payload.effort=<focus> --state active --full
+canon list --type score:constraint --where payload.effort=<focus> --state active --full
+canon list --type conductor:assessment --where payload.phase=<phase-slug> --state active --full
+canon list --type score:specification --where payload.phase=<phase-slug> --state active --full
+canon list --type score:design --where payload.phase=<phase-slug> --state active --full
 ```
 
 3. Present two or three approaches. For each: a short name, what it
@@ -75,7 +75,7 @@ canon list --type plan:design --where payload.phase=<phase-slug> --state active 
    questions are fine; do not reopen choices already recorded as
    decisions unless the user asks.
 5. Structured work only, before the decision step: one
-   `plan:specification` whose subject is the phase slug. Payload
+   `score:specification` whose subject is the phase slug. Payload
    `requirements` is the stable ids as a JSON array (`["R1","R2"]`). The
    Requirements section uses those ids (`R1: …`). Each id is
    **atomic**: one observable behavior per id. Split compound
@@ -88,14 +88,14 @@ canon list --type plan:design --where payload.phase=<phase-slug> --state active 
    create it when the phase has none.
 
 ```bash
-canon create --type plan:specification \
+canon create --type score:specification \
   --subject "<phase-slug>" \
   --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":["R1","R2"]}' \
   --body-file "<specification-body.md>"
 ```
 
 ```bash
-canon supersede --type plan:specification --id <specification-id> \
+canon supersede --type score:specification --id <specification-id> \
   --expected-revision <revision> \
   --payload '{"weight":"full","phase":"<phase-slug>","effort":"<effort-slug>","requirements":["R1","R2"]}' \
   --body-file "<specification-body.md>"
@@ -113,7 +113,7 @@ canon supersede --type plan:specification --id <specification-id> \
    the strongest case for the best rejected option, not a strawman:
 
 ```bash
-canon create --type plan:decision \
+canon create --type score:decision \
   --subject "<decision-topic>" \
   --payload '{"choice":"<adopted>","alternatives":"<rejected options>","phase":"<phase-slug>","effort":"<effort-slug>"}' \
   --body-file "<decision-body.md>"
@@ -124,14 +124,14 @@ canon create --type plan:decision \
    supersedes it instead of adding a second:
 
 ```bash
-canon supersede --type plan:decision --id <decision-id> \
+canon supersede --type score:decision --id <decision-id> \
   --expected-revision <revision> \
   --payload '{"choice":"<adopted>","alternatives":"<rejected options>","phase":"<phase-slug>","effort":"<effort-slug>"}' \
   --body-file "<decision-body.md>"
 ```
 
 7. Structured work only, after the decisions, so `decisions` names
-   them: one `plan:design` with the same subject (the phase slug).
+   them: one `score:design` with the same subject (the phase slug).
    Payload `decisions` is those decision subjects as a JSON array.
    Required sections hold the architecture, interfaces, invariants,
    assumptions, tradeoffs, and risks. Decisions remain the choices a
@@ -141,14 +141,14 @@ canon supersede --type plan:decision --id <decision-id> \
    phase has none.
 
 ```bash
-canon create --type plan:design \
+canon create --type score:design \
   --subject "<phase-slug>" \
   --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":["<decision-subject>","<decision-subject>"]}' \
   --body-file "<design-body.md>"
 ```
 
 ```bash
-canon supersede --type plan:design --id <design-id> \
+canon supersede --type score:design --id <design-id> \
   --expected-revision <revision> \
   --payload '{"phase":"<phase-slug>","effort":"<effort-slug>","decisions":["<decision-subject>","<decision-subject>"]}' \
   --body-file "<design-body.md>"
@@ -164,7 +164,7 @@ canon supersede --type plan:design --id <design-id> \
    transition:
 
 ```bash
-canon update --type plan:phase --id <phase-id> \
+canon update --type score:phase --id <phase-id> \
   --expected-revision <revision> --body-file "<phase-body.md>"
 ```
 
@@ -182,7 +182,7 @@ canon update --type plan:phase --id <phase-id> \
    planning, open a continuity-question on the focus:
 
 ```bash
-canon create --type plan:continuity-question \
+canon create --type score:continuity-question \
   --subject "<effort-slug>" \
   --payload '{"owner":"<who answers>","blocking":true,"scope":"<what it blocks>"}'
 ```
@@ -191,7 +191,7 @@ canon create --type plan:continuity-question \
    Needs-you clears):
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Materialize tests/fixtures/verdict-repo as a two-commit git subject (red then green).
+# Materialize tests/tuner/fixtures/verdict-repo as a two-commit git subject (red then green).
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-FIXTURE="$ROOT/tests/fixtures/verdict-repo"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+FIXTURE="$ROOT/tests/tuner/fixtures/verdict-repo"
 cd "$FIXTURE"
 
-if [[ ! -f app.py || ! -f app.red.py || ! -f tests/test_widget.py || ! -f .affidavit/manifest.json ]]; then
+if [[ ! -f app.py || ! -f app.red.py || ! -f tests/test_widget.py || ! -f .tuner/manifest.json ]]; then
   echo "build_verdict_repo: missing templates under $FIXTURE" >&2
   exit 1
 fi
@@ -21,7 +21,7 @@ git config commit.gpgsign false
 cp app.red.py app.py
 git add -A
 # Do not commit app.red.py as the live app — keep both files tracked
-git add app.red.py app.py tests .affidavit pytest.ini
+git add app.red.py app.py tests .tuner pytest.ini
 git commit -qm "fixture: red base (value=0)"
 
 # Green head

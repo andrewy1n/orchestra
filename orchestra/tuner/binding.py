@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from canon.project import Project, open_store
+from orchestra.canon.project import Project, open_store
 
-from affidavit.manifest import ManifestError
-from affidavit.observation import store_usable
-from affidavit.verdict import run_verdict
+from orchestra.tuner.manifest import ManifestError
+from orchestra.tuner.observation import store_usable
+from orchestra.tuner.verdict import run_verdict
 
-_BIND_TYPE = "aff:evidence-binding"
+_BIND_TYPE = "tuner:evidence-binding"
 _INACTIVE = frozenset(
     {"retired", "superseded", "inactive", "unbound", "withdrawn"}
 )

@@ -8,11 +8,11 @@ import sys
 
 import pytest
 
-from canon import modules
-from canon.modules import discover
-from canon.project import open_store
-from canon.schema import SchemaError
-from canon.store import Store
+from orchestra.canon import modules
+from orchestra.canon.modules import discover
+from orchestra.canon.project import open_store
+from orchestra.canon.schema import SchemaError
+from orchestra.canon.store import Store
 from conftest import ALPHA, BETA
 
 GAMMA_V1 = {
@@ -124,7 +124,7 @@ def test_discovery_refuses_an_invalid_module(site):
 def test_discovery_in_a_fresh_interpreter(site, repo):
     env = site.env()
     run = lambda *args: subprocess.run(
-        [sys.executable, "-m", "canon", "--root", str(repo), *args],
+        [sys.executable, "-m", "orchestra.canon", "--root", str(repo), *args],
         capture_output=True,
         text=True,
         env=env,
@@ -140,7 +140,7 @@ def test_discovery_in_a_fresh_interpreter(site, repo):
 def test_init_creates_config_and_snapshots(cli, repo):
     result = cli.ok("init", "--schemas", "alpha,beta")
     assert result["status"] == "initialized"
-    store = repo / ".artifacts"
+    store = repo / ".canon"
     config = json.loads((store / "config.json").read_text())
     assert config == {
         "format": "canon/1",
@@ -155,7 +155,7 @@ def test_init_creates_config_and_snapshots(cli, repo):
 
 def test_init_without_schemas_makes_an_empty_store(cli, repo):
     cli.ok("init")
-    assert json.loads((repo / ".artifacts" / "config.json").read_text())["schemas"] == {}
+    assert json.loads((repo / ".canon" / "config.json").read_text())["schemas"] == {}
     assert cli.ok("validate")["status"] == "valid"
 
 
@@ -164,7 +164,7 @@ def test_init_with_an_uninstalled_namespace_creates_nothing(cli, repo):
     assert result.code == 4
     assert result.json["error"] == "schema"
     assert "missing" in result.json["message"]
-    assert not (repo / ".artifacts").exists()
+    assert not (repo / ".canon").exists()
 
 
 def test_init_is_idempotent_and_refuses_new_namespaces(cli):
@@ -187,9 +187,9 @@ def test_schemas_add_installs_a_namespace(cli, repo):
     cli.ok("init", "--schemas", "alpha")
     result = cli.ok("schemas", "add", "beta")
     assert result["schemas"]["beta"] == {"from": None, "to": "0.1.0", "action": "copied"}
-    config = json.loads((repo / ".artifacts" / "config.json").read_text())
+    config = json.loads((repo / ".canon" / "config.json").read_text())
     assert config["schemas"] == {"alpha": "0.1.0", "beta": "0.1.0"}
-    assert (repo / ".artifacts" / "schemas" / "beta.json").is_file()
+    assert (repo / ".canon" / "schemas" / "beta.json").is_file()
     again = cli.ok("schemas", "add", "beta")
     assert again["schemas"]["beta"]["action"] == "unchanged"
 
@@ -199,13 +199,13 @@ def test_schemas_add_refuses_an_uninstalled_namespace(cli, repo):
     result = cli("schemas", "add", "nope")
     assert result.code == 4
     assert "nope" in result.json["message"]
-    config = json.loads((repo / ".artifacts" / "config.json").read_text())
+    config = json.loads((repo / ".canon" / "config.json").read_text())
     assert config["schemas"] == {"alpha": "0.1.0"}
 
 
 def test_sync_copies_a_missing_snapshot(cli, repo):
     cli.ok("init", "--schemas", "alpha,beta")
-    (repo / ".artifacts" / "schemas" / "beta.json").unlink()
+    (repo / ".canon" / "schemas" / "beta.json").unlink()
     result = cli.ok("schemas", "sync")
     assert result["schemas"]["beta"]["action"] == "copied"
     assert result["status"] == "synced"
@@ -230,9 +230,9 @@ def test_sync_minor_bump_updates_the_snapshot_and_keeps_records_valid(cli, site,
     assert result["schemas"]["alpha"] == {"from": "0.1.0", "to": "0.2.0", "action": "updated"}
     assert result["schemas"]["beta"]["action"] == "unchanged"
     assert result["errors"] == []
-    config = json.loads((repo / ".artifacts" / "config.json").read_text())
+    config = json.loads((repo / ".canon" / "config.json").read_text())
     assert config["schemas"]["alpha"] == "0.2.0"
-    snapshot = json.loads((repo / ".artifacts" / "schemas" / "alpha.json").read_text())
+    snapshot = json.loads((repo / ".canon" / "schemas" / "alpha.json").read_text())
     assert snapshot["version"] == "0.2.0"
     cli.ok("create", "--type", "alpha:task", "--subject", "t2", "--set", "title=y", "--set", "estimate=3")
     assert cli.ok("validate")["status"] == "valid"
@@ -308,7 +308,7 @@ class TestMigration:
     def test_migration_rewrites_history_snapshots(self, cli, site, repo, migrating):
         site.publish(copy.deepcopy(GAMMA_V2))
         cli.ok("schemas", "sync")
-        history = repo / ".artifacts" / "history"
+        history = repo / ".canon" / "history"
         assert not (history / "gamma__report").exists()
         snapshots = list((history / "gamma__execution-report").rglob("*.md"))
         assert len(snapshots) == 2
@@ -330,7 +330,7 @@ class TestMigration:
         result = cli("schemas", "sync")
         assert result.code == 4
         assert "no migration" in result.json["message"]
-        config = json.loads((repo / ".artifacts" / "config.json").read_text())
+        config = json.loads((repo / ".canon" / "config.json").read_text())
         assert config["schemas"]["gamma"] == "1.0.0"
 
     def test_migration_chains_across_several_majors(self, cli, site, repo, migrating):
@@ -360,7 +360,7 @@ def test_validation_uses_snapshots_not_installed_packages(cli, site, repo):
 
 def test_a_snapshot_that_disagrees_with_config_is_refused(cli, repo):
     cli.ok("init", "--schemas", "alpha")
-    path = repo / ".artifacts" / "schemas" / "alpha.json"
+    path = repo / ".canon" / "schemas" / "alpha.json"
     data = json.loads(path.read_text())
     data["version"] = "0.9.0"
     path.write_text(json.dumps(data))

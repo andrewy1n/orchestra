@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from canon.derive import attach_derived_all, compute_derived, compute_inverse
+from orchestra.canon.derive import attach_derived_all, compute_derived, compute_inverse
 from conftest import advance, make_task
 
 
@@ -64,8 +64,8 @@ def test_waves_report_cycles_as_none(project):
 
 
 def test_a_dependency_that_resolves_to_nothing_blocks_ready_but_not_wave(project):
-    from canon.record_file import dump_record, load_record
-    from canon.revision import with_revision
+    from orchestra.canon.record_file import dump_record, load_record
+    from orchestra.canon.revision import with_revision
 
     make_task(project, "a")
     b = make_task(project, "b", depends_on=["a"])

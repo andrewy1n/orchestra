@@ -19,7 +19,7 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option
 
-from canon.project import Project
+from orchestra.canon.project import Project
 from dashboard import gates
 from dashboard import matrix as matrix_mod
 from dashboard import model

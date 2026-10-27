@@ -18,11 +18,11 @@ _RUNNER_METHODS = frozenset({"tdd", "check"})
 
 _FORBIDDEN_FIXTURE = """\
 ```bash
-canon create --type aff:check-run \\
+canon create --type tuner:check-run \\
   --subject "<task-slug>" \\
   --payload '{"criterion_id":"<acceptance-id>","result":"pass","method":"tdd","runner":"aff"}'
 
-canon create --type aff:check-run \\
+canon create --type tuner:check-run \\
   --subject "<phase-slug>-suite" \\
   --payload '{"criterion_id":"<phase-slug>-suite","result":"pass","method":"check","evidence_kind":"integration","runner":"aff"}'
 ```
@@ -34,7 +34,7 @@ orchestra check --acceptance <acceptance-id> --cwd <repo-or-worktree>
 
 orchestra suite record --phase "<phase-slug>" --effort "<focus>" --cwd <phase-worktree>
 
-canon create --type aff:check-run \\
+canon create --type tuner:check-run \\
   --subject "<task-slug>" \\
   --payload '{"criterion_id":"<acceptance-id>","result":"pass","method":"manual","signed_by":""}'
 
@@ -58,30 +58,30 @@ def _payload(inv: dict) -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def aff_runner_create_violations(text: str) -> list[str]:
+def tuner_runner_create_violations(text: str) -> list[str]:
     """Create of a tdd/check check-run that stamps ``runner: aff``."""
     found: list[str] = []
     for inv in extract_invocations(text):
         if inv.get("subcommand") != "create":
             continue
-        if inv.get("type") != "aff:check-run":
+        if inv.get("type") != "tuner:check-run":
             continue
         payload = _payload(inv)
         method = payload.get("method")
         if method in _RUNNER_METHODS and payload.get("runner") == "aff":
-            found.append(f"create aff:check-run method {method} runner aff")
+            found.append(f"create tuner:check-run method {method} runner aff")
     return found
 
 
 def scan_skills(skills_root: Path) -> list[str]:
     violations: list[str] = []
     for path in sorted(skills_root.rglob("*.md")):
-        for item in aff_runner_create_violations(path.read_text()):
+        for item in tuner_runner_create_violations(path.read_text()):
             violations.append(f"{path.relative_to(skills_root)}: {item}")
     return violations
 
 
-def test_fixture_skill_forging_aff_runner_fails_the_scanner(tmp_path: Path):
+def test_fixture_skill_forging_tuner_runner_fails_the_scanner(tmp_path: Path):
     skill = tmp_path / "skills" / "bad" / "SKILL.md"
     skill.parent.mkdir(parents=True)
     skill.write_text(_FORBIDDEN_FIXTURE)
@@ -90,7 +90,7 @@ def test_fixture_skill_forging_aff_runner_fails_the_scanner(tmp_path: Path):
     assert any("method check runner aff" in item for item in violations)
 
 
-def test_fixture_without_aff_runner_create_passes(tmp_path: Path):
+def test_fixture_without_tuner_runner_create_passes(tmp_path: Path):
     skill = tmp_path / "skills" / "ok" / "SKILL.md"
     skill.parent.mkdir(parents=True)
     skill.write_text(_ALLOWED_FIXTURE)

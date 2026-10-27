@@ -1,0 +1,19 @@
+{
+  "format": "canon/1",
+  "schemas": {
+    "score": "1.0.0",
+    "conductor": "1.0.0",
+    "tuner": "1.0.0"
+  },
+  "settings": {
+    "conductor": {
+      "phase_gate": {
+        "suite": {
+          "mode": "full",
+          "command": "scripts/test.sh",
+          "gate": "required"
+        }
+      }
+    }
+  }
+}

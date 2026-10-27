@@ -13,7 +13,7 @@ stdlib server uses and serves the Vite production build from
 from pathlib import Path
 
 from dashboard import model
-from canon.project import Project
+from orchestra.canon.project import Project
 from dashboard.web.service import Reader, WriteError
 
 DIST = Path(__file__).resolve().parent / "ui" / "dist"

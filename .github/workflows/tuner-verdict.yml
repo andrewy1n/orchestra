@@ -1,0 +1,126 @@
+# Fixture CI: run orchestra verify verdict, emit a signed attestation, then verify it.
+#
+# Mints an ephemeral ed25519 key and allowlist in the job (same shape as
+# tests/tuner/fixtures/dry_run_verdict_attest.sh). No repo secrets required.
+name: tuner-verdict
+
+on:
+  push:
+    branches: [main, "phase/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      claim_id:
+        description: Claim id to judge
+        required: true
+        default: claim-widget
+      fixture_cwd:
+        description: Path to fixture repository (relative to checkout)
+        required: true
+        default: tests/tuner/fixtures/verdict-repo
+
+jobs:
+  verdict-and-attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python3 -m pip install --user pytest
+
+      - name: Resolve fixture and claim
+        id: ctx
+        run: |
+          FIXTURE="${{ github.event.inputs.fixture_cwd || 'tests/tuner/fixtures/verdict-repo' }}"
+          CLAIM="${{ github.event.inputs.claim_id || 'claim-widget' }}"
+          echo "fixture=$FIXTURE" >> "$GITHUB_OUTPUT"
+          echo "claim=$CLAIM" >> "$GITHUB_OUTPUT"
+          test -d "$FIXTURE" || echo "::warning::fixture path $FIXTURE missing; attest-core/fixture setup must provide it"
+
+      - name: Mint fixture signing key and allowlist
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/tuner"
+          umask 077
+          KEY="$HOME/.config/tuner/attest_key"
+          ALLOW="$HOME/.config/tuner/allowed_signers"
+          ssh-keygen -t ed25519 -N "" -f "$KEY" -q
+          PUB=$(ssh-keygen -y -f "$KEY")
+          BLOB=$(echo "$PUB" | awk '{print $1" "$2}')
+          printf '%s\n' "ci namespaces=\"tuner-verdict\" $BLOB" > "$ALLOW"
+          echo "ATTEST_KEY=$KEY" >> "$GITHUB_ENV"
+          echo "ATTEST_ALLOWLIST=$ALLOW" >> "$GITHUB_ENV"
+
+      - name: Build verdict fixture
+        run: bash tests/tuner/fixtures/build_verdict_repo.sh
+
+      - name: Run orchestra verify verdict
+        id: verdict
+        run: |
+          set -euo pipefail
+          FIXTURE="${{ steps.ctx.outputs.fixture }}"
+          SHA=$(git -C "$FIXTURE" rev-parse HEAD)
+          BASE=$(git -C "$FIXTURE" rev-parse HEAD~1)
+          bin/orchestra verify verdict \
+            --cwd "$FIXTURE" \
+            --base "$BASE" \
+            --at "$SHA" \
+            "${{ steps.ctx.outputs.claim }}" \
+            | tee verdict.raw.json
+          python3 - <<'PY'
+          import hashlib, json, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, ".")
+          from orchestra.tuner.manifest import load_manifest, resolve_commit, runner_digest
+          fixture = Path("""${{ steps.ctx.outputs.fixture }}""")
+          sha = subprocess.check_output(["git", "-C", str(fixture), "rev-parse", "HEAD"], text=True).strip()
+          verdict = json.load(open("verdict.raw.json"))
+          blob = subprocess.check_output(["git", "-C", str(fixture), "show", f"{sha}:.tuner/manifest.json"])
+          body = {
+              "commit": resolve_commit(fixture, sha),
+              "manifest_hash": "sha256:" + hashlib.sha256(blob).hexdigest(),
+              "runner_digest": runner_digest(load_manifest(fixture, sha).runner),
+              "claims": verdict["claims"],
+              "result": verdict["result"],
+          }
+          json.dump(body, open("verdict.json", "w"))
+          print(json.dumps(body, indent=2))
+          PY
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "manifest_hash=$(python3 -c 'import json; print(json.load(open("verdict.json"))["manifest_hash"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Emit signed attestation
+        run: |
+          set -euo pipefail
+          bin/orchestra verify attest emit \
+            --key "$ATTEST_KEY" \
+            --input verdict.json \
+            | tee attestation.json
+          test -s attestation.json
+
+      - name: Verify attestation
+        run: |
+          set -euo pipefail
+          bin/orchestra verify attest verify \
+            --allowlist "$ATTEST_ALLOWLIST" \
+            --commit "${{ steps.verdict.outputs.sha }}" \
+            --manifest-hash "${{ steps.verdict.outputs.manifest_hash }}" \
+            --input attestation.json
+
+      - name: Upload attestation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuner-attestation
+          path: |
+            verdict.json
+            attestation.json
+          if-no-files-found: ignore

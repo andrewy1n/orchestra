@@ -37,9 +37,6 @@ def install(source: Path, home: Path, *args: str) -> subprocess.CompletedProcess
     stub.parent.mkdir(parents=True, exist_ok=True)
     stub.write_text(NPX_STUB, encoding="utf-8")
     stub.chmod(0o755)
-    affidavit_checkout = Path(os.environ.get("AFFIDAVIT_ROOT", Path.home() / "affidavit"))
-    if (affidavit_checkout / "affidavit" / "__init__.py").is_file():
-        env.setdefault("AFFIDAVIT_ROOT", str(affidavit_checkout))
     return subprocess.run(
         [sys.executable, "-m", "orchestra.cli", "install", *args],
         cwd=str(home.parent),

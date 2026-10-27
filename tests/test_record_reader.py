@@ -43,12 +43,12 @@ def _stub(by_type):
 
 
 def test_yields_metadata_with_utc_times_and_no_body():
-    run = _stub({"plan:work-item": [_row("wi-1", "plan:work-item", "session-analysis")]})
-    rows = read_records("/tmp/proj-x", types=["plan:work-item"], run=run)
+    run = _stub({"score:work-item": [_row("wi-1", "score:work-item", "session-analysis")]})
+    rows = read_records("/tmp/proj-x", types=["score:work-item"], run=run)
     assert rows == [
         {
             "id": "wi-1",
-            "record_type": "plan:work-item",
+            "record_type": "score:work-item",
             "subject": "rj-record-reader",
             "effort": "session-analysis",
             "recorded_at": rows[0]["recorded_at"],
@@ -62,8 +62,8 @@ def test_yields_metadata_with_utc_times_and_no_body():
 
 
 def test_effort_is_none_when_payload_has_none():
-    run = _stub({"aff:finding": [_row("f-1", "aff:finding")]})
-    assert read_records("/tmp/p", types=["aff:finding"], run=run)[0]["effort"] is None
+    run = _stub({"tuner:finding": [_row("f-1", "tuner:finding")]})
+    assert read_records("/tmp/p", types=["tuner:finding"], run=run)[0]["effort"] is None
 
 
 def test_command_is_read_only_list_per_type_with_root():
@@ -81,14 +81,14 @@ def test_store_is_resolved_under_home_artifacts_by_root_basename():
     run = _stub({})
     read_records("/tmp/proj-x", types=["project:a"], run=run)
     argv = run.calls[0]
-    assert argv[argv.index("--store") + 1] == str(Path.home() / ".artifacts" / "proj-x")
+    assert argv[argv.index("--store") + 1] == str(Path.home() / ".canon" / "proj-x")
 
 
 def test_default_types_cover_project_types():
     run = _stub({})
     read_records("/tmp/p", run=run)
     assert [a[a.index("--type") + 1] for a in run.calls] == list(DEFAULT_TYPES)
-    assert "plan:work-item" in DEFAULT_TYPES
+    assert "score:work-item" in DEFAULT_TYPES
 
 
 def test_failure_names_type_not_content():
@@ -96,11 +96,11 @@ def test_failure_names_type_not_content():
         raise RuntimeError(BODY)
 
     with pytest.raises(RecordReadError) as err:
-        read_records("/tmp/p", types=["plan:decision"], run=run)
-    assert "plan:decision" in str(err.value)
+        read_records("/tmp/p", types=["score:decision"], run=run)
+    assert "score:decision" in str(err.value)
     assert BODY not in str(err.value)
 
 
 def test_invalid_json_names_type():
-    with pytest.raises(RecordReadError, match="plan:phase"):
-        read_records("/tmp/p", types=["plan:phase"], run=lambda argv: "not json")
+    with pytest.raises(RecordReadError, match="score:phase"):
+        read_records("/tmp/p", types=["score:phase"], run=lambda argv: "not json")

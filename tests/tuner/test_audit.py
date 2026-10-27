@@ -1,4 +1,4 @@
-"""bin/aff audit reverts diff blocks, labels them, and plants mutants in noticed blocks."""
+"""orchestra verify audit reverts diff blocks, labels them, and plants mutants in noticed blocks."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[1]
-AFF = REPO / "bin" / "aff"
+REPO = Path(__file__).resolve().parents[2]
+VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
 
 BASE_APP = (
     "def add(a, b):\n"
@@ -252,8 +252,7 @@ def _audit(
     timeout: int = 300,
 ) -> subprocess.CompletedProcess[str]:
     argv = [
-        sys.executable,
-        str(AFF),
+        *VERIFY,
         "audit",
         "--cwd",
         str(cwd),
@@ -357,7 +356,7 @@ def test_r1_audit_reads_claim_tests_from_manifest(tmp_path: Path):
         {
             "app.py": HEAD_APP,
             "tests/test_app.py": HEAD_TEST,
-            ".affidavit/manifest.json": json.dumps(manifest, indent=2) + "\n",
+            ".tuner/manifest.json": json.dumps(manifest, indent=2) + "\n",
         },
     )
     head = _commit(root, "head")
@@ -382,7 +381,7 @@ def test_r2_audit_never_reports_test_file_blocks(tmp_path: Path):
         "conftest.py": "VALUE = 2\n",
         "docs/notes.py": "NOTE = 'prose'\n",
         "NOTES.txt": "plain notes\n",
-        ".artifacts/state.json": '{"x": 1}\n',
+        ".canon/state.json": '{"x": 1}\n',
     }
     root, base, head = _synthetic_repo(tmp_path, extra_head=extra)
     proc = _audit(root, base, head, tests=SYNTH_TESTS)
@@ -393,7 +392,7 @@ def test_r2_audit_never_reports_test_file_blocks(tmp_path: Path):
     assert "app.py" in files
     for path in files:
         assert not _is_test_path(path), path
-        assert not path.startswith(("docs/", ".artifacts/"))
+        assert not path.startswith(("docs/", ".canon/"))
         assert not path.endswith((".md", ".rst", ".txt"))
     assert set(files) == {"app.py"}
 

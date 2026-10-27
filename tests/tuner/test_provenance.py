@@ -1,13 +1,14 @@
-"""bin/aff verdict --provenance checks who wrote the oracle, and when."""
+"""orchestra verify verdict --provenance checks who wrote the oracle, and when."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
-AFF = Path(__file__).resolve().parents[1] / "bin" / "aff"
+VERIFY = [sys.executable, str(Path(__file__).resolve().parents[2] / "bin" / "orchestra"), "verify"]
 CLAIM = "claim-widget"
 NODE = "tests/test_widget.py::test_widget"
 ORACLE_REL = "tests/test_widget.py"
@@ -51,7 +52,7 @@ def _generate_key(directory: Path, name: str) -> tuple[Path, str]:
 
 def _allowlist(signers: dict[str, str]) -> bytes:
     return "".join(
-        f'{principal} namespaces="git,affidavit-amendment" {blob}\n'
+        f'{principal} namespaces="git,tuner-amendment" {blob}\n'
         for principal, blob in signers.items()
     ).encode()
 
@@ -103,20 +104,20 @@ def _init(root: Path) -> None:
     _git(root, "config", "core.autocrlf", "false")
     _git(root, "config", "commit.gpgsign", "false")
     _git(root, "config", "gpg.format", "ssh")
-    _git(root, "config", "gpg.ssh.allowedSignersFile", str(root / ".affidavit" / "allowed_signers"))
+    _git(root, "config", "gpg.ssh.allowedSignersFile", str(root / ".tuner" / "allowed_signers"))
 
 
 def _oracle_files(allow: bytes) -> dict[str, bytes]:
     return {
         ORACLE_REL: ORACLE,
-        ".affidavit/manifest.json": _manifest(),
-        ".affidavit/allowed_signers": allow,
+        ".tuner/manifest.json": _manifest(),
+        ".tuner/allowed_signers": allow,
     }
 
 
 def _run(root: Path, at: str, base: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(AFF), "verdict", "--provenance", "--at", at, "--base", base, CLAIM],
+        [*VERIFY, "verdict", "--provenance", "--at", at, "--base", base, CLAIM],
         cwd=str(root),
         capture_output=True,
         text=True,

@@ -9,12 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from canon.derive import attach_derived_all, compute_derived
-from canon.git_backend import GitContextError, assert_git_context
-from canon.legacy import LegacyError, migrate_store, read_records, transform_store
-from canon.merge import MergeError, merge_store, parse_namespace_map, parse_subject_renames
-from canon.project import Project, StoreBindingError, open_store
-from canon.query import (
+from orchestra.canon.derive import attach_derived_all, compute_derived
+from orchestra.canon.git_backend import GitContextError, assert_git_context
+from orchestra.canon.merge import MergeError, merge_store, parse_namespace_map, parse_subject_renames
+from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.query import (
     QueryError,
     compile_grep,
     order_by_path,
@@ -23,8 +22,8 @@ from canon.query import (
     record_matches,
     summarize,
 )
-from canon.schema import SchemaError
-from canon.store import (
+from orchestra.canon.schema import SchemaError
+from orchestra.canon.store import (
     PartialStoreError,
     StaleWriteError,
     Store,
@@ -32,8 +31,8 @@ from canon.store import (
     StoreLockError,
     StoreNotInitializedError,
 )
-from canon.sync import add_namespace, init_store, sync_store
-from canon.validation import ValidationError
+from orchestra.canon.sync import add_namespace, init_store, sync_store
+from orchestra.canon.validation import ValidationError
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -43,7 +42,7 @@ EXIT_VALIDATION = 4
 
 _CURRENT_REVISION = "@current"
 MUTATING_COMMANDS = frozenset(
-    {"create", "update", "supersede", "correct", "apply", "init", "migrate-legacy", "merge"}
+    {"create", "update", "supersede", "correct", "apply", "init", "merge"}
 )
 MUTATING_SCHEMA_COMMANDS = frozenset({"sync", "add"})
 _TRANSITION_CODES = frozenset({"invalid_transition", "use_supersede", "append_only"})
@@ -223,7 +222,7 @@ def _error_response(exc: Exception) -> tuple[dict[str, Any], int]:
 
 
 def _binding_file_present(root: Path) -> bool:
-    artifacts = root / ".artifacts"
+    artifacts = root / ".canon"
     return (artifacts / "store-binding.local.json").exists() or (
         artifacts / "store-binding.json"
     ).exists()
@@ -262,7 +261,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         except StoreBindingError:
             if _binding_file_present(root):
                 raise
-            store_path = root / ".artifacts"
+            store_path = root / ".canon"
     namespaces = [ns.strip() for ns in (args.schemas or "").split(",") if ns.strip()]
     result = init_store(Store(store_path), namespaces)
     _emit_json(result)
@@ -502,22 +501,6 @@ def cmd_schemas_add(args: argparse.Namespace) -> int:
     return EXIT_VALIDATION if result["errors"] else EXIT_OK
 
 
-def cmd_migrate_legacy(args: argparse.Namespace) -> int:
-    store_path = Path(args.store) if args.store else Path(args.root) / ".artifacts"
-    namespaces = [ns.strip() for ns in args.schemas.split(",") if ns.strip()]
-    if args.dry_run:
-        _, report = transform_store(read_records(store_path / "records"))
-        _emit_json(report)
-        return EXIT_OK
-    try:
-        report = migrate_store(store_path, namespaces, allow_errors=args.allow_errors)
-    except LegacyError as exc:
-        _emit_json({"error": "legacy", "message": str(exc)})
-        return EXIT_ERROR
-    _emit_json(report)
-    return EXIT_VALIDATION if report["errors"] else EXIT_OK
-
-
 def cmd_merge(args: argparse.Namespace) -> int:
     project = _command_project(args)
     try:
@@ -633,7 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Initialize a store (requires git context)")
     p_init.add_argument(
         "--schemas",
-        help="Comma-separated namespaces of installed schema modules, e.g. plan,run,aff",
+        help="Comma-separated namespaces of installed schema modules, e.g. score,conductor,tuner",
     )
     p_init.set_defaults(func=cmd_init)
 
@@ -779,18 +762,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.add_argument("--type", help="Print one type: purpose, lifecycle, transitions, fields")
     p_show.set_defaults(func=cmd_schemas_show)
 
-    p_migrate = sub.add_parser(
-        "migrate-legacy", help="Rebuild an adaptive-artifacts store as a canon store, in place"
-    )
-    p_migrate.add_argument("--schemas", default="plan,run,aff", help="Namespaces for the new store")
-    p_migrate.add_argument("--dry-run", action="store_true", help="Print the transform report only")
-    p_migrate.add_argument(
-        "--allow-errors", action="store_true", help="Replace the old store even when validation fails"
-    )
-    p_migrate.set_defaults(func=cmd_migrate_legacy)
 
     p_merge = sub.add_parser("merge", help="Merge every record of another store into this one")
-    p_merge.add_argument("source", help="Source store directory (a .artifacts-style directory)")
+    p_merge.add_argument("source", help="Source store directory (a .canon-style directory)")
     p_merge.add_argument(
         "--namespace", action="append", default=[], metavar="OLD=NEW", help="Rename a source namespace"
     )
@@ -823,7 +797,7 @@ def _dispatch(argv: list[str] | None = None) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point (console script, ``python -m canon``)."""
+    """CLI entry point (console script, ``python -m orchestra.canon``)."""
     try:
         return _dispatch(argv)
     except json.JSONDecodeError as exc:

@@ -8,24 +8,24 @@ import subprocess
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 
-from canon.project import open_store
-from canon.store import StoreError
+from orchestra.canon.project import open_store
+from orchestra.canon.store import StoreError
 
 DEFAULT_TYPES = (
-    "plan:acceptance",
-    "plan:effort",
-    "run:assignment",
-    "run:assignment-amendment",
-    "aff:check-run",
-    "plan:constraint",
-    "plan:continuity-question",
-    "plan:position",
-    "plan:decision",
-    "run:execution-report",
-    "aff:finding",
-    "aff:investigation-observation",
-    "plan:phase",
-    "plan:work-item",
+    "score:acceptance",
+    "score:effort",
+    "conductor:assignment",
+    "conductor:assignment-amendment",
+    "tuner:check-run",
+    "score:constraint",
+    "score:continuity-question",
+    "score:position",
+    "score:decision",
+    "conductor:execution-report",
+    "tuner:finding",
+    "tuner:investigation-observation",
+    "score:phase",
+    "score:work-item",
 )
 
 
@@ -83,7 +83,7 @@ def read_records(
     if run is None or run is subprocess_runner:
         return _read_open_store(root, types)
     store = os.path.basename(os.path.abspath(root))
-    store_path = os.path.join(os.path.expanduser("~"), ".artifacts", store)
+    store_path = os.path.join(os.path.expanduser("~"), ".canon", store)
     rows: list[dict] = []
     for record_type in types if types is not None else DEFAULT_TYPES:
         argv = [

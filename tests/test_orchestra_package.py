@@ -17,6 +17,6 @@ def test_tier2_module_raises_import_error():
         import orchestra.tier2  # noqa: F401
 
 
-def test_affidavit_tier2_file_absent():
+def test_tuner_tier2_file_absent():
     root = Path(__file__).resolve().parents[1]
-    assert not (root / "affidavit" / "tier2.py").is_file()
+    assert not (root / "tuner" / "tier2.py").is_file()

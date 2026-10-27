@@ -169,12 +169,10 @@ def _installed_prefix(script: Path) -> Path:
 
 
 def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, str]:
-    """Strip the checkout and any affidavit install from the CLI environment."""
+    """Strip the checkout from the CLI environment."""
     scrubbed = dict(env)
     scrubbed["HOME"] = str(home)
     for name in (
-        "AFFIDAVIT_ROOT",
-        "CANON_ROOT",
         "CLAUDE_PLUGIN_ROOT",
         "CURSOR_PLUGIN_ROOT",
         "SE_WORKFLOW_STORE",
@@ -186,10 +184,7 @@ def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, 
     def keep(entry: str) -> bool:
         if not entry:
             return False
-        # The `aff` binary and the checkout are the two ways to reach affidavit.
-        if "affidavit" in entry.lower() or entry.startswith(checkout):
-            return False
-        return not (Path(entry) / "aff").exists()
+        return not entry.startswith(checkout)
 
     site_dirs = [str(d) for d in _site_dirs(prefix)]
     for key in ("PATH", "PYTHONPATH"):
@@ -209,13 +204,8 @@ def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, 
     return scrubbed
 
 
-def test_cli_standalone_without_affidavit_checkout(installed, tmp_path):
-    """The installed CLI starts with an empty HOME and no affidavit checkout.
-
-    Every subcommand except ``close-batch`` must answer from the installed
-    prefix alone; ``close-batch`` only needs affidavit for oracle-backed
-    closes and says so instead of failing at import.
-    """
+def test_cli_standalone_without_checkout(installed, tmp_path):
+    """The installed CLI answers from the installed prefix with an empty HOME."""
     script, base_env = installed
     prefix = _installed_prefix(script)
     home = tmp_path / "empty-home"
@@ -223,16 +213,6 @@ def test_cli_standalone_without_affidavit_checkout(installed, tmp_path):
     env = _standalone_env(base_env, prefix, home)
     elsewhere = tmp_path / "unrelated-standalone"
     elsewhere.mkdir()
-
-    # The environment really has no affidavit import path.
-    probe = subprocess.run(
-        [sys.executable, "-c", "import affidavit"],
-        cwd=str(elsewhere),
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    assert probe.returncode != 0
 
     helped = run_cli(env, elsewhere, "--help")
     assert helped.returncode == 0, helped.stderr
@@ -284,4 +264,4 @@ def test_cli_standalone_without_affidavit_checkout(installed, tmp_path):
         text=True,
     )
     assert helper.returncode == 0, helper.stdout + helper.stderr
-    assert "affidavit" in helper.stdout
+    assert "tuner" in helper.stdout

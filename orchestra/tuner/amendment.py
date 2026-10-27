@@ -16,7 +16,7 @@ def canonical_payload(amendment: Mapping[str, Any]) -> bytes:
     test/hash-only amendments keep the same signed bytes.
     """
     lines = [
-        "affidavit-amendment v1",
+        "tuner-amendment v1",
         f"claim: {amendment['claim']}",
         "old_tests: " + ",".join(amendment["old_tests"]),
         "new_tests: " + ",".join(amendment["new_tests"]),
@@ -85,7 +85,7 @@ def verify_signature(
                     "-I",
                     principal,
                     "-n",
-                    "affidavit-amendment",
+                    "tuner-amendment",
                     "-s",
                     str(sig_path),
                 ],

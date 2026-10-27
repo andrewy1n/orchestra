@@ -94,13 +94,13 @@ def fake_run(calls):
         calls.append(argv)
         rtype = argv[argv.index("--type") + 1]
         rows = {
-            "plan:work-item": [
+            "score:work-item": [
                 {"id": "r1", "record_type": rtype, "subject": "task-one",
                  "recorded_at": "2026-01-01T00:10:00Z", "payload": {"effort": "eff-a"}},
                 {"id": "r2", "record_type": rtype, "subject": "task-two",
                  "recorded_at": "2026-01-01T00:40:00Z", "payload": {"effort": "eff-b"}},
             ],
-            "aff:finding": [
+            "tuner:finding": [
                 {"id": "r3", "record_type": rtype, "subject": "SECRET-body",
                  "recorded_at": "2026-01-01T01:30:00Z", "payload": {"effort": "eff-a"}},
             ],
@@ -129,12 +129,12 @@ def parse(out):
 def test_records_flag_adds_per_session_counts_by_type(tmp_path, capsys):
     rows = parse(run_records(tmp_path, capsys, []))
     s1 = rows["s1.jsonl"]["records"]
-    assert s1 == {"total": 2, "by_type": {"plan:work-item": 2},
+    assert s1 == {"total": 2, "by_type": {"score:work-item": 2},
                   "efforts": ["eff-a", "eff-b"], "tasks": ["task-one", "task-two"],
                   "ambiguous": 1}
     s2 = rows["s2.jsonl"]["records"]
     assert s2["total"] == 2
-    assert s2["by_type"] == {"plan:work-item": 1, "aff:finding": 1}
+    assert s2["by_type"] == {"score:work-item": 1, "tuner:finding": 1}
     assert s2["tasks"] == ["task-two"]
     assert s2["ambiguous"] == 1
 

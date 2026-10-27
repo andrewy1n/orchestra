@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-c48b94a7-2d5e-4dc9-afa4-a0d5cfb210ad",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "assignment": "aa-installable-package",
+    "result": "pass",
+    "revision": "a086e27ca3eaff82960f6d5f4685a8dab4525a6b",
+    "verdict": "pass",
+    "work_item": "aa-installable-package"
+  },
+  "provenance": {
+    "sources": [
+      "aa-installable-package"
+    ]
+  },
+  "record_type": "conductor:execution-report",
+  "recorded_at": "2026-10-15T21:13:16+00:00",
+  "relationships": {},
+  "revision": "sha256:df782c343f5ead40c12bd1662f910edce5af9079b007297736ca9a201ffe4192",
+  "subject": "aa-installable-package",
+  "time": {
+    "observed": "2026-10-15T21:13:16+00:00",
+    "recorded": "2026-10-15T21:13:16+00:00"
+  }
+}
+---
+
+subject: aa-installable-package
+kind: deliver
+result: pass
+revision: a086e27ca3eaff82960f6d5f4685a8dab4525a6b
+evidence: Added src/adaptive_artifacts + pyproject.toml; bin/tools shims; sync-plugin copies src. AA tests 444 passed. --help via bin and tools/artifacts.py; wheel install --help ok.
+verdict: pass
+needs_human: false

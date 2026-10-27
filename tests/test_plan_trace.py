@@ -89,8 +89,8 @@ def test_skill_requires_atomic_ids_and_thin_acceptances():
 
 def test_create_and_capture_examples_match_atomic_thin_shape():
     text = _text()
-    work_items = _payloads(text, "plan:work-item")
-    acceptances = _payloads(text, "plan:acceptance")
+    work_items = _payloads(text, "score:work-item")
+    acceptances = _payloads(text, "score:acceptance")
     assert work_items and acceptances
 
     covered: set[str] = set()
@@ -113,17 +113,17 @@ def test_create_and_capture_examples_match_atomic_thin_shape():
     for inv in extract_invocations(text):
         if inv["subcommand"] in WRITES and inv["type"]:
             written.add(inv["type"])
-        if inv["type"] == "plan:work-item":
+        if inv["type"] == "score:work-item":
             assert all(rel.split(":", 1)[0] == "depends_on" for rel in inv["rels"])
         for part in inv["records"] or []:
             if inv["subcommand"] != "capture":
                 continue
             written.add(part.get("type"))
-            if part.get("type") == "plan:acceptance":
+            if part.get("type") == "score:acceptance":
                 acceptance_subjects.append(part["subject"])
                 assert "criterion" not in part["payload"] or part["payload"].get("criterion") == ""
-    assert "run:assessment" not in written
-    assert "run:integration-report" not in written
+    assert "conductor:assessment" not in written
+    assert "conductor:integration-report" not in written
     assert "<task-slug>" in acceptance_subjects
     assert "<task-slug>-perf" in acceptance_subjects
 
@@ -146,7 +146,7 @@ def test_plan_phase_oracle_author_and_freeze():
     # Freeze update example is contract-shaped.
     freeze_payloads = [
         p
-        for p in _payloads(_text(), "plan:acceptance")
+        for p in _payloads(_text(), "score:acceptance")
         if p.get("test_ids") and p.get("oracle_hashes")
     ]
     assert freeze_payloads
@@ -171,7 +171,7 @@ def test_execute_phase_oracle_amendment_and_frozen_oracle(resolved_contract):
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "aff:oracle-amendment"
+        if inv["subcommand"] == "create" and inv["type"] == "tuner:oracle-amendment"
     ]
     assert creates and creates[0]["payload"]
     payload = creates[0]["payload"]
@@ -198,7 +198,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
     h.create_generic_record(
         cli,
         defs,
-        "plan:phase",
+        "score:phase",
         subject=phase,
         extra_payload={"title": "Thin deliver phase", "ordinal": 1, "effort": effort},
     )
@@ -213,7 +213,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
     created = cli(
         "create",
         "--type",
-        "plan:acceptance",
+        "score:acceptance",
         "--subject",
         "thin-deliver-create",
         "--payload",
@@ -226,7 +226,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
 
     records = [
         {
-            "type": "plan:work-item",
+            "type": "score:work-item",
             "subject": "thin-deliver-capture",
             "payload": {
                 "title": "Thin capture task",
@@ -242,7 +242,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
             "body": "## Description\n\nR1: thin acceptance works through CLI capture.\n",
         },
         {
-            "type": "plan:acceptance",
+            "type": "score:acceptance",
             "subject": "thin-deliver-capture",
             "payload": {
                 "method": "check",
@@ -260,7 +260,7 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
     )
     captured = cli("apply", str(batch))
     assert captured.returncode == 0, captured.stdout + captured.stderr
-    listed = cli("list", "--type", "plan:acceptance", "--subject", "thin-deliver-capture", "--full")
+    listed = cli("list", "--type", "score:acceptance", "--subject", "thin-deliver-capture", "--full")
     assert listed.returncode == 0, listed.stdout + listed.stderr
     accs = json.loads(listed.stdout)["records"]
     assert len(accs) == 1

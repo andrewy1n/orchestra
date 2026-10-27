@@ -2,9 +2,9 @@
 
 CLI the oracles call (same `--cwd` style as verdict and trail):
 
-- `aff bind --cwd ROOT --observation ID --claim CLAIM --base REV --head REV`
-- `aff unbind --cwd ROOT --id BINDING_ID`
-- `aff recheck --cwd ROOT --claim CLAIM`
+- `orchestra verify bind --cwd ROOT --observation ID --claim CLAIM --base REV --head REV`
+- `orchestra verify unbind --cwd ROOT --id BINDING_ID`
+- `orchestra verify recheck --cwd ROOT --claim CLAIM`
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path
 
 from conftest import run_cli
 from test_verdict import (
-    AFF,
+    VERIFY,
     ALLOW,
     APP_GREEN,
     APP_RED,
@@ -31,8 +31,8 @@ from test_verdict import (
     _write_tree,
 )
 
-OBS_TYPE = "aff:evidence-observation"
-BINDING_TYPE = "aff:evidence-binding"
+OBS_TYPE = "tuner:evidence-observation"
+BINDING_TYPE = "tuner:evidence-binding"
 REQUIRED_PAYLOAD = ("observation_id", "claim_id", "base_rev", "head_rev")
 _INACTIVE = frozenset(
     {"retired", "superseded", "inactive", "unbound", "withdrawn"}
@@ -45,9 +45,9 @@ def _env() -> dict[str, str]:
     return env
 
 
-def _aff(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _tuner(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(AFF), *args],
+        [*VERIFY, *args],
         cwd=str(cwd) if cwd else None,
         env=_env(),
         capture_output=True,
@@ -79,7 +79,7 @@ def _seed_verdict_subject(root: Path) -> tuple[str, str]:
 def _verdict(
     root: Path, base: str, head: str
 ) -> subprocess.CompletedProcess[str]:
-    return _aff(
+    return _tuner(
         "verdict",
         "--cwd",
         str(root),
@@ -171,7 +171,7 @@ def _bind(
     head: str,
     claim: str = CLAIM,
 ) -> subprocess.CompletedProcess[str]:
-    return _aff(
+    return _tuner(
         "bind",
         "--cwd",
         str(root),
@@ -187,11 +187,11 @@ def _bind(
 
 
 def _unbind(root: Path, binding_id: str) -> subprocess.CompletedProcess[str]:
-    return _aff("unbind", "--cwd", str(root), "--id", binding_id)
+    return _tuner("unbind", "--cwd", str(root), "--id", binding_id)
 
 
 def _recheck(root: Path, claim: str = CLAIM) -> subprocess.CompletedProcess[str]:
-    return _aff("recheck", "--cwd", str(root), "--claim", claim)
+    return _tuner("recheck", "--cwd", str(root), "--claim", claim)
 
 
 def _links(row: dict, observation_id: str, claim_id: str) -> bool:
@@ -276,8 +276,8 @@ def test_r1_store_accepts_evidence_binding(store: Path) -> None:
         assert rejected.returncode != 0, field
 
 
-def test_r2_aff_bind_creates_evidence_binding(store: Path) -> None:
-    """R2: aff bind attaches an existing observation to a claim under pins."""
+def test_r2_tuner_bind_creates_evidence_binding(store: Path) -> None:
+    """R2: orchestra verify bind attaches an existing observation to a claim under pins."""
     base, head = _seed_verdict_subject(store)
     obs = _create_observation(store, base=base, head=head)
     before_ids = {row["id"] for row in _records(_list_typed(store, BINDING_TYPE))}
@@ -307,8 +307,8 @@ def test_r2_aff_bind_creates_evidence_binding(store: Path) -> None:
     assert fresh["payload"]["head_rev"] == snapshot["head_rev"]
 
 
-def test_r3_aff_unbind_retires_evidence_binding(store: Path) -> None:
-    """R3: aff unbind retires the binding so the observation no longer earns the claim."""
+def test_r3_tuner_unbind_retires_evidence_binding(store: Path) -> None:
+    """R3: orchestra verify unbind retires the binding so the observation no longer earns the claim."""
     base, head = _seed_verdict_subject(store)
     obs = _create_observation(store, base=base, head=head)
     bound = _bind(store, obs["id"], base, head)
@@ -334,7 +334,7 @@ def test_r3_aff_unbind_retires_evidence_binding(store: Path) -> None:
     assert recheck.returncode != 0, recheck.stdout + recheck.stderr
 
 
-def test_r4_aff_recheck_nonzero_when_binding_does_not_hold(store: Path) -> None:
+def test_r4_tuner_recheck_nonzero_when_binding_does_not_hold(store: Path) -> None:
     """R4: recheck exits 0 while pins hold, and non-zero when unbound or pins break."""
     base, head = _seed_verdict_subject(store)
     obs = _create_observation(store, base=base, head=head)
@@ -381,13 +381,13 @@ def test_r5_verdict_adds_observation_not_binding(store: Path) -> None:
     assert before_bind.returncode == 0, before_bind.stdout + before_bind.stderr
     after_bind = _list_bindings(store)
     assert len(after_bind) == len(_records(before_bind)), (
-        "aff verdict must not create an evidence-binding; "
+        "orchestra verify verdict must not create an evidence-binding; "
         f"before={len(_records(before_bind))} after={len(after_bind)}"
     )
 
 
-def test_r6_aff_trail_lists_unbound_observations(store: Path) -> None:
-    """R6: after verdict with no bind, aff trail still lists the observation."""
+def test_r6_tuner_trail_lists_unbound_observations(store: Path) -> None:
+    """R6: after verdict with no bind, orchestra verify trail still lists the observation."""
     base, head = _seed_verdict_subject(store)
     before = _list_evidence_observations(store)
     proc = _verdict(store, base, head)
@@ -397,13 +397,13 @@ def test_r6_aff_trail_lists_unbound_observations(store: Path) -> None:
     assert len(created) == 1
     obs_id = created[0]["id"]
 
-    trail = _aff("trail", "--cwd", str(store))
+    trail = _tuner("trail", "--cwd", str(store))
     assert trail.returncode == 0, trail.stdout + trail.stderr
     items = json.loads(trail.stdout)
     assert isinstance(items, list)
     assert obs_id in {_observation_id(item) for item in items}
 
-    filtered = _aff("trail", "--cwd", str(store), "--claim", CLAIM)
+    filtered = _tuner("trail", "--cwd", str(store), "--claim", CLAIM)
     assert filtered.returncode == 0, filtered.stdout + filtered.stderr
     claimed = json.loads(filtered.stdout)
     assert any(_observation_id(item) == obs_id for item in claimed)
@@ -430,7 +430,7 @@ def _bind_then_recheck(store: Path) -> None:
 
 
 def test_r7_fixture_bind_then_recheck_exits_zero(store: Path) -> None:
-    """R7: unbound observation, aff bind, then aff recheck exits 0 while pins hold."""
+    """R7: unbound observation, orchestra verify bind, then orchestra verify recheck exits 0 while pins hold."""
     _bind_then_recheck(store)
 
 

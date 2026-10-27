@@ -1,4 +1,4 @@
-"""bin/aff audit runs declared probes and reports unclaimed diffs."""
+"""orchestra verify audit runs declared probes and reports unclaimed diffs."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
-AFF = REPO / "bin" / "aff"
+REPO = Path(__file__).resolve().parents[2]
+VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
 
 PYTEST_INI = "[pytest]\npythonpath = .\n"
 BASE_APP = "VALUE = 1\n"
@@ -71,8 +71,7 @@ def _commit(root: Path, message: str) -> str:
 def _audit(cwd: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
-            sys.executable,
-            str(AFF),
+            *VERIFY,
             "audit",
             "--cwd",
             str(cwd),
@@ -93,7 +92,7 @@ def _payload(proc: subprocess.CompletedProcess[str]) -> dict:
 
 
 def test_r1_audit_runs_declared_probes_at_base_and_head(tmp_path: Path):
-    """R1: aff audit runs declared probes at base and at head and compares results."""
+    """R1: orchestra verify audit runs declared probes at base and at head and compares results."""
     root = tmp_path / "repo"
     _init(root)
     _write(
@@ -101,7 +100,7 @@ def test_r1_audit_runs_declared_probes_at_base_and_head(tmp_path: Path):
         {
             "pytest.ini": PYTEST_INI,
             "app.py": BASE_APP,
-            ".affidavit/probes.json": json.dumps(PROBE_CLI, indent=2) + "\n",
+            ".tuner/probes.json": json.dumps(PROBE_CLI, indent=2) + "\n",
         },
     )
     base = _commit(root, "base")
@@ -122,7 +121,7 @@ def test_r2_audit_reports_unclaimed_probe_difference(tmp_path: Path):
         {
             "pytest.ini": PYTEST_INI,
             "app.py": BASE_APP,
-            ".affidavit/probes.json": json.dumps(PROBE_CLI, indent=2) + "\n",
+            ".tuner/probes.json": json.dumps(PROBE_CLI, indent=2) + "\n",
         },
     )
     base = _commit(root, "base")
@@ -166,8 +165,8 @@ def test_r3_audit_suppresses_diff_covered_by_cited_claim(tmp_path: Path):
         {
             "pytest.ini": PYTEST_INI,
             "app.py": BASE_APP,
-            ".affidavit/probes.json": json.dumps(probes, indent=2) + "\n",
-            ".affidavit/manifest.json": json.dumps(manifest, indent=2) + "\n",
+            ".tuner/probes.json": json.dumps(probes, indent=2) + "\n",
+            ".tuner/manifest.json": json.dumps(manifest, indent=2) + "\n",
         },
     )
     base = _commit(root, "base")

@@ -2,7 +2,7 @@
 
 The tests drive ``orchestra install`` as a subprocess so the observable CLI is
 the contract. A fixture source tree lets the allowlist test plant state that
-must never be installed (``.artifacts/``, ``.worktrees/``, ``dashboard/``).
+must never be installed (``.canon/``, ``.worktrees/``, ``dashboard/``).
 """
 
 from __future__ import annotations
@@ -115,7 +115,7 @@ def source(tmp_path: Path) -> Path:
         json.dumps({"skills": ["./skills"]}) + "\n", encoding="utf-8"
     )
     # Forbidden state: never copied, never linked.
-    for name in (".artifacts", ".worktrees", "dashboard", "orchestra", "bin", "scripts"):
+    for name in (".canon", ".worktrees", "dashboard", "orchestra", "bin", "scripts"):
         forbidden = root / name
         forbidden.mkdir(parents=True)
         (forbidden / "secret.txt").write_text(f"do not install {name}\n", encoding="utf-8")
@@ -167,11 +167,6 @@ def run_install(
     env["ORCHESTRA_NPX"] = str(stub)
     env["ORCHESTRA_NPX_LOG"] = str(log)
     env["ORCHESTRA_NPX_EXIT"] = str(npx_exit)
-    # orchestra/__init__ resolves the sibling affidavit checkout through HOME.
-    # Tests redirect HOME, so point it at the real checkout explicitly.
-    affidavit_checkout = Path(os.environ.get("AFFIDAVIT_ROOT", Path.home() / "affidavit"))
-    if (affidavit_checkout / "affidavit" / "__init__.py").is_file():
-        env.setdefault("AFFIDAVIT_ROOT", str(affidavit_checkout))
     if home is not None:
         env["HOME"] = str(home)
     return subprocess.run(
@@ -332,7 +327,7 @@ def test_flags_help_lists_documented_flags(source, project):
 
 def test_allowlist_declares_documented_roots():
     assert COPY_ALLOWLIST == ("skills", "agents")
-    assert DENY_ROOTS == (".artifacts", ".worktrees", "dashboard")
+    assert DENY_ROOTS == (".canon", ".worktrees", "dashboard")
     assert is_allowed("skills/init/SKILL.md", "claude")
     assert not is_allowed("contract", "claude")
     assert is_allowed("agents/se-reviewer.md", "claude")
@@ -340,7 +335,7 @@ def test_allowlist_declares_documented_roots():
 
 
 def test_allowlist_rejects_denied_and_foreign_paths():
-    for relative in (".artifacts/records", ".worktrees/task", "dashboard/app.py"):
+    for relative in (".canon/records", ".worktrees/task", "dashboard/app.py"):
         assert not is_allowed(relative, "claude"), relative
     assert not is_allowed("hosts/cursor/plugin.json", "claude")
     assert not is_allowed("../outside", "claude")
@@ -363,7 +358,7 @@ def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, proje
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
     assert not (home / ".claude" / "hosts").exists()
     assert not (home / ".claude" / "dashboard").exists()
-    assert not (home / ".claude" / ".artifacts").exists()
+    assert not (home / ".claude" / ".canon").exists()
     assert not (home / ".claude" / ".worktrees").exists()
 
 

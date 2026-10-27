@@ -6,7 +6,7 @@ import importlib
 import subprocess
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 COMMIT_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 COMMIT_B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -18,7 +18,7 @@ CLAIM_ID = "claim-widget"
 
 def _attestation():
     try:
-        return importlib.import_module("affidavit.attestation")
+        return importlib.import_module("orchestra.tuner.attestation")
     except ModuleNotFoundError:
         return None
 
@@ -39,7 +39,7 @@ def _generate_key(directory: Path, name: str = "id_ed25519") -> tuple[Path, str]
 
 
 def _allowlist(principal: str, blob: str) -> bytes:
-    return f'{principal} namespaces="affidavit-verdict" {blob}\n'.encode()
+    return f'{principal} namespaces="tuner-verdict" {blob}\n'.encode()
 
 
 def _verdict_body(
@@ -81,7 +81,7 @@ def test_emit_signed_attestation_includes_commit_manifest_runner_and_claims(
     """R1: emit produces an SSH-signed attestation whose payload includes commit,
     manifest hash, runner digest, and per-claim results."""
     mod = _attestation()
-    assert mod is not None, "affidavit.attestation must exist"
+    assert mod is not None, "orchestra.tuner.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     body = _verdict_body(
@@ -101,7 +101,7 @@ def test_emit_signed_attestation_includes_commit_manifest_runner_and_claims(
     payload = mod.canonical_payload(signed)
     assert isinstance(payload, (bytes, bytearray))
     text = bytes(payload).decode("utf-8")
-    assert "affidavit-verdict" in text
+    assert "tuner-verdict" in text
     assert COMMIT_A in text
     assert MANIFEST_A in text
     assert RUNNER_DIGEST in text
@@ -124,7 +124,7 @@ def test_emit_signed_attestation_includes_commit_manifest_runner_and_claims(
 def test_verify_rejects_bad_signature(tmp_path: Path) -> None:
     """R2: verify rejects an attestation whose signature does not verify."""
     mod = _attestation()
-    assert mod is not None, "affidavit.attestation must exist"
+    assert mod is not None, "orchestra.tuner.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(), key_path=key)
@@ -142,7 +142,7 @@ def test_verify_rejects_bad_signature(tmp_path: Path) -> None:
 def test_verify_rejects_tampered_payload(tmp_path: Path) -> None:
     """R2: changing bind fields after signing fails verify under the allowlist."""
     mod = _attestation()
-    assert mod is not None, "affidavit.attestation must exist"
+    assert mod is not None, "orchestra.tuner.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(), key_path=key)
@@ -160,7 +160,7 @@ def test_verify_rejects_tampered_payload(tmp_path: Path) -> None:
 def test_verify_rejects_wrong_commit(tmp_path: Path) -> None:
     """R3: a well-signed attestation for commit A fails when checked as B."""
     mod = _attestation()
-    assert mod is not None, "affidavit.attestation must exist"
+    assert mod is not None, "orchestra.tuner.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(commit=COMMIT_A), key_path=key)
@@ -177,7 +177,7 @@ def test_verify_rejects_wrong_commit(tmp_path: Path) -> None:
 def test_verify_rejects_bind_mismatch_on_manifest_hash(tmp_path: Path) -> None:
     """R3: a well-signed attestation fails when the presented manifest hash differs."""
     mod = _attestation()
-    assert mod is not None, "affidavit.attestation must exist"
+    assert mod is not None, "orchestra.tuner.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(
@@ -202,21 +202,21 @@ def test_ci_workflow_runs_verdict_and_attest() -> None:
     files = sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml"))
     assert files, "expected at least one workflow file"
     text = "\n".join(path.read_text() for path in files)
-    assert "verdict" in text, "workflow must run aff verdict"
+    assert "verdict" in text, "workflow must run orchestra verify verdict"
     assert "attest" in text, "workflow must invoke the attest emit path"
     assert "build_verdict_repo" in text, (
         "workflow must invoke an explicit fixture builder (build_verdict_repo) "
-        "before aff verdict"
+        "before orchestra verify verdict"
     )
 
-    builder = REPO_ROOT / "tests" / "fixtures" / "build_verdict_repo.sh"
+    builder = REPO_ROOT / "tests" / "tuner" / "fixtures" / "build_verdict_repo.sh"
     assert builder.is_file(), f"expected builder script at {builder}"
 
-    fixture_root = REPO_ROOT / "tests" / "fixtures" / "verdict-repo"
+    fixture_root = REPO_ROOT / "tests" / "tuner" / "fixtures" / "verdict-repo"
     templates = (
         fixture_root / "app.py",
         fixture_root / "tests" / "test_widget.py",
-        fixture_root / ".affidavit" / "manifest.json",
+        fixture_root / ".tuner" / "manifest.json",
     )
     for path in templates:
         assert path.is_file(), f"expected tracked fixture template at {path}"
@@ -224,7 +224,7 @@ def test_ci_workflow_runs_verdict_and_attest() -> None:
     assert "verdict-repo/.git" in gitignore, (
         "parent .gitignore must ignore the built nested .git under verdict-repo"
     )
-    manifest = (fixture_root / ".affidavit" / "manifest.json").read_text()
+    manifest = (fixture_root / ".tuner" / "manifest.json").read_text()
     assert "claim-widget" in manifest, (
         "fixture manifest must declare claim-widget"
     )

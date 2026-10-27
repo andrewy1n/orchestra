@@ -4,7 +4,7 @@ Only these repository roots may reach an install destination. The list is
 deliberately closed: adding a root means a deliberate edit here and a test
 change, not an accident in a recursive copy.
 
-``.artifacts/`` and ``.worktrees/`` are never install inputs. ``dashboard/``
+``.canon/`` and ``.worktrees/`` are never install inputs. ``dashboard/``
 is a checkout-side developer tool, not a host payload, and carries store
 state at runtime, so it stays out too.
 """
@@ -20,7 +20,7 @@ COPY_ALLOWLIST: tuple[str, ...] = ("skills", "agents")
 HOST_ALLOWLIST = "hosts/{provider}"
 
 #: Never copied, never linked, never traversed by the installer.
-DENY_ROOTS: tuple[str, ...] = (".artifacts", ".worktrees", "dashboard")
+DENY_ROOTS: tuple[str, ...] = (".canon", ".worktrees", "dashboard")
 
 #: Housekeeping that never belongs in a host payload.
 IGNORE_NAMES: tuple[str, ...] = ("__pycache__", ".DS_Store", ".pytest_cache")

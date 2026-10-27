@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from canon.derive import compute_derived
-from canon.index import SUPERSEDED, RecordIndex
-from canon.record import base_record, now
-from canon.schema import SchemaError, SchemaSet, TypeDef
-from canon.store import Store, StoreError, StaleWriteError
-from canon.validation import (
+from orchestra.canon.derive import compute_derived
+from orchestra.canon.index import SUPERSEDED, RecordIndex
+from orchestra.canon.record import base_record, now
+from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
+from orchestra.canon.store import Store, StoreError, StaleWriteError
+from orchestra.canon.validation import (
     ValidationError,
     check_transition,
     reject_event_mutation,
@@ -38,9 +38,9 @@ class Binding:
     """The binding that won: a local or global place, and where that choice came from.
 
     `location` is "local" or "global" when the opened directory is that place,
-    including an explicit path or ARTIFACTS_STORE that resolves to one of them.
+    including an explicit path or CANON_STORE that resolves to one of them.
     An explicit directory that is neither place has `location` None.
-    `source` is "argument", "ARTIFACTS_STORE", the binding file path, or "default".
+    `source` is "argument", "CANON_STORE", the binding file path, or "default".
     """
 
     location: Location | None
@@ -218,16 +218,16 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
         chosen = Path(store)
         return _open(root, chosen, Binding(_location(root, chosen), "argument"))
 
-    if "ARTIFACTS_STORE" in os.environ:
-        chosen = Path(os.environ["ARTIFACTS_STORE"])
-        return _open(root, chosen, Binding(_location(root, chosen), "ARTIFACTS_STORE"))
+    if "CANON_STORE" in os.environ:
+        chosen = Path(os.environ["CANON_STORE"])
+        return _open(root, chosen, Binding(_location(root, chosen), "CANON_STORE"))
 
     bound = _binding_file(root)
     if bound is not None:
         path, kind = bound
         return _open(root, _place(root, kind), Binding(kind, str(path)))
 
-    local = root / ".artifacts"
+    local = root / ".canon"
     if _has_config(local):
         return _open(root, local, Binding("local", "default"))
 
@@ -256,18 +256,18 @@ def _project_root(directory: str | Path) -> Path:
 
 
 def _global_store(root: Path) -> Path:
-    return Path.home() / ".artifacts" / root.name
+    return Path.home() / ".canon" / root.name
 
 
 def _place(root: Path, kind: Location) -> Path:
     if kind == "local":
-        return root / ".artifacts"
+        return root / ".canon"
     return _global_store(root)
 
 
 def _location(root: Path, store: Path) -> Location | None:
     resolved = store.resolve()
-    if resolved == (root / ".artifacts").resolve():
+    if resolved == (root / ".canon").resolve():
         return "local"
     if resolved == _global_store(root).resolve():
         return "global"
@@ -279,7 +279,7 @@ def _has_config(store: Path) -> bool:
 
 
 def _binding_file(root: Path) -> tuple[Path, Location] | None:
-    artifacts = root / ".artifacts"
+    artifacts = root / ".canon"
     for name in (_LOCAL_BINDING, _COMMITTED_BINDING):
         path = artifacts / name
         if not path.exists():

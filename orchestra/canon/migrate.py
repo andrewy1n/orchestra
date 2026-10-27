@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from canon.record_file import prepare_record
-from canon.revision import with_revision
-from canon.schema import SchemaError
-from canon.store import Store
+from orchestra.canon.record_file import prepare_record
+from orchestra.canon.revision import with_revision
+from orchestra.canon.schema import SchemaError
+from orchestra.canon.store import Store
 
 
 def migration_path(module: dict[str, Any], old_major: int, new_major: int) -> list[dict[str, Any]]:

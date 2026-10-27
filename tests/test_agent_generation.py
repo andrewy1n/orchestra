@@ -39,9 +39,6 @@ def run_install(
     ).strip(os.pathsep)
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     env["HOME"] = str(home)
-    affidavit_checkout = Path(os.environ.get("AFFIDAVIT_ROOT", Path.home() / "affidavit"))
-    if (affidavit_checkout / "affidavit" / "__init__.py").is_file():
-        env.setdefault("AFFIDAVIT_ROOT", str(affidavit_checkout))
     return subprocess.run(
         [sys.executable, "-m", "orchestra.cli", "install", *args],
         cwd=str(home.parent),

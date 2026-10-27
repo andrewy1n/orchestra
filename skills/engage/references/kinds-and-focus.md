@@ -6,7 +6,7 @@ bugs, one-offs, or evals.
 ## Kinds
 
 `kind` is `deliver` | `repair` | `evaluate` | `incidental`. Put it on
-`plan:effort` and each `work-item`. Missing `kind` means
+`score:effort` and each `work-item`. Missing `kind` means
 `deliver`.
 
 | Kind | Unknown | Done | Records |
@@ -19,7 +19,7 @@ bugs, one-offs, or evals.
 `acceptance.method` stays `tdd` | `check` | `manual`; `verify_command`
 holds the literal command that backs it (empty string for a `manual`
 check with no script). Do not stuff a metric delta into
-`check-run.result`. Use `aff:finding` (`claim`, `basis`,
+`check-run.result`. Use `tuner:finding` (`claim`, `basis`,
 `invalidated_when`, `needs`).
 
 `executor` on a work-item is `inline` or `subagent`. Every task in a
@@ -36,12 +36,12 @@ for plan review.
 
 ## Focus
 
-A **live** goal is a `plan:effort` in lifecycle `active` whose
+A **live** goal is a `score:effort` in lifecycle `active` whose
 `payload.status` is not `closed` (missing means open).
 
 ### Closing and reopening
 
-`status` (`open` | `closed`) on `plan:effort` and `plan:position`
+`status` (`open` | `closed`) on `score:effort` and `score:position`
 says whether an effort is live. It is a payload field, not the
 lifecycle. Closing and reopening both `supersede` the effort's goal and
 position with the new `status`; `supersede` merges the payload, so the
@@ -58,22 +58,22 @@ other fields carry over.
 Closed goals do not show in views. Find them with:
 
 ```bash
-canon list --type plan:effort --state active --where payload.status=closed
+canon list --type score:effort --state active --where payload.status=closed
 
-canon supersede --type plan:effort --id <goal-id> \
+canon supersede --type score:effort --id <goal-id> \
   --expected-revision <revision> --payload '{"status":"open"}'
 
-canon supersede --type plan:position --id <position-id> \
+canon supersede --type score:position --id <position-id> \
   --expected-revision <revision> --payload '{"status":"open"}'
 ```
 
 Focus is a **subject string**, not a record. Name it (from `engage`, the
-user, or the only live `plan:effort` subject). Then:
+user, or the only live `score:effort` subject). Then:
 
 - Read `orchestra handoff --effort <focus>` and the focus's phases in
   `orchestra view plan --effort <focus>`.
-- Ignore other live goals. Do not supersede `plan:effort` or
-  `plan:position` that belongs to another effort.
+- Ignore other live goals. Do not supersede `score:effort` or
+  `score:position` that belongs to another effort.
 - Task-scoped records (`work-item`, `acceptance`, `check-run`,
   `decision`, `failed-attempt`, `investigation-observation`, `finding`,
   `assignment`, `assignment-amendment`, `execution-report`) use
@@ -91,10 +91,10 @@ Create its goal/position. Leave the others active.
 
 Hierarchy inside an effort:
 
-- **milestone** (`plan:milestone`) — optional time-bounded outcome
+- **milestone** (`score:milestone`) — optional time-bounded outcome
   that groups phases (e.g. cutover, harden). Payload: `title`,
   `ordinal`, `effort`. Not a focus subject; focus stays the effort.
-- **phase** (`plan:phase`) — one settle → plan → execute → verify
+- **phase** (`score:phase`) — one settle → plan → execute → verify
   loop. Optional payload `milestone` references a milestone subject.
   Phase `ordinal` is effort-scoped (not reset per milestone).
 
@@ -108,7 +108,7 @@ its phases, not a second chat focus.
 - May span chats, or it interrupts a live phase: one `work-item` +
   `acceptance`, `kind=incidental`, `phase=""` (no phase record exists
   for incidental work; canon checks a non-empty `phase` against
-  real `plan:phase` subjects and skips an empty string), `effort` = a **new** subject (not the interrupted effort).
+  real `score:phase` subjects and skips an empty string), `effort` = a **new** subject (not the interrupted effort).
   Work-item `subject` may equal that effort slug when there is only one
   task. Do not supersede the main goal.
 
@@ -123,19 +123,19 @@ a separate dismiss cache.
 
 | Kind | Source | Clear at the event |
 |---|---|---|
-| `blocking-question` / `open-question` | `plan:continuity-question` still open | `update --transition answered` |
-| `needs-human` | active `aff:finding` with `needs` `human` | `update` with `needs` `none` |
-| `unsigned-check` | latest `method=manual` `aff:check-run` with empty `signed_by` | `correct` setting `signed_by` |
+| `blocking-question` / `open-question` | `score:continuity-question` still open | `update --transition answered` |
+| `needs-human` | active `tuner:finding` with `needs` `human` | `update` with `needs` `none` |
+| `unsigned-check` | latest `method=manual` `tuner:check-run` with empty `signed_by` | `correct` setting `signed_by` |
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 
-canon update --type aff:finding --id <finding-id> \
+canon update --type tuner:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 
-canon correct --type aff:check-run --id <check-run-id> \
+canon correct --type tuner:check-run --id <check-run-id> \
   --payload '{"signed_by":"<signer>"}'
 ```
 
@@ -150,7 +150,7 @@ Signer identity comes from config, env, or a short prompt.
   end or write them from memory.
 - **One writer per store.** Only the parent session calls `canon` in
   any form that writes. Subagents return evidence in their response
-  text and never call `canon` or edit `.artifacts/`. This holds for
+  text and never call `canon` or edit `.canon/`. This holds for
   every executor mode, including a read-only one: that mode names what
   an executor may read, it does not make the store multi-writer.
 - **Views are derived.** Records are the authority. Render views with

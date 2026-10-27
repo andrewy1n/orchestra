@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-de0125fd-b020-48fc-bd52-f66a04de6cbf",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "plugin bin/adaptive-artifacts still runs the CLI (--help)",
+    "effort": "packaging",
+    "method": "check",
+    "phase": "pyproject-pypi",
+    "requirement": "R4",
+    "verify_command": "~/adaptive-artifacts/bin/adaptive-artifacts --help >/dev/null"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-15T20:58:00+00:00",
+  "relationships": {},
+  "revision": "sha256:451023dee067b368f28df673123cc167b61b304c71223f4f9089aea53f29493c",
+  "subject": "aa-installable-package-plugin-bin",
+  "time": {
+    "as_of": "2026-10-15T20:58:00+00:00"
+  }
+}
+---
+

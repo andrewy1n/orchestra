@@ -1,4 +1,4 @@
-"""bin/aff verdict does not need the runtime on PATH; check/close-batch are not aff verbs."""
+"""orchestra verify verdict does not need the runtime on PATH; check/close-batch are not aff verbs."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from test_verdict import AFF, APP_GREEN, APP_RED, CLAIM, _repo
+from test_verdict import VERIFY, APP_GREEN, APP_RED, CLAIM, _repo
 
 
 def _path_without_runtime() -> str:
@@ -27,7 +27,7 @@ def test_verdict_without_runtime(tmp_path: Path) -> None:
     env = os.environ.copy()
     env["PATH"] = _path_without_runtime()
     proc = subprocess.run(
-        [str(AFF), "verdict", "--at", head, CLAIM],
+        [*VERIFY, "verdict", "--at", head, CLAIM],
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -39,7 +39,7 @@ def test_verdict_without_runtime(tmp_path: Path) -> None:
 def test_rejects_store_commands() -> None:
     for command in ("check", "close-batch"):
         proc = subprocess.run(
-            [str(AFF), command, "--help"],
+            [*VERIFY, command, "--help"],
             capture_output=True,
             text=True,
         )
@@ -48,7 +48,7 @@ def test_rejects_store_commands() -> None:
 
 def test_verdict_help() -> None:
     proc = subprocess.run(
-        [str(AFF), "verdict", "--help"],
+        [*VERIFY, "verdict", "--help"],
         capture_output=True,
         text=True,
     )

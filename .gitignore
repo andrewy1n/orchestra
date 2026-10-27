@@ -6,7 +6,7 @@ __pycache__/
 .write.lock
 
 # Machine-local store binding override (committed default is store-binding.json).
-.artifacts/store-binding.local.json
+.canon/store-binding.local.json
 
 # Phase Landing worktrees (repo-local checkouts).
 .worktrees/
@@ -16,7 +16,7 @@ __pycache__/
 .suite/
 
 # Views render on demand.
-.artifacts/views/
+.canon/views/
 
 # Built subject repo from tests/tuner/fixtures/build_verdict_repo.sh
 tests/tuner/fixtures/verdict-repo/.git/

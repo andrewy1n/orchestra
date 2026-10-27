@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-af8be786-2f56-46ed-95a4-4b0e2f42cfcc",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "A structured phase header row shows R n/m verified at 60 and 120 columns",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "evidence-view",
+    "requirement": "R1",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k 'evidence and tally'"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-05T04:07:29+00:00",
+  "relationships": {},
+  "revision": "sha256:57e2a7fa02145860b5e83cb5a0e6d7e69abb5a5e6a4d7bafc2eb744b4aa604c3",
+  "subject": "evidence-surfaces",
+  "time": {
+    "as_of": "2026-10-05T04:07:29+00:00"
+  }
+}
+---
+

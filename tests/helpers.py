@@ -26,7 +26,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from conftest import CANON_CMD, CANON_ROOT, REPO_ROOT
+from conftest import CANON_CMD, REPO_ROOT
 
 _COUNTER = itertools.count()
 
@@ -40,7 +40,7 @@ class _Past(_real):
         return _real.now(tz) - _dt.timedelta(hours=48)
 _dt.datetime = _Past
 sys.argv = ["canon", *sys.argv[1:]]
-runpy.run_module("canon", run_name="__main__", alter_sys=True)
+runpy.run_module("orchestra.canon", run_name="__main__", alter_sys=True)
 """
 
 
@@ -57,11 +57,11 @@ def run_cli_48h_ago(store, *args: str) -> dict:
 
 def schema_defs() -> dict[str, dict]:
     """Record type definitions from the schema modules, keyed by qualified type."""
-    from canon.modules import discover
+    from orchestra.canon.modules import discover
 
     defs: dict[str, dict] = {}
     for module in discover().values():
-        from canon.schema import type_defs
+        from orchestra.canon.schema import type_defs
 
         for record_type, type_def in type_defs(module.module).items():
             fields = type_def.fields
@@ -95,7 +95,7 @@ GENERIC_EFFORT = "test-effort"
 
 def generic_effort(cli, defs) -> str:
     """Subject of a closed effort shared by records that name no effort of their own."""
-    found = cli("list", "--type", "plan:effort", "--subject", GENERIC_EFFORT)
+    found = cli("list", "--type", "score:effort", "--subject", GENERIC_EFFORT)
     if not json.loads(found.stdout)["records"]:
         closed_effort(cli, defs, GENERIC_EFFORT)
     return GENERIC_EFFORT
@@ -103,9 +103,9 @@ def generic_effort(cli, defs) -> str:
 
 def closed_effort(cli, defs, subject: str) -> dict:
     """An effort the dashboard treats as no longer live."""
-    effort = create_generic_record(cli, defs, "plan:effort", subject=subject)
+    effort = create_generic_record(cli, defs, "score:effort", subject=subject)
     result = cli(
-        "supersede", "--type", "plan:effort", "--id", effort["id"],
+        "supersede", "--type", "score:effort", "--id", effort["id"],
         "--expected-revision", effort["revision"],
         "--payload", json.dumps({**effort["payload"], "status": "closed"}),
     )
@@ -187,7 +187,7 @@ def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, di
         return []
     if "ref" in form:
         target_type = _ref_targets(form)[0]
-        if target_type == "plan:effort":
+        if target_type == "score:effort":
             return generic_effort(cli, defs)
         if target_type not in target_cache:
             target_cache[target_type] = create_generic_record(cli, defs, target_type, target_cache=target_cache)
@@ -217,7 +217,7 @@ def ensure_refs(cli, defs, record_def: dict, given: dict) -> None:
             found = cli("list", "--type", target_type, "--subject", subject)
             if found.returncode == 0 and json.loads(found.stdout).get("records"):
                 continue
-            assert target_type != "plan:decision", f"create decision {subject!r} before the record that cites it"
+            assert target_type != "score:decision", f"create decision {subject!r} before the record that cites it"
             context = {k: given[k] for k in ("effort",) if k in given and k in defs[target_type]["fields"]}
             create_generic_record(cli, defs, target_type, subject=subject, extra_payload=context or None)
 
@@ -391,7 +391,6 @@ class Tmux:
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("TMUX")}
         self.env.update(
             HOME=str(home), SHELL="/bin/sh", TERM="xterm-256color",
-            CANON_ROOT=str(CANON_ROOT),
             UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv"),
         )
         self.cwd = cwd
@@ -416,7 +415,7 @@ class Tmux:
         self("set", "-g", "escape-time", "0")
         self("set", "-g", "status", "on")
         self("set", "-g", "status-interval", "1")
-        for name in ("CANON_ROOT", "PYTHONPATH", "CANON_SCHEMA_PATH", "PATH"):
+        for name in ("PYTHONPATH", "CANON_SCHEMA_PATH", "PATH"):
             if self.env.get(name):
                 self("set-environment", "-g", name, self.env[name])
         self("run-shell", shlex.quote(str(TMUX_ENTRY)))

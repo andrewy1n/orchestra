@@ -1,0 +1,21 @@
+---
+{
+  "id": "rec-12c69d58-d81c-486c-aed4-de74afe6af83",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "effort": "workflow-loop",
+    "phase": "claim-witnesses",
+    "position": "planning claim-witnesses: materializing store-authority and verify-path tasks",
+    "scope": "phase"
+  },
+  "record_type": "score:position",
+  "recorded_at": "2026-10-16T09:29:41+00:00",
+  "relationships": {},
+  "revision": "sha256:76c51017e0e210ce3fbbb197b8d404cbb936be203e7cd4b347c47e639540a675",
+  "subject": "claim-witnesses",
+  "time": {
+    "as_of": "2026-10-16T09:28:35+00:00"
+  }
+}
+---
+

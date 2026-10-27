@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-d3fde647-9d4d-468a-a9fc-7635ac187eeb",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "",
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "oracle-witnesses",
+    "requirement": "R6",
+    "verify_command": "rg -n \"mechanical|assertion-level|oracle-backed\" skills/verify-work/SKILL.md"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-16T20:21:59+00:00",
+  "relationships": {},
+  "revision": "sha256:cffde7ca126f4e1b128636a23c8b04e32b7b5b0dc501e1188a48f6654e8f14ae",
+  "subject": "oracle-skills-mechanical-verify",
+  "time": {
+    "as_of": "2026-10-16T20:21:59+00:00"
+  }
+}
+---
+

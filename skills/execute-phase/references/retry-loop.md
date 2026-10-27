@@ -7,12 +7,12 @@ still chooses `level` / `next`; the budget only decides when to stop.
 ## Re-dispatch selection
 
 ```bash
-canon list --type plan:work-item --state in_progress \
+canon list --type score:work-item --state in_progress \
   --where payload.effort=<focus> --where payload.phase=<current-phase-slug>
 ```
 
-For each result, load the latest `run:assessment` (structured) or
-latest `aff:check-run` (simple). Retry when assessment `next` is
+For each result, load the latest `conductor:assessment` (structured) or
+latest `tuner:check-run` (simple). Retry when assessment `next` is
 `execute`, or check-run `result` is `fail`. Skip a task whose executor
 is still running for the current assignment, or that has an open
 blocking `continuity-question` with `scope` `retry:<task-slug>`.
@@ -37,11 +37,11 @@ When a per-task or per-phase fix-task budget is exhausted, do not
 re-dispatch. Open Needs you and stop selecting it:
 
 ```bash
-canon create --type plan:continuity-question \
+canon create --type score:continuity-question \
   --subject "<focus>" \
   --payload '{"owner":"user","blocking":true,"scope":"retry:<task-slug>"}'
 
-canon create --type aff:finding \
+canon create --type tuner:finding \
   --subject "retry-<task-slug>" \
   --payload '{"claim":"retry budget exhausted for <task-slug> after <attempts> re-dispatches","basis":"<attempts, check-runs, assessments>","invalidated_when":"human raises the budget or withdraws the task","effort":"<focus>","needs":"human"}' \
   --body "## Evidence
@@ -61,10 +61,10 @@ When the user answers or clears the finding, clear at the event
 (kinds-and-focus, Needs-you clears):
 
 ```bash
-canon update --type plan:continuity-question --id <question-id> \
+canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 
-canon update --type aff:finding --id <finding-id> \
+canon update --type tuner:finding --id <finding-id> \
   --expected-revision <revision> \
   --payload '{"needs":"none"}'
 ```
@@ -75,12 +75,12 @@ For each retryable task still inside budget: record an
 `assignment-amendment` whose `## Correction` quotes the failing
 check-run evidence (runner output tail) and the assessment's
 `## Reason` when present; set `attempts` to prior+1 (absent → 0, so
-first re-dispatch writes `1`); create a fresh `run:assignment`
+first re-dispatch writes `1`); create a fresh `conductor:assignment`
 and dispatch as in execute-phase steps 4–5 (same executor mode).
 Work-item stays `in_progress` — never reopen `done`.
 
 ```bash
-canon create --type run:assignment-amendment \
+canon create --type conductor:assignment-amendment \
   --subject "<task-slug>" \
   --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
@@ -95,11 +95,11 @@ Re-dispatch after failure.
 
 <assessment ## Reason when present, else omit>"
 
-canon update --type plan:work-item --id <id> \
+canon update --type score:work-item --id <id> \
   --expected-revision <revision> \
   --payload '{"attempts":1}'
 
-canon create --type run:assignment \
+canon create --type conductor:assignment \
   --subject "<task-slug>" \
   --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
   --body "## Orientation
@@ -123,7 +123,7 @@ exhausted, use the budget-exhaustion Needs-you path above
 (`scope: retry:<verification-slug>` or `retry:<fix-slug>`) instead.
 
 ```bash
-canon create --type plan:work-item \
+canon create --type score:work-item \
   --subject "fix-<failing-area>" \
   --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<focus>","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
   --body "## Description
@@ -134,11 +134,11 @@ Fix the failure that blocked closing verification.
 
 <from the failing check-run / node ids>"
 
-canon create --type plan:acceptance \
+canon create --type score:acceptance \
   --subject "fix-<failing-area>" \
   --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<focus>","verify_command":"<command>","requirement":"<id>"}'
 
-canon update --type plan:work-item --id <verification-work-item-id> \
+canon update --type score:work-item --id <verification-work-item-id> \
   --expected-revision <revision> \
   --payload '{"depends_on":["<existing-dependency-slug>","<fix-work-item-slug>"]}'
 ```

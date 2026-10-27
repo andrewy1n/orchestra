@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from affidavit.manifest import DEFAULT_RUNNER
+from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 KINDS = ("unit", "integration", "interaction")
 DEFAULT_KIND = "unit"

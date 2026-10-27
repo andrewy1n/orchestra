@@ -5,16 +5,18 @@ from __future__ import annotations
 import ast
 import importlib
 import pkgutil
+import re
 import subprocess
 from pathlib import Path
 
-import affidavit
-import affidavit.binding as binding
-import affidavit.observation as observation
+import orchestra.tuner as tuner
+import orchestra.tuner.binding as binding
+import orchestra.tuner.observation as observation
 
-OBS_TYPE = "aff:evidence-observation"
-BIND_TYPE = "aff:evidence-binding"
+OBS_TYPE = "tuner:evidence-observation"
+BIND_TYPE = "tuner:evidence-binding"
 _CLI_NAME = "canon"
+_CLI_WORD = re.compile(r"(?<![\w.])canon(?![\w])")
 _PROCESS_FUNCS = frozenset(
     {
         "run",
@@ -34,7 +36,7 @@ _PROCESS_FUNCS = frozenset(
 
 def _usable_root(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
-    artifacts = root / ".artifacts"
+    artifacts = root / ".canon"
     artifacts.mkdir(parents=True)
     (artifacts / "config.json").write_text("{}\n", encoding="utf-8")
     return root
@@ -99,7 +101,7 @@ def _install_project_spy(monkeypatch):
         return []
 
     try:
-        project_mod = importlib.import_module("canon.project")
+        project_mod = importlib.import_module("orchestra.canon.project")
     except ImportError:
         project_mod = None
     if project_mod is not None:
@@ -125,7 +127,7 @@ def _payload_matches(record: dict, expected: dict) -> bool:
 
 
 def test_store_client_create_observation(tmp_path: Path, monkeypatch) -> None:
-    """R1: affidavit.observation creates an evidence-observation by calling Project.create."""
+    """R1: tuner.observation creates an evidence-observation by calling Project.create."""
     root = _usable_root(tmp_path)
     creates, _lists = _install_project_spy(monkeypatch)
     _block_cli(monkeypatch, observation)
@@ -154,7 +156,7 @@ def test_store_client_create_observation(tmp_path: Path, monkeypatch) -> None:
         )
     ]
     assert matched, (
-        "affidavit.observation creates an evidence-observation by calling Project.create"
+        "orchestra.tuner.observation creates an evidence-observation by calling Project.create"
     )
     assert error is None
     assert isinstance(result, dict)
@@ -162,13 +164,13 @@ def test_store_client_create_observation(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_store_client_list_observations(tmp_path: Path, monkeypatch) -> None:
-    """R2: affidavit.observation lists evidence-observations by calling Project.list."""
+    """R2: tuner.observation lists evidence-observations by calling Project.list."""
     root = _usable_root(tmp_path)
     _creates, lists = _install_project_spy(monkeypatch)
     _block_cli(monkeypatch, observation)
     result, error = _call(lambda: observation.list_observations(root))
     assert OBS_TYPE in lists, (
-        "affidavit.observation lists evidence-observations by calling Project.list"
+        "orchestra.tuner.observation lists evidence-observations by calling Project.list"
     )
     assert error is None
     assert isinstance(result, list)
@@ -178,7 +180,7 @@ def test_store_client_list_observations(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
-    """R3: affidavit.binding creates an evidence-binding by calling Project.create."""
+    """R3: tuner.binding creates an evidence-binding by calling Project.create."""
     root = _usable_root(tmp_path)
     creates, _lists = _install_project_spy(monkeypatch)
     _block_cli(monkeypatch, binding, observation)
@@ -203,7 +205,7 @@ def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
         if record.get("record_type") == BIND_TYPE and _payload_matches(record, expected)
     ]
     assert matched, (
-        "affidavit.binding creates an evidence-binding by calling Project.create"
+        "orchestra.tuner.binding creates an evidence-binding by calling Project.create"
     )
     assert error is None
     assert isinstance(result, dict)
@@ -211,13 +213,13 @@ def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_store_client_list_bindings(tmp_path: Path, monkeypatch) -> None:
-    """R4: affidavit.binding lists evidence-bindings by calling Project.list."""
+    """R4: tuner.binding lists evidence-bindings by calling Project.list."""
     root = _usable_root(tmp_path)
     _creates, lists = _install_project_spy(monkeypatch)
     _block_cli(monkeypatch, binding, observation)
     result, error = _call(lambda: binding.list_bindings(root))
     assert BIND_TYPE in lists, (
-        "affidavit.binding lists evidence-bindings by calling Project.list"
+        "orchestra.tuner.binding lists evidence-bindings by calling Project.list"
     )
     assert error is None
     assert isinstance(result, list)
@@ -283,14 +285,14 @@ def _names_cli(tree: ast.AST) -> bool:
         if node in docs:
             continue
         text = _folded_string(node)
-        if text is not None and _CLI_NAME in text:
+        if text is not None and _CLI_WORD.search(text):
             return True
     return False
 
 
 def _modules_that_spawn_cli() -> list[str]:
     offenders: list[str] = []
-    root = Path(affidavit.__file__).resolve().parent
+    root = Path(tuner.__file__).resolve().parent
     for path in sorted(root.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         if _names_cli(tree) and _starts_process(tree):
@@ -298,11 +300,11 @@ def _modules_that_spawn_cli() -> list[str]:
     return offenders
 
 
-def _is_aa_command(argv: list[str]) -> bool:
+def _is_canon_command(argv: list[str]) -> bool:
     if any(Path(part).name == _CLI_NAME for part in argv):
         return True
     if "-m" in argv and any(
-        part == "canon" or part.startswith("canon.")
+        part == "orchestra.canon" or part.startswith("orchestra.canon.")
         for part in argv
     ):
         return True
@@ -323,7 +325,7 @@ def _note_argv(spawned: list[list[str]], argv) -> None:
 
 
 def test_store_client_no_canon_process(tmp_path: Path, monkeypatch) -> None:
-    """R5: no module under affidavit/ starts a process to run canon."""
+    """R5: no module under tuner/ starts a process to run canon."""
     static = _modules_that_spawn_cli()
     spawned: list[list[str]] = []
 
@@ -337,8 +339,8 @@ def test_store_client_no_canon_process(tmp_path: Path, monkeypatch) -> None:
         )
 
     modules = [
-        importlib.import_module(f"affidavit.{info.name}")
-        for info in pkgutil.iter_modules(affidavit.__path__)
+        importlib.import_module(f"orchestra.tuner.{info.name}")
+        for info in pkgutil.iter_modules(tuner.__path__)
     ]
     monkeypatch.setattr(subprocess, "run", spy_run)
     for module in modules:
@@ -372,6 +374,6 @@ def test_store_client_no_canon_process(tmp_path: Path, monkeypatch) -> None:
         raise
     except Exception:
         pass
-    spawned_cli = [argv for argv in spawned if _is_aa_command(argv)]
+    spawned_cli = [argv for argv in spawned if _is_canon_command(argv)]
     assert spawned_cli == [], spawned_cli
     assert static == [], static

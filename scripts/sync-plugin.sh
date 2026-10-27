@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Payload for Cursor local install and Claude marketplace add.
-# Do not sync a live .artifacts/ store.
+# Do not sync a live .canon/ store.
 
 set -euo pipefail
 

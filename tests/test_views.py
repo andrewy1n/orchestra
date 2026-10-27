@@ -20,7 +20,7 @@ def work_item(project, subject, state_payload=None, **extra):
         "effort": "alpha",
         **extra,
     }
-    return create(project, "plan:work-item", subject, payload)
+    return create(project, "score:work-item", subject, payload)
 
 
 def render(project, view, **kwargs):
@@ -37,7 +37,7 @@ def test_handoff_has_goal_and_position_under_effort_heading(project):
 
 def test_handoff_links_use_new_record_path(project):
     text = render(project, "handoff")
-    assert ".artifacts/records/plan__effort/rec-" in text
+    assert ".canon/records/score__effort/rec-" in text
 
 
 def test_handoff_has_no_store_state_line(project):
@@ -59,13 +59,13 @@ def test_handoff_omits_planned_work_item_from_in_progress(project):
 def test_handoff_shows_blocking_question_only_when_blocking(project):
     create(
         project,
-        "plan:continuity-question",
+        "score:continuity-question",
         "which-db",
         {"owner": "human", "blocking": True, "scope": "alpha"},
     )
     create(
         project,
-        "plan:continuity-question",
+        "score:continuity-question",
         "naming",
         {"owner": "human", "blocking": False, "scope": "alpha"},
     )
@@ -78,12 +78,12 @@ def test_handoff_shows_blocking_question_only_when_blocking(project):
 def test_handoff_lists_latest_proof_and_open_backlog(project):
     create(
         project,
-        "run:proof-packet",
+        "conductor:proof-packet",
         "p1",
         {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
     )
-    create(project, "plan:backlog-item", "later-idea", {"effort": "alpha", "status": "open"})
-    create(project, "plan:backlog-item", "done-idea", {"effort": "alpha", "status": "dismissed"})
+    create(project, "score:backlog-item", "later-idea", {"effort": "alpha", "status": "open"})
+    create(project, "score:backlog-item", "done-idea", {"effort": "alpha", "status": "dismissed"})
     text = render(project, "handoff")
     assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo" in text
     assert "### Backlog\n- **later-idea**: alpha; open" in text
@@ -93,7 +93,7 @@ def test_handoff_lists_latest_proof_and_open_backlog(project):
 def test_handoff_lists_needs_human_findings_and_unsigned_manual_checks(project):
     create(
         project,
-        "aff:finding",
+        "tuner:finding",
         "risky",
         {
             "claim": "It is risky",
@@ -105,7 +105,7 @@ def test_handoff_lists_needs_human_findings_and_unsigned_manual_checks(project):
     )
     create(
         project,
-        "aff:check-run",
+        "tuner:check-run",
         "ac-1",
         {
             "criterion_id": "ac-1",
@@ -130,7 +130,7 @@ def test_handoff_effort_flag_keeps_only_that_effort(project):
 
 def test_handoff_closed_effort_is_hidden(project):
     project.supersede(
-        project.resolve("plan:effort", "alpha")["id"],
+        project.resolve("score:effort", "alpha")["id"],
         payload={"goal": "Goal of alpha", "kind": "deliver", "status": "closed"},
     )
     assert "### Goal" not in render(project, "handoff")
@@ -145,7 +145,7 @@ def test_plan_groups_by_phase_and_lists_work_and_acceptance(project):
     work_item(project, "build-it")
     create(
         project,
-        "plan:acceptance",
+        "score:acceptance",
         "build-it-ac1",
         {
             "method": "tdd",
@@ -164,8 +164,8 @@ def test_plan_groups_by_phase_and_lists_work_and_acceptance(project):
 
 
 def test_plan_orders_phases_by_ordinal(project):
-    create(project, "plan:phase", "a-late", {"title": "Late", "ordinal": 3, "effort": "alpha"})
-    create(project, "plan:phase", "z-early", {"title": "Early", "ordinal": 2, "effort": "alpha"})
+    create(project, "score:phase", "a-late", {"title": "Late", "ordinal": 3, "effort": "alpha"})
+    create(project, "score:phase", "z-early", {"title": "Early", "ordinal": 2, "effort": "alpha"})
     text = render(project, "plan")
     assert text.index("## p1") < text.index("## z-early") < text.index("## a-late")
 
@@ -185,7 +185,7 @@ def test_status_shows_state_ready_wave_and_check_tally(project):
     for subject, result in (("first-ac1", "pass"), ("first-ac2", "fail")):
         create(
             project,
-            "aff:check-run",
+            "tuner:check-run",
             subject,
             {
                 "criterion_id": subject,
@@ -210,13 +210,13 @@ def test_status_marks_blocked_work_not_ready(project):
 def test_verification_groups_by_subject_with_checks_and_findings(project):
     create(
         project,
-        "plan:acceptance",
+        "score:acceptance",
         "ac-1",
         {"method": "check", "phase": "p1", "effort": "alpha", "verify_command": "true", "requirement": "R1"},
     )
     create(
         project,
-        "aff:check-run",
+        "tuner:check-run",
         "ac-1",
         {
             "criterion_id": "ac-1",
@@ -229,7 +229,7 @@ def test_verification_groups_by_subject_with_checks_and_findings(project):
     )
     create(
         project,
-        "aff:finding",
+        "tuner:finding",
         "f-1",
         {"claim": "c", "basis": "b", "invalidated_when": "w", "effort": "alpha", "needs": "none"},
     )
@@ -244,21 +244,21 @@ def test_brief_collects_work_item_acceptance_constraints_and_position(project):
     work_item(project, "build-it")
     create(
         project,
-        "plan:acceptance",
+        "score:acceptance",
         "build-it-ac1",
         {"method": "tdd", "phase": "p1", "effort": "alpha", "verify_command": "pytest", "criterion": "It works"},
         body="Verbatim criterion text.",
     )
     create(
         project,
-        "plan:constraint",
+        "score:constraint",
         "stay-small",
         {"statement": "Keep it small", "applies_to": "all", "effort": "alpha"},
         body="## Basis\n\nConstraint basis.",
     )
     create(
         project,
-        "plan:acceptance",
+        "score:acceptance",
         "other-ac1",
         {"method": "tdd", "phase": "p1", "effort": "alpha", "verify_command": "x"},
     )
@@ -285,7 +285,7 @@ def run_cli(monkeypatch, capsys, project, *argv):
     from orchestra import cli
 
     monkeypatch.chdir(project.project_root)
-    monkeypatch.delenv("ARTIFACTS_STORE", raising=False)
+    monkeypatch.delenv("CANON_STORE", raising=False)
     code = cli.main(list(argv))
     return code, capsys.readouterr()
 
@@ -314,7 +314,7 @@ def test_cli_view_without_store_fails_cleanly(tmp_path, monkeypatch, capsys):
     from orchestra import cli
 
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.delenv("ARTIFACTS_STORE", raising=False)
+    monkeypatch.delenv("CANON_STORE", raising=False)
     monkeypatch.chdir(tmp_path)
     assert cli.main(["handoff"]) == 1
     assert "No artifact store" in capsys.readouterr().err

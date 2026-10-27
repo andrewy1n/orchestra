@@ -16,8 +16,8 @@ nothing) when `transition` is `done`, a criterion is unmet/unchecked,
 and no `finding` was given. It also refuses a pass-only `tdd` `done`
 without valid request-carried red evidence (and no `finding`). For
 oracle-backed `tdd`, do not close when the claim is in
-`.affidavit/manifest.json` and `aff verdict` exits non-zero. Do not
-`create`/`supersede` `aff:oracle-amendment`. Close-batch still
+`.tuner/manifest.json` and `orchestra verify verdict` exits non-zero. Do not
+`create`/`supersede` `tuner:oracle-amendment`. Close-batch still
 refuses without a qualifying assertion-level red for frozen tests.
 Do not hand-write the batch to route around a refusal.
 
@@ -36,14 +36,14 @@ CLI: `orchestra close-batch` (see
 1. Active acceptances only (superseded definitions are retired):
 
 ```bash
-canon list --type plan:acceptance --subject "<task-slug>" --state active
+canon list --type score:acceptance --subject "<task-slug>" --state active
 ```
 
 2. Most recent execution-report (omit / leave `execution_report_id`
    `null` when verified without one):
 
 ```bash
-canon list --type run:execution-report --subject "<task-slug>" --full --order-by recorded_at
+canon list --type conductor:execution-report --subject "<task-slug>" --full --order-by recorded_at
 ```
 
    Take the last entry (`recorded_at` sorts oldest first).
@@ -53,7 +53,7 @@ canon list --type run:execution-report --subject "<task-slug>" --full --order-by
    and pick a prior runner fail for that criterion as the red:
 
 ```bash
-canon list --type aff:check-run --subject "<task-slug>" --full --order-by recorded_at
+canon list --type tuner:check-run --subject "<task-slug>" --full --order-by recorded_at
 ```
 
    Copy from the red: `red_check_run_id`, `red_result` (`fail`),
@@ -170,7 +170,7 @@ orchestra close-batch \
    no `finding`, or pass-only `tdd` without valid red/ancestry);
    stderr names criteria; go back to step 3 — do **not** `apply`.
    Exit `1` → malformed JSON; fix and retry.
-5. Only after exit `0`, apply — one `aff:check-run` create per
+5. Only after exit `0`, apply — one `tuner:check-run` create per
    `manual` criterion (`informed_by` acceptance + execution-report);
    `tdd`/`check` check-runs already exist from `orchestra check`. Then
    the `finding` if given, then the work-item transition:

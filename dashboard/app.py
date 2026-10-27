@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dashboard import approval as approval_module
-from canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import Project, StoreBindingError, open_store
 from dashboard import backlog as backlog_module
 from dashboard import dismiss as dismiss_module
 from dashboard import gates
@@ -52,11 +52,11 @@ NEEDS_TEXT_TITLE = {
 }
 JOURNAL_PANEL_LIMIT = 5
 JOURNAL_TYPE_LABEL = {
-    "run:failed-attempt": ("✗", "attempt"),
-    "aff:investigation-observation": ("◉", "observation"),
-    "aff:finding": ("!", "finding"),
-    "plan:continuity-question": ("?", "question"),
-    "run:assignment-amendment": ("△", "amendment"),
+    "conductor:failed-attempt": ("✗", "attempt"),
+    "tuner:investigation-observation": ("◉", "observation"),
+    "tuner:finding": ("!", "finding"),
+    "score:continuity-question": ("?", "question"),
+    "conductor:assignment-amendment": ("△", "amendment"),
 }
 # Compat for tests and task_detail that still import the old name.
 PhaseDetailScreen = PhaseScreen

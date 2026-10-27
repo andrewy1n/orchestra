@@ -23,9 +23,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from canon.index import RecordIndex
-from canon.lifecycle import terminal_success_state
-from canon.schema import DEPENDS_ON, SchemaSet
+from orchestra.canon.index import RecordIndex
+from orchestra.canon.lifecycle import terminal_success_state
+from orchestra.canon.schema import DEPENDS_ON, SchemaSet
 
 
 def eligible_record_types(schemas: SchemaSet) -> set[str]:

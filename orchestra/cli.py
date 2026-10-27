@@ -12,8 +12,8 @@ from pathlib import Path
 from orchestra import reviewer, view_cli
 
 try:
-    from canon.project import StoreBindingError, open_store
-    from canon.store import StoreError
+    from orchestra.canon.project import StoreBindingError, open_store
+    from orchestra.canon.store import StoreError
 except ModuleNotFoundError:
     StoreBindingError = None
     open_store = None
@@ -35,7 +35,7 @@ from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 
 
-STORE_SCHEMAS = ("plan", "run", "aff")
+STORE_SCHEMAS = ("score", "conductor", "tuner")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -48,10 +48,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)
+    sub.add_parser(
+        "verify",
+        add_help=False,
+        help="Verdict, attestation, claims, audit, and evidence binding",
+    )
 
     check = sub.add_parser(
         "check",
-        help="Run an acceptance verify_command and write an aff:check-run",
+        help="Run an acceptance verify_command and write an tuner:check-run",
     )
     check.add_argument("--acceptance", required=True, help="Acceptance record id")
     check.add_argument(
@@ -275,7 +280,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_record = suite_sub.add_parser(
         "record",
-        help="Collect a finished suite and write its aff:check-run",
+        help="Collect a finished suite and write its tuner:check-run",
     )
     _add_suite_job_arguments(suite_record)
     suite_record.add_argument(
@@ -450,7 +455,7 @@ def _load_review_records(
     records: list[dict[str, object]] = []
     failures: list[str] = []
     for kind in sorted(reviewer.ALLOWED_KINDS):
-        record_type = f"plan:{kind}"
+        record_type = f"score:{kind}"
         try:
             rows = project.list(record_type)
         except StoreError as exc:
@@ -683,11 +688,11 @@ def _cmd_store_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
-    from canon.store import Store
-    from canon.sync import init_store
+    from orchestra.canon.store import Store
+    from orchestra.canon.sync import init_store
 
     root = _git_root(_cwd(args))
-    artifacts = root / ".artifacts"
+    artifacts = root / ".canon"
     try:
         project = open_store(root)
     except StoreBindingError:
@@ -717,6 +722,11 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["verify"]:
+        from orchestra.tuner.cli import main as verify_main
+
+        return verify_main(argv[1:])
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "check":
@@ -734,8 +744,6 @@ def main(argv: list[str] | None = None) -> int:
             print(outcome.message, file=sys.stderr)
         return outcome.exit_code
     if args.command == "close-batch":
-        # Lazy: close-batch is the only command that may need the affidavit
-        # checkout, so an installed CLI without one still starts.
         from orchestra.close_batch import main as close_batch_main
 
         argv = ["--input", args.input, "--out", args.out]

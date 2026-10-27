@@ -24,16 +24,16 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterator
 
-from canon.config import CONFIG_NAME, ConfigError, dump_config, validate_config
-from canon.paths import (
+from orchestra.canon.config import CONFIG_NAME, ConfigError, dump_config, validate_config
+from orchestra.canon.paths import (
     PathValidationError,
     revision_filename,
     type_dir_name,
     validate_record_id,
     validate_record_type,
 )
-from canon.oplog import CHECKPOINT_KIND, OP_SUFFIX, append_resolved_op, fold, prune_before, purge_chain, read_ops
-from canon.record_file import (
+from orchestra.canon.oplog import CHECKPOINT_KIND, OP_SUFFIX, append_resolved_op, fold, prune_before, purge_chain, read_ops
+from orchestra.canon.record_file import (
     RECORD_GLOB,
     RECORD_SUFFIX,
     RecordFileError,
@@ -41,7 +41,7 @@ from canon.record_file import (
     load_record,
     prepare_record,
 )
-from canon.revision import compute_revision, with_revision
+from orchestra.canon.revision import compute_revision, with_revision
 
 CHECKPOINT_THRESHOLD = 32
 

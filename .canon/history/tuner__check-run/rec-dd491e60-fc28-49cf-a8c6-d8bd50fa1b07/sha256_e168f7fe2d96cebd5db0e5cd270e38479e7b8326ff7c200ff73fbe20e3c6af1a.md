@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-dd491e60-fc28-49cf-a8c6-d8bd50fa1b07",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-d0219464-ac52-415e-b926-d817876f0d8a",
+    "duration_s": 0.91466,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-d0219464-ac52-415e-b926-d817876f0d8a"
+    ],
+    "method": "check",
+    "output_sha256": "2c92763ebc85148ceb3debe387f9b6bea1b772e6478ca8a5f6125160e4af8444",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "0cdee541c8b953f974e66ee9b99d79fa7eeccf26",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-atomic-claims-skills"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-16T19:39:00+00:00",
+  "relationships": {},
+  "revision": "sha256:e168f7fe2d96cebd5db0e5cd270e38479e7b8326ff7c200ff73fbe20e3c6af1a",
+  "subject": "verify-atomic-claims-skills",
+  "time": {
+    "observed": "2026-10-16T19:39:00+00:00",
+    "recorded": "2026-10-16T19:39:00+00:00"
+  }
+}
+---
+
+.................                                                        [100%]
+17 passed in 0.38s

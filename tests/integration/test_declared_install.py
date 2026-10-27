@@ -10,13 +10,6 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 
-_FIND_SPEC = (
-    "import importlib.util, sys\n"
-    "name = sys.argv[1]\n"
-    "raise SystemExit(0 if importlib.util.find_spec(name) is None else 1)\n"
-)
-
-
 def _run(
     cmd: list[str],
     *,
@@ -89,51 +82,22 @@ def _clean_environment(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     return venv, env, project
 
 
-def _spec_installed(venv: Path, env: dict[str, str], cwd: Path, name: str) -> bool:
-    probe = _run(
-        [str(venv / "bin" / "python"), "-c", _FIND_SPEC, name],
-        env=env,
-        cwd=cwd,
-    )
-    return probe.returncode != 0
-
-
-def test_r5_clean_install_imports_canon(tmp_path: Path):
-    """R5: a clean install can import canon and run orchestra --help."""
+def test_r5_clean_install_imports_components(tmp_path: Path):
+    """R5: a clean install can import canon and tuner and run both CLIs."""
     venv, env, project = _clean_environment(tmp_path)
     orchestra = str(venv / "bin" / "orchestra")
     installed = _run([orchestra, "install"], env=env, cwd=project)
     imported = _run(
-        [str(venv / "bin" / "python"), "-c", "import canon"],
+        [str(venv / "bin" / "python"), "-c", "import orchestra.canon, orchestra.tuner"],
         env=env,
         cwd=project,
     )
     helped = _run([orchestra, "--help"], env=env, cwd=project)
-    assert imported.returncode == 0 and helped.returncode == 0, (
-        "clean orchestra install did not leave canon importable "
-        f"and orchestra --help exiting 0; "
+    canon_help = _run([str(venv / "bin" / "canon"), "--help"], env=env, cwd=project)
+    assert imported.returncode == 0 and helped.returncode == 0 and canon_help.returncode == 0, (
+        "clean orchestra install did not leave canon and tuner importable "
+        f"and both CLIs exiting 0; "
         f"import={imported.returncode} help={helped.returncode} "
         f"install={installed.returncode}\n"
         f"{imported.stderr}\n{helped.stderr}\n{installed.stderr}"
-    )
-
-
-def test_r6_plain_install_does_not_install_affidavit(tmp_path: Path):
-    """R6: orchestra install without the evidence extra does not install affidavit."""
-    venv, env, project = _clean_environment(tmp_path)
-    orchestra = str(venv / "bin" / "orchestra")
-    installed = _run([orchestra, "install"], env=env, cwd=project)
-    affidavit_installed = _spec_installed(venv, env, project, "affidavit")
-    adaptive = _run(
-        [str(venv / "bin" / "python"), "-c", "import canon"],
-        env=env,
-        cwd=project,
-    )
-    assert adaptive.returncode == 0 and not affidavit_installed, (
-        "plain orchestra install (no evidence extra) should leave "
-        "canon importable and affidavit not installed; "
-        f"affidavit_installed={affidavit_installed} "
-        f"canon_exit={adaptive.returncode} "
-        f"install_exit={installed.returncode}\n"
-        f"{adaptive.stderr}\n{installed.stderr}"
     )

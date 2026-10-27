@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from affidavit.manifest import (
+from orchestra.tuner.manifest import (
     ManifestError,
     frozen_support_files,
     hash_oracle_files,
@@ -96,9 +96,9 @@ def _write_tree(
     support_files: object = _OMIT,
     claim_support_files: object = _OMIT,
 ) -> None:
-    affidavit = root / ".affidavit"
-    affidavit.mkdir(exist_ok=True)
-    (affidavit / "manifest.json").write_text(
+    tuner = root / ".tuner"
+    tuner.mkdir(exist_ok=True)
+    (tuner / "manifest.json").write_text(
         json.dumps(
             _manifest_doc(
                 oracle,
@@ -111,7 +111,7 @@ def _write_tree(
         )
         + "\n"
     )
-    (affidavit / "allowed_signers").write_bytes(allowlist)
+    (tuner / "allowed_signers").write_bytes(allowlist)
     oracle_path = root / ORACLE_REL
     oracle_path.parent.mkdir(parents=True, exist_ok=True)
     oracle_path.write_bytes(oracle)
@@ -203,8 +203,8 @@ def test_dirty_worktree_is_ignored(repo: dict[str, Path | str]) -> None:
     expected_manifest = load_manifest(root, second)
 
     (root / ORACLE_REL).write_bytes(b"dirty oracle\n")
-    (root / ".affidavit" / "allowed_signers").write_bytes(b"dirty allowlist\n")
-    (root / ".affidavit" / "manifest.json").write_text("{not json")
+    (root / ".tuner" / "allowed_signers").write_bytes(b"dirty allowlist\n")
+    (root / ".tuner" / "manifest.json").write_text("{not json")
 
     assert hash_oracle_files(root, second, [ORACLE_REL]) == expected_hashes
     assert expected_hashes[ORACLE_REL] != _sha256(b"dirty oracle\n")
@@ -235,7 +235,7 @@ def test_missing_manifest_raises(tmp_path: Path) -> None:
 
 
 def test_manifest_runner_absent_is_pytest_template(repo: dict[str, Path | str]) -> None:
-    from affidavit.manifest import DEFAULT_RUNNER
+    from orchestra.tuner.manifest import DEFAULT_RUNNER
 
     root = repo["root"]
     assert isinstance(root, Path)
@@ -285,10 +285,10 @@ def test_manifest_runner_invalid_shape(tmp_path: Path, runner: object) -> None:
 
 def test_invalid_manifest_json_raises(tmp_path: Path) -> None:
     root = _init(tmp_path)
-    affidavit = root / ".affidavit"
-    affidavit.mkdir()
-    (affidavit / "manifest.json").write_text("{")
-    (affidavit / "allowed_signers").write_bytes(ALLOWLIST_V1)
+    tuner = root / ".tuner"
+    tuner.mkdir()
+    (tuner / "manifest.json").write_text("{")
+    (tuner / "allowed_signers").write_bytes(ALLOWLIST_V1)
     revision = _commit(root, "bad manifest")
     with pytest.raises(ManifestError):
         load_manifest(root, revision)

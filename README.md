@@ -1,14 +1,22 @@
 # orchestra
 
-Agent skills for a software-engineering loop on canon:
+One product for a software-engineering loop run by agents:
 classify the ask, plan only the focused effort, execute independent
 tasks with parallel subagents, verify with TDD, checks, or findings.
 Install this repo as a plugin. It is not a template you copy into
 other projects.
 
-Requires the **canon** CLI (`canon` on PATH). canon is the record
-store. orchestra, affidavit, and the planner each ship a schema module
-that canon loads. Install canon before this plugin (see Install below).
+## Components
+
+| Package | Namespace | Role |
+|---|---|---|
+| `orchestra` | — | CLI, views, sessions, dispatch, host integration |
+| `orchestra.canon` | — | Record store and the `canon` CLI |
+| `orchestra.tuner` | `tuner` | Evidence: verdict, claims, audit, binding (`orchestra verify`) |
+| `orchestra/schemas/` | `score`, `conductor` | Work planning and dispatch record types |
+
+Each schema module registers in the `canon.schemas` entry point group.
+canon validates every store against snapshots of these modules.
 
 The plan is a derived view over records. Only the **focused effort**
 is written; for delivery-shaped work, only the **current phase** is
@@ -31,7 +39,7 @@ materialized as `work-item` + `acceptance`.
      run-shell ~/orchestra/orchestra.tmux
      ```
 
-4. In your project, run the `init` skill once. It runs `canon init --schemas plan,run,aff` and creates the store the dashboard reads.
+4. In your project, run the `init` skill once. It runs `canon init --schemas score,conductor,tuner` and creates the store the dashboard reads.
 5. Press prefix + `A` for a popup or prefix + `S` for a side pane.
 
 A Claude Code plugin install alone does not give you the tmux keys. Use TPM or a clone for step 3.
@@ -52,7 +60,7 @@ Run acceptance checks with `orchestra check --acceptance <id>` (see
 
 Focus is a subject string (which effort this chat is on). An effort
 is a product area; new work in it is a new phase. Optional
-`plan:milestone` records group phases under a time-bounded
+`score:milestone` records group phases under a time-bounded
 outcome; focus stays the effort. Other live goals stay live; a
 finished effort closes with `status: closed`. A merged effort lists
 the old slugs in `merged_from`. Each running phase keeps its own
@@ -61,20 +69,16 @@ Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-foc
 
 ## Install
 
-Requires **canon** (`canon` on PATH). The orchestra plugin is not in
-Anthropic's official marketplace.
+The orchestra plugin is not in Anthropic's official marketplace.
 
-### uv tool install (canon)
+### uv tool install
 
-Install canon first. It provides the `canon` command:
+Install the package first. It provides the `orchestra` and `canon`
+commands:
 
 ```bash
-uv tool install "git+https://github.com/andrewy1n/adaptive-artifacts.git@<ref>"
+uv tool install --editable ~/orchestra
 ```
-
-Replace `<ref>` with a branch, tag, or commit. The GitHub repository
-keeps its old name for now. PyPI publish is deferred until the package
-format settles and outsiders use it.
 
 ### Claude Code
 
@@ -279,11 +283,11 @@ In whatever repo you are building:
 | `verify-work` | Show a task is done (check-run and/or finding) |
 
 On first use, `init`, `plan-phase`, or `engage` runs
-`canon init --schemas plan,run,aff` in that repo. The store is marked
-by `.artifacts/config.json`. Skills stay in the plugin. After a tool
+`canon init --schemas score,conductor,tuner` in that repo. The store is marked
+by `.canon/config.json`. Skills stay in the plugin. After a tool
 upgrade, run `canon schemas sync`.
 
-`init` writes goal, kind, and a `plan:phase` record for every phase
+`init` writes goal, kind, and a `score:phase` record for every phase
 it can currently name (all `planned`) — not work-items. `plan-phase`
 materializes this focus's tasks and promotes the current phase to
 `in_progress` with its real plan in the body.
@@ -362,31 +366,31 @@ is verified. `ready` means the evidence is sufficient. It does not mean
 merged or deployed. Do not write `merged`, `deployed`, or any other
 state. Do not deploy.
 
-A `plan:feedback` record is new intent `engage` can route, with no
+A `score:feedback` record is new intent `engage` can route, with no
 collector. Route it through `settle-phase` (specify), even when tasks
 for that effort already exist. Do not collect feedback. Do not create
-`plan:feedback`. Feedback is not a standing backlog.
+`score:feedback`. Feedback is not a standing backlog.
 
-A `plan:backlog-item` parks deferred work on an effort until it is
+A `score:backlog-item` parks deferred work on an effort until it is
 promoted or dismissed. `engage` lists open items (`status=open`) after
 naming focus. Park = create; promote = supersede to `promoted` then
 `settle-phase` with a new phase (or an incidental work-item when that
 kind fits); dismiss = supersede to `dismissed`.
 
 ```bash
-canon create --type plan:backlog-item \
+canon create --type score:backlog-item \
   --subject "<item-slug>" \
   --payload '{"effort":"<effort-slug>","status":"open","source":"<optional>"}' \
   --body "<parked description>"
 
-canon list --type plan:backlog-item \
+canon list --type score:backlog-item \
   --where payload.effort=<focus> --where payload.status=open --state active
 
-canon supersede --type plan:backlog-item --id <id> \
+canon supersede --type score:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
 
-canon supersede --type plan:backlog-item --id <id> \
+canon supersede --type score:backlog-item --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```
@@ -420,7 +424,7 @@ subcommands and shells to `canon` for store reads/writes:
 
 | Command | Effect |
 |---|---|
-| `check` | Run an acceptance's `verify_command` and write an `aff:check-run`. |
+| `check` | Run an acceptance's `verify_command` and write an `tuner:check-run`. |
 | `close-batch` | Build the NDJSON apply batch that closes a work-item. |
 | `install` | Install the payload for one or more agent hosts. |
 | `handoff` | Print the handoff markdown. Writes no file. |
@@ -433,7 +437,27 @@ subcommands and shells to `canon` for store reads/writes:
 | `suite` | Read, run, collect, and record the configured phase suite. |
 | `store` | Resolve the bound store and run `canon` through it. |
 
-`bin/aff` is the verdict binary from `~/affidavit`.
+`orchestra verify` runs tuner, the evidence CLI. Flags live in each
+subcommand's `--help`:
+
+| Command | Role |
+|---|---|
+| `verdict` | Re-execute frozen oracle tests at two revisions |
+| `runner-template` | Print a shipped runner template argv as JSON |
+| `attest` | Emit or verify a signed verdict attestation |
+| `lint` | Report no-assert witnesses, new skips, or claim wording |
+| `claim` | Author manifest claims |
+| `freeze` | Record oracle file hashes into the manifest |
+| `audit` | Advisory: label diff blocks; optional mutants and probes |
+| `trail` | List evidence-observations from the store |
+| `bind` | Attach an observation to a claim under pinned revisions |
+| `unbind` | Retire a binding |
+| `recheck` | Re-judge a claim under its active binding pins |
+| `assertion-red` | Classify check-run JSON as assertion-level red (exit 0/1) |
+
+`verdict` does not read a workflow store for its gate answer.
+`trail`, `bind`, `unbind` and `recheck` use the work repo's `.canon/`
+store when present.
 
 ```bash
 # From a clone or a console-script install, inside the project with the store:
@@ -443,7 +467,7 @@ orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 ```
 
 `check` runs the acceptance's `verify_command` (methods `tdd` / `check`
-only), writes an `aff:check-run` with revision and runner metadata,
+only), writes an `tuner:check-run` with revision and runner metadata,
 and refuses `method=manual` (use human `signed_by` sign-off instead).
 
 ## Dashboard in tmux
@@ -542,24 +566,24 @@ It needs `uv`. The first run downloads `textual`.
 (default 2).
 
 The launcher (and `orchestra store`) pick **one** store for the git
-toplevel — local (`<toplevel>/.artifacts`) or global
-(`~/.artifacts/<toplevel name>`), never both.
+toplevel — local (`<toplevel>/.canon`) or global
+(`~/.canon/<toplevel name>`), never both.
 
 Resolution order:
 
 1. `$SE_WORKFLOW_STORE` (`local` or `global`).
-2. `<toplevel>/.artifacts/store-binding.local.json` (gitignored override).
-3. `<toplevel>/.artifacts/store-binding.json` (committed default).
+2. `<toplevel>/.canon/store-binding.local.json` (gitignored override).
+3. `<toplevel>/.canon/store-binding.json` (committed default).
 4. Default: local if it has `config.json`, else global if it has
    `config.json`, else none.
 
 Binding files are JSON: `{"store":"local"}` or `{"store":"global"}`.
 A set binding that points at a path without `config.json` fails; it does
 not fall through to the other store. This repository pins local in
-`.artifacts/store-binding.json`.
+`.canon/store-binding.json`.
 
 If a personal shell function wraps `canon` and forces
-`--store ~/.artifacts/<name>`, it bypasses this binding for bare CLI
+`--store ~/.canon/<name>`, it bypasses this binding for bare CLI
 calls. Prefer `command canon`, or pass `--store` from the resolved
 target.
 
@@ -622,29 +646,24 @@ echo "$input" | ~/orchestra/dashboard/bin/dashboard-status
 
 ## Testing
 
-The suite in `tests/` needs a checkout of canon (the record store) and
-`pytest`:
+Run the full suite:
 
 ```bash
-python3 -m pip install --user pytest   # if not already available
-python3 -m pytest tests -q
+scripts/test.sh
 ```
 
-For a fast run, use `pytest-xdist` for everything except the tmux tests,
-which run serially because parallel load makes them flaky:
+It runs `tests/canon`, `tests/tuner` and the orchestra tests as
+separate pytest processes, because each tree has its own `conftest.py`.
+The tmux tests run last and serially, because parallel load makes them
+flaky.
 
-```bash
-uv run --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m "not tmux" \
-  && uv run --with textual --with pytest python -m pytest tests -q -m tmux
-```
-
-That full chain is the **phase-level suite** (`phase_gate.suite`).
+That script is the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
 pass, `execute-phase` honors the configured suite policy — agents must
-not waive it; a human changes `settings.run.phase_gate` in
-`.artifacts/config.json` instead.
+not waive it; a human changes `settings.conductor.phase_gate` in
+`.canon/config.json` instead.
 
 `phase_gate.suite` fields:
 
@@ -653,28 +672,21 @@ not waive it; a human changes `settings.run.phase_gate` in
 | `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached tmux window in the phase worktree; `external` does not run locally |
 | `gate` | `required`, `advisory`, `deferred` | `required` blocks Landing merge on missing/failing suite@head; `advisory` records the check-run (and a finding on fail) without blocking; `deferred` is a Landing human stop with no local run |
 
-`phase_gate` lives in `.artifacts/config.json` under
-`settings.run.phase_gate`. A new store defaults to `mode=none` (skip).
+`phase_gate` lives in `.canon/config.json` under
+`settings.conductor.phase_gate`. A new store defaults to `mode=none` (skip).
 When a suite is configured (`mode` not `none` and `command` set) and
 `gate` is omitted, gate defaults to `required`. This repo's live
-`.artifacts/config.json` sets `mode=full` and `gate=advisory` with the
-full-suite command above. The suite check-run
+`.canon/config.json` sets `mode=full` and `gate=required` with
+`scripts/test.sh`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 
-By default it looks for canon at `~/canon`. Point it
-elsewhere with `CANON_ROOT`. `CANON_SCHEMA_PATH` adds schema module files
-by path (a colon-separated list), so a test store can use the `plan`,
-`run`, and `aff` modules from a checkout without installing the tools:
-
-```bash
-CANON_ROOT=/path/to/canon python3 -m pytest tests -q
-CANON_SCHEMA_PATH=orchestra/schemas/plan.json:orchestra/schemas/run.json:/path/to/affidavit/affidavit/schemas/aff.json \
-  CANON_ROOT=/path/to/canon python3 -m pytest tests -q
-```
+The test conftest sets `CANON_SCHEMA_PATH` to the three in-repo module
+files, so test stores load `score`, `conductor` and `tuner` without an
+install.
 
 Every test drives `canon`'s public CLI against a fresh, disposable,
-git-backed store created with `canon init --schemas plan,run,aff` —
+git-backed store created with `canon init --schemas score,conductor,tuner` —
 nothing here touches a real store. The schema modules under
 `orchestra/schemas/` are the type reference. `test_skill_contract_consistency.py`
 extracts every `canon` invocation documented under `skills/` and asserts

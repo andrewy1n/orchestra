@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
-STORE_ROOT = ".artifacts"
+STORE_ROOT = ".canon"
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
 
 Record = dict[str, Any]
@@ -68,23 +68,23 @@ class View:
 
 
 GOAL = Role(
-    "goal", "plan:effort", ("goal", "kind"), _all(_state("active"), _not_closed)
+    "goal", "score:effort", ("goal", "kind"), _all(_state("active"), _not_closed)
 )
 POSITION = Role(
     "position",
-    "plan:position",
+    "score:position",
     ("position", "scope"),
     _all(_state("active"), _not_closed),
 )
 ACCEPTANCE = Role(
     "acceptance",
-    "plan:acceptance",
+    "score:acceptance",
     ("requirement", "method", "effort", "verify_command"),
     _state("active"),
 )
 FINDING_OPEN = Role(
     "finding",
-    "aff:finding",
+    "tuner:finding",
     ("claim", "basis", "invalidated_when", "needs"),
     _state("asserted"),
 )
@@ -97,25 +97,25 @@ HANDOFF = View(
         POSITION,
         Role(
             "latest-proof",
-            "run:proof-packet",
+            "conductor:proof-packet",
             ("phase", "effort", "revision", "kind"),
             _state("recorded"),
         ),
         Role(
             "in-progress",
-            "plan:work-item",
+            "score:work-item",
             ("title", "phase", "kind", "effort"),
             _state("in_progress"),
         ),
         Role(
             "blocking-question",
-            "plan:continuity-question",
+            "score:continuity-question",
             ("blocking", "scope"),
             _all(_state("open"), _payload_is("blocking", True)),
         ),
         Role(
             "needs-human",
-            "aff:finding",
+            "tuner:finding",
             ("claim", "needs"),
             _all(
                 _payload_is("needs", "human"),
@@ -124,7 +124,7 @@ HANDOFF = View(
         ),
         Role(
             "unsigned-manual-check",
-            "aff:check-run",
+            "tuner:check-run",
             ("criterion_id", "result", "method", "signed_by"),
             _all(
                 _payload_is("method", "manual"),
@@ -134,7 +134,7 @@ HANDOFF = View(
         ),
         Role(
             "backlog",
-            "plan:backlog-item",
+            "score:backlog-item",
             ("effort", "status"),
             _all(_state("active"), _payload_is("status", "open")),
         ),
@@ -150,13 +150,13 @@ PLAN = View(
     (
         Role(
             "phase",
-            "plan:phase",
+            "score:phase",
             ("title", "ordinal", "effort"),
             _state("planned", "in_progress"),
         ),
         Role(
             "work",
-            "plan:work-item",
+            "score:work-item",
             _WORK_FIELDS,
             _state("planned", "in_progress"),
         ),
@@ -173,12 +173,12 @@ VERIFICATION = View(
         ACCEPTANCE,
         Role(
             "check",
-            "aff:check-run",
+            "tuner:check-run",
             ("criterion_id", "revision", "result", "method", "signed_by"),
         ),
         Role(
             "observation",
-            "aff:investigation-observation",
+            "tuner:investigation-observation",
             ("what_was_observed", "effort"),
         ),
         FINDING_OPEN,
@@ -189,17 +189,17 @@ VERIFICATION = View(
 STATUS = View(
     "status",
     "Project Status",
-    (Role("work", "plan:work-item", _WORK_FIELDS),),
+    (Role("work", "score:work-item", _WORK_FIELDS),),
     group_by="phase",
     order_by="ordinal",
     show_lifecycle_state=True,
     show_derived=("ready", "wave"),
-    tally_type="aff:check-run",
+    tally_type="tuner:check-run",
 )
 
 VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS)}
 
-EFFORT_TYPE = "plan:effort"
+EFFORT_TYPE = "score:effort"
 
 
 def subject_related(parent: str, other: str) -> bool:
@@ -371,17 +371,17 @@ def render_view(
 
 
 BRIEF_ROLES = (
-    Role("work", "plan:work-item", _WORK_FIELDS, _state("planned", "in_progress")),
+    Role("work", "score:work-item", _WORK_FIELDS, _state("planned", "in_progress")),
     ACCEPTANCE,
     FINDING_OPEN,
     Role(
         "constraint",
-        "plan:constraint",
+        "score:constraint",
         ("statement", "applies_to", "effort"),
         _state("active"),
     ),
     POSITION,
-    Role("amendment", "run:assignment-amendment", ("assignment", "effort")),
+    Role("amendment", "conductor:assignment-amendment", ("assignment", "effort")),
 )
 _BRIEF_EFFORT_SCOPED = frozenset({"constraint", "position"})
 _BRIEF_TITLES = {
@@ -467,7 +467,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
 
 
 def load_records(project: Any) -> list[Record]:
-    from canon.derive import attach_derived_all
+    from orchestra.canon.derive import attach_derived_all
 
     return attach_derived_all(project.records(), project.derived())
 

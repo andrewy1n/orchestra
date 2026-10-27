@@ -22,47 +22,26 @@ os.environ.setdefault("TEXTUAL_ANIMATIONS", "none")
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parent
 
-_DEFAULT_CANON_ROOT = Path.home() / "adaptive-artifacts"
-CANON_ROOT = Path(os.environ.get("CANON_ROOT", str(_DEFAULT_CANON_ROOT))).expanduser().resolve()
-CANON_SRC = CANON_ROOT / "src"
-CANON_CMD = [sys.executable, "-m", "canon"]
-
-
-def _affidavit_root() -> Path:
-    if os.environ.get("AFFIDAVIT_ROOT"):
-        return Path(os.environ["AFFIDAVIT_ROOT"]).expanduser()
-    for base in (Path.home() / "affidavit" / ".worktrees" / "canon", Path.home() / "affidavit"):
-        if (base / "affidavit" / "schemas" / "aff.json").is_file():
-            return base
-    return Path.home() / "affidavit"
-
-
-AFFIDAVIT_ROOT = _affidavit_root()
-
-
-def _aff_schema() -> Path:
-    return AFFIDAVIT_ROOT / "affidavit" / "schemas" / "aff.json"
+CANON_CMD = [sys.executable, "-m", "orchestra.canon"]
+SCHEMA_FILES = (
+    REPO_ROOT / "orchestra" / "schemas" / "score.json",
+    REPO_ROOT / "orchestra" / "schemas" / "conductor.json",
+    REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
+)
 
 
 def _configure_environment() -> None:
-    os.environ["CANON_ROOT"] = str(CANON_ROOT)
-    os.environ["AFFIDAVIT_ROOT"] = str(AFFIDAVIT_ROOT)
-    paths = [str(CANON_SRC), str(REPO_ROOT)]
+    paths = [str(REPO_ROOT)]
     existing = os.environ.get("PYTHONPATH", "")
     if existing:
         paths.append(existing)
     os.environ["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(paths))
-    for path in reversed(paths):
-        if path not in sys.path:
-            sys.path.insert(0, path)
-    if not os.environ.get("CANON_SCHEMA_PATH"):
-        schemas = REPO_ROOT / "orchestra" / "schemas"
-        os.environ["CANON_SCHEMA_PATH"] = os.pathsep.join(
-            [str(schemas / "plan.json"), str(schemas / "run.json"), str(_aff_schema())]
-        )
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    os.environ.setdefault("CANON_SCHEMA_PATH", os.pathsep.join(str(f) for f in SCHEMA_FILES))
     shim_dir = Path(tempfile.mkdtemp(prefix="canon-shim-"))
     shim = shim_dir / "canon"
-    shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" -m canon "$@"\n')
+    shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" -m orchestra.canon "$@"\n')
     shim.chmod(shim.stat().st_mode | stat.S_IXUSR)
     os.environ["PATH"] = f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}"
     _SHIM_DIRS.append(shim_dir)
@@ -73,11 +52,6 @@ _SHIM_DIRS: list[Path] = []
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "tmux: drives a real tmux server; run serially")
-    if not (CANON_SRC / "canon").is_dir():
-        raise pytest.UsageError(
-            f"canon not found at {CANON_SRC}. Set CANON_ROOT to a canon checkout "
-            f"or check one out at {_DEFAULT_CANON_ROOT}."
-        )
     _configure_environment()
 
 
@@ -87,24 +61,9 @@ def pytest_unconfigure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _preimport_affidavit_binding():
+def _preimport_tuner_binding():
     """Let binding capture the real run_verdict before any test patches it."""
-    root = AFFIDAVIT_ROOT
-    if (root / "affidavit" / "__init__.py").is_file() and str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-    try:
-        import affidavit.binding  # noqa: F401
-    except ImportError:
-        pass
-
-
-def uv_script_source_ok(script_dir: Path, relative: str) -> bool:
-    """True when the uv script's `canon` path source resolves to a canon checkout."""
-    pyproject = (script_dir / relative / "pyproject.toml")
-    try:
-        return 'name = "canon"' in pyproject.resolve().read_text()
-    except OSError:
-        return False
+    import orchestra.tuner.binding  # noqa: F401
 
 
 def pytest_collection_modifyitems(items):
@@ -134,7 +93,7 @@ def make_git_repo() -> Path:
     return root
 
 
-SCHEMAS = "plan,run,aff"
+SCHEMAS = "score,conductor,tuner"
 
 
 def write_config(store: Path) -> Path:

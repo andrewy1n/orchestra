@@ -1,0 +1,39 @@
+---
+{
+  "id": "rec-49f2b02c-a9de-4f0c-8fae-bc48a43d68be",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-985ae074-c495-444f-a6b0-ec52bc400099",
+    "duration_s": 0.602772,
+    "effort": "evidence-layer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-985ae074-c495-444f-a6b0-ec52bc400099"
+    ],
+    "method": "check",
+    "output_sha256": "a71df3ef716cabe43ead70bd8311cda3aeadcb986bea501da0ea9262f31c3925",
+    "requirement": "R3",
+    "result": "pass",
+    "revision": "743acce331f8a706387ed618949cf817a4ce170c",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "verify-evidence-workflow-linkage"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-18T10:22:51+00:00",
+  "relationships": {},
+  "revision": "sha256:aae908f708aa0e6f8bb97c8d359234d00dca34452e7b87c84110f67c5d437869",
+  "subject": "verify-evidence-workflow-linkage",
+  "time": {
+    "observed": "2026-10-18T10:22:51+00:00",
+    "recorded": "2026-10-18T10:22:51+00:00"
+  }
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.02s

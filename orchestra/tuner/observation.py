@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from canon.project import Project, open_store
+from orchestra.canon.project import Project, open_store
 
-from affidavit.manifest import merge_base, resolve_commit
+from orchestra.tuner.manifest import merge_base, resolve_commit
 
-_OBS_TYPE = "aff:evidence-observation"
+_OBS_TYPE = "tuner:evidence-observation"
 
 
 def store_usable(cwd: Path | str) -> bool:

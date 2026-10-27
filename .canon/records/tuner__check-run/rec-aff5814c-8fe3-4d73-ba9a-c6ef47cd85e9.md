@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-aff5814c-8fe3-4d73-ba9a-c6ef47cd85e9",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-01c893b8-ad15-48b9-be21-b4036a804a99",
+    "duration_s": 0.521186,
+    "effort": "packaging",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-01c893b8-ad15-48b9-be21-b4036a804a99",
+      "rec-a07bdeb1-d741-4369-9869-77605ed5c3e1"
+    ],
+    "method": "check",
+    "output_sha256": "881f10ce7e57cade2217c5db6fc0f443f8cf91165c5a163c3a240143accdabd3",
+    "requirement": "R7",
+    "result": "pass",
+    "revision": "5a5e5b1aa2d88e6e64ace0dc6073134c5a8b9e45",
+    "runner": "aff",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "fix-cli-runtime-surface-skills"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-19T00:39:49+00:00",
+  "relationships": {},
+  "revision": "sha256:0212b972255891ba42bfdfa47334b371e734408353a47d54a2c3fc78e216a940",
+  "subject": "fix-cli-runtime-surface-skills",
+  "time": {
+    "observed": "2026-10-19T00:39:49+00:00",
+    "recorded": "2026-10-19T00:39:49+00:00"
+  }
+}
+---
+
+...........                                                              [100%]
+11 passed, 25 deselected in 0.04s

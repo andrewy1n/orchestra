@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-efb6f4fb-93bd-47a6-a985-45a4b493fea9",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c",
+    "duration_s": 0.555893,
+    "effort": "library-boundary",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-ddc8facb-29f9-4eab-985e-7dc9fdb38f5c",
+      "rec-9e1953cb-a26f-479c-ad9f-4b083a0d897d"
+    ],
+    "method": "tdd",
+    "output_sha256": "35d86279d96ed65491ba8ff0748e1c8e7891711531404dc5d4b9cd6ae33de3ec",
+    "requirement": "R3",
+    "result": "pass",
+    "revision": "c979dd13c06c36eb1a4f9f042e97ec4846903d7a",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "provenance": {
+    "sources": [
+      "open-store-path"
+    ]
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-21T09:09:38+00:00",
+  "relationships": {},
+  "revision": "sha256:e0a5b83ba1cab1a871bb3ed0837f3106daec091be19742b2af45465cbee8896f",
+  "subject": "open-store-path",
+  "time": {
+    "observed": "2026-10-21T09:09:38+00:00",
+    "recorded": "2026-10-21T09:09:38+00:00"
+  }
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.03s

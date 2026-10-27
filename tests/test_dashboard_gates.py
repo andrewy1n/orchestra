@@ -155,7 +155,7 @@ def test_phase_landing_fail_returns_none(monkeypatch):
 
 def test_phase_landing_readonly_unchanged():
     root = _scratch_main()
-    store = root / ".artifacts"
+    store = root / ".canon"
     store.mkdir()
     (store / "marker.txt").write_text("untouched\n")
 
@@ -181,7 +181,7 @@ def test_phase_landing_readonly_unchanged():
 
 def test_phase_landing_readonly_missing_branch_leaves_repo():
     root = _scratch_main()
-    store = root / ".artifacts"
+    store = root / ".canon"
     store.mkdir()
     (store / "keep").write_text("1\n")
     before_status = git(root, "status", "--porcelain").stdout

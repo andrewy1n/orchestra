@@ -1,0 +1,42 @@
+---
+{
+  "id": "rec-d2b816fe-e5ca-4f5f-b231-b35bfe3f4042",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "effort": "evidence-layer",
+    "phase": "claims-manifest",
+    "result": "fail",
+    "revision": "18e88e48fdb1fefea4bd0ab01e8bf1454364d16a"
+  },
+  "provenance": {
+    "sources": [
+      "claims-manifest"
+    ]
+  },
+  "record_type": "conductor:integration-report",
+  "recorded_at": "2026-10-17T05:31:44+00:00",
+  "relationships": {},
+  "revision": "sha256:3abb13996626f7156750d5dc07926742b74fe1d1ec0516d520277b2adeab27e5",
+  "subject": "claims-manifest",
+  "time": {
+    "observed": "2026-10-17T05:31:44+00:00",
+    "recorded": "2026-10-17T05:31:44+00:00"
+  }
+}
+---
+
+## Interfaces
+
+Phase adds affidavit/manifest.py (git-backed resolve_commit, merge_base, load_manifest, load_allowlist, hash_oracle_files), affidavit/amendment.py (canonical_payload, verify_signature via ssh-keygen -Y, authorize chain walk), and affidavit/verdict.py (run_verdict orchestrating allowlist compare, per-claim authorize + hash checks, batched pytest in temp worktrees, JSON payload). affidavit/cli.py subcommand verdict prints compact JSON and maps pass/fail to exit 0/1. bin/aff launches the CLI. Tests: tests/test_manifest.py, tests/test_amendment.py, tests/test_verdict.py (subprocess bin/aff verdict on ephemeral git repos). Verdict path does not import adaptive-artifacts or read .artifacts; forged check-run tests only populate the worktree store layout.
+
+## Assumptions
+
+Graded solely from reviewer-brief work items, spec/design invariants, and diff/tree at 18e88e48; brief acceptance blocks under work items are title-only (no extra criterion text). Execution reports, check-runs, assessments, and assignment notes were not used. pytest and OpenSSH ssh-keygen -Y availability assumed as in spec.
+
+## Invariants
+
+Manifest/allowlist/oracle reads use git show at resolved commits (not worktree copies)—matches claims-authority; dirty-worktree test in manifest suite. Amendment verification uses base allowlist bytes only; allowlist mismatch fails all named claims with allowlist changed. Oracle bytes checked against per-revision manifest hashes before pytest. Base red uses is_assertion_level_failure from affidavit/oracle_red.py (unchanged in diff). Store not an input to verdict—consistent with R1/R4 forged check-run tests. --head_passed weakens the documented --at exit-0 invariant (see finding).
+
+## Conflicts
+
+none

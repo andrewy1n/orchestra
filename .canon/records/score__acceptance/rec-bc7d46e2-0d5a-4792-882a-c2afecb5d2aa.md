@@ -1,0 +1,23 @@
+---
+{
+  "id": "rec-bc7d46e2-0d5a-4792-882a-c2afecb5d2aa",
+  "lifecycle_state": "active",
+  "payload": {
+    "criterion": "? shows the keys available on the current screen and focused widget",
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "phase-selector",
+    "requirement": "R12",
+    "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_dashboard_app.py -q -k 'help or question'"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-05T17:38:55+00:00",
+  "relationships": {},
+  "revision": "sha256:ebd3a21e22be5ea3dcc01cc999dc535481c523a4e1047bb6dc20268e0ca7fee8",
+  "subject": "phase-selector-ui-help",
+  "time": {
+    "as_of": "2026-10-05T17:38:55+00:00"
+  }
+}
+---
+

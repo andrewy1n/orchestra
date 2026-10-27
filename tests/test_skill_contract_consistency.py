@@ -34,13 +34,13 @@ def _violations(command: str) -> list[str]:
 
 
 def test_extractor_finds_canon_invocations():
-    found = extract_invocations("```bash\ncanon list --type plan:phase\ncanon get --id x\n```")
+    found = extract_invocations("```bash\ncanon list --type score:phase\ncanon get --id x\n```")
     assert [inv["subcommand"] for inv in found] == ["list", "get"]
 
 
 def test_extractor_accepts_a_valid_create():
     payload = '{"title": "t", "ordinal": 1, "effort": "e"}'
-    assert _violations(f"canon create --type plan:milestone --subject m --payload '{payload}'") == []
+    assert _violations(f"canon create --type score:milestone --subject m --payload '{payload}'") == []
 
 
 def test_extractor_rejects_unknown_type():
@@ -49,28 +49,28 @@ def test_extractor_rejects_unknown_type():
 
 def test_extractor_rejects_old_adaptive_commands():
     assert _violations("canon capture --bundle x")
-    assert _violations("canon contradict --type aff:finding --id x")
+    assert _violations("canon contradict --type tuner:finding --id x")
 
 
 def test_extractor_rejects_rel_flag():
-    assert _violations("canon create --type plan:work-item --subject s --rel depends_on:rec-1")
+    assert _violations("canon create --type score:work-item --subject s --rel depends_on:rec-1")
 
 
 def test_extractor_rejects_bad_transition():
-    assert _violations("canon update --type plan:work-item --id x --transition done_late")
-    assert _violations("canon update --type plan:work-item --id x --transition superseded")
+    assert _violations("canon update --type score:work-item --id x --transition done_late")
+    assert _violations("canon update --type score:work-item --id x --transition superseded")
 
 
 def test_extractor_rejects_undeclared_payload_key():
     payload = '{"title": "t", "ordinal": 1, "effort": "e", "nonsense": 1}'
-    assert _violations(f"canon create --type plan:milestone --subject m --payload '{payload}'")
+    assert _violations(f"canon create --type score:milestone --subject m --payload '{payload}'")
 
 
 def test_extractor_rejects_missing_required_key():
-    assert _violations("canon create --type plan:milestone --subject m --payload '{\"title\": \"t\"}'")
+    assert _violations("canon create --type score:milestone --subject m --payload '{\"title\": \"t\"}'")
 
 
 def test_extractor_rejects_correct_on_current_type():
-    assert _violations("canon correct --type plan:decision --id x")
-    assert check_invocation({"subcommand": "correct", "type": "aff:check-run", "transition": None,
+    assert _violations("canon correct --type score:decision --id x")
+    assert check_invocation({"subcommand": "correct", "type": "tuner:check-run", "transition": None,
                              "rels": [], "payload": None, "raw": ""}, DEFS) == []

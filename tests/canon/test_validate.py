@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from canon.record_file import dump_record, load_record
-from canon.revision import with_revision
+from orchestra.canon.record_file import dump_record, load_record
+from orchestra.canon.revision import with_revision
 from conftest import git, make_task
 
 

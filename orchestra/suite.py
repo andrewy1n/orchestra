@@ -2,7 +2,7 @@
 
 Parent session loads ``phase_gate.suite`` from the store config, starts the
 configured command in a detached tmux window in the phase worktree when mode
-is smoke/full, polls for completion, and records one ``aff:check-run`` with
+is smoke/full, polls for completion, and records one ``tuner:check-run`` with
 ``evidence_kind: integration`` and subject ``<phase>-suite``. Does not
 fix-and-rerun inline. Suite is never red-first.
 """
@@ -19,9 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from canon.project import StoreBindingError, open_store
-from canon.store import StoreError
-from canon.validation import ValidationError
+from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.store import StoreError
+from orchestra.canon.validation import ValidationError
 from orchestra.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
@@ -145,7 +145,7 @@ def normalize_suite_policy(
 
 
 def load_suite_policy(start: Path | None = None) -> SuitePolicy:
-    """Load ``phase_gate.suite`` from ``config.json`` under ``settings.run``.
+    """Load ``phase_gate.suite`` from ``config.json`` under ``settings.conductor``.
 
     A missing store, key, or malformed value yields the consumer default
     (mode=none, skip). Agents must not waive or override this policy; change
@@ -158,8 +158,8 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     except (StoreBindingError, OSError, ValueError, TypeError):
         return normalize_suite_policy(None)
     settings = data.get("settings") if isinstance(data, dict) else None
-    run = settings.get("run") if isinstance(settings, dict) else None
-    phase_gate = run.get("phase_gate") if isinstance(run, dict) else None
+    conductor = settings.get("conductor") if isinstance(settings, dict) else None
+    phase_gate = conductor.get("phase_gate") if isinstance(conductor, dict) else None
     suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
     if not isinstance(suite_raw, dict):
         return normalize_suite_policy(None)
@@ -586,7 +586,7 @@ def build_suite_check_run_payload(
     suite: SuiteResult,
     criterion_id: str | None = None,
 ) -> dict[str, Any]:
-    """Parent-only payload for the suite ``aff:check-run``."""
+    """Parent-only payload for the suite ``tuner:check-run``."""
     subject = suite_subject(phase_slug)
     payload: dict[str, Any] = {
         "criterion_id": criterion_id or subject,
@@ -736,7 +736,7 @@ def record_suite_check_run(
     try:
         project = open_store(store_root)
         return project.create(
-            record_type="aff:check-run",
+            record_type="tuner:check-run",
             subject=subject,
             payload=payload,
             body="\n".join(body_parts),

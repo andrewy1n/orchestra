@@ -7,12 +7,12 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from canon.index import SUPERSEDED, RecordIndex
-from canon.oplog import fold, read_ops
-from canon.paths import revision_filename, type_dir_name
-from canon.record_file import RECORD_GLOB, RECORD_SUFFIX, RecordFileError, load_record
-from canon.revision import compute_revision
-from canon.schema import SchemaSet, TypeDef, ref_targets
+from orchestra.canon.index import SUPERSEDED, RecordIndex
+from orchestra.canon.oplog import fold, read_ops
+from orchestra.canon.paths import revision_filename, type_dir_name
+from orchestra.canon.record_file import RECORD_GLOB, RECORD_SUFFIX, RecordFileError, load_record
+from orchestra.canon.revision import compute_revision
+from orchestra.canon.schema import SchemaSet, TypeDef, ref_targets
 
 
 class ValidationError(Exception):

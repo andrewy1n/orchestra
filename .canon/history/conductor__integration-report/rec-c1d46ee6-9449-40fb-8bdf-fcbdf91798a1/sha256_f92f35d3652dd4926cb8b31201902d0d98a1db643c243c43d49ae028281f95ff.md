@@ -1,0 +1,42 @@
+---
+{
+  "id": "rec-c1d46ee6-9449-40fb-8bdf-fcbdf91798a1",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "effort": "evidence-layer",
+    "phase": "runner-adapter",
+    "result": "pass",
+    "revision": "37d326c5eb4085075b3b363aba49f17cc5e7d534"
+  },
+  "provenance": {
+    "sources": [
+      "runner-adapter"
+    ]
+  },
+  "record_type": "conductor:integration-report",
+  "recorded_at": "2026-10-18T00:17:32+00:00",
+  "relationships": {},
+  "revision": "sha256:f92f35d3652dd4926cb8b31201902d0d98a1db643c243c43d49ae028281f95ff",
+  "subject": "runner-adapter",
+  "time": {
+    "observed": "2026-10-18T00:17:32+00:00",
+    "recorded": "2026-10-18T00:17:32+00:00"
+  }
+}
+---
+
+## Interfaces
+
+Manifest.runner (DEFAULT_RUNNER when absent; validated argv with exactly one `{tests}` element and some element containing `{report}`). run_tests(worktree, test_ids, runner) expands `{tests}`, substitutes `{report}` into a temp JUnit path, runs subprocess in worktree with PYTHONPATH/PYTEST_ADDOPTS stripped, maps XML to passed|assertion_failed|errored|not_run per id (name match or file::classname::name join with collapse rules). run_verdict loads base/at manifests and runners separately, batches witness ids into detached worktrees, judges viability from first outcomes, re-runs confirmation in the same worktrees for viable claims only, sets fail/not assertion/tests failed/unstable/pass, and aggregates top-level pass|fail|unstable. bin/aff verdict still exits 0 only when result is pass. Tests: tests/test_runner.py (local JUnit writer), tests/test_manifest.py (runner parse), tests/test_verdict.py (bin/aff verdict + fixture tools/emit_junit.py outside affidavit/).
+
+## Assumptions
+
+Review used brief plus tree at 37d326c5 on phase/runner-adapter; embedded phase diff matches `git diff main..37d326c5`. Ran acceptance pytest filters locally (PYTHONDONTWRITEBYTECODE=1); all selected tests passed. Ignored execution-report/check-run/assessment text per brief.
+
+## Invariants
+
+Exit 0 only on pass (cli.py unchanged). Verdict still reads git manifests/allowlists/oracles only (no store imports added). Base/head use respective manifest.runner. Child test env drops PYTHONPATH and PYTEST_ADDOPTS (asserted in test_run_tests_returns_id_outcomes). Empty witness list yields not assertion via _assertion_red false. oracle_red.py untouched in phase diff. No forbidden store tokens under affidavit/. Runner not hashed or compared across revisions in manifest/amendment code.
+
+## Conflicts
+
+empty

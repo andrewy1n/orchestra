@@ -28,13 +28,13 @@ def _normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def test_skill_documents_affidavit_check_for_tdd_and_check():
+def test_skill_documents_tuner_check_for_tdd_and_check():
     text = _skill()
     flat = _normalized(text)
     assert "orchestra check" in text
     assert "--acceptance" in text
     assert "Do **not** `canon create --type" in text
-    assert "aff:check-run` for `method` `tdd` or `check`" in flat or (
+    assert "tuner:check-run` for `method` `tdd` or `check`" in flat or (
         "for `method` `tdd` or `check`" in text
     )
     assert "assessment" in flat
@@ -45,7 +45,7 @@ def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
         inv
         for inv in extract_invocations(_skill())
         if inv["subcommand"] == "create"
-        and inv["type"] == "aff:check-run"
+        and inv["type"] == "tuner:check-run"
         and inv.get("payload")
     ]
     assert creates, "manual check-run create examples must remain"
@@ -62,7 +62,7 @@ def test_skill_keeps_assessment_writes():
         inv
         for inv in extract_invocations(_skill())
         if inv["subcommand"] in {"create", "supersede"}
-        and inv["type"] == "run:assessment"
+        and inv["type"] == "conductor:assessment"
         and inv.get("payload")
     ]
     assert assessments
@@ -195,7 +195,7 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
 
     ops = close_batch.build_batch(request, load_check_run=loader)
     assert [op["op"] for op in ops] == ["update"]
-    assert not any(op.get("type") == "aff:check-run" for op in ops)
+    assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
 
 def test_close_batch_still_creates_manual_check_runs():
@@ -219,13 +219,13 @@ def test_close_batch_still_creates_manual_check_runs():
             "finding": None,
         }
     )
-    assert ops[0]["type"] == "aff:check-run"
+    assert ops[0]["type"] == "tuner:check-run"
     assert ops[0]["payload"]["method"] == "manual"
     assert ops[0]["payload"]["result"] == "pass"
 
 
 def test_close_batch_source_mentions_runner_authority():
     src = SCRIPT.read_text()
-    assert "aff check" in src or "runner-produced" in src
+    assert "orchestra check" in src or "runner-produced" in src
     assert "check_run_id" in src
     assert "RUNNER_METHODS" in src

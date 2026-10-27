@@ -1,4 +1,4 @@
-"""SSH-signed verdict attestations (namespace affidavit-verdict)."""
+"""SSH-signed verdict attestations (namespace tuner-verdict)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-NAMESPACE = "affidavit-verdict"
+NAMESPACE = "tuner-verdict"
 
 
 def canonical_payload(attestation: Mapping[str, Any]) -> bytes:

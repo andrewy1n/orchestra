@@ -1,4 +1,4 @@
-"""R4: aff audit reports the red-first revision-on-tdd relaxation as unclaimed."""
+"""R4: orchestra verify audit reports the red-first revision-on-tdd relaxation as unclaimed."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[1]
-AFF = REPO / "bin" / "aff"
-PROBES = REPO / "tests" / "fixtures" / "red_first_tdd_revision_probes.json"
+REPO = Path(__file__).resolve().parents[2]
+VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
+PROBES = REPO / "tests" / "tuner" / "fixtures" / "red_first_tdd_revision_probes.json"
 RANGE_BASE = "b3159b6"
 RANGE_TIP = "c14dedb"
 
@@ -31,8 +31,7 @@ def test_r4_audit_reports_unclaimed_tdd_revision_relaxation():
     _require_history()
     proc = subprocess.run(
         [
-            sys.executable,
-            str(AFF),
+            *VERIFY,
             "audit",
             "--cwd",
             str(REPO),

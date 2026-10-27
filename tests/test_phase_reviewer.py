@@ -88,7 +88,7 @@ def _skill_flat() -> str:
 def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
     records = [
         {
-            "record_type": "plan:work-item",
+            "record_type": "score:work-item",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": (
@@ -98,45 +98,45 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
             ),
         },
         {
-            "record_type": "plan:acceptance",
+            "record_type": "score:acceptance",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": f"**criterion**: {MARKER_ACCEPT}",
             "criterion": MARKER_ACCEPT,
         },
         {
-            "record_type": "plan:requirement",
+            "record_type": "score:requirement",
             "subject": "phase-reviewer",
             "title": "R2",
             "body": MARKER_REQ,
         },
         {
-            "record_type": "plan:design",
+            "record_type": "score:design",
             "subject": "phase-reviewer",
             "title": "invariants",
             "body": f"## Invariants\n\n- {MARKER_INVARIANT}",
         },
         {
-            "record_type": "run:execution-report",
+            "record_type": "conductor:execution-report",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": MARKER_EXEC,
         },
         {
-            "record_type": "aff:check-run",
+            "record_type": "tuner:check-run",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": MARKER_CHECK,
             "result": "pass",
         },
         {
-            "record_type": "run:assessment",
+            "record_type": "conductor:assessment",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": MARKER_ASSESS,
         },
         {
-            "record_type": "run:assignment",
+            "record_type": "conductor:assignment",
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": MARKER_ASSIGN,
@@ -195,7 +195,7 @@ def test_execute_phase_invokes_reviewer_after_verification_before_merge():
     creates = [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "aff:check-run"
+        if inv["subcommand"] == "create" and inv["type"] == "tuner:check-run"
     ]
     assert any(
         (inv.get("payload") or {}).get("method") == "review"
@@ -393,7 +393,7 @@ def test_integration_report_body_from_reviewer_section():
     creates = [
         inv
         for inv in extract_invocations(_skill_text())
-        if inv["subcommand"] == "create" and inv["type"] == "run:integration-report"
+        if inv["subcommand"] == "create" and inv["type"] == "conductor:integration-report"
     ]
     assert len(creates) == 1
     raw = creates[0]["raw"]

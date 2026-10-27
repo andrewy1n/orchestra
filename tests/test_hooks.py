@@ -10,7 +10,7 @@ from orchestra import cli, hooks
 @pytest.fixture(autouse=True)
 def baseline_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("ORCHESTRA_BASELINE_DIR", str(tmp_path / "baselines"))
-    monkeypatch.delenv("ARTIFACTS_STORE", raising=False)
+    monkeypatch.delenv("CANON_STORE", raising=False)
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def claude_input(repo, **extra):
 
 
 def corrupt_reference(repo):
-    point_effort_at(repo, "plan:phase", "ghost-effort")
+    point_effort_at(repo, "score:phase", "ghost-effort")
 
 
 def test_hook_start_claude_wraps_protocol_and_handoff_in_additional_context(
@@ -49,9 +49,8 @@ def test_hook_start_claude_wraps_protocol_and_handoff_in_additional_context(
     assert "### Goal\n- **alpha**: Goal of alpha" in ctx
 
 
-def test_hook_start_protocol_names_canon_not_adaptive_artifacts():
+def test_hook_start_protocol_names_canon():
     text = hooks.PROTOCOL
-    assert "adaptive-artifacts" not in text
     assert "v0.2" not in text
     assert "canon records" in text
     assert "orchestra handoff" in text
@@ -69,7 +68,7 @@ def test_hook_start_plain_mode_emits_additional_context_key(repo, monkeypatch, c
 def test_hook_start_injects_active_constraints_for_focused_effort(repo, monkeypatch, capsys):
     create(
         repo,
-        "plan:constraint",
+        "score:constraint",
         "stay-small",
         {"statement": "Keep it small", "applies_to": "all", "effort": "alpha"},
         body="## Basis\n\nWhy.",
@@ -83,7 +82,7 @@ def test_hook_start_truncates_oversized_handoff(repo, monkeypatch, capsys):
     for index in range(150):
         create(
             repo,
-            "plan:backlog-item",
+            "score:backlog-item",
             f"idea-{index:03d}-" + "x" * 80,
             {"effort": "alpha", "status": "open"},
         )
@@ -138,7 +137,7 @@ def test_hook_stop_blocks_only_on_errors_new_since_session_start(repo, monkeypat
     corrupt_reference(repo)
     stdin = claude_input(repo)
     run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=stdin)
-    point_effort_at(repo, "plan:position", "another-ghost")
+    point_effort_at(repo, "score:position", "another-ghost")
     _, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
     assert out["decision"] == "block"
     assert "another-ghost" in out["reason"]

@@ -1,6 +1,6 @@
 # canon schema modules
 
-Specification. canon is the record store formerly named adaptive-artifacts.
+Specification of the canon record store.
 This format replaces the adaptive contract layer: traits, patterns, the
 catalog, `resolve`, `lock`, `source_lock`, backends, `project-design.json`,
 `resolved-contract.json`, and `meta.json`.
@@ -50,9 +50,9 @@ A module is one JSON file inside the owning tool's package.
       "purpose": "What the orchestrator handed an executor for a work-item",
       "lifecycle": "event",
       "fields": {
-        "work_item": {"ref": "plan:work-item"},
+        "work_item": {"ref": "score:work-item"},
         "executor":  {"enum": ["inline", "subagent"]},
-        "effort":    {"ref": "plan:effort"}
+        "effort":    {"ref": "score:effort"}
       },
       "sections": ["Orientation"]
     }
@@ -114,15 +114,15 @@ an empty list is not checked.
 Every other link is a declared field. Examples:
 
 - check-run `informed_by`:
-  `{"list": {"ref": ["plan:acceptance", "run:execution-report"], "pin": true}, "optional": true}`
+  `{"list": {"ref": ["score:acceptance", "conductor:execution-report"], "pin": true}, "optional": true}`
 - finding `contradicted_by`:
-  `{"list": {"ref": "aff:finding", "pin": true}, "optional": true}`
+  `{"list": {"ref": "tuner:finding", "pin": true}, "optional": true}`
 
 ## Record file
 
 The file format stays: a JSON front-matter block between `---` lines, then a
 Markdown body. The path is
-`.artifacts/records/<namespace>__<type>/<id>.md`.
+`.canon/records/<namespace>__<type>/<id>.md`.
 
 Envelope keys:
 
@@ -143,7 +143,7 @@ These keys go: `base_kind`, `identity`, `stewardship`, `epistemic_status`.
 
 ## Project config
 
-`.artifacts/config.json` marks a store and lists its namespaces. It replaces
+`.canon/config.json` marks a store and lists its namespaces. It replaces
 `meta.json`.
 
 ```json
@@ -151,7 +151,7 @@ These keys go: `base_kind`, `identity`, `stewardship`, `epistemic_status`.
   "format": "canon/1",
   "schemas": {"plan": "0.1.0", "run": "0.1.0", "aff": "0.1.0"},
   "settings": {
-    "run": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}
+    "conductor": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}
   }
 }
 ```
@@ -170,13 +170,13 @@ cannot hold a path, because packaging accepts only object references there.
 
 1. Finds every installed module through the entry points.
 2. Copies each module named in `config.json` to
-   `.artifacts/schemas/<namespace>.json`.
+   `.canon/schemas/<namespace>.json`.
 3. Runs any migrations between the old and new snapshot versions.
 4. Writes the new versions into `config.json`.
 5. Runs `validate`.
 
 `canon schemas add <namespace>` adds an installed module to `config.json` and
-syncs it. `canon init --schemas plan,run,aff` creates the store with those
+syncs it. `canon init --schemas score,conductor,tuner` creates the store with those
 modules.
 
 canon validates against the snapshots only, never against installed packages.
@@ -193,9 +193,9 @@ readable without the tools installed.
 ```json
 "migrations": [
   {"from": "1", "to": "2",
-   "rename_type": {"run:report": "run:execution-report"},
-   "rename_field": {"run:execution-report": {"status": "result"}},
-   "map_enum": {"run:execution-report.result": {"ok": "done"}}}
+   "rename_type": {"conductor:report": "conductor:execution-report"},
+   "rename_field": {"conductor:execution-report": {"status": "result"}},
+   "map_enum": {"conductor:execution-report.result": {"ok": "done"}}}
 ]
 ```
 
@@ -211,11 +211,10 @@ they cannot express needs a script in the tool.
 compares it with a saved baseline and blocks only on new errors.
 
 `canon migrate-legacy` is a one-shot command. It converts a store in the old
-format. See `design/canon-migration-plan.md`.
+format. See `docs/history/canon-migration-plan.md`.
 
 canon drops: `resolve`, `lock`, `capture`, `contradict`, `handoff`, `view`,
-`watch`, `brief`, `hook-start`, `hook-stop`. The `aa` and
-`adaptive-artifacts` commands go too.
+`watch`, `brief`, `hook-start`, `hook-stop`.
 
 The library keeps `canon.project.open_store`, `Project.get`, `Project.list`,
 `Project.create`, `Project.apply`, the error types, the query helpers, and the
@@ -227,16 +226,16 @@ derive helpers (`ready`, `wave`, `corrected`, inverse links).
 |---|---|---|
 | `plan` | orchestra (planner later) | effort, position, milestone, phase, specification, design, decision, constraint, work-item, acceptance, backlog-item, feedback, continuity-question |
 | `run` | orchestra | assignment, assignment-amendment, execution-report, integration-report, assessment, release, proof-packet, failed-attempt |
-| `aff` | affidavit | check-run, evidence-observation, evidence-binding, oracle-amendment, investigation-observation, finding |
+| `aff` | tuner | check-run, evidence-observation, evidence-binding, oracle-amendment, investigation-observation, finding |
 
 ### Effort
 
-`plan:effort` replaces `active-goal`. The goal record already is the effort:
+`score:effort` replaces `active-goal`. The goal record already is the effort:
 its subject is the effort slug, and it carries `goal`, `kind`, `status`, and
-`merged_from`. `plan:effort` keeps those fields and drops `scope`. Every
-`effort` field is `{"ref": "plan:effort"}`.
+`merged_from`. `score:effort` keeps those fields and drops `scope`. Every
+`effort` field is `{"ref": "score:effort"}`.
 
-`plan:position` replaces `current-position`.
+`score:position` replaces `current-position`.
 
 ## Transition owners
 
@@ -245,14 +244,14 @@ in another tool's namespace when this table says so.
 
 | Record | Planner | Orchestra |
 |---|---|---|
-| `plan:phase` | create; `planned` → `in_progress`; `withdrawn`; `superseded` | `in_progress` → `done` at Landing |
-| `plan:work-item` | create; `withdrawn`; `superseded` | `planned` → `in_progress`; `in_progress` → `done` |
-| `run:assessment` | reads it | writes it |
+| `score:phase` | create; `planned` → `in_progress`; `withdrawn`; `superseded` | `in_progress` → `done` at Landing |
+| `score:work-item` | create; `withdrawn`; `superseded` | `planned` → `in_progress`; `in_progress` → `done` |
+| `conductor:assessment` | reads it | writes it |
 
 Orchestra moves a work-item to `done`. Only orchestra holds the evidence: the
 execution-report, the check-runs, and the assessment. An assessment that
 routes to `specify`, `design` or `plan` is the planner's input, like
-`plan:feedback`.
+`score:feedback`.
 
 canon does not check the caller.
 

@@ -1,0 +1,26 @@
+---
+{
+  "id": "rec-614f5f6c-51d3-4ea9-a6d1-70ac6b6dfbab",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "evidence-layer",
+    "phase": "evidence-kind",
+    "position": "done",
+    "scope": "phase",
+    "status": "closed"
+  },
+  "record_type": "score:position",
+  "recorded_at": "2026-10-18T03:49:28+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-e0860883-fb7a-417f-b42d-52f1dffc60b9"
+    ]
+  },
+  "revision": "sha256:2265f32e21697c527647957b2f36559be998b3a36cbec2c9cea860b4f01cb44e",
+  "subject": "evidence-kind",
+  "time": {
+    "as_of": "2026-10-18T03:49:28+00:00"
+  }
+}
+---
+
