@@ -655,7 +655,12 @@ scripts/test.sh
 It runs `tests/canon`, `tests/tuner` and the orchestra tests as
 separate pytest processes, because each tree has its own `conftest.py`.
 The tmux tests run last and serially, because parallel load makes them
-flaky.
+flaky. The orchestra part is:
+
+```bash
+uv run --no-project --with textual --with pytest --with pytest-xdist python -m pytest tests -q -n 4 -m "not tmux" --ignore=tests/canon --ignore=tests/tuner \
+  && uv run --no-project --with textual --with pytest python -m pytest tests -q -m tmux --ignore=tests/canon --ignore=tests/tuner
+```
 
 That script is the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files

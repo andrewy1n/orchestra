@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -243,6 +245,11 @@ def _synthetic_repo(tmp_path: Path, extra_head: dict[str, str] | None = None):
     return root, base, head
 
 
+def _no_store_env() -> dict[str, str]:
+    """Audit records an observation in the cwd's store; aim it at a store that does not exist."""
+    return dict(os.environ, CANON_STORE=tempfile.mkdtemp(prefix="no-store-"))
+
+
 def _audit(
     cwd: Path,
     base: str,
@@ -265,7 +272,7 @@ def _audit(
         argv += ["--test", node]
     if mutants is not None:
         argv += ["--mutants", str(mutants)]
-    return subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=_no_store_env())
 
 
 def _payload(proc: subprocess.CompletedProcess[str]) -> dict:

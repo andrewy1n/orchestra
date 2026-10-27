@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from test_audit import _no_store_env
+
 REPO = Path(__file__).resolve().parents[2]
 VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
 PROBES = REPO / "tests" / "tuner" / "fixtures" / "red_first_tdd_revision_probes.json"
@@ -42,6 +44,7 @@ def test_r4_audit_reports_unclaimed_tdd_revision_relaxation():
             "--probes",
             str(PROBES),
         ],
+        env=_no_store_env(),
         capture_output=True,
         text=True,
         timeout=300,

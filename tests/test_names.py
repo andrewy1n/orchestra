@@ -42,7 +42,7 @@ OLD_NAMES = re.compile(
             r"\bbin/aff\b",
             r"\bbin/aa\b",
             r"\borchestra\.aa\b",
-            r"(?<![\w/.-])aff (?:verdict|attest|lint|claims?|freeze|audit|trail|bind|unbind|recheck|assertion-red|check|close-batch)\b",
+            r"(?<![\w/.-])aff(?: |[\"']\s*,\s*[\"'])(?:verdict|attest|lint|claims?|freeze|audit|trail|bind|unbind|recheck|assertion-red|check|close-batch)\b",
             _old_type_pattern(),
         ]
     ),

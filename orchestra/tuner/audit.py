@@ -155,7 +155,7 @@ def _audit_replay(base: str, head: str) -> str:
             "technique": _TECHNIQUE_AUDIT,
             "base": base,
             "head": head,
-            "argv": ["aff", "audit", "--base", base, "--head", head],
+            "argv": ["orchestra", "verify", "audit", "--base", base, "--head", head],
         },
         sort_keys=True,
     )
@@ -169,7 +169,7 @@ def _probe_replay(
         "base": base,
         "head": head,
         "probe": probe_id,
-        "argv": ["aff", "audit", "--base", base, "--head", head],
+        "argv": ["orchestra", "verify", "audit", "--base", base, "--head", head],
     }
     argv = probe.get("argv")
     if isinstance(argv, list):
