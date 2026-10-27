@@ -1,0 +1,15 @@
+{
+  "claims": [
+    {
+      "id": "claim-widget",
+      "text": "value is one",
+      "tests": [
+        "tests/test_widget.py::test_widget"
+      ],
+      "oracle_hashes": {
+        "tests/test_widget.py": "sha256:b710591f831d69ea3259952abc27f4ecdaf6f5bf60509d92805d7995df23026c"
+      }
+    }
+  ],
+  "amendments": []
+}

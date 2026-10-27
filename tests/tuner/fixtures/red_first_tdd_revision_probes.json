@@ -1,0 +1,14 @@
+{
+  "probes": [
+    {
+      "id": "tdd-revision-relax",
+      "kind": "cli",
+      "argv": [
+        "python3",
+        "-c",
+        "import importlib.util\nfrom pathlib import Path\np = Path('scripts/close_batch.py')\nspec = importlib.util.spec_from_file_location('close_batch', p)\nmod = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(mod)\nreq = {'subject': 'task-1', 'effort': 'effort-1', 'work_item_id': 'rec-wi', 'transition': 'withdrawn', 'acceptance_ids': ['rec-ac0'], 'criteria': [{'criterion_id': 'rec-ac0', 'method': 'tdd', 'check_run_id': 'rec-cr-green', 'result': 'fail', 'revision': 'deadbeef'}], 'finding': {'claim': 'x', 'basis': 'y', 'invalidated_when': 'z', 'body': '## Evidence\\n\\na\\n\\n## Consequence\\n\\nb\\n\\n## Follow-up\\n\\nc'}}\ntry:\n    mod.build_batch(req)\n    print('ok')\nexcept mod.CloseRequestError as exc:\n    msg = str(exc)\n    print('error:runner_invented_fields' if 'revision' in msg else 'error:CloseRequestError')\nexcept mod.CloseRefused as exc:\n    print('refused')\n"
+      ],
+      "claims": []
+    }
+  ]
+}

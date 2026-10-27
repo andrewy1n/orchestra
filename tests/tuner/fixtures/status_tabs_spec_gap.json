@@ -1,0 +1,27 @@
+{
+  "subject": "status-tabs",
+  "records": [
+    {
+      "record_type": "project:work-item",
+      "subject": "status-tabs",
+      "title": "status-tabs",
+      "body": "## Description\n\nShip status tabs for Active, Done, and Archived. Counts on every tab; keys 1-3 filter the table.\n\n## Approach\n\nAdd the three tabs and wire filters."
+    },
+    {
+      "record_type": "project:acceptance",
+      "subject": "status-tabs",
+      "title": "status-tabs",
+      "criterion": "Active and Done tabs filter the table",
+      "body": "**criterion**: Active and Done tabs filter the table"
+    },
+    {
+      "record_type": "project:execution-report",
+      "subject": "status-tabs",
+      "title": "status-tabs",
+      "body": "UNIQUE_EXEC_SHOULD_NOT_AFFECT_GRADE"
+    }
+  ],
+  "phase_diff": "diff --git a/dashboard/app.py b/dashboard/app.py\n--- a/dashboard/app.py\n+++ b/dashboard/app.py\n@@ -1,0 +1,2 @@\n+STATUS_TABS = (\"Active\", \"Done\")\n+def filter_by_tab(name): ...\n",
+  "base": "main",
+  "phase_head": "deadbeef"
+}
