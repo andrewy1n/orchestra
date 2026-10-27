@@ -17,7 +17,7 @@ from skill_extraction import extract_invocations
 SKILLS = REPO_ROOT / "skills"
 EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
 VERIFY = SKILLS / "verify-work" / "SKILL.md"
-SUITE_MODULE = REPO_ROOT / "orchestra" / "suite.py"
+SUITE_MODULE = REPO_ROOT / "orchestra" / "conductor" / "suite.py"
 
 _RUNNER_METHODS = {"tdd", "check"}
 _AMENDMENT_SENTENCE = (
@@ -70,7 +70,7 @@ def _payload(inv: dict) -> dict:
 
 
 def _is_suite_check_run(inv: dict) -> bool:
-    """The suite check-run ``orchestra.suite.record_suite_check_run`` writes.
+    """The suite check-run ``orchestra.conductor.suite.record_suite_check_run`` writes.
 
     Skills may still show that create. Its method is ``check`` and its
     subject is the phase suite, so it is not a task tdd/check result.

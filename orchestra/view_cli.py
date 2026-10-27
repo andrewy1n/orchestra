@@ -29,7 +29,7 @@ def add_parsers(sub) -> None:
 
 def run(args: argparse.Namespace) -> int:
     if args.command in ("hook-start", "hook-stop"):
-        from orchestra import hooks
+        from orchestra.stage import hooks
 
         return hooks.run(args.command, hooks.CLAUDE if args.claude else hooks.CURSOR)
     from orchestra.canon.project import StoreBindingError, open_store

@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from orchestra import close_batch
+from orchestra.conductor import close_batch
 
 ROOT = Path(__file__).resolve().parents[1]
 CANON_ROOT = ROOT / "orchestra" / "canon"

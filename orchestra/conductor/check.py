@@ -14,7 +14,7 @@ from typing import Any
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
 from orchestra.canon.validation import ValidationError
-from orchestra.policy import (
+from orchestra.conductor.policy import (
     dirty_pass_decision,
     manual_refuse_message,
     map_process_outcome,

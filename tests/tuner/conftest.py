@@ -16,8 +16,8 @@ os.environ.setdefault("TEXTUAL_ANIMATIONS", "none")
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parents[1]
 SCHEMA_FILES = (
-    REPO_ROOT / "orchestra" / "schemas" / "score.json",
-    REPO_ROOT / "orchestra" / "schemas" / "conductor.json",
+    REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json",
+    REPO_ROOT / "orchestra" / "conductor" / "schemas" / "conductor.json",
     REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
 )
 

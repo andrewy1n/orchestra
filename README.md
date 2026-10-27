@@ -10,10 +10,12 @@ other projects.
 
 | Package | Namespace | Role |
 |---|---|---|
-| `orchestra` | — | CLI, views, sessions, dispatch, host integration |
+| `orchestra` | — | CLI, views, sessions, store access |
 | `orchestra.canon` | — | Record store and the `canon` CLI |
+| `orchestra.score` | `score` | Work planning record types |
+| `orchestra.conductor` | `conductor` | Dispatch: check, close-batch, suite, reviewer |
 | `orchestra.tuner` | `tuner` | Evidence: verdict, claims, audit, binding (`orchestra verify`) |
-| `orchestra/schemas/` | `score`, `conductor` | Work planning and dispatch record types |
+| `orchestra.stage` | — | Session hooks and the install bridge |
 
 Each schema module registers in the `canon.schemas` entry point group.
 canon validates every store against snapshots of these modules.
@@ -693,7 +695,8 @@ install.
 Every test drives `canon`'s public CLI against a fresh, disposable,
 git-backed store created with `canon init --schemas score,conductor,tuner` —
 nothing here touches a real store. The schema modules under
-`orchestra/schemas/` are the type reference. `test_skill_contract_consistency.py`
+`orchestra/score/schemas/`, `orchestra/conductor/schemas/` and
+`orchestra/tuner/schemas/` are the type reference. `test_skill_contract_consistency.py`
 extracts every `canon` invocation documented under `skills/` and asserts
 the schema modules actually permit it — a red result there names a skill
 instructing an operation (a record type, field, or transition) the

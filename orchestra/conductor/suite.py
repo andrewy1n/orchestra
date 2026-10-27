@@ -22,15 +22,15 @@ from typing import Any, Mapping, Sequence
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
 from orchestra.canon.validation import ValidationError
-from orchestra.check import (
+from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
     git_diff_sha256,
     git_head,
     git_is_dirty,
 )
-from orchestra.policy import dirty_pass_decision, map_process_outcome
-from orchestra.reviewer import _revision_matches
+from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
+from orchestra.conductor.reviewer import _revision_matches
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"

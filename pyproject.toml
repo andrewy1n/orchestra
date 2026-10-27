@@ -17,14 +17,26 @@ canon = "orchestra.canon.cli:main"
 [tool.setuptools]
 # The package lives at the repo root; `bin/orchestra` and skills import it
 # with the checkout on PYTHONPATH in the source layout.
-packages = ["orchestra", "orchestra.schemas", "orchestra.canon", "orchestra.tuner", "orchestra.tuner.schemas"]
+packages = [
+    "orchestra",
+    "orchestra.canon",
+    "orchestra.score",
+    "orchestra.score.schemas",
+    "orchestra.conductor",
+    "orchestra.conductor.schemas",
+    "orchestra.tuner",
+    "orchestra.tuner.schemas",
+    "orchestra.stage",
+]
 
 [tool.setuptools.package-data]
 # `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
-orchestra = ["_scripts/*.py", "schemas/*.json"]
+orchestra = ["_scripts/*.py"]
+"orchestra.score" = ["schemas/*.json"]
+"orchestra.conductor" = ["schemas/*.json"]
 "orchestra.tuner" = ["schemas/*.json"]
 
 [project.entry-points."canon.schemas"]
-score = "orchestra.schemas"
-conductor = "orchestra.schemas"
+score = "orchestra.score.schemas"
+conductor = "orchestra.conductor.schemas"
 tuner = "orchestra.tuner.schemas"

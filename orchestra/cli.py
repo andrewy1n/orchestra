@@ -9,7 +9,8 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import reviewer, view_cli
+from orchestra.conductor import reviewer
+from orchestra import view_cli
 
 try:
     from orchestra.canon.project import StoreBindingError, open_store
@@ -20,12 +21,12 @@ except ModuleNotFoundError:
     StoreError = None
 
 try:
-    from orchestra import suite
+    from orchestra.conductor import suite
 except ModuleNotFoundError:
     suite = None
 
 try:
-    from orchestra.check import DEFAULT_TIMEOUT_S, git_head, run_check
+    from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 except ModuleNotFoundError:
     DEFAULT_TIMEOUT_S = 600.0
     git_head = None
@@ -744,14 +745,14 @@ def main(argv: list[str] | None = None) -> int:
             print(outcome.message, file=sys.stderr)
         return outcome.exit_code
     if args.command == "close-batch":
-        from orchestra.close_batch import main as close_batch_main
+        from orchestra.conductor.close_batch import main as close_batch_main
 
         argv = ["--input", args.input, "--out", args.out]
         if args.cwd is not None:
             argv.extend(["--cwd", args.cwd])
         return close_batch_main(argv)
     if args.command == "install":
-        from orchestra.install import main as install_main
+        from orchestra.stage.install import main as install_main
 
         return install_main(args)
     if args.command == "sessions":

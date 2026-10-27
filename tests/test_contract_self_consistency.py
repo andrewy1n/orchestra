@@ -132,7 +132,7 @@ def test_staged_types_take_depends_on_subjects(cli):
 
 
 def test_phase_gate_defaults_to_mode_none(tmp_path):
-    from orchestra import suite
+    from orchestra.conductor import suite
 
     repo = make_git_repo()
     assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0
@@ -142,7 +142,7 @@ def test_phase_gate_defaults_to_mode_none(tmp_path):
 
 
 def test_phase_gate_reads_store_config():
-    from orchestra import suite
+    from orchestra.conductor import suite
 
     repo = make_git_repo()
     assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0

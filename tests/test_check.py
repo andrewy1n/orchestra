@@ -11,7 +11,7 @@ from pathlib import Path
 import helpers as h
 from conftest import REPO_ROOT, git, resolve_contract, run_cli
 
-from orchestra.policy import dirty_pass_decision, manual_refuse_message, map_process_outcome
+from orchestra.conductor.policy import dirty_pass_decision, manual_refuse_message, map_process_outcome
 
 BIN = REPO_ROOT / "bin" / "orchestra"
 

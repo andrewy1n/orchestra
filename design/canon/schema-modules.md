@@ -163,7 +163,7 @@ reads and writes its own key.
 
 A tool registers its module in the `canon.schemas` entry point group. The
 entry point name is the namespace. The value names an importable package that
-holds `<namespace>.json`, for example `run = "orchestra.schemas"`. The value
+holds `<namespace>.json`, for example `conductor = "orchestra.conductor.schemas"`. The value
 cannot hold a path, because packaging accepts only object references there.
 
 `canon schemas sync`:

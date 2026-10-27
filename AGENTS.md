@@ -8,11 +8,12 @@ by agents. The move to one repo is planned in
 
 | Path | Contents |
 |---|---|
-| `orchestra/` | CLI, views, sessions, dispatch |
+| `orchestra/` | CLI, views, sessions, store access |
 | `orchestra/canon/` | Record store and the `canon` CLI |
 | `orchestra/tuner/` | Evidence layer behind `orchestra verify` |
-| `orchestra/schemas/` | `score` and `conductor` schema modules |
-| `orchestra/tuner/schemas/` | `tuner` schema module |
+| `orchestra/score/` | Work planning: the `score` schema module |
+| `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |
+| `orchestra/stage/` | Session hooks and the install bridge |
 | `skills/`, `agents/`, `hosts/`, `installer/` | Host integration |
 | `dashboard/` | tmux and web dashboards |
 | `design/` | Specs |

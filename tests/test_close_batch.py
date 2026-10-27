@@ -24,7 +24,7 @@ import pytest
 
 import helpers as h
 from conftest import REPO_ROOT, build_store
-from orchestra import close_batch
+from orchestra.conductor import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
@@ -1713,7 +1713,7 @@ _CLOSE_LIBRARY_MODULES = frozenset(
 
 
 def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
-    path = REPO_ROOT / "orchestra" / "close_batch.py"
+    path = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: list[tuple[int, str, bool]] = []
 

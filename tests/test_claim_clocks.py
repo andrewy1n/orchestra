@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra import close_batch
+from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
 UNKNOWN_CLAIM_ID = "claim-not-in-manifest"

@@ -9,8 +9,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = os.pathsep.join(
     [
-        str(REPO / "orchestra" / "schemas" / "score.json"),
-        str(REPO / "orchestra" / "schemas" / "conductor.json"),
+        str(REPO / "orchestra" / "score" / "schemas" / "score.json"),
+        str(REPO / "orchestra" / "conductor" / "schemas" / "conductor.json"),
         str(REPO / "orchestra" / "tuner" / "schemas" / "tuner.json"),
     ]
 )

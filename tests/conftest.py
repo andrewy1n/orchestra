@@ -24,8 +24,8 @@ REPO_ROOT = TESTS_DIR.parent
 
 CANON_CMD = [sys.executable, "-m", "orchestra.canon"]
 SCHEMA_FILES = (
-    REPO_ROOT / "orchestra" / "schemas" / "score.json",
-    REPO_ROOT / "orchestra" / "schemas" / "conductor.json",
+    REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json",
+    REPO_ROOT / "orchestra" / "conductor" / "schemas" / "conductor.json",
     REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
 )
 

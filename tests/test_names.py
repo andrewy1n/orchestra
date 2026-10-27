@@ -17,8 +17,8 @@ EXEMPT_PREFIXES = (
 )
 OLD_NAMESPACES = {"score": "plan", "conductor": "run", "tuner": "aff"}
 MODULES = {
-    "score": REPO_ROOT / "orchestra" / "schemas" / "score.json",
-    "conductor": REPO_ROOT / "orchestra" / "schemas" / "conductor.json",
+    "score": REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json",
+    "conductor": REPO_ROOT / "orchestra" / "conductor" / "schemas" / "conductor.json",
     "tuner": REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
 }
 

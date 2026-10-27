@@ -15,8 +15,8 @@ SCALARS = {"string", "integer", "number", "boolean"}
 
 def _module_paths():
     return {
-        "score": WORKTREE / "orchestra" / "schemas" / "score.json",
-        "conductor": WORKTREE / "orchestra" / "schemas" / "conductor.json",
+        "score": WORKTREE / "orchestra" / "score" / "schemas" / "score.json",
+        "conductor": WORKTREE / "orchestra" / "conductor" / "schemas" / "conductor.json",
         "tuner": WORKTREE / "orchestra" / "tuner" / "schemas" / "tuner.json",
     }
 

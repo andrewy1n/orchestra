@@ -13,7 +13,7 @@ from skill_extraction import extract_invocations
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra.suite import (  # noqa: E402
+from orchestra.conductor.suite import (  # noqa: E402
     EVIDENCE_KIND,
     METHOD,
     SuitePolicy,

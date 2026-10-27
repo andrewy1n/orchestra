@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from orchestra.canon.project import open_store
-from orchestra import close_batch
+from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
 CLAIM_TEXT = "widget works"

@@ -236,7 +236,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
     assert "Traceback" not in install.stderr
 
     module = subprocess.run(
-        [sys.executable, "-c", "import orchestra.cli, orchestra.close_batch"],
+        [sys.executable, "-c", "import orchestra.cli, orchestra.conductor.close_batch"],
         cwd=str(elsewhere),
         env=env,
         capture_output=True,
@@ -249,7 +249,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
             sys.executable,
             "-c",
             (
-                "import orchestra.close_batch as cb\n"
+                "import orchestra.conductor.close_batch as cb\n"
                 "try:\n"
                 "    cb._assertion_level_red({})\n"
                 "except cb.OracleAdapterUnavailable as exc:\n"

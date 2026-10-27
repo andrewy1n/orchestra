@@ -45,7 +45,7 @@ _CHECKOUT_PATH = re.compile(
 )
 _CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/orchestra\b")
 _PLUGIN_ROOT = re.compile(r"<plugin>")
-#: Importable module APIs (`orchestra.reviewer`, `orchestra.suite.poll_suite`,
+#: Importable module APIs (`orchestra.conductor.reviewer`, `orchestra.conductor.suite.poll_suite`,
 #: `orchestra.store`) are not a runtime surface an installed CLI exposes.
 _MODULE_API = re.compile(r"`?\borchestra\.([a-z_][A-Za-z0-9_]*)")
 
@@ -247,8 +247,8 @@ def test_runtime_references_name_cli_commands_not_module_apis():
 @pytest.mark.parametrize(
     "text",
     [
-        "Build the brief with `orchestra.reviewer.build_reviewer_brief`.\n",
-        "Poll with `orchestra.suite.poll_suite`.\n",
+        "Build the brief with `orchestra.conductor.reviewer.build_reviewer_brief`.\n",
+        "Poll with `orchestra.conductor.suite.poll_suite`.\n",
         "Call through `orchestra.store`.\n",
     ],
 )

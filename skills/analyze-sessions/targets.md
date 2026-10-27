@@ -13,7 +13,7 @@ Fix goes in `skills/*/SKILL.md`.
 
 ## record schemas
 
-Fix goes in the schema modules (`orchestra/schemas/*.json`) and the record shapes.
+Fix goes in the schema modules (`orchestra/*/schemas/*.json`) and the record shapes.
 
 - High share of records tied to several efforts (`caveats.ambiguous_share`, `caveats.ambiguous_records`) -> add a session id or effort field to the record shape, because the join cannot pick one effort.
 - Records that cannot attach to any session (`caveats.attached_records`, `caveats.bad_input_lines`) -> fix the record shape so it carries a join key, because the reader drops or miscounts them.

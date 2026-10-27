@@ -4,7 +4,8 @@ import json
 import pytest
 
 from canon_support import create, make_project, point_effort_at, seed_effort
-from orchestra import cli, hooks
+from orchestra import cli
+from orchestra.stage import hooks
 
 
 @pytest.fixture(autouse=True)

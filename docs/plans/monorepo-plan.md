@@ -104,7 +104,7 @@ Work on branch `phase/monorepo` in `~/orchestra`.
 5. Apply the store directory rename in canon, hooks, skills, agents, hosts and
    docs.
 6. Apply the namespace rename. Move the module files to
-   `orchestra/schemas/score.json`, `orchestra/schemas/conductor.json` and
+   `orchestra/score/schemas/score.json`, `orchestra/conductor/schemas/conductor.json` and
    `orchestra/tuner/schemas/tuner.json`. Set each version to `1.0.0`. Update
    every type string in code, skills, agents, views and tests.
 7. Add `canon merge <source-store>`. It copies records, history and logs into
