@@ -19,6 +19,7 @@ SCHEMA_FILES = (
     REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json",
     REPO_ROOT / "orchestra" / "conductor" / "schemas" / "conductor.json",
     REPO_ROOT / "orchestra" / "tuner" / "schemas" / "tuner.json",
+    REPO_ROOT / "orchestra" / "composer" / "schemas" / "composer.json",
 )
 
 def pytest_configure(config):

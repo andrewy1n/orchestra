@@ -7,13 +7,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = REPO_ROOT / "orchestra"
-COMPONENTS = ("canon", "score", "conductor", "tuner", "stage")
+COMPONENTS = ("canon", "score", "composer", "conductor", "tuner", "stage")
 ALLOWED = {
     "canon": {"canon"},
     "score": {"canon", "score"},
+    "composer": {"canon", "score", "composer"},
     "tuner": {"canon", "tuner"},
     "conductor": {"canon", "score", "tuner", "conductor"},
-    "stage": {"canon", "score", "tuner", "conductor", "stage", "top"},
+    "stage": {"canon", "score", "composer", "tuner", "conductor", "stage", "top"},
 }
 TOP_MODULES_STAGE_MAY_NOT_IMPORT = {"orchestra.cli"}
 

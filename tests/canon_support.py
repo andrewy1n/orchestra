@@ -12,6 +12,7 @@ SCHEMA_PATH = os.pathsep.join(
         str(REPO / "orchestra" / "score" / "schemas" / "score.json"),
         str(REPO / "orchestra" / "conductor" / "schemas" / "conductor.json"),
         str(REPO / "orchestra" / "tuner" / "schemas" / "tuner.json"),
+        str(REPO / "orchestra" / "composer" / "schemas" / "composer.json"),
     ]
 )
 
