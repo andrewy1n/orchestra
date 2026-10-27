@@ -1,0 +1,18 @@
+---
+{
+  "id": "rec-aee9c652-890f-472f-a0d1-55bb879acdeb",
+  "lifecycle_state": "active",
+  "payload": {
+    "goal": "orchestra is one product in one repo: canon and affidavit live in ~/orchestra as orchestra.canon and orchestra.tuner, every name follows docs/plans/monorepo-plan.md, and one .canon/ store holds all records",
+    "kind": "deliver",
+    "status": "open"
+  },
+  "record_type": "plan:effort",
+  "recorded_at": "2026-10-27T07:46:11+00:00",
+  "relationships": {},
+  "revision": "sha256:5fa3c5d5e4d68aede72f5409f0fc4650e57d6258d6c96369d003277136433c27",
+  "subject": "monorepo"
+}
+---
+
+Plan: docs/plans/monorepo-plan.md
