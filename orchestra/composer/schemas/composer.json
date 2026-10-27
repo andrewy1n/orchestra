@@ -1,0 +1,48 @@
+{
+  "namespace": "composer",
+  "version": "1.0.0",
+  "types": {
+    "area": {
+      "purpose": "A named, long-lived product area",
+      "lifecycle": "current",
+      "fields": {
+        "title": {
+          "type": "string"
+        }
+      },
+      "sections": [
+        "Scope"
+      ]
+    },
+    "idea": {
+      "purpose": "A product idea waiting to be triaged or promoted into an effort",
+      "lifecycle": "current",
+      "fields": {
+        "status": {
+          "enum": [
+            "open",
+            "promoted",
+            "dismissed"
+          ]
+        },
+        "area": {
+          "ref": "composer:area",
+          "optional": true
+        },
+        "effort": {
+          "ref": "score:effort",
+          "optional": true
+        },
+        "phase": {
+          "ref": "score:phase",
+          "optional": true
+        },
+        "source": {
+          "type": "string",
+          "optional": true
+        }
+      }
+    }
+  },
+  "migrations": []
+}

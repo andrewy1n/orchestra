@@ -22,6 +22,8 @@ packages = [
     "orchestra.canon",
     "orchestra.score",
     "orchestra.score.schemas",
+    "orchestra.composer",
+    "orchestra.composer.schemas",
     "orchestra.conductor",
     "orchestra.conductor.schemas",
     "orchestra.tuner",
@@ -33,6 +35,7 @@ packages = [
 # `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
 orchestra = ["_scripts/*.py"]
 "orchestra.score" = ["schemas/*.json"]
+"orchestra.composer" = ["schemas/*.json"]
 "orchestra.conductor" = ["schemas/*.json"]
 "orchestra.tuner" = ["schemas/*.json"]
 
@@ -40,3 +43,4 @@ orchestra = ["_scripts/*.py"]
 score = "orchestra.score.schemas"
 conductor = "orchestra.conductor.schemas"
 tuner = "orchestra.tuner.schemas"
+composer = "orchestra.composer.schemas"
