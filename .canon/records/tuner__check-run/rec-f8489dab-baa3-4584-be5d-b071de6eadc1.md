@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-f8489dab-baa3-4584-be5d-b071de6eadc1",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-89528cfd-7548-441d-829f-9464b3ce4162",
+    "duration_s": 0.881328,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-89528cfd-7548-441d-829f-9464b3ce4162"
+    ],
+    "method": "check",
+    "output_sha256": "791acbb2840ecff621592488f8e65512e312896e3865560d4000495c22ef5d13",
+    "requirement": "R2",
+    "result": "pass",
+    "revision": "96bed416eda01597d07ff4575adb85a57123acf9",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:56:10+00:00",
+  "relationships": {},
+  "revision": "sha256:4fd37bd6cfda8fa67448ad105105bdaf5a1602bc5d8742d5ebaa0b942b7af619",
+  "subject": "drop-backlog-types-history"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.42s

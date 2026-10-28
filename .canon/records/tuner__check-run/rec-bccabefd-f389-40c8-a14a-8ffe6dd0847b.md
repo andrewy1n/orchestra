@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-bccabefd-f389-40c8-a14a-8ffe6dd0847b",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-ea907f11-d16b-43f4-a28b-c8b62e1ba4ce",
+    "duration_s": 0.066243,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-ea907f11-d16b-43f4-a28b-c8b62e1ba4ce"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "477f2ad42e859e901710fd6f8554ecf74c0480df",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:23:47+00:00",
+  "relationships": {},
+  "revision": "sha256:432e795b305b5d5cdf001717d9bdb15b3b6751c1a08de61163d53a662917af9a",
+  "subject": "convert-live-store-feedback"
+}
+---
+

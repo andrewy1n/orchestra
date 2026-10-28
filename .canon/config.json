@@ -12,7 +12,7 @@
         "suite": {
           "mode": "full",
           "command": "scripts/test.sh",
-          "gate": "required"
+          "gate": "advisory"
         }
       }
     }

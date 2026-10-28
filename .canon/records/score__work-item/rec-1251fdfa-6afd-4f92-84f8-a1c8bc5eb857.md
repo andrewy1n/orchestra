@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-1251fdfa-6afd-4f92-84f8-a1c8bc5eb857",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "cursor",
     "decisions": [
       "backlog-conversion-method",
       "idea-panel-scope"
@@ -28,9 +28,9 @@
     "title": "Verify Convert backlog and feedback to ideas"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-28T06:05:08+00:00",
+  "recorded_at": "2026-10-28T06:24:51+00:00",
   "relationships": {},
-  "revision": "sha256:79aedfdd30283f6f442c40d1b138b2c104831f76e5416c69644f20b07b28a4e8",
+  "revision": "sha256:dae15b4d9308ec931392deca8572e02323a79c0411fdb70280d789fab4fd12d6",
   "subject": "verify-backlog-to-idea"
 }
 ---

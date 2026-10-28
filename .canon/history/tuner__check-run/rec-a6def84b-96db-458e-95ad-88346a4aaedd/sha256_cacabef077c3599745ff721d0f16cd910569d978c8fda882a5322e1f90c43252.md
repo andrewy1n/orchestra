@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-a6def84b-96db-458e-95ad-88346a4aaedd",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-f6ed6693-b9be-4d90-9255-431af6a56c03",
+    "duration_s": 0.431042,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-f6ed6693-b9be-4d90-9255-431af6a56c03"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "477f2ad42e859e901710fd6f8554ecf74c0480df",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:24:06+00:00",
+  "relationships": {},
+  "revision": "sha256:cacabef077c3599745ff721d0f16cd910569d978c8fda882a5322e1f90c43252",
+  "subject": "verify-backlog-to-idea-ideas"
+}
+---
+
