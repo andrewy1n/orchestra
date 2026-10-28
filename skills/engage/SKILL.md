@@ -3,9 +3,10 @@ name: engage
 description: >-
   Classifies a software-engineering ask as deliver, repair, evaluate,
   or incidental, names the focus subject, and hands off to init,
-  settle-phase, plan-phase, execute-phase, or verify-work. Use when
-  the user has work but has not named a phase skill, when the work is
-  a bug, one-off, integration test, or metric comparison.
+  settle-phase, plan-phase, execute-phase, or verify-work. The ask may
+  name a triaged `composer:idea` subject. Use when the user has work
+  but has not named a phase skill, when the work is a bug, one-off,
+  integration test, or metric comparison.
 ---
 
 # Engage
@@ -27,8 +28,8 @@ Do not plan, implement, or verify in this skill.
    |---|---|
    | Something broken, a bug, a repro, a crash | `repair` |
    | The job is a campaign, integration suite, bake-off, or metric comparison | `evaluate` |
-   | Already-planned work, “run the phase”, “continue tasks” | keep existing kind; go to step 5 |
-   | “Show this is done”, tests were run | keep existing kind; go to step 5 |
+   | Already-planned work, “run the phase”, “continue tasks” | keep existing kind; go to step 6 |
+   | “Show this is done”, tests were run | keep existing kind; go to step 6 |
    | A small chore, typo, or unrelated change | `incidental` |
    | A specified feature, phase, or known change | `deliver` |
 
@@ -72,11 +73,9 @@ canon list --type composer:idea \
 
    - **Park** — user defers work for later: create an idea (parent
      writer) with `effort`, `status` `open`, and optional `source`.
-   - **Promote** — user starts a parked item: supersede to
-     `promoted` (optional `phase`), then route to `settle-phase` with
-     `phase: new` for structured work, or an incidental work-item
-     when that kind fits. Structured promote never skips
-     `settle-phase` for a new phase.
+   - **Start** — user starts a parked item: treat the ask as naming
+     that idea's subject; go to step 4. Promotion to `promoted`
+     happens in `init` or `settle-phase`, not here.
    - **Dismiss** — user drops a parked item: supersede to `dismissed`.
 
 ```bash
@@ -87,14 +86,37 @@ canon create --type composer:idea \
 
 canon supersede --type composer:idea --id <id> \
   --expected-revision <revision> \
-  --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
-
-canon supersede --type composer:idea --id <id> \
-  --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```
 
-4. Records?
+4. Idea input. When the ask names the subject of an open
+   `composer:idea`, or the user asks to start from an idea, use this
+   path. Use the idea for **focus** instead of step 3.
+
+   - When no idea subject is named, run `orchestra view roadmap`.
+     List the open ideas grouped by area. Ask the user to pick one.
+   - Read the idea:
+
+```bash
+canon list --type composer:idea \
+  --subject <idea-subject> --exact-subject --state active --full
+```
+
+   - When `payload.status` is not `open`, say so and stop.
+   - When the idea has `payload.effort`, set **focus** to that
+     effort. The ask is a new phase of that effort; hand off with
+     `settle-phase` and `phase: new` when records apply.
+   - When the idea has no effort, route to `init` for a new effort.
+     Propose a focus slug from the idea subject. Ask the user to
+     confirm.
+   - Engage writes nothing on this path. The idea stays `open` until
+     `init` or `settle-phase` promotes it. When the user stops before
+     an effort or phase exists, the idea stays `open`.
+
+   When this step does not apply, set `idea` to `none` on the routing
+   line.
+
+5. Records?
 
    - `incidental` + fits this chat + not interrupting another live
      phase → **no records**. Tell the user to do it in this chat.
@@ -113,13 +135,14 @@ canon supersede --type composer:idea --id <id> \
 
    Skip `settle-phase` (go straight to `plan-phase`) when the user
    already fixed the approach in this ask, or for `incidental`.
-5. Show the routing line, then follow that skill with focus and kind
+6. Show the routing line, then follow that skill with focus and kind
    in context:
 
    ```
    kind: <kind>
    focus: <effort-slug> (existing | new)
    phase: <phase-slug> | new | none
+   idea: <subject> | none
    records: yes | no
    next: <skill or "this chat">
    ```
@@ -129,4 +152,5 @@ canon supersede --type composer:idea --id <id> \
 - Spawn subagents
 - Supersede another subject’s goal or position
 - Write work-items here
+- Promote an idea from engage
 - Add a fifth kind

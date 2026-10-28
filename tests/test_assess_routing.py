@@ -188,8 +188,13 @@ def test_engage_documents_idea_list_create_supersede():
         inv for inv in invs
         if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
-    assert len(idea_lists) == 1
-    assert "payload.status=open" in idea_lists[0]["raw"]
+    assert len(idea_lists) == 2
+    by_subject = {inv["raw"] for inv in idea_lists}
+    assert any("payload.status=open" in raw for raw in by_subject)
+    assert any(
+        "--exact-subject" in raw and "--full" in raw and "<idea-subject>" in raw
+        for raw in by_subject
+    )
     creates = [
         inv for inv in invs
         if inv["subcommand"] == "create" and inv["type"] == "composer:idea"
@@ -202,9 +207,36 @@ def test_engage_documents_idea_list_create_supersede():
         if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
     ]
     statuses = {inv["payload"]["status"] for inv in supersedes if inv["payload"]}
-    assert statuses == {"promoted", "dismissed"}
+    assert statuses == {"dismissed"}
     retired = ":".join(("score", "feedback"))
     assert retired not in text
+
+
+def test_engage_idea_input():
+    text = _text("engage")
+    flat = _normalized(text)
+    assert "triaged `composer:idea` subject" in flat
+    assert "names the subject of an open" in flat
+    assert "start from an idea" in flat
+    assert "orchestra view roadmap" in text
+    assert "grouped by area" in flat
+    assert "--exact-subject" in text
+    assert "payload.status" in text and "not `open`" in flat
+    assert "payload.effort" in text
+    assert "settle-phase" in text and "phase: new" in text
+    assert "route to `init`" in flat or "routes to `init`" in flat
+    assert "idea: <subject> | none" in text
+    assert "Promote an idea from engage" in text
+    assert "stays `open` until" in flat
+    assert "stops before an effort or phase exists" in flat
+    idea_reads = [
+        inv for inv in extract_invocations(text)
+        if inv["subcommand"] == "list"
+        and inv["type"] == "composer:idea"
+        and "--exact-subject" in inv["raw"]
+    ]
+    assert len(idea_reads) == 1
+    assert idea_reads[0]["type"] == "composer:idea"
 
 
 def test_verify_work_documents_enforced_red_first_close():
