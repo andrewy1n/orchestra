@@ -84,10 +84,12 @@ def test_handoff_lists_latest_proof_and_open_backlog(project):
     )
     create(project, "composer:idea", "later-idea", {"effort": "alpha", "status": "open"})
     create(project, "composer:idea", "done-idea", {"effort": "alpha", "status": "dismissed"})
+    create(project, "composer:idea", "unplaced-idea", {"status": "open"})
     text = render(project, "handoff")
     assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo" in text
     assert "### Backlog\n- **later-idea**: alpha; open" in text
     assert "done-idea" not in text
+    assert "unplaced-idea" not in text
 
 
 def test_handoff_lists_needs_human_findings_and_unsigned_manual_checks(project):
