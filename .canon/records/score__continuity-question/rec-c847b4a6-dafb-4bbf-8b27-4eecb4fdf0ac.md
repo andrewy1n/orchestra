@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-c847b4a6-dafb-4bbf-8b27-4eecb4fdf0ac",
+  "lifecycle_state": "answered",
+  "payload": {
+    "blocking": true,
+    "owner": "user",
+    "scope": "suite:composer-schema"
+  },
+  "record_type": "score:continuity-question",
+  "recorded_at": "2026-10-28T06:03:15+00:00",
+  "relationships": {},
+  "revision": "sha256:0fa61fcefe372a61ac08491bbec1c39bdf7528b41300b6685fee6fd02ef3871b",
+  "subject": "composer"
+}
+---
+

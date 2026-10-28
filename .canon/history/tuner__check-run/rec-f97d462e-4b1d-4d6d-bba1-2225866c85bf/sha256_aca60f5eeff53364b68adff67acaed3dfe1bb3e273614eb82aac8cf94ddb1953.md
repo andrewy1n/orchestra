@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-f97d462e-4b1d-4d6d-bba1-2225866c85bf",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-66fd8770-ea4d-4841-b88d-c18a51950a09",
+    "duration_s": 74.236947,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-66fd8770-ea4d-4841-b88d-c18a51950a09"
+    ],
+    "method": "check",
+    "output_sha256": "b6736b0f534cd0c754dd2864c052ee5fa9576d21253418263e1d09462aa44178",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "8bce3b19158a277250649ffc867e57b0818030ca",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:01:52+00:00",
+  "relationships": {},
+  "revision": "sha256:aca60f5eeff53364b68adff67acaed3dfe1bb3e273614eb82aac8cf94ddb1953",
+  "subject": "fix-composer-contract-tests"
+}
+---
+
+........................................................................ [ 38%]
+........................................................................ [ 76%]
+.............................................                            [100%]
+189 passed in 73.74s (0:01:13)

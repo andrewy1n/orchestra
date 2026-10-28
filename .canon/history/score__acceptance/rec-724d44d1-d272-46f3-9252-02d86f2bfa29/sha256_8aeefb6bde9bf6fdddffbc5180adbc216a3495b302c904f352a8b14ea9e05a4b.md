@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-724d44d1-d272-46f3-9252-02d86f2bfa29",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "composer",
+    "method": "tdd",
+    "phase": "composer-schema",
+    "requirement": "R9",
+    "verify_command": "python3 -m pytest tests/test_composer_schema.py::test_idea_bad_area -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-27T23:48:01+00:00",
+  "relationships": {},
+  "revision": "sha256:8aeefb6bde9bf6fdddffbc5180adbc216a3495b302c904f352a8b14ea9e05a4b",
+  "subject": "composer-module-idea-bad-area"
+}
+---
+

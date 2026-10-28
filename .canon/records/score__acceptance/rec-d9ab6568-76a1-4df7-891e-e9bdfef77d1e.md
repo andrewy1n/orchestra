@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-d9ab6568-76a1-4df7-891e-e9bdfef77d1e",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "composer",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/test_composer_schema.py:sha256:269e7b127f854f80c5e4ed7481d88738699c527e7e36acd472f339de976eb94e"
+    ],
+    "phase": "composer-schema",
+    "requirement": "R5",
+    "test_ids": [
+      "tests/test_composer_schema.py::test_area_scope"
+    ],
+    "verify_command": "python3 -m pytest tests/test_composer_schema.py::test_area_scope -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-27T23:47:53+00:00",
+  "relationships": {},
+  "revision": "sha256:d4c6fef95c036bdd70a2fbd222329635a5481bf4ab15fa34fb76f679e05f88c6",
+  "subject": "composer-module-area-scope"
+}
+---
+

@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-f4428b37-fdef-4e13-a401-faad7c2fcd21",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-4e4505e9-9b9a-41fb-a1bd-801df0fc78e3",
+    "duration_s": 0.021838,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-4e4505e9-9b9a-41fb-a1bd-801df0fc78e3"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R15",
+    "result": "pass",
+    "revision": "8bce3b19158a277250649ffc867e57b0818030ca",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:00:31+00:00",
+  "relationships": {},
+  "revision": "sha256:df0c8ae00abd97043ab329efb0e0dc3fe7f3ed19ccd0a9a0e22197fd4e12d421",
+  "subject": "composer-live-store"
+}
+---
+
