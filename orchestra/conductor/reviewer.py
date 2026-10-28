@@ -8,10 +8,11 @@ these helpers are for the parent session only.
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+from orchestra.canon.git_backend import run_git
 
 # Kinds the reviewer must never see (builder self-grades / dispatch notes).
 EXCLUDED_KINDS = frozenset(
@@ -83,8 +84,10 @@ def git_phase_diff(
     phase_head: str = "HEAD",
 ) -> str:
     """Return `git diff <base>..<phase-head>` text (empty string on failure)."""
-    result = subprocess.run(
-        ["git", "-C", str(cwd), "diff", f"{base}..{phase_head}"],
+    result = run_git(
+        cwd,
+        "diff",
+        f"{base}..{phase_head}",
         capture_output=True,
         text=True,
     )

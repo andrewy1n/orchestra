@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from pathlib import Path
+from subprocess import CompletedProcess
 from typing import Any
 
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.oplog import fold, read_ops
 from orchestra.canon.paths import revision_filename, type_dir_name
@@ -284,22 +285,22 @@ def validate_history(store_root: Path, records: list[dict[str, Any]], errors: li
                 errors.append(f"history snapshot {path.name}: no live record for {record_id}")
 
 
-def _run_git(args: list[str]) -> subprocess.CompletedProcess | None:
+def _run_git(cwd: Path, *args: str) -> CompletedProcess[str] | None:
     try:
-        return subprocess.run(args, capture_output=True, text=True)
+        return run_git(cwd, *args, capture_output=True, text=True)
     except OSError:
         return None
 
 
 def _git_toplevel(path: Path) -> Path | None:
-    result = _run_git(["git", "-C", str(path), "rev-parse", "--show-toplevel"])
+    result = _run_git(path, "rev-parse", "--show-toplevel")
     if result is None or result.returncode != 0:
         return None
     return Path(result.stdout.strip())
 
 
 def _git_head_exists(repo_root: Path) -> bool:
-    result = _run_git(["git", "-C", str(repo_root), "rev-parse", "--verify", "-q", "HEAD"])
+    result = _run_git(repo_root, "rev-parse", "--verify", "-q", "HEAD")
     return result is not None and result.returncode == 0
 
 
@@ -390,9 +391,7 @@ def validate_immutability(store_root: Path, errors: list[str]) -> None:
     config_rel = (rel / "config.json").as_posix()
     schemas_rel = (rel / "schemas").as_posix() + "/"
     records_rel = (rel / "records").as_posix()
-    result = _run_git(
-        ["git", "-C", str(repo_root), "diff", "--name-status", "HEAD", "--", rel.as_posix()]
-    )
+    result = _run_git(repo_root, "diff", "--name-status", "HEAD", "--", rel.as_posix())
     if result is None or result.returncode != 0:
         return
     for line in result.stdout.splitlines():

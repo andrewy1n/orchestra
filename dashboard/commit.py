@@ -7,6 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from orchestra.canon.git_backend import run_git
 from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
@@ -37,9 +38,18 @@ def latest_revision(events: list[model.TimelineEvent]) -> str | None:
 def load_commit(root: Path, revision: str, width: int = 80) -> Commit | None:
     if revision.startswith("-"):
         return None
-    command = ["git", "-C", str(root), "show", f"--stat={max(width, 20)}", "--format=%H%x1f%an%x1f%aI%x1f%s%x1f%b%x1e", revision, "--"]
     try:
-        done = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=5)
+        done = run_git(
+            root,
+            "show",
+            f"--stat={max(width, 20)}",
+            "--format=%H%x1f%an%x1f%aI%x1f%s%x1f%b%x1e",
+            revision,
+            "--",
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     if done.returncode != 0:

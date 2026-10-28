@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
+from orchestra.canon.git_backend import run_git
 from orchestra.tuner.amendment import authorize
 from orchestra.tuner.evidence_kind import kind_allows_runner
 from orchestra.tuner.human_claim import verify_claim_signature
@@ -312,8 +312,13 @@ def _disagrees(
 def _checkout(cwd: Path, commit: str) -> tuple[Path, Path] | None:
     parent = Path(tempfile.mkdtemp(prefix="aff-verdict-"))
     worktree = parent / "wt"
-    added = subprocess.run(
-        ["git", "-C", str(cwd), "worktree", "add", "--detach", str(worktree), commit],
+    added = run_git(
+        cwd,
+        "worktree",
+        "add",
+        "--detach",
+        str(worktree),
+        commit,
         capture_output=True,
     )
     if added.returncode != 0:
@@ -332,8 +337,12 @@ def _remove(cwd: Path, checked: tuple[Path, Path] | None) -> None:
     if checked is None:
         return
     parent, worktree = checked
-    subprocess.run(
-        ["git", "-C", str(cwd), "worktree", "remove", "--force", str(worktree)],
+    run_git(
+        cwd,
+        "worktree",
+        "remove",
+        "--force",
+        str(worktree),
         capture_output=True,
     )
     shutil.rmtree(parent, ignore_errors=True)

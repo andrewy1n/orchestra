@@ -4,17 +4,24 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Any
 
 
 class GitContextError(Exception):
     pass
 
 
+def run_git(cwd: Path | str, *args: str, **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+    return subprocess.run(["git", "-C", str(cwd), *args], **kwargs)
+
+
 def git_root(start: Path | None = None) -> Path:
     start = start or Path.cwd()
     try:
-        result = subprocess.run(
-            ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+        result = run_git(
+            start,
+            "rev-parse",
+            "--show-toplevel",
             capture_output=True,
             text=True,
         )

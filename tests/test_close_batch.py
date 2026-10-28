@@ -2195,7 +2195,7 @@ def test_oracle_backed_close_calls_assertion_level_red_not_tuner(tmp_path, monke
             return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
         return real_run(cmd, **kwargs)
 
-    monkeypatch.setattr(close_batch.subprocess, "run", spy)
+    monkeypatch.setattr(subprocess, "run", spy)
 
     ops = _build_oracle(request, cwd=repo)
     assert ops[-1]["transition"] == "done"

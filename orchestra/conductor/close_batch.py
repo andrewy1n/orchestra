@@ -40,11 +40,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Callable
 
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
 from orchestra.canon.store import StoreError
 
@@ -90,8 +90,12 @@ def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
     """True when ancestor == descendant or ancestor is a git ancestor of descendant."""
     if ancestor == descendant:
         return True
-    result = subprocess.run(
-        ["git", "-C", str(cwd), "merge-base", "--is-ancestor", ancestor, descendant],
+    result = run_git(
+        cwd,
+        "merge-base",
+        "--is-ancestor",
+        ancestor,
+        descendant,
         capture_output=True,
         text=True,
     )
@@ -200,10 +204,7 @@ def hash_file_at_revision(cwd: Path, revision: str, relpath: str) -> str:
         if not path.is_file():
             raise FileNotFoundError(relpath)
         return _sha256_digest(path.read_bytes())
-    result = subprocess.run(
-        ["git", "-C", str(cwd), "show", f"{revision}:{relpath}"],
-        capture_output=True,
-    )
+    result = run_git(cwd, "show", f"{revision}:{relpath}", capture_output=True)
     if result.returncode != 0:
         raise FileNotFoundError(relpath)
     return _sha256_digest(result.stdout)

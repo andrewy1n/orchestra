@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
 from orchestra.canon.validation import ValidationError
@@ -34,11 +35,7 @@ class CheckOutcome:
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        capture_output=True,
-        text=True,
-    )
+    return run_git(cwd, *args, capture_output=True, text=True)
 
 
 def git_head(cwd: Path) -> str:
