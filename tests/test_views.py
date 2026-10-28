@@ -324,6 +324,12 @@ def test_roadmap_heads_each_group_with_its_area_and_collects_arealess_ideas(proj
     assert "### Area\n- **dash**" not in text.split("## untriaged")[1]
 
 
+def test_group_key_keeps_empty_values_when_a_view_has_no_group_default():
+    record = {"subject": "incidental-task", "payload": {"phase": ""}}
+    assert views._group_key(record, views.PLAN, views.PLAN.roles[0]) == ""
+    assert views._group_key({"subject": "x", "payload": {}}, views.ROADMAP, views.ROADMAP.roles[1]) == "untriaged"
+
+
 def test_cli_brief_unknown_subject_fails_on_stderr(project, monkeypatch, capsys):
     code, out = run_cli(monkeypatch, capsys, project, "brief", "ghost")
     assert code == 1

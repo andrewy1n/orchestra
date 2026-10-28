@@ -287,12 +287,9 @@ def _group_key(record: Record, view: View, role: Role) -> str:
         return str(payload.get("scope", "default"))
     if group_by == "subject":
         return str(record.get("subject", "default"))
-    raw = payload.get(group_by)
-    if _empty(raw):
-        if view.group_default is not None:
-            return view.group_default
-        return str(record.get("subject", "default"))
-    return str(raw)
+    if view.group_default is not None and _empty(payload.get(group_by)):
+        return view.group_default
+    return str(payload.get(group_by, record.get("subject", "default")))
 
 
 def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | None:
