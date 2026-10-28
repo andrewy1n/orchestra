@@ -29,10 +29,11 @@ EFFORT_GOAL = "Show a roadmap in the product"
 def _canon_file_list_hash(store_dir: Path) -> str:
     if not store_dir.is_dir():
         return hashlib.sha256(b"").hexdigest()
-    files = sorted(
-        path.relative_to(store_dir).as_posix() for path in store_dir.rglob("*") if path.is_file()
-    )
-    return hashlib.sha256("\n".join(files).encode()).hexdigest()
+    entries = []
+    for path in sorted(p for p in store_dir.rglob("*") if p.is_file()):
+        stat = path.stat()
+        entries.append(f"{path.relative_to(store_dir).as_posix()}:{stat.st_size}:{stat.st_mtime_ns}")
+    return hashlib.sha256("\n".join(entries).encode()).hexdigest()
 
 
 def _parse_json(proc) -> dict:
