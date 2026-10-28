@@ -27,12 +27,36 @@ def test_settle_phase_skill_is_discoverable():
 def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
     written = {inv["type"] for inv in extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text()) if inv["subcommand"] in WRITES}
     assert written == {
+        "composer:idea",
         "score:specification",
         "score:design",
         "score:decision",
         "score:phase",
         "score:continuity-question",
     }
+
+
+def test_settle_phase_promotes_idea_after_new_phase():
+    text = (SKILLS / "settle-phase" / "SKILL.md").read_text()
+    lower = text.lower()
+    assert "phase: new" in lower
+    assert "idea: none" in lower or "`none`" in text
+    invs = extract_invocations(text)
+    idea_lists = [
+        inv for inv in invs
+        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
+    ]
+    assert len(idea_lists) == 1
+    promotes = [
+        inv for inv in invs
+        if inv["subcommand"] == "supersede"
+        and inv["type"] == "composer:idea"
+        and (inv.get("payload") or {}).get("status") == "promoted"
+    ]
+    assert len(promotes) == 1
+    payload = promotes[0]["payload"]
+    assert payload["effort"] == "<effort-slug>"
+    assert payload["phase"] == "<phase-slug>"
 
 
 def test_engage_routes_new_phases_through_settle_phase():

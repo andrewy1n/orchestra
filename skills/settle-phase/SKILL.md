@@ -53,6 +53,19 @@ Do not write work-items, acceptance, or code in this skill. That is
    milestone the new phase belongs to (or none); set optional payload
    `milestone` to that subject. Create a milestone first only when the
    user wants a new time-bounded group for several phases.
+   When the routing line carries `idea: <subject>` (not `none`) and
+   this step created a `phase: new` phase, read that idea and supersede
+   it to `promoted` with this effort and phase:
+
+```bash
+canon list --type composer:idea --subject <idea-subject> --exact-subject --state active --full
+
+canon supersede --type composer:idea --id <id> \
+  --expected-revision <revision> \
+  --payload '{"status":"promoted","effort":"<effort-slug>","phase":"<phase-slug>"}'
+```
+
+   Skip when the routing line has `idea: none`.
 2. Read context: the phase record, milestones for this effort,
    `score:decision` and `score:constraint` records with
    `payload.effort` = focus, assessments for this phase, and the code

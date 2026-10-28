@@ -158,6 +158,20 @@ canon create --type score:position \
   --payload '{"position":"<short now-statement>","scope":"<effort or repo>","effort":"<effort-slug>","phase":"<first-phase-slug>"}'
 ```
 
+   When the routing line from `engage` carries `idea: <subject>` (not
+   `none`), read that idea and supersede it to `promoted` with this
+   effort:
+
+```bash
+canon list --type composer:idea --subject <idea-subject> --exact-subject --state active --full
+
+canon supersede --type composer:idea --id <id> \
+  --expected-revision <revision> \
+  --payload '{"status":"promoted","effort":"<effort-slug>"}'
+```
+
+   Skip when the routing line has `idea: none`.
+
 9. For each confirmed durable choice among alternatives,
    `create --type score:decision` with `choice`, `alternatives`,
    `phase`, `effort` payload and a body with `## Rationale` and
