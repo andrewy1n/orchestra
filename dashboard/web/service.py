@@ -20,6 +20,7 @@ from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
 from dashboard import approval, backlog, dismiss, journal, model
+from dashboard.web.routes import ROUTES
 from orchestra.canon.project import Project
 
 
@@ -357,6 +358,13 @@ def _query(qs: dict, name: str) -> str:
     return value
 
 
+def _match(method: str, path: str):
+    for route in ROUTES:
+        if route.method == method and route.path == path:
+            return route
+    return None
+
+
 def build_handler(reader: Reader):
     """A ``BaseHTTPRequestHandler`` class serving the read API for one store."""
 
@@ -368,28 +376,12 @@ def build_handler(reader: Reader):
             parsed = urlparse(self.path)
             qs = parse_qs(parsed.query)
             try:
-                if parsed.path == "/api/token":
-                    self._json(reader.token())
-                elif parsed.path == "/api/snapshot":
-                    self._json(reader.snapshot())
-                elif parsed.path == "/api/phase":
-                    self._json(reader.phase(_query(qs, "effort"), _query(qs, "phase")))
-                elif parsed.path == "/api/task":
-                    self._json(reader.task(_query(qs, "id")))
-                elif parsed.path == "/api/journal":
-                    self._json(reader.journal(_query(qs, "effort")))
-                elif parsed.path == "/api/record":
-                    self._json(reader.record(_query(qs, "id")))
-                elif parsed.path == "/api/requirement":
-                    self._json(
-                        reader.requirement(_query(qs, "effort"), _query(qs, "phase"), _query(qs, "id"))
-                    )
-                elif parsed.path == "/api/needs":
-                    self._json(reader.needs(_query(qs, "effort"), _query(qs, "id")))
-                elif parsed.path == "/api/backlog":
-                    self._json(reader.backlog(_query(qs, "effort"), _query(qs, "id")))
-                else:
+                route = _match("GET", parsed.path)
+                if route is None:
                     self._json({"error": "not found"}, status=404)
+                    return
+                args = [_query(qs, key) for key in route.query_keys]
+                self._json(getattr(reader, route.reader_method)(*args))
             except model.ModelError as exc:
                 self._json({"error": str(exc)}, status=404)
             except Exception as exc:  # noqa: BLE001 — surface a failed read
@@ -399,12 +391,11 @@ def build_handler(reader: Reader):
             parsed = urlparse(self.path)
             try:
                 body = self._read_json()
-                if parsed.path == "/api/needs":
-                    self._json(reader.write_needs(body))
-                elif parsed.path == "/api/backlog":
-                    self._json(reader.write_backlog(body))
-                else:
+                route = _match("POST", parsed.path)
+                if route is None:
                     self._json({"error": "not found"}, status=404)
+                    return
+                self._json(getattr(reader, route.reader_method)(body))
             except WriteError as exc:
                 self._json({"error": exc.message}, status=exc.status)
             except model.ModelError as exc:
