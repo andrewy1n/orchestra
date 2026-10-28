@@ -184,8 +184,7 @@ runs once per stop.
 
 ## Follow-up effort
 
-- Migrate legacy `score:backlog-item` and `score:feedback` records to
-  `composer:idea`, then remove both types.
-- `orchestra idea`, a triage skill, and `orchestra view roadmap`.
+- Composer ideas replace the old score backlog types; ship `orchestra idea`, a
+  triage skill, and `orchestra view roadmap`.
 - Teach `engage` to start from an untriaged idea.
 - Docs ownership: the product manages its own `docs/` tree.

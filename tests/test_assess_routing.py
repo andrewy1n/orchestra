@@ -174,7 +174,8 @@ def test_assessment_examples_carry_required_fields_and_sections():
 
 def test_engage_does_not_name_score_feedback():
     text = _text("engage")
-    assert "score:feedback" not in text
+    retired = ":".join(("score", "feedback"))
+    assert retired not in text
 
 
 def test_engage_documents_idea_list_create_supersede():
@@ -202,7 +203,8 @@ def test_engage_documents_idea_list_create_supersede():
     ]
     statuses = {inv["payload"]["status"] for inv in supersedes if inv["payload"]}
     assert statuses == {"promoted", "dismissed"}
-    assert "score:feedback" not in text
+    retired = ":".join(("score", "feedback"))
+    assert retired not in text
 
 
 def test_verify_work_documents_enforced_red_first_close():
