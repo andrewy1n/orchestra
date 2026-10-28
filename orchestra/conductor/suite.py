@@ -9,7 +9,6 @@ fix-and-rerun inline. Suite is never red-first.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import shlex
@@ -25,9 +24,11 @@ from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
+    _output_sha256,
     git_diff_sha256,
     git_head,
     git_is_dirty,
+    parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 from orchestra.conductor.reviewer import _revision_matches
@@ -47,15 +48,6 @@ DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
 FAST_SUITE_CMD = 'uv run pytest tests -q -n 4 -m "not tmux"'
 TMUX_SUITE_CMD = "uv run pytest tests -q -m tmux"
-
-_NODE_ID_RE = re.compile(
-    r"(?:FAILED|ERROR)\s+(\S+::\S+)"
-)
-_SUMMARY_NODE_RE = re.compile(
-    r"^(?:FAILED|ERROR)\s+(\S+::\S+)",
-    re.MULTILINE,
-)
-
 
 @dataclass(frozen=True)
 class SuitePolicy:
@@ -188,25 +180,6 @@ def suite_command_for_policy(policy: SuitePolicy) -> str:
     return policy.command.strip() or readme_suite_command()
 
 
-def parse_failing_node_ids(output: str) -> list[str]:
-    """Extract pytest node ids from failure/error lines (stable order, unique)."""
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for match in _SUMMARY_NODE_RE.finditer(output or ""):
-        node = match.group(1).strip()
-        if node not in seen:
-            seen.add(node)
-            ordered.append(node)
-    if ordered:
-        return ordered
-    for match in _NODE_ID_RE.finditer(output or ""):
-        node = match.group(1).strip()
-        if node not in seen:
-            seen.add(node)
-            ordered.append(node)
-    return ordered
-
-
 def cluster_by_module(node_ids: Sequence[str]) -> dict[str, list[str]]:
     """Cluster node ids by test file / module path (text before ``::``)."""
     clusters: dict[str, list[str]] = {}
@@ -308,10 +281,6 @@ def advisory_finding_payload(
         "effort": effort,
         "needs": "none",
     }
-
-
-def _output_sha256(output: str) -> str:
-    return hashlib.sha256(output.encode("utf-8", "replace")).hexdigest()
 
 
 def _body_tail(output: str) -> str:
