@@ -1,11 +1,7 @@
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from session_fields import session_fields
-from session_metrics import read_events
+from orchestra.sessions.session_fields import session_fields
+from orchestra.sessions.session_metrics import read_events
 
 
 def base(type_, ts, **extra):

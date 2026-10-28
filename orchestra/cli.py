@@ -12,25 +12,10 @@ from pathlib import Path
 from orchestra.conductor import reviewer
 from orchestra import view_cli
 
-try:
-    from orchestra.canon.project import StoreBindingError, open_store
-    from orchestra.canon.store import StoreError
-except ModuleNotFoundError:
-    StoreBindingError = None
-    open_store = None
-    StoreError = None
-
-try:
-    from orchestra.conductor import suite
-except ModuleNotFoundError:
-    suite = None
-
-try:
-    from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
-except ModuleNotFoundError:
-    DEFAULT_TIMEOUT_S = 600.0
-    git_head = None
-    run_check = None
+from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.store import StoreError
+from orchestra.conductor import suite
+from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
@@ -798,7 +783,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "report":
                 return report_sessions(args.root, records=args.records)
             return aggregate_sessions(args.report)
-        except (OSError, ModuleNotFoundError) as exc:
+        except OSError as exc:
             print(f"orchestra sessions: {exc}", file=sys.stderr)
             return 2
     if args.command == "review-brief":

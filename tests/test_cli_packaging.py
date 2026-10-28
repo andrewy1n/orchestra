@@ -25,7 +25,7 @@ def _source_tree(prefix: Path) -> Path:
     source = Path(tempfile.mkdtemp(dir=prefix.parent, prefix="source-"))
     for name in ("pyproject.toml", "README.md"):
         shutil.copy2(REPO_ROOT / name, source / name)
-    for name in ("orchestra", "scripts"):
+    for name in ("orchestra", "dashboard", "installer", "scripts"):
         shutil.copytree(
             REPO_ROOT / name,
             source / name,
@@ -293,10 +293,10 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
     assert rows.returncode == 0, rows.stderr
     assert len([line for line in rows.stdout.splitlines() if line.strip()]) == 1
 
-    # install is checkout-side; standalone it must explain, not traceback.
+    # install is checkout-side; a prefix install has no skills/ tree.
     install = run_cli(env, elsewhere, "install", "--dry-run")
     assert install.returncode == 2
-    assert "installer" in install.stderr
+    assert "skills/" in install.stderr
     assert "Traceback" not in install.stderr
 
     module = subprocess.run(

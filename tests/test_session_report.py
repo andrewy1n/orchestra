@@ -3,11 +3,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from orchestra.sessions import session_report
 
-import session_report
-
-SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "session_report.py"
+SCRIPT = Path(__file__).resolve().parent.parent / "orchestra" / "sessions" / "session_report.py"
 
 
 def write(path, events, extra=""):

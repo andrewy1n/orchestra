@@ -1,13 +1,10 @@
 import json
-import sys
 from datetime import timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from record_reader import DEFAULT_TYPES, RecordReadError, read_records
+from orchestra.sessions.record_reader import DEFAULT_TYPES, RecordReadError, read_records
 
 BODY = "SECRET BODY TEXT"
 

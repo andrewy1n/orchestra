@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 cd "$(dirname "$0")/.."
-run() { uv run -q --no-project --with pytest --with pytest-xdist --with textual --with pip --with setuptools --with wheel python -m pytest -q -p no:cacheprovider "$@"; }
+run() { uv run -q pytest -q -p no:cacheprovider "$@"; }
 run -n 4 --confcutdir=tests/canon tests/canon
 run -n 4 --confcutdir=tests/tuner tests/tuner
 run -n 4 tests --ignore=tests/canon --ignore=tests/tuner

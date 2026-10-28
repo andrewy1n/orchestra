@@ -1,11 +1,7 @@
 import inspect
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from session_metrics import ReadStats, read_events  # noqa: E402
+from orchestra.sessions.session_metrics import ReadStats, read_events
 
 
 def write_lines(tmp_path, lines):

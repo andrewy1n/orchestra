@@ -1,9 +1,4 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from tool_skill_rollup import tool_skill_rollup  # noqa: E402
+from orchestra.sessions.tool_skill_rollup import tool_skill_rollup
 
 
 def row(tools, skills):

@@ -42,7 +42,7 @@ def _source_tree(dest: Path) -> Path:
     source.mkdir()
     for name in ("pyproject.toml", "README.md"):
         shutil.copy2(_ROOT / name, source / name)
-    for name in ("orchestra", "scripts"):
+    for name in ("orchestra", "dashboard", "installer", "scripts"):
         shutil.copytree(
             _ROOT / name,
             source / name,

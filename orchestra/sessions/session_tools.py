@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from session_metrics import read_events
+from orchestra.sessions.session_metrics import read_events
 
 
 def _blocks(event):

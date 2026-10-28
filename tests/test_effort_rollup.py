@@ -1,9 +1,4 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from effort_rollup import effort_rollup
+from orchestra.score.effort_rollup import effort_rollup
 
 
 def row(efforts, turns, cost, calls, errors, retries):
