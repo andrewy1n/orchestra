@@ -55,6 +55,7 @@ dev = [
     "pytest",
     "pytest-xdist",
     "httpx",
+    "pyyaml",
     "pip",
     "setuptools",
     "wheel",
