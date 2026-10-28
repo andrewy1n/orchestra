@@ -117,7 +117,7 @@ tail for a `kind: skills` row and records the profile in the registration.
 
 To install by hand, copy or symlink each generated skill directory into the
 host's skills directory: `engage`, `init`, `settle-phase`, `plan-phase`,
-`execute-phase`, `verify-work`, and `analyze-sessions`. Every directory is
+`execute-phase`, `verify-work`, `triage-ideas`, and `analyze-sessions`. Every directory is
 self-contained: its `SKILL.md` and its `references/` folder travel together.
 The generated `references/` copies already contain `kinds-and-focus.md`,
 `ensure-store.md`, and `se-reviewer.md`, so no shared file needs to sit two
