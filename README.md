@@ -645,23 +645,21 @@ echo "$input" | ~/orchestra/dashboard/bin/dashboard-status
 
 ## Testing
 
-Run the full suite:
+Run the full suite as four pytest processes:
 
 ```bash
-scripts/test.sh
+uv run pytest -q -n auto --confcutdir=tests/canon tests/canon
+uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner
+uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner
+uv run pytest -q tests --ignore=tests/canon --ignore=tests/tuner -m tmux
 ```
 
-It runs `tests/canon`, `tests/tuner` and the orchestra tests as
-separate pytest processes, because each tree has its own `conftest.py`.
-The tmux tests run last and serially, because parallel load makes them
-flaky. The orchestra part is:
+Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
+run apart from the orchestra tests. The tmux tests run last and serially,
+because parallel load makes them flaky. CI runs the same four commands as
+parallel jobs.
 
-```bash
-uv run pytest tests -q -n 4 -m "not tmux" --ignore=tests/canon --ignore=tests/tuner \
-  && uv run pytest tests -q -m tmux --ignore=tests/canon --ignore=tests/tuner
-```
-
-That script is the **phase-level suite** (`phase_gate.suite`).
+These four commands are the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
@@ -680,8 +678,8 @@ not waive it; a human changes `settings.conductor.phase_gate` in
 `settings.conductor.phase_gate`. A new store defaults to `mode=none` (skip).
 When a suite is configured (`mode` not `none` and `command` set) and
 `gate` is omitted, gate defaults to `required`. This repo's live
-`.canon/config.json` sets `mode=full` and `gate=required` with
-`scripts/test.sh`. The suite check-run
+`.canon/config.json` sets `mode=full` and `gate=advisory` with
+the four commands chained with `&&`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 

@@ -38,7 +38,8 @@ their response. They do not call `canon`.
 
 ## Testing
 
-Run `scripts/test.sh` before you close a task. While you edit, run the
-affected test files with `uv run pytest <files>`.
+Run the four pytest commands in the README Testing section before you
+close a task. While you edit, run the affected test files with
+`uv run pytest <files>`.
 Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
 trees.
