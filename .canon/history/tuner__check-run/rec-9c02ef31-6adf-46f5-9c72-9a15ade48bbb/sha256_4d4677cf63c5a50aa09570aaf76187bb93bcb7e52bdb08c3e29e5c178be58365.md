@@ -1,0 +1,61 @@
+---
+{
+  "id": "rec-9c02ef31-6adf-46f5-9c72-9a15ade48bbb",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-0bc71c21-5b2e-4350-b1a6-a984f1b37847",
+    "diff_sha256": "ad66f8d325ea02a11f89a7e7e62ca5a95112a63c1dde18fb7bbd4cb897e4c06f",
+    "duration_s": 0.658184,
+    "effort": "package-layout",
+    "exit_code": 1,
+    "failing_node_ids": [
+      "tests/test_wheel_contents.py::test_r15_effort_rollup"
+    ],
+    "informed_by": [
+      "rec-0bc71c21-5b2e-4350-b1a6-a984f1b37847"
+    ],
+    "method": "tdd",
+    "output_sha256": "92903435541ac1e9dfdad6c5a1d0f05d846d0e1792cea354f398f95ef1c96e0b",
+    "requirement": "R15",
+    "result": "fail",
+    "revision": "dirty",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T07:28:14+00:00",
+  "relationships": {},
+  "revision": "sha256:4d4677cf63c5a50aa09570aaf76187bb93bcb7e52bdb08c3e29e5c178be58365",
+  "subject": "score-effort-rollup"
+}
+---
+
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________________ test_r15_effort_rollup ____________________________
+
+    def test_r15_effort_rollup() -> None:
+        """R15: Importing `effort_rollup` from `orchestra.score` succeeds without inserting `scripts/` on `sys.path`."""
+        proc = subprocess.run(
+            [sys.executable, "-I", "-c", _EFFORT_ROLLUP, str(REPO_ROOT)],
+            capture_output=True,
+            text=True,
+        )
+>       _assert_success(proc)
+
+tests/test_wheel_contents.py:397:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+proc = CompletedProcess(args=['/usr/bin/python3', '-I', '-c', '\nimport sys\nfrom pathlib import Path\n\nrepo = Path(sys.argv...: cannot import name 'effort_rollup' from 'orchestra.score' (/home/andrewyin/orchestra/orchestra/score/__init__.py)\n")
+
+    def _assert_success(proc: subprocess.CompletedProcess[str]) -> None:
+        lines = (proc.stderr or proc.stdout or "").strip().splitlines()
+>       assert proc.returncode == 0, lines[-1] if lines else f"exit {proc.returncode}"
+E       AssertionError: ImportError: cannot import name 'effort_rollup' from 'orchestra.score' (/home/andrewyin/orchestra/orchestra/score/__init__.py)
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/usr/bin/python3', '-I', '-c', '\nimport sys\nfrom pathlib import Path\n\nrepo = Path(sys.argv...: cannot import name 'effort_rollup' from 'orchestra.score' (/home/andrewyin/orchestra/orchestra/score/__init__.py)\n").returncode
+
+tests/test_wheel_contents.py:268: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_wheel_contents.py::test_r15_effort_rollup - AssertionError:...
+1 failed in 0.08s

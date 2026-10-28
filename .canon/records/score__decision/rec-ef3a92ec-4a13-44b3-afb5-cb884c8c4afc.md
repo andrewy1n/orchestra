@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-ef3a92ec-4a13-44b3-afb5-cb884c8c4afc",
+  "lifecycle_state": "active",
+  "payload": {
+    "alternatives": "Leave the plugin installed",
+    "choice": "Uninstall se-workflow@se-workflow for this machine and remove its marketplace entry when that entry exists only for that plugin",
+    "effort": "package-layout",
+    "phase": "retire-se-workflow"
+  },
+  "record_type": "score:decision",
+  "recorded_at": "2026-10-28T06:57:13+00:00",
+  "relationships": {},
+  "revision": "sha256:1323eb5b8acf73c36f05abb9192429ff0172563d0ae4b80a4bbb4f4af80492fc",
+  "subject": "retire-installed-se-workflow"
+}
+---
+
+## Rationale
+
+`~/.claude/plugins/installed_plugins.json` still installs `se-workflow@se-workflow` 0.2.0 for `/home/andrewyin`. That copy's skills tell the agent to run `adaptive-artifacts hook-start`. `~/.claude/settings.json` already calls `orchestra hook-start` and `orchestra hook-stop` once, and the `adaptive-artifacts` plugin is not installed. Removing `se-workflow` finishes the host cutover the monorepo plan left as "one handoff, from `.canon/`". The marketplace entry goes too when it exists only to serve that plugin.
+
+## Counter-argument
+
+The settings hooks do not call the old plugin, so a session does not run two hook commands today. Leaving `se-workflow` installed preserves a known-good 0.2.0 cache and avoids editing Claude's plugin state. The stale skill text matters only if that plugin is still loaded into a session.

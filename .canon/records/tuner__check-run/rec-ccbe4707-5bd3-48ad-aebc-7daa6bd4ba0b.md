@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-ccbe4707-5bd3-48ad-aebc-7daa6bd4ba0b",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-dc7a2e22-7a0c-46d9-a2a4-1f94ffdb5841",
+    "duration_s": 1.784985,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-dc7a2e22-7a0c-46d9-a2a4-1f94ffdb5841"
+    ],
+    "method": "check",
+    "output_sha256": "c3b50173dd019464e9d743d3dc0c4af81bb170a09999ec406aa3da1b87d24297",
+    "requirement": "R9",
+    "result": "pass",
+    "revision": "5deac7b455d795fd9f857850e3623a5b7ec17caa",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T07:24:19+00:00",
+  "relationships": {},
+  "revision": "sha256:2650389d3187e186041cdc3198eb2634a2fed91fcd046c236315707a846d98ba",
+  "subject": "idea-capture-unknown-effort"
+}
+---
+
+.....                                                                    [100%]
+5 passed in 1.12s
