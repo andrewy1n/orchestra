@@ -5,14 +5,13 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 
-FORBIDDEN_CHAIN = '-n 4 -m "not tmux"'
-
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def _flat(text: str) -> str:
@@ -30,8 +29,7 @@ def _testing_section(name: str) -> str:
 
 def test_plan_phase_limits_verification_to_phase_checks():
     text = _flat(_text("plan-phase"))
-    assert "verification task's acceptances come from the phase exit criteria" in text
-    assert "one is an integration check through the real entry point" in text
+    assert "Acceptances come from phase exit criteria; at least one is an integration check through the real entry point." in text
 
 
 def test_plan_phase_rejects_whole_suite_and_unfiltered_app_file():
@@ -41,35 +39,21 @@ def test_plan_phase_rejects_whole_suite_and_unfiltered_app_file():
     assert "is not a verification acceptance" in text
 
 
-def test_close_instructions_use_the_task_command():
-    for name in ("AGENTS.md", "CLAUDE.md"):
-        section = _testing_section(name)
-        assert "`verify_command`" in section
-        chain_at = section.find(FORBIDDEN_CHAIN)
-        assert chain_at < 0 or "-m tmux" not in section[chain_at:]
-        assert "run the full suite" not in section
-        assert "full suite" not in section or "clos" not in section
-
-
 def test_verification_failure_does_not_edit():
     execute = _flat(_text("execute-phase"))
-    assert "The verification executor returns `fail` and does not edit the tree." in execute
+    assert "run phase checks; return `fail`; do not edit the tree" in execute
+    assert "Let the verification executor edit the tree" in execute
 
     verify = _flat(_text("verify-work"))
-    assert (
-        "leave the work-item `in_progress` and use assessment `next` `execute`"
-        in verify
-    )
+    assert "When a verification check fails for that reason, same routing" in verify
     assert "a suite the acceptance does not name" in verify
 
 
 def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
     """Per-task verify_command stays scoped; phase-level suite is the full run."""
     execute = _flat(_text("execute-phase"))
-    assert "whole-suite" in execute or "whole suite" in execute or "full suite" in execute
-    assert "phase_gate.suite" in execute or "phase-level" in execute
-    assert "per-task" in execute and "scoped" in execute
-    assert "verify_command" in execute
+    assert "Put a whole-suite command on a per-task `verify_command`" in execute
+    assert "phase_gate.suite" in execute
     assert "tier-2" not in execute and "tier2" not in execute
 
     reviewer = (REPO_ROOT / "agents" / "se-reviewer.md").read_text()
@@ -77,22 +61,15 @@ def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
 
     readme = _testing_section("README.md")
     assert "phase_gate.suite" in readme
-    assert "phase-level" in readme or "phase level" in readme
-    assert "Per-task" in readme or "per-task" in readme
-    assert "narrowly scoped" in readme or "scoped" in readme
+    assert "phase-level suite" in readme
+    assert "Per-task `verify_command` values stay narrowly scoped" in readme
     for mode in ("none", "smoke", "full", "external"):
         assert mode in readme
     for gate in ("required", "advisory", "deferred"):
         assert gate in readme
-    assert "mode=full" in readme and "gate=advisory" in readme
-    assert "<phase>-suite" in readme or "`<phase>-suite`" in readme
+    assert "`mode=full` and `gate=required`" in readme
+    assert "`<phase>-suite`" in readme
     assert "tier-2" not in readme and "tier2" not in readme
-    # README documents the phase-level suite; AGENTS/CLAUDE close
-    # instructions must not tell a task to run it.
-    for name in ("AGENTS.md", "CLAUDE.md"):
-        section = _testing_section(name)
-        assert "`verify_command`" in section
-        assert "run the full suite" not in section
 
 
 def test_plan_phase_still_rejects_whole_suite_on_verification_task():

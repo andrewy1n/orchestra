@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
@@ -67,15 +68,15 @@ def test_skills_run_orchestra_check_and_close_batch():
     for path in (EXECUTE, VERIFY, PLAN):
         text = path.read_text()
         assert "orchestra check" in text, path
-    verify = VERIFY.read_text()
+    verify = skill_text("verify-work")
     assert "orchestra close-batch" in verify
-    assert "is the verdict command on PATH" in verify
+    assert "orchestra verify verdict" in verify
 
 
 def test_execute_phase_and_verify_work_run_verify_verdict_for_a_manifest_claim():
-    for path in (EXECUTE, VERIFY):
+    for path, not_done in ((EXECUTE, _NOT_DONE), (VERIFY, "run `orchestra verify verdict`; non-zero → not done.")):
         text = path.read_text()
         assert "orchestra verify verdict" in text, path
         assert ".tuner/manifest.json" in text, path
-        assert _NOT_DONE in text, path
+        assert not_done in " ".join(text.split()), path
         assert re.search(r"orchestra verify verdict\b[^\n]*<claim-id>", text), path

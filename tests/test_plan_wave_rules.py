@@ -13,7 +13,7 @@ SKILLS = REPO_ROOT / "skills"
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return h.skill_text(name)
 
 
 def _flat(text: str) -> str:
@@ -23,7 +23,7 @@ def _flat(text: str) -> str:
 def _work_item_payloads(text: str) -> list[dict]:
     payloads = []
     for inv in extract_invocations(text):
-        if inv["type"] == "score:work-item" and inv["payload"]:
+        if inv["subcommand"] == "create" and inv["type"] == "score:work-item" and inv["payload"]:
             payloads.append(inv["payload"])
         for part in inv["records"] or []:
             if part.get("type") == "score:work-item":
@@ -44,8 +44,7 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
 
     raw = _text("plan-phase")
     text = _flat(raw)
-    assert "payload `executor` is `inline` or `subagent`" in text
-    assert "Missing `executor` means `subagent`." in text
+    assert "`executor` (`inline`| `subagent`; missing → `subagent`; same within a wave)" in text
     payloads = _work_item_payloads(raw)
     assert payloads
     assert {payload["executor"] for payload in payloads} <= {"inline", "subagent"}
@@ -60,7 +59,7 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
 
 
 def test_every_task_in_a_wave_uses_the_same_executor():
-    assert "Every task in a wave uses the same executor." in _flat(_text("plan-phase"))
+    assert "same within a wave" in _flat(_text("plan-phase"))
     for path in (SKILLS / "kinds-and-focus.md", REPO_ROOT / "README.md"):
         doc = _flat(path.read_text())
         assert "`inline` or `subagent`" in doc
@@ -72,16 +71,13 @@ def test_every_task_in_a_wave_uses_the_same_executor():
 
 def test_phase_body_records_size_stops_and_collision_notes():
     text = _flat(_text("plan-phase"))
-    assert "size as `one sitting` or `more than one`" in text
-    assert "the human stops" in text
-    assert "the areas parallel tasks share" in text
-    assert "collision notes" in text
+    assert "Phase body records session shape (`one sitting` | `more than one`), human stops, collision notes" in text
 
 
 def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
     text = _text("plan-phase")
     flat = _flat(text)
-    gate = "Do not open the plan-review question until those are present"
+    gate = "Open the plan review gate (skip incidental). Do not open until:"
     question = next(
         inv
         for inv in extract_invocations(text)
@@ -89,13 +85,10 @@ def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_presen
     )
     assert question["payload"]["blocking"] is True
     assert question["payload"]["scope"].startswith("plan-review:")
-    # Final plan-review create (step 10), not the earlier next:plan re-open example.
     question_at = flat.rindex("canon create --type score:continuity-question")
     gate_at = flat.rindex(gate)
     assert gate_at < question_at
     window = flat[gate_at:question_at]
-    assert "implementation recipe" in window
-    assert "`inline` or `subagent`" in window
-    assert "one sitting" in window
-    assert "human stops" in window
-    assert "areas parallel tasks share" in window
+    assert "each work-item has `## Approach`" in window
+    assert "wave executors agree" in window
+    assert "phase body has size, human stops, collision notes" in window

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -10,7 +11,7 @@ WRITES = {"create", "update", "supersede", "capture", "apply", "correct", "contr
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def _kinds() -> str:
@@ -24,7 +25,7 @@ def test_settle_phase_skill_is_discoverable():
 
 
 def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
-    written = {inv["type"] for inv in extract_invocations(_text("settle-phase")) if inv["subcommand"] in WRITES}
+    written = {inv["type"] for inv in extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text()) if inv["subcommand"] in WRITES}
     assert written == {
         "score:specification",
         "score:design",
@@ -93,7 +94,7 @@ def test_engage_lists_human_dismissible_needs_you_without_blocking_route():
 
 
 def test_skills_that_open_human_gates_document_matching_clears():
-    settle = extract_invocations(_text("settle-phase"))
+    settle = extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text())
     assert any(
         inv["subcommand"] == "update"
         and inv["type"] == "score:continuity-question"

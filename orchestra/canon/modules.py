@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from orchestra.canon.schema import SchemaError, validate_module
 
@@ -52,9 +52,13 @@ def _path_sources() -> list[tuple[str, str]]:
 
 
 def discover() -> dict[str, InstalledModule]:
+    installed = _collect(_read_source(entry) for entry in _entry_points())
+    return installed | _collect(_path_sources())
+
+
+def _collect(sources: Iterable[tuple[str, str]]) -> dict[str, InstalledModule]:
     found: dict[str, InstalledModule] = {}
-    sources = [_read_source(entry) for entry in _entry_points()]
-    for source, text in sources + _path_sources():
+    for source, text in sources:
         try:
             data = json.loads(text)
         except json.JSONDecodeError as exc:

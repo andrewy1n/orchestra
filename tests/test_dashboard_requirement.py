@@ -129,7 +129,7 @@ def _seed(cli, defs):
         "status": "verified", "level": "verification", "next": "release", "confidence": "high",
     })
     return {
-        "task": traced["id"], "other": other["id"], "acceptance": acceptance["subject"],
+        "task": traced["id"], "other": other["id"], "acceptance": acceptance["id"],
         "first": first["id"], "active": active["id"],
     }
 

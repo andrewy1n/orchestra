@@ -13,7 +13,7 @@ SKILLS = REPO_ROOT / "skills"
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return h.skill_text(name)
 
 
 def _flat(name: str) -> str:
@@ -36,8 +36,8 @@ def test_execute_phase_redispatch_selects_in_progress_before_planned():
     flat = _flat("execute-phase")
     assert "--state in_progress" in text
     assert "before" in flat and "planned" in flat
-    assert "next: execute" in flat or "`next` `execute`" in flat or "next` `execute`" in flat
-    assert "result: fail" in flat or "`result` `fail`" in flat or "result` `fail`" in flat
+    assert "assessment `next` is `execute`" in flat
+    assert "check-run `result` is `fail`" in flat
     assert "same executor" in flat or "same `payload.executor`" in flat
     step2 = text.index("2. Select")
     retry_at = text.lower().index("in_progress")
@@ -138,7 +138,7 @@ def test_budget_defaults_overrides_and_exhaustion():
         for inv in extract_invocations(text)
     )
     assert "stop" in flat and ("dispatch" in flat or "selecting" in flat)
-    assert "evidence ladder" in flat or "evidence-escalation" in flat
+    assert "Evidence escalation still chooses `level` / `next`; the budget only decides when to stop." in flat
 
 
 def test_plan_phase_consumes_next_plan():
@@ -160,5 +160,5 @@ def test_verify_work_notes_parent_redispatch_without_changing_ladder():
     flat = _flat("verify-work")
     assert "re-dispatch" in flat or "redispatch" in flat or "execute-phase" in flat
     assert "fix" in flat and ("work-item" in flat or "task" in flat)
-    assert "Decision evidence-escalation." in text
-    assert "Do not use a failure count." in flat
+    assert "## Evidence escalation" in text
+    assert "Do not escalate by failure count." in flat

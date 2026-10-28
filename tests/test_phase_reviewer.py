@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 
 sys.path.insert(0, str(REPO_ROOT))
@@ -78,7 +79,7 @@ integration:
 
 
 def _skill_text() -> str:
-    return SKILL.read_text()
+    return skill_text("execute-phase")
 
 
 def _skill_flat() -> str:

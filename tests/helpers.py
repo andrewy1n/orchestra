@@ -44,6 +44,12 @@ runpy.run_module("orchestra.canon", run_name="__main__", alter_sys=True)
 """
 
 
+def skill_text(name: str) -> str:
+    skill = REPO_ROOT / "skills" / name
+    parts = [skill / "SKILL.md", *sorted((skill / "references").glob("*.md"))]
+    return "\n\n".join(path.read_text() for path in parts)
+
+
 def run_cli_48h_ago(store, *args: str) -> dict:
     result = subprocess.run(
         [sys.executable, "-c", _PAST_CLOCK, "--root", str(store), *args],

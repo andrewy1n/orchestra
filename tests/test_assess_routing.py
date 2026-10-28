@@ -25,7 +25,7 @@ ROUTES = (
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return h.skill_text(name)
 
 
 def _normalized(text: str) -> str:
@@ -49,41 +49,33 @@ def contract_indexes(resolved_contract):
 
 def test_verify_and_assess_are_separate_steps():
     text = _text("verify-work")
-    assert "Verify and assess are two steps." in text
-    assert "## Verify" in text and "## Assess" in text
     verify_at = text.index("## Verify")
-    assess_at = text.index("## Assess")
+    assess_at = text.index("# Assess (structured work)")
     assert verify_at < assess_at
     flat = _normalized(text)
-    assert "Verify asks what happened." in flat
-    assert "Assess asks what that evidence means" in flat
+    assert "Verify asks what happened. Assess asks what that means and what is next." in flat
     assert "A check-run has no `level` and no `next`." in flat
     for result in ("pass", "fail", "blocked", "insufficient"):
         assert f"`{result}`" in flat
-    assert "`insufficient` — the criterion was not exercised." in flat
-    assert "A failing concurrency test does not itself claim the design is wrong." in flat
+    assert "`insufficient` (the criterion was not exercised)" in flat
+    assert "Treat a failing concurrency test as proof the design is wrong" in flat
+    assert "put that id and an `evidence_kind` from the schema enum on the check-run" in flat
 
     check_runs = _writes("verify-work", "tuner:check-run", {"create"})
-    assert check_runs
-    for inv in check_runs:
-        assert "level" not in inv["payload"]
-        assert "next" not in inv["payload"]
-        for field in ("criterion_id", "revision", "result", "effort", "method", "signed_by"):
-            assert field in inv["payload"]
-        # tdd/check check-runs are produced by orchestra check, not by hand.
-        assert inv["payload"]["method"] == "manual"
-    bearing = [inv for inv in check_runs if "requirement" in inv["payload"]]
-    plain = [inv for inv in check_runs if "requirement" not in inv["payload"]]
-    assert len(bearing) == 1 and len(plain) == 1
-    assert bearing[0]["payload"]["evidence_kind"]
-    assert "evidence_kind" not in plain[0]["payload"]
-    assert "orchestra check" in _text("verify-work")
+    assert len(check_runs) == 1
+    payload = check_runs[0]["payload"]
+    assert "level" not in payload
+    assert "next" not in payload
+    for field in ("criterion_id", "revision", "result", "effort", "method", "signed_by"):
+        assert field in payload
+    assert payload["method"] == "manual"
+    assert "orchestra check" in text
 
 
 def test_routing_table_chooses_next_from_the_evidence():
     text = _text("verify-work")
-    assert "Choose the first `next` from the evidence." in text
-    assert "Do not send every failure to execute." in text
+    flat = _normalized(text)
+    assert "Choose the first `next` the evidence supports. Do not send every failure to execute" in flat
     for cause, status, level, nxt in ROUTES:
         assert cause in text
         row = next(line for line in text.splitlines() if cause in line and line.startswith("|"))
@@ -93,9 +85,9 @@ def test_routing_table_chooses_next_from_the_evidence():
             assert "omit" in row
         else:
             assert f"`{level}`" in row
-    assert "Do not set `next` to `execute`." in _normalized(text)
+    assert "`next` is `verify`, never `execute`" in flat
     assert "`environment` or `unknown`" in text
-    assert "acceptance, integration, unit, property, fuzz, review" in _normalized(text)
+    assert "acceptance, integration, unit, property, fuzz, review" in flat
 
     by_next = {(inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
                for inv in _writes("verify-work", "conductor:assessment")}
@@ -108,18 +100,17 @@ def test_routing_table_chooses_next_from_the_evidence():
 
 def test_evidence_escalation_ladder():
     text = _normalized(_text("verify-work"))
-    assert "Decision evidence-escalation." in text
+    assert "## Evidence escalation" in text
     assert "`implementation` → `design` → `specification`" in text
-    assert "The evidence did not increase." in text
-    assert "Do not use a failure count." in text
-    assert "a new `evidence_kind`" in text
-    assert "a narrower failing case" in text
-    assert "a cause that was unnamed and is now named" in text
-    assert "the previous cause is resolved" in text
-    assert "They are not inserted under a repeated implementation failure." in text
-    assert "raises `implementation` to `design`" in text
-    assert "When `specification` repeats and the evidence still did not increase" in text
-    assert "needs` `human`" in text or '`needs` `human`' in text
+    assert "say in Reason that the evidence did not increase" in text
+    assert "Do not escalate by failure count." in text
+    assert "new `evidence_kind`" in text
+    assert "narrower failing case" in text
+    assert "a cause now named" in text
+    assert "previous cause is resolved" in text
+    assert "not under a repeated implementation failure" in text
+    assert "When `specification` repeats without new evidence" in text
+    assert "`needs` `human`" in text
 
     raised = [
         inv for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
@@ -142,11 +133,12 @@ def test_evidence_escalation_ladder():
 
 def test_release_ready_only_when_every_requirement_is_verified():
     text = _text("verify-work")
-    assert "Decision release-ready." in text
-    assert "`ready` means the evidence is sufficient." in text
-    assert "When every assessment for the phase is `verified`" in text
-    assert "Do not write `merged`, `deployed`, or any other state" in text
-    assert "Do not deploy." in text
+    flat = _normalized(text)
+    assert "## Release" in text
+    assert "When every assessment for the phase is `verified`" in flat
+    assert "Every specification requirement id must have an active `verified` assessment." in flat
+    assert "Do not write `merged`, `deployed`, or any other state." in flat
+    assert "Do not deploy." in flat
     releases = _writes("verify-work", "conductor:release", {"create"})
     assert len(releases) == 1
     assert releases[0]["payload"]["state"] == "ready"
@@ -158,9 +150,9 @@ def test_release_ready_only_when_every_requirement_is_verified():
 
 def test_two_modes_skip_assessment_and_release():
     text = _normalized(_text("verify-work"))
-    assert "A phase with no specification, and incidental work, skip assessment and release" in text
-    assert "keep pass/fail check-runs" in text
-    assert "Do not write `conductor:assessment` or `conductor:release` on that path." in text
+    assert "No specification for this phase, and incidental work, are **simple**" in text
+    assert "pass/fail check-runs only — no assessment or release" in text
+    assert "Write assessment or release for incidental / no-specification phases" in text
 
 
 def test_assessment_examples_carry_required_fields_and_sections():

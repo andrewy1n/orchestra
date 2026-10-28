@@ -99,6 +99,26 @@ def test_discovery_reads_module_files_named_in_canon_schema_path(monkeypatch, si
     assert found["gamma"].source == str(gamma)
 
 
+def test_canon_schema_path_overrides_an_installed_module_of_the_same_namespace(monkeypatch, site, tmp_path):
+    trimmed = copy.deepcopy(ALPHA)
+    del trimmed["types"]["log"]
+    path = tmp_path / "alpha.json"
+    path.write_text(json.dumps(trimmed))
+    monkeypatch.setenv("CANON_SCHEMA_PATH", str(path))
+    found = discover()
+    assert found["alpha"].source == str(path)
+    assert "log" not in found["alpha"].module["types"]
+
+
+def test_discovery_refuses_one_namespace_twice_in_canon_schema_path(monkeypatch, site, tmp_path):
+    first, second = tmp_path / "a.json", tmp_path / "b.json"
+    first.write_text(json.dumps(GAMMA_V1))
+    second.write_text(json.dumps(GAMMA_V2))
+    monkeypatch.setenv("CANON_SCHEMA_PATH", f"{first}{os.pathsep}{second}")
+    with pytest.raises(SchemaError, match="provided twice"):
+        discover()
+
+
 def test_discovery_refuses_an_unreadable_canon_schema_path(monkeypatch, site, tmp_path):
     monkeypatch.setenv("CANON_SCHEMA_PATH", str(tmp_path / "missing.json"))
     with pytest.raises(SchemaError, match="CANON_SCHEMA_PATH"):

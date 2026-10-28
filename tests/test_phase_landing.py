@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 
@@ -19,7 +20,7 @@ SHARED = (
 
 
 def _text(name: str) -> str:
-    raw = (SKILLS / name / "SKILL.md").read_text()
+    raw = skill_text(name)
     return re.sub(r"\s+", " ", raw)
 
 
@@ -33,5 +34,6 @@ def test_both_skills_name_the_same_landing():
     assert "commit the store on the primary checkout" in plan
     assert "one of the human stops" in plan
     assert "merge into `main`" in execute
-    assert "store commit on the primary checkout" in execute
+    assert "store writes on the primary checkout" in execute
+    assert "commit the store; push only when it is a human stop" in execute
     assert "push only when it is a human stop" in execute

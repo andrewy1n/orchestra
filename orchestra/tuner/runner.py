@@ -50,7 +50,8 @@ def _expand(runner: Sequence[str], test_ids: Sequence[str], report: str) -> list
 
 
 def _read_report(path: str) -> dict[str, list[str]]:
-    if not Path(path).is_file():
+    report = Path(path)
+    if not report.is_file() or report.stat().st_size == 0:
         return {}
     grouped: dict[str, list[str]] = {}
     for case in ET.parse(path).getroot().iter():
