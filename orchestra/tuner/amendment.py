@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import subprocess
-import tempfile
-from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+from orchestra.tuner.sign import verify as verify_signed
 
 
 def canonical_payload(amendment: Mapping[str, Any]) -> bytes:
@@ -42,60 +41,13 @@ def canonical_payload(amendment: Mapping[str, Any]) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def _principals(allowlist_bytes: bytes) -> list[str]:
-    try:
-        text = allowlist_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        return []
-    principals: list[str] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        principals.append(stripped.split()[0])
-    return principals
-
-
 def verify_signature(
     payload: bytes,
     signature: str | bytes,
     allowlist_bytes: bytes,
 ) -> bool:
     """True when any allowlist principal verifies the payload."""
-    principals = _principals(allowlist_bytes)
-    if not principals:
-        return False
-    sig_bytes = signature.encode("utf-8") if isinstance(signature, str) else bytes(signature)
-    if not sig_bytes:
-        return False
-    with tempfile.TemporaryDirectory() as tmp:
-        directory = Path(tmp)
-        allowlist_path = directory / "allowed_signers"
-        sig_path = directory / "amendment.sig"
-        allowlist_path.write_bytes(allowlist_bytes)
-        sig_path.write_bytes(sig_bytes)
-        for principal in principals:
-            completed = subprocess.run(
-                [
-                    "ssh-keygen",
-                    "-Y",
-                    "verify",
-                    "-f",
-                    str(allowlist_path),
-                    "-I",
-                    principal,
-                    "-n",
-                    "tuner-amendment",
-                    "-s",
-                    str(sig_path),
-                ],
-                input=payload,
-                capture_output=True,
-                check=False,
-            )
-            if completed.returncode == 0:
-                return True
-    return False
+    return verify_signed("tuner-amendment", payload, signature, allowlist_bytes)
 
 
 def _as_tests(value: Sequence[str]) -> list[str]:
