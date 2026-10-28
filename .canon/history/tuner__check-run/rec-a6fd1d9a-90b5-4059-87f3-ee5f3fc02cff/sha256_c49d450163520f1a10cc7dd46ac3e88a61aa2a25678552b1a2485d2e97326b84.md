@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-a6fd1d9a-90b5-4059-87f3-ee5f3fc02cff",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-5b9587ec-7233-429d-9475-efb1097236f8",
+    "duration_s": 1.969914,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-5b9587ec-7233-429d-9475-efb1097236f8"
+    ],
+    "method": "tdd",
+    "output_sha256": "9ca0431a9d28c4a8e4298778c5611e8efe69e04e22f6175b3f20383a2bf45704",
+    "requirement": "R11",
+    "result": "pass",
+    "revision": "613f57268ab4c5a6c254f198ad130a84e166a3c5",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T06:14:40+00:00",
+  "relationships": {},
+  "revision": "sha256:c49d450163520f1a10cc7dd46ac3e88a61aa2a25678552b1a2485d2e97326b84",
+  "subject": "idea-dashboard-switch-dismiss"
+}
+---
+
+.                                                                        [100%]
+1 passed in 1.64s

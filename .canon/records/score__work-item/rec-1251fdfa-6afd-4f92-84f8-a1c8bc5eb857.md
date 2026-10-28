@@ -1,0 +1,44 @@
+---
+{
+  "id": "rec-1251fdfa-6afd-4f92-84f8-a1c8bc5eb857",
+  "lifecycle_state": "planned",
+  "payload": {
+    "assignee": "",
+    "decisions": [
+      "backlog-conversion-method",
+      "idea-panel-scope"
+    ],
+    "depends_on": [
+      "idea-dashboard-switch",
+      "idea-views-engage",
+      "drop-backlog-types",
+      "convert-live-store"
+    ],
+    "effort": "composer",
+    "estimate_minutes": 8,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "backlog-to-idea",
+    "requirements": [
+      "R1",
+      "R7",
+      "R16"
+    ],
+    "size": "S",
+    "title": "Verify Convert backlog and feedback to ideas"
+  },
+  "record_type": "score:work-item",
+  "recorded_at": "2026-10-28T06:05:08+00:00",
+  "relationships": {},
+  "revision": "sha256:79aedfdd30283f6f442c40d1b138b2c104831f76e5416c69644f20b07b28a4e8",
+  "subject": "verify-backlog-to-idea"
+}
+---
+
+## Description
+
+Prove the phase exit criteria hold together: the live store holds 21 composer:idea records and validates, the retired names are gone from tracked files, and the handoff runs through the real entry point.
+
+## Approach
+
+Run the phase checks and return pass or fail. Do not edit the tree.
