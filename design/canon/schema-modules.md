@@ -224,7 +224,8 @@ derive helpers (`ready`, `wave`, `corrected`, inverse links).
 
 | Namespace | Owner | Types |
 |---|---|---|
-| `plan` | orchestra (planner later) | effort, position, milestone, phase, specification, design, decision, constraint, work-item, acceptance, backlog-item, feedback, continuity-question |
+| `plan` | orchestra (planner later) | effort, position, milestone, phase, specification, design, decision, constraint, work-item, acceptance, continuity-question |
+| `composer` | orchestra.composer | area, idea |
 | `run` | orchestra | assignment, assignment-amendment, execution-report, integration-report, assessment, release, proof-packet, failed-attempt |
 | `aff` | tuner | check-run, evidence-observation, evidence-binding, oracle-amendment, investigation-observation, finding |
 
@@ -251,7 +252,7 @@ in another tool's namespace when this table says so.
 Orchestra moves a work-item to `done`. Only orchestra holds the evidence: the
 execution-report, the check-runs, and the assessment. An assessment that
 routes to `specify`, `design` or `plan` is the planner's input, like
-`score:feedback`.
+a promoted `composer:idea`.
 
 canon does not check the caller.
 

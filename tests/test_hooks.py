@@ -83,7 +83,7 @@ def test_hook_start_truncates_oversized_handoff(repo, monkeypatch, capsys):
     for index in range(150):
         create(
             repo,
-            "score:backlog-item",
+            "composer:idea",
             f"idea-{index:03d}-" + "x" * 80,
             {"effort": "alpha", "status": "open"},
         )

@@ -5,8 +5,7 @@ description: >-
   or incidental, names the focus subject, and hands off to init,
   settle-phase, plan-phase, execute-phase, or verify-work. Use when
   the user has work but has not named a phase skill, when the work is
-  a bug, one-off, integration test, or metric comparison, or when a
-  score:feedback record names an effort to specify.
+  a bug, one-off, integration test, or metric comparison.
 ---
 
 # Engage
@@ -62,16 +61,17 @@ Do not plan, implement, or verify in this skill.
    Needs-you clears). Do not refuse to route solely because those items
    are open — list and remind, then continue routing.
 
-   Also list open `score:backlog-item` records for this focus
-   (`payload.status=open`). Show them; do not treat them as Needs-you.
+   Also list open `composer:idea` records for this focus
+   (`payload.status=open`, `payload.effort` set). Show them; do not
+   treat them as Needs-you.
 
 ```bash
-canon list --type score:backlog-item \
+canon list --type composer:idea \
   --where payload.effort=<focus> --where payload.status=open --state active
 ```
 
-   - **Park** — user defers work for later: create a backlog-item
-     (parent writer). Do not create `score:feedback` for parking.
+   - **Park** — user defers work for later: create an idea (parent
+     writer) with `effort`, `status` `open`, and optional `source`.
    - **Promote** — user starts a parked item: supersede to
      `promoted` (optional `phase`), then route to `settle-phase` with
      `phase: new` for structured work, or an incidental work-item
@@ -80,31 +80,21 @@ canon list --type score:backlog-item \
    - **Dismiss** — user drops a parked item: supersede to `dismissed`.
 
 ```bash
-canon create --type score:backlog-item \
+canon create --type composer:idea \
   --subject "<item-slug>" \
   --payload '{"effort":"<effort-slug>","status":"open","source":"<optional>"}' \
   --body "<parked description>"
 
-canon supersede --type score:backlog-item --id <id> \
+canon supersede --type composer:idea --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
 
-canon supersede --type score:backlog-item --id <id> \
+canon supersede --type composer:idea --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```
 
 4. Records?
-
-   A `score:feedback` record is new intent for the effort it names
-   (`payload.effort`). Route it through `settle-phase` (specify), even
-   when tasks for that effort already exist. Do not collect feedback.
-   Do not create `score:feedback`. Feedback is not a standing
-   backlog; use `score:backlog-item` to park deferred work.
-
-```bash
-canon list --type score:feedback
-```
 
    - `incidental` + fits this chat + not interrupting another live
      phase → **no records**. Tell the user to do it in this chat.
@@ -140,4 +130,3 @@ canon list --type score:feedback
 - Supersede another subject’s goal or position
 - Write work-items here
 - Add a fifth kind
-- Collect feedback or create `score:feedback`
