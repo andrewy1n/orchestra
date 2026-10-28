@@ -5,9 +5,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
 
-SCRIPT = ROOT / "scripts" / "session_aggregate.py"
+SCRIPT = ROOT / "orchestra" / "sessions" / "session_aggregate.py"
 
 
 def row(efforts, total, ambiguous):

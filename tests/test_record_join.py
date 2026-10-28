@@ -1,10 +1,6 @@
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from record_join import join
+from orchestra.sessions.record_join import join
 
 
 def at(h, m=0):

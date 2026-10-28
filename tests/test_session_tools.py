@@ -1,10 +1,6 @@
 import json
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from session_tools import tool_metrics  # noqa: E402
+from orchestra.sessions.session_tools import tool_metrics
 
 
 def use(tid, name, **inp):

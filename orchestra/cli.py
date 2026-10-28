@@ -745,7 +745,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "report":
                 return report_sessions(args.root, records=args.records)
             return aggregate_sessions(args.report)
-        except (OSError, ModuleNotFoundError) as exc:
+        except OSError as exc:
             print(f"orchestra sessions: {exc}", file=sys.stderr)
             return 2
     if args.command == "review-brief":

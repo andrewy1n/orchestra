@@ -1,11 +1,9 @@
 import re
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+from orchestra.sessions.session_aggregate import aggregate
 
-from session_aggregate import aggregate
+ROOT = Path(__file__).resolve().parent.parent
 
 TARGETS = ROOT / "skills" / "analyze-sessions" / "targets.md"
 HEADINGS = [

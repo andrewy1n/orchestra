@@ -2,8 +2,8 @@ import json
 import sys
 
 from orchestra.score.effort_rollup import effort_rollup
-from session_outliers import outliers
-from tool_skill_rollup import tool_skill_rollup
+from orchestra.sessions.session_outliers import outliers
+from orchestra.sessions.tool_skill_rollup import tool_skill_rollup
 
 NOTE = (
     "Per-session record counts are approximate: a session counts toward an effort "
