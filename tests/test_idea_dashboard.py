@@ -53,7 +53,7 @@ def _idea(cli, defs, subject: str, effort: str, *, status: str = "open", source:
 def _current_idea(cli, subject: str) -> dict:
     result = cli(
         "list", "--type", "composer:idea", "--subject", subject,
-        "--exact-subject", "--full",
+        "--exact-subject", "--state", "active", "--full",
     )
     assert result.returncode == 0, result.stdout + result.stderr
     records = json.loads(result.stdout)["records"]
