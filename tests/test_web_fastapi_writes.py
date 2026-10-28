@@ -50,7 +50,7 @@ def _snapshot(client: TestClient) -> dict:
 def test_r1_backlog_dismiss(store, cli, defs):
     _goal(cli, defs)
     h.create_generic_record(
-        cli, defs, "score:backlog-item", subject="park-me",
+        cli, defs, "composer:idea", subject="park-me",
         extra_payload={"effort": "alpha", "status": "open", "source": "chat"},
     )
     client = _client(store)

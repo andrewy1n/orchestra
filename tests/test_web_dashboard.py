@@ -84,7 +84,7 @@ def _seed(cli, defs) -> None:
         extra_payload={"phase": "route-phase", "effort": "alpha", "result": "fail", "revision": "dirty"},
     )
     h.create_generic_record(
-        cli, defs, "score:backlog-item", subject="park-me",
+        cli, defs, "composer:idea", subject="park-me",
         extra_payload={"effort": "alpha", "status": "open", "source": "chat"},
     )
 
