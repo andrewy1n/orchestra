@@ -278,6 +278,7 @@ In whatever repo you are building:
 | Skill | When |
 |---|---|
 | `engage` | Classify kind + focus, then hand off |
+| `triage-ideas` | Assign a product area, create an area, or dismiss open ideas with no area |
 | `init` | First time on a repo, or a new effort subject |
 | `settle-phase` | Settle the approach for a phase (spec + design when structured) before planning |
 | `plan-phase` | Approach settled; write tasks, then wait for plan review |
@@ -402,6 +403,7 @@ the structured path integrates.
 ## Skills in this pack
 
 - `engage`
+- `triage-ideas`
 - `init`
 - `settle-phase`
 - `plan-phase`
