@@ -101,6 +101,54 @@ def run_cli(env: dict[str, str], cwd: Path, *args: str) -> subprocess.CompletedP
     )
 
 
+def run_canon(env: dict[str, str], cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["canon", *args], cwd=str(cwd), env=env, capture_output=True, text=True
+    )
+
+
+def _git_repo(tmp_path: Path) -> Path:
+    root = tmp_path / "store-repo"
+    root.mkdir()
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "test@example.com"],
+        ["config", "user.name", "test"],
+        ["commit", "--allow-empty", "-qm", "init"],
+    ):
+        proc = subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+    return root
+
+
+def _scrub_checkout(env: dict[str, str]) -> dict[str, str]:
+    scrubbed = dict(env)
+    scrubbed.pop("CANON_SCHEMA_PATH", None)
+    checkout = str(REPO_ROOT)
+    for key in ("PATH", "PYTHONPATH"):
+        parts = [
+            part
+            for part in scrubbed.get(key, "").split(os.pathsep)
+            if part and not part.startswith(checkout)
+        ]
+        if parts:
+            scrubbed[key] = os.pathsep.join(parts)
+    return scrubbed
+
+
+def _roadmap_section(text: str, heading: str) -> str:
+    marker = f"## {heading}\n"
+    start = text.find(marker)
+    assert start != -1, f"missing section {heading!r} in:\n{text}"
+    rest = text[start + len(marker) :]
+    next_heading = rest.find("\n## ")
+    if next_heading == -1:
+        return rest
+    return rest[:next_heading]
+
+
 def test_console_script_resolves_on_path_from_unrelated_cwd(installed, tmp_path):
     script, env = installed
     elsewhere = tmp_path / "unrelated"
@@ -137,6 +185,22 @@ def _write_session(root: Path, project: str, name: str, session_id: str) -> None
         },
     ]
     path.write_text("".join(json.dumps(event) + "\n" for event in events))
+
+
+def test_installed_idea_and_roadmap_from_unrelated_cwd(installed, tmp_path):
+    _, base_env = installed
+    env = _scrub_checkout(base_env)
+    repo = _git_repo(tmp_path)
+    init = run_canon(env, repo, "init", "--schemas", "score,conductor,tuner,composer")
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    captured = run_cli(env, repo, "idea", "Try roadmap")
+    assert captured.returncode == 0, captured.stdout + captured.stderr
+
+    roadmap = run_cli(env, repo, "view", "roadmap")
+    assert roadmap.returncode == 0, roadmap.stdout + roadmap.stderr
+    untriaged = _roadmap_section(roadmap.stdout, "untriaged")
+    assert "**try-roadmap**" in untriaged
 
 
 def test_installed_subcommands_run_from_unrelated_cwd(installed, tmp_path):
