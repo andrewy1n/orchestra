@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,8 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def _source_tree(prefix: Path) -> Path:
     """Copy the build inputs out of the checkout so pip leaves no artifacts."""
-    source = prefix.parent / "source"
-    source.mkdir()
+    source = Path(tempfile.mkdtemp(dir=prefix.parent, prefix="source-"))
     for name in ("pyproject.toml", "README.md"):
         shutil.copy2(REPO_ROOT / name, source / name)
     for name in ("orchestra", "scripts"):
