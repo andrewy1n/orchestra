@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-72fc5ed6-b125-4ce1-aee8-8d9a4f4c288f",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "packaging",
+    "phase": "plugin-dep-marketplace",
+    "source": "session",
+    "status": "promoted"
+  },
+  "record_type": "composer:idea",
+  "recorded_at": "2026-10-11T06:43:44+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-7065751d-4db9-4e23-b48e-f50b3c8adee5"
+    ]
+  },
+  "revision": "sha256:5585e20b26277942f60bc9e8131f74aa1daf732624d5930ad38c3626dafba63d",
+  "subject": "plugin-dep-marketplace",
+  "time": {
+    "as_of": "2026-10-11T06:43:44+00:00"
+  }
+}
+---
+
+# Declare adaptive-artifacts dependency + shared marketplace
+
+Declare adaptive-artifacts as a dependency in se-workflow's plugin.json, ideally with one marketplace that lists both plugins.
