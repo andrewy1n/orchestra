@@ -10,10 +10,12 @@ stdlib server uses and serves the Vite production build from
 ``dashboard/web/ui/dist`` at ``/`` when it exists.
 """
 
+import inspect
 from pathlib import Path
 
 from dashboard import model
 from orchestra.canon.project import Project
+from dashboard.web.routes import ROUTES
 from dashboard.web.service import Reader, WriteError
 
 DIST = Path(__file__).resolve().parent / "ui" / "dist"
@@ -40,55 +42,40 @@ def create_app(target: Project):
     async def _write_error(_request, exc: WriteError) -> JSONResponse:
         return JSONResponse({"error": exc.message}, status_code=exc.status)
 
-    @app.get("/api/token")
-    def token() -> dict:
-        return reader.token()
+    def register(route) -> None:
+        if route.method == "POST":
 
-    @app.get("/api/snapshot")
-    def snapshot() -> dict:
-        return reader.snapshot()
+            async def write(request: Request) -> dict:
+                body = await request.json()
+                if not isinstance(body, dict):
+                    raise WriteError("JSON body must be an object", 400)
+                return getattr(reader, route.reader_method)(body)
 
-    @app.get("/api/phase")
-    def phase(effort: str = Query(...), phase: str = Query(...)) -> dict:
-        return reader.phase(effort, phase)
+            write.__name__ = route.reader_method
+            app.add_api_route(route.path, write, methods=[route.method])
+            return
 
-    @app.get("/api/task")
-    def task(id: str = Query(...)) -> dict:
-        return reader.task(id)
+        def read(**kwargs: str) -> dict:
+            args = [kwargs[key] for key in route.query_keys]
+            return getattr(reader, route.reader_method)(*args)
 
-    @app.get("/api/journal")
-    def journal(effort: str = Query(...)) -> dict:
-        return reader.journal(effort)
+        read.__name__ = route.reader_method
+        read.__signature__ = inspect.Signature(
+            [
+                inspect.Parameter(
+                    key,
+                    inspect.Parameter.KEYWORD_ONLY,
+                    default=Query(...),
+                    annotation=str,
+                )
+                for key in route.query_keys
+            ],
+            return_annotation=dict,
+        )
+        app.add_api_route(route.path, read, methods=[route.method])
 
-    @app.get("/api/record")
-    def record(id: str = Query(...)) -> dict:
-        return reader.record(id)
-
-    @app.get("/api/requirement")
-    def requirement(effort: str = Query(...), phase: str = Query(...), id: str = Query(...)) -> dict:
-        return reader.requirement(effort, phase, id)
-
-    @app.get("/api/needs")
-    def needs(effort: str = Query(...), id: str = Query(...)) -> dict:
-        return reader.needs(effort, id)
-
-    @app.get("/api/backlog")
-    def backlog(effort: str = Query(...), id: str = Query(...)) -> dict:
-        return reader.backlog(effort, id)
-
-    @app.post("/api/needs")
-    async def write_needs(request: Request) -> dict:
-        body = await request.json()
-        if not isinstance(body, dict):
-            raise WriteError("JSON body must be an object", 400)
-        return reader.write_needs(body)
-
-    @app.post("/api/backlog")
-    async def write_backlog(request: Request) -> dict:
-        body = await request.json()
-        if not isinstance(body, dict):
-            raise WriteError("JSON body must be an object", 400)
-        return reader.write_backlog(body)
+    for route in ROUTES:
+        register(route)
 
     if DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(DIST), html=True), name="ui")
