@@ -45,14 +45,8 @@ SUITE_GATES = ("required", "advisory", "deferred")
 DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
-FAST_SUITE_CMD = (
-    'uv run --with textual --with pytest --with pytest-xdist '
-    'python -m pytest tests -q -n 4 -m "not tmux"'
-)
-TMUX_SUITE_CMD = (
-    "uv run --with textual --with pytest "
-    "python -m pytest tests -q -m tmux"
-)
+FAST_SUITE_CMD = 'uv run pytest tests -q -n 4 -m "not tmux"'
+TMUX_SUITE_CMD = "uv run pytest tests -q -m tmux"
 
 _NODE_ID_RE = re.compile(
     r"(?:FAILED|ERROR)\s+(\S+::\S+)"
