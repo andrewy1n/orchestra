@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-7915fc57-06cc-42f4-af3f-d1e16eda4fa1",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-c7b8ccb9-f562-4f62-b49a-f919da43e364",
+    "duration_s": 1.458628,
+    "effort": "package-layout",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-c7b8ccb9-f562-4f62-b49a-f919da43e364",
+      "rec-d645a2f9-0d71-40b7-8d4c-d662d989762e"
+    ],
+    "method": "tdd",
+    "output_sha256": "c420fbcd629a020d82db5355a0430090ad57720c65b08d7983461589c3bab90d",
+    "requirement": "R5",
+    "result": "pass",
+    "revision": "ba0783bb8e0138ed83b71ca38f3e0437fb5ffc55",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T07:46:03+00:00",
+  "relationships": {},
+  "revision": "sha256:a000cb8866de7de07c59ef66237c038c814ce4146278f607070aa056ce9c049c",
+  "subject": "declare-wheel-textual"
+}
+---
+
+.                                                                        [100%]
+1 passed in 1.16s

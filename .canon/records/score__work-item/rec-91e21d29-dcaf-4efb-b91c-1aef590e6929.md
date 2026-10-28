@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-91e21d29-dcaf-4efb-b91c-1aef590e6929",
-  "lifecycle_state": "in_progress",
+  "lifecycle_state": "done",
   "payload": {
     "assignee": "cursor",
     "decisions": [
@@ -21,9 +21,9 @@
     "title": "Let missing canon, suite, and check imports raise"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-28T07:30:16+00:00",
+  "recorded_at": "2026-10-28T07:47:54+00:00",
   "relationships": {},
-  "revision": "sha256:3abe22b675b164de193094a993f99dcd98947673e9428cdb8df567b5e4b30e4d",
+  "revision": "sha256:4a01e49b813bb51cf1f456599a3138f66eb81a71aca05ca58570a7400f5ebb17",
   "subject": "propagate-import-errors"
 }
 ---

@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-070c4cbf-7d96-4b6f-ac1c-2d7aae7fc49d",
-  "lifecycle_state": "in_progress",
+  "lifecycle_state": "done",
   "payload": {
     "assignee": "cursor",
     "decisions": [
@@ -19,9 +19,9 @@
     "title": "Move effort_rollup into orchestra.score"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-28T07:30:17+00:00",
+  "recorded_at": "2026-10-28T07:47:55+00:00",
   "relationships": {},
-  "revision": "sha256:9c0e022d013f50eff55f13b97dbbe8ba09902e5987184ccc826d0c4245cfa02b",
+  "revision": "sha256:f7a23911b3d1edfb0377df708ed9b54971811bbd1f8211c00f70b744c948ed8c",
   "subject": "score-effort-rollup"
 }
 ---

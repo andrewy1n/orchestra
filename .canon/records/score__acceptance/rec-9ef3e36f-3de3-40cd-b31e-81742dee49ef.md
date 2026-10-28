@@ -13,12 +13,12 @@
     "test_ids": [
       "tests/test_wheel_contents.py::test_r8_uvicorn"
     ],
-    "verify_command": "python3 -m pytest tests/test_wheel_contents.py::test_r8_uvicorn -q"
+    "verify_command": "uv run python -m pytest tests/test_wheel_contents.py::test_r8_uvicorn -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-28T07:28:44+00:00",
+  "recorded_at": "2026-10-28T07:45:00+00:00",
   "relationships": {},
-  "revision": "sha256:5903dac5aa6cefd4c1539a5dbcaeebcce5af7d3193f4224f9e4b298a7a4507a0",
+  "revision": "sha256:3409bddb3f827d88085819b7a17d9592910f4f29e59fdd5b11cfa7bcd02edceb",
   "subject": "declare-wheel-uvicorn"
 }
 ---

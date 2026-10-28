@@ -13,12 +13,12 @@
     "test_ids": [
       "tests/test_wheel_contents.py::test_r7_fastapi"
     ],
-    "verify_command": "python3 -m pytest tests/test_wheel_contents.py::test_r7_fastapi -q"
+    "verify_command": "uv run python -m pytest tests/test_wheel_contents.py::test_r7_fastapi -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-28T07:28:40+00:00",
+  "recorded_at": "2026-10-28T07:44:58+00:00",
   "relationships": {},
-  "revision": "sha256:b2f317709abac701ad3d5242cf9aef065d96f4d816eeaff9e9e079e92506039b",
+  "revision": "sha256:33fbf12886068a36ad7c6a05dc56c0144332ad033b30ed06bfdd1a0e5f17c608",
   "subject": "declare-wheel-fastapi"
 }
 ---
