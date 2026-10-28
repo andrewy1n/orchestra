@@ -95,7 +95,7 @@ def test_two_active_current_records_for_one_subject_are_reported(cli, project):
     other = project.create(record_type="alpha:config", subject="api", payload={"title": "a", "level": 1})
     rewrite(project, other, subject="web")
     errors = cli("validate").json["errors"]
-    assert any(f"multiple active alpha:config for subject='web'" in e for e in errors)
+    assert any("multiple active alpha:config for subject='web'" in e for e in errors)
 
 
 def test_superseded_record_without_a_successor_is_reported(cli, project):

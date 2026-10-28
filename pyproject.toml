@@ -65,3 +65,6 @@ score = "orchestra.score.schemas"
 conductor = "orchestra.conductor.schemas"
 tuner = "orchestra.tuner.schemas"
 composer = "orchestra.composer.schemas"
+
+[tool.ruff.lint]
+select = ["F"]

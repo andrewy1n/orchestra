@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import re
 import sys
-from pathlib import Path
 
 from conftest import REPO_ROOT
 from helpers import skill_text

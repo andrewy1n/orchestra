@@ -20,7 +20,6 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-import pytest
 
 import helpers as h
 from conftest import REPO_ROOT, run_cli

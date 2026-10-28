@@ -6,7 +6,6 @@ import importlib
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 from orchestra.tuner.cli import main

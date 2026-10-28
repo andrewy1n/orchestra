@@ -597,7 +597,7 @@ def test_pager_pages_current_tab_and_removes_temp_file(structured, tmp_path, mon
         app.select_phase("alpha", "focus")
         await pilot.pause()
         await pilot.press("s")
-        screen = await _phase_shown(app, pilot)
+        await _phase_shown(app, pilot)
         # Avoid SuspendNotSupported in headless pilots.
         monkeypatch.setattr(app, "suspend", lambda: __import__("contextlib").nullcontext())
         await pilot.press("o")

@@ -12,7 +12,6 @@ import struct
 import subprocess
 import termios
 import time
-from pathlib import Path
 
 import pytest
 

@@ -26,7 +26,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from conftest import CANON_CMD, REPO_ROOT
+from conftest import REPO_ROOT
 
 _COUNTER = itertools.count()
 

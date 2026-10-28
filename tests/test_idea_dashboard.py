@@ -13,7 +13,6 @@ import helpers as h
 from conftest import REPO_ROOT, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import app as app_module  # noqa: E402
 from test_dashboard_app import (  # noqa: E402

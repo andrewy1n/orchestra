@@ -14,7 +14,7 @@ from test_cli_packaging import (
     _git_repo,
     _roadmap_section,
     _scrub_checkout,
-    installed,
+    installed,  # noqa: F401
     run_canon,
     run_cli,
 )
@@ -75,7 +75,7 @@ class ComposerFlow:
 
 
 @pytest.fixture(scope="module")
-def composer_flow(installed, tmp_path_factory) -> ComposerFlow:
+def composer_flow(installed, tmp_path_factory) -> ComposerFlow:  # noqa: F811
     _, base_env = installed
     env = _scrub_checkout(base_env)
     live_store_hash_before = _canon_file_list_hash(REPO_ROOT / ".canon")

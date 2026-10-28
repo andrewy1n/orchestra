@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
@@ -21,10 +20,8 @@ from orchestra.conductor.suite import (  # noqa: E402
     advisory_finding_payload,
     build_suite_check_run_payload,
     cluster_by_module,
-    load_suite_policy,
     module_fix_subject,
     normalize_suite_policy,
-    orphan_recovery_hint,
     parse_failing_node_ids,
     phase_suite_gate_holds,
     poll_suite,

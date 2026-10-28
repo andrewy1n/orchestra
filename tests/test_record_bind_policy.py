@@ -9,7 +9,6 @@ No aff work-kind, mode flag, or policy switch encodes that choice.
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys

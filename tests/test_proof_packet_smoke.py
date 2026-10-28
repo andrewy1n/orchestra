@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 
 import helpers as h
 from dashboard import model
