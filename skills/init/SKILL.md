@@ -161,6 +161,8 @@ canon create --type score:position \
    When the routing line from `engage` carries `idea: <subject>` (not
    `none`), read that idea and supersede it to `promoted` with this
    effort:
+   Promote only when the idea's `payload.status` is `open`; otherwise
+   skip the promotion and say so.
 
 ```bash
 canon list --type composer:idea --subject <idea-subject> --exact-subject --state active --full

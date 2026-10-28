@@ -294,3 +294,16 @@ def test_assessment_and_check_run_enums_match_the_contract(contract_indexes):
     for inv in _writes("verify-work", "conductor:release", {"create"}):
         assert inv["payload"]["state"] in release_states
         assert inv["payload"]["state"] == "ready"
+
+
+def test_engage_idea_path_skips_focus_naming_and_always_promotes_through_init_or_settle_phase():
+    text = _text("engage")
+    assert "skip this step and use step 4" in text
+    assert "Set `idea: <idea-subject>` on the routing line." in text
+    assert "reopen it first" in text
+    assert "always routes through `settle-phase` with" in text
+
+
+def test_init_and_settle_phase_promote_only_open_ideas():
+    for name in ("init", "settle-phase"):
+        assert "Promote only when the idea's `payload.status` is `open`" in _text(name)

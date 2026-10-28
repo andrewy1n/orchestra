@@ -56,6 +56,8 @@ Do not write work-items, acceptance, or code in this skill. That is
    When the routing line carries `idea: <subject>` (not `none`) and
    this step created a `phase: new` phase, read that idea and supersede
    it to `promoted` with this effort and phase:
+   Promote only when the idea's `payload.status` is `open`; otherwise
+   skip the promotion and say so.
 
 ```bash
 canon list --type composer:idea --subject <idea-subject> --exact-subject --state active --full

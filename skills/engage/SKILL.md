@@ -34,9 +34,10 @@ Do not plan, implement, or verify in this skill.
    | A specified feature, phase, or known change | `deliver` |
 
    If two rows fit, ask the user to pick.
-3. Name **focus** (effort slug). An effort is a product area or
-   objective; one ask is usually one phase inside it. Compare the ask
-   with each live goal's text:
+3. Name **focus** (effort slug). When the ask names an open
+   `composer:idea`, skip this step and use step 4. An effort is a
+   product area or objective; one ask is usually one phase inside it.
+   Compare the ask with each live goal's text:
 
    - A live goal covers the same area → reuse its subject, even when
      the kind differs (`kind` lives on each work-item). If no phase
@@ -109,6 +110,13 @@ canon list --type composer:idea \
    - When the idea has no effort, route to `init` for a new effort.
      Propose a focus slug from the idea subject. Ask the user to
      confirm.
+   - When the idea's effort is closed, reopen it first
+     (kinds-and-focus, Closing and reopening).
+   - Set `idea: <idea-subject>` on the routing line.
+   - The idea path always routes through `settle-phase` with
+     `phase: new`, or through `init`. Do not skip them and do not send
+     the idea to `plan-phase` or the incidental shortcut, because
+     `settle-phase` and `init` promote the idea.
    - Engage writes nothing on this path. The idea stays `open` until
      `init` or `settle-phase` promotes it. When the user stops before
      an effort or phase exists, the idea stays `open`.
