@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-ff5cec22-4f69-40f6-9df4-a8dafba2ae28",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-d2a066cc-8ee0-4c20-8c5d-5ad49cced1d9",
+    "duration_s": 5.018328,
+    "effort": "composer",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-d2a066cc-8ee0-4c20-8c5d-5ad49cced1d9"
+    ],
+    "method": "check",
+    "output_sha256": "7e0e40ff5448c498e725fbd4092c4db4db7004b37e9372481a35bcb349400f66",
+    "requirement": "R7",
+    "result": "pass",
+    "revision": "2219439eb097ccc7b93845a7530f2f55c3d16d53",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T08:04:18+00:00",
+  "relationships": {},
+  "revision": "sha256:60c02f3954a6cdad57e852c9afb45b4b0ce9a3ca92b43f20afb6bfc0d2765f9c",
+  "subject": "composer-e2e-test-r7"
+}
+---
+
+.                                                                        [100%]
+1 passed, 8 deselected in 4.24s
