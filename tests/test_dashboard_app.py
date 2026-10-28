@@ -3587,25 +3587,25 @@ def _seed_backlog(cli, defs):
     )
     _phase(cli, defs, "alpha", "b-phase", 1, "in_progress")
     promote = cli(
-        "create", "--type", "score:backlog-item", "--subject", "park-promote",
+        "create", "--type", "composer:idea", "--subject", "park-promote",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
         "--body", "## Note\n\npromote me",
     )
     assert promote.returncode == 0, promote.stdout + promote.stderr
     dismiss = cli(
-        "create", "--type", "score:backlog-item", "--subject", "park-dismiss",
+        "create", "--type", "composer:idea", "--subject", "park-dismiss",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
         "--body", "## Note\n\ndismiss me",
     )
     assert dismiss.returncode == 0, dismiss.stdout + dismiss.stderr
     closed = cli(
-        "create", "--type", "score:backlog-item", "--subject", "park-closed",
+        "create", "--type", "composer:idea", "--subject", "park-closed",
         "--payload", json.dumps({"effort": "alpha", "status": "open"}),
     )
     assert closed.returncode == 0, closed.stdout + closed.stderr
     closed_rec = json.loads(closed.stdout)["record"]
     superseded = cli(
-        "supersede", "--type", "score:backlog-item", "--id", closed_rec["id"],
+        "supersede", "--type", "composer:idea", "--id", closed_rec["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
     )

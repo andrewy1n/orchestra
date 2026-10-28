@@ -29,11 +29,11 @@ TOKEN_DIRS = ("records", "history")
 FULL_TYPES = (
     "score:continuity-question", "tuner:finding", "tuner:check-run", "score:work-item",
     "score:phase", "score:specification", "conductor:assessment", "conductor:integration-report",
-    "conductor:proof-packet", "score:backlog-item",
+    "conductor:proof-packet", "composer:idea",
 )
 SOFT_TYPES = frozenset({
     "score:specification", "score:design", "conductor:assessment", "conductor:integration-report",
-    "conductor:proof-packet", "conductor:release", "score:position", "score:backlog-item",
+    "conductor:proof-packet", "conductor:release", "score:position", "composer:idea",
     "score:milestone",
 })
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
@@ -126,7 +126,7 @@ class BacklogItem:
     source: str = ""
     phase: str = ""
     body: str = ""
-    record_type: str = "score:backlog-item"
+    record_type: str = "composer:idea"
 
 
 @dataclass(frozen=True)
@@ -304,7 +304,7 @@ _SNAPSHOT_TYPES = (
     "tuner:finding", "tuner:check-run", "conductor:assignment", "conductor:assignment-amendment",
     "conductor:execution-report",
     "score:specification", "score:design", "conductor:assessment", "conductor:integration-report", "conductor:release",
-    "score:position", "score:backlog-item",
+    "score:position", "composer:idea",
 )
 
 
@@ -889,7 +889,7 @@ def _backlog_items(records: list[dict[str, Any]]) -> list[BacklogItem]:
             source=payload.get("source") or "",
             phase=payload.get("phase") or "",
             body=record.get("body") or "",
-            record_type=record.get("record_type") or "score:backlog-item",
+            record_type=record.get("record_type") or "composer:idea",
         ))
     items.sort(key=lambda item: (item.subject, item.id))
     return items
@@ -1225,7 +1225,7 @@ def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
     assessments = listed["conductor:assessment"]
     integrations = listed["conductor:integration-report"]
     releases = listed["conductor:release"]
-    backlog_by_effort = _by_effort(listed.get("score:backlog-item") or [])
+    backlog_by_effort = _by_effort(listed.get("composer:idea") or [])
     decisions = _remapped(_list(target, "score:decision"), aliases) if designs else []
     structured = _structured_phases(specs)
     specs_by_effort = _by_effort(specs)

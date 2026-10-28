@@ -329,52 +329,6 @@
         "Tradeoffs",
         "Risks"
       ]
-    },
-    "feedback": {
-      "purpose": "An external signal engage can route into specify. Nothing collects it.",
-      "lifecycle": "event",
-      "fields": {
-        "source": {
-          "type": "string"
-        },
-        "signal": {
-          "type": "string"
-        },
-        "effort": {
-          "ref": "score:effort"
-        },
-        "phase": {
-          "type": "string",
-          "optional": true
-        }
-      },
-      "sections": [
-        "Signal"
-      ]
-    },
-    "backlog-item": {
-      "purpose": "Deferred work parked on an effort until promoted or dismissed",
-      "lifecycle": "current",
-      "fields": {
-        "effort": {
-          "ref": "score:effort"
-        },
-        "status": {
-          "enum": [
-            "open",
-            "promoted",
-            "dismissed"
-          ]
-        },
-        "source": {
-          "type": "string",
-          "optional": true
-        },
-        "phase": {
-          "ref": "score:phase",
-          "optional": true
-        }
-      }
     }
   },
   "migrations": []

@@ -38,6 +38,10 @@ def _payload_is(name: str, value: Any) -> Predicate:
     return lambda r: _payload(r).get(name) == value
 
 
+def _payload_truthy(name: str) -> Predicate:
+    return lambda r: bool(_payload(r).get(name))
+
+
 def _derived_is(name: str, value: Any) -> Predicate:
     return lambda r: (r.get("derived") or {}).get(name) == value
 
@@ -134,9 +138,13 @@ HANDOFF = View(
         ),
         Role(
             "backlog",
-            "score:backlog-item",
+            "composer:idea",
             ("effort", "status"),
-            _all(_state("active"), _payload_is("status", "open")),
+            _all(
+                _state("active"),
+                _payload_is("status", "open"),
+                _payload_truthy("effort"),
+            ),
         ),
     ),
     group_by="effort",

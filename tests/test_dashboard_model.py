@@ -2084,7 +2084,7 @@ def _backlog(cli, defs, subject: str, effort: str, *, status: str = "open", sour
     if phase:
         payload["phase"] = phase
     args = [
-        "create", "--type", "score:backlog-item", "--subject", subject,
+        "create", "--type", "composer:idea", "--subject", subject,
         "--payload", json.dumps(payload),
     ]
     if body:
@@ -2101,13 +2101,13 @@ def test_backlog_open_items_group_by_effort_and_skip_closed(store, cli, defs):
     _backlog(cli, defs, "park-b", "beta", body="## Note\n\ndo beta later")
     promoted = _backlog(cli, defs, "park-promoted", "alpha")
     cli(
-        "supersede", "--type", "score:backlog-item", "--id", promoted["id"],
+        "supersede", "--type", "composer:idea", "--id", promoted["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "promoted"}),
     )
     dismissed = _backlog(cli, defs, "park-dismissed", "alpha")
     cli(
-        "supersede", "--type", "score:backlog-item", "--id", dismissed["id"],
+        "supersede", "--type", "composer:idea", "--id", dismissed["id"],
         "--expected-revision", "@current",
         "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
     )

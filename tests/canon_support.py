@@ -27,7 +27,7 @@ from orchestra.canon.sync import init_store  # noqa: E402
 
 def make_project(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    init_store(Store(root / ".canon"), ["score", "conductor", "tuner"])
+    init_store(Store(root / ".canon"), ["score", "conductor", "tuner", "composer"])
     return open_store(root)
 
 
