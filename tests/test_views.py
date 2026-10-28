@@ -305,6 +305,25 @@ def test_cli_view_effort_flag(project, monkeypatch, capsys):
     assert "## b1" in out.out and "## p1" not in out.out
 
 
+def test_roadmap_effort_flag_filters_ideas(project):
+    create(project, "composer:idea", "alpha-idea", {"status": "open", "effort": "alpha"})
+    seed_effort(project, "beta")
+    create(project, "composer:idea", "beta-idea", {"status": "open", "effort": "beta"})
+    text = render(project, "roadmap", effort="alpha")
+    assert "**alpha-idea**" in text
+    assert "beta-idea" not in text
+
+
+def test_roadmap_heads_each_group_with_its_area_and_collects_arealess_ideas(project):
+    create(project, "composer:area", "dash", {"title": "Dashboard"}, "## Scope\n\nThe dashboard.")
+    create(project, "composer:idea", "placed", {"status": "open", "area": "dash"})
+    create(project, "composer:idea", "loose", {"status": "open"})
+    text = render(project, "roadmap")
+    assert "## dash\n\n### Area\n- **dash**: Dashboard" in text
+    assert "## untriaged\n\n### Idea\n- **loose**" in text
+    assert "### Area\n- **dash**" not in text.split("## untriaged")[1]
+
+
 def test_cli_brief_unknown_subject_fails_on_stderr(project, monkeypatch, capsys):
     code, out = run_cli(monkeypatch, capsys, project, "brief", "ghost")
     assert code == 1

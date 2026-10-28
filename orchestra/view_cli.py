@@ -13,7 +13,7 @@ def add_parsers(sub) -> None:
     handoff = sub.add_parser("handoff", help="Print the handoff markdown")
     handoff.add_argument("--effort", default=None, help="Limit to one effort slug")
     view = sub.add_parser("view", help="Print a derived view as markdown")
-    view.add_argument("name", choices=("plan", "status", "verification"))
+    view.add_argument("name", choices=("plan", "status", "verification", "roadmap"))
     view.add_argument("--effort", default=None, help="Limit to one effort slug")
     brief = sub.add_parser("brief", help="Print one work-item's brief")
     brief.add_argument("subject", help="Work-item subject")

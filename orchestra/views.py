@@ -56,6 +56,7 @@ class Role:
     record_type: str
     fields: tuple[str, ...]
     select: Predicate = _any
+    own_group: bool = False
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,7 @@ class View:
     title: str
     roles: tuple[Role, ...]
     group_by: str
+    group_default: str | None = None
     order_by: str | None = None
     show_lifecycle_state: bool = False
     show_derived: tuple[str, ...] = ()
@@ -205,7 +207,26 @@ STATUS = View(
     tally_type="tuner:check-run",
 )
 
-VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS)}
+ROADMAP = View(
+    "roadmap",
+    "Project Roadmap",
+    (
+        Role("area", "composer:area", ("title",), _state("active"), own_group=True),
+        Role(
+            "idea",
+            "composer:idea",
+            ("status", "effort", "source"),
+            _all(
+                _state("active"),
+                lambda r: _payload(r).get("status") in ("open", "promoted"),
+            ),
+        ),
+    ),
+    group_by="area",
+    group_default="untriaged",
+)
+
+VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
 
 EFFORT_TYPE = "score:effort"
 
@@ -257,13 +278,21 @@ def _in_effort(record: Record, effort: str | None) -> bool:
     return _payload(record).get("scope") == effort
 
 
-def _group_key(record: Record, group_by: str) -> str:
+def _group_key(record: Record, view: View, role: Role) -> str:
     payload = _payload(record)
+    group_by = view.group_by
+    if role.own_group:
+        return str(record.get("subject", "default"))
     if group_by == "scope":
         return str(payload.get("scope", "default"))
     if group_by == "subject":
         return str(record.get("subject", "default"))
-    return str(payload.get(group_by, record.get("subject", "default")))
+    raw = payload.get(group_by)
+    if _empty(raw):
+        if view.group_default is not None:
+            return view.group_default
+        return str(record.get("subject", "default"))
+    return str(raw)
 
 
 def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | None:
@@ -349,7 +378,7 @@ def render_view(
         for record in scoped:
             if record["record_type"] != role.record_type or not role.select(record):
                 continue
-            key = _group_key(record, view.group_by)
+            key = _group_key(record, view, role)
             groups.setdefault(key, {r.name: [] for r in view.roles})
             groups[key][role.name].append(record)
 
