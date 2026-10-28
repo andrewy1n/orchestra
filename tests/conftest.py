@@ -94,7 +94,7 @@ def make_git_repo() -> Path:
     return root
 
 
-SCHEMAS = "score,conductor,tuner"
+SCHEMAS = "score,conductor,tuner,composer"
 
 
 def write_config(store: Path) -> Path:

@@ -34,8 +34,8 @@ def _ref_cases():
     return cases
 
 
-def test_namespaces_cover_score_conductor_tuner():
-    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"score", "conductor", "tuner"}
+def test_namespaces_cover_score_conductor_tuner_composer():
+    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"score", "conductor", "tuner", "composer"}
 
 
 @pytest.mark.parametrize("record_id", _RECORD_IDS)
