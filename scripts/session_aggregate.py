@@ -1,7 +1,7 @@
 import json
 import sys
 
-from effort_rollup import effort_rollup
+from orchestra.score.effort_rollup import effort_rollup
 from session_outliers import outliers
 from tool_skill_rollup import tool_skill_rollup
 
