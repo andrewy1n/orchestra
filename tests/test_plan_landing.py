@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 
@@ -22,7 +23,7 @@ LANDING_PHRASES = (
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def _flat(text: str) -> str:
@@ -31,9 +32,10 @@ def _flat(text: str) -> str:
 
 def test_phase_body_names_landing_branch_worktree_base_and_close():
     text = _flat(_text("plan-phase"))
-    for phrase in LANDING_PHRASES:
+    for phrase in LANDING_PHRASES[:3]:
         assert phrase in text
-    assert "Skip the Landing check for incidental work." in text
+    assert "close actions (commit phase branch → merge `main` → store commit); push only as a human stop" in text
+    assert "No Landing → not ready for plan review. Incidental has no Landing." in text
 
 
 def test_shared_docs_name_the_same_landing():
@@ -44,13 +46,9 @@ def test_shared_docs_name_the_same_landing():
 
 
 def test_plan_review_stays_closed_until_landing_is_present():
-    text = _text("plan-phase")
-    flat = _flat(text)
-    gate = "Do not open the plan-review question until those are present"
-    # Final plan-review create (step 10), not the earlier next:plan re-open example.
+    flat = _flat(_text("plan-phase"))
+    gate = "Open the plan review gate (skip incidental). Do not open until:"
     question_at = flat.rindex("canon create --type score:continuity-question")
     gate_at = flat.rindex(gate)
     assert gate_at < question_at
-    window = flat[gate_at:question_at]
-    assert "`## Landing`" in window
-    assert "Skip the Landing check for incidental work." in window
+    assert "`## Landing`" in flat[gate_at:question_at]

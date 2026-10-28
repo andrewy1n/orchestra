@@ -9,10 +9,13 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+from orchestra.canon import modules
 
 SRC = Path(__file__).resolve().parents[2]
 
@@ -164,11 +167,21 @@ def isolated_environment(monkeypatch, tmp_path):
         monkeypatch.delenv(name, raising=False)
 
 
+def _site_entry_points(root: Path) -> list[Any]:
+    return [
+        entry
+        for dist in metadata.distributions(path=[str(root)])
+        for entry in dist.entry_points
+        if entry.group == modules.GROUP
+    ]
+
+
 @pytest.fixture
 def site(tmp_path, monkeypatch):
     root = tmp_path / "site-packages"
     root.mkdir()
     monkeypatch.syspath_prepend(str(root))
+    monkeypatch.setattr(modules, "_entry_points", lambda: _site_entry_points(root))
     fake = Site(root)
     fake.publish(copy.deepcopy(ALPHA))
     fake.publish(copy.deepcopy(BETA))

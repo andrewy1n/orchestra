@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import re
+import textwrap
 from pathlib import Path
 
-_FENCE_RE = re.compile(r"```(?:bash)?\n(.*?)```", re.DOTALL)
+_FENCE_RE = re.compile(r"(?ms)^([ \t]*)```(\w*)\n(.*?)^[ \t]*```")
 _INVOCATION_START_RE = re.compile(r"(?m)^canon\s+(\S+)")
 _PAYLOAD_RE = re.compile(r"--payload\s+'(\{.*?\})'", re.DOTALL)
 _KV_RE = re.compile(r"(?:-p|--payload-kv)\s+([A-Za-z_][\w]*)=")
@@ -30,7 +31,10 @@ def skill_markdown_files(skills_root: Path) -> list[Path]:
 
 def extract_invocations(text: str) -> list[dict]:
     invocations = []
-    for block in _FENCE_RE.findall(text):
+    for indent, language, body in _FENCE_RE.findall(text):
+        if language not in ("", "bash"):
+            continue
+        block = textwrap.dedent(body) if indent else body
         starts = [m.start() for m in _INVOCATION_START_RE.finditer(block)]
         for i, start in enumerate(starts):
             end = starts[i + 1] if i + 1 < len(starts) else len(block)

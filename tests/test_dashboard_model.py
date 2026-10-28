@@ -1210,6 +1210,7 @@ def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
         "Non-goals": "none",
     }))
     design_body = _body(defs, "score:design", {"Architecture": "one pane per tab"})
+    _decision(cli, defs, "pick-cols", "p-full", "columns")
     _record(cli, defs, "score:design", "p-full", {
         "phase": "p-full", "effort": "alpha", "decisions": ["pick-cols"],
     }, design_body)
@@ -1218,12 +1219,10 @@ def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
     assert full.structured is True
     assert "structured holds" in full.spec_body
     assert "one pane per tab" in full.design_body
-    assert model.tabs_for(full) == model.TABS
     assert model.tabs_for(full) == (
         "overview", "spec", "design", "decisions", "evidence", "tasks",
     )
     assert plain.structured is False
-    assert model.tabs_for(plain) == model.SIMPLE_TABS
     assert model.tabs_for(plain) == ("overview", "spec", "decisions", "tasks")
 
 

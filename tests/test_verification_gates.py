@@ -7,13 +7,14 @@ import re
 import pytest
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 
 SKILLS_ROOT = REPO_ROOT / "skills"
 
 
 def _skill(name: str) -> str:
-    return (SKILLS_ROOT / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def _normalized(text: str) -> str:
@@ -23,9 +24,9 @@ def _normalized(text: str) -> str:
 @pytest.mark.parametrize(
     "phrase",
     [
-        "Every `deliver` or `repair` phase ends with one **verification task**",
-        "`depends_on` every other work-item in the phase",
-        "Its acceptances cover each exit criterion",
+        "## Verification task For a `deliver` or `repair` phase, create last",
+        "with every other work-item subject in `depends_on`",
+        "One thin acceptance per exit criterion",
         "integration check through the real entry point",
     ],
 )
@@ -42,7 +43,7 @@ def test_plan_phase_example_verification_task_depends_on_several_work_items():
         and "verify-<phase-slug>" in inv["raw"]
     ]
     assert len(creates) == 1
-    assert len([r for r in creates[0]["rels"] if r.startswith("depends_on:")]) >= 2
+    assert len(creates[0]["payload"]["depends_on"]) >= 2
 
 
 def test_plan_phase_example_gives_the_verification_task_an_integration_acceptance():
@@ -70,11 +71,11 @@ def test_init_requires_verifiable_exit_criteria(phrase):
 @pytest.mark.parametrize(
     "phrase",
     [
-        "check the phase gate before closing anything",
-        "verification task (the work-item that `depends_on` every other phase work-item) exists and is `done`",
-        "the latest check-run per `criterion_id` has a passing `result`",
-        "leave the phase `in_progress`",
-        "Close a phase whose gate in step 8 does not hold",
+        "check the gate below before closing",
+        "Verification task exists and is `done`",
+        "latest check-run per `criterion_id` passes",
+        "Gate fails → leave phase `in_progress`",
+        "Close a phase whose phase-end gate does not hold",
     ],
 )
 def test_execute_phase_gates_phase_close(phrase):

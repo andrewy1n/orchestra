@@ -250,12 +250,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
             "-c",
             (
                 "import orchestra.conductor.close_batch as cb\n"
-                "try:\n"
-                "    cb._assertion_level_red({})\n"
-                "except cb.OracleAdapterUnavailable as exc:\n"
-                "    print(exc)\n"
-                "else:\n"
-                "    raise SystemExit('expected OracleAdapterUnavailable')\n"
+                "print(cb._assertion_level_red({}))\n"
             ),
         ],
         cwd=str(elsewhere),
@@ -264,4 +259,4 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
         text=True,
     )
     assert helper.returncode == 0, helper.stdout + helper.stderr
-    assert "tuner" in helper.stdout
+    assert helper.stdout.strip() == "False"

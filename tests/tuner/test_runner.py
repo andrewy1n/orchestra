@@ -180,6 +180,13 @@ def test_run_tests_maps_failure_error_skipped(tmp_path: Path) -> None:
     assert run_tests(missing_tree, ["gone"], missing_runner) == {"gone": "not_run"}
 
 
+def test_run_tests_reads_an_unwritten_report_as_not_run(tmp_path: Path) -> None:
+    worktree = tmp_path / "silent"
+    worktree.mkdir()
+    runner = [sys.executable, "-c", "raise SystemExit(4)", "{report}", "{tests}"]
+    assert run_tests(worktree, ["never"], runner) == {"never": "not_run"}
+
+
 def test_run_tests_joins_name_or_file(tmp_path: Path) -> None:
     by_name = "tests/test_plain.py::test_by_name"
     by_class = "pkg/mod.py::TestCase::Nested::test_by_file"

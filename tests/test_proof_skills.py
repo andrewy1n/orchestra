@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 
 
 def _text(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def test_settle_and_plan_require_proof_section():
@@ -17,9 +18,7 @@ def test_settle_and_plan_require_proof_section():
     assert "## Proof" in settle
     assert "demo" in settle and "claims" in settle and "audit-triage" in settle
     assert "## Proof" in plan
-    assert "kind" in plan
-    assert "look intent" in plan
-    assert "Proof checks for incidental" in plan or "Proof checks" in plan
+    assert "`## Proof`: `kind` (`demo`|`commands`|`claims`|`audit-triage`|`mixed`) + one sentence on look intent" in " ".join(plan.split())
 
 
 def test_execute_assembles_proof_packet():
@@ -27,9 +26,9 @@ def test_execute_assembles_proof_packet():
     assert "conductor:proof-packet" in text
     assert "## Look" in text and "## Machine" in text
     assert "## Attention" in text and "## Diff" in text
-    assert "Refuse to say the phase is complete without" in text or "Refuse to say the phase is complete" in text
+    assert 'Refuse "phase complete" without a packet' in text
     assert "proof-packet" in text
-    assert "payload.revision" in text
+    assert "`revision` = phase-head" in " ".join(text.split())
     assert "Call the phase complete" in text or "without a `conductor:proof-packet`" in text
 
 

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import re
 
-from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 
-SKILL = REPO_ROOT / "skills" / "plan-phase" / "SKILL.md"
 SIZES = {"XS", "S", "M", "L", "XL"}
 
 
 def _text() -> str:
-    return SKILL.read_text()
+    return skill_text("plan-phase")
 
 
 def _flat(text: str) -> str:
@@ -20,14 +19,11 @@ def _flat(text: str) -> str:
 
 
 def _work_item_payloads(text: str) -> list[dict]:
-    payloads = []
-    for inv in extract_invocations(text):
-        if inv["type"] == "score:work-item" and inv["payload"]:
-            payloads.append(inv["payload"])
-        for part in inv["records"] or []:
-            if part.get("type") == "score:work-item":
-                payloads.append(part["payload"])
-    return payloads
+    return [
+        inv["payload"]
+        for inv in extract_invocations(text)
+        if inv["subcommand"] == "create" and inv["type"] == "score:work-item" and inv["payload"]
+    ]
 
 
 def test_write_size_and_estimate_minutes_on_every_work_item():
@@ -39,50 +35,12 @@ def test_write_size_and_estimate_minutes_on_every_work_item():
         assert payload["size"] in SIZES
         minutes = payload["estimate_minutes"]
         assert type(minutes) is int
-        assert minutes >= 0
-    assert "Every new work-item payload includes `size` and `estimate_minutes`." in text
-    assert "`XS` a trivial or local change" in text
-    assert "`S` a small change" in text
-    assert "`M` a moderate change" in text
-    assert "`L` a substantial or multi-file change" in text
-    assert "`XL` a large or high-risk change" in text
-    assert (
-        "`estimate_minutes` is a non-negative integer for that task's executor."
-        in text
-    )
-    assert "It is agent wall-clock minutes for that worker, not human pacing" in text
-    assert "Typical ranges (guidance only):" in text
-    assert "`XS` 2–5" in text
-    assert "`S` 5–10" in text
-    assert "`M` 8–15" in text
-    assert "`L` 15–25" in text
-    assert "`XL` 25–40" in text
-    assert "Absent means unset." in text
-    assert "Zero is a real estimate." in text
-    assert "A missing executor means the minutes are for a subagent." in text
-    for payload in payloads:
-        # Examples must not re-anchor on the old human-paced 25m default.
-        assert payload["estimate_minutes"] < 25
+        assert 0 <= minutes < 25
+    assert "Every new work-item includes `size` and `estimate_minutes`." in text
+    assert "`size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded)" in text
+    assert "Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40." in text
 
 
-def test_rollup_adds_inline_minutes_and_takes_the_subagent_wave_maximum():
+def test_sitting_shape_stays_on_the_phase_body():
     text = _flat(_text())
-    assert "Inline minutes in a wave add." in text
-    assert (
-        "A subagent wave's elapsed estimate is the longest `estimate_minutes` among its tasks."
-        in text
-    )
-    assert "Phase elapsed time adds those wave figures in wave order." in text
-    assert "Blank estimates are skipped." in text
-    assert "A wave whose estimates are all blank has no elapsed estimate." in text
-
-
-def test_sitting_shape_stays_and_the_phase_record_stores_neither_field():
-    text = _flat(_text())
-    assert "size as `one sitting` or `more than one`" in text
-    assert (
-        "The phase body still records session shape as `one sitting` or `more than one`."
-        in text
-    )
-    assert "`size` and `estimate_minutes` are not derived from each other." in text
-    assert "The phase record stores neither field." in text
+    assert "Phase body records session shape (`one sitting` | `more than one`)" in text

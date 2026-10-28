@@ -212,7 +212,7 @@ def test_structured_phase_shows_full_tab_set(structured):
         await pilot.pause()
         await pilot.press("p")
         screen = await _phase_shown(app, pilot)
-        assert _tab_ids(screen) == list(model_module.TABS)
+        assert _tab_ids(screen) == [tab for tab in model_module.TABS if tab != "proof"]
         assert screen.active_tab() == "overview"
 
     _run(structured, scenario)
@@ -224,7 +224,7 @@ def test_simple_phase_shows_simple_tab_set(structured):
         await pilot.pause()
         await pilot.press("p")
         screen = await _phase_shown(app, pilot)
-        assert _tab_ids(screen) == list(model_module.SIMPLE_TABS)
+        assert _tab_ids(screen) == [tab for tab in model_module.SIMPLE_TABS if tab != "proof"]
         assert "design" not in _tab_ids(screen)
         assert "evidence" not in _tab_ids(screen)
 

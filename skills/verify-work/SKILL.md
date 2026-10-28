@@ -259,9 +259,11 @@ use that batch for assessment fields — check-runs then Assess.
 
 ## Record versus bind
 
-Unbound evidence-observation does not earn a manifest claim.
-Path: claim id → `orchestra verify bind` → evidence-observation; then `orchestra verify recheck`
-before treating the claim as earned. Inspect with `orchestra verify trail`.
+Techniques and audit may record an unbound evidence-observation. It
+does not earn a manifest claim. Path: claim id → evidence-binding →
+evidence-observation. `orchestra verify bind` writes the
+evidence-binding; then `orchestra verify recheck` before treating the
+claim as earned. Inspect with `orchestra verify trail`.
 
 ```bash
 orchestra verify trail --cwd <repo-or-worktree>

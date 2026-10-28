@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -128,7 +129,7 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
     def fenced(invocations: list[dict]) -> str:
         return "```bash\n" + "\n".join(inv["raw"] for inv in invocations) + "\n```"
 
-    execute = EXECUTE.read_text()
+    execute = skill_text("execute-phase")
     review = [
         inv
         for inv in extract_invocations(execute)
@@ -139,15 +140,7 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
     assert review, "review check-run write must stay"
     assert boundary_violations(fenced(review)) == []
 
-    suite_creates = [
-        inv
-        for inv in extract_invocations(execute)
-        if inv.get("subcommand") == "create"
-        and inv.get("type") == "tuner:check-run"
-        and _is_suite_check_run(inv)
-    ]
-    assert suite_creates, "suite check-run write must stay"
-    assert boundary_violations(fenced(suite_creates)) == []
+    assert "orchestra suite record" in execute
 
     verify = VERIFY.read_text()
     manual = [
@@ -170,14 +163,16 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
 def test_migrated_skills_pass_the_scanner():
     violations = scan_skills(SKILLS)
     assert not violations, "\n".join(violations)
-    for path in (EXECUTE, VERIFY):
-        assert _AMENDMENT_SENTENCE in path.read_text(), path
+    assert _AMENDMENT_SENTENCE in EXECUTE.read_text()
+    assert "a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts" in " ".join(
+        VERIFY.read_text().split()
+    )
 
 
 def test_execute_phase_and_verify_work_run_tuner_verdict():
-    for path in (EXECUTE, VERIFY):
+    for path, not_done in ((EXECUTE, _NOT_DONE), (VERIFY, "run `orchestra verify verdict`; non-zero → not done.")):
         text = path.read_text()
         assert "orchestra verify verdict" in text, path
         assert ".tuner/manifest.json" in text, path
-        assert _NOT_DONE in text, path
+        assert not_done in " ".join(text.split()), path
         assert re.search(r"orchestra verify verdict\b[^\n]*<claim-id>", text), path

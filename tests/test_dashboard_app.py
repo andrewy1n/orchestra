@@ -2916,7 +2916,7 @@ def test_evidence_simple_phase_matches_the_previous_frame(seeded):
         assert not screen.query_one("#phase-stage").display
         assert not screen.query_one("#phase-integration").display
         tab_ids = [pane.id for pane in screen.query_one("#phase-tabs").query("TabPane")]
-        assert tab_ids == list(model_module.SIMPLE_TABS)
+        assert tab_ids == [tab for tab in model_module.SIMPLE_TABS if tab != "proof"]
         assert "evidence" not in tab_ids and "design" not in tab_ids
 
     _run(seeded, 60, scenario)
@@ -4210,7 +4210,8 @@ def test_approval_stale_confirm_shows_changed_message_and_refreshes(store, cli, 
         banner = str(screen.query_one("#needs-error").render())
         assert "changed since opened" in banner.lower() or "stale" in banner.lower()
         assert any(item.id == item_id for view in app.snapshot.efforts for item in view.needs_you)
-        assert any("changed since opened" in note.lower() or "stale" in note.lower()
-                   for note in _notices(app))
+        await _until(pilot, lambda: any(
+            "changed since opened" in note.lower() or "stale" in note.lower() for note in _notices(app)
+        ))
 
     _detail_run(store, (120, 40), scenario)

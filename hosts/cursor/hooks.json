@@ -10,6 +10,16 @@
       {
         "command": "orchestra hook-stop --cursor"
       }
+    ],
+    "stop": [
+      {
+        "command": "/home/andrewyin/.local/bin/cursor-watch-hook stop"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "/home/andrewyin/.local/bin/cursor-watch-hook afterAgentResponse"
+      }
     ]
   }
 }

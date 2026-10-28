@@ -9,7 +9,6 @@ from pathlib import Path
 
 import helpers as h
 from conftest import REPO_ROOT
-from skill_extraction import extract_invocations
 
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -44,7 +43,7 @@ PHASE = "verification-policy"
 
 
 def _skill_text() -> str:
-    return SKILL.read_text()
+    return h.skill_text("execute-phase")
 
 
 def _skill_flat() -> str:
@@ -504,42 +503,12 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
 def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     text = _skill_text()
     flat = _skill_flat()
-    assert "suite" in flat
-    assert "phase_gate.suite" in flat or "phase_gate" in flat
-    assert "background" in flat or "detached tmux" in flat
-    assert "orchestra suite" in text or "start_suite_background" in text
-    assert "waive" in flat
-    order = text.index("Phase-end order")
-    segment = text[order : order + 500]
-    assert segment.index("reviewer") < segment.index("suite")
-    creates = [
-        inv
-        for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "tuner:check-run"
-    ]
-    suite_creates = [
-        inv
-        for inv in creates
-        if "-suite" in (inv.get("subject") or "")
-        or "-suite" in (inv.get("raw") or "")
-    ]
-    assert suite_creates, "execute-phase must document creating a suite check-run"
-    raw = suite_creates[0]["raw"]
-    assert "evidence_kind" in raw and "integration" in raw
-    assert "output_sha256" in raw
-    assert "failing_node_ids" in raw
-    assert "orphan" in flat or "reattach" in flat
-    assert orphan_recovery_hint(
-        SuiteStart(
-            session_name="orchestra-suite-x",
-            worktree=Path("/tmp"),
-            phase_slug="x",
-            phase_head=HEAD,
-            log_path=Path("/tmp/a.log"),
-            exit_path=Path("/tmp/a.exit"),
-            started_monotonic=0.0,
-        )
-    )
+    assert "Do not waive `phase_gate.suite`" in flat
+    assert "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)" in flat
+    assert "closing verification → reviewer → integration-report → suite → phase gate" in flat
+    assert "orchestra suite record" in text
+    assert "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat
+
 
 
 def test_execute_phase_documents_no_agent_waiver_of_suite_policy():

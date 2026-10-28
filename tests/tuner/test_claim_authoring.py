@@ -26,7 +26,7 @@ HUMAN_TEXT = "the reviewer accepts the widget copy"
 def _env() -> dict[str, str]:
     env = os.environ.copy()
     env["PATH"] = os.pathsep.join(
-        [str(Path(sys.executable).resolve().parent), "/usr/bin", "/bin"]
+        [str(Path(sys.executable).parent), "/usr/bin", "/bin"]
     )
     return env
 

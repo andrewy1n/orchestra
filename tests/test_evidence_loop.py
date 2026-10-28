@@ -18,7 +18,7 @@ SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"
 
 
 def _skill_text() -> str:
-    return re.sub(r"\s+", " ", SKILL.read_text())
+    return re.sub(r"\s+", " ", h.skill_text("verify-work"))
 
 
 def _body(record_def: dict, fills: dict[str, str] | None = None) -> str | None:
@@ -303,10 +303,9 @@ def test_design_failure_does_not_close_the_work_item(cli, resolved_contract):
 
 def test_repeat_without_new_evidence_supersedes_to_design(cli, resolved_contract):
     text = _skill_text()
-    assert "A repeat that adds no evidence raises `implementation` to `design`" in text
+    assert "Otherwise raise one step on `implementation` → `design` → `specification`" in text
     assert "or the previous cause is resolved" in text
-    assert "When the new check-run adds an `evidence_kind`" in text
-    assert "stay at `implementation` / `execute`" in text
+    assert "say in Reason that the evidence did not increase" in text
 
     defs = h.record_defs_by_id(resolved_contract)
     phase, task = "escalate-phase", "escalate-task"
@@ -342,8 +341,8 @@ def test_repeat_without_new_evidence_supersedes_to_design(cli, resolved_contract
 
 def test_new_evidence_kind_stays_on_execute(cli, resolved_contract):
     text = _skill_text()
-    assert "adds an `evidence_kind`" in text
-    assert "stay at `implementation` / `execute`" in text
+    assert "Stay at the same `level` only when new check-runs add evidence (new `evidence_kind`" in text
+    assert "First implementation failure still uses `next` `execute`." in text
 
     defs = h.record_defs_by_id(resolved_contract)
     kinds = defs["tuner:check-run"]["payload_enum"]["evidence_kind"]

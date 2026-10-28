@@ -8,11 +8,11 @@ assessments, not invented pass/fail.
 from __future__ import annotations
 
 import re
-import sys
 
 import pytest
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from skill_extraction import extract_invocations
 from orchestra.conductor import close_batch
 
@@ -21,7 +21,7 @@ SCRIPT = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
 
 
 def _skill() -> str:
-    return SKILL.read_text()
+    return skill_text("verify-work")
 
 
 def _normalized(text: str) -> str:
@@ -33,10 +33,7 @@ def test_skill_documents_tuner_check_for_tdd_and_check():
     flat = _normalized(text)
     assert "orchestra check" in text
     assert "--acceptance" in text
-    assert "Do **not** `canon create --type" in text
-    assert "tuner:check-run` for `method` `tdd` or `check`" in flat or (
-        "for `method` `tdd` or `check`" in text
-    )
+    assert "Do not `create --type tuner:check-run` for `tdd`/`check`." in flat
     assert "assessment" in flat
 
 

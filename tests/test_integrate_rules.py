@@ -12,7 +12,7 @@ SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
 
 def _text() -> str:
-    return re.sub(r"\s+", " ", SKILL.read_text())
+    return re.sub(r"\s+", " ", h.skill_text("execute-phase"))
 
 
 def _integration_creates(text: str) -> list[dict]:
@@ -25,7 +25,7 @@ def _integration_creates(text: str) -> list[dict]:
 
 def test_integration_report_create_matches_the_contract(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    text = SKILL.read_text()
+    text = h.skill_text("execute-phase")
     violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
 
@@ -43,18 +43,11 @@ def test_integration_report_create_matches_the_contract(resolved_contract):
 
 def test_a_git_merge_is_not_a_pass():
     text = _text()
-    assert "A clean git merge does not by itself write `pass`" in text
-    assert "do not merge" in text or "Do not merge" in _text() or (
-        "fail" in text and "blocked" in text and "merge" in text
-    )
+    assert "`pass` only when verdict is `PASS` and those sections hold — a clean git merge is not enough." in text
+    assert "Write integration-report `pass` from a clean git merge alone" in text
 
 
 def test_integration_report_is_skipped_for_incidental_and_serial_waves():
     text = _text()
-    assert (
-        "Skip the report when incidental, or when no implementation wave "
-        "has more than one task."
-    ) in text
-    assert "from the reviewer" in text or "reviewer `integration`" in text or (
-        "reviewer's" in text and "integration" in text
-    )
+    assert "Skip when incidental or no multi-task implementation wave." in text
+    assert "One `conductor:integration-report` from the reviewer's `integration` map." in text

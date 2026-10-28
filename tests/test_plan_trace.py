@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 from pathlib import Path
 
 import helpers as h
-from conftest import REPO_ROOT
 from skill_extraction import check_skill_text, extract_invocations
-
-SKILL = REPO_ROOT / "skills" / "plan-phase" / "SKILL.md"
-EXECUTE_SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
 REQUIRED_WORK_ITEM = {"title", "phase", "kind", "assignee", "effort"}
 REQUIRED_ACCEPTANCE = {"method", "phase", "effort", "verify_command", "requirement"}
@@ -19,7 +16,7 @@ WRITES = {"create", "update", "supersede", "capture"}
 
 
 def _text() -> str:
-    return SKILL.read_text()
+    return h.skill_text("plan-phase")
 
 
 def _flat(text: str) -> str:
@@ -62,70 +59,46 @@ def test_criterion_optional_in_contract():
 
 
 def test_execute_phase_requires_original_text_briefs():
-    flat = _flat(EXECUTE_SKILL.read_text())
-    assert "Description/Approach" in flat
-    assert "quote Description/Approach and requirement texts by id" in flat
-    assert "do not paraphrase" in flat or "paraphrase the claim" in flat
-    assert (
-        "do not invent a claim from criterion" in flat
-        or "do not treat empty or legacy `criterion` as the lead claim" in flat
-    )
+    flat = _flat(h.skill_text("execute-phase"))
+    assert "quotes (verbatim, by id) work-item Description/Approach, linked requirement text" in flat
+    assert "Do not paraphrase claims or treat empty/legacy `criterion` as the lead claim." in flat
     assert "Do not restate `criterion`" in flat
 
 
 def test_skill_requires_atomic_ids_and_thin_acceptances():
     flat = _flat(_text())
-    assert "atomic" in flat
-    assert "thin" in flat
-    assert "omit `criterion`" in flat or 'set it to `""`' in flat
-    assert "compound" in flat
-    assert "When no specification exists, the work-item `## Description` **is** the" in flat
-    assert (
-        "When no specification exists, omit `requirements`, `decisions`, and `requirement`."
-        not in flat
-    )
-    assert "`incidental` work stays exempt" in flat or "`incidental` may omit" in flat
+    assert "atomic requirement ids in `requirements` (JSON array of atomic ids; never compound)" in flat
+    assert "New acceptances are **thin**: omit `criterion` or `\"\"`." in flat
+    assert "else id'd list in `## Description`" in flat
+    assert "`incidental` may omit" in flat
 
 
-def test_create_and_capture_examples_match_atomic_thin_shape():
+def test_create_examples_match_atomic_thin_shape():
     text = _text()
-    work_items = _payloads(text, "score:work-item")
-    acceptances = _payloads(text, "score:acceptance")
+    creates = [inv for inv in extract_invocations(text) if inv["subcommand"] == "create" and inv["payload"]]
+    work_items = [inv["payload"] for inv in creates if inv["type"] == "score:work-item"]
+    acceptances = [inv for inv in creates if inv["type"] == "score:acceptance"]
     assert work_items and acceptances
 
     covered: set[str] = set()
     for payload in work_items:
         assert REQUIRED_WORK_ITEM <= set(payload)
         assert payload["requirements"]
-        for part in (p.strip() for p in payload["requirements"].split(",") if p.strip()):
-            covered.add(part)
+        covered.update(payload["requirements"])
         assert "ready" not in payload and "wave" not in payload
 
-    for payload in acceptances:
+    for inv in acceptances:
+        payload = inv["payload"]
         assert REQUIRED_ACCEPTANCE <= set(payload)
         assert payload["requirement"] in covered
         assert "," not in payload["requirement"]
-        criterion = payload.get("criterion", "")
-        assert criterion == "" or "criterion" not in payload
+        assert payload.get("criterion", "") == ""
 
-    acceptance_subjects = []
-    written = set()
-    for inv in extract_invocations(text):
-        if inv["subcommand"] in WRITES and inv["type"]:
-            written.add(inv["type"])
-        if inv["type"] == "score:work-item":
-            assert all(rel.split(":", 1)[0] == "depends_on" for rel in inv["rels"])
-        for part in inv["records"] or []:
-            if inv["subcommand"] != "capture":
-                continue
-            written.add(part.get("type"))
-            if part.get("type") == "score:acceptance":
-                acceptance_subjects.append(part["subject"])
-                assert "criterion" not in part["payload"] or part["payload"].get("criterion") == ""
+    written = {inv["type"] for inv in extract_invocations(text) if inv["subcommand"] in WRITES}
     assert "conductor:assessment" not in written
     assert "conductor:integration-report" not in written
-    assert "<task-slug>" in acceptance_subjects
-    assert "<task-slug>-perf" in acceptance_subjects
+    subjects = {re.search(r'--subject "([^"]+)"', inv["raw"]).group(1) for inv in acceptances}
+    assert {"<task-slug>", "<task-slug>-perf"} <= subjects
 
 
 def test_plan_phase_trace_invocations_are_contract_legal(resolved_contract):
@@ -142,7 +115,7 @@ def test_plan_phase_oracle_author_and_freeze():
     assert "test_ids" in flat
     assert "oracle_hashes" in flat
     assert "freeze" in flat
-    assert "requirement / specification text only" in flat or "requirement/spec text" in flat
+    assert "Give it only original requirement / specification text" in flat
     # Freeze update example is contract-shaped.
     freeze_payloads = [
         p
@@ -151,38 +124,30 @@ def test_plan_phase_oracle_author_and_freeze():
     ]
     assert freeze_payloads
     for payload in freeze_payloads:
-        assert "sha256:" in payload["oracle_hashes"]
+        assert all(":sha256:" in entry for entry in payload["oracle_hashes"])
         assert payload.get("method") == "tdd"
         assert payload.get("requirement")
         assert "pytest" in payload.get("verify_command", "")
 
 
 def test_execute_phase_oracle_amendment_and_frozen_oracle(resolved_contract):
-    text = EXECUTE_SKILL.read_text()
+    text = h.skill_text("execute-phase")
     flat = _flat(text)
-    assert "oracle-amendment" in flat
-    assert "frozen oracle" in flat
+    assert "### Frozen oracle (do not edit)" in text
     assert "oracle_hashes" in flat
-    assert "status" in flat and "requested" in flat and "approved" in flat
+    assert "Parent adds a signed amendment in `.tuner/manifest.json`" in flat
     defs = h.record_defs_by_id(resolved_contract)
-    bundles = {bundle["id"]: bundle for bundle in resolved_contract.get("bundles", [])}
     violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
-    creates = [
+    assert not [
         inv
         for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "tuner:oracle-amendment"
+        if inv["subcommand"] in {"create", "supersede"} and inv["type"] == "tuner:oracle-amendment"
     ]
-    assert creates and creates[0]["payload"]
-    payload = creates[0]["payload"]
-    assert payload["status"] == "requested"
-    assert {"acceptance", "effort", "phase", "old_hashes", "new_hashes", "status"} <= set(
-        payload
-    )
 
 
 def test_verify_work_mechanical_oracle_backed():
-    verify = (REPO_ROOT / "skills" / "verify-work" / "SKILL.md").read_text()
+    verify = h.skill_text("verify-work")
     flat = _flat(verify)
     assert "mechanical" in flat
     assert "assertion-level" in flat

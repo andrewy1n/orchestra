@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -201,11 +202,23 @@ def _options(args: tuple[str, ...]) -> dict[str, list[str]]:
     return values
 
 
+_catalog_lock = threading.Lock()
+_catalog_cache: dict[str, tuple[str, list[dict[str, Any]]]] = {}
+
+
 def _catalog(target: Project) -> list[dict[str, Any]]:
-    try:
-        return attach_derived_all(target.records(), target.derived())
-    except StoreError:
-        return []
+    key = str(target.store_path)
+    with _catalog_lock:
+        token = change_token(target)
+        cached = _catalog_cache.get(key)
+        if cached and cached[0] == token:
+            return cached[1]
+        try:
+            rows = attach_derived_all(target.records(), target.derived())
+        except StoreError:
+            return []
+        _catalog_cache[key] = (token, rows)
+        return rows
 
 
 def _run(target: Project, *args: str) -> dict[str, Any]:
