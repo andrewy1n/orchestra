@@ -67,7 +67,7 @@ def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
         assert mode in readme
     for gate in ("required", "advisory", "deferred"):
         assert gate in readme
-    assert "`mode=full` and `gate=required`" in readme
+    assert "`mode=full` and `gate=advisory`" in readme
     assert "`<phase>-suite`" in readme
     assert "tier-2" not in readme and "tier2" not in readme
 

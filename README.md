@@ -657,7 +657,9 @@ uv run pytest -q tests --ignore=tests/canon --ignore=tests/tuner -m tmux
 Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
 run apart from the orchestra tests. The tmux tests run last and serially,
 because parallel load makes them flaky. CI runs the same four commands as
-parallel jobs.
+parallel jobs. When the configured suite `command` is empty, the suite falls
+back to `uv run pytest tests -q -n 4 -m "not tmux"` then
+`uv run pytest tests -q -m tmux`.
 
 These four commands are the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files
