@@ -25,6 +25,7 @@ from orchestra.conductor import suite  # noqa: E402
 
 # Every runtime call a skill makes must be one of these named commands.
 HELP_PATHS = [
+    ["idea"],
     ["review-brief"],
     ["suite", "policy"],
     ["suite", "start"],

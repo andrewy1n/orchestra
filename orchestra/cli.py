@@ -336,6 +336,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the created paths and store readiness as JSON",
     )
+
+    idea = sub.add_parser("idea", help="Capture an open composer idea from a title")
+    idea.add_argument("title", help="Idea title; subject is the slugified title")
+    idea.add_argument("--area", default=None, help="composer:area subject slug")
+    idea.add_argument("--effort", default=None, help="score:effort subject slug")
+    idea.add_argument("--source", default=None, help="Idea source text")
+    idea.add_argument(
+        "--body-file",
+        default=None,
+        help="Append this file's text to the idea body below the title",
+    )
     return parser
 
 
@@ -688,6 +699,33 @@ def _cmd_store_run(args: argparse.Namespace) -> int:
     return code
 
 
+def _cmd_idea(args: argparse.Namespace) -> int:
+    from orchestra.composer.idea import IdeaError, capture
+
+    extra_body = None
+    if args.body_file is not None:
+        try:
+            extra_body = Path(args.body_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"orchestra idea: {exc}", file=sys.stderr)
+            return 1
+    try:
+        project = open_store(Path.cwd())
+        record = capture(
+            project,
+            args.title,
+            area=args.area,
+            effort=args.effort,
+            source=args.source,
+            body=extra_body,
+        )
+    except (IdeaError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra idea: {exc}", file=sys.stderr)
+        return 1
+    print(record["subject"])
+    return 0
+
+
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
     from orchestra.canon.store import Store
     from orchestra.canon.sync import init_store
@@ -781,6 +819,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "run":
             return _cmd_store_run(args)
         return _cmd_store_ensure(args)
+    if args.command == "idea":
+        return _cmd_idea(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
