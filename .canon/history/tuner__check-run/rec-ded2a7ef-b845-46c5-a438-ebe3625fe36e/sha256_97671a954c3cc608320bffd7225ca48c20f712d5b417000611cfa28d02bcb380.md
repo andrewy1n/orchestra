@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-ded2a7ef-b845-46c5-a438-ebe3625fe36e",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-1a7f25f1-4860-428f-8335-d4fd112c7074",
+    "duration_s": 0.021197,
+    "effort": "package-layout",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-1a7f25f1-4860-428f-8335-d4fd112c7074"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R16",
+    "result": "pass",
+    "revision": "268a9d35e9700bd01264a01404b2d7d0489a6046",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T09:09:32+00:00",
+  "relationships": {},
+  "revision": "sha256:97671a954c3cc608320bffd7225ca48c20f712d5b417000611cfa28d02bcb380",
+  "subject": "suite-commands"
+}
+---
+

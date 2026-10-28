@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-4ccdc6cf-0d55-43d7-a445-fafca255b90f",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-ad41a605-3ae6-4fb3-b57d-e8eb35384667",
+    "duration_s": 0.13002,
+    "effort": "package-layout",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-ad41a605-3ae6-4fb3-b57d-e8eb35384667"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R20",
+    "result": "pass",
+    "revision": "268a9d35e9700bd01264a01404b2d7d0489a6046",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T09:09:53+00:00",
+  "relationships": {},
+  "revision": "sha256:7e4762f96843ab824d9be7c4fd8a48b8a8df7b2db73ec1945d7761f1ea84a59e",
+  "subject": "declare-wheel-xdist"
+}
+---
+

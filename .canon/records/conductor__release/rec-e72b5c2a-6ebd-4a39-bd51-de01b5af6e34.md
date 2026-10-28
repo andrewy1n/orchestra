@@ -1,0 +1,17 @@
+---
+{
+  "id": "rec-e72b5c2a-6ebd-4a39-bd51-de01b5af6e34",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "package-layout",
+    "phase": "wheel-contents",
+    "state": "ready"
+  },
+  "record_type": "conductor:release",
+  "recorded_at": "2026-10-28T08:36:01+00:00",
+  "relationships": {},
+  "revision": "sha256:9cb5f5a7d11bd5737646902402112aa540a6968872031ceedcba8a50046e269f",
+  "subject": "wheel-contents"
+}
+---
+
