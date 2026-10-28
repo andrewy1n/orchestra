@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Product planning through verified code, run by agents"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "textual>=0.80",
+    "rich",
+    "fastapi",
+    "uvicorn",
+]
 
 [project.scripts]
 orchestra = "orchestra.cli:main"
@@ -29,6 +34,10 @@ packages = [
     "orchestra.tuner",
     "orchestra.tuner.schemas",
     "orchestra.stage",
+    "dashboard",
+    "dashboard.web",
+    "installer",
+    "installer.adapters",
 ]
 
 [tool.setuptools.package-data]
@@ -38,6 +47,17 @@ orchestra = ["_scripts/*.py"]
 "orchestra.composer" = ["schemas/*.json"]
 "orchestra.conductor" = ["schemas/*.json"]
 "orchestra.tuner" = ["schemas/*.json"]
+installer = ["providers.json"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "httpx",
+    "pip",
+    "setuptools",
+    "wheel",
+]
 
 [project.entry-points."canon.schemas"]
 score = "orchestra.score.schemas"
