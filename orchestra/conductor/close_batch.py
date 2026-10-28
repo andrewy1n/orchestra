@@ -44,6 +44,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
+from orchestra.canon import record_payload
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
 from orchestra.canon.store import StoreError
@@ -152,14 +153,9 @@ def default_list_oracle_amendments(
             continue
         if record.get("lifecycle_state") not in (None, "active"):
             continue
-        if str(_payload(record).get("acceptance")) in refs:
+        if str(record_payload(record).get("acceptance")) in refs:
             matched.append(record)
     return matched
-
-
-def _payload(record: dict[str, Any]) -> dict[str, Any]:
-    payload = record.get("payload")
-    return payload if isinstance(payload, dict) else {}
 
 
 def parse_oracle_hashes(raw: list[str] | str | None) -> dict[str, str]:
@@ -267,7 +263,7 @@ def _resolve_green_check_run(
         label="check_run_id",
         loader=loader,
     )
-    payload = _payload(record)
+    payload = record_payload(record)
 
     _match_field(
         criterion_id=criterion_id,
@@ -332,7 +328,7 @@ def _resolve_red_check_run(
         label="red_check_run_id",
         loader=loader,
     )
-    payload = _payload(record)
+    payload = record_payload(record)
 
     _match_field(
         criterion_id=criterion_id,
@@ -465,7 +461,7 @@ def _approved_amendment_covers_tree(
 ) -> bool:
     """True when an active approved amendment's new_hashes equal tree hashes."""
     for record in amendments:
-        payload = _payload(record)
+        payload = record_payload(record)
         if str(payload.get("status") or "") != "approved":
             continue
         new_hashes = parse_oracle_hashes(payload.get("new_hashes"))
@@ -565,7 +561,7 @@ def _enforce_claim_gates(
                 f"criterion {criterion_id!r}: acceptance could not be "
                 "loaded; cannot run the claim gate"
             ) from exc
-        payload = _payload(acceptance)
+        payload = record_payload(acceptance)
         claim_id = str(payload.get("claim") or "").strip()
         if not claim_id:
             continue
@@ -607,7 +603,7 @@ def _enforce_oracle_gates(
     except LookupError:
         return
 
-    acceptance_payload = _payload(acceptance)
+    acceptance_payload = record_payload(acceptance)
     if not is_oracle_backed(acceptance_payload):
         return
 

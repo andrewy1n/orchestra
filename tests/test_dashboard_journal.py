@@ -783,7 +783,7 @@ def test_journal_detail_opens_on_enter_with_type_subject_payload_body(journal_ui
         assert detail.record is not None
         assert detail.record["record_type"] == "conductor:assignment-amendment"
         assert "j-task-a" in (detail.record.get("subject") or "")
-        assert "assignment" in model._payload(detail.record)
+        assert "assignment" in (detail.record.get("payload") or {})
         body_src = detail.query_one("#record-body Markdown").source
         assert "use the other path" in body_src
         assert "Correction" in body_src or "use the other path" in body_src

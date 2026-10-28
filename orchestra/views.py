@@ -6,6 +6,8 @@ import posixpath
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from orchestra.canon import record_payload
+
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 STORE_ROOT = ".canon"
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -18,10 +20,6 @@ class ViewError(Exception):
     pass
 
 
-def _payload(record: Record) -> dict[str, Any]:
-    return record.get("payload") or {}
-
-
 def _state(*states: str) -> Predicate:
     return lambda r: r.get("lifecycle_state") in states
 
@@ -31,15 +29,15 @@ def _all(*predicates: Predicate) -> Predicate:
 
 
 def _not_closed(record: Record) -> bool:
-    return _payload(record).get("status") != "closed"
+    return record_payload(record).get("status") != "closed"
 
 
 def _payload_is(name: str, value: Any) -> Predicate:
-    return lambda r: _payload(r).get(name) == value
+    return lambda r: record_payload(r).get(name) == value
 
 
 def _payload_truthy(name: str) -> Predicate:
-    return lambda r: bool(_payload(r).get(name))
+    return lambda r: bool(record_payload(r).get(name))
 
 
 def _derived_is(name: str, value: Any) -> Predicate:
@@ -218,7 +216,7 @@ ROADMAP = View(
             ("status", "effort", "source"),
             _all(
                 _state("active"),
-                lambda r: _payload(r).get("status") in ("open", "promoted"),
+                lambda r: record_payload(r).get("status") in ("open", "promoted"),
             ),
         ),
     ),
@@ -265,7 +263,7 @@ def _empty(value: Any) -> bool:
 def effort_of(record: Record) -> str | None:
     if record.get("record_type") == EFFORT_TYPE:
         return record.get("subject")
-    payload = _payload(record)
+    payload = record_payload(record)
     return payload.get("effort") or None
 
 
@@ -275,11 +273,11 @@ def _in_effort(record: Record, effort: str | None) -> bool:
     own = effort_of(record)
     if own is not None:
         return own == effort
-    return _payload(record).get("scope") == effort
+    return record_payload(record).get("scope") == effort
 
 
 def _group_key(record: Record, view: View, role: Role) -> str:
-    payload = _payload(record)
+    payload = record_payload(record)
     group_by = view.group_by
     if role.own_group:
         return str(record.get("subject", "default"))
@@ -297,7 +295,7 @@ def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | 
         (r for r in records if r.get("subject") == name), key=lambda r: r.get("id", "")
     )
     for candidate in candidates:
-        value = _payload(candidate).get(order_field)
+        value = record_payload(candidate).get(order_field)
         if isinstance(value, int) and not isinstance(value, bool):
             return value
     return None
@@ -328,7 +326,7 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
         for candidate in tally:
             if not subject_related(subject, candidate.get("subject", "")):
                 continue
-            value = _payload(candidate).get(view.tally_field)
+            value = record_payload(candidate).get(view.tally_field)
             if not isinstance(value, str) or not value:
                 continue
             if value.lower() in FAILING_RESULT_VALUES:
@@ -340,7 +338,7 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
 
 
 def _record_line(record: Record, role: Role, extra_bits: list[str]) -> str:
-    payload = _payload(record)
+    payload = record_payload(record)
     bits = []
     for name in role.fields:
         if name in SUPPRESSED_FIELDS:
@@ -432,12 +430,12 @@ def _brief_in_scope(role: Role, subject: str, effort: str, record: Record) -> bo
     if role.name == "work":
         return record.get("subject") == subject
     if role.name in _BRIEF_EFFORT_SCOPED:
-        return _payload(record).get("effort") == effort
+        return record_payload(record).get("effort") == effort
     return subject_related(subject, record.get("subject") or "")
 
 
 def _brief_block(record: Record, role: Role) -> str:
-    payload = _payload(record)
+    payload = record_payload(record)
     bits = [
         f"**{name}**: {_display(payload[name])}"
         for name in role.fields
@@ -469,7 +467,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     )
     if work_item is None:
         raise ViewError(f"no work item found for subject {subject!r}")
-    effort = _payload(work_item).get("effort", "")
+    effort = record_payload(work_item).get("effort", "")
     sections = []
     for role in BRIEF_ROLES:
         selected = sorted(
@@ -509,11 +507,11 @@ def load_records(project: Any) -> list[Record]:
 def hook_constraints(records: list[Record], limit: int) -> tuple[list[Record], int]:
     effort = next(
         (
-            _payload(r).get("effort")
+            record_payload(r).get("effort")
             for r in records
             if r["record_type"] == POSITION.record_type
             and POSITION.select(r)
-            and _payload(r).get("effort")
+            and record_payload(r).get("effort")
         ),
         None,
     )
@@ -526,7 +524,7 @@ def hook_constraints(records: list[Record], limit: int) -> tuple[list[Record], i
             for r in records
             if r["record_type"] == role.record_type
             and role.select(r)
-            and _payload(r).get("effort") == effort
+            and record_payload(r).get("effort") == effort
         ),
         key=lambda r: r.get("subject") or "",
     )
