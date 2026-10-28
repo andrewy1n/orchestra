@@ -30,6 +30,10 @@ EFFORT = "tmuxfx"
 def seeded(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _goal(cli, defs, EFFORT)
+    h.create_generic_record(
+        cli, defs, "score:phase", subject=f"{EFFORT}-phase",
+        extra_payload={"title": "Main phase", "ordinal": 99, "effort": EFFORT},
+    )
     running = _work_item(cli, defs, EFFORT, "fx-running")
     h.transition(cli, "score:work-item", running, "in_progress")
     _work_item(cli, defs, EFFORT, "fx-ready")
@@ -126,6 +130,22 @@ def test_prefix_a_binding_is_a_popup_of_the_launcher_in_the_pane_directory(tmux)
     assert "/dashboard" in binding
 
 
+def _scroll_until(tmux, *needles: str) -> str:
+    end = time.monotonic() + h.DEADLINE
+    while time.monotonic() < end:
+        if select.select([tmux.client_fd], [], [], 0)[0]:
+            try:
+                tmux.output += os.read(tmux.client_fd, 65536)
+            except OSError:
+                pass
+        text = h.plain_terminal(tmux.output)
+        if all(needle in text for needle in needles):
+            return text
+        os.write(tmux.client_fd, b"\x1b[6~")
+        time.sleep(0.15)
+    return h.plain_terminal(tmux.output)
+
+
 def test_prefix_a_popup_renders_the_pane_repo_dashboard_with_waiting_running_time_and_failed_activity(
     tmux, seeded, cli, resolved_contract,
 ):
@@ -145,7 +165,7 @@ def test_prefix_a_popup_renders_the_pane_repo_dashboard_with_waiting_running_tim
     )
     tmux.press("A")
     needles = [*_markers(), "running 48h", "title of fx-waiting", "✗ fx-broken check failed", "status task assignee"]
-    text = tmux.screen_text(needles)
+    text = _scroll_until(tmux, *needles)
     missing = [needle for needle in needles if needle not in text]
     assert not missing, f"missing {missing} in client output: {text[-2000:]}"
     assert "status task assignee" in text and "status task wave" not in text, text[-2000:]
@@ -342,6 +362,8 @@ def test_prefix_a_popup_keys_only_walks_tabs_phase_sections_phase_detail_and_det
     press(b"\x1b[C", "title of fx-ready", absent=("title of fx-running",))
     press(b"\x1b[D", "title of fx-running", absent=("title of fx-ready",))
     press(b"1", "Phase px-later", "title of fx-ready")
+    press(b"]", "Main phase", absent=("title of px-first",))
+    press(b"]", "All phases", "px-later 0/2")
 
     for _ in range(3):
         press(b"\x1b[A", "px-later 0/2")
