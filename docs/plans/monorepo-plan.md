@@ -22,7 +22,7 @@ how each phase is proven.
 | Docs | `design/` holds specs. `docs/` holds plans, guides, usage and history. |
 | Old remotes | Delete `andrewy1n/adaptive-artifacts` and `andrewy1n/affidavit` on GitHub after a `git bundle` backup and owner confirmation. |
 | Old stores | Delete canon's `archive/`, `~/aa-plugin-dogfood`, and the empty `~/.artifacts/*` global stores. |
-| Ideas | `composer`, `composer:idea` and `composer:area` come in a follow-up effort, not in this plan. |
+| Ideas | `composer:idea` and `composer:area` live in `orchestra.composer`; handoff, dashboard, and `engage` use ideas for parked work. |
 | Execution | Run directly in a session. No work-items or acceptances. The effort and phase records track progress. |
 
 ## Names
@@ -31,8 +31,8 @@ how each phase is proven.
 |---|---|---|---|
 | Product | `orchestra` | — | CLI, views, dashboard, sessions |
 | Record store | `orchestra.canon` | — | records, schemas, lifecycles, op log, validation |
-| Product planning | `orchestra.composer` | `composer` | ideas, areas (follow-up effort) |
-| Work planning | `orchestra.score` | `score` | effort, position, milestone, phase, specification, design, decision, constraint, work-item, acceptance, continuity-question, backlog-item, feedback |
+| Product planning | `orchestra.composer` | `composer` | area, idea |
+| Work planning | `orchestra.score` | `score` | effort, position, milestone, phase, specification, design, decision, constraint, work-item, acceptance, continuity-question |
 | Dispatch | `orchestra.conductor` | `conductor` | assignment, execution-report, integration-report, assessment, release, proof-packet, failed-attempt |
 | Evidence | `orchestra.tuner` | `tuner` | check-run, finding, evidence-binding, oracle-amendment, observations |
 | Host adapters | `orchestra.stage` | — | hooks, installer, hosts |
@@ -184,9 +184,8 @@ runs once per stop.
 
 ## Follow-up effort
 
-- `orchestra.composer` with `composer:idea` and `composer:area`.
-- Convert `score:backlog-item` and `score:feedback` records to
+- Migrate legacy `score:backlog-item` and `score:feedback` records to
   `composer:idea`, then remove both types.
 - `orchestra idea`, a triage skill, and `orchestra view roadmap`.
-- Teach `engage` to start from an idea.
+- Teach `engage` to start from an untriaged idea.
 - Docs ownership: the product manages its own `docs/` tree.

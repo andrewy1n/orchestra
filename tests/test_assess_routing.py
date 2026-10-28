@@ -172,52 +172,37 @@ def test_assessment_examples_carry_required_fields_and_sections():
             assert section in inv["raw"]
 
 
-def test_engage_routes_feedback_through_settle_phase():
+def test_engage_does_not_name_score_feedback():
     text = _text("engage")
-    assert "A `score:feedback` record is new intent for the effort it names" in text
-    assert "Route it through `settle-phase` (specify)" in text
-    assert "Do not collect feedback." in text
-    lists = [
-        inv for inv in extract_invocations(text)
-        if inv["subcommand"] == "list" and inv["type"] == "score:feedback"
-    ]
-    assert len(lists) == 1
-    assert not [
-        inv for inv in extract_invocations(text)
-        if inv["subcommand"] == "create" and inv["type"] == "score:feedback"
-    ]
+    assert "score:feedback" not in text
 
 
-def test_engage_documents_backlog_item_list_create_supersede():
+def test_engage_documents_idea_list_create_supersede():
     text = _text("engage")
-    assert "Do not create `score:feedback`" in text
-    assert "score:backlog-item" in text
+    assert "composer:idea" in text
     assert "**Park**" in text or "Park" in text
     assert "promoted" in text and "dismissed" in text
     invs = extract_invocations(text)
-    backlog_lists = [
+    idea_lists = [
         inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "score:backlog-item"
+        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
-    assert len(backlog_lists) == 1
-    assert "payload.status=open" in backlog_lists[0]["raw"]
+    assert len(idea_lists) == 1
+    assert "payload.status=open" in idea_lists[0]["raw"]
     creates = [
         inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "score:backlog-item"
+        if inv["subcommand"] == "create" and inv["type"] == "composer:idea"
     ]
     assert len(creates) == 1
     assert creates[0]["payload"]["status"] == "open"
     assert creates[0]["payload"]["effort"]
     supersedes = [
         inv for inv in invs
-        if inv["subcommand"] == "supersede" and inv["type"] == "score:backlog-item"
+        if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
     ]
     statuses = {inv["payload"]["status"] for inv in supersedes if inv["payload"]}
     assert statuses == {"promoted", "dismissed"}
-    assert not [
-        inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "score:feedback"
-    ]
+    assert "score:feedback" not in text
 
 
 def test_verify_work_documents_enforced_red_first_close():

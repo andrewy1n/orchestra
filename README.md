@@ -368,31 +368,26 @@ is verified. `ready` means the evidence is sufficient. It does not mean
 merged or deployed. Do not write `merged`, `deployed`, or any other
 state. Do not deploy.
 
-A `score:feedback` record is new intent `engage` can route, with no
-collector. Route it through `settle-phase` (specify), even when tasks
-for that effort already exist. Do not collect feedback. Do not create
-`score:feedback`. Feedback is not a standing backlog.
-
-A `score:backlog-item` parks deferred work on an effort until it is
-promoted or dismissed. `engage` lists open items (`status=open`) after
+A `composer:idea` parks deferred work on an effort until it is
+promoted or dismissed. `engage` lists open ideas with an effort after
 naming focus. Park = create; promote = supersede to `promoted` then
 `settle-phase` with a new phase (or an incidental work-item when that
 kind fits); dismiss = supersede to `dismissed`.
 
 ```bash
-canon create --type score:backlog-item \
+canon create --type composer:idea \
   --subject "<item-slug>" \
   --payload '{"effort":"<effort-slug>","status":"open","source":"<optional>"}' \
   --body "<parked description>"
 
-canon list --type score:backlog-item \
+canon list --type composer:idea \
   --where payload.effort=<focus> --where payload.status=open --state active
 
-canon supersede --type score:backlog-item --id <id> \
+canon supersede --type composer:idea --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"promoted","phase":"<phase-slug-or-empty>","effort":"<effort-slug>"}'
 
-canon supersede --type score:backlog-item --id <id> \
+canon supersede --type composer:idea --id <id> \
   --expected-revision <revision> \
   --payload '{"status":"dismissed","effort":"<effort-slug>"}'
 ```

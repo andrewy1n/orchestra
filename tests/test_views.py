@@ -82,8 +82,8 @@ def test_handoff_lists_latest_proof_and_open_backlog(project):
         "p1",
         {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
     )
-    create(project, "score:backlog-item", "later-idea", {"effort": "alpha", "status": "open"})
-    create(project, "score:backlog-item", "done-idea", {"effort": "alpha", "status": "dismissed"})
+    create(project, "composer:idea", "later-idea", {"effort": "alpha", "status": "open"})
+    create(project, "composer:idea", "done-idea", {"effort": "alpha", "status": "dismissed"})
     text = render(project, "handoff")
     assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo" in text
     assert "### Backlog\n- **later-idea**: alpha; open" in text
