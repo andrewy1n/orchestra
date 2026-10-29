@@ -98,6 +98,29 @@ canon create --type score:effort \
 
    `kind` is the effort kind from step 5.
 
+   When `kind` is `deliver`, also create the effort's `score:brief`
+   with the effort slug as subject:
+
+```bash
+canon create --type score:brief \
+  --subject "<effort-slug>" \
+  --payload '{"effort":"<effort-slug>"}' \
+  --body-file "<brief-body.md>"
+```
+
+   `<brief-body.md>` has these headings; every section needs
+   non-empty text:
+
+```markdown
+## Problem
+## Users
+## Success measure
+## Non-goals
+```
+
+   Efforts of kind `repair`, `evaluate`, or `incidental` get no
+   `score:brief`.
+
 7. For each milestone in step 5 (skip when none), `create --type
    score:milestone`, `ordinal` starting at 1:
 
