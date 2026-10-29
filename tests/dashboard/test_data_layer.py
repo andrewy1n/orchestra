@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS = REPO_ROOT / "tests"
 DASHBOARD = REPO_ROOT / "dashboard"
 BACKEND = DASHBOARD / "backend"
-UI = DASHBOARD / "web" / "ui"
+UI = DASHBOARD / "frontend"
 UI_SRC = UI / "src"
 OPENAPI_JSON = UI / "openapi.json"
 API_TYPES = UI_SRC / "api-types.ts"
@@ -57,7 +57,7 @@ def defined_functions(path: Path) -> set[str]:
 
 
 def committed_schema() -> dict:
-    assert OPENAPI_JSON.is_file(), "missing dashboard/web/ui/openapi.json"
+    assert OPENAPI_JSON.is_file(), "missing dashboard/frontend/openapi.json"
     return json.loads(OPENAPI_JSON.read_text())
 
 
@@ -173,8 +173,8 @@ def test_r6_every_api_response_has_a_pydantic_model(store):
 
 
 def test_r7_api_types_are_generated_from_the_committed_schema():
-    assert OPENAPI_JSON.is_file(), "missing dashboard/web/ui/openapi.json"
-    assert API_TYPES.is_file(), "missing dashboard/web/ui/src/api-types.ts"
+    assert OPENAPI_JSON.is_file(), "missing dashboard/frontend/openapi.json"
+    assert API_TYPES.is_file(), "missing dashboard/frontend/src/api-types.ts"
     dev = json.loads((UI / "package.json").read_text()).get("devDependencies", {})
     version = dev.get("openapi-typescript")
     assert version is not None, "package.json devDependencies lacks openapi-typescript"
@@ -212,7 +212,7 @@ def test_r9_ui_imports_api_types_and_types_ts_holds_no_api_shape():
         for path in sorted(UI_SRC.rglob("*.ts")) + sorted(UI_SRC.rglob("*.svelte"))
         if re.search(r"""from\s+['"][^'"]*api-types(\.ts)?['"]""", path.read_text())
     ]
-    assert importers, "no file under dashboard/web/ui/src imports from api-types"
+    assert importers, "no file under dashboard/frontend/src imports from api-types"
 
     names = schema_names()
     assert names, "openapi.json has no components.schemas"

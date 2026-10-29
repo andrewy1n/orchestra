@@ -1,8 +1,8 @@
-# dashboard/web/ui
+# dashboard/frontend
 
 The browser dashboard for orchestra: a Vite + Svelte 5 + TypeScript + Tailwind
 single-page app. It renders the JSON served by the FastAPI server in
-`dashboard/web/` (`GET /api/snapshot`, `POST /api/needs`, `POST /api/backlog`).
+`dashboard/backend/server/` (`GET /api/snapshot`, `POST /api/needs`, `POST /api/backlog`).
 
 ## Commands
 

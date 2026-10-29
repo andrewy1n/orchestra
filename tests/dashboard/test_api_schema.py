@@ -9,7 +9,7 @@ pytest.importorskip("fastapi")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "api_schema.py"
-COMMITTED = REPO_ROOT / "dashboard" / "web" / "ui" / "openapi.json"
+COMMITTED = REPO_ROOT / "dashboard" / "frontend" / "openapi.json"
 
 
 def run(*args: str) -> subprocess.CompletedProcess:

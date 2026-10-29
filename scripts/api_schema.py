@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-DEFAULT_SCHEMA = ROOT / "dashboard" / "web" / "ui" / "openapi.json"
+DEFAULT_SCHEMA = ROOT / "dashboard" / "frontend" / "openapi.json"
 REGENERATE = "python scripts/api_schema.py"
 
 
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     print(
         f"api_schema.py: {args.schema} is out of date with the FastAPI app's OpenAPI schema.\n"
-        f"Run `{REGENERATE}`, then `npm run api-types` in dashboard/web/ui, and commit the result.",
+        f"Run `{REGENERATE}`, then `npm run api-types` in dashboard/frontend, and commit the result.",
         file=sys.stderr,
     )
     return 1

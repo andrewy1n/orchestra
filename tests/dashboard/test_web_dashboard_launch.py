@@ -1,8 +1,8 @@
 """Launcher oracles for the web dashboard.
 
 The web launcher is dashboard/bin/web. It resolves the store and serves the Vite
-production build from `npm run build` in dashboard/web/ui, at
-dashboard/web/ui/dist/index.html.
+production build from `npm run build` in dashboard/frontend, at
+dashboard/frontend/dist/index.html.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from orchestra.canon.project import open_store  # noqa: E402
 from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
-DIST_INDEX = REPO_ROOT / "dashboard" / "web" / "ui" / "dist" / "index.html"
+DIST_INDEX = REPO_ROOT / "dashboard" / "frontend" / "dist" / "index.html"
 UV_CACHE_DIR = os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")
 
 

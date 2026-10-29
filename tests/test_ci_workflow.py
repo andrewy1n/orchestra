@@ -236,7 +236,7 @@ def test_no_run_step_ends_with_or_true():
         assert not line.rstrip().endswith("|| true"), line
 
 
-WEB_DIR = "dashboard/web/ui"
+WEB_DIR = "dashboard/frontend"
 WEB_COMMANDS = ("npm ci", "npm run lint", "npm run check", "npm test", "npm run build")
 
 

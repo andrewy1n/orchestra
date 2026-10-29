@@ -1,6 +1,6 @@
 """FastAPI application factory for the web dashboard launcher.
 
-Serves the Vite production build from ``dashboard/web/ui/dist`` at ``/``
+Serves the Vite production build from ``dashboard/frontend/dist`` at ``/``
 when it exists.
 """
 
@@ -15,10 +15,10 @@ from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
 from orchestra.canon.project import Project
 
-DIST = Path(__file__).resolve().parent.parent.parent / "web" / "ui" / "dist"
+DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 MISSING_BUILD = (
-    "No web build at dashboard/web/ui/dist. "
-    "Run `npm run build` in dashboard/web/ui."
+    "No web build at dashboard/frontend/dist. "
+    "Run `npm run build` in dashboard/frontend."
 )
 
 

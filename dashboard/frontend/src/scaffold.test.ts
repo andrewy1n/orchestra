@@ -64,7 +64,7 @@ afterEach(() => {
 
 /**
  * Mount the real `<App>` when the Svelte plugin is present (vitest run from
- * `dashboard/web/ui`). Returns false when the harness ran vitest from the repo
+ * `dashboard/frontend`). Returns false when the harness ran vitest from the repo
  * root, where the ui Vite config is not loaded.
  */
 async function tryMountApp(): Promise<boolean> {

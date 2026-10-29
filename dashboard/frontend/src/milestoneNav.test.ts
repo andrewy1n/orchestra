@@ -11,7 +11,7 @@
  * R10: phase rows show title (else subject) and done/total.
  *
  * Source wiring always asserts. DOM mounts when the Svelte vitest plugin
- * is loaded (npm run from dashboard/web/ui); otherwise helpers cover scoping.
+ * is loaded (npm run from dashboard/frontend); otherwise helpers cover scoping.
  */
 
 import { readFileSync } from "node:fs";

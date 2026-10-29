@@ -49,7 +49,7 @@ CI runs the full suite on every push.
 
 ## TypeScript and Svelte
 
-The dashboard UI lives in `dashboard/web/ui`. Run the commands below from that directory.
+The dashboard UI lives in `dashboard/frontend`. Run the commands below from that directory.
 
 - Use strict types. Do not use `any` or `@ts-ignore` without a one-line reason.
 - Follow the comment rule in Rules.
