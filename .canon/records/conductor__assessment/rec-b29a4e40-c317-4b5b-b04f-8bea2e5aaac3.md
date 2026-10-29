@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-b29a4e40-c317-4b5b-b04f-8bea2e5aaac3",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "workflow-loop",
+    "missing": "",
+    "next": "release",
+    "phase": "spec-analyze",
+    "requirement": "R7",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T08:21:34+00:00",
+  "relationships": {},
+  "revision": "sha256:7884c5fcde096f7398c7afdc28ac6c3d0487f0f55126332a9819b19821047725",
+  "subject": "spec-analyze-R7"
+}
+---
+
+## Evidence
+
+Oracle-backed tdd acceptance rec-c6f8a66c-8c5f-4f90-9220-9603331cde17. Assertion-level red check-run rec-5046634f-30ce-45f5-921e-57450c14cd92 (revision dirty, diff_sha256 e0972315a70ebba9..., failing nodes 1). Green check-run rec-4803d812-c4ac-4b8a-84cd-395b68a363ea result pass at revision 4d4e99b815719e5a6b9dba2cdcb0ece953bd925c. The frozen oracle file hash matches oracle_hashes. No manifest claim, so no verdict needed.
+
+## Missing
+
+none
+
+## Reason
+
+The frozen tests for R7 failed on assertions before the change and pass at the task commit through the real `orchestra analyze` entry point, and the oracle file is unchanged.

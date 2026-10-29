@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-76ebb5f6-9cb8-4564-9ee0-e3ba64d46fcc",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "workflow-loop",
+    "method": "check",
+    "phase": "spec-analyze",
+    "requirement": "R1",
+    "verify_command": "uv run orchestra analyze spec-analyze --stage plan --store /home/andrewyin/orchestra"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T08:03:39+00:00",
+  "relationships": {},
+  "revision": "sha256:c979f2c971084b8ab1aee382c60767801f5c1f3b186307fafb13b5bcdd952fef",
+  "subject": "verify-spec-analyze-self"
+}
+---
+

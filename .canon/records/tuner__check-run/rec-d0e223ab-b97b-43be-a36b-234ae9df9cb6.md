@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-d0e223ab-b97b-43be-a36b-234ae9df9cb6",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-00bfaf2d-3df7-4cdb-adad-7bb982fde613",
+    "duration_s": 5.32513,
+    "effort": "workflow-loop",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-00bfaf2d-3df7-4cdb-adad-7bb982fde613",
+      "rec-755ef790-253f-4903-a0b2-468029f45a73"
+    ],
+    "method": "tdd",
+    "output_sha256": "185773fdaf41d51b674518354a04a32ebe056ceadd55442e060eefa604d2ba88",
+    "requirement": "R16",
+    "result": "pass",
+    "revision": "4d4e99b815719e5a6b9dba2cdcb0ece953bd925c",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T08:21:05+00:00",
+  "relationships": {},
+  "revision": "sha256:d2cf328d1ac225559658f3e3552a79c877991bac6cb5df2bbf000d492af06a21",
+  "subject": "analyze-plan-checks-r16"
+}
+---
+
+...                                                                      [100%]
+3 passed in 4.61s

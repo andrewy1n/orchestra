@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-ad856a66-ab74-4d19-a8d8-feffb6ea7476",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "session-handoff",
+    "method": "tdd",
+    "phase": "hook-context-budget",
+    "requirement": "R7",
+    "verify_command": "uv run pytest tests/test_hooks.py -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T08:15:11+00:00",
+  "relationships": {},
+  "revision": "sha256:658e9073aee8dd6d668d8f13fcaf5247ae47dc6e2b901eca51e387f324a00675",
+  "subject": "compact-hook-view-links"
+}
+---
+
