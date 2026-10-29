@@ -38,8 +38,11 @@ their response. They do not call `canon`.
 
 ## Testing
 
-Run the four pytest commands in the README Testing section before you
-close a task. While you edit, run the affected test files with
-`uv run pytest <files>`.
+While you edit, run the affected test files with `uv run pytest <files>`.
 Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
 trees.
+
+Before you close a task, run the test files for the code you changed.
+Run the four pytest commands in the README Testing section only at phase
+end, or when you change shared code (config, store, CLI entry points).
+CI runs the full suite on every push.
