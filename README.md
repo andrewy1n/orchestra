@@ -432,6 +432,7 @@ subcommands and shells to `canon` for store reads/writes:
 | `hook-start` | SessionStart hook: inject the handoff. |
 | `hook-stop` | Stop hook: validate, and block only on errors new to the session. |
 | `sessions` | Summarize Claude Code session transcripts. |
+| `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
 | `store` | Resolve the bound store and run `canon` through it. |

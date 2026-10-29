@@ -181,6 +181,14 @@ canon list --type score:work-item \
     has size, human stops, collision notes, `## Proof`, and
     `## Landing`; and for deliver/repair each intended oracle-backed
     tdd acceptance has non-empty `test_ids` and `oracle_hashes`.
+    Run the analyze check first:
+
+```bash
+orchestra analyze <phase-slug>
+```
+
+    Refuse plan review while it exits 1. Fix each error finding, then
+    run it again.
 
 ```bash
 canon create --type score:continuity-question \

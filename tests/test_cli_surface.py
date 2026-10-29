@@ -26,6 +26,7 @@ from orchestra.conductor import suite  # noqa: E402
 # Every runtime call a skill makes must be one of these named commands.
 HELP_PATHS = [
     ["idea"],
+    ["analyze"],
     ["review-brief"],
     ["suite", "policy"],
     ["suite", "start"],
@@ -79,7 +80,7 @@ def test_top_level_help_names_the_runtime_surface(capsys):
         cli.main(["--help"])
     assert exit_info.value.code == 0
     text = capsys.readouterr().out
-    for name in ("review-brief", "suite", "store"):
+    for name in ("analyze", "review-brief", "suite", "store"):
         assert name in text
 
 
