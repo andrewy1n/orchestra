@@ -46,3 +46,14 @@ Before you close a task, run the test files for the code you changed.
 Run the four pytest commands in the README Testing section only at phase
 end, or when you change shared code (config, store, CLI entry points).
 CI runs the full suite on every push.
+
+## TypeScript and Svelte
+
+The dashboard UI lives in `dashboard/web/ui`. Run the commands below from that directory.
+
+- Use strict types. Do not use `any` or `@ts-ignore` without a one-line reason.
+- Follow the comment rule in Rules.
+- Put one component in each `.svelte` file.
+- Put tests beside the source as `*.test.ts`.
+- Do not format by hand. Let the formatter do it.
+- Before you close a task, run `npm run lint`, `npm run check`, and `npm test`.
