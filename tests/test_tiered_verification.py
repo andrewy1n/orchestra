@@ -502,7 +502,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     flat = _skill_flat()
     assert "Do not waive `phase_gate.suite`" in flat
     assert "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)" in flat
-    assert "closing verification → reviewer → integration-report → suite → phase gate" in flat
+    assert "closing verification → analyze → reviewer → integration-report → suite → phase gate" in flat
     assert "orchestra suite record" in text
     assert "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat
 
