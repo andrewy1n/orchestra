@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-776b0afa-b992-4a75-a05f-cb45b31c0aac",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/dashboard/test_areas.py:sha256:34933dfcdcf957f44310ee6d31ebe561f94fd624fdc378be80ff2158a97662d0"
+    ],
+    "phase": "areas-and-ideas",
+    "requirement": "R5",
+    "test_ids": [
+      "tests/dashboard/test_areas.py::test_r5_each_idea_carries_its_area_and_its_effort"
+    ],
+    "verify_command": "uv run pytest tests/dashboard/test_areas.py::test_r5_each_idea_carries_its_area_and_its_effort -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T22:24:57+00:00",
+  "relationships": {},
+  "revision": "sha256:50b354fa5a81e9ad10aaadeb2d2bd8e860cbb241155b471f00f9d83f4d976e23",
+  "subject": "verify-areas-and-ideas-r5"
+}
+---
+
