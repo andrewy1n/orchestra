@@ -1,11 +1,11 @@
 <script lang="ts">
   import {
     Controls,
-    MarkerType,
-    SvelteFlow,
     type Edge,
+    MarkerType,
     type Node,
     type NodeTypes,
+    SvelteFlow,
   } from "@xyflow/svelte";
   import "@xyflow/svelte/dist/style.css";
   import TaskFlowNode from "./TaskFlowNode.svelte";

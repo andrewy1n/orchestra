@@ -2,16 +2,17 @@
   import { onMount, tick } from "svelte";
   import {
     beginWrite,
+    type ConfirmChoice,
+    type PendingWrite,
     writeBody,
     writeChoices,
     writePath,
-    type ConfirmChoice,
-    type PendingWrite,
   } from "./actions";
   import { getJson, postJson } from "./api";
   import {
     backlogHref,
     closeDetail,
+    type DetailTarget,
     detailTarget,
     journalHref,
     needsHref,
@@ -20,14 +21,8 @@
     recordHref,
     requirementHref,
     taskHref,
-    type DetailTarget,
   } from "./detail";
   import { detailView, evidenceBoard, scanNeeds, taskBoard } from "./detailView";
-  import { linkifyText, type RefContext } from "./links";
-  import { renderMarkdown } from "./markdown";
-  import { buildPhaseChrome } from "./phaseChrome";
-  import TaskGraphBoard from "./TaskGraphBoard.svelte";
-  import { buildWaveGraph } from "./taskGraph";
   import {
     defaultPhase,
     filteredTasks,
@@ -36,14 +31,19 @@
     tabCounts,
     visibleEfforts,
   } from "./efforts";
+  import { linkifyText, type RefContext } from "./links";
+  import { renderMarkdown } from "./markdown";
   import {
     groupPhasesByMilestone,
     initialExpandedMilestones,
   } from "./milestones";
+  import { buildPhaseChrome } from "./phaseChrome";
   import { startTokenPoller } from "./poll";
-  import { currentRoute, routeLabel, type Route } from "./router";
+  import { currentRoute, type Route, routeLabel } from "./router";
   import { filterJournal, openBacklog, orderedJournal } from "./side";
-  import { applyTheme, DEFAULT_THEME, toggle, type Theme } from "./theme";
+  import TaskGraphBoard from "./TaskGraphBoard.svelte";
+  import { buildWaveGraph } from "./taskGraph";
+  import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
   import type {
     EffortView,
     JournalResponse,
@@ -127,7 +127,7 @@
   const effort: EffortView | null = $derived.by(() => {
     if (!snapshot) return null;
     const name =
-      selectedEffort || (rail.shown[0] && rail.shown[0].effort) || "";
+      selectedEffort || (rail.shown[0]?.effort) || "";
     return snapshot.efforts.find((view) => view.effort === name) ?? null;
   });
 
@@ -254,14 +254,14 @@
   });
 
   const phaseTabs: string[] = $derived.by(() => {
-    if (!target || target.kind !== "phase") return [];
+    if (target?.kind !== "phase") return [];
     if (!detailPayload || typeof detailPayload !== "object") return [];
     const tabs = (detailPayload as { tabs?: unknown }).tabs;
     return Array.isArray(tabs) ? tabs.map(String) : [];
   });
 
   const activePhaseTab = $derived.by(() => {
-    if (!target || target.kind !== "phase") return "";
+    if (target?.kind !== "phase") return "";
     if (target.tab && phaseTabs.includes(target.tab)) return target.tab;
     return phaseTabs[0] ?? "";
   });
@@ -288,21 +288,21 @@
   });
 
   const taskView = $derived.by(() => {
-    if (!target || target.kind !== "phase" || activePhaseTab !== "tasks" || !detailPayload) {
+    if (target?.kind !== "phase" || activePhaseTab !== "tasks" || !detailPayload) {
       return null;
     }
     return taskBoard(detailPayload);
   });
 
   const evidenceView = $derived.by(() => {
-    if (!target || target.kind !== "phase" || activePhaseTab !== "evidence" || !detailPayload) {
+    if (target?.kind !== "phase" || activePhaseTab !== "evidence" || !detailPayload) {
       return null;
     }
     return evidenceBoard(detailPayload);
   });
 
   const phaseChrome = $derived.by(() => {
-    if (!target || target.kind !== "phase" || !detailPayload) return null;
+    if (target?.kind !== "phase" || !detailPayload) return null;
     return buildPhaseChrome(detailPayload, {
       position: effort?.position ?? null,
     });
@@ -316,7 +316,7 @@
   }
 
   const phaseTaskGraph = $derived.by(() => {
-    if (!target || target.kind !== "phase" || !detailPayload) return null;
+    if (target?.kind !== "phase" || !detailPayload) return null;
     if (activePhaseTab !== "overview") return null;
     const detail = (detailPayload as { detail?: { tasks?: unknown } }).detail;
     const tasks = Array.isArray(detail?.tasks) ? detail.tasks : [];

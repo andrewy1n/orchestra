@@ -1,0 +1,26 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+	"files": {
+		"includes": ["**", "!**/dist", "!**/node_modules"]
+	},
+	"html": {
+		"experimentalFullSupportEnabled": true
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"style": {
+				"noNonNullAssertion": "off",
+				"noDescendingSpecificity": "off"
+			},
+			"complexity": {
+				"noImportantStyles": "off"
+			}
+		}
+	}
+}

@@ -15,57 +15,57 @@ export const API_BASE = "/api";
 
 /** Build an `/api` URL for a route such as `snapshot`. */
 export function apiUrl(path: string): string {
-  const clean = path.replace(/^\/+/, "");
-  return clean ? `${API_BASE}/${clean}` : API_BASE;
+	const clean = path.replace(/^\/+/, "");
+	return clean ? `${API_BASE}/${clean}` : API_BASE;
 }
 
 /** GET a JSON document from the API. */
 export async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(apiUrl(path), {
-    headers: { accept: "application/json" },
-    ...init,
-  });
-  if (!response.ok) {
-    throw new Error(`GET ${apiUrl(path)} failed: ${response.status}`);
-  }
-  return (await response.json()) as T;
+	const response = await fetch(apiUrl(path), {
+		headers: { accept: "application/json" },
+		...init,
+	});
+	if (!response.ok) {
+		throw new Error(`GET ${apiUrl(path)} failed: ${response.status}`);
+	}
+	return (await response.json()) as T;
 }
 
 /** Read `{error}` from a failed write response when present. */
 async function errorMessage(
-  response: Response,
-  fallback: string,
+	response: Response,
+	fallback: string,
 ): Promise<string> {
-  try {
-    const data: unknown = await response.json();
-    if (
-      data &&
-      typeof data === "object" &&
-      "error" in data &&
-      typeof (data as { error: unknown }).error === "string" &&
-      (data as { error: string }).error
-    ) {
-      return (data as { error: string }).error;
-    }
-  } catch {
-    /* keep fallback */
-  }
-  return fallback;
+	try {
+		const data: unknown = await response.json();
+		if (
+			data &&
+			typeof data === "object" &&
+			"error" in data &&
+			typeof (data as { error: unknown }).error === "string" &&
+			(data as { error: string }).error
+		) {
+			return (data as { error: string }).error;
+		}
+	} catch {
+		/* keep fallback */
+	}
+	return fallback;
 }
 
 /** POST a JSON body to the API. */
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(apiUrl(path), {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const message = await errorMessage(
-      response,
-      `POST ${apiUrl(path)} failed: ${response.status}`,
-    );
-    throw new Error(message);
-  }
-  return (await response.json()) as T;
+	const response = await fetch(apiUrl(path), {
+		method: "POST",
+		headers: { "content-type": "application/json", accept: "application/json" },
+		body: JSON.stringify(body),
+	});
+	if (!response.ok) {
+		const message = await errorMessage(
+			response,
+			`POST ${apiUrl(path)} failed: ${response.status}`,
+		);
+		throw new Error(message);
+	}
+	return (await response.json()) as T;
 }
