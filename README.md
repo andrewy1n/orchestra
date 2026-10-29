@@ -414,6 +414,7 @@ subcommands and shells to `canon` for store reads/writes:
 | `handoff` | Print the handoff markdown. Writes no file. |
 | `view` | Print the `plan`, `status`, or `verification` view. Writes no file. |
 | `brief` | Print one work-item's brief. Writes no file. |
+| `status` | Print one line per effort with running, ready, and needs-you counts; `--count` prints the needs-you count. Writes no file. |
 | `hook-start` | SessionStart hook: inject the handoff. |
 | `hook-stop` | Stop hook: validate, and block only on errors new to the session. |
 | `sessions` | Summarize Claude Code session transcripts. |

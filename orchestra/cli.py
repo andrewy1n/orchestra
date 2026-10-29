@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from orchestra.conductor import reviewer
-from orchestra import view_cli
+from orchestra import status_cli, view_cli
 
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
@@ -35,6 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)
+    status_cli.add_parser(sub)
     sub.add_parser(
         "verify",
         add_help=False,
@@ -866,6 +867,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_store_ensure(args)
     if args.command == "idea":
         return _cmd_idea(args)
+    if args.command == "status":
+        return status_cli.run(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
