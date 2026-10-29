@@ -108,4 +108,19 @@ def analyze_phase(records: list[dict[str, Any]], phase: str, stage: str = "plan"
         if _COMPOUND.search(_CODE_SPAN.sub("", text)):
             add("warning", "compound-requirement", spec_subject, f"{rid} joins clauses with 'and' or ';'")
 
+    if stage == "close":
+        for acceptance in acceptances:
+            runs = [
+                r for r in records
+                if r.get("record_type") == "tuner:check-run"
+                and (r.get("payload") or {}).get("criterion_id") == acceptance["id"]
+            ]
+            if not runs:
+                add("error", "acceptance-no-check-run", acceptance["subject"], f"acceptance {acceptance['id']} has no check-run")
+                continue
+            latest = max(runs, key=lambda r: r.get("recorded_at") or "")
+            result = latest["payload"].get("result")
+            if result != "pass":
+                add("error", "acceptance-not-passing", acceptance["subject"], f"acceptance {acceptance['id']} latest check-run result is {result!r}, not 'pass'")
+
     return report
