@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-a00d0b7b-1e0b-4986-a2ea-49d3ad582bda",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "agent-api-types-codegen",
     "decisions": [
       "api-types-codegen"
     ],
@@ -24,9 +24,9 @@
     "title": "Generate api-types.ts from the OpenAPI schema"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T20:40:06+00:00",
+  "recorded_at": "2026-10-29T21:22:35+00:00",
   "relationships": {},
-  "revision": "sha256:708a355d90562ae9d0f040393c7cd400ded2c6f972d9da1d2c576c75f2c4b34a",
+  "revision": "sha256:90a375f1306de8e4d7ea53618c67cad69fbc46e97157012233b22edf3a6b0ec2",
   "subject": "api-types-codegen"
 }
 ---

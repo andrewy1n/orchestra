@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-a081d48c-f666-4cc6-8eed-5b7504acced8",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "agent-fastapi-pydantic",
     "decisions": [
       "one-fastapi-server",
       "pydantic-api-contract"
@@ -24,9 +24,9 @@
     "title": "One FastAPI server with Pydantic response models"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T20:40:04+00:00",
+  "recorded_at": "2026-10-29T21:15:54+00:00",
   "relationships": {},
-  "revision": "sha256:72d6305f3cd428b2a9db1104a006748e08a9a707282436f8886e5c07f2020fc2",
+  "revision": "sha256:571f6dc0d3fea19318ac7cdacc8e59067f4f5ad59046d642b79dedbe0f42d1ca",
   "subject": "fastapi-pydantic"
 }
 ---
