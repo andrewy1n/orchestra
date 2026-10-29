@@ -6,7 +6,7 @@
     "effort": "dashboard",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_web_gate.py:sha256:b699b25d5fda4c77bcbdb7d5f7b3deb3f57668c08dd18d1283f59670c021d034"
+      "tests/test_web_gate.py:sha256:6a25476b59d79a059bcd2110343a06248d1c03b3295f1208a0dd7a72dac9ba34"
     ],
     "phase": "node-ci",
     "requirement": "R6",
@@ -16,9 +16,9 @@
     "verify_command": "uv run pytest tests/test_web_gate.py::test_r6_biome_json_enables_full_svelte_support -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T18:52:56+00:00",
+  "recorded_at": "2026-10-29T19:08:28+00:00",
   "relationships": {},
-  "revision": "sha256:b5762cad0ffeb3403c054cdd2d6f7fce5213727ad769ded40b6d4f4b5f8677ee",
+  "revision": "sha256:1e4721fd670f243eb242bbfbea3048481a8f6c2f6b7fcad6ddb6ffcf3ac3257a",
   "subject": "biome-lint-config"
 }
 ---

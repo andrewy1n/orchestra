@@ -6,7 +6,7 @@
     "effort": "dashboard",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_web_gate.py:sha256:b699b25d5fda4c77bcbdb7d5f7b3deb3f57668c08dd18d1283f59670c021d034"
+      "tests/test_web_gate.py:sha256:6a25476b59d79a059bcd2110343a06248d1c03b3295f1208a0dd7a72dac9ba34"
     ],
     "phase": "node-ci",
     "requirement": "R9",
@@ -16,9 +16,9 @@
     "verify_command": "uv run pytest tests/test_web_gate.py::test_r9_agents_md_section_names_the_three_commands -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T18:52:57+00:00",
+  "recorded_at": "2026-10-29T19:08:27+00:00",
   "relationships": {},
-  "revision": "sha256:94d4c859cd1b63a849d9d9eb1f67210f742acd4c542ebf64be09f4265609b934",
+  "revision": "sha256:6e67c8ef76285f83c9eac5cdcd1b88663652dd83c1b2cd2931a5dd12a7ad7e2a",
   "subject": "agents-ts-section-commands"
 }
 ---

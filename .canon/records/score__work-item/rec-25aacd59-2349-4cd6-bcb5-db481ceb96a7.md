@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-25aacd59-2349-4cd6-bcb5-db481ceb96a7",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "agent-verify-node-ci",
     "decisions": [
       "web-ci-job-shape",
       "ts-lint-tool",
@@ -36,9 +36,9 @@
     "title": "Verify Node CI and lint standard"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T18:51:52+00:00",
+  "recorded_at": "2026-10-29T19:02:09+00:00",
   "relationships": {},
-  "revision": "sha256:73750f1904f86d803c0c8fa1a2a633b08a7a81a6bf893779fb96ac570df03fa2",
+  "revision": "sha256:a4657399d83365972fc06db32bd65159839541203b87184f826b24dd5bb72da8",
   "subject": "verify-node-ci"
 }
 ---
