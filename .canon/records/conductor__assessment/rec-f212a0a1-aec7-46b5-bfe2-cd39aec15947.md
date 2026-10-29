@@ -1,0 +1,36 @@
+---
+{
+  "id": "rec-f212a0a1-aec7-46b5-bfe2-cd39aec15947",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "confidence": "high",
+    "effort": "dashboard",
+    "missing": "",
+    "next": "release",
+    "phase": "remove-textual",
+    "requirement": "R3",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T20:23:46+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-1b6b840e-f113-4cfd-a431-dc099b62e2ad"
+    ]
+  },
+  "revision": "sha256:d87de12cba1d79aa4537fdf018e048f3a23907b4903b3dd838696bd511d1e90f",
+  "subject": "remove-textual-R3"
+}
+---
+
+## Evidence
+
+Check-runs from orchestra check at ce11401e99ae604bc3e18d97375916d676dab191: rec-93d93568-65c3-478c-8bcb-1022a676bfed=pass.
+
+## Missing
+
+none
+
+## Reason
+
+Every check this task runs for R3 passed.

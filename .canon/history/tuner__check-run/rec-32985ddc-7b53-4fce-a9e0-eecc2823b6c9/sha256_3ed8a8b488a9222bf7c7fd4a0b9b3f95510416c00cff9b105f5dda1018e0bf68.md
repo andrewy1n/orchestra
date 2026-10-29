@@ -1,0 +1,22 @@
+---
+{
+  "id": "rec-32985ddc-7b53-4fce-a9e0-eecc2823b6c9",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "remove-textual-review",
+    "effort": "dashboard",
+    "evidence_kind": "review",
+    "method": "review",
+    "result": "fail",
+    "revision": "ce11401e99ae604bc3e18d97375916d676dab191",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T20:30:54+00:00",
+  "relationships": {},
+  "revision": "sha256:3ed8a8b488a9222bf7c7fd4a0b9b3f95510416c00cff9b105f5dda1018e0bf68",
+  "subject": "remove-textual-review"
+}
+---
+
+verdict: NEEDS_WORK. Findings: README Testing section still names the removed tmux pass (major); suite.py fallback chain and tests/test_tiered_verification.py pin the removed tmux pass (major); orchestra status counts merge-branch landings that the web count does not (judgment); the bin/web launcher environment probe test was deleted (minor); a skills example names a deleted test file (minor).
