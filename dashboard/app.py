@@ -334,6 +334,8 @@ class EffortPane(VerticalScroll):
 
     def show(self, view: model.EffortView, now: datetime, width: int, colors: dict[str, str]) -> None:
         self.last = (view, now, width, colors)
+        if not self.query("#goal"):
+            return
         inner = self.scrollable_content_region.width or width - 2
         self.inner = inner
         self.query_one("#goal", Static).update(Text(view.goal, style=colors["muted"]))
