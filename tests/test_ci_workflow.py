@@ -249,3 +249,52 @@ def test_blocking_jobs_do_not_continue_on_error():
 def test_no_run_step_ends_with_or_true():
     for line in all_run_lines():
         assert not line.rstrip().endswith("|| true"), line
+
+
+WEB_DIR = "dashboard/web/ui"
+WEB_COMMANDS = ("npm ci", "npm run lint", "npm run check", "npm test", "npm run build")
+
+
+def _web_steps():
+    spec = job("web")
+    default_dir = spec.get("defaults", {}).get("run", {}).get("working-directory")
+    pairs = []
+    for step in spec.get("steps", []):
+        if "run" not in step:
+            continue
+        workdir = step.get("working-directory", default_dir)
+        for line in step["run"].splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("cd ") and line[3:].strip().rstrip("/") == WEB_DIR:
+                workdir = WEB_DIR
+                continue
+            pairs.append((line, workdir))
+    return pairs
+
+
+def test_r1_web_job_runs_the_five_commands_in_order():
+    pairs = _web_steps()
+    commands = [line for line, _ in pairs]
+    positions = []
+    for command in WEB_COMMANDS:
+        assert command in commands, f"web job does not run {command}"
+        positions.append(commands.index(command))
+    assert positions == sorted(positions), f"web commands out of order: {commands}"
+    for command in WEB_COMMANDS:
+        workdir = dict(pairs)[command]
+        assert workdir is not None and workdir.rstrip("/") == WEB_DIR, (
+            f"{command} runs in {workdir}"
+        )
+
+
+def test_r2_web_job_has_no_path_filter():
+    spec = job("web")
+    assert "if" not in spec, "web job has a job-level if"
+    on = triggers()
+    for key in ("push", "pull_request"):
+        assert key in on, f"web job does not run on {key}"
+        trigger = on[key] or {}
+        assert "paths" not in trigger, f"{key} trigger has paths"
+        assert "paths-ignore" not in trigger, f"{key} trigger has paths-ignore"
