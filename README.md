@@ -699,3 +699,8 @@ extracts every `canon` invocation documented under `skills/` and asserts
 the schema modules actually permit it — a red result there names a skill
 instructing an operation (a record type, field, or transition) the
 schemas do not allow.
+
+### Type check
+
+Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
+`installer`. CI runs the same command in the `types` job.
