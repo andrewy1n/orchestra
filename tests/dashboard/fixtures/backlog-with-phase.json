@@ -1,0 +1,16 @@
+{
+  "body": {
+    "item": {
+      "body": "",
+      "effort": "alpha",
+      "id": "<composer:idea:park-me>",
+      "phase": "p-work",
+      "record_type": "composer:idea",
+      "source": "chat",
+      "status": "open",
+      "subject": "park-me",
+      "text": "park-me"
+    }
+  },
+  "status": 200
+}

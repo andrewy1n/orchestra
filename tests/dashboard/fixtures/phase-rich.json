@@ -1,0 +1,182 @@
+{
+  "body": {
+    "decisions": {
+      "groups": [
+        [
+          "title of p-work",
+          [
+            {
+              "alternatives": "two readers",
+              "choice": "keep one reader",
+              "counter": "placeholder text for Counter-argument.",
+              "phase": "p-work",
+              "rationale": "placeholder text for Rationale.",
+              "subject": "d-one",
+              "superseded": []
+            }
+          ]
+        ]
+      ]
+    },
+    "detail": {
+      "awaiting_signoff": false,
+      "body": "## Problem\n\nplaceholder text for Problem.\n\n## Approach\n\nplaceholder text for Approach.\n\n## Exit criteria\n\nplaceholder text for Exit criteria.\n",
+      "constraints": [
+        {
+          "id": "<score:constraint:c-one>",
+          "kind": "constraint",
+          "subject": "c-one",
+          "text": "no new dependencies"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "<score:decision:d-one>",
+          "kind": "decision",
+          "subject": "d-one",
+          "text": "keep one reader"
+        }
+      ],
+      "design_body": "## Architecture\n\ndesign text for Architecture.\n\n## Interfaces\n\ndesign text for Interfaces.\n\n## Decisions\n\ndesign text for Decisions.\n\n## Invariants\n\ndesign text for Invariants.\n\n## Assumptions\n\ndesign text for Assumptions.\n\n## Tradeoffs\n\ndesign text for Tradeoffs.\n\n## Risks\n\ndesign text for Risks.\n",
+      "effort": "alpha",
+      "evidence": {
+        "decisions": [
+          {
+            "choice": "keep one reader",
+            "subject": "d-one"
+          }
+        ],
+        "integration": null,
+        "non_goals": "placeholder text.",
+        "phase": "p-work",
+        "release_ready": false,
+        "release_state": "",
+        "requirements": [
+          {
+            "check_at": "<timestamp>",
+            "check_kind": "",
+            "confidence": "high",
+            "id": "R1",
+            "latest_check": {
+              "evidence_kind": "",
+              "id": "<tuner:check-run:task-ready-check>",
+              "method": "check",
+              "recorded_at": "<timestamp>",
+              "result": "pass",
+              "revision": "abc123",
+              "signed_by": "runner"
+            },
+            "next": "",
+            "phase": "p-work",
+            "status": "verified",
+            "tasks": 1,
+            "tasks_done": 0,
+            "text": ""
+          },
+          {
+            "check_at": null,
+            "check_kind": "",
+            "confidence": "",
+            "id": "R2",
+            "latest_check": null,
+            "next": "",
+            "phase": "p-work",
+            "status": "unassessed",
+            "tasks": 1,
+            "tasks_done": 0,
+            "text": ""
+          }
+        ],
+        "stage": "execute",
+        "weight": "full"
+      },
+      "milestone": "m-first",
+      "milestone_title": "first milestone",
+      "proof": {
+        "attention": "proof text for Attention.",
+        "base": "def456",
+        "diff": "proof text for Diff.",
+        "id": "<conductor:proof-packet:p-work-proof>",
+        "kind": "mixed",
+        "look": "proof text for Look.",
+        "machine": "proof text for Machine.",
+        "revision": "abc123"
+      },
+      "spec_body": "## Requirements\n\n- R1: the list endpoint keeps its shape.\n- R2: the detail endpoint keeps its shape.\n\n## Acceptance criteria\n\nplaceholder text.\n\n## Constraints\n\nplaceholder text.\n\n## Non-goals\n\nplaceholder text.\n\n## Invariants\n\nplaceholder text.\n\n## Assumptions\n\nplaceholder text.\n",
+      "state": "in_progress",
+      "structured": true,
+      "subject": "p-work",
+      "tasks": [
+        {
+          "assignee": "",
+          "attempts": 0,
+          "depends_on": [],
+          "estimate_minutes": null,
+          "executor": "subagent",
+          "id": "<score:work-item:task-running>",
+          "last_record_at": null,
+          "phase": "p-work",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "",
+          "status": "running",
+          "subject": "task-running",
+          "title": "title of task-running",
+          "waits_on": [],
+          "wave": 1
+        },
+        {
+          "assignee": "",
+          "attempts": 1,
+          "depends_on": [],
+          "estimate_minutes": 30,
+          "executor": "inline",
+          "id": "<score:work-item:task-ready>",
+          "last_record_at": null,
+          "phase": "p-work",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "M",
+          "status": "ready",
+          "subject": "task-ready",
+          "title": "title of task-ready",
+          "waits_on": [],
+          "wave": 1
+        },
+        {
+          "assignee": "",
+          "attempts": 0,
+          "depends_on": [
+            "<score:work-item:task-ready>"
+          ],
+          "estimate_minutes": null,
+          "executor": "subagent",
+          "id": "<score:work-item:task-next>",
+          "last_record_at": null,
+          "phase": "p-work",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "",
+          "status": "waiting",
+          "subject": "task-next",
+          "title": "title of task-next",
+          "waits_on": [
+            "task-ready"
+          ],
+          "wave": 2
+        }
+      ],
+      "title": "title of p-work"
+    },
+    "tabs": [
+      "overview",
+      "spec",
+      "design",
+      "decisions",
+      "evidence",
+      "proof",
+      "tasks"
+    ]
+  },
+  "status": 200
+}

@@ -1,0 +1,50 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "agent_work": [
+        {
+          "amendments": [],
+          "assignment": {
+            "body": "",
+            "executor": "subagent",
+            "id": "<conductor:assignment:task-running-a1>",
+            "orientation": "read the brief first.\n\nextra assignment text.",
+            "recorded_at": "<timestamp>",
+            "subject": "task-running-a1"
+          },
+          "report": null
+        }
+      ],
+      "assignee": "",
+      "blocks": [],
+      "body": "## Description\n\nplaceholder text for Description.\n",
+      "decisions": [],
+      "depends_on": [],
+      "effort": "alpha",
+      "estimate_minutes": null,
+      "executor": "subagent",
+      "id": "<score:work-item:task-running>",
+      "phase": "p-work",
+      "related": [],
+      "requirements": [],
+      "running_since": "<timestamp>",
+      "size": "",
+      "status": "running",
+      "subject": "task-running",
+      "timeline": [
+        {
+          "body": "## Orientation\n\nread the brief first.\n\nextra assignment text.\n",
+          "id": "<conductor:assignment:task-running-a1>",
+          "kind": "assignment",
+          "recorded_at": "<timestamp>",
+          "revision": "",
+          "summary": "assigned to subagent"
+        }
+      ],
+      "title": "title of task-running",
+      "wave": 1
+    }
+  },
+  "status": 200
+}

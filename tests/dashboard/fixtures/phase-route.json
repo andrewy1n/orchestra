@@ -1,0 +1,61 @@
+{
+  "body": {
+    "decisions": {
+      "groups": []
+    },
+    "detail": {
+      "awaiting_signoff": false,
+      "body": "## Problem\n\nplaceholder text for Problem.\n\n## Approach\n\nplaceholder text for Approach.\n\n## Exit criteria\n\nplaceholder text for Exit criteria.\n",
+      "constraints": [],
+      "decisions": [],
+      "design_body": "",
+      "effort": "alpha",
+      "evidence": {
+        "decisions": [],
+        "integration": {
+          "conflicts": "placeholder text for Conflicts.",
+          "result": "fail"
+        },
+        "non_goals": "placeholder text for Non-goals.",
+        "phase": "route-phase",
+        "release_ready": false,
+        "release_state": "",
+        "requirements": [
+          {
+            "check_at": null,
+            "check_kind": "",
+            "confidence": "high",
+            "id": "R1",
+            "latest_check": null,
+            "next": "design",
+            "phase": "route-phase",
+            "status": "failed",
+            "tasks": 0,
+            "tasks_done": 0,
+            "text": ""
+          }
+        ],
+        "stage": "design",
+        "weight": "light"
+      },
+      "milestone": "",
+      "milestone_title": "",
+      "proof": null,
+      "spec_body": "## Requirements\n\nplaceholder text for Requirements.\n\n## Acceptance criteria\n\nplaceholder text for Acceptance criteria.\n\n## Constraints\n\nplaceholder text for Constraints.\n\n## Non-goals\n\nplaceholder text for Non-goals.\n\n## Invariants\n\nplaceholder text for Invariants.\n\n## Assumptions\n\nplaceholder text for Assumptions.\n",
+      "state": "in_progress",
+      "structured": true,
+      "subject": "route-phase",
+      "tasks": [],
+      "title": "title of route-phase"
+    },
+    "tabs": [
+      "overview",
+      "spec",
+      "design",
+      "decisions",
+      "evidence",
+      "tasks"
+    ]
+  },
+  "status": 200
+}

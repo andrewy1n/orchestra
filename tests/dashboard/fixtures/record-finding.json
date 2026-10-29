@@ -1,0 +1,22 @@
+{
+  "body": {
+    "record": {
+      "body": "## Evidence\n\nplaceholder text for Evidence.\n\n## Consequence\n\nplaceholder text for Consequence.\n\n## Follow-up\n\nplaceholder text for Follow-up.\n",
+      "id": "<tuner:finding:human-finding>",
+      "lifecycle_state": "asserted",
+      "payload": {
+        "basis": "observed",
+        "claim": "a human must decide",
+        "effort": "alpha",
+        "invalidated_when": "decision recorded",
+        "needs": "human"
+      },
+      "record_type": "tuner:finding",
+      "recorded_at": "<timestamp>",
+      "relationships": {},
+      "revision": "<rev:tuner:finding:human-finding>",
+      "subject": "human-finding"
+    }
+  },
+  "status": 200
+}

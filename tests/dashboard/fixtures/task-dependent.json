@@ -1,0 +1,37 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "agent_work": [],
+      "assignee": "",
+      "blocks": [],
+      "body": "## Description\n\nplaceholder text for Description.\n",
+      "decisions": [],
+      "depends_on": [
+        {
+          "id": "<score:work-item:task-ready>",
+          "status": "ready",
+          "subject": "task-ready",
+          "title": "title of task-ready"
+        }
+      ],
+      "effort": "alpha",
+      "estimate_minutes": null,
+      "executor": "subagent",
+      "id": "<score:work-item:task-next>",
+      "phase": "p-work",
+      "related": [],
+      "requirements": [
+        "R2"
+      ],
+      "running_since": null,
+      "size": "",
+      "status": "waiting",
+      "subject": "task-next",
+      "timeline": [],
+      "title": "title of task-next",
+      "wave": 2
+    }
+  },
+  "status": 200
+}

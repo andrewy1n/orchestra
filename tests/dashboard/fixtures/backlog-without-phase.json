@@ -1,0 +1,16 @@
+{
+  "body": {
+    "item": {
+      "body": "",
+      "effort": "alpha",
+      "id": "<composer:idea:park-too>",
+      "phase": "",
+      "record_type": "composer:idea",
+      "source": "",
+      "status": "open",
+      "subject": "park-too",
+      "text": "park-too"
+    }
+  },
+  "status": 200
+}

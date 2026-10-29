@@ -1,0 +1,308 @@
+{
+  "body": {
+    "efforts": [
+      {
+        "backlog": [
+          {
+            "id": "<composer:idea:park-me>",
+            "phase": "p-work",
+            "source": "chat",
+            "status": "open",
+            "subject": "park-me",
+            "text": "park-me"
+          },
+          {
+            "id": "<composer:idea:park-too>",
+            "phase": "",
+            "source": "",
+            "status": "open",
+            "subject": "park-too",
+            "text": "park-too"
+          }
+        ],
+        "effort": "alpha",
+        "finished": false,
+        "goal": "ship alpha",
+        "kind": "deliver",
+        "milestones": [
+          {
+            "done": 0,
+            "id": "<score:milestone:m-first>",
+            "ordinal": 1,
+            "state": "in_progress",
+            "subject": "m-first",
+            "title": "first milestone",
+            "total": 1
+          }
+        ],
+        "needs_you": [
+          {
+            "id": "<score:continuity-question:alpha:which backend>",
+            "kind": "blocking-question",
+            "next": "",
+            "phase": "",
+            "record_type": "score:continuity-question",
+            "requirement": "",
+            "result": "",
+            "revision": "<rev:score:continuity-question:alpha:which backend>",
+            "status": "",
+            "subject": "alpha",
+            "task_id": "",
+            "text": "which backend"
+          },
+          {
+            "id": "<conductor:assessment:route-phase-R1>",
+            "kind": "loop-route",
+            "next": "design",
+            "phase": "route-phase",
+            "record_type": "conductor:assessment",
+            "requirement": "R1",
+            "result": "",
+            "revision": "<rev:conductor:assessment:route-phase-R1>",
+            "status": "failed",
+            "subject": "route-phase-R1",
+            "task_id": "",
+            "text": "R1 failed design"
+          },
+          {
+            "id": "<conductor:integration-report:route-phase-report>",
+            "kind": "integration",
+            "next": "",
+            "phase": "route-phase",
+            "record_type": "conductor:integration-report",
+            "requirement": "",
+            "result": "fail",
+            "revision": "<rev:conductor:integration-report:route-phase-report>",
+            "status": "",
+            "subject": "route-phase-report",
+            "task_id": "",
+            "text": "route-phase fail"
+          },
+          {
+            "id": "<tuner:finding:human-finding>",
+            "kind": "needs-human",
+            "next": "",
+            "phase": "",
+            "record_type": "tuner:finding",
+            "requirement": "",
+            "result": "",
+            "revision": "<rev:tuner:finding:human-finding>",
+            "status": "",
+            "subject": "human-finding",
+            "task_id": "",
+            "text": "a human must decide"
+          },
+          {
+            "id": "<tuner:check-run:unsigned-check>",
+            "kind": "unsigned-check",
+            "next": "",
+            "phase": "",
+            "record_type": "tuner:check-run",
+            "requirement": "",
+            "result": "",
+            "revision": "<rev:tuner:check-run:unsigned-check>",
+            "status": "",
+            "subject": "task-ready-acc",
+            "task_id": "<score:work-item:task-ready>",
+            "text": "the endpoint keeps its shape pass"
+          },
+          {
+            "id": "<score:continuity-question:alpha:port-choice>",
+            "kind": "open-question",
+            "next": "",
+            "phase": "",
+            "record_type": "score:continuity-question",
+            "requirement": "",
+            "result": "",
+            "revision": "<rev:score:continuity-question:alpha:port-choice>",
+            "status": "",
+            "subject": "alpha",
+            "task_id": "",
+            "text": "port-choice"
+          }
+        ],
+        "phases": [
+          {
+            "awaiting_signoff": false,
+            "done": 0,
+            "elapsed_minutes": null,
+            "id": "<score:phase:route-phase>",
+            "milestone": "",
+            "milestone_title": "",
+            "ordinal": 2,
+            "release_ready": false,
+            "requirements": 1,
+            "sitting": "",
+            "stage": "design",
+            "state": "in_progress",
+            "subject": "route-phase",
+            "suite": "",
+            "title": "title of route-phase",
+            "total": 0,
+            "unset_estimates": 0,
+            "verified": 0
+          },
+          {
+            "awaiting_signoff": false,
+            "done": 0,
+            "elapsed_minutes": null,
+            "id": "<score:phase:merge-phase>",
+            "milestone": "",
+            "milestone_title": "",
+            "ordinal": 3,
+            "release_ready": false,
+            "requirements": null,
+            "sitting": "",
+            "stage": "",
+            "state": "done",
+            "subject": "merge-phase",
+            "suite": "",
+            "title": "title of merge-phase",
+            "total": 0,
+            "unset_estimates": 0,
+            "verified": null
+          },
+          {
+            "awaiting_signoff": false,
+            "done": 0,
+            "elapsed_minutes": 30,
+            "id": "<score:phase:p-work>",
+            "milestone": "m-first",
+            "milestone_title": "first milestone",
+            "ordinal": 1,
+            "release_ready": false,
+            "requirements": 2,
+            "sitting": "",
+            "stage": "execute",
+            "state": "in_progress",
+            "subject": "p-work",
+            "suite": "",
+            "title": "title of p-work",
+            "total": 3,
+            "unset_estimates": 2,
+            "verified": 1
+          }
+        ],
+        "position": "building the list endpoint",
+        "release_ready": false,
+        "tasks": [
+          {
+            "assignee": "",
+            "attempts": 0,
+            "depends_on": [],
+            "estimate_minutes": null,
+            "executor": "subagent",
+            "id": "<score:work-item:task-running>",
+            "last_record_at": "<timestamp>",
+            "phase": "p-work",
+            "retry_budget": 2,
+            "running_since": "<timestamp>",
+            "size": "",
+            "status": "running",
+            "subject": "task-running",
+            "title": "title of task-running",
+            "waits_on": [],
+            "wave": 1
+          },
+          {
+            "assignee": "",
+            "attempts": 1,
+            "depends_on": [],
+            "estimate_minutes": 30,
+            "executor": "inline",
+            "id": "<score:work-item:task-ready>",
+            "last_record_at": null,
+            "phase": "p-work",
+            "retry_budget": 2,
+            "running_since": null,
+            "size": "M",
+            "status": "ready",
+            "subject": "task-ready",
+            "title": "title of task-ready",
+            "waits_on": [],
+            "wave": 1
+          },
+          {
+            "assignee": "",
+            "attempts": 0,
+            "depends_on": [
+              "<score:work-item:task-ready>"
+            ],
+            "estimate_minutes": null,
+            "executor": "subagent",
+            "id": "<score:work-item:task-next>",
+            "last_record_at": null,
+            "phase": "p-work",
+            "retry_budget": 2,
+            "running_since": null,
+            "size": "",
+            "status": "waiting",
+            "subject": "task-next",
+            "title": "title of task-next",
+            "waits_on": [
+              "task-ready"
+            ],
+            "wave": 2
+          }
+        ]
+      },
+      {
+        "backlog": [],
+        "effort": "beta",
+        "finished": false,
+        "goal": "ship beta",
+        "kind": "deliver",
+        "milestones": [],
+        "needs_you": [],
+        "phases": [
+          {
+            "awaiting_signoff": false,
+            "done": 0,
+            "elapsed_minutes": null,
+            "id": "<score:phase:b-one>",
+            "milestone": "",
+            "milestone_title": "",
+            "ordinal": 1,
+            "release_ready": false,
+            "requirements": null,
+            "sitting": "",
+            "stage": "",
+            "state": "planned",
+            "subject": "b-one",
+            "suite": "",
+            "title": "title of b-one",
+            "total": 1,
+            "unset_estimates": 1,
+            "verified": null
+          }
+        ],
+        "position": "",
+        "release_ready": false,
+        "tasks": [
+          {
+            "assignee": "",
+            "attempts": 0,
+            "depends_on": [],
+            "estimate_minutes": null,
+            "executor": "subagent",
+            "id": "<score:work-item:b-task>",
+            "last_record_at": null,
+            "phase": "b-one",
+            "retry_budget": 2,
+            "running_since": null,
+            "size": "",
+            "status": "ready",
+            "subject": "b-task",
+            "title": "title of b-task",
+            "waits_on": [],
+            "wave": 1
+          }
+        ]
+      }
+    ],
+    "generated_at": "<timestamp>",
+    "store": "<store>/.canon",
+    "token": "<token>"
+  },
+  "status": 200
+}

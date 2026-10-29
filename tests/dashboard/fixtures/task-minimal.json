@@ -1,0 +1,28 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "agent_work": [],
+      "assignee": "",
+      "blocks": [],
+      "body": "## Description\n\nplaceholder text for Description.\n",
+      "decisions": [],
+      "depends_on": [],
+      "effort": "beta",
+      "estimate_minutes": null,
+      "executor": "subagent",
+      "id": "<score:work-item:b-task>",
+      "phase": "b-one",
+      "related": [],
+      "requirements": [],
+      "running_since": null,
+      "size": "",
+      "status": "ready",
+      "subject": "b-task",
+      "timeline": [],
+      "title": "title of b-task",
+      "wave": 1
+    }
+  },
+  "status": 200
+}

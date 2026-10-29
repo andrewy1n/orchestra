@@ -1,0 +1,23 @@
+{
+  "body": {
+    "item": {
+      "approval": {
+        "confirm_choices": []
+      },
+      "body": "",
+      "id": "<conductor:integration-report:route-phase-report>",
+      "kind": "integration",
+      "next": "",
+      "phase": "route-phase",
+      "record_type": "conductor:integration-report",
+      "requirement": "",
+      "result": "fail",
+      "revision": "<rev:conductor:integration-report:route-phase-report>",
+      "status": "",
+      "subject": "route-phase-report",
+      "task_id": "",
+      "text": "route-phase fail"
+    }
+  },
+  "status": 200
+}
