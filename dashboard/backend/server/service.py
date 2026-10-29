@@ -1,7 +1,7 @@
 """Standard-library read surface for the web dashboard.
 
 The Svelte page speaks the spike's GET shapes. This module builds them from
-``dashboard.backend.model`` behind a change-token cache, exactly the way the
+the dashboard loaders behind a change-token cache, exactly the way the
 ``spikes/web-dashboard`` server did. It uses only the standard library so
 ``dashboard.backend.server`` imports and serves under the check runner, which has no
 FastAPI or uvicorn; ``dashboard.backend.server.app`` wraps the same reader in a FastAPI
@@ -19,7 +19,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-from dashboard.backend import approval, backlog, dismiss, journal, model, store
+from dashboard.backend import approval, backlog, dismiss, journal, store
+from dashboard.backend.phase import (
+    PhaseRow, load_decision_log, load_phase_detail, load_requirement_detail, tabs_for,
+)
+from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot, load_snapshot
+from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
 
 
@@ -38,7 +43,7 @@ def jsonable(value: Any) -> Any:
     return str(value)
 
 
-def phase_summary(phase: model.PhaseRow) -> dict:
+def phase_summary(phase: PhaseRow) -> dict:
     evidence = phase.evidence
     verified = None
     requirements = None
@@ -71,7 +76,7 @@ def phase_summary(phase: model.PhaseRow) -> dict:
     }
 
 
-def effort_summary(view: model.EffortView) -> dict:
+def effort_summary(view: EffortView) -> dict:
     """One effort as the spike's ``effort_summary`` (plus needs revision)."""
     return {
         "effort": view.effort,
@@ -114,7 +119,7 @@ def effort_summary(view: model.EffortView) -> dict:
     }
 
 
-def needs_payload(item: model.NeedsYouItem) -> dict:
+def needs_payload(item: NeedsYouItem) -> dict:
     """One Needs-you item, including its revision and confirm choices."""
     payload = jsonable(item)
     payload["revision"] = item.revision
@@ -131,15 +136,15 @@ class Cache:
         self.target = target
         self.lock = threading.Lock()
         self.token = ""
-        self.snapshot: model.Snapshot | None = None
+        self.snapshot: Snapshot | None = None
         self.details: dict[tuple, object] = {}
 
-    def _current(self) -> model.Snapshot:
+    def _current(self) -> Snapshot:
         token = store.change_token(self.target)
         with self.lock:
             if self.snapshot is not None and token == self.token:
                 return self.snapshot
-        snapshot = model.load_snapshot(self.target, token=token)
+        snapshot = load_snapshot(self.target, token=token)
         with self.lock:
             if token != self.token:
                 self.details.clear()
@@ -172,12 +177,12 @@ class Cache:
             "efforts": [effort_summary(view) for view in snapshot.efforts],
         }
 
-    def effort(self, name: str) -> model.EffortView:
+    def effort(self, name: str) -> EffortView:
         snapshot = self._current()
         for view in snapshot.efforts:
             if view.effort == name:
                 return view
-        raise model.ModelError(f"effort {name} not found")
+        raise store.ModelError(f"effort {name} not found")
 
     def remember(self, key: tuple, load: Callable[[], Any]) -> Any:
         token = self.token_only()
@@ -207,11 +212,11 @@ class Reader:
 
     def phase(self, effort: str, phase: str) -> dict:
         def load() -> dict:
-            detail = model.load_phase_detail(self.target, effort, phase)
-            log = model.load_decision_log(self.target, effort, phase, history=False)
+            detail = load_phase_detail(self.target, effort, phase)
+            log = load_decision_log(self.target, effort, phase, history=False)
             return {
                 "detail": jsonable(detail),
-                "tabs": list(model.tabs_for(detail)),
+                "tabs": list(tabs_for(detail)),
                 "decisions": jsonable(log),
             }
 
@@ -220,7 +225,7 @@ class Reader:
     def task(self, task_id: str) -> dict:
         return self.cache.remember(
             ("task", task_id),
-            lambda: {"detail": jsonable(model.load_task_detail(self.target, task_id))},
+            lambda: {"detail": jsonable(load_task_detail(self.target, task_id))},
         )
 
     def journal(self, effort: str) -> dict:
@@ -239,7 +244,7 @@ class Reader:
     def requirement(self, effort: str, phase: str, requirement: str) -> dict:
         return self.cache.remember(
             ("requirement", effort, phase, requirement),
-            lambda: {"detail": jsonable(model.load_requirement_detail(self.target, effort, phase, requirement))},
+            lambda: {"detail": jsonable(load_requirement_detail(self.target, effort, phase, requirement))},
         )
 
     def needs(self, effort: str, item_id: str) -> dict:
@@ -247,40 +252,40 @@ class Reader:
         for item in view.needs_you:
             if item.id == item_id:
                 return {"item": needs_payload(item)}
-        raise model.ModelError(f"needs-you item {item_id} not found")
+        raise store.ModelError(f"needs-you item {item_id} not found")
 
     def backlog(self, effort: str, item_id: str) -> dict:
         view = self.cache.effort(effort)
         for item in view.backlog:
             if item.id == item_id:
                 return {"item": jsonable(item)}
-        raise model.ModelError(f"backlog item {item_id} not found")
+        raise store.ModelError(f"backlog item {item_id} not found")
 
-    def _find_needs(self, item_id: str, effort: str | None = None) -> model.NeedsYouItem:
+    def _find_needs(self, item_id: str, effort: str | None = None) -> NeedsYouItem:
         if effort:
             view = self.cache.effort(effort)
             for item in view.needs_you:
                 if item.id == item_id:
                     return item
-            raise model.ModelError(f"needs-you item {item_id} not found")
+            raise store.ModelError(f"needs-you item {item_id} not found")
         for view in self.cache._current().efforts:
             for item in view.needs_you:
                 if item.id == item_id:
                     return item
-        raise model.ModelError(f"needs-you item {item_id} not found")
+        raise store.ModelError(f"needs-you item {item_id} not found")
 
-    def _find_backlog(self, item_id: str, effort: str | None = None) -> model.BacklogItem:
+    def _find_backlog(self, item_id: str, effort: str | None = None) -> BacklogItem:
         if effort:
             view = self.cache.effort(effort)
             for item in view.backlog:
                 if item.id == item_id:
                     return item
-            raise model.ModelError(f"backlog item {item_id} not found")
+            raise store.ModelError(f"backlog item {item_id} not found")
         for view in self.cache._current().efforts:
             for item in view.backlog:
                 if item.id == item_id:
                     return item
-        raise model.ModelError(f"backlog item {item_id} not found")
+        raise store.ModelError(f"backlog item {item_id} not found")
 
     def write_needs(self, body: dict) -> dict:
         """POST /api/needs — clear a human Needs-you item through dismiss."""
@@ -353,7 +358,7 @@ class WriteError(Exception):
 def _query(qs: dict, name: str) -> str:
     value = (qs.get(name) or [""])[0]
     if not value:
-        raise model.ModelError(f"missing {name}")
+        raise store.ModelError(f"missing {name}")
     return value
 
 
@@ -390,7 +395,7 @@ def build_handler(reader: Reader):
                     self._json(reader.backlog(_query(qs, "effort"), _query(qs, "id")))
                 else:
                     self._json({"error": "not found"}, status=404)
-            except model.ModelError as exc:
+            except store.ModelError as exc:
                 self._json({"error": str(exc)}, status=404)
             except Exception as exc:  # noqa: BLE001 — surface a failed read
                 self._json({"error": str(exc)}, status=500)
@@ -407,7 +412,7 @@ def build_handler(reader: Reader):
                     self._json({"error": "not found"}, status=404)
             except WriteError as exc:
                 self._json({"error": exc.message}, status=exc.status)
-            except model.ModelError as exc:
+            except store.ModelError as exc:
                 self._json({"error": str(exc)}, status=404)
             except json.JSONDecodeError as exc:
                 self._json({"error": f"invalid json: {exc}"}, status=400)

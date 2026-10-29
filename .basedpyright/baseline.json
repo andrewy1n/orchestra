@@ -42,7 +42,7 @@
                 }
             }
         ],
-        "./dashboard/backend/model.py": [
+        "./dashboard/backend/records.py": [
             {
                 "code": "reportArgumentType",
                 "range": {
@@ -50,7 +50,19 @@
                     "endColumn": 33,
                     "lineCount": 1
                 }
-            },
+            }
+        ],
+        "./dashboard/backend/server/service.py": [
+            {
+                "code": "reportIncompatibleMethodOverride",
+                "range": {
+                    "startColumn": 12,
+                    "endColumn": 23,
+                    "lineCount": 1
+                }
+            }
+        ],
+        "./dashboard/backend/task.py": [
             {
                 "code": "reportArgumentType",
                 "range": {
@@ -64,16 +76,6 @@
                 "range": {
                     "startColumn": 68,
                     "endColumn": 100,
-                    "lineCount": 1
-                }
-            }
-        ],
-        "./dashboard/backend/server/service.py": [
-            {
-                "code": "reportIncompatibleMethodOverride",
-                "range": {
-                    "startColumn": 12,
-                    "endColumn": 23,
                     "lineCount": 1
                 }
             }

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from orchestra.canon.project import Project
-from dashboard.backend import model, store
+from dashboard.backend import records, store
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -43,8 +43,8 @@ class JournalItem:
 
 def _soft_list(target: Project, record_type: str, *, payload: dict[str, str] | None = None) -> list[dict[str, Any]]:
     try:
-        return model._list(target, record_type, payload=payload)
-    except model.ModelError:
+        return records._list(target, record_type, payload=payload)
+    except store.ModelError:
         return []
 
 
@@ -56,7 +56,7 @@ def _phase_for_task(subject: str, tasks: list[dict[str, Any]]) -> tuple[str | No
     if not matches:
         return None, ""
     task = max(matches, key=lambda item: len(item["subject"]))
-    return model._payload(task).get("phase") or None, task["id"]
+    return records._payload(task).get("phase") or None, task["id"]
 
 
 def _plan_review_slug(scope: str) -> str | None:
@@ -78,7 +78,7 @@ def _question_open(record: dict[str, Any]) -> bool:
 
 def _finding_open(record: dict[str, Any]) -> bool:
     return (
-        model._payload(record).get("needs") == "human"
+        records._payload(record).get("needs") == "human"
         and record.get("lifecycle_state") in FINDING_OPEN_STATES
     )
 
@@ -107,7 +107,7 @@ def _finding_text(payload: dict[str, Any]) -> str:
 
 
 def _question_text(record: dict[str, Any], phase_titles: dict[str, str]) -> str:
-    scope = model._payload(record).get("scope") or ""
+    scope = records._payload(record).get("scope") or ""
     shown = _question_scope_text(scope, phase_titles)
     state = record.get("lifecycle_state") or ""
     if shown and state:
@@ -116,7 +116,7 @@ def _question_text(record: dict[str, Any], phase_titles: dict[str, str]) -> str:
 
 
 def _amendment_text(record: dict[str, Any], task_subject: str) -> str:
-    correction = _first_line(model._section(record.get("body") or "", "Correction"))
+    correction = _first_line(records._section(record.get("body") or "", "Correction"))
     if correction and task_subject:
         return f"{correction} · {task_subject}"
     return correction or task_subject
@@ -127,7 +127,7 @@ def _belongs_to_effort(
 ) -> bool:
     if by_subject:
         return record.get("subject") == effort
-    payload_effort = model._payload(record).get("effort")
+    payload_effort = records._payload(record).get("effort")
     if payload_effort:
         return payload_effort == effort
     return sole_goal
@@ -139,51 +139,51 @@ def _assignment_task(
     tasks_by_id: dict[str, dict[str, Any]],
     tasks_by_subject: dict[str, dict[str, Any]],
 ) -> tuple[str | None, str, str]:
-    ref = model._payload(record).get("assignment") or ""
+    ref = records._payload(record).get("assignment") or ""
     assignment = assignments.get(ref)
     if assignment is None:
         phase, task_id = _phase_for_task(record["subject"], list(tasks_by_subject.values()))
         return phase, task_id, record["subject"] if task_id else ""
-    work_ref = model._payload(assignment).get("work_item") or ""
+    work_ref = records._payload(assignment).get("work_item") or ""
     task = tasks_by_id.get(work_ref) or tasks_by_subject.get(work_ref)
     if task is None:
         phase, task_id = _phase_for_task(assignment["subject"], list(tasks_by_subject.values()))
         return phase, task_id, assignment["subject"] if task_id else assignment["subject"]
-    return model._payload(task).get("phase") or None, task["id"], task["subject"]
+    return records._payload(task).get("phase") or None, task["id"], task["subject"]
 
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
-    aliases = model._merge_aliases(model._list(target, "score:effort"))
+    aliases = records._merge_aliases(records._list(target, "score:effort"))
     goals = [
-        record for record in model._list(target, "score:effort")
+        record for record in records._list(target, "score:effort")
         if record.get("lifecycle_state") == "active"
-        and model._payload(record).get("status") != "closed"
+        and records._payload(record).get("status") != "closed"
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
-    tasks = model._remapped(
+    tasks = records._remapped(
         _soft_list(target, "score:work-item", payload={"effort": effort}),
         aliases,
     )
     if not tasks:
         tasks = [
-            record for record in model._remapped(_soft_list(target, "score:work-item"), aliases)
-            if model._payload(record).get("effort") == effort
+            record for record in records._remapped(_soft_list(target, "score:work-item"), aliases)
+            if records._payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
-    phases = model._remapped(
+    phases = records._remapped(
         _soft_list(target, "score:phase", payload={"effort": effort}),
         aliases,
     )
     phase_titles = {
-        record["subject"]: model._payload(record).get("title") or record["subject"]
+        record["subject"]: records._payload(record).get("title") or record["subject"]
         for record in phases
     }
 
-    assignments_listed = model._remapped(_soft_list(target, "conductor:assignment"), aliases)
+    assignments_listed = records._remapped(_soft_list(target, "conductor:assignment"), aliases)
     assignments: dict[str, dict[str, Any]] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
@@ -191,11 +191,11 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
 
     listed: dict[str, list[dict[str, Any]]] = {}
     for record_type in JOURNAL_TYPES:
-        raw = model._remapped(_soft_list(target, record_type), aliases)
+        raw = records._remapped(_soft_list(target, record_type), aliases)
         by_subject = record_type == "score:continuity-question"
         listed[record_type] = [
             record for record in raw
-            if record.get("lifecycle_state") not in model.INACTIVE_STATES
+            if record.get("lifecycle_state") not in records.INACTIVE_STATES
             and _belongs_to_effort(record, effort, sole_goal=sole_goal, by_subject=by_subject)
         ]
 
@@ -206,7 +206,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            model._recorded_at(record), _attempt_text(model._payload(record)), False, task_id,
+            records._recorded_at(record), _attempt_text(records._payload(record)), False, task_id,
         ))
 
     for record in listed["tuner:investigation-observation"]:
@@ -214,8 +214,8 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         open_item = record["subject"] not in finding_subjects
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            model._recorded_at(record),
-            model._payload(record).get("what_was_observed") or "",
+            records._recorded_at(record),
+            records._payload(record).get("what_was_observed") or "",
             open_item, task_id,
         ))
 
@@ -223,17 +223,17 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            model._recorded_at(record), _finding_text(model._payload(record)),
+            records._recorded_at(record), _finding_text(records._payload(record)),
             _finding_open(record), task_id,
         ))
 
     for record in listed["score:continuity-question"]:
-        scope = model._payload(record).get("scope") or ""
+        scope = records._payload(record).get("scope") or ""
         slug = _plan_review_slug(scope)
         phase = slug if slug is not None else None
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            model._recorded_at(record), _question_text(record, phase_titles),
+            records._recorded_at(record), _question_text(record, phase_titles),
             _question_open(record), "",
         ))
 
@@ -243,7 +243,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         )
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            model._recorded_at(record), _amendment_text(record, task_subject),
+            records._recorded_at(record), _amendment_text(record, task_subject),
             False, task_id,
         ))
 
@@ -285,7 +285,7 @@ def load_record(target: Project, record_id: str) -> dict[str, Any]:
     """Fetch one record by id (type optional on the CLI)."""
     record = store.get_record(target, record_id)
     if "subject" not in record:
-        raise model.ModelError(f"get {record_id} returned unreadable output")
+        raise store.ModelError(f"get {record_id} returned unreadable output")
     return record
 
 
@@ -312,7 +312,7 @@ def list_markdown(items: list[JournalItem], *, scope: str) -> str:
 
 def record_markdown(record: dict[str, Any]) -> str:
     """Markdown for one record: type, subject, payload, body (R5)."""
-    payload = model._payload(record)
+    payload = records._payload(record)
     lines = [
         f"# {record.get('record_type', '')}",
         "",

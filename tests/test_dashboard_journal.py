@@ -13,7 +13,9 @@ from conftest import REPO_ROOT, stamped_store
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from dashboard.backend import journal  # noqa: E402
-from dashboard.backend import model  # noqa: E402
+from dashboard.backend import store as backend_store  # noqa: E402
+from dashboard.backend import records  # noqa: E402
+from dashboard.backend import task as task_mod  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
@@ -205,14 +207,14 @@ def test_journal_scope_phase_plus_effort_only_open_questions(store, cli, defs):
 
 def test_journal_missing_types_do_not_error(store, cli, defs, monkeypatch):
     _goal(cli, defs, "alpha", kind="repair")
-    real = model._list
+    real = records._list
 
     def missing(target, record_type, **kwargs):
         if record_type in journal.JOURNAL_TYPES:
-            raise model.ModelError(f"unknown type {record_type}")
+            raise backend_store.ModelError(f"unknown type {record_type}")
         return real(target, record_type, **kwargs)
 
-    monkeypatch.setattr(model, "_list", missing)
+    monkeypatch.setattr(records, "_list", missing)
     items = journal.load_journal(_target(store), "alpha")
     assert items == []
 
@@ -294,7 +296,7 @@ def agent_store(store):
 
 def test_agent_work_model_groups_newest_first_with_orientation_amendment_and_report(agent_store):
     store, task = agent_store
-    detail = model.load_task_detail(_target(store), task["id"])
+    detail = task_mod.load_task_detail(_target(store), task["id"])
     assert len(detail.agent_work) == 2
     latest = detail.agent_work[0]
     assert latest.assignment.executor == "new-exec"

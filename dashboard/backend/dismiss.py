@@ -16,7 +16,7 @@ from typing import Any
 from orchestra.canon.project import Project
 from orchestra.canon.store import StoreError
 from dashboard.backend import store
-from dashboard.backend.model import NeedsYouItem
+from dashboard.backend.snapshot import NeedsYouItem
 
 HUMAN_DISMISSIBLE = frozenset({
     "blocking-question", "open-question", "needs-human", "unsigned-check",

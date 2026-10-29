@@ -18,7 +18,8 @@ def run(args: argparse.Namespace) -> int:
     from orchestra.canon.store import StoreError
 
     from dashboard.backend.gates import apply_landing_needs, landings_for_snapshot
-    from dashboard.backend.model import ModelError, load_snapshot
+    from dashboard.backend.snapshot import load_snapshot
+    from dashboard.backend.store import ModelError
 
     try:
         target = open_store(Path(args.directory) if args.directory else Path.cwd())

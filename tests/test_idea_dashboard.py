@@ -11,7 +11,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend import model  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
 from test_dashboard_model import _effort, _goal, _target  # noqa: E402
 
 
@@ -56,7 +56,7 @@ def test_r9_dashboard_backlog_panel_lists_open_ideas_grouped_by_effort(store, cl
         "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
     )
 
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     alpha = _effort(snapshot, "alpha")
     beta = _effort(snapshot, "beta")
     assert [item.subject for item in alpha.backlog] == ["park-a"]

@@ -28,7 +28,7 @@ from conftest import REPO_ROOT, run_cli
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend import model  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 DIST_INDEX = REPO_ROOT / "dashboard" / "web" / "ui" / "dist" / "index.html"
@@ -223,10 +223,10 @@ def test_r1_loopback(store, tmp_path, monkeypatch):
 def _snapshot(target):
     loaded = None
     try:
-        loaded = model.load_snapshot(target)
+        loaded = snapshot_mod.load_snapshot(target)
     except ImportError:
         loaded = None
-    assert loaded is not None, "dashboard.backend.model.load_snapshot is not importable"
+    assert loaded is not None, "dashboard.backend.snapshot.load_snapshot is not importable"
     return loaded
 
 
@@ -264,7 +264,7 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
         assert [view["effort"] for view in payload["efforts"]] == [view.effort for view in snap.efforts]
         token_status, _token_type, token_body = _get(port, "/api/token")
         assert 200 <= token_status < 300, token_body
-        assert json.loads(token_body)["token"] == model.change_token(target)
+        assert json.loads(token_body)["token"] == snapshot_mod.change_token(target)
     finally:
         _stop(proc)
 

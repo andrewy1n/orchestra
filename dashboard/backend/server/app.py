@@ -12,7 +12,7 @@ stdlib server uses and serves the Vite production build from
 
 from pathlib import Path
 
-from dashboard.backend import model
+from dashboard.backend import store
 from orchestra.canon.project import Project
 from dashboard.backend.server.service import Reader, WriteError
 
@@ -32,8 +32,8 @@ def create_app(target: Project):
     app = FastAPI(title="orchestra dashboard")
     reader = Reader(target)
 
-    @app.exception_handler(model.ModelError)
-    async def _model_error(_request, exc: model.ModelError) -> JSONResponse:
+    @app.exception_handler(store.ModelError)
+    async def _model_error(_request, exc: store.ModelError) -> JSONResponse:
         return JSONResponse({"error": str(exc)}, status_code=404)
 
     @app.exception_handler(WriteError)

@@ -107,7 +107,7 @@ def test_r6_no_module_sits_directly_under_dashboard():
 
 
 def test_r7_survivors_live_under_backend_and_server_under_backend_server():
-    expected = ("model", "journal", "gates", "landing", "approval", "backlog", "dismiss")
+    expected = ("records", "task", "phase", "snapshot", "journal", "gates", "landing", "approval", "backlog", "dismiss")
     missing = [name for name in expected if not (BACKEND / f"{name}.py").is_file()]
     assert missing == []
     server = BACKEND / "server"

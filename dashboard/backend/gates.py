@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Protocol
 
 from dashboard.backend.landing import Landing, landing_branch, phase_landing, rev_parse_token
-from dashboard.backend.model import NEEDS_ORDER, EffortView, NeedsYouItem, PhaseRow, Snapshot, TaskRow
+from dashboard.backend.phase import PhaseRow
+from dashboard.backend.snapshot import NEEDS_ORDER, EffortView, NeedsYouItem, Snapshot
+from dashboard.backend.task import TaskRow
 
 PLAN_REVIEW_PREFIX = "plan-review:"
 

@@ -23,7 +23,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from dashboard.backend import backlog as backlog_module  # noqa: E402
 from dashboard.backend import dismiss as dismiss_module  # noqa: E402
-from dashboard.backend import model  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
 
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> dict:
@@ -89,13 +89,13 @@ def _seed(cli, defs) -> None:
     )
 
 
-def _model_item(snap: model.Snapshot, kind: str) -> model.NeedsYouItem:
+def _model_item(snap: snapshot_mod.Snapshot, kind: str) -> snapshot_mod.NeedsYouItem:
     matches = [item for view in snap.efforts for item in view.needs_you if item.kind == kind]
     assert len(matches) == 1, [item.kind for view in snap.efforts for item in view.needs_you]
     return matches[0]
 
 
-def _backlog_item(snap: model.Snapshot) -> model.BacklogItem:
+def _backlog_item(snap: snapshot_mod.Snapshot) -> snapshot_mod.BacklogItem:
     matches = [item for view in snap.efforts for item in view.backlog]
     assert len(matches) == 1
     return matches[0]
@@ -109,13 +109,13 @@ def _import_web():
         return None
 
 
-def _snapshot(target) -> model.Snapshot:
+def _snapshot(target) -> snapshot_mod.Snapshot:
     loaded = None
     try:
-        loaded = model.load_snapshot(target)
+        loaded = snapshot_mod.load_snapshot(target)
     except ImportError:
         loaded = None
-    assert loaded is not None, "dashboard.backend.model.load_snapshot is not importable"
+    assert loaded is not None, "dashboard.backend.snapshot.load_snapshot is not importable"
     return loaded
 
 
@@ -172,7 +172,7 @@ def _page_needs(payload: dict, kind: str) -> dict:
     return matches[0]
 
 
-def _assert_same_snapshot(payload: dict, snap: model.Snapshot) -> None:
+def _assert_same_snapshot(payload: dict, snap: snapshot_mod.Snapshot) -> None:
     assert [view["effort"] for view in payload["efforts"]] == [view.effort for view in snap.efforts]
     for raw, view in zip(payload["efforts"], snap.efforts):
         assert raw["goal"] == view.goal
@@ -225,7 +225,7 @@ def test_r4_token(store, cli, defs):
     with _running(store) as (base, served):
         assert Path(served.store_path).resolve() == Path(target.store_path).resolve()
         payload = _get_json(base, "/api/token")
-        assert payload["token"] == model.change_token(target)
+        assert payload["token"] == snapshot_mod.change_token(target)
 
 
 def test_r21_approve(store, cli, defs, monkeypatch):
@@ -247,7 +247,7 @@ def test_r21_approve(store, cli, defs, monkeypatch):
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert calls[0]["action"] == "approve"
-    assert isinstance(calls[0]["item"], model.NeedsYouItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.NeedsYouItem)
     assert calls[0]["item"].id == question.id
     assert calls[0]["item"].kind == "blocking-question"
     assert calls[0]["item"].revision == page["revision"]
@@ -280,7 +280,7 @@ def test_r22_reject_note(store, cli, defs, monkeypatch):
     assert len(calls) == 1
     assert calls[0]["action"] == "reject"
     assert calls[0]["note"] == "approach is wrong"
-    assert isinstance(calls[0]["item"], model.NeedsYouItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.NeedsYouItem)
     assert calls[0]["item"].revision == page["revision"]
 
 
@@ -302,7 +302,7 @@ def test_r23_sign(store, cli, defs, monkeypatch):
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert calls[0]["action"] == "sign"
-    assert isinstance(calls[0]["item"], model.NeedsYouItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.NeedsYouItem)
     assert calls[0]["item"].id == check.id
     assert calls[0]["item"].revision == page["revision"]
 
@@ -373,7 +373,7 @@ def test_r25_accept_note(store, cli, defs, monkeypatch):
     assert len(calls) == 1
     assert calls[0]["action"] == "accept"
     assert calls[0]["note"] == "accepted residual risk"
-    assert isinstance(calls[0]["item"], model.NeedsYouItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.NeedsYouItem)
     assert calls[0]["item"].id == finding.id
     assert calls[0]["item"].revision == page["revision"]
 
@@ -384,7 +384,7 @@ def test_r26_refused(store, cli, defs):
     snap = _snapshot(target)
     loop = _model_item(snap, "loop-route")
     integration = _model_item(snap, "integration")
-    before = model.change_token(target)
+    before = snapshot_mod.change_token(target)
     loop_rev = _revision(cli, loop.record_type, loop.id)
     integration_rev = _revision(cli, integration.record_type, integration.id)
     with _running(store) as (base, _served):
@@ -397,7 +397,7 @@ def test_r26_refused(store, cli, defs):
             "id": "merge:merge-phase", "kind": "merge-branch", "action": "approve", "revision": "",
         })
         assert merge >= 400, merge
-    assert model.change_token(target) == before
+    assert snapshot_mod.change_token(target) == before
     assert _revision(cli, loop.record_type, loop.id) == loop_rev
     assert _revision(cli, integration.record_type, integration.id) == integration_rev
 
@@ -419,7 +419,7 @@ def test_r28_backlog_dismiss(store, cli, defs, monkeypatch):
         status = _post(base, "/api/backlog", {"id": raw["id"], "action": "dismiss"})
     assert 200 <= status < 300, status
     assert len(calls) == 1
-    assert isinstance(calls[0]["item"], model.BacklogItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.BacklogItem)
     assert calls[0]["item"].id == parked.id
     assert calls[0]["item"].status == "open"
     assert Path(calls[0]["target"].store_path).resolve() == Path(target.store_path).resolve()
@@ -441,7 +441,7 @@ def test_r29_backlog_promote(store, cli, defs, monkeypatch):
         status = _post(base, "/api/backlog", {"id": raw["id"], "action": "promote"})
     assert 200 <= status < 300, status
     assert len(calls) == 1
-    assert isinstance(calls[0]["item"], model.BacklogItem)
+    assert isinstance(calls[0]["item"], snapshot_mod.BacklogItem)
     assert calls[0]["item"].id == parked.id
     assert calls[0]["item"].status == "open"
     assert Path(calls[0]["target"].store_path).resolve() == Path(target.store_path).resolve()
@@ -461,8 +461,8 @@ def test_r34_stale(store, cli, defs, monkeypatch):
         page = _page_needs(_get_json(base, "/api/snapshot"), "blocking-question")
         assert page["id"] == question.id
         assert page["revision"] == displayed
-        before = model.change_token(target)
+        before = snapshot_mod.change_token(target)
         status = _post(base, "/api/needs", {"id": page["id"], "action": "approve", "revision": page["revision"]})
         assert status >= 400, status
-        assert model.change_token(target) == before
+        assert snapshot_mod.change_token(target) == before
     assert _revision(cli, question.record_type, question.id) == displayed

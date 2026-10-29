@@ -1,4 +1,4 @@
-"""Tests for dashboard.backend.model: the dashboard snapshot built from store records."""
+"""Tests for the dashboard loaders: the dashboard snapshot built from store records."""
 
 from __future__ import annotations
 
@@ -15,7 +15,10 @@ from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from orchestra.canon.store import Store  # noqa: E402
-from dashboard.backend import model  # noqa: E402
+from dashboard.backend import phase as phase_mod  # noqa: E402
+from dashboard.backend import records  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
+from dashboard.backend import task as task_mod  # noqa: E402
 from dashboard.backend import store as backend_store  # noqa: E402
 
 
@@ -47,7 +50,7 @@ def _target(store):
     return open_store(store)
 
 
-def _effort(snapshot: model.Snapshot, name: str) -> model.EffortView:
+def _effort(snapshot: snapshot_mod.Snapshot, name: str) -> snapshot_mod.EffortView:
     return next(view for view in snapshot.efforts if view.effort == name)
 
 
@@ -82,14 +85,14 @@ def seeded(store):
 
 
 def test_groups_records_per_live_effort_and_skips_efforts_without_an_active_goal(seeded):
-    snapshot = model.load_snapshot(_target(seeded))
+    snapshot = snapshot_mod.load_snapshot(_target(seeded))
     assert sorted(view.effort for view in snapshot.efforts) == ["alpha", "beta"]
     assert _effort(snapshot, "alpha").goal == "ship alpha"
     assert [task.subject for task in _effort(snapshot, "beta").tasks] == ["b-ready"]
 
 
 def test_classifies_tasks_with_title_phase_assignee_and_wave(seeded):
-    tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(seeded)), "alpha").tasks}
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").tasks}
     assert {subject: task.status for subject, task in tasks.items()} == {
         "a-running": "running", "a-ready": "ready", "a-waiting": "waiting",
         "a-done": "done", "a-withdrawn": "withdrawn",
@@ -100,17 +103,17 @@ def test_classifies_tasks_with_title_phase_assignee_and_wave(seeded):
 
 
 def test_orders_tasks_running_ready_waiting_done_withdrawn(seeded):
-    tasks = _effort(model.load_snapshot(_target(seeded)), "alpha").tasks
+    tasks = _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").tasks
     assert [task.status for task in tasks] == ["running", "ready", "waiting", "done", "withdrawn"]
 
 
 def test_reports_phase_ordinal_state_and_done_over_total_excluding_withdrawn(seeded):
-    phases = _effort(model.load_snapshot(_target(seeded)), "alpha").phases
+    phases = _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").phases
     assert [(p.ordinal, p.title, p.state, p.done, p.total) for p in phases] == [
         (1, "title of a-one", "done", 1, 1),
         (2, "title of a-two", "in_progress", 0, 3),
     ]
-    assert _effort(model.load_snapshot(_target(seeded)), "beta").phases[0].state == "planned"
+    assert _effort(snapshot_mod.load_snapshot(_target(seeded)), "beta").phases[0].state == "planned"
 
 
 def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cli, defs):
@@ -150,7 +153,7 @@ def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cl
     result = cli("correct", "--type", "tuner:check-run", "--id", corrected["id"], "--payload", json.dumps({"signed_by": "ayin"}))
     assert result.returncode == 0, result.stdout + result.stderr
 
-    items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
     assert sorted((item.kind, item.text) for item in items if item.kind != "unsigned-check") == [
         ("blocking-question", "block-scope"),
         ("needs-human", "human decides"),
@@ -169,7 +172,7 @@ def test_unsigned_check_reads_as_its_criterion_and_task_not_a_record_id(store, c
     _record(cli, defs, "tuner:check-run", "u-check", {**check_payload, "criterion_id": acceptance["id"]})
     _record(cli, defs, "tuner:check-run", "u-orphan", {**check_payload, "criterion_id": "rec-missing"})
 
-    items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
     assert sorted((item.subject, item.text) for item in items) == [
         ("u-orphan", "pass"),
         ("u-task-perf", "pages render pass"),
@@ -185,7 +188,7 @@ def test_needs_you_items_carry_record_type_and_full_body(store, cli, defs):
     _record(cli, defs, "tuner:finding", "f-human",
             {"claim": "human decides", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"})
 
-    items = {item.kind: item for item in _effort(model.load_snapshot(_target(store)), "alpha").needs_you}
+    items = {item.kind: item for item in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you}
     assert items["blocking-question"].record_type == "score:continuity-question"
     assert items["blocking-question"].body.strip() == "Pick the PDF renderer before the render task starts."
     assert items["needs-human"].record_type == "tuner:finding"
@@ -210,7 +213,7 @@ def test_needs_you_items_link_to_the_task_with_the_longest_matching_slug(store, 
             {"method": "manual", "signed_by": "", "result": "pass", "revision": "r", "effort": "alpha",
              "criterion_id": acceptance["id"]})
 
-    items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
     assert sorted((item.text, item.task_id) for item in items) == sorted([
         ("exact", render["id"]),
         ("prefix", render["id"]),
@@ -228,12 +231,12 @@ def test_needs_you_effort_level_question_links_to_no_task(store, cli, defs):
         extra_payload={"blocking": False, "scope": "effort scope"},
     )
 
-    items = _effort(model.load_snapshot(_target(store)), "alpha").needs_you
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
     assert [(item.kind, item.task_id) for item in items] == [("open-question", "")]
 
 
 def test_needs_you_item_defaults_keep_the_four_field_constructor_working():
-    item = model.NeedsYouItem("needs-human", "rec-1", "s", "t")
+    item = snapshot_mod.NeedsYouItem("needs-human", "rec-1", "s", "t")
     assert (item.record_type, item.body, item.task_id, item.revision) == ("", "", "", "")
 
 
@@ -259,7 +262,7 @@ def test_approval_needs_you_items_carry_displayed_revision(store, cli, defs):
         },
     )
 
-    items = {item.kind: item for item in _effort(model.load_snapshot(_target(store)), "alpha").needs_you}
+    items = {item.kind: item for item in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you}
     assert items["blocking-question"].revision == question["revision"]
     assert items["needs-human"].revision == finding["revision"]
     assert items["unsigned-check"].revision == check["revision"]
@@ -294,7 +297,7 @@ def test_recent_activity_lists_last_24h_newest_first_and_resolves_reports_to_the
         }),
     )
 
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     activity = _effort(snapshot, "alpha").activity
     assert sorted((a.kind, a.subject) for a in activity) == [
         ("assignment", "a-assign"), ("check-run", "a-check"), ("execution-report", "a-report"),
@@ -324,7 +327,7 @@ def test_activity_marks_failed_check_runs_and_failed_reports_only(store, cli, de
             extra_payload={"method": "check", "signed_by": "", "result": result, "effort": "alpha"},
         )
 
-    activity = _effort(model.load_snapshot(_target(store)), "alpha").activity
+    activity = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").activity
     assert sorted(a.subject for a in activity if a.failed) == [
         "a-check-fail", "a-report-result-fail", "a-report-verdict-fail",
     ]
@@ -338,17 +341,17 @@ def test_activity_window_follows_the_supplied_clock(store, cli, defs):
         extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
     )
     later = datetime.now(timezone.utc) + timedelta(hours=25)
-    assert _effort(model.load_snapshot(_target(store), now=later), "alpha").activity == []
+    assert _effort(snapshot_mod.load_snapshot(_target(store), now=later), "alpha").activity == []
 
 
 def test_change_token_is_stable_until_the_store_changes(store, cli, defs):
     _goal(cli, defs, "alpha")
     target = _target(store)
-    first = model.load_snapshot(target).token
-    assert model.load_snapshot(target).token == first
-    assert model.change_token(target) == first
+    first = snapshot_mod.load_snapshot(target).token
+    assert snapshot_mod.load_snapshot(target).token == first
+    assert snapshot_mod.change_token(target) == first
     _work_item(cli, defs, "alpha", "a-task", "a-phase")
-    assert model.change_token(target) != first
+    assert snapshot_mod.change_token(target) != first
 
 
 def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
@@ -356,9 +359,9 @@ def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
     _work_item(cli, defs, "alpha", "a-task", "a-phase")
     target = _target(store)
     walks = []
-    real = model.change_token
-    monkeypatch.setattr(model, "change_token", lambda t: walks.append(t) or real(t))
-    model.load_snapshot(target)
+    real = snapshot_mod.change_token
+    monkeypatch.setattr(snapshot_mod, "change_token", lambda t: walks.append(t) or real(t))
+    snapshot_mod.load_snapshot(target)
     assert len(walks) == 1
 
 
@@ -370,7 +373,7 @@ def test_change_token_stats_type_directories_not_records(store, cli, defs, monke
     stats = []
     real = os.stat
     monkeypatch.setattr(os, "stat", lambda *a, **k: stats.append(a) or real(*a, **k))
-    model.change_token(target)
+    snapshot_mod.change_token(target)
     assert len(stats) <= len(list((target.store_path / "records").iterdir()))
 
 
@@ -389,22 +392,22 @@ def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     _goal(cli, defs, "alpha")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
     target = _target(store)
-    before = model.change_token(target)
+    before = snapshot_mod.change_token(target)
     h.transition(cli, "score:work-item", item, "in_progress")
-    assert model.change_token(target) != before
+    assert snapshot_mod.change_token(target) != before
 
 
 def test_raises_a_model_error_when_the_store_read_fails(store, monkeypatch):
     def fail(target, *args, **kwargs):
-        raise model.ModelError("list failed")
+        raise backend_store.ModelError("list failed")
 
     monkeypatch.setattr(backend_store, "list_records", fail)
-    with pytest.raises(model.ModelError):
-        model.load_snapshot(_target(store))
+    with pytest.raises(backend_store.ModelError):
+        snapshot_mod.load_snapshot(_target(store))
 
 
 def test_store_with_no_goals_has_no_efforts(store):
-    assert model.load_snapshot(_target(store)).efforts == []
+    assert snapshot_mod.load_snapshot(_target(store)).efforts == []
 
 
 def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
@@ -419,7 +422,7 @@ def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
-    assert [view.effort for view in model.load_snapshot(_target(store)).efforts] == ["open-one"]
+    assert [view.effort for view in snapshot_mod.load_snapshot(_target(store)).efforts] == ["open-one"]
 
 
 def _record(cli, defs, record_type: str, subject: str, payload: dict, body: str | None = None, *rels: str) -> dict:
@@ -483,9 +486,9 @@ def detail_store(store, cli, defs):
     return store, task, dep, blocked
 
 
-def _detail(detail_store) -> model.TaskDetail:
+def _detail(detail_store) -> task_mod.TaskDetail:
     store, task, _, _ = detail_store
-    return model.load_task_detail(_target(store), task["id"])
+    return task_mod.load_task_detail(_target(store), task["id"])
 
 
 def test_detail_returns_the_work_item_fields(detail_store):
@@ -564,8 +567,8 @@ def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
 
 
 def test_detail_of_an_unknown_id_raises_a_model_error(store):
-    with pytest.raises(model.ModelError):
-        model.load_task_detail(_target(store), "rec-missing")
+    with pytest.raises(backend_store.ModelError):
+        task_mod.load_task_detail(_target(store), "rec-missing")
 
 
 def _signoff_task(cli, defs, effort, phase, subject, manual_signed_by=None, result="pass"):
@@ -581,7 +584,7 @@ def _signoff_task(cli, defs, effort, phase, subject, manual_signed_by=None, resu
 
 
 def _awaiting(store, effort="alpha"):
-    phases = _effort(model.load_snapshot(_target(store)), effort).phases
+    phases = _effort(snapshot_mod.load_snapshot(_target(store)), effort).phases
     return {p.subject: p.awaiting_signoff for p in phases}
 
 
@@ -627,7 +630,7 @@ def test_phase_detail_carries_body_decisions_constraints_and_tasks(store, cli, d
             {"statement": "no network", "applies_to": "p-one", "effort": "alpha"})
     _record(cli, defs, "score:constraint", "other-limit",
             {"statement": "elsewhere", "applies_to": "p-two", "effort": "alpha"})
-    detail = model.load_phase_detail(_target(store), "alpha", "p-one")
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-one")
     assert (detail.subject, detail.title, detail.state, detail.awaiting_signoff) == ("p-one", "title of p-one", "in_progress", False)
     assert "placeholder text for Problem" in detail.body
     assert [d.text for d in detail.decisions] == ["go left"]
@@ -637,16 +640,16 @@ def test_phase_detail_carries_body_decisions_constraints_and_tasks(store, cli, d
 
 def test_phase_detail_for_an_unknown_phase_raises(store, cli, defs):
     _goal(cli, defs, "alpha")
-    with pytest.raises(model.ModelError):
-        model.load_phase_detail(_target(store), "alpha", "nope")
+    with pytest.raises(backend_store.ModelError):
+        phase_mod.load_phase_detail(_target(store), "alpha", "nope")
 
 
-def _phase_row(state: str) -> model.PhaseRow:
-    return model.PhaseRow(subject=f"p-{state}", title="", ordinal=1, state=state, done=0, total=0)
+def _phase_row(state: str) -> phase_mod.PhaseRow:
+    return phase_mod.PhaseRow(subject=f"p-{state}", title="", ordinal=1, state=state, done=0, total=0)
 
 
-def _task_row(status: str) -> model.TaskRow:
-    return model.TaskRow(id=status, subject=f"t-{status}", title="", phase="", assignee="", wave=None, status=status)
+def _task_row(status: str) -> task_mod.TaskRow:
+    return task_mod.TaskRow(id=status, subject=f"t-{status}", title="", phase="", assignee="", wave=None, status=status)
 
 
 @pytest.mark.parametrize(("phases", "tasks", "finished"), [
@@ -662,7 +665,7 @@ def _task_row(status: str) -> model.TaskRow:
     (["done"], ["waiting"], False),
 ])
 def test_effort_is_finished_only_when_every_phase_and_counted_task_is_done(phases, tasks, finished):
-    view = model.EffortView(
+    view = snapshot_mod.EffortView(
         effort="e", goal="", phases=[_phase_row(s) for s in phases], tasks=[_task_row(s) for s in tasks],
     )
     assert view.finished is finished
@@ -676,7 +679,7 @@ def test_finished_efforts_sort_after_live_ones(store, cli, defs):
     h.transition(cli, "score:work-item", done, "in_progress", "done")
     _phase(cli, defs, "beta", "b-one", 1, "in_progress")
     _work_item(cli, defs, "beta", "b-ready", "b-one")
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     assert [(view.effort, view.finished) for view in snapshot.efforts] == [
         ("beta", False), ("gamma", False), ("alpha", True),
     ]
@@ -700,7 +703,7 @@ def test_waits_on_lists_only_unfinished_dependency_slugs_in_dependency_order(sto
         cli, defs, "alpha", "w-task", "p-one",
         f"depends_on:{later['id']}", f"depends_on:{done['id']}", f"depends_on:{active['id']}",
     )
-    tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
     assert tasks["w-task"].waits_on == ("w-later", "w-active")
     assert tasks["w-later"].waits_on == ()
 
@@ -710,7 +713,7 @@ def test_phase_detail_task_rows_carry_waits_on(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     dep = _work_item(cli, defs, "alpha", "w-dep", "p-one")
     _work_item(cli, defs, "alpha", "w-task", "p-one", f"depends_on:{dep['id']}")
-    tasks = {t.subject: t for t in model.load_phase_detail(_target(store), "alpha", "p-one").tasks}
+    tasks = {t.subject: t for t in phase_mod.load_phase_detail(_target(store), "alpha", "p-one").tasks}
     assert tasks["w-task"].waits_on == ("w-dep",)
 
 
@@ -719,8 +722,8 @@ def test_task_rows_include_depends_on_task_ids(store, cli, defs):
     _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
     dep = _work_item(cli, defs, "alpha", "w-dep", "p-one")
     _work_item(cli, defs, "alpha", "w-task", "p-one", f"depends_on:{dep['id']}")
-    snap = {t.subject: t for t in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
-    phase = {t.subject: t for t in model.load_phase_detail(_target(store), "alpha", "p-one").tasks}
+    snap = {t.subject: t for t in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
+    phase = {t.subject: t for t in phase_mod.load_phase_detail(_target(store), "alpha", "p-one").tasks}
     assert snap["w-task"].depends_on == (dep["id"],)
     assert phase["w-task"].depends_on == (dep["id"],)
     assert snap["w-dep"].depends_on == ()
@@ -736,7 +739,7 @@ def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, c
         "--body", h.generic_body(defs["conductor:assignment"]),
     )
     latest = _assign(cli, defs, "r-running", "new")
-    tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
     assert tasks["r-running"].running_since == datetime.fromisoformat(latest["recorded_at"])
 
 
@@ -749,7 +752,7 @@ def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
     h.transition(cli, "score:work-item", done, "in_progress", "done")
     unassigned = _work_item(cli, defs, "alpha", "r-unassigned", "p-one")
     h.transition(cli, "score:work-item", unassigned, "in_progress")
-    tasks = {task.subject: task for task in _effort(model.load_snapshot(_target(store)), "alpha").tasks}
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
     assert [tasks[s].running_since for s in ("r-ready", "r-done", "r-unassigned")] == [None, None, None]
 
 
@@ -773,14 +776,14 @@ def _merged_store(cli, defs):
 
 def test_snapshot_counts_a_check_run_of_a_merged_effort_under_the_new_effort(store, cli, defs):
     _merged_store(cli, defs)
-    view = _effort(model.load_snapshot(_target(store)), "merged")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "merged")
     assert [item.kind for item in view.needs_you] == ["unsigned-check"]
     assert [item.kind for item in view.activity] == ["check-run"]
 
 
 def test_task_detail_lists_a_check_run_recorded_under_a_merged_effort(store, cli, defs):
     task = _merged_store(cli, defs)
-    detail = model.load_task_detail(_target(store), task["id"])
+    detail = task_mod.load_task_detail(_target(store), task["id"])
     assert [e.kind for e in detail.timeline] == ["check-run"]
 
 
@@ -931,7 +934,7 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
     other = _accept(cli, defs, "other-check", "p-other", "R2")
     _check(cli, defs, "other-pass", other["id"], "pass", "R2", "unit")
 
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     phase = next(row for row in view.phases if row.subject == "p-rows")
     evidence = phase.evidence
     assert evidence is not None
@@ -945,7 +948,7 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
     ]
     assert evidence.requirements[0].latest_check is None
     assert evidence.requirements[1].latest_check.result == "fail"
-    detail = model.load_phase_detail(_target(store), "alpha", "p-rows")
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-rows")
     assert [row.id for row in detail.evidence.requirements] == ["R1", "R2"]
 
 
@@ -986,7 +989,7 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
         return real(target, *args, **kwargs)
 
     monkeypatch.setattr(backend_store, "list_records", spy)
-    detail = model.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
+    detail = phase_mod.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
     assert any(
         "conductor:assessment" in args and kwargs.get("state") == "superseded" for args, kwargs in calls
     )
@@ -1036,7 +1039,7 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
     _release(cli, defs, "act-bad", "failed")
     _release(cli, defs, "act-ok", "ready")
 
-    activity = _effort(model.load_snapshot(_target(store)), "alpha").activity
+    activity = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").activity
     assert all("R9" not in item.summary and item.subject != "act-old-report" for item in activity)
     assessments = [item for item in activity if item.kind == "assessment"]
     assert sorted(item.summary for item in assessments if item.summary.startswith("R1 ")) == [
@@ -1089,10 +1092,10 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
     )
     _report(cli, defs, "n-pass", "pass", "clean", subject="n-pass-new")
 
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
-    assert model.NEEDS_ORDER[:3] == ("blocking-question", "loop-route", "integration")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    assert snapshot_mod.NEEDS_ORDER[:3] == ("blocking-question", "loop-route", "integration")
     kinds = [item.kind for item in view.needs_you]
-    assert kinds == sorted(kinds, key=lambda kind: model.NEEDS_ORDER.index(kind))
+    assert kinds == sorted(kinds, key=lambda kind: snapshot_mod.NEEDS_ORDER.index(kind))
     assert kinds[0] == "blocking-question"
     routes = [item for item in view.needs_you if item.kind == "loop-route"]
     assert sorted((item.phase, item.requirement, item.status, item.next) for item in routes) == [
@@ -1132,7 +1135,7 @@ def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs)
     _spec(cli, defs, "rel-failed", effort="gamma")
     _release(cli, defs, "rel-failed", "failed", effort="gamma")
 
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     alpha = _effort(snapshot, "alpha")
     beta = _effort(snapshot, "beta")
     gamma = _effort(snapshot, "gamma")
@@ -1144,10 +1147,10 @@ def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs)
     assert gamma.release_ready is False
     assert gamma.phases[0].evidence is not None
     assert gamma.phases[0].evidence.release_ready is False
-    live = model.EffortView(
+    live = snapshot_mod.EffortView(
         "e", "", phases=[_phase_row("in_progress")], tasks=[_task_row("ready")], release_ready=True,
     )
-    done = model.EffortView(
+    done = snapshot_mod.EffortView(
         "e", "", phases=[_phase_row("done")], tasks=[_task_row("done")], release_ready=True,
     )
     assert live.finished is False
@@ -1162,13 +1165,13 @@ def test_evidence_simple_phase_adds_no_items(store, cli, defs):
     _report(cli, defs, "p-simple", "fail", "clash")
     _release(cli, defs, "p-simple", "ready")
 
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     assert view.phases[0].evidence is None
     assert view.release_ready is False
     assert view.finished is False
     assert view.needs_you == []
     assert view.activity == []
-    assert model.load_phase_detail(_target(store), "alpha", "p-simple").evidence is None
+    assert phase_mod.load_phase_detail(_target(store), "alpha", "p-simple").evidence is None
 
 
 def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, defs):
@@ -1196,7 +1199,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
     _check(cli, defs, "m-r2-fail", acc["id"], "fail", "R2", "integration")
     _release(cli, defs, "p-matrix", "failed")
 
-    evidence = _effort(model.load_snapshot(_target(store)), "alpha").phases[0].evidence
+    evidence = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").phases[0].evidence
     assert evidence is not None
     assert evidence.release_state == "failed"
     by_id = {row.id: row for row in evidence.requirements}
@@ -1219,9 +1222,9 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
 def test_matrix_no_specification_has_no_evidence(store, cli, defs):
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-plain", 1, "in_progress")
-    detail = model.load_phase_detail(_target(store), "alpha", "p-plain")
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-plain")
     assert detail.evidence is None
-    assert "evidence" not in model.tabs_for(detail)
+    assert "evidence" not in phase_mod.tabs_for(detail)
 
 
 def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
@@ -1237,16 +1240,16 @@ def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
     _record(cli, defs, "score:design", "p-full", {
         "phase": "p-full", "effort": "alpha", "decisions": ["pick-cols"],
     }, design_body)
-    full = model.load_phase_detail(_target(store), "alpha", "p-full")
-    plain = model.load_phase_detail(_target(store), "alpha", "p-plain")
+    full = phase_mod.load_phase_detail(_target(store), "alpha", "p-full")
+    plain = phase_mod.load_phase_detail(_target(store), "alpha", "p-plain")
     assert full.structured is True
     assert "structured holds" in full.spec_body
     assert "one pane per tab" in full.design_body
-    assert model.tabs_for(full) == (
+    assert phase_mod.tabs_for(full) == (
         "overview", "spec", "design", "decisions", "evidence", "tasks",
     )
     assert plain.structured is False
-    assert model.tabs_for(plain) == ("overview", "spec", "decisions", "tasks")
+    assert phase_mod.tabs_for(plain) == ("overview", "spec", "decisions", "tasks")
 
 
 def test_phase_screen_tabs_when_specification_type_is_missing():
@@ -1261,11 +1264,11 @@ def test_phase_screen_tabs_when_specification_type_is_missing():
 
         _goal(cli, defs, "alpha")
         _phase(cli, defs, "alpha", "legacy-phase", 1, "in_progress")
-        detail = model.load_phase_detail(_target(root), "alpha", "legacy-phase")
+        detail = phase_mod.load_phase_detail(_target(root), "alpha", "legacy-phase")
         assert detail.structured is False
         assert detail.spec_body == ""
         assert detail.design_body == ""
-        assert model.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
+        assert phase_mod.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -1276,13 +1279,13 @@ def test_phase_screen_simple_detail_carries_body_and_constraints(store, cli, def
     _record(cli, defs, "score:constraint", "simple-limit", {
         "statement": "stay offline", "applies_to": "p-simple", "effort": "alpha",
     })
-    detail = model.load_phase_detail(_target(store), "alpha", "p-simple")
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-simple")
     assert detail.structured is False
     assert "placeholder text for Problem" in detail.body
     assert [c.text for c in detail.constraints] == ["stay offline"]
     assert detail.spec_body == ""
     assert detail.design_body == ""
-    assert model.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
+    assert phase_mod.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
 
 
 def test_phase_screen_decision_log_scopes_and_history(store, cli, defs):
@@ -1303,20 +1306,20 @@ def test_phase_screen_decision_log_scopes_and_history(store, cli, defs):
     }, late_body)
     second = _supersede(cli, defs, "score:decision", first, {"choice": "new"})
 
-    phase_log = model.load_decision_log(_target(store), "alpha", "p-late", history=False)
+    phase_log = phase_mod.load_decision_log(_target(store), "alpha", "p-late", history=False)
     assert [title for title, _ in phase_log.groups] == ["title of p-late"]
     entries = phase_log.groups[0][1]
     assert [(e.subject, e.choice, e.alternatives, e.rationale, e.counter, e.superseded) for e in entries] == [
         ("choose-late", "new", "new", "placeholder.", "placeholder.", ()),
     ]
 
-    effort_log = model.load_decision_log(_target(store), "alpha", None, history=False)
+    effort_log = phase_mod.load_decision_log(_target(store), "alpha", None, history=False)
     assert [title for title, _ in effort_log.groups] == ["title of p-early", "title of p-late"]
     assert [e.subject for e in effort_log.groups[0][1]] == ["choose-early"]
     assert effort_log.groups[0][1][0].rationale == "early wins"
     assert effort_log.groups[0][1][0].counter == "maybe late"
 
-    history_log = model.load_decision_log(_target(store), "alpha", "p-late", history=True)
+    history_log = phase_mod.load_decision_log(_target(store), "alpha", "p-late", history=True)
     active = history_log.groups[0][1][0]
     assert active.subject == "choose-late"
     assert active.choice == "new"
@@ -1342,7 +1345,7 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
 
         _goal(cli, defs, "alpha")
         _phase(cli, defs, "alpha", "legacy-phase", 1)
-        view = _effort(model.load_snapshot(_target(root)), "alpha")
+        view = _effort(snapshot_mod.load_snapshot(_target(root)), "alpha")
         assert view.phases[0].evidence is None
         assert view.release_ready is False
         assert view.needs_you == []
@@ -1351,12 +1354,12 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
 
         def boom(target, *args, **kwargs):
             if "score:work-item" in args:
-                raise model.ModelError("work-item failed")
+                raise backend_store.ModelError("work-item failed")
             return real(target, *args, **kwargs)
 
         monkeypatch.setattr(backend_store, "list_records", boom)
-        with pytest.raises(model.ModelError):
-            model.load_snapshot(_target(root))
+        with pytest.raises(backend_store.ModelError):
+            snapshot_mod.load_snapshot(_target(root))
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -1370,15 +1373,15 @@ def test_list_skips_types_absent_from_store_schemas(monkeypatch):
 
     def boom(tgt, *args, **kwargs):
         calls.append(args)
-        raise model.ModelError("list should not be called for undeclared types")
+        raise backend_store.ModelError("list should not be called for undeclared types")
 
     monkeypatch.setattr(backend_store, "list_records", boom)
-    assert model._list(target, "score:phase") == []
-    assert model._list(target, "score:work-item") == []
+    assert records._list(target, "score:phase") == []
+    assert records._list(target, "score:work-item") == []
     assert calls == []
 
-    with pytest.raises(model.ModelError, match="should not be called"):
-        model._list(target, "score:effort")
+    with pytest.raises(backend_store.ModelError, match="should not be called"):
+        records._list(target, "score:effort")
     assert calls == [("score:effort",)]
 
 
@@ -1444,7 +1447,7 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     acceptance = _accept(cli, defs, "s-assess-acc", "s-assess", "R1")
     _check(cli, defs, "s-assess-check", acceptance["id"], "pass", "R1", "unit")
 
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     integrate = [task for task in view.tasks if task.phase == "s-integrate"]
     assert len(integrate) == 2 and len({task.wave for task in integrate}) == 1
     assert {phase.subject: phase.evidence.stage for phase in view.phases} == {
@@ -1473,19 +1476,19 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     assert view.release_ready is True
 
 
-def _estimated(ident: str, wave: int | None, executor: str, minutes: int | None) -> model.TaskRow:
-    return model.TaskRow(
+def _estimated(ident: str, wave: int | None, executor: str, minutes: int | None) -> task_mod.TaskRow:
+    return task_mod.TaskRow(
         id=ident, subject=ident, title="", phase="p", assignee="", wave=wave, status="ready",
         executor=executor, estimate_minutes=minutes,
     )
 
 
 def test_estimate_view_sitting_phrase():
-    assert model.sitting_phrase("Size: more than one sitting") == "more than one"
-    assert model.sitting_phrase("Size: more than one sitting.") == "more than one"
-    assert model.sitting_phrase("## Approach\n\nSize: one sitting\n") == "one sitting"
-    assert model.sitting_phrase("Size: one sitting\nSize: more than one sitting") == "one sitting"
-    assert model.sitting_phrase("## Problem\n\nNo size line here.\n") == ""
+    assert phase_mod.sitting_phrase("Size: more than one sitting") == "more than one"
+    assert phase_mod.sitting_phrase("Size: more than one sitting.") == "more than one"
+    assert phase_mod.sitting_phrase("## Approach\n\nSize: one sitting\n") == "one sitting"
+    assert phase_mod.sitting_phrase("Size: one sitting\nSize: more than one sitting") == "one sitting"
+    assert phase_mod.sitting_phrase("## Problem\n\nNo size line here.\n") == ""
 
 
 def test_estimate_view_wave_rule():
@@ -1497,26 +1500,26 @@ def test_estimate_view_wave_rule():
         _estimated("sub-blank", 2, "subagent", None),
         _estimated("zero", 3, "inline", 0),
     ]
-    elapsed, unset = model.phase_elapsed(tasks)
+    elapsed, unset = phase_mod.phase_elapsed(tasks)
     assert elapsed == 10 + 15 + 40
     assert elapsed != sum(task.estimate_minutes or 0 for task in tasks)
     assert unset == 1
-    assert model.phase_elapsed([_estimated("only-zero", 1, "subagent", 0)]) == (0, 0)
+    assert phase_mod.phase_elapsed([_estimated("only-zero", 1, "subagent", 0)]) == (0, 0)
     separate = [
         _estimated("lone-a", None, "subagent", 10),
         _estimated("lone-b", None, "subagent", 40),
     ]
-    assert model.phase_elapsed(separate) == (50, 0)
+    assert phase_mod.phase_elapsed(separate) == (50, 0)
 
 
 def test_estimate_view_unset_count():
-    elapsed, unset = model.phase_elapsed([
+    elapsed, unset = phase_mod.phase_elapsed([
         _estimated("missing-a", 1, "inline", None),
         _estimated("missing-b", 1, "inline", None),
         _estimated("known", 1, "inline", 25),
     ])
     assert (elapsed, unset) == (25, 2)
-    elapsed, unset = model.phase_elapsed([
+    elapsed, unset = phase_mod.phase_elapsed([
         _estimated("none-a", 1, "subagent", None),
         _estimated("none-b", 2, "inline", None),
     ])
@@ -1542,7 +1545,7 @@ def test_estimate_view_row_fields(store, cli, defs):
     zero = _estimate_record("zero", size="", estimate_minutes=0, executor="")
     blank = _estimate_record("blank")
     null = _estimate_record("null", size=None, estimate_minutes=None, executor=None)
-    rows = {row.subject: row for row in model._task_rows([sized, zero, blank, null])}
+    rows = {row.subject: row for row in task_mod._task_rows([sized, zero, blank, null])}
     assert (rows["sized"].size, rows["sized"].estimate_minutes, rows["sized"].executor) == ("L", 25, "inline")
     assert (rows["zero"].size, rows["zero"].estimate_minutes, rows["zero"].executor) == ("", 0, "subagent")
     assert (rows["blank"].size, rows["blank"].estimate_minutes, rows["blank"].executor) == ("", None, "subagent")
@@ -1556,7 +1559,7 @@ def test_estimate_view_row_fields(store, cli, defs):
         "payload": {"title": "Estimates", "ordinal": 1},
         "body": "Size: more than one sitting.",
     }
-    phase_row = model._phase_rows([phase], [sized])[0]
+    phase_row = phase_mod._phase_rows([phase], [sized])[0]
     assert phase_row.sitting == "more than one"
     assert phase_row.elapsed_minutes == 25
     assert phase_row.unset_estimates == 0
@@ -1572,7 +1575,7 @@ def test_estimate_view_row_fields(store, cli, defs):
         "title": "Snap zero", "phase": "p-snap", "kind": "deliver", "assignee": "", "effort": "alpha",
         "estimate_minutes": 0, "executor": "inline",
     })
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     snap = view.phases[0]
     assert snap.sitting == "more than one"
     assert snap.elapsed_minutes == 25
@@ -1587,7 +1590,7 @@ def test_estimate_view_row_fields(store, cli, defs):
 
 def test_estimate_view_blank_executor(store, cli, defs):
     task = _work_item(cli, defs, "alpha", "blank-task", "p-one")
-    detail = model.load_task_detail(_target(store), task["id"])
+    detail = task_mod.load_task_detail(_target(store), task["id"])
     assert detail.executor == "subagent"
     assert detail.size == ""
     assert detail.estimate_minutes is None
@@ -1600,22 +1603,22 @@ from dashboard.backend import gates  # noqa: E402
 
 def _gates_phase(
     subject: str, title: str, ordinal: int, state: str, *,
-    decisions: tuple[model.DecisionChoice, ...] | None = None,
-) -> model.PhaseRow:
+    decisions: tuple[phase_mod.DecisionChoice, ...] | None = None,
+) -> phase_mod.PhaseRow:
     evidence = None
     if decisions is not None:
-        evidence = model.PhaseEvidence(
+        evidence = phase_mod.PhaseEvidence(
             phase=subject, weight="", requirements=(), stage="", integration=None,
             release_ready=False, decisions=decisions, non_goals="",
         )
-    return model.PhaseRow(subject, title, ordinal, state, 0, 0, evidence=evidence)
+    return phase_mod.PhaseRow(subject, title, ordinal, state, 0, 0, evidence=evidence)
 
 
 def _gates_task(
     subject: str, phase: str, status: str, *, wave: int | None = 1,
     estimate_minutes: int | None = None, last_record_at: datetime | None = None,
-) -> model.TaskRow:
-    return model.TaskRow(
+) -> task_mod.TaskRow:
+    return task_mod.TaskRow(
         id=f"id-{subject}", subject=subject, title=subject, phase=phase,
         assignee="", wave=wave, status=status, estimate_minutes=estimate_minutes,
         last_record_at=last_record_at,
@@ -1625,11 +1628,11 @@ def _gates_task(
 def _gates_view(
     effort: str = "dashboard",
     *,
-    phases: list[model.PhaseRow] | None = None,
-    tasks: list[model.TaskRow] | None = None,
-    needs_you: list[model.NeedsYouItem] | None = None,
-) -> model.EffortView:
-    return model.EffortView(
+    phases: list[phase_mod.PhaseRow] | None = None,
+    tasks: list[task_mod.TaskRow] | None = None,
+    needs_you: list[snapshot_mod.NeedsYouItem] | None = None,
+) -> snapshot_mod.EffortView:
+    return snapshot_mod.EffortView(
         effort, f"goal for {effort}",
         phases=list(phases or []),
         tasks=list(tasks or []),
@@ -1640,14 +1643,14 @@ def _gates_view(
 def test_gates_action_label_verbs_for_each_needs_you_kind():
     view = _gates_view(phases=[_gates_phase("human-gates", "Human gates", 1, "planned")])
     cases = [
-        (model.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"), "Review plan"),
-        (model.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer"), "Answer"),
-        (model.NeedsYouItem("open-question", "3", "dashboard", "nice-to-have"), "Answer"),
-        (model.NeedsYouItem("needs-human", "4", "as-dry-run", "claim text"), "Decide"),
-        (model.NeedsYouItem("unsigned-check", "5", "as-dry-run", "criterion pass"), "Sign off"),
-        (model.NeedsYouItem("loop-route", "6", "r1", "R1 upstream design", next="design", requirement="R1"), "Route to design"),
-        (model.NeedsYouItem("integration", "7", "phase-a", "phase-a fail", phase="phase-a", result="fail"), "Fix integration"),
-        (model.NeedsYouItem("merge-branch", "8", "human-gates", "phase/human-gates", phase="human-gates"), "Merge branch"),
+        (snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"), "Review plan"),
+        (snapshot_mod.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer"), "Answer"),
+        (snapshot_mod.NeedsYouItem("open-question", "3", "dashboard", "nice-to-have"), "Answer"),
+        (snapshot_mod.NeedsYouItem("needs-human", "4", "as-dry-run", "claim text"), "Decide"),
+        (snapshot_mod.NeedsYouItem("unsigned-check", "5", "as-dry-run", "criterion pass"), "Sign off"),
+        (snapshot_mod.NeedsYouItem("loop-route", "6", "r1", "R1 upstream design", next="design", requirement="R1"), "Route to design"),
+        (snapshot_mod.NeedsYouItem("integration", "7", "phase-a", "phase-a fail", phase="phase-a", result="fail"), "Fix integration"),
+        (snapshot_mod.NeedsYouItem("merge-branch", "8", "human-gates", "phase/human-gates", phase="human-gates"), "Merge branch"),
     ]
     for item, expected in cases:
         assert gates.action_label(item, view) == expected
@@ -1657,11 +1660,11 @@ def test_gates_action_label_plan_review_shows_phase_title_not_raw_scope():
     view = _gates_view(phases=[
         _gates_phase("human-gates", "Show the human gates", 1, "planned"),
     ])
-    item = model.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
+    item = snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
     assert gates.action_label(item, view) == "Review plan"
     assert gates.item_text(item, view) == "Show the human gates"
     assert "plan-review:" not in gates.item_text(item, view)
-    other = model.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer")
+    other = snapshot_mod.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer")
     assert gates.item_text(other, view) == "pick-renderer"
 
 
@@ -1670,39 +1673,39 @@ def test_gates_prompt_names_effort_subject_or_phase_and_action():
         "dashboard",
         phases=[_gates_phase("human-gates", "Human gates", 1, "planned")],
     )
-    plan = model.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
+    plan = snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
     assert gates.prompt(plan, view) == (
         "Walk me through the plan for phase human-gates (effort dashboard) so I can review it."
     )
-    sign = model.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass")
+    sign = snapshot_mod.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass")
     sa = _gates_view("session-analysis")
     assert gates.prompt(sign, sa) == (
         "Sign off the manual check for as-dry-run (effort session-analysis)."
     )
-    decide = model.NeedsYouItem("needs-human", "3", "join-gap", "ambiguous join")
+    decide = snapshot_mod.NeedsYouItem("needs-human", "3", "join-gap", "ambiguous join")
     assert "Decide" in gates.prompt(decide, sa) or "decide" in gates.prompt(decide, sa).lower()
     assert "session-analysis" in gates.prompt(decide, sa)
     assert "join-gap" in gates.prompt(decide, sa)
-    route = model.NeedsYouItem(
+    route = snapshot_mod.NeedsYouItem(
         "loop-route", "4", "r1", "R1 upstream design",
         phase="human-gates", requirement="R1", next="design",
     )
     text = gates.prompt(route, view)
     assert "dashboard" in text and "design" in text and "R1" in text
-    merge = model.NeedsYouItem("merge-branch", "5", "human-gates", "branch", phase="human-gates")
+    merge = snapshot_mod.NeedsYouItem("merge-branch", "5", "human-gates", "branch", phase="human-gates")
     assert "Merge" in gates.prompt(merge, view) and "human-gates" in gates.prompt(merge, view)
 
 
 def test_gates_next_step_plan_review():
     view = _gates_view(needs_you=[
-        model.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"),
+        snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"),
     ])
     assert gates.next_step(view, {}) == "review the human-gates plan (plan-phase)"
 
 
 def test_gates_next_step_other_blocking():
     view = _gates_view(needs_you=[
-        model.NeedsYouItem("blocking-question", "1", "dashboard", "pick-renderer"),
+        snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "pick-renderer"),
     ])
     assert gates.next_step(view, {}) == "answer: pick-renderer"
 
@@ -1718,14 +1721,14 @@ def test_gates_next_step_merge_unmerged_done_phase():
 
 def test_gates_next_step_loop_route_and_unsigned():
     route_view = _gates_view(needs_you=[
-        model.NeedsYouItem(
+        snapshot_mod.NeedsYouItem(
             "loop-route", "1", "r1", "R1 upstream design",
             requirement="R1", next="design",
         ),
     ])
     assert gates.next_step(route_view, {}) == "design for R1 (settle-phase)"
     unsigned_view = _gates_view(needs_you=[
-        model.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass"),
+        snapshot_mod.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass"),
     ])
     assert gates.next_step(unsigned_view, {}) == "sign off as-dry-run (verify-work)"
 
@@ -1758,7 +1761,7 @@ def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
     plan_view = _gates_view(phases=[
         _gates_phase(
             "human-gates", "Human gates", 1, "planned",
-            decisions=(model.DecisionChoice("needs-you-copy-prompt", "chosen"),),
+            decisions=(phase_mod.DecisionChoice("needs-you-copy-prompt", "chosen"),),
         ),
     ])
     assert gates.next_step(plan_view, {}) == "plan-phase human-gates"
@@ -1813,11 +1816,11 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
             _gates_phase("gamma", "Gamma", 3, "in_progress"),
         ],
         needs_you=[
-            model.NeedsYouItem(
+            snapshot_mod.NeedsYouItem(
                 "integration", "int-1", "alpha-int", "alpha fail",
                 phase="alpha", result="fail",
             ),
-            model.NeedsYouItem("needs-human", "h-1", "finding", "claim"),
+            snapshot_mod.NeedsYouItem("needs-human", "h-1", "finding", "claim"),
         ],
     )
     landing = {
@@ -1827,9 +1830,9 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
     }
     merged = gates.merge_landing_needs(view, landing)
     kinds = [item.kind for item in merged.needs_you]
-    assert kinds == sorted(kinds, key=lambda kind: model.NEEDS_ORDER.index(kind))
-    assert "merge-branch" in model.NEEDS_ORDER
-    assert model.NEEDS_ORDER.index("merge-branch") == model.NEEDS_ORDER.index("integration") + 1
+    assert kinds == sorted(kinds, key=lambda kind: snapshot_mod.NEEDS_ORDER.index(kind))
+    assert "merge-branch" in snapshot_mod.NEEDS_ORDER
+    assert snapshot_mod.NEEDS_ORDER.index("merge-branch") == snapshot_mod.NEEDS_ORDER.index("integration") + 1
     assert kinds.index("integration") < kinds.index("merge-branch")
     assert kinds.index("merge-branch") < kinds.index("needs-human")
 
@@ -1895,7 +1898,7 @@ def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):
         {"assignment": assignment["subject"], "effort": "alpha"},
         "## Correction\n\nlater",
     )
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     assert view.phases[0].body == body
     assert "Landing" in view.phases[0].body
     running = {t.subject: t for t in view.tasks}["land-run"]
@@ -1919,7 +1922,7 @@ def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
             {"owner": "user", "blocking": False, "scope": "effort-open"},
         )
 
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     for effort, kind in (("repair-e", "repair"), ("eval-e", "evaluate")):
         view = _effort(snapshot, effort)
         assert view.kind == kind
@@ -1948,7 +1951,7 @@ def test_journal_kind_deliver_and_incidental_skip_journal_open(store, cli, defs,
         raise AssertionError("load_journal must not run for deliver/incidental")
 
     monkeypatch.setattr(journal_mod, "load_journal", boom)
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     for effort, kind in (("deliver-e", "deliver"), ("incidental-e", "incidental")):
         view = _effort(snapshot, effort)
         assert view.kind == kind
@@ -1996,7 +1999,7 @@ def test_backlog_open_items_group_by_effort_and_skip_closed(store, cli, defs):
         extra_payload={"blocking": True, "scope": "still-a-gate"},
     )
 
-    snapshot = model.load_snapshot(_target(store))
+    snapshot = snapshot_mod.load_snapshot(_target(store))
     alpha = _effort(snapshot, "alpha")
     beta = _effort(snapshot, "beta")
     assert [item.subject for item in alpha.backlog] == ["park-a"]
@@ -2011,7 +2014,7 @@ def test_backlog_open_items_group_by_effort_and_skip_closed(store, cli, defs):
 def test_backlog_never_lands_in_needs_you(store, cli, defs):
     _goal(cli, defs, "alpha")
     item = _backlog(cli, defs, "parked-only", "alpha", body="parked work")
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     assert [entry.subject for entry in view.backlog] == ["parked-only"]
     assert view.backlog[0].id == item["id"]
     assert view.needs_you == []
@@ -2021,7 +2024,7 @@ def test_attempt_row_fields_default_budget():
     retried = _estimate_record("retried", attempts=1)
     fresh = _estimate_record("fresh")
     zero = _estimate_record("zero", attempts=0)
-    rows = {row.subject: row for row in model._task_rows([retried, fresh, zero])}
+    rows = {row.subject: row for row in task_mod._task_rows([retried, fresh, zero])}
     assert rows["retried"].attempts == 1
     assert rows["retried"].retry_budget == 2
     assert rows["fresh"].attempts == 0
@@ -2030,9 +2033,9 @@ def test_attempt_row_fields_default_budget():
 
 
 def test_attempt_budget_from_phase_run_facts():
-    assert model.retry_max_redispatches("") == 2
-    assert model.retry_max_redispatches("retry_max_redispatches: 5") == 5
-    assert model.retry_max_redispatches("## Run facts\n\n- retry_max_redispatches: 4\n") == 4
+    assert task_mod.retry_max_redispatches("") == 2
+    assert task_mod.retry_max_redispatches("retry_max_redispatches: 5") == 5
+    assert task_mod.retry_max_redispatches("## Run facts\n\n- retry_max_redispatches: 4\n") == 4
     task = _estimate_record("retried", attempts=2, phase="p-retry")
     phase = {
         "id": "phase-retry",
@@ -2041,7 +2044,7 @@ def test_attempt_budget_from_phase_run_facts():
         "payload": {"title": "Retry", "ordinal": 1},
         "body": "retry_max_redispatches: 5\n",
     }
-    row = model._task_rows([task], phases=[phase])[0]
+    row = task_mod._task_rows([task], phases=[phase])[0]
     assert row.attempts == 2
     assert row.retry_budget == 5
 
@@ -2066,7 +2069,7 @@ def test_attempt_snapshot_reads_payload_and_run_facts(store, cli, defs):
         "title": "Fresh task", "phase": "p-attempt", "kind": "deliver",
         "assignee": "", "effort": "alpha",
     })
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     tasks = {task.subject: task for task in view.tasks}
     assert tasks["attempt-task"].attempts == 1
     assert tasks["attempt-task"].retry_budget == 3
@@ -2097,23 +2100,23 @@ def _suite_check(
 
 
 def test_suite_status_label_pass_fail_running():
-    assert model.suite_status_label("p-ok", [_suite_check("p-ok-suite", "pass", "abcdef0123456789")]) == "suite ok@abcdef0"
-    assert model.suite_status_label("p-bad", [_suite_check("p-bad-suite", "fail", "deadbeef")]) == "suite fail@deadbee"
-    assert model.suite_status_label(
+    assert phase_mod.suite_status_label("p-ok", [_suite_check("p-ok-suite", "pass", "abcdef0123456789")]) == "suite ok@abcdef0"
+    assert phase_mod.suite_status_label("p-bad", [_suite_check("p-bad-suite", "fail", "deadbeef")]) == "suite fail@deadbee"
+    assert phase_mod.suite_status_label(
         "p-run",
         [_suite_check("p-run-suite", "blocked", body="suite-running in worktree")],
     ) == "suite running"
-    assert model.suite_status_label("p-none", []) == ""
-    assert model.suite_status_label("p-ok", [_suite_check("other-suite", "pass")]) == ""
+    assert phase_mod.suite_status_label("p-none", []) == ""
+    assert phase_mod.suite_status_label("p-ok", [_suite_check("other-suite", "pass")]) == ""
     wrong_kind = _suite_check("p-ok-suite", "pass")
     wrong_kind["payload"]["evidence_kind"] = "unit"
-    assert model.suite_status_label("p-ok", [wrong_kind]) == ""
+    assert phase_mod.suite_status_label("p-ok", [wrong_kind]) == ""
     # Legacy `-tier2` subjects still display (suite labels).
-    assert model.suite_status_label(
+    assert phase_mod.suite_status_label(
         "p-legacy",
         [_suite_check("p-legacy-tier2", "pass", "feedface")],
     ) == "suite ok@feedfac"
-    assert model.suite_status_label(
+    assert phase_mod.suite_status_label(
         "p-pref",
         [
             _suite_check("p-pref-tier2", "fail", "deadbeef"),
@@ -2136,6 +2139,6 @@ def test_suite_phase_row_from_snapshot(store, cli, defs):
         "criterion_id": "suite", "revision": "abc1234deadbeef", "result": "pass",
         "effort": "alpha", "method": "check", "signed_by": "", "evidence_kind": "integration",
     })
-    view = _effort(model.load_snapshot(_target(store)), "alpha")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     row = next(p for p in view.phases if p.subject == "sp")
     assert row.suite == "suite ok@abc1234"

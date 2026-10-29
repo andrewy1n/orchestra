@@ -19,7 +19,7 @@ from dashboard.backend.dismiss import (
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
 from dashboard.backend import store
-from dashboard.backend.model import EffortView, NeedsYouItem
+from dashboard.backend.snapshot import EffortView, NeedsYouItem
 
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
