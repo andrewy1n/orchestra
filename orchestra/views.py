@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import posixpath
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
@@ -151,6 +151,17 @@ HANDOFF = View(
     ),
     group_by="effort",
 )
+
+HOOK_ROLE_NAMES = (
+    "goal",
+    "position",
+    "in-progress",
+    "blocking-question",
+    "needs-human",
+    "unsigned-manual-check",
+)
+HOOK_ROLES = tuple(role for role in HANDOFF.roles if role.name in HOOK_ROLE_NAMES)
+HOOK_VIEW = replace(HANDOFF, roles=HOOK_ROLES)
 
 _WORK_FIELDS = ("title", "phase", "kind", "effort")
 
@@ -339,7 +350,9 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
     return bits
 
 
-def _record_line(record: Record, role: Role, extra_bits: list[str]) -> str:
+def _record_line(
+    record: Record, role: Role, extra_bits: list[str], link: bool = True
+) -> str:
     payload = _payload(record)
     bits = []
     for name in role.fields:
@@ -352,13 +365,58 @@ def _record_line(record: Record, role: Role, extra_bits: list[str]) -> str:
     bits.extend(extra_bits)
     summary = "; ".join(bits)
     owner = payload.get("owner") if "owner" in role.fields else None
+    if not link:
+        note = f" _(owner: {owner})_" if owner else ""
+        if summary:
+            return f"- **{record['subject']}**: {summary}{note}"
+        return f"- {record['subject']}{note}"
     extra = f"owner: {owner}, " if owner else ""
-    link = f"[{record['id']}]({record_path(record)})"
+    ref = f"[{record['id']}]({record_path(record)})"
     if summary:
-        return f"- **{record['subject']}**: {summary} _({extra}id: {link})_"
+        return f"- **{record['subject']}**: {summary} _({extra}id: {ref})_"
     if owner:
-        return f"- {record['subject']} _(owner: {owner}, id: {link})_"
-    return f"- {record['subject']} _(id: {link})_"
+        return f"- {record['subject']} _(owner: {owner}, id: {ref})_"
+    return f"- {record['subject']} _(id: {ref})_"
+
+
+def _group_records(
+    view: View, records: list[Record], effort: str | None
+) -> dict[str, dict[str, list[Record]]]:
+    scoped = [r for r in records if _in_effort(r, effort)]
+    groups: dict[str, dict[str, list[Record]]] = {}
+    for role in view.roles:
+        for record in scoped:
+            if record["record_type"] != role.record_type or not role.select(record):
+                continue
+            key = _group_key(record, view, role)
+            groups.setdefault(key, {r.name: [] for r in view.roles})
+            groups[key][role.name].append(record)
+    return groups
+
+
+def _group_lines(
+    view: View,
+    name: str,
+    group: dict[str, list[Record]],
+    tally: list[Record],
+    *,
+    link: bool = True,
+) -> list[str]:
+    lines = [f"## {name}", ""]
+    for role in view.roles:
+        items = sorted(
+            group.get(role.name) or [],
+            key=lambda r: (r.get("subject", ""), r.get("id", "")),
+        )
+        if not items:
+            continue
+        lines.append(f"### {_title(role.name)}")
+        for record in items:
+            lines.append(
+                _record_line(record, role, _status_bits(record, view, tally), link)
+            )
+        lines.append("")
+    return lines
 
 
 def render_view(
@@ -369,15 +427,7 @@ def render_view(
         if view.tally_type
         else []
     )
-    scoped = [r for r in records if _in_effort(r, effort)]
-    groups: dict[str, dict[str, list[Record]]] = {}
-    for role in view.roles:
-        for record in scoped:
-            if record["record_type"] != role.record_type or not role.select(record):
-                continue
-            key = _group_key(record, view, role)
-            groups.setdefault(key, {r.name: [] for r in view.roles})
-            groups[key][role.name].append(record)
+    groups = _group_records(view, records, effort)
 
     lines = [
         f"# {view.title}",
@@ -389,18 +439,7 @@ def render_view(
         lines += ["_No matching records._", ""]
         return "\n".join(lines)
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += [f"## {name}", ""]
-        for role in view.roles:
-            items = sorted(
-                groups[name].get(role.name) or [],
-                key=lambda r: (r.get("subject", ""), r.get("id", "")),
-            )
-            if not items:
-                continue
-            lines.append(f"### {_title(role.name)}")
-            for record in items:
-                lines.append(_record_line(record, role, _status_bits(record, view, tally)))
-            lines.append("")
+        lines += _group_lines(view, name, groups[name], tally)
     return "\n".join(lines)
 
 
@@ -506,19 +545,49 @@ def load_records(project: Any) -> list[Record]:
     return attach_derived_all(project.records(), project.derived())
 
 
+def live_efforts(records: list[Record]) -> set[str]:
+    return {
+        effort
+        for role in (GOAL, POSITION)
+        for r in records
+        if r["record_type"] == role.record_type
+        and role.select(r)
+        and (effort := effort_of(r))
+    }
+
+
+def _position_recorded_at(records: list[Record]) -> dict[str, str]:
+    stamps: dict[str, str] = {}
+    for r in records:
+        if r["record_type"] != POSITION.record_type or not POSITION.select(r):
+            continue
+        effort = effort_of(r)
+        stamp = r.get("recorded_at")
+        if effort and stamp and _payload(r).get("scope") == "effort":
+            stamps[effort] = max(stamp, stamps.get(effort, ""))
+    return stamps
+
+
+def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
+    live = live_efforts(records)
+    groups = {
+        name: group
+        for name, group in _group_records(HOOK_VIEW, records, None).items()
+        if name in live
+    }
+    stamps = _position_recorded_at(records)
+    stamped = sorted(n for n in groups if n in stamps)
+    stamped.sort(key=stamps.__getitem__, reverse=True)
+    unstamped = sorted(n for n in groups if n not in stamps)
+    sections = []
+    for name in (*stamped, *unstamped):
+        lines = _group_lines(HOOK_VIEW, name, groups[name], [], link=False)
+        sections.append((name, "\n".join(lines).rstrip()))
+    return sections
+
+
 def hook_constraints(records: list[Record], limit: int) -> tuple[list[Record], int]:
-    effort = next(
-        (
-            _payload(r).get("effort")
-            for r in records
-            if r["record_type"] == POSITION.record_type
-            and POSITION.select(r)
-            and _payload(r).get("effort")
-        ),
-        None,
-    )
-    if not effort:
-        return [], 0
+    live = live_efforts(records)
     role = next(r for r in BRIEF_ROLES if r.name == "constraint")
     matches = sorted(
         (
@@ -526,7 +595,7 @@ def hook_constraints(records: list[Record], limit: int) -> tuple[list[Record], i
             for r in records
             if r["record_type"] == role.record_type
             and role.select(r)
-            and _payload(r).get("effort") == effort
+            and _payload(r).get("effort") in live
         ),
         key=lambda r: r.get("subject") or "",
     )

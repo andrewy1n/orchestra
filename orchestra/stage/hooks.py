@@ -140,7 +140,8 @@ def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
         records = views.load_records(project)
         _save_baseline(project, root, data)
         parts = [PROTOCOL]
-        handoff = views.render_view(views.HANDOFF, records)
+        efforts = [text for _, text in views.hook_handoff_sections(records)]
+        handoff = "\n\n".join(["# Project Handoff", *efforts])
         parts.extend(["", _truncate(handoff)])
         parts.extend(_constraint_lines(records))
         parts.extend(
