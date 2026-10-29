@@ -60,6 +60,7 @@ dev = [
     "pip",
     "setuptools",
     "wheel",
+    "basedpyright==1.40.2",
 ]
 
 [project.entry-points."canon.schemas"]
@@ -70,3 +71,8 @@ composer = "orchestra.composer.schemas"
 
 [tool.ruff.lint]
 select = ["F"]
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.10"
+include = ["orchestra", "dashboard", "installer"]
