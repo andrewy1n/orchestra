@@ -1,0 +1,35 @@
+---
+{
+  "id": "rec-9f3d23d0-c6ed-4d0e-ad39-c8cddf586d2c",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-839ff7e7-1376-4f92-93f2-9019b00d913c",
+    "duration_s": 2.519033,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-839ff7e7-1376-4f92-93f2-9019b00d913c"
+    ],
+    "method": "check",
+    "output_sha256": "38451d95ea0dc74381706a0723b066971f37aa436efbcbf3aa81cb44a20fb472",
+    "requirement": "R6",
+    "result": "pass",
+    "revision": "c63972ccaeb7aa183f573289196241789851ec9b",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T22:38:04+00:00",
+  "relationships": {},
+  "revision": "sha256:75439296e32e03ccde49fa844558369409b71f5bc3c9e3360d001a4ea989b8a3",
+  "subject": "verify-areas-and-ideas-vitest-r6"
+}
+---
+
+ RUN  v5.0.5 /home/andrewyin/orchestra/.worktrees/areas-and-ideas/dashboard/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 4 skipped (6)
+   Start at  15:38:01
+   Duration  1.84s (tests 63%, environment 26%, transform 8%, import 4%)
