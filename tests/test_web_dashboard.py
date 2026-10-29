@@ -1,26 +1,27 @@
 """HTTP oracles for the web dashboard.
 
 The page is the JSON from GET /api/snapshot. Writes are POST /api/needs and
-POST /api/backlog on the server `dashboard.backend.server.serve` binds for that store.
+POST /api/backlog on the FastAPI app `dashboard.backend.server.create_app` builds for that store.
 """
 
 from __future__ import annotations
 
 import json
 import sys
-import threading
-import urllib.error
-import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient
 
 import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
+from dashboard.backend.server.app import create_app  # noqa: E402
 from dashboard.backend import backlog as backlog_module  # noqa: E402
 from dashboard.backend import dismiss as dismiss_module  # noqa: E402
 from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
@@ -101,14 +102,6 @@ def _backlog_item(snap: snapshot_mod.Snapshot) -> snapshot_mod.BacklogItem:
     return matches[0]
 
 
-def _import_web():
-    try:
-        import dashboard.backend.server as web
-        return web
-    except ImportError:
-        return None
-
-
 def _snapshot(target) -> snapshot_mod.Snapshot:
     loaded = None
     try:
@@ -122,47 +115,22 @@ def _snapshot(target) -> snapshot_mod.Snapshot:
 @contextmanager
 def _running(store):
     target = open_store(store)
-    web = _import_web()
-    assert web is not None, "dashboard.backend.server is not importable"
-    import importlib
-
-    web = importlib.reload(web)
-    httpd = None
-    try:
-        httpd = web.serve(target, host="127.0.0.1", port=0)
-    except (FileNotFoundError, AttributeError, TypeError):
-        httpd = None
-    assert httpd is not None, "dashboard.backend.server.serve(target, host='127.0.0.1', port=0) did not return a server"
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    host, port = httpd.server_address[:2]
-    try:
-        yield f"http://{host}:{port}", target
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-        thread.join(timeout=5)
+    yield TestClient(create_app(target), raise_server_exceptions=False), target
 
 
-def _request(method: str, url: str, payload: dict | None = None) -> tuple[int, bytes]:
-    data = None if payload is None else json.dumps(payload).encode()
-    headers = {"Content-Type": "application/json"} if data is not None else {}
-    request = urllib.request.Request(url, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return response.status, response.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, exc.read()
+def _request(method: str, client: TestClient, path: str, payload: dict | None = None) -> tuple[int, bytes]:
+    response = client.request(method, path, json=payload)
+    return response.status_code, response.content
 
 
-def _get_json(base: str, path: str) -> dict:
-    status, body = _request("GET", base + path)
+def _get_json(client: TestClient, path: str) -> dict:
+    status, body = _request("GET", client, path)
     assert 200 <= status < 300, (status, body)
     return json.loads(body)
 
 
-def _post(base: str, path: str, payload: dict) -> int:
-    status, _body = _request("POST", base + path, payload)
+def _post(client: TestClient, path: str, payload: dict) -> int:
+    status, _body = _request("POST", client, path, payload)
     return status
 
 
@@ -215,16 +183,16 @@ def test_r3_snapshot(store, cli, defs):
     assert any(view.phases for view in snap.efforts)
     assert any(view.tasks for view in snap.efforts)
     assert any(view.backlog for view in snap.efforts)
-    with _running(store) as (base, _target):
-        _assert_same_snapshot(_get_json(base, "/api/snapshot"), snap)
+    with _running(store) as (client, _target):
+        _assert_same_snapshot(_get_json(client, "/api/snapshot"), snap)
 
 
 def test_r4_token(store, cli, defs):
     _seed(cli, defs)
     target = open_store(store)
-    with _running(store) as (base, served):
+    with _running(store) as (client, served):
         assert Path(served.store_path).resolve() == Path(target.store_path).resolve()
-        payload = _get_json(base, "/api/token")
+        payload = _get_json(client, "/api/token")
         assert payload["token"] == snapshot_mod.change_token(target)
 
 
@@ -239,11 +207,11 @@ def test_r21_approve(store, cli, defs, monkeypatch):
         calls.append({"target": target, "item": item, "signer": signer, "action": action, "note": note})
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", spy)
-    with _running(store) as (base, target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "blocking-question")
+    with _running(store) as (client, target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "blocking-question")
         assert page["id"] == question.id
         assert page["revision"] == question.revision
-        status = _post(base, "/api/needs", {"id": page["id"], "action": "approve", "revision": page["revision"]})
+        status = _post(client, "/api/needs", {"id": page["id"], "action": "approve", "revision": page["revision"]})
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert calls[0]["action"] == "approve"
@@ -264,16 +232,16 @@ def test_r22_reject_note(store, cli, defs, monkeypatch):
         calls.append({"item": item, "action": action, "note": note})
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", spy)
-    with _running(store) as (base, _target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "blocking-question")
+    with _running(store) as (client, _target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "blocking-question")
         assert page["revision"] == question.revision
-        missing = _post(base, "/api/needs", {"id": page["id"], "action": "reject", "revision": page["revision"]})
-        blank = _post(base, "/api/needs", {
+        missing = _post(client, "/api/needs", {"id": page["id"], "action": "reject", "revision": page["revision"]})
+        blank = _post(client, "/api/needs", {
             "id": page["id"], "action": "reject", "revision": page["revision"], "note": "   ",
         })
         assert missing >= 400 and blank >= 400
         assert calls == []
-        noted = _post(base, "/api/needs", {
+        noted = _post(client, "/api/needs", {
             "id": page["id"], "action": "reject", "revision": page["revision"], "note": "approach is wrong",
         })
     assert 200 <= noted < 300, noted
@@ -294,11 +262,11 @@ def test_r23_sign(store, cli, defs, monkeypatch):
         calls.append({"item": item, "action": action, "signer": signer})
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", spy)
-    with _running(store) as (base, _target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "unsigned-check")
+    with _running(store) as (client, _target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "unsigned-check")
         assert page["id"] == check.id
         assert page["revision"] == check.revision
-        status = _post(base, "/api/needs", {"id": page["id"], "action": "sign", "revision": page["revision"]})
+        status = _post(client, "/api/needs", {"id": page["id"], "action": "sign", "revision": page["revision"]})
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert calls[0]["action"] == "sign"
@@ -320,10 +288,10 @@ def test_r24_signer(store, cli, defs, monkeypatch):
         return original(target, item, signer=signer, action=action, note=note)
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", spy)
-    with _running(store) as (base, _target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "unsigned-check")
+    with _running(store) as (client, _target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "unsigned-check")
         assert page["revision"] == check.revision
-        status = _post(base, "/api/needs", {
+        status = _post(client, "/api/needs", {
             "id": page["id"], "action": "sign", "revision": page["revision"], "signer": "intruder",
         })
     assert 200 <= status < 300, status
@@ -357,16 +325,16 @@ def test_r25_accept_note(store, cli, defs, monkeypatch):
         calls.append({"item": item, "action": action, "note": note})
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", spy)
-    with _running(store) as (base, _target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "needs-human")
+    with _running(store) as (client, _target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "needs-human")
         assert page["revision"] == finding.revision
-        missing = _post(base, "/api/needs", {"id": page["id"], "action": "accept", "revision": page["revision"]})
-        blank = _post(base, "/api/needs", {
+        missing = _post(client, "/api/needs", {"id": page["id"], "action": "accept", "revision": page["revision"]})
+        blank = _post(client, "/api/needs", {
             "id": page["id"], "action": "accept", "revision": page["revision"], "note": " ",
         })
         assert missing >= 400 and blank >= 400
         assert calls == []
-        noted = _post(base, "/api/needs", {
+        noted = _post(client, "/api/needs", {
             "id": page["id"], "action": "accept", "revision": page["revision"], "note": "accepted residual risk",
         })
     assert 200 <= noted < 300, noted
@@ -387,13 +355,13 @@ def test_r26_refused(store, cli, defs):
     before = snapshot_mod.change_token(target)
     loop_rev = _revision(cli, loop.record_type, loop.id)
     integration_rev = _revision(cli, integration.record_type, integration.id)
-    with _running(store) as (base, _served):
-        page = _get_json(base, "/api/snapshot")
+    with _running(store) as (client, _served):
+        page = _get_json(client, "/api/snapshot")
         for kind in ("loop-route", "integration"):
             item = _page_needs(page, kind)
-            status = _post(base, "/api/needs", {"id": item["id"], "action": "approve", "revision": item["revision"]})
+            status = _post(client, "/api/needs", {"id": item["id"], "action": "approve", "revision": item["revision"]})
             assert status >= 400, (kind, status)
-        merge = _post(base, "/api/needs", {
+        merge = _post(client, "/api/needs", {
             "id": "merge:merge-phase", "kind": "merge-branch", "action": "approve", "revision": "",
         })
         assert merge >= 400, merge
@@ -412,11 +380,11 @@ def test_r28_backlog_dismiss(store, cli, defs, monkeypatch):
         calls.append({"target": target, "item": item})
 
     monkeypatch.setattr(backlog_module, "dismiss_item", spy)
-    with _running(store) as (base, target):
-        page = _get_json(base, "/api/snapshot")
+    with _running(store) as (client, target):
+        page = _get_json(client, "/api/snapshot")
         raw = next(item for view in page["efforts"] for item in view["backlog"] if item["id"] == parked.id)
         assert raw["status"] == "open"
-        status = _post(base, "/api/backlog", {"id": raw["id"], "action": "dismiss"})
+        status = _post(client, "/api/backlog", {"id": raw["id"], "action": "dismiss"})
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert isinstance(calls[0]["item"], snapshot_mod.BacklogItem)
@@ -435,10 +403,10 @@ def test_r29_backlog_promote(store, cli, defs, monkeypatch):
         calls.append({"target": target, "item": item, "phase": phase})
 
     monkeypatch.setattr(backlog_module, "promote_item", spy)
-    with _running(store) as (base, target):
-        page = _get_json(base, "/api/snapshot")
+    with _running(store) as (client, target):
+        page = _get_json(client, "/api/snapshot")
         raw = next(item for view in page["efforts"] for item in view["backlog"] if item["id"] == parked.id)
-        status = _post(base, "/api/backlog", {"id": raw["id"], "action": "promote"})
+        status = _post(client, "/api/backlog", {"id": raw["id"], "action": "promote"})
     assert 200 <= status < 300, status
     assert len(calls) == 1
     assert isinstance(calls[0]["item"], snapshot_mod.BacklogItem)
@@ -457,12 +425,12 @@ def test_r34_stale(store, cli, defs, monkeypatch):
         raise dismiss_module.DismissError(dismiss_module.STALE_MESSAGE)
 
     monkeypatch.setattr(dismiss_module, "dismiss_item", boom)
-    with _running(store) as (base, target):
-        page = _page_needs(_get_json(base, "/api/snapshot"), "blocking-question")
+    with _running(store) as (client, target):
+        page = _page_needs(_get_json(client, "/api/snapshot"), "blocking-question")
         assert page["id"] == question.id
         assert page["revision"] == displayed
         before = snapshot_mod.change_token(target)
-        status = _post(base, "/api/needs", {"id": page["id"], "action": "approve", "revision": page["revision"]})
+        status = _post(client, "/api/needs", {"id": page["id"], "action": "approve", "revision": page["revision"]})
         assert status >= 400, status
         assert snapshot_mod.change_token(target) == before
     assert _revision(cli, question.record_type, question.id) == displayed

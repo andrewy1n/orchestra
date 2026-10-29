@@ -1,20 +1,19 @@
 """FastAPI application factory for the web dashboard launcher.
 
-The launcher (``dashboard/bin/web``) carries its own PEP 723 header with
-fastapi and uvicorn; this module only imports them inside :func:`create_app`,
-so ``import dashboard.backend.server`` stays usable in environments (like the check
-runner) that serve the read API through the standard-library path instead.
-
-The app reads through the same :class:`dashboard.backend.server.service.Reader` the
-stdlib server uses and serves the Vite production build from
-``dashboard/web/ui/dist`` at ``/`` when it exists.
+Serves the Vite production build from ``dashboard/web/ui/dist`` at ``/``
+when it exists.
 """
 
 from pathlib import Path
 
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
 from dashboard.backend import store
-from orchestra.canon.project import Project
+from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
+from orchestra.canon.project import Project
 
 DIST = Path(__file__).resolve().parent.parent.parent / "web" / "ui" / "dist"
 MISSING_BUILD = (
@@ -23,12 +22,11 @@ MISSING_BUILD = (
 )
 
 
+ERRORS: dict[int | str, dict] = {400: {"model": schemas.ErrorBody}, 404: {"model": schemas.ErrorBody}, 409: {"model": schemas.ErrorBody}}
+
+
 def create_app(target: Project):
     """Return a FastAPI app serving the read/write API (and built UI) for ``target``."""
-    from fastapi import FastAPI, Query, Request
-    from fastapi.responses import HTMLResponse, JSONResponse
-    from fastapi.staticfiles import StaticFiles
-
     app = FastAPI(title="orchestra dashboard")
     reader = Reader(target)
 
@@ -40,51 +38,51 @@ def create_app(target: Project):
     async def _write_error(_request, exc: WriteError) -> JSONResponse:
         return JSONResponse({"error": exc.message}, status_code=exc.status)
 
-    @app.get("/api/token")
-    def token() -> dict:
+    @app.get("/api/token", response_model=schemas.TokenResponse, responses=ERRORS)
+    def token() -> schemas.TokenResponse:
         return reader.token()
 
-    @app.get("/api/snapshot")
-    def snapshot() -> dict:
+    @app.get("/api/snapshot", response_model=schemas.SnapshotResponse, responses=ERRORS)
+    def snapshot() -> schemas.SnapshotResponse:
         return reader.snapshot()
 
-    @app.get("/api/phase")
-    def phase(effort: str = Query(...), phase: str = Query(...)) -> dict:
+    @app.get("/api/phase", response_model=schemas.PhaseResponse, responses=ERRORS)
+    def phase(effort: str = Query(...), phase: str = Query(...)) -> schemas.PhaseResponse:
         return reader.phase(effort, phase)
 
-    @app.get("/api/task")
-    def task(id: str = Query(...)) -> dict:
+    @app.get("/api/task", response_model=schemas.TaskResponse, responses=ERRORS)
+    def task(id: str = Query(...)) -> schemas.TaskResponse:
         return reader.task(id)
 
-    @app.get("/api/journal")
-    def journal(effort: str = Query(...)) -> dict:
+    @app.get("/api/journal", response_model=schemas.JournalResponse, responses=ERRORS)
+    def journal(effort: str = Query(...)) -> schemas.JournalResponse:
         return reader.journal(effort)
 
-    @app.get("/api/record")
-    def record(id: str = Query(...)) -> dict:
+    @app.get("/api/record", response_model=schemas.RecordResponse, responses=ERRORS)
+    def record(id: str = Query(...)) -> schemas.RecordResponse:
         return reader.record(id)
 
-    @app.get("/api/requirement")
-    def requirement(effort: str = Query(...), phase: str = Query(...), id: str = Query(...)) -> dict:
+    @app.get("/api/requirement", response_model=schemas.RequirementResponse, responses=ERRORS)
+    def requirement(effort: str = Query(...), phase: str = Query(...), id: str = Query(...)) -> schemas.RequirementResponse:
         return reader.requirement(effort, phase, id)
 
-    @app.get("/api/needs")
-    def needs(effort: str = Query(...), id: str = Query(...)) -> dict:
+    @app.get("/api/needs", response_model=schemas.NeedsResponse, responses=ERRORS)
+    def needs(effort: str = Query(...), id: str = Query(...)) -> schemas.NeedsResponse:
         return reader.needs(effort, id)
 
-    @app.get("/api/backlog")
-    def backlog(effort: str = Query(...), id: str = Query(...)) -> dict:
+    @app.get("/api/backlog", response_model=schemas.BacklogResponse, responses=ERRORS)
+    def backlog(effort: str = Query(...), id: str = Query(...)) -> schemas.BacklogResponse:
         return reader.backlog(effort, id)
 
-    @app.post("/api/needs")
-    async def write_needs(request: Request) -> dict:
+    @app.post("/api/needs", response_model=schemas.OkResponse, responses=ERRORS)
+    async def write_needs(request: Request) -> schemas.OkResponse:
         body = await request.json()
         if not isinstance(body, dict):
             raise WriteError("JSON body must be an object", 400)
         return reader.write_needs(body)
 
-    @app.post("/api/backlog")
-    async def write_backlog(request: Request) -> dict:
+    @app.post("/api/backlog", response_model=schemas.OkResponse, responses=ERRORS)
+    async def write_backlog(request: Request) -> schemas.OkResponse:
         body = await request.json()
         if not isinstance(body, dict):
             raise WriteError("JSON body must be an object", 400)

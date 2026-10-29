@@ -1,6 +1,6 @@
 """FastAPI write oracles: JSON body, no query string.
 
-Drives ``dashboard.backend.server.app.create_app``. Does not use ``dashboard.backend.server.serve``.
+Drives ``dashboard.backend.server.app.create_app``.
 """
 
 from __future__ import annotations
