@@ -46,6 +46,7 @@ from textual.widgets import (
 from textual.widgets.option_list import Option
 
 RESULT_GLYPH = {"pass": "✓", "fail": "✗"}
+NEEDS_PANELS = ("#needs-error", "#needs-bar", "#needs-title", "#needs-chips", "#needs-text", "#needs-body", "#needs-evidence")
 NEEDS_TEXT_TITLE = {
     "blocking-question": "Question", "open-question": "Question", "needs-human": "Claim", "unsigned-check": "Check",
     "loop-route": "Assessment", "integration": "Report", "merge-branch": "Branch",
@@ -729,6 +730,13 @@ class NeedsYouDetailScreen(Screen[None]):
             await self.show(found)
 
     async def show(self, item: model.NeedsYouItem) -> None:
+        try:
+            await self._show(item)
+        except NoMatches:
+            if all(self.query(selector) for selector in NEEDS_PANELS):
+                raise
+
+    async def _show(self, item: model.NeedsYouItem) -> None:
         if not self.is_attached:
             return
         colors = palette_from(self.app.get_css_variables())
