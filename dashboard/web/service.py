@@ -139,7 +139,7 @@ class Cache:
         with self.lock:
             if self.snapshot is not None and token == self.token:
                 return self.snapshot
-        snapshot = model.load_snapshot(self.target)
+        snapshot = model.load_snapshot(self.target, token=token)
         with self.lock:
             if token != self.token:
                 self.details.clear()
