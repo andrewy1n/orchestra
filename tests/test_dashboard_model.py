@@ -1,4 +1,4 @@
-"""Tests for dashboard.model: the dashboard snapshot built from store records."""
+"""Tests for dashboard.backend.model: the dashboard snapshot built from store records."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from orchestra.canon.store import Store  # noqa: E402
-from dashboard import model  # noqa: E402
+from dashboard.backend import model  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
@@ -1589,7 +1589,7 @@ def test_estimate_view_blank_executor(store, cli, defs):
 
 # --- gates vocabulary (human-gates / gates-vocab) ---
 
-from dashboard import gates  # noqa: E402
+from dashboard.backend import gates  # noqa: E402
 
 
 def _gates_phase(
@@ -1702,7 +1702,7 @@ def test_gates_next_step_other_blocking():
 
 
 def test_gates_next_step_merge_unmerged_done_phase():
-    from dashboard.landing import Landing
+    from dashboard.backend.landing import Landing
     view = _gates_view(phases=[
         _gates_phase("human-gates", "Human gates", 1, "done"),
     ])
@@ -1798,7 +1798,7 @@ def test_gates_quiet_threshold_for_running_tasks():
 
 
 def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
-    from dashboard.landing import Landing
+    from dashboard.backend.landing import Landing
 
     view = _gates_view(
         phases=[
@@ -1837,7 +1837,7 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
 
 
 def test_gates_landing_item_skips_merged_missing_and_not_done():
-    from dashboard.landing import Landing
+    from dashboard.backend.landing import Landing
 
     view = _gates_view(phases=[
         _gates_phase("done-merged", "Merged", 1, "done"),
@@ -1898,7 +1898,7 @@ def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):
 
 
 def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
-    from dashboard import journal as journal_mod
+    from dashboard.backend import journal as journal_mod
 
     for effort, kind in (("repair-e", "repair"), ("eval-e", "evaluate")):
         _goal(cli, defs, effort, kind=kind)
@@ -1924,7 +1924,7 @@ def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
 
 
 def test_journal_kind_deliver_and_incidental_skip_journal_open(store, cli, defs, monkeypatch):
-    from dashboard import journal as journal_mod
+    from dashboard.backend import journal as journal_mod
 
     for effort, kind in (("deliver-e", "deliver"), ("incidental-e", "incidental")):
         _goal(cli, defs, effort, kind=kind)

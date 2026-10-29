@@ -1286,7 +1286,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         kind = _payload(goal).get("kind") or ""
         journal_open = []
         if kind in ("repair", "evaluate"):
-            from dashboard.journal import load_journal, ordered as journal_ordered
+            from dashboard.backend.journal import load_journal, ordered as journal_ordered
 
             open_items, _ = journal_ordered(load_journal(target, effort))
             journal_open = open_items

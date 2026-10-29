@@ -1,7 +1,7 @@
 """HTTP oracles for the web dashboard.
 
 The page is the JSON from GET /api/snapshot. Writes are POST /api/needs and
-POST /api/backlog on the server `dashboard.web.serve` binds for that store.
+POST /api/backlog on the server `dashboard.backend.server.serve` binds for that store.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
-from dashboard import backlog as backlog_module  # noqa: E402
-from dashboard import dismiss as dismiss_module  # noqa: E402
-from dashboard import model  # noqa: E402
+from dashboard.backend import backlog as backlog_module  # noqa: E402
+from dashboard.backend import dismiss as dismiss_module  # noqa: E402
+from dashboard.backend import model  # noqa: E402
 
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> dict:
@@ -103,7 +103,7 @@ def _backlog_item(snap: model.Snapshot) -> model.BacklogItem:
 
 def _import_web():
     try:
-        import dashboard.web as web
+        import dashboard.backend.server as web
         return web
     except ImportError:
         return None
@@ -115,7 +115,7 @@ def _snapshot(target) -> model.Snapshot:
         loaded = model.load_snapshot(target)
     except ImportError:
         loaded = None
-    assert loaded is not None, "dashboard.model.load_snapshot is not importable"
+    assert loaded is not None, "dashboard.backend.model.load_snapshot is not importable"
     return loaded
 
 
@@ -123,7 +123,7 @@ def _snapshot(target) -> model.Snapshot:
 def _running(store):
     target = open_store(store)
     web = _import_web()
-    assert web is not None, "dashboard.web is not importable"
+    assert web is not None, "dashboard.backend.server is not importable"
     import importlib
 
     web = importlib.reload(web)
@@ -132,7 +132,7 @@ def _running(store):
         httpd = web.serve(target, host="127.0.0.1", port=0)
     except (FileNotFoundError, AttributeError, TypeError):
         httpd = None
-    assert httpd is not None, "dashboard.web.serve(target, host='127.0.0.1', port=0) did not return a server"
+    assert httpd is not None, "dashboard.backend.server.serve(target, host='127.0.0.1', port=0) did not return a server"
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     host, port = httpd.server_address[:2]

@@ -1,4 +1,4 @@
-"""Tests for dashboard.journal model loaders and Agent work."""
+"""Tests for dashboard.backend.journal model loaders and Agent work."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from conftest import REPO_ROOT, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
-from dashboard import journal  # noqa: E402
-from dashboard import model  # noqa: E402
+from dashboard.backend import journal  # noqa: E402
+from dashboard.backend import model  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:

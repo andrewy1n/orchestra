@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 import helpers as h
-from dashboard import model
+from dashboard.backend import model
 
 
 def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():

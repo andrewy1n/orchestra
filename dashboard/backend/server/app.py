@@ -2,21 +2,21 @@
 
 The launcher (``dashboard/bin/web``) carries its own PEP 723 header with
 fastapi and uvicorn; this module only imports them inside :func:`create_app`,
-so ``import dashboard.web`` stays usable in environments (like the check
+so ``import dashboard.backend.server`` stays usable in environments (like the check
 runner) that serve the read API through the standard-library path instead.
 
-The app reads through the same :class:`dashboard.web.service.Reader` the
+The app reads through the same :class:`dashboard.backend.server.service.Reader` the
 stdlib server uses and serves the Vite production build from
 ``dashboard/web/ui/dist`` at ``/`` when it exists.
 """
 
 from pathlib import Path
 
-from dashboard import model
+from dashboard.backend import model
 from orchestra.canon.project import Project
-from dashboard.web.service import Reader, WriteError
+from dashboard.backend.server.service import Reader, WriteError
 
-DIST = Path(__file__).resolve().parent / "ui" / "dist"
+DIST = Path(__file__).resolve().parent.parent.parent / "web" / "ui" / "dist"
 MISSING_BUILD = (
     "No web build at dashboard/web/ui/dist. "
     "Run `npm run build` in dashboard/web/ui."

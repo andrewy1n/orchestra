@@ -1,6 +1,6 @@
 {
     "files": {
-        "./dashboard/gates.py": [
+        "./dashboard/backend/gates.py": [
             {
                 "code": "reportArgumentType",
                 "range": {
@@ -42,7 +42,7 @@
                 }
             }
         ],
-        "./dashboard/model.py": [
+        "./dashboard/backend/model.py": [
             {
                 "code": "reportArgumentType",
                 "range": {
@@ -68,7 +68,7 @@
                 }
             }
         ],
-        "./dashboard/web/service.py": [
+        "./dashboard/backend/server/service.py": [
             {
                 "code": "reportIncompatibleMethodOverride",
                 "range": {

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from orchestra.canon.project import Project
-from dashboard import model
+from dashboard.backend import model
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",

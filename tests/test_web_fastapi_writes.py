@@ -1,6 +1,6 @@
 """FastAPI write oracles: JSON body, no query string.
 
-Drives ``dashboard.web.app.create_app``. Does not use ``dashboard.web.serve``.
+Drives ``dashboard.backend.server.app.create_app``. Does not use ``dashboard.backend.server.serve``.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.web.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app  # noqa: E402
 
 
 @pytest.fixture()

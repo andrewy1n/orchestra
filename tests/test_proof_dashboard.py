@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dashboard import model
+from dashboard.backend import model
 
 
 def test_proof_not_a_needs_you_kind():

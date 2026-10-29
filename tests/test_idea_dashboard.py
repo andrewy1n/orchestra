@@ -11,7 +11,7 @@ import helpers as h
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard import model  # noqa: E402
+from dashboard.backend import model  # noqa: E402
 from test_dashboard_model import _effort, _goal, _target  # noqa: E402
 
 

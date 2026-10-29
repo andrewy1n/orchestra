@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the web dashboard (dashboard/web/__main__.py, through uv) for the current directory's repo.
+"""Run the web dashboard (dashboard/backend/server/__main__.py, through uv) for the current directory's repo.
 
 Extra arguments go to the app, e.g. `web --port 8765`.
 """
@@ -29,7 +29,7 @@ def _enable_library() -> None:
 _enable_library()
 from orchestra.canon.project import StoreBindingError, open_store  # noqa: E402
 
-APP = Path(__file__).resolve().parent.parent / "web" / "__main__.py"
+APP = Path(__file__).resolve().parent.parent / "backend" / "server" / "__main__.py"
 
 
 def fail(message: str) -> int:

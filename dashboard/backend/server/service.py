@@ -1,10 +1,10 @@
 """Standard-library read surface for the web dashboard.
 
 The Svelte page speaks the spike's GET shapes. This module builds them from
-``dashboard.model`` behind a change-token cache, exactly the way the
+``dashboard.backend.model`` behind a change-token cache, exactly the way the
 ``spikes/web-dashboard`` server did. It uses only the standard library so
-``dashboard.web`` imports and serves under the check runner, which has no
-FastAPI or uvicorn; ``dashboard.web.app`` wraps the same reader in a FastAPI
+``dashboard.backend.server`` imports and serves under the check runner, which has no
+FastAPI or uvicorn; ``dashboard.backend.server.app`` wraps the same reader in a FastAPI
 app for the launcher.
 """
 
@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-from dashboard import approval, backlog, dismiss, journal, model
+from dashboard.backend import approval, backlog, dismiss, journal, model
 from orchestra.canon.project import Project
 
 
@@ -125,7 +125,7 @@ def needs_payload(item: model.NeedsYouItem) -> dict:
 
 
 class Cache:
-    """Snapshot and detail cache keyed by ``dashboard.model.change_token``."""
+    """Snapshot and detail cache keyed by ``dashboard.backend.model.change_token``."""
 
     def __init__(self, target: Project) -> None:
         self.target = target

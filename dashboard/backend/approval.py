@@ -8,7 +8,7 @@ from typing import Any
 
 from orchestra.canon.project import Project
 from orchestra.canon.store import StoreError
-from dashboard.dismiss import (
+from dashboard.backend.dismiss import (
     ACTION_ACCEPT,
     ACTION_APPROVE,
     ACTION_REJECT,
@@ -16,9 +16,9 @@ from dashboard.dismiss import (
     default_action,
     is_dismissible,
 )
-from dashboard.gates import PLAN_REVIEW_PREFIX, plan_review_slug
-from dashboard.landing import rev_parse_token
-from dashboard.model import EffortView, NeedsYouItem
+from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
+from dashboard.backend.landing import rev_parse_token
+from dashboard.backend.model import EffortView, NeedsYouItem
 
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})

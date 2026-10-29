@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
-from dashboard.landing import Landing, landing_branch, phase_landing, rev_parse_token
-from dashboard.model import NEEDS_ORDER, EffortView, NeedsYouItem, PhaseRow, Snapshot, TaskRow
+from dashboard.backend.landing import Landing, landing_branch, phase_landing, rev_parse_token
+from dashboard.backend.model import NEEDS_ORDER, EffortView, NeedsYouItem, PhaseRow, Snapshot, TaskRow
 
 PLAN_REVIEW_PREFIX = "plan-review:"
 

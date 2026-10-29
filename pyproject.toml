@@ -34,7 +34,8 @@ packages = [
     "orchestra.stage",
     "orchestra.sessions",
     "dashboard",
-    "dashboard.web",
+    "dashboard.backend",
+    "dashboard.backend.server",
     "installer",
     "installer.adapters",
 ]

@@ -28,7 +28,7 @@ from conftest import REPO_ROOT, run_cli
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
-from dashboard import model  # noqa: E402
+from dashboard.backend import model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 DIST_INDEX = REPO_ROOT / "dashboard" / "web" / "ui" / "dist" / "index.html"
@@ -44,7 +44,7 @@ def _primed_script_environment():
     with lock_path.open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         subprocess.run(
-            [uv, "run", "--script", str(REPO_ROOT / "dashboard" / "web" / "__main__.py"), "--help"],
+            [uv, "run", "--script", str(REPO_ROOT / "dashboard" / "backend" / "server" / "__main__.py"), "--help"],
             env=_env(), capture_output=True, timeout=300,
         )
 
@@ -226,7 +226,7 @@ def _snapshot(target):
         loaded = model.load_snapshot(target)
     except ImportError:
         loaded = None
-    assert loaded is not None, "dashboard.model.load_snapshot is not importable"
+    assert loaded is not None, "dashboard.backend.model.load_snapshot is not importable"
     return loaded
 
 
