@@ -64,16 +64,25 @@ def setup_uv_steps(name):
     ]
 
 
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)
+
+
+def _verdict_base() -> str:
+    for ref in ("origin/main", "main"):
+        base = _git("merge-base", ref, "HEAD")
+        if base.returncode == 0 and base.stdout.strip():
+            return base.stdout.strip()
+    return "HEAD"
+
+
 def test_r1_workflow_exists_and_tuner_verdict_unchanged():
     assert CI.is_file(), "missing .github/workflows/ci.yml"
     verdict = WORKFLOWS / "tuner-verdict.yml"
     assert verdict.is_file()
-    diff = subprocess.run(
-        ["git", "diff", "--quiet", "HEAD", "--", str(verdict)],
-        cwd=ROOT,
-        check=False,
-    )
-    assert diff.returncode == 0, "tuner-verdict.yml has uncommitted changes"
+    base = _verdict_base()
+    diff = _git("diff", "--quiet", base, "--", str(verdict))
+    assert diff.returncode == 0, f"tuner-verdict.yml differs from {base}"
 
 
 def test_r2_runs_on_push_to_main():
