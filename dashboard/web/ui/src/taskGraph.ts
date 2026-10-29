@@ -215,8 +215,6 @@ export function toFlow(graph: WaveGraph): {
   return {
     nodes,
     edges,
-    nodeW: NODE_W,
-    colGap: COL_GAP,
     width: laneCount * NODE_W + Math.max(0, laneCount - 1) * COL_GAP + 24,
     height: bottom + 20,
   };
