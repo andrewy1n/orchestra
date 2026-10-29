@@ -1,16 +1,16 @@
 ---
 {
   "id": "rec-8fbfe61d-57bc-49de-afac-75fdf2ad9ab7",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "effort": "ci",
     "source": "ci init",
     "status": "open"
   },
   "record_type": "composer:idea",
-  "recorded_at": "2026-10-28T07:52:04+00:00",
+  "recorded_at": "2026-10-28T21:12:25+00:00",
   "relationships": {},
-  "revision": "sha256:13538f2241675b24b925e6b1676d65f387cbeefb7ca2a19ba7edc65357c651cf",
+  "revision": "sha256:692c4404fd6a59ddc28a3772ca84e6ad5633375e1cf894621cf47ca2be50c7cc",
   "subject": "repo-hygiene"
 }
 ---

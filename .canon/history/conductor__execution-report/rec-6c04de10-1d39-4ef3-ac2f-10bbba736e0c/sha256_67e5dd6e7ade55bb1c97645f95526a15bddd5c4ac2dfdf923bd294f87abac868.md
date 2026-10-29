@@ -1,0 +1,26 @@
+---
+{
+  "id": "rec-6c04de10-1d39-4ef3-ac2f-10bbba736e0c",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "assignment": "fix-ci-runner-tests",
+    "result": "pass",
+    "revision": "6a58448cca3600bedb4a9aa486e23ae361951a97",
+    "verdict": "pass",
+    "work_item": "fix-ci-runner-tests"
+  },
+  "record_type": "conductor:execution-report",
+  "recorded_at": "2026-10-29T05:49:29+00:00",
+  "relationships": {},
+  "revision": "sha256:67e5dd6e7ade55bb1c97645f95526a15bddd5c4ac2dfdf923bd294f87abac868",
+  "subject": "fix-ci-runner-tests"
+}
+---
+
+subject: fix-ci-runner-tests
+kind: deliver
+result: pass
+revision: 6a58448cca3600bedb4a9aa486e23ae361951a97
+evidence: Eight CI rounds on PR #1. Fixes: tuner test python3 shim; dashboard click helper checks task_id; shared wait_workers helper that retries on WorkerCancelled; EffortPane.show returns when #goal is gone; NeedsYouDetailScreen waits for mount and tolerates a half-removed screen; web launch tests drop UV_PYTHON, share the uv cache and prime the script environment under a file lock; /proc fd listing skips vanished entries; tmux job reruns failures twice (pytest-rerunfailures). Run 40824900046 (push) and 40824905146 (pull_request) at 6a58448c: every blocking job passed.
+observations: The same commit failed or passed depending on the event in earlier rounds, so single runs were not trusted. The tmux popup test fails on the runner's tmux 3.4 about one run in four; the cause is not found and the rerun hides it. The needs-you and requirement dashboard tests raised NoMatches when a refresh worker ran during screen teardown; their root cause is the app refresh outliving its widgets.
+needs_human: false

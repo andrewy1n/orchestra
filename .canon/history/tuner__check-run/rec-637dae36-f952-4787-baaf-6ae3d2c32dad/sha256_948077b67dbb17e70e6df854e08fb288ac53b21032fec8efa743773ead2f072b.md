@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-637dae36-f952-4787-baaf-6ae3d2c32dad",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-be109f74-e6a3-4524-b8d7-5a102d482127",
+    "duration_s": 0.326283,
+    "effort": "ci",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-be109f74-e6a3-4524-b8d7-5a102d482127"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R23",
+    "result": "pass",
+    "revision": "6a58448cca3600bedb4a9aa486e23ae361951a97",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T05:50:26+00:00",
+  "relationships": {},
+  "revision": "sha256:948077b67dbb17e70e6df854e08fb288ac53b21032fec8efa743773ead2f072b",
+  "subject": "verify-ci-workflow-r23"
+}
+---
+
