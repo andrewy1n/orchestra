@@ -210,10 +210,21 @@ canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
-10. Run `canon validate`. Show the user
+10. Run `canon validate`. Resolve every marker first (see Markers).
+    Show the user
     the specification, the design, the decisions, and the phase
     approach. Next is `plan-phase` for this phase, including after a
     `next` `design` supersede.
+
+## Markers
+
+Write `[NEEDS CLARIFICATION: <question>]` in a specification or design
+body where a fact is unknown and a guess would be wrong. Do not use it
+anywhere else. `orchestra analyze` reports each marker as an error.
+
+Resolve every marker before settle-phase ends: ask the user, replace the
+marker with the answer, and supersede the record. Do not finish with a
+marker left in a specification or design body.
 
 ## Do not
 

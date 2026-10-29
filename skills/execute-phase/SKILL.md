@@ -392,7 +392,7 @@ canon create --type score:continuity-question \
    incidental is closed), follow
    [phase-end.md](references/phase-end.md):
 
-   closing verification → reviewer → integration-report → suite →
+   closing verification → analyze → reviewer → integration-report → suite →
    phase gate → proof packet → Landing merge / phase close.
 
    At phase close, commit the phase branch, merge into `main`, and
