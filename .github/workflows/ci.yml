@@ -78,7 +78,6 @@ jobs:
   types:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -86,4 +85,4 @@ jobs:
           python-version: "3.10"
           enable-cache: true
       - run: uv sync --locked --group dev
-      - run: uvx mypy@1.18.2 orchestra
+      - run: uv run basedpyright
