@@ -6,7 +6,7 @@
     "effort": "dashboard",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/dashboard/test_ui_structure.py:sha256:9565bfa6f035880d0bc5c6aa9bbee28fc0d1b68d0e20475de07381c965f8eb23"
+      "tests/dashboard/test_ui_structure.py:sha256:159d4433b2d51ee77a6048e27027fac0c3ea5123cef3cd412cb90511fb78f051"
     ],
     "phase": "ui-structure",
     "requirement": "R4",
@@ -16,9 +16,9 @@
     "verify_command": "uv run pytest tests/dashboard/test_ui_structure.py::test_r4_polling_journal_and_overlay_state_live_in_svelte_ts_modules -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T21:38:05+00:00",
+  "recorded_at": "2026-10-29T21:54:31+00:00",
   "relationships": {},
-  "revision": "sha256:a9f27083dfd2aa709d1d1a4799ac8b983ce2c35811fe18eaa15b94ec04e69077",
+  "revision": "sha256:33b8a5a586dd85dc753e982b956022c1846e789098098b284b1b30ff36ac3eeb",
   "subject": "state-modules"
 }
 ---

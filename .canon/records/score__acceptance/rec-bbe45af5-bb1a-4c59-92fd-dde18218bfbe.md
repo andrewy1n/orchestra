@@ -6,7 +6,7 @@
     "effort": "dashboard",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/dashboard/test_ui_structure.py:sha256:9565bfa6f035880d0bc5c6aa9bbee28fc0d1b68d0e20475de07381c965f8eb23"
+      "tests/dashboard/test_ui_structure.py:sha256:159d4433b2d51ee77a6048e27027fac0c3ea5123cef3cd412cb90511fb78f051"
     ],
     "phase": "ui-structure",
     "requirement": "R8",
@@ -16,9 +16,9 @@
     "verify_command": "uv run pytest tests/dashboard/test_ui_structure.py::test_r8_overlay_tabs_and_dialogs_import_shadcn_components -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T21:38:16+00:00",
+  "recorded_at": "2026-10-29T21:54:37+00:00",
   "relationships": {},
-  "revision": "sha256:89e8bb88e4dc2eaa49c39c4528ce2764c0da78099d43e3fa696068bc2db0d21f",
+  "revision": "sha256:c9fb2c363c3bacf24c10530c531be91a272648a3bf1a82f2aaf299c00b2b36e5",
   "subject": "verify-ui-structure-r8"
 }
 ---

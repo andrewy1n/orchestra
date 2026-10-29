@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-b26ace1b-d407-4d0d-aebf-e8bc61978f78",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "agent-move-frontend",
     "decisions": [
       "backend-frontend-split"
     ],
@@ -21,9 +21,9 @@
     "title": "Move the UI to dashboard/frontend"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T21:36:33+00:00",
+  "recorded_at": "2026-10-29T21:41:16+00:00",
   "relationships": {},
-  "revision": "sha256:9a99d3bfc9feed69c6c988f017a1413f52502aa540789ea83e557ee0999b5219",
+  "revision": "sha256:cabc02efbaab2ab02e115f5dd6cb99f01855d3f6f82bda5ca52b0302146c0d30",
   "subject": "move-frontend"
 }
 ---

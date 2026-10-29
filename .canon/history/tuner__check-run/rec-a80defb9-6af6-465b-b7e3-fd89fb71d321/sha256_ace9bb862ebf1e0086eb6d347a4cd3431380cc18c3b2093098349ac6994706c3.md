@@ -1,0 +1,33 @@
+---
+{
+  "id": "rec-a80defb9-6af6-465b-b7e3-fd89fb71d321",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-64f346e6-28bb-43c6-92ea-c905274bccf3",
+    "duration_s": 0.183822,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-64f346e6-28bb-43c6-92ea-c905274bccf3",
+      "rec-58a00c6f-4809-403d-99cc-7dba510d55f7"
+    ],
+    "method": "check",
+    "output_sha256": "b63594bd0111b4837aeccae649c86e81f63ef70c543aa6e6e6cac268e512f5a8",
+    "requirement": "R10",
+    "result": "pass",
+    "revision": "3619d268f5c3058af81d99e6a1aaef3361496c81",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T21:48:50+00:00",
+  "relationships": {},
+  "revision": "sha256:ace9bb862ebf1e0086eb6d347a4cd3431380cc18c3b2093098349ac6994706c3",
+  "subject": "shadcn-init-lint"
+}
+---
+
+> dashboard-ui@0.0.0 lint
+> biome check --error-on-warnings .
+
+Checked 47 files in 63ms. No fixes applied.

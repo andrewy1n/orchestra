@@ -1,0 +1,18 @@
+---
+{
+  "id": "rec-bed98f41-6e48-40fa-87fd-2bab9c5c9d4e",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "phase": "ui-structure",
+    "position": "Planning ui-structure: move to dashboard/frontend, shadcn init, state modules, screens, shadcn tabs and dialogs.",
+    "scope": "phase"
+  },
+  "record_type": "score:position",
+  "recorded_at": "2026-10-29T21:36:00+00:00",
+  "relationships": {},
+  "revision": "sha256:f738ced146fedc4c1f95ca2a5d8e85d7d0d8f03bc65a8410ac4de84fcff7ea8d",
+  "subject": "ui-structure"
+}
+---
+

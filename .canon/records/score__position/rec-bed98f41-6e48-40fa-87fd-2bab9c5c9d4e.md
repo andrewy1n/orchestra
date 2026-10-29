@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-bed98f41-6e48-40fa-87fd-2bab9c5c9d4e",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "effort": "dashboard",
     "phase": "ui-structure",
@@ -9,9 +9,9 @@
     "scope": "phase"
   },
   "record_type": "score:position",
-  "recorded_at": "2026-10-29T21:36:00+00:00",
+  "recorded_at": "2026-10-29T22:20:42+00:00",
   "relationships": {},
-  "revision": "sha256:f738ced146fedc4c1f95ca2a5d8e85d7d0d8f03bc65a8410ac4de84fcff7ea8d",
+  "revision": "sha256:a4f2516afbd1c392c8bf6ae21634977657cd97caada4ff1044417ecec74d97d1",
   "subject": "ui-structure"
 }
 ---

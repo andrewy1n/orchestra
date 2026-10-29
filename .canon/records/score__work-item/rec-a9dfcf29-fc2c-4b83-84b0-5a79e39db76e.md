@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-a9dfcf29-fc2c-4b83-84b0-5a79e39db76e",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "agent-state-modules",
     "decisions": [
       "app-split"
     ],
@@ -22,9 +22,9 @@
     "title": "Extract polling, journal, and overlay state"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T21:36:38+00:00",
+  "recorded_at": "2026-10-29T21:54:27+00:00",
   "relationships": {},
-  "revision": "sha256:77f7b75d9ab8f0bff08284865df5032a9f357ea95022f6004bf020f1878eb282",
+  "revision": "sha256:fab79755f50d36ded1ebf0d413b56c5fe6bd47ff1c3e94a4a3577104ce9eb3ba",
   "subject": "state-modules"
 }
 ---
