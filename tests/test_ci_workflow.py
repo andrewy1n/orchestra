@@ -7,7 +7,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 CI = WORKFLOWS / "ci.yml"
-TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra", "test-tmux")
+TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra")
 
 
 def load():
@@ -176,23 +176,8 @@ def test_r17_runs_remaining_tests():
         "pytest" in line
         and "-n auto" in line
         and "tests --ignore=tests/canon --ignore=tests/tuner" in line
-        and "-m tmux" not in line
         for line in all_run_lines()
     )
-
-
-def test_r18_tmux_job_installs_tmux():
-    assert any(
-        "apt-get install" in line and "tmux" in line for line in run_lines("test-tmux")
-    )
-
-
-def test_r19_tmux_job_runs_tmux_marker_without_xdist():
-    lines = [line for line in run_lines("test-tmux") if "pytest" in line]
-    assert lines
-    for line in lines:
-        assert "-m tmux" in line
-        assert not re.search(r"(^|\s)-n(\s|$)", line)
 
 
 def test_r20_test_jobs_do_not_need_each_other():

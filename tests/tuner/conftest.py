@@ -23,7 +23,6 @@ SCHEMA_FILES = (
 )
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "tmux: drives a real tmux server; run serially")
     root = str(REPO_ROOT)
     paths = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
     if root not in paths:

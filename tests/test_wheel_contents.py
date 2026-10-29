@@ -305,16 +305,6 @@ def test_r4_installer_adapters(editable_install: _Install) -> None:
     _assert_success(_run_install_import(editable_install, "installer.adapters"))
 
 
-def test_r5_textual(editable_install: _Install) -> None:
-    """R5: That install imports `textual`."""
-    _assert_success(_run_install_import(editable_install, "textual"))
-
-
-def test_r6_rich(editable_install: _Install) -> None:
-    """R6: That install imports `rich`."""
-    _assert_success(_run_install_import(editable_install, "rich"))
-
-
 def test_r7_fastapi(editable_install: _Install) -> None:
     """R7: That install imports `fastapi`."""
     _assert_success(_run_install_import(editable_install, "fastapi"))

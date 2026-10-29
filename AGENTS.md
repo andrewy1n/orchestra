@@ -15,7 +15,7 @@ by agents. The move to one repo is planned in
 | `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |
 | `orchestra/stage/` | Session hooks and the install bridge |
 | `skills/`, `agents/`, `hosts/`, `installer/` | Host integration |
-| `dashboard/` | tmux and web dashboards |
+| `dashboard/` | web dashboard |
 | `design/` | Specs |
 | `docs/` | Plans, guides and history |
 

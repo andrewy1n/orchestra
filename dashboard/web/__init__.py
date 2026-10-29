@@ -1,7 +1,7 @@
 """In-process read/write API for the web dashboard.
 
 ``serve(target, host, port)`` returns a standard-library ``ThreadingHTTPServer``
-the tmux-style checks can drive directly; the FastAPI application the launcher
+the tests can drive directly; the FastAPI application the launcher
 runs is ``create_app(target)``. Both build their payloads from
 ``dashboard.model`` through :mod:`dashboard.web.service`.
 """

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["fastapi", "uvicorn", "textual>=0.80"]
+# dependencies = ["fastapi", "uvicorn"]
 # ///
 """Loopback FastAPI server for the project's artifact store.
 

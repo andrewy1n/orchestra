@@ -16,7 +16,6 @@ sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from orchestra.canon.store import Store  # noqa: E402
 from dashboard import model  # noqa: E402
-from dashboard import selection  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
@@ -1167,8 +1166,6 @@ def test_evidence_simple_phase_adds_no_items(store, cli, defs):
 
 
 def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, defs):
-    from dashboard import matrix as matrix_mod
-
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "p-matrix", 1, "in_progress")
     _spec(cli, defs, "p-matrix", "R1, R2, R3, R4, R5", weight="full", body=_body(defs, "score:specification", {
@@ -1211,21 +1208,6 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
 
     r5 = by_id["R5"]
     assert (r5.status, r5.next, r5.confidence, r5.tasks, r5.tasks_done) == ("unassessed", "", "", 0, 0)
-
-    assert [matrix_mod.row_tone(by_id[rid]) for rid in by_id] == [
-        "default", "error", "error", "warning", "muted",
-    ]
-    assert [matrix_mod.glyph(by_id[rid]) for rid in by_id] == ["✓", "✗", "✗", "↑", "◌"]
-    assert matrix_mod.blockers(evidence) == [
-        "R2 → execute", "R3 → plan", "R4 → design", "R5 unassessed",
-    ]
-    wide = matrix_mod.release_line(evidence, 120).plain
-    assert wide.startswith("failed · 1/5 verified · ")
-    assert "R2 → execute" in wide and "R5 unassessed" in wide
-    narrow = matrix_mod.release_line(evidence, 40).plain
-    assert narrow.startswith("failed · 1/5 verified")
-    assert "+3 more" in narrow or "+4 more" in narrow
-    assert len(narrow) <= 40
 
 
 def test_matrix_no_specification_has_no_evidence(store, cli, defs):
@@ -1605,142 +1587,6 @@ def test_estimate_view_blank_executor(store, cli, defs):
     assert detail.estimate_minutes is None
 
 
-def _selection_phase(subject: str, state: str, ordinal: int) -> model.PhaseRow:
-    return model.PhaseRow(subject=subject, title=subject, ordinal=ordinal, state=state, done=0, total=1)
-
-
-def _selection_activity(subject: str, kind: str, recorded_at: datetime, summary: str = "", failed: bool = False) -> model.ActivityItem:
-    return model.ActivityItem(kind=kind, id=f"id-{subject}", subject=subject, recorded_at=recorded_at, summary=summary, failed=failed)
-
-
-def test_default_phase_prefers_in_progress_with_most_recent_activity():
-    now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "in_progress", 1), _selection_phase("p2", "in_progress", 2)],
-        tasks=[
-            model.TaskRow(id="t1", subject="t1", title="", phase="p1", assignee="", wave=1, status="running"),
-            model.TaskRow(id="t2", subject="t2", title="", phase="p2", assignee="", wave=1, status="running"),
-        ],
-        activity=[_selection_activity("t2", "assignment", now)],
-    )
-    assert selection.default_phase(view) == "p2"
-
-
-def test_default_phase_falls_back_to_lowest_ordinal_planned():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "done", 1), _selection_phase("p2", "planned", 2), _selection_phase("p3", "planned", 3)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p2", assignee="", wave=1, status="ready")],
-    )
-    assert selection.default_phase(view) == "p2"
-
-
-def test_default_phase_returns_none_for_all_done_or_no_phases():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "done", 1)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p1", assignee="", wave=1, status="done")],
-    )
-    assert selection.default_phase(view) is None
-    assert selection.default_phase(model.EffortView("e", "g")) is None
-
-
-def test_resolve_selection_follows_default_and_pins():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "in_progress", 1), _selection_phase("p2", "planned", 2)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p1", assignee="", wave=1, status="running")],
-    )
-    assert selection.resolve_selection(view, selection.PhaseSelection()) == "p1"
-    assert selection.resolve_selection(view, selection.PhaseSelection(pinned="p2")) == "p2"
-    assert selection.resolve_selection(view, selection.PhaseSelection(all_phases=True)) is None
-
-
-def test_resolve_selection_falls_back_when_pinned_phase_disappears():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "in_progress", 1)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p1", assignee="", wave=1, status="running")],
-    )
-    assert selection.resolve_selection(view, selection.PhaseSelection(pinned="gone")) == "p1"
-
-
-def test_pick_resumes_following_when_selecting_default():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "in_progress", 1)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p1", assignee="", wave=1, status="running")],
-    )
-    assert selection.pick(view, "p1") == selection.PhaseSelection()
-    assert selection.pick(view, "p2") == selection.PhaseSelection(pinned="p2")
-    assert selection.pick(view, None) == selection.PhaseSelection(all_phases=True)
-
-
-def test_step_selection_moves_through_phases_and_stops_at_ends():
-    view = model.EffortView(
-        "e", "g",
-        phases=[_selection_phase("p1", "in_progress", 1), _selection_phase("p2", "planned", 2)],
-        tasks=[model.TaskRow(id="t", subject="t", title="", phase="p1", assignee="", wave=1, status="running")],
-    )
-    start = selection.PhaseSelection()
-    assert selection.step_selection(view, start, 1) == selection.PhaseSelection(pinned="p2")
-    assert selection.step_selection(view, start, 2) == selection.PhaseSelection(all_phases=True)
-    assert selection.step_selection(view, selection.PhaseSelection(all_phases=True), 1) == selection.PhaseSelection(all_phases=True)
-    assert selection.step_selection(view, start, -1) == selection.PhaseSelection()
-
-
-def test_scoped_view_filters_tasks_to_phase():
-    view = model.EffortView(
-        "e", "g",
-        tasks=[
-            model.TaskRow(id="a", subject="a", title="", phase="p1", assignee="", wave=1, status="ready"),
-            model.TaskRow(id="b", subject="b", title="", phase="p2", assignee="", wave=1, status="ready"),
-        ],
-    )
-    scoped = selection.scoped(view, "p1")
-    assert [task.subject for task in scoped.tasks] == ["a"]
-    assert selection.scoped(view, None) is view
-
-
-def test_merge_activity_collapses_consecutive_same_kind_items():
-    now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
-    items = [
-        _selection_activity("a", "check-run", now, "a check pass"),
-        _selection_activity("b", "check-run", now + timedelta(minutes=1), "b check pass"),
-        _selection_activity("c", "assignment", now + timedelta(minutes=2), "c assigned"),
-    ]
-    merged = selection.merge_activity(items)
-    assert [(m.kind, m.subjects) for m in merged] == [
-        ("check-run", ("a", "b")),
-        ("assignment", ("c",)),
-    ]
-
-
-def test_merge_activity_keeps_failed_runs_separate():
-    now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
-    items = [
-        _selection_activity("a", "check-run", now, "a check pass"),
-        _selection_activity("b", "check-run", now + timedelta(minutes=1), "b check fail", failed=True),
-        _selection_activity("c", "check-run", now + timedelta(minutes=2), "c check pass"),
-    ]
-    merged = selection.merge_activity(items)
-    assert [m.failed for m in merged] == [False, True, False]
-
-
-def test_visible_efforts_hides_finished_by_default_and_keeps_those_with_needs():
-    live = model.EffortView("live", "g", tasks=[model.TaskRow(id="t", subject="t", title="", phase="p", assignee="", wave=1, status="running")])
-    finished_clean = model.EffortView("done", "g", tasks=[model.TaskRow(id="t", subject="t", title="", phase="p", assignee="", wave=1, status="done")])
-    finished_needs = model.EffortView("done-needs", "g", tasks=[model.TaskRow(id="t", subject="t", title="", phase="p", assignee="", wave=1, status="done")], needs_you=[model.NeedsYouItem(kind="needs-human", id="id", subject="x", text="y")])
-    snapshot = model.Snapshot([live, finished_clean, finished_needs], "token", datetime.now(timezone.utc))
-    shown, hidden = selection.visible_efforts(snapshot, show_finished=False)
-    assert [v.effort for v in shown] == ["live", "done-needs"]
-    assert hidden == 1
-    shown, hidden = selection.visible_efforts(snapshot, show_finished=True)
-    assert [v.effort for v in shown] == ["live", "done-needs", "done"]
-    assert hidden == 0
-
-
 # --- gates vocabulary (human-gates / gates-vocab) ---
 
 from dashboard import gates  # noqa: E402
@@ -2053,7 +1899,6 @@ def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):
 
 def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
     from dashboard import journal as journal_mod
-    from dashboard import selection
 
     for effort, kind in (("repair-e", "repair"), ("eval-e", "evaluate")):
         _goal(cli, defs, effort, kind=kind)
@@ -2074,12 +1919,6 @@ def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
         assert view.kind == kind
         assert view.journal_open
         assert all(item.open for item in view.journal_open)
-        scoped = selection.scoped(view, f"{effort}-phase")
-        assert all(
-            item.phase == f"{effort}-phase"
-            or (item.phase is None and item.record_type == "score:continuity-question")
-            for item in scoped.journal_open
-        )
         open_items, _ = journal_mod.ordered(journal_mod.load_journal(_target(store), effort))
         assert [item.id for item in view.journal_open] == [item.id for item in open_items]
 

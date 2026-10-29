@@ -9,8 +9,6 @@ description = "Product planning through verified code, run by agents"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "textual>=0.80",
-    "rich",
     "fastapi",
     "uvicorn",
 ]

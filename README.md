@@ -27,25 +27,10 @@ materialized as `work-item` + `acceptance`.
 ## Quick start
 
 1. Install **canon** and the **orchestra** plugin (see Install).
-2. Install [uv](https://docs.astral.sh/uv/getting-started/installation/). It runs the dashboard and fetches Textual.
-3. Add the dashboard keys to tmux. Pick one:
-   - With [TPM](https://github.com/tmux-plugins/tpm), add this to `~/.tmux.conf`, then press prefix + `I`:
+2. Install [uv](https://docs.astral.sh/uv/getting-started/installation/). It runs the web dashboard.
+3. In your project, run the `init` skill once. It runs `canon init --schemas score,conductor,tuner` and creates the store the dashboard reads.
+4. Run `dashboard/bin/web` from inside your repo to open the web dashboard.
 
-     ```tmux
-     set -g @plugin 'andrewy1n/orchestra'
-     ```
-
-   - Without TPM, clone the repo and add this to `~/.tmux.conf`:
-
-     ```tmux
-     run-shell ~/orchestra/orchestra.tmux
-     ```
-
-4. In your project, run the `init` skill once. It runs `canon init --schemas score,conductor,tuner` and creates the store the dashboard reads.
-5. Press prefix + `A` for a popup or prefix + `S` for a side pane.
-
-A Claude Code plugin install alone does not give you the tmux keys. Use TPM or a clone for step 3.
-Without tmux, run `dashboard/bin/dashboard` from inside your repo.
 Run acceptance checks with `orchestra check --acceptance <id>` (see
 [Install with the CLI](#install-with-the-cli)).
 
@@ -470,102 +455,13 @@ orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 only), writes an `tuner:check-run` with revision and runner metadata,
 and refuses `method=manual` (use human `signed_by` sign-off instead).
 
-## Dashboard in tmux
+## Web dashboard
 
-`dashboard/bin/dashboard` runs the Textual app `dashboard/__main__.py`
-through `uv` for the repo of the current directory. The app shows one
-tab per live effort: the goal, the phase stepper, progress, status
-tabs with counts (Active, Running, Ready, Waiting, Done, All), the task
-table, a Needs you panel titled with its item count, and recent activity. Active is the
-default and holds running, ready, and waiting tasks. It reloads when the store changes.
+`dashboard/bin/web` runs the web dashboard through `uv` for the repo of the
+current directory. It serves the snapshot of the store on a loopback port.
+Pass `--port N` to pick the port.
 
-The status tabs sit in one row. Each label is the status word and a
-parenthetical tally, for example `Active (2)   Running (1) ... All (2)`,
-with no leading shortcut digit. Keys `1`-`6` still select a tab, and the
-footer shows `1-6`. In a narrow pane the tabs wrap to three, two, or one
-per row. The phase stepper collapses finished phases to `N done`, then
-shows the current phase and one next phase. Click or Enter expands the
-finished titles. Segments wrap by pane width, stay intact on one line,
-and a segment wider than the pane clips with `…`.
-
-An effort is finished when every phase and every task that is not
-withdrawn is done. Finished efforts sort after live ones, and their tabs
-are dimmed. On the Active tab with no filter, a finished effort shows
-`All N tasks done` in place of the task table.
-
-The task table groups tasks under phase header rows in ordinal order.
-In-progress phases and phases awaiting sign-off are expanded. Done and
-planned phases are collapsed. When more than two phases are done, the
-older ones fold into one `N earlier phases done` row. A phase awaits
-sign-off when every open task waits only on an unsigned manual check.
-The progress bar covers the whole effort.
-
-The task table columns are status, task, wave, and assignee. The
-grouped table has no phase column; `--once` still prints one. A running
-task's status shows its running time, counted from its latest
-assignment (for example `running 2h`). A waiting task's title ends with
-a muted `waits on <subjects>` note that lists its unfinished
-dependencies. In recent activity, a failed check-run or execution
-report shows `✗` and is red. Activity also lists assessments,
-integration reports, and releases. A failed or blocked one is red.
-
-A phase with a specification is structured. Its header shows
-`R n/m verified`, where m is the number of requirement ids and n is
-how many have a latest assessment of verified. The stepper appends
-only the current stage word, for example `· execute`. Phase detail
-shows the full stage strip — specify, design, plan, execute,
-integrate, verify, assess, release — with the current stage marked,
-the specification weight and non-goals, the design decisions, and the
-latest integration result with its conflicts. Each requirement is
-listed with its id, status, next stage, and traced task count. A
-requirement with no assessment shows unassessed, and its latest
-check-run result is dimmed. A latest release whose state is ready
-adds a Release ready badge on the effort tab and on the phase header.
-The badge does not mark the effort finished.
-
-Needs you also lists a route when a requirement's latest assessment
-routes to specify, design, or plan, is blocked, or has low confidence,
-and an integrate item when the phase's latest integration report is
-fail or blocked. Enter on a route opens the requirement detail. Enter
-on an integrate item opens the Needs you detail.
-
-The requirement detail shows the requirement text from the
-specification, the decisions of the tasks traced to it, those tasks
-and their acceptances, the latest check-run for each acceptance with
-its evidence kind, and every assessment oldest first. Open it with
-Enter on a requirement in the phase detail, Enter on a route in Needs
-you, or Enter on a requirement link in the task detail. Enter on a
-traced task opens that task's detail. Esc returns one screen at a time.
-
-It needs `uv`. The first run downloads `textual`.
-
-| Key | Action |
-|---|---|
-| `tab` / `shift+tab` | Switch effort |
-| `enter` / click | Open the task detail, or expand or collapse a phase header or the earlier-phases row |
-| `p` | Open the phase detail (stage strip, specification, requirements, body, decisions, constraints, tasks) for the selected row |
-| `n` | Focus the Needs you list; arrows or `j` / `k` move, `esc` returns to the task table |
-| `enter` on a Needs you item | Open the requirement detail for a route, the task detail when the item has a task, else the Needs you detail (kind, record type, full text, body) |
-| `d` on a Needs you item | Open the Needs you detail for a human gate (question, needs:human finding, or unsigned manual check) — no store write; refused for merge/integration/route items |
-| Needs you detail evidence | Kind-specific panels: plan-review shows phase approach/tasks/Landing/run facts; manual check shows acceptance, check body, and revision vs HEAD; finding shows claim, basis, Evidence/Consequence |
-| `a` / `x` / `s` / `d` in Needs you detail | Open a confirm modal: Approve (`a`) or Reject (`x`) for questions/plan-review; Sign (`s`) for unsigned checks; Accept risk (`a`) for findings; `d` confirms the primary action. Cancel (Esc) makes no CLI call |
-| Confirm note | One-line note required for Reject and Accept risk; optional for Approve and Sign. Writes use the displayed record revision (never `@current`); stale revision refreshes and shows that the item changed since opened |
-| `enter` on a phase-detail requirement | Open the requirement detail |
-| `/` | Filter tasks by title or subject; `enter` keeps it, `esc` clears it |
-| `1`-`6` / `left` / `right` / click | Pick a status tab; the filter applies on top |
-| `esc` | Clear the filter, or go back one screen |
-| `c` | Copy the selected task's slug, or the subject of the selected Needs you item |
-| `g` | In the detail, show the commit of the task's latest revision |
-| `l` | In the task detail, focus the links (depends on, blocks, phase, requirements, decisions); arrows or `j` / `k` move, `enter` opens the task, phase, or requirement detail |
-| `enter` on a phase detail task | Open the task detail; the phase detail opens with its task list focused, arrows or `j` / `k` move |
-| `r` | Refresh now |
-| `q` | Quit |
-
-`dashboard/bin/dashboard --once` prints one plain-text frame and exits.
-`dashboard/bin/dashboard --interval S` sets the seconds between change checks
-(default 2).
-
-The launcher (and `orchestra store`) pick **one** store for the git
+The web launcher (and `orchestra store`) pick **one** store for the git
 toplevel — local (`<toplevel>/.canon`) or global
 (`~/.canon/<toplevel name>`), never both.
 
@@ -587,9 +483,6 @@ If a personal shell function wraps `canon` and forces
 calls. Prefer `command canon`, or pass `--store` from the resolved
 target.
 
-It runs the app from the toplevel. The process imports the
-canon library and opens the store through that import.
-
 Dismissing an unsigned manual check signs it with `$SE_WORKFLOW_SIGNED_BY`,
 else `$USER` / `$USERNAME`, else `dashboard`.
 
@@ -599,50 +492,7 @@ The launcher finds `uv` in this order:
 2. `uv` on `PATH`.
 3. `~/.local/bin/uv`.
 
-tmux popups run a non-interactive shell, so shell functions and aliases
-do not apply there. If the launcher finds no store or no `uv`, it prints
-the reason and waits for a key.
-
-The keys come from `orchestra.tmux` at the repo root. TPM runs it
-by itself, and `run-shell` runs it without TPM (see Quick start). It adds:
-
-| Keys | Opens |
-|---|---|
-| prefix + `A` | The dashboard in a popup (80% of the window) |
-| prefix + `S` | The dashboard in a side pane (40% of the width) |
-
-Both open in the directory of the current pane. The script finds the
-launcher from its own directory. Set these options in `~/.tmux.conf`
-before the plugin loads to change the keys:
-
-```tmux
-set -g @dashboard-popup-key 'D'
-set -g @dashboard-pane-key 'P'
-```
-
-### Status line segment
-
-`dashboard/bin/dashboard-status` prints one line per effort the dashboard
-shows, for example:
-
-```text
-watch-dashboard · 1 running · 2 ready · 1 needs you
-```
-
-"needs you" counts blocking questions, open questions, findings that
-need a human, and unsigned manual checks. The segment omits zero counts.
-It builds the same snapshot as the dashboard, so an effort without an
-active goal gets no line. It opens the store by importing the library,
-the same way `dashboard/bin/dashboard` does. It prints nothing when there
-is no store, the open fails, or the snapshot takes more than 2 seconds.
-
-It reads Claude Code status JSON on stdin (`workspace.current_dir`, else
-`cwd`), or takes a directory argument. To add it to an existing status
-line script that has the status JSON in `$input`, append:
-
-```bash
-echo "$input" | ~/orchestra/dashboard/bin/dashboard-status
-```
+If the launcher finds no store or no `uv`, it prints the reason and exits.
 
 ## Testing
 

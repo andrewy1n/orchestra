@@ -1,7 +1,6 @@
 """Launcher oracles for the web dashboard.
 
-The web launcher is dashboard/bin/web. It follows the same store resolution as
-dashboard/bin/dashboard (dashboard.artifact_store.resolve) and serves the Vite
+The web launcher is dashboard/bin/web. It resolves the store and serves the Vite
 production build from `npm run build` in dashboard/web/ui, at
 dashboard/web/ui/dist/index.html.
 """
