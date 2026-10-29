@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Area from "$lib/screens/Area.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
   import EffortRail from "$lib/screens/EffortRail.svelte";
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
+  import { bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
@@ -18,6 +20,7 @@
 
   bindPolling();
   bindJournal();
+  bindAreas();
   bindOverlay();
 
   const effort = $derived(polling.effort);
@@ -95,6 +98,8 @@
     <main class="main" data-route={navigation.route.name}>
       {#if navigation.route.name === "journal"}
         <Journal />
+      {:else if navigation.route.name === "area"}
+        <Area />
       {:else if effort}
         <Home {effort} />
       {:else if !polling.loading && !polling.error}

@@ -6,6 +6,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 const FILES = [
 	"App.svelte",
+	"lib/screens/Area.svelte",
 	"lib/screens/EffortRail.svelte",
 	"lib/screens/Home.svelte",
 	"lib/screens/Journal.svelte",
@@ -15,6 +16,7 @@ const FILES = [
 	"lib/screens/ConfirmModal.svelte",
 	"lib/screens/SideRail.svelte",
 	"lib/state/polling.svelte.ts",
+	"lib/state/areas.svelte.ts",
 	"lib/state/journal.svelte.ts",
 	"lib/state/overlay.svelte.ts",
 	"lib/state/route.svelte.ts",

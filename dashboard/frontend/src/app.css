@@ -285,6 +285,53 @@ button {
 	max-width: 48rem;
 }
 
+.area-screen {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-width: 48rem;
+}
+
+.area-screen .ptitle,
+.areas-block .ptitle {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin: 0 0 4px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.area-screen .ptitle .count {
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
+
+.area-screen .lrow .text {
+	white-space: normal;
+}
+
+.area-moved-trigger {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--ink-2);
+	cursor: pointer;
+}
+
+.areas-block {
+	margin: 20px 0 0;
+}
+
+.area-row {
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .journal-bar {
 	display: flex;
 	align-items: center;

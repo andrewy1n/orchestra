@@ -134,6 +134,11 @@ export function requirementHref(
 	return `#/requirement/${enc(effort)}/${enc(phase)}/${enc(id)}`;
 }
 
+/** Hash href that opens an area screen. */
+export function areaHref(subject: string): string {
+	return `#/area/${enc(subject)}`;
+}
+
 /** Hash href that opens a journal record overlay. */
 export function recordHref(id: string): string {
 	return `#/record/${enc(id)}`;

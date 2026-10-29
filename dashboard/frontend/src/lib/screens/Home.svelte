@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge";
+  import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
-  import { openHash, taskHref } from "../../detail";
+  import { areaHref, openHash, taskHref } from "../../detail";
   import { STATUS_TABS } from "../../efforts";
   import type { EffortView } from "../../types";
   import NeedsRows from "./NeedsRows.svelte";
@@ -186,3 +188,15 @@
     {/each}
   {/if}
 </div>
+
+{#if areas.items.length}
+  <section class="areas-block" data-areas>
+    <h2 class="ptitle">Areas</h2>
+    {#each areas.items as area (area.subject)}
+      <a class="lrow clickable area-row" href={areaHref(area.subject)} data-area={area.subject}>
+        <span class="text">{area.title || area.subject}</span>
+        <Badge variant="secondary">{area.open_count} open</Badge>
+      </a>
+    {/each}
+  </section>
+{/if}
