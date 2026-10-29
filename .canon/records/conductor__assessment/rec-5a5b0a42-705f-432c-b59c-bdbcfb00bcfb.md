@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-5a5b0a42-705f-432c-b59c-bdbcfb00bcfb",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "workflow-loop",
+    "missing": "",
+    "next": "release",
+    "phase": "effort-brief",
+    "requirement": "R9",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T17:22:20+00:00",
+  "relationships": {},
+  "revision": "sha256:23291ceb3b47998d5b8e8ab39f50b3a7aeff1f85badc997d7543b89d3d7e5308",
+  "subject": "effort-brief-R9"
+}
+---
+
+## Evidence
+
+Oracle-backed tdd acceptance rec-f367eedc-6f14-40bf-a325-ecbf77f50c31. Assertion-level red check-run rec-fd620997-0538-4d03-b428-b8802126dcd8 (revision dirty, diff_sha256 fd9d7734ac9e10ab..., failing nodes 1). Green check-run rec-4527e562-d558-4bb8-ab4e-b851d2728e3e result pass at revision e32602d052b1a07c89899282042871dc7a7c2377. The frozen oracle file hash matches oracle_hashes. No manifest claim, so no verdict needed.
+
+## Missing
+
+none
+
+## Reason
+
+The frozen tests for R9 failed on assertions before the change and pass at the task commit, and the oracle file matches its frozen hash (after any amendment recorded on the work-item).

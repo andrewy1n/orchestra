@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-dc3889c3-caee-43df-8813-ac1a9ed4be45",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "workflow-loop",
+    "missing": "",
+    "next": "release",
+    "phase": "effort-brief",
+    "requirement": "R13",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T17:22:24+00:00",
+  "relationships": {},
+  "revision": "sha256:30dc7a75a8dc419deaaa42ccdd3cd3a38c666d28d6d2324c112eaf050ac8dcab",
+  "subject": "effort-brief-R13"
+}
+---
+
+## Evidence
+
+Oracle-backed tdd acceptance rec-947d7fdd-45f6-422a-88f5-a8d67a2a3d4a. Assertion-level red check-run rec-85014bb9-d7c3-4563-9910-3911fcddb498 (revision dirty, diff_sha256 fd9d7734ac9e10ab..., failing nodes 1). Green check-run rec-aaa3e549-90da-4827-99cb-a1befd93ef58 result pass at revision e32602d052b1a07c89899282042871dc7a7c2377. The frozen oracle file hash matches oracle_hashes. No manifest claim, so no verdict needed.
+
+## Missing
+
+none
+
+## Reason
+
+The frozen tests for R13 failed on assertions before the change and pass at the task commit, and the oracle file matches its frozen hash (after any amendment recorded on the work-item).

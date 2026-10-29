@@ -1,0 +1,47 @@
+---
+{
+  "id": "rec-f8fbc94d-b71e-4cbc-aa1e-1d7bea620f30",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-75918661-5536-4ba1-8711-e275b9b8e3a8",
+    "diff_sha256": "fd9d7734ac9e10abb19025f20ecd0ffc9dfadc3930054f8bc9274db2bef7453d",
+    "duration_s": 0.279384,
+    "effort": "workflow-loop",
+    "exit_code": 1,
+    "failing_node_ids": [
+      "tests/test_effort_brief_skills.py::test_r10_init_creates_no_brief_for_repair_evaluate_or_incidental"
+    ],
+    "informed_by": [
+      "rec-75918661-5536-4ba1-8711-e275b9b8e3a8"
+    ],
+    "method": "tdd",
+    "output_sha256": "1deb39ee67ca9194a16db1197d6dfff0c00ebd349ea014de9e199c3112169f50",
+    "requirement": "R10",
+    "result": "fail",
+    "revision": "dirty",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T17:07:48+00:00",
+  "relationships": {},
+  "revision": "sha256:8c7adcd14126b7ee4c03f9e2b781fa4574d52cd18846fe537b6a41586f560f3e",
+  "subject": "brief-skills-r10"
+}
+---
+
+F                                                                                                                                                                                                                                                  [100%]
+======================================================================================================================== FAILURES ========================================================================================================================
+____________________________________________________________________________________________ test_r10_init_creates_no_brief_for_repair_evaluate_or_incidental ____________________________________________________________________________________________
+
+    def test_r10_init_creates_no_brief_for_repair_evaluate_or_incidental():
+        text = _flat(skill_text("init"))
+>       assert CREATE_BRIEF.search(text)
+E       AssertionError: assert None
+E        +  where None = <built-in method search of re.Pattern object at 0xa7b1500>('--- name: init description: >- Adopts the current git repo into the orchestra store: live goal, and a score:phase rec...retry. Never hand-edit a record file. - **Read by relevance.** Route by focus, then phase. Never bulk-read the store. ')
+E        +    where <built-in method search of re.Pattern object at 0xa7b1500> = re.compile('canon create --type score:brief\\b').search
+
+tests/test_effort_brief_skills.py:35: AssertionError
+================================================================================================================ short test summary info =================================================================================================================
+FAILED tests/test_effort_brief_skills.py::test_r10_init_creates_no_brief_for_repair_evaluate_or_incidental - AssertionError: assert None
+1 failed, 4 deselected in 0.05s
