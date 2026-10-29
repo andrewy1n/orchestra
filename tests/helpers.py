@@ -7,6 +7,7 @@ so the suite keeps working as the contract gains or changes record types.
 
 from __future__ import annotations
 
+import asyncio
 import fcntl
 import itertools
 import json
@@ -473,10 +474,12 @@ class Tmux:
 
 
 async def wait_workers(app) -> None:
-    """Wait for app workers; a CANCELLED worker is an exclusive-group race, not a failure."""
+    """Wait for app workers; a CANCELLED worker is an exclusive-group race, so wait for the rest."""
     from textual.worker import WorkerCancelled
 
-    try:
-        await app.workers.wait_for_complete()
-    except WorkerCancelled:
-        return
+    for _ in range(10):
+        try:
+            await app.workers.wait_for_complete()
+            return
+        except WorkerCancelled:
+            await asyncio.sleep(0)

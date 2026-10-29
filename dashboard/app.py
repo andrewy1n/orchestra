@@ -685,6 +685,7 @@ class NeedsYouDetailScreen(Screen[None]):
         self.item = item
         self.effort = effort
         self.loaded = False
+        self.ready = False
 
     def compose(self) -> ComposeResult:
         yield Static(id="needs-bar")
@@ -703,6 +704,7 @@ class NeedsYouDetailScreen(Screen[None]):
         yield Footer()
 
     async def on_mount(self) -> None:
+        self.ready = True
         await self.show(self.item)
 
     def action_back(self) -> None:
@@ -716,6 +718,8 @@ class NeedsYouDetailScreen(Screen[None]):
         banner.display = True
 
     async def follow(self, snapshot: model.Snapshot) -> None:
+        if not self.ready:
+            return
         found = next((i for v in snapshot.efforts for i in v.needs_you if i.id == self.item.id), None)
         if found is None:
             banner = self.query_one("#needs-error", Static)
@@ -725,13 +729,6 @@ class NeedsYouDetailScreen(Screen[None]):
             await self.show(found)
 
     async def show(self, item: model.NeedsYouItem) -> None:
-        try:
-            await self._show(item)
-        except NoMatches:
-            if self.query("#needs-detail"):
-                raise
-
-    async def _show(self, item: model.NeedsYouItem) -> None:
         if not self.is_attached:
             return
         colors = palette_from(self.app.get_css_variables())
