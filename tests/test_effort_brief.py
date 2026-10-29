@@ -103,7 +103,7 @@ def test_r2_brief_requires_an_effort_ref_to_score_effort():
 
 @pytest.mark.parametrize("missing", SECTIONS)
 def test_r3_missing_section_is_rejected_and_named(current_store, missing):
-    accepted = _create_brief(current_store, "control", _body())
+    accepted = _create_brief(current_store, f"control-{missing.lower().replace(' ', '-')}", _body())
     assert accepted.returncode == 0, _output(accepted)
     sections = [name for name in SECTIONS if name != missing]
     result = _create_brief(current_store, "gap", _body(sections))
@@ -115,7 +115,7 @@ def test_r4_brief_with_four_sections_and_valid_effort_is_created(current_store):
     result = _create_brief(current_store, "full", _body())
     assert result.returncode == 0, _output(result)
     record = json.loads(result.stdout)["record"]
-    assert record["type"] == "score:brief"
+    assert record["record_type"] == "score:brief"
     assert record["payload"]["effort"] == "alpha"
 
 
