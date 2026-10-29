@@ -9,12 +9,12 @@ import { fileURLToPath } from "node:url";
 
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { appSource } from "./appSource";
 import { buildWaveGraph, statusSignal, toFlow } from "./taskGraph";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+
 const boardSource = readFileSync(
 	path.join(here, "TaskGraphBoard.svelte"),
 	"utf8",

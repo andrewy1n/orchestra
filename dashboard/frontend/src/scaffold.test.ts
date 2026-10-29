@@ -15,7 +15,6 @@
  * functions the component calls.
  */
 
-import { readFileSync } from "node:fs";
 import { createServer as createHttpServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createServer as createNetServer } from "node:net";
@@ -31,12 +30,12 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_TARGET } from "./api";
+import { appSource } from "./appSource";
 import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const uiRoot = path.resolve(here, "..");
 const configFile = path.join(uiRoot, "vite.config.ts");
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;
 

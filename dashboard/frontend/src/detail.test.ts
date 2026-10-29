@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { appSource } from "./appSource";
 import {
 	backlogHref,
 	detailTarget,
@@ -31,7 +31,7 @@ import { parseRoute } from "./router";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+
 const detailSource = readFileSync(path.join(here, "detail.ts"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;

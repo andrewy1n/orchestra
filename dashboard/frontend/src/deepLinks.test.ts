@@ -16,12 +16,13 @@ import { fileURLToPath } from "node:url";
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
+import { appSource } from "./appSource";
 import { resolveRef } from "./links";
 import { renderMarkdown } from "./markdown";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+
 const markdownSource = readFileSync(path.join(here, "markdown.ts"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;

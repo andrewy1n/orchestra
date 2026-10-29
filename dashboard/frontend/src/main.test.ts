@@ -15,13 +15,9 @@
  * the App source wiring. When the Svelte plugin is loaded they also mount.
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { appSource } from "./appSource";
 import {
 	filteredTasks,
 	resolvedPhase,
@@ -31,9 +27,6 @@ import {
 import { startTokenPoller } from "./poll";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 import { TOKEN_POLL_MS } from "./types";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;
 

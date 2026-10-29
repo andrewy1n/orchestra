@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
+import { appSource } from "./appSource";
 import { phaseHref } from "./detail";
 import { filteredTasks, resolvedPhase } from "./efforts";
 import {
@@ -30,7 +31,7 @@ import {
 import type { DeepPartial, EffortView, PhaseRow, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+
 const cssSource = readFileSync(path.join(here, "app.css"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;

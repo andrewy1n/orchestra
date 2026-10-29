@@ -3,18 +3,11 @@
  * Phase overlay chrome on every tab (phase-overview).
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { appSource } from "./appSource";
 import { buildPhaseChrome } from "./phaseChrome";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;
 

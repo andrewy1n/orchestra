@@ -7,18 +7,12 @@
  * R13: open backlog items for the selected effort.
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JournalResponse, NeedsYouSummary } from "./api-types";
+import { appSource } from "./appSource";
 import { openBacklog, orderedJournal } from "./side";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
 
 let mounted: ReturnType<typeof mount> | undefined;
 

@@ -20,11 +20,12 @@ import {
 	writeBody,
 	writePath,
 } from "./actions";
+import { appSource } from "./appSource";
 import { needsHref } from "./detail";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
+
 const actionsSource = readFileSync(path.join(here, "actions.ts"), "utf8");
 const apiSource = readFileSync(path.join(here, "api.ts"), "utf8");
 
