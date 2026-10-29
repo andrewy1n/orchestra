@@ -71,9 +71,11 @@ canon supersede --type composer:idea --id <id> \
 2. Read context: the phase record, milestones for this effort,
    `score:decision` and `score:constraint` records with
    `payload.effort` = focus, assessments for this phase, and the code
-   paths the phase names or implies.
+   paths the phase names or implies. Read the effort's `score:brief`
+   when one exists.
 
 ```bash
+canon list --type score:brief --subject <focus> --exact-subject --state active --full
 canon list --type score:milestone --where payload.effort=<focus> --state active --full
 canon list --type score:decision --where payload.effort=<focus> --state active --full
 canon list --type score:constraint --where payload.effort=<focus> --state active --full
