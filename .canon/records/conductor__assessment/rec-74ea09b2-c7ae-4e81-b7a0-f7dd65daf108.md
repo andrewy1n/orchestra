@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-74ea09b2-c7ae-4e81-b7a0-f7dd65daf108",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "confidence": "high",
     "effort": "ci",
@@ -12,9 +12,9 @@
     "status": "verified"
   },
   "record_type": "conductor:assessment",
-  "recorded_at": "2026-10-29T09:32:25+00:00",
+  "recorded_at": "2026-10-29T09:35:51+00:00",
   "relationships": {},
-  "revision": "sha256:10b6ee796c07dd596b56afc9a6b1a91d950bf970357423bf7dfd6a99c9e3e60b",
+  "revision": "sha256:1de291aaf5a240112356e9892eac3e721a171ca23d45401e418c9d53240236dd",
   "subject": "wheel-smoke-R20"
 }
 ---
