@@ -678,7 +678,7 @@ import type { EffortView, Snapshot, StatusTab } from "./types";
                 ? "var(--warn)"
                 : view.finished
                   ? "var(--faint)"
-                  : "var(--accent)"}
+                  : "var(--brand)"}
             ></span>
             <span>
               <span class="name">{view.effort}</span>

@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+
+import { fileURLToPath } from "node:url";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vitest/config";
@@ -24,5 +26,8 @@ export default defineConfig({
 	},
 	// Vitest runs in Node but the components are client code; resolve the
 	// browser build of Svelte so `mount` works.
-	resolve: process.env.VITEST ? { conditions: ["browser"] } : undefined,
+	resolve: {
+		alias: { $lib: fileURLToPath(new URL("./src/lib", import.meta.url)) },
+		conditions: process.env.VITEST ? ["browser"] : undefined,
+	},
 });

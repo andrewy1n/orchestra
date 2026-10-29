@@ -6,6 +6,7 @@
 			"!**/dist",
 			"!**/node_modules",
 			"!src/api-types.ts",
+			"!src/lib/components/ui",
 			"!openapi.json"
 		]
 	},
