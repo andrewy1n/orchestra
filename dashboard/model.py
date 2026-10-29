@@ -26,7 +26,6 @@ NEEDS_ORDER = (
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
-TOKEN_DIRS = ("records", "history")
 FULL_TYPES = (
     "score:continuity-question", "tuner:finding", "tuner:check-run", "score:work-item",
     "score:phase", "score:specification", "conductor:assessment", "conductor:integration-report",
@@ -171,21 +170,18 @@ class Snapshot:
 
 
 def change_token(target: Project) -> str:
-    """Hash of (path, mtime_ns, size) for every file under the store's records and history.
+    """Hash of the mtime of each record type directory.
 
-    One directory walk, and any create, update, or supersede rewrites or adds a file.
+    The store writes a record by renaming a temp file into its type directory, so any create, update, or supersede moves that directory's mtime.
     """
     digest = hashlib.sha1()
-    for name in TOKEN_DIRS:
-        for directory, subdirs, files in os.walk(target.store_path / name):
-            subdirs.sort()
-            for file in sorted(files):
-                path = os.path.join(directory, file)
-                try:
-                    stat = os.stat(path)
-                except OSError:
-                    continue
-                digest.update(f"{path}\0{stat.st_mtime_ns}\0{stat.st_size}\n".encode())
+    try:
+        with os.scandir(target.store_path / "records") as entries:
+            for entry in sorted(entries, key=lambda e: e.name):
+                if entry.is_dir():
+                    digest.update(f"{entry.name}\0{entry.stat().st_mtime_ns}\n".encode())
+    except OSError:
+        pass
     return digest.hexdigest()
 
 
@@ -225,7 +221,8 @@ def _catalog(target: Project) -> list[dict[str, Any]]:
         if cached and cached[0] == token:
             return cached[1]
         try:
-            rows = attach_derived_all(target.records(), target.derived())
+            records = target.records()
+            rows = attach_derived_all(records, target.derived(records))
         except StoreError:
             return []
         _catalog_cache[key] = (token, rows)

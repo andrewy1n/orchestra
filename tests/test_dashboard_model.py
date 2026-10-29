@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -14,6 +15,7 @@ from conftest import REPO_ROOT, build_store, make_git_repo, run_cli, stamped_sto
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import Binding, Project, open_store  # noqa: E402
+from orchestra.canon.store import Store  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import selection  # noqa: E402
 
@@ -359,6 +361,29 @@ def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
     monkeypatch.setattr(model, "change_token", lambda t: walks.append(t) or real(t))
     model.load_snapshot(target)
     assert len(walks) == 1
+
+
+def test_change_token_stats_type_directories_not_records(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    for index in range(5):
+        _work_item(cli, defs, "alpha", f"a-task-{index}", "a-phase")
+    target = _target(store)
+    stats = []
+    real = os.stat
+    monkeypatch.setattr(os, "stat", lambda *a, **k: stats.append(a) or real(*a, **k))
+    model.change_token(target)
+    assert len(stats) <= len(list((target.store_path / "records").iterdir()))
+
+
+def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    model._catalog_cache.clear()
+    reads = []
+    real = Store.iter_records
+    monkeypatch.setattr(Store, "iter_records", lambda self, *a: reads.append(a) or real(self, *a))
+    model._catalog(_target(store))
+    assert len(reads) == 1
 
 
 def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
