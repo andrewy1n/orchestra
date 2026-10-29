@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-10d768ad-b27a-4ca1-9eba-10cc2b5e36fd",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "ci",
+    "missing": "",
+    "next": "release",
+    "phase": "mypy-gate",
+    "requirement": "R9",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T07:48:01+00:00",
+  "relationships": {},
+  "revision": "sha256:faf70804721e0bb643cd1d79d7f8012cf7f0004f1c805715dddb6a779a893119",
+  "subject": "mypy-gate-R9"
+}
+---
+
+## Evidence
+
+check-run rec-1ff16b3e-bc04-4bcd-b4c8-19e2c7ec2c27 pass; red rec-96385384-2f05-44b7-bebc-20c642407d13. Oracle-backed: assertion-level red check-run (dirty, before the change) then green at d63adda5a; oracle file hash unchanged since freeze.
+
+## Missing
+
+none
+
+## Reason
+
+The runner check-run passed at the task commit; the acceptance exercises the requirement directly.

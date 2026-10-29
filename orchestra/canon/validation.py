@@ -450,8 +450,9 @@ def _body_sections(body: str) -> dict[str, str]:
     for line in (body or "").splitlines():
         match = _SECTION_HEADING_RE.match(line)
         if match:
-            current = match.group(1)
-            sections.setdefault(current, [])
+            heading: str = match.group(1)
+            current = heading
+            sections.setdefault(heading, [])
             continue
         if current is not None:
             sections[current].append(line)

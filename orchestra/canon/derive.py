@@ -21,7 +21,7 @@ record and never hand that copy back to the store.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.lifecycle import terminal_success_state
@@ -126,7 +126,7 @@ def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[s
     """
     inverse: dict[str, dict[str, list[str]]] = {}
     for record in records:
-        source_id = record.get("id")
+        source_id = cast(str, record.get("id"))
         for rel_type, targets in (record.get("relationships") or {}).items():
             for target_id in targets or []:
                 inverse.setdefault(target_id, {}).setdefault(rel_type, []).append(source_id)
@@ -184,7 +184,7 @@ def attach_derived(
 ) -> dict[str, Any]:
     """A copy of `record` with a top-level `derived` mapping, or `record`
     itself, unmodified, when it has no derived values."""
-    values = derived_map.get(record.get("id"))
+    values = derived_map.get(cast(str, record.get("id")))
     if values is None:
         return record
     out = dict(record)

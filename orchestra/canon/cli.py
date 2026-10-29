@@ -154,6 +154,7 @@ def _row_values(record: dict[str, Any], fields: list[str]) -> list[str]:
 
 
 def _emit_table(records: list[dict[str, Any]], *, fields: str | None) -> None:
+    cols: list[str]
     if fields:
         cols = [field.strip() for field in fields.split(",") if field.strip()]
     elif records:
@@ -175,6 +176,7 @@ def _emit_table(records: list[dict[str, Any]], *, fields: str | None) -> None:
 
 
 def _emit_tsv(records: list[dict[str, Any]], *, fields: str | None) -> None:
+    cols: list[str]
     if fields:
         cols = [field.strip() for field in fields.split(",") if field.strip()]
     elif records:

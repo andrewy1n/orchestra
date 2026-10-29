@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-d6b0efa4-9eb3-4d0d-a91a-ba034c495e9e",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "ci",
+    "method": "check",
+    "phase": "mypy-gate",
+    "requirement": "R6",
+    "verify_command": "uv run basedpyright orchestra"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T07:44:21+00:00",
+  "relationships": {},
+  "revision": "sha256:c71a6172637a7433a683b0a31ece513a5d16a3a437b6c19a3f3ce59b3b91d3d4",
+  "subject": "fix-orchestra-types"
+}
+---
+
