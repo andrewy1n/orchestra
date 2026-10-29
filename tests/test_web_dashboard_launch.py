@@ -316,3 +316,59 @@ def test_r30_serves_build(store, tmp_path, monkeypatch):
             shutil.rmtree(dist, ignore_errors=True)
         if made_web and web_dir.exists() and not any(web_dir.iterdir()):
             web_dir.rmdir()
+
+
+_IMPORT_PROBE = """
+import json
+import os
+import sys
+from pathlib import Path
+
+result = os.environ.get("DASHBOARD_IMPORT_RESULT")
+argv0 = sys.argv[0] if sys.argv else ""
+if result and argv0 and not argv0.startswith("-"):
+    try:
+        path = Path(argv0).resolve()
+    except OSError:
+        path = None
+    if path is not None and path.name == "__main__.py" and path.parent.name == "server":
+        error = ""
+        try:
+            import orchestra.canon.project
+            ok = True
+        except Exception as exc:
+            ok = False
+            error = "%s: %s" % (type(exc).__name__, exc)
+        payload = {"ok": ok, "error": error, "executable": sys.executable, "argv0": argv0}
+        with open(result, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os._exit(0)
+"""
+
+
+def test_launched_process_imports_canon_project(store, tmp_path):
+    assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    (probe / "sitecustomize.py").write_text(_IMPORT_PROBE, encoding="utf-8")
+    result = tmp_path / "import-result.json"
+    env = _env(tmp_path / "home")
+    env.pop("SE_WORKFLOW_UV", None)
+    env.pop("CANON_STORE", None)
+    env["PYTHONPATH"] = os.pathsep.join([str(probe), env["PYTHONPATH"]])
+    env["DASHBOARD_IMPORT_RESULT"] = str(result)
+    try:
+        completed = subprocess.run(
+            [str(SCRIPT)], cwd=store, env=env, stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        assert False, "web launcher did not exit after starting the server process"
+    assert result.is_file(), (
+        f"web launcher did not start the server process "
+        f"(exit {completed.returncode}): {completed.stdout} {completed.stderr}"
+    )
+    payload = json.loads(result.read_text(encoding="utf-8"))
+    assert payload["ok"], f"server process via {payload['executable']}: {payload['error']}"

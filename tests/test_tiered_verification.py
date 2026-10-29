@@ -519,11 +519,12 @@ def test_execute_phase_documents_no_agent_waiver_of_suite_policy():
 
 def test_readme_suite_command_matches_testing_section():
     cmd = readme_suite_command()
-    assert '-n 4 -m "not tmux"' in cmd
-    assert "-m tmux" in cmd
+    assert cmd == "uv run pytest tests -q -n 4"
+    assert "tmux" not in cmd
+    assert "&&" not in cmd
     readme = README.read_text()
-    # README rename may land in suite-docs-tests; command shape is authoritative.
-    assert '-n 4 -m "not tmux"' in readme
+    assert f"falls back to `{cmd}`" in " ".join(readme.split())
+    assert "-m tmux" not in readme
 
 
 def test_evidence_kind_integration_not_regression():

@@ -497,24 +497,20 @@ If the launcher finds no store or no `uv`, it prints the reason and exits.
 
 ## Testing
 
-Run the full suite as four pytest processes:
+Run the full suite as three pytest processes:
 
 ```bash
 uv run pytest -q -n auto --confcutdir=tests/canon tests/canon
 uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner
 uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner
-uv run pytest -q tests --ignore=tests/canon --ignore=tests/tuner -m tmux
 ```
 
 Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
-run apart from the orchestra tests. The tmux tests run last and serially,
-because parallel load makes them flaky. CI runs the same four commands as
-parallel jobs and adds `--reruns 2` to the tmux pass. When the configured
-suite `command` is empty, the suite falls back to
-`uv run pytest tests -q -n 4 -m "not tmux"` then
-`uv run pytest tests -q -m tmux`.
+run apart from the orchestra tests. CI runs the same three commands as
+parallel jobs. When the configured suite `command` is empty, the suite
+falls back to `uv run pytest tests -q -n 4`.
 
-These four commands are the **phase-level suite** (`phase_gate.suite`).
+These three commands are the **phase-level suite** (`phase_gate.suite`).
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
@@ -534,7 +530,7 @@ not waive it; a human changes `settings.conductor.phase_gate` in
 When a suite is configured (`mode` not `none` and `command` set) and
 `gate` is omitted, gate defaults to `required`. This repo's live
 `.canon/config.json` sets `mode=full` and `gate=advisory` with
-the four commands chained with `&&`. The suite check-run
+the three commands chained with `&&`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 

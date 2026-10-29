@@ -43,7 +43,7 @@ Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
 trees.
 
 Before you close a task, run the test files for the code you changed.
-Run the four pytest commands in the README Testing section only at phase
+Run the three pytest commands in the README Testing section only at phase
 end, or when you change shared code (config, store, CLI entry points).
 CI runs the full suite on every push.
 
