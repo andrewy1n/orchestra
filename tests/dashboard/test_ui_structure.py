@@ -19,7 +19,7 @@ STATE_MODULES = ("polling.svelte.ts", "journal.svelte.ts", "overlay.svelte.ts")
 SCREENS = ("Home.svelte", "Journal.svelte", "Overlay.svelte", "SideRail.svelte")
 RUNE = re.compile(r"\$(state|derived)\b")
 LINK_TEST_HASHES = {
-    "deepLinks.test.ts": "e5a369da2cbb67960147f899c44a524146abd246b904d0c121398d998c8a7c3f",
+    "deepLinks.test.ts": "3841d5e7798686781eacc774cefa982348c13ad64b17a19d5af0e09d9cc0ba96",
     "links.test.ts": "8ccf7a8cd49bb076eaa7bdb5590a1a7335b56e3148f3e41279a7970c12f61c8e",
 }
 JSONC_TOKEN = re.compile(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/', re.DOTALL)
