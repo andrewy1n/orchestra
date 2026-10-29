@@ -217,16 +217,30 @@ def test_r21_uv_jobs_enable_cache():
             assert step.get("with", {}).get("enable-cache") is True, name
 
 
-def test_r22_types_job_runs_mypy_with_continue_on_error():
-    spec = job("types")
-    assert any("mypy" in line for line in run_lines("types"))
-    assert spec.get("continue-on-error") is True
+def test_mypy_gate_r9_types_job_runs_basedpyright():
+    assert any("uv run basedpyright" in line for line in run_lines("types"))
+
+
+def test_mypy_gate_r10_types_job_is_blocking():
+    assert not job("types").get("continue-on-error")
+
+
+def test_mypy_gate_r11_types_steps_do_not_continue_on_error():
+    steps = job("types").get("steps", [])
+    checks = [step for step in steps if "basedpyright" in str(step.get("run", ""))]
+    assert checks, "types job has no basedpyright step"
+    for step in steps:
+        assert not step.get("continue-on-error"), step
+
+
+def test_mypy_gate_r12_no_job_runs_mypy():
+    for name in jobs():
+        for line in run_lines(name):
+            assert "mypy" not in line, f"{name}: {line}"
 
 
 def test_blocking_jobs_do_not_continue_on_error():
     for name, spec in jobs().items():
-        if name == "types":
-            continue
         assert not spec.get("continue-on-error"), name
         for step in spec.get("steps", []):
             assert not step.get("continue-on-error"), name
