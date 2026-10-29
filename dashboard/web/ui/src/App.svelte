@@ -75,7 +75,7 @@
   let theme: Theme = $state(DEFAULT_THEME);
   let route: Route = $state(currentRoute());
 
-  let snapshot: Snapshot | null = $state(null);
+  let snapshot = $state<Snapshot | null>(null);
   let loading = $state(true);
   let error = $state("");
   let pollError = $state("");
@@ -92,7 +92,7 @@
   /** Effort name that `expandedMilestones` was initialized for. */
   let expandedForEffort = $state("");
 
-  let journal: JournalResponse | null = $state(null);
+  let journal = $state<JournalResponse | null>(null);
   let journalError = $state("");
   let journalFilter = $state("");
 
