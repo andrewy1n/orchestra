@@ -1,5 +1,6 @@
+import type { MilestoneRow } from "./api-types";
 import { defaultPhase } from "./efforts";
-import type { EffortView, MilestoneRow, PhaseRow } from "./types";
+import type { EffortView, PhaseRow } from "./types";
 
 /** One milestone (or Ungrouped) bucket of phases for the Phases block. */
 export interface MilestoneGroup {

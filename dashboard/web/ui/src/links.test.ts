@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { linkifyText, type RefContext, resolveRef } from "./links";
-import type { EffortView, Snapshot } from "./types";
+import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -15,11 +15,11 @@ function effort(
 		needs_you: [],
 		milestones: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 function snap(efforts: EffortView[]): Snapshot {
-	return { token: "t1", efforts };
+	return { token: "t1", efforts } as Snapshot;
 }
 
 function ctx(snapshot: Snapshot, extra: Partial<RefContext> = {}): RefContext {

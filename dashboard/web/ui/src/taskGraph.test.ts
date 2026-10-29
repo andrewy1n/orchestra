@@ -11,7 +11,7 @@ import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildWaveGraph, statusSignal, toFlow } from "./taskGraph";
-import type { EffortView, Snapshot } from "./types";
+import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
@@ -105,7 +105,7 @@ function phasePayload(tasks: typeof threeTasks) {
 }
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -125,11 +125,11 @@ function effort(
 		needs_you: [],
 		backlog: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
-	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" };
+	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
 function stubFetch(snap: Snapshot, payload = phasePayload(threeTasks)) {

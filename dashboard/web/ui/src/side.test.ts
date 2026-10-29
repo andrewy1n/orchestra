@@ -13,14 +13,9 @@ import { fileURLToPath } from "node:url";
 
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import type { JournalResponse, NeedsYouSummary } from "./api-types";
 import { openBacklog, orderedJournal } from "./side";
-import type {
-	EffortView,
-	JournalResponse,
-	NeedsYouItem,
-	Snapshot,
-} from "./types";
+import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
@@ -49,7 +44,7 @@ afterEach(() => {
 });
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -60,11 +55,11 @@ function effort(
 		needs_you: [],
 		backlog: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
-	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" };
+	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
 function stubFetch(
@@ -117,7 +112,7 @@ describe("web-dashboard side", () => {
 		expect(appSource).toContain("data-needs=");
 		expect(appSource).toMatch(/effort\.needs_you/);
 
-		const needs: NeedsYouItem[] = [
+		const needs = [
 			{
 				kind: "blocking-question",
 				id: "q1",
@@ -130,7 +125,7 @@ describe("web-dashboard side", () => {
 				subject: "manual-gate",
 				text: "sign off",
 			},
-		];
+		] as NeedsYouSummary[];
 		const alpha = effort({ effort: "alpha", needs_you: needs });
 		const beta = effort({
 			effort: "beta",
@@ -174,7 +169,7 @@ describe("web-dashboard side", () => {
 		expect(appSource).not.toMatch(/data-journal=\{/);
 		expect(appSource).toMatch(/\/api\/journal|journal\?effort/);
 
-		const journal: JournalResponse = {
+		const journal = {
 			open: [
 				{
 					id: "j-open-new",
@@ -200,7 +195,7 @@ describe("web-dashboard side", () => {
 					recorded_at: "2026-03-01T00:00:00Z",
 				},
 			],
-		};
+		} as JournalResponse;
 
 		const rows = orderedJournal(journal);
 		expect(rows.map((r) => r.id)).toEqual([

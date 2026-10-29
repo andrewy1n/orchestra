@@ -9,6 +9,7 @@
     writePath,
   } from "./actions";
   import { getJson, postJson } from "./api";
+  import type { JournalResponse } from "./api-types";
   import {
     backlogHref,
     closeDetail,
@@ -44,12 +45,7 @@
   import TaskGraphBoard from "./TaskGraphBoard.svelte";
   import { buildWaveGraph } from "./taskGraph";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
-  import type {
-    EffortView,
-    JournalResponse,
-    Snapshot,
-    StatusTab,
-  } from "./types";
+import type { EffortView, Snapshot, StatusTab } from "./types";
 
   function statusLabel(status: string): string {
     const known: Record<string, string> = {

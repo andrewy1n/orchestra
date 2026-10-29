@@ -8,8 +8,10 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
-		"check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-		"lint": "biome check --error-on-warnings ."
+		"check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json && npm run api-types:check",
+		"lint": "biome check --error-on-warnings .",
+		"api-types": "openapi-typescript openapi.json -o src/api-types.ts --root-types --root-types-no-schema-prefix",
+		"api-types:check": "t=$(mktemp) && openapi-typescript openapi.json -o \"$t\" --root-types --root-types-no-schema-prefix && diff -u src/api-types.ts \"$t\" || { echo \"src/api-types.ts is out of date: run npm run api-types\" >&2; exit 1; }"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.4",
@@ -19,11 +21,17 @@
 		"@types/node": "^24.13.3",
 		"@xyflow/svelte": "^1.7.0",
 		"jsdom": "^29.1.1",
+		"openapi-typescript": "7.13.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.3",
 		"typescript": "~6.0.2",
 		"vite": "^8.3.0",
 		"vitest": "^5.0.5"
+	},
+	"overrides": {
+		"openapi-typescript": {
+			"typescript": "$typescript"
+		}
 	}
 }

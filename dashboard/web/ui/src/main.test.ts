@@ -29,7 +29,7 @@ import {
 	visibleEfforts,
 } from "./efforts";
 import { startTokenPoller } from "./poll";
-import type { EffortView, Snapshot } from "./types";
+import type { DeepPartial, EffortView, Snapshot } from "./types";
 import { TOKEN_POLL_MS } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -69,11 +69,11 @@ function effort(
 		tasks: [],
 		needs_you: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
-	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" };
+	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
 async function tryMountApp(): Promise<boolean> {

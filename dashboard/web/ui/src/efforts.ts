@@ -1,4 +1,5 @@
-import type { EffortView, StatusTab, TaskRow } from "./types";
+import type { TaskRow } from "./api-types";
+import type { EffortView, StatusTab } from "./types";
 
 /** Statuses included by each status tab (spike / TUI vocabulary). */
 export const TAB_STATUSES: Record<StatusTab, readonly string[] | null> = {

@@ -91,7 +91,7 @@ def create_app(target: Project):
     if DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(DIST), html=True), name="ui")
     else:
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         def index() -> HTMLResponse:
             return HTMLResponse(MISSING_BUILD)
 

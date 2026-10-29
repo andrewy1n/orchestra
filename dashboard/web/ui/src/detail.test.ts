@@ -28,7 +28,7 @@ import {
 } from "./detail";
 import { evidenceBoard } from "./detailView";
 import { parseRoute } from "./router";
-import type { EffortView, Snapshot } from "./types";
+import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(here, "App.svelte"), "utf8");
@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -69,11 +69,11 @@ function effort(
 		needs_you: [],
 		backlog: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
-	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" };
+	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
 type DetailMap = Record<string, unknown>;

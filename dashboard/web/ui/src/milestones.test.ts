@@ -7,12 +7,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-
+import type { MilestoneRow } from "./api-types";
 import {
 	groupPhasesByMilestone,
 	initialExpandedMilestones,
 } from "./milestones";
-import type { EffortView, MilestoneRow, PhaseRow } from "./types";
+import type { DeepPartial, EffortView, PhaseRow } from "./types";
 
 function phase(
 	partial: Partial<PhaseRow> & Pick<PhaseRow, "subject">,
@@ -24,7 +24,7 @@ function phase(
 		done: 0,
 		total: 0,
 		...partial,
-	};
+	} as PhaseRow;
 }
 
 function milestone(
@@ -37,11 +37,11 @@ function milestone(
 		done: 0,
 		total: 0,
 		...partial,
-	};
+	} as MilestoneRow;
 }
 
 function effort(
-	partial: Partial<EffortView> & Pick<EffortView, "effort">,
+	partial: DeepPartial<EffortView> & Pick<EffortView, "effort">,
 ): EffortView {
 	return {
 		goal: "",
@@ -51,7 +51,7 @@ function effort(
 		tasks: [],
 		needs_you: [],
 		...partial,
-	};
+	} as EffortView;
 }
 
 describe("groupPhasesByMilestone", () => {
