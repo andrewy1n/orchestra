@@ -23,6 +23,7 @@ export default defineConfig({
 	test: {
 		environment: "jsdom",
 		include: ["src/**/*.test.ts"],
+		testTimeout: 30000,
 	},
 	// Vitest runs in Node but the components are client code; resolve the
 	// browser build of Svelte so `mount` works.

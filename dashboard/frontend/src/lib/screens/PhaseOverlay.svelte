@@ -1,31 +1,31 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { overlay } from "$lib/state/overlay.svelte";
   import TaskGraphBoard from "../../TaskGraphBoard.svelte";
   import type { Theme } from "../../theme";
+  import { chipVariant } from "./chipVariant";
 
   let { kind, theme }: { kind: string; theme: Theme } = $props();
 </script>
 
 {#if kind === "phase" && overlay.phaseTabs.length}
-  <div class="overlay-tabs" data-phase-tabs>
-    {#each overlay.phaseTabs as tab (tab)}
-      <button
-        type="button"
-        class="tab"
-        class:on={overlay.activePhaseTab === tab}
-        data-phase-tab={tab}
-        onclick={() => overlay.selectPhaseTab(tab)}
-      >
-        {tab}
-      </button>
-    {/each}
-  </div>
+  <Tabs.Root
+    value={overlay.activePhaseTab}
+    onValueChange={(tab) => overlay.selectPhaseTab(tab)}
+  >
+    <Tabs.List class="h-auto flex-wrap" data-phase-tabs>
+      {#each overlay.phaseTabs as tab (tab)}
+        <Tabs.Trigger value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
+      {/each}
+    </Tabs.List>
+  </Tabs.Root>
 {/if}
 {#if overlay.phaseChrome}
   <div class="phase-chrome" data-phase-chrome>
     <div class="chips" data-detail-chips data-phase-chips>
       {#each overlay.phaseChrome.chips as chip (chip.label)}
-        <span class="chip {chip.tone || ''}">{chip.label}</span>
+        <Badge variant={chipVariant(chip.tone)}>{chip.label}</Badge>
       {/each}
     </div>
     <p class="phase-next" data-phase-next title={overlay.phaseChrome.nextAction}>
@@ -91,10 +91,10 @@
     {#if overlay.evidenceView.facts.length}
       <div class="chips" data-evidence-facts>
         {#each overlay.evidenceView.facts as fact (fact.label)}
-          <span class="chip">
+          <Badge variant="outline">
             <span class="fact-k">{fact.label}</span>
             {fact.value}
-          </span>
+          </Badge>
         {/each}
       </div>
     {/if}

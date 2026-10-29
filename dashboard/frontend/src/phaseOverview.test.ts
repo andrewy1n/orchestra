@@ -257,8 +257,8 @@ describe("phase overlay UI", () => {
 		expect(
 			document
 				.querySelector('[data-phase-tab="spec"]')
-				?.classList.contains("on"),
-		).toBe(true);
+				?.getAttribute("aria-selected"),
+		).toBe("true");
 		expect(
 			document.querySelector("[data-detail-section]")?.textContent,
 		).toMatch(/Specification|Requirements/i);

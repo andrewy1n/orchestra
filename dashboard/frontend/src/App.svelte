@@ -10,7 +10,7 @@
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
-  import { closeDetail, detailTarget, openHash } from "./detail";
+  import { detailTarget, openHash } from "./detail";
   import { currentRoute, routeLabel } from "./router";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
@@ -49,27 +49,21 @@
         return;
       }
       if (event.key !== "Escape") return;
-      if (overlay.pendingWrite) {
-        overlay.cancelConfirm();
-        return;
-      }
+      if (overlay.pendingWrite) return;
       const current = currentRoute();
-      if (detailTarget(current)) {
-        closeDetail();
-        return;
-      }
+      if (detailTarget(current)) return;
       if (current.name === "journal") {
         openHash("");
       }
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
 
     const stopPolling = polling.start();
 
     return () => {
       stopPolling();
       stopRoute();
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
     };
   });
 </script>
