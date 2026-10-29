@@ -726,7 +726,7 @@ class NeedsYouDetailScreen(Screen[None]):
         try:
             await self._show(item)
         except NoMatches:
-            if self.is_attached:
+            if self.query("#needs-detail"):
                 raise
 
     async def _show(self, item: model.NeedsYouItem) -> None:
