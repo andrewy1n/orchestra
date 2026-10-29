@@ -350,6 +350,17 @@ def test_change_token_is_stable_until_the_store_changes(store, cli, defs):
     assert model.change_token(target) != first
 
 
+def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    target = _target(store)
+    walks = []
+    real = model.change_token
+    monkeypatch.setattr(model, "change_token", lambda t: walks.append(t) or real(t))
+    model.load_snapshot(target)
+    assert len(walks) == 1
+
+
 def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     _goal(cli, defs, "alpha")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")

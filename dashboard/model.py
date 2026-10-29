@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -204,12 +205,22 @@ def _options(args: tuple[str, ...]) -> dict[str, list[str]]:
 
 _catalog_lock = threading.Lock()
 _catalog_cache: dict[str, tuple[str, list[dict[str, Any]]]] = {}
+_pin = threading.local()
+
+
+@contextlib.contextmanager
+def _pinned_token(token: str):
+    _pin.token = token
+    try:
+        yield
+    finally:
+        _pin.token = None
 
 
 def _catalog(target: Project) -> list[dict[str, Any]]:
     key = str(target.store_path)
     with _catalog_lock:
-        token = change_token(target)
+        token = getattr(_pin, "token", None) or change_token(target)
         cached = _catalog_cache.get(key)
         if cached and cached[0] == token:
             return cached[1]
@@ -308,9 +319,13 @@ _SNAPSHOT_TYPES = (
 )
 
 
-def _list_all(target: Project, record_types: tuple[str, ...]) -> dict[str, list[dict[str, Any]]]:
+def _list_all(target: Project, record_types: tuple[str, ...], token: str) -> dict[str, list[dict[str, Any]]]:
+    def load(record_type: str) -> list[dict[str, Any]]:
+        with _pinned_token(token):
+            return _list(target, record_type)
+
     with ThreadPoolExecutor(max_workers=4) as pool:
-        return dict(zip(record_types, pool.map(lambda record_type: _list(target, record_type), record_types)))
+        return dict(zip(record_types, pool.map(load, record_types)))
 
 
 def _payload(record: dict[str, Any]) -> dict[str, Any]:
@@ -1194,10 +1209,14 @@ def _phase_evidence(
     )
 
 
-def load_snapshot(target: Project, now: datetime | None = None) -> Snapshot:
-    now = now or datetime.now(timezone.utc)
-    token = change_token(target)
-    listed = _list_all(target, _SNAPSHOT_TYPES)
+def load_snapshot(target: Project, now: datetime | None = None, token: str | None = None) -> Snapshot:
+    token = token or change_token(target)
+    with _pinned_token(token):
+        return _load_snapshot(target, now or datetime.now(timezone.utc), token)
+
+
+def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
+    listed = _list_all(target, _SNAPSHOT_TYPES, token)
     aliases = _merge_aliases(listed["score:effort"])
     listed = {record_type: _remapped(records, aliases) for record_type, records in listed.items()}
     goals = [
