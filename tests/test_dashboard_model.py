@@ -13,7 +13,7 @@ import helpers as h
 from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import Binding, Project, open_store  # noqa: E402
+from orchestra.canon.project import open_store  # noqa: E402
 from orchestra.canon.store import Store  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import selection  # noqa: E402
