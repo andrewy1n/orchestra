@@ -274,7 +274,11 @@ def test_r30_serves_build(store, tmp_path, monkeypatch):
     proc = None
     try:
         proc = _spawn(store, ["--port", str(port)], _env(tmp_path / "home"), tmp_path / "out", tmp_path / "err")
-        status, content_type, body = _get(port, "/")
+        try:
+            status, content_type, body = _get(port, "/")
+        except AssertionError as exc:
+            launcher = (tmp_path / "out").read_text() + (tmp_path / "err").read_text()
+            raise AssertionError(f"{exc}\nlauncher exit={proc.poll()} output:\n{launcher}") from exc
         assert status == 200, body
         assert "text/html" in content_type
         assert body.decode() == page
