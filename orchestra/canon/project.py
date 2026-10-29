@@ -7,7 +7,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from orchestra.canon.derive import compute_derived
 from orchestra.canon.index import SUPERSEDED, RecordIndex
@@ -550,7 +550,7 @@ def _apply_operation(store: Store, schemas: SchemaSet, op: Any) -> dict[str, Any
         stored = _create_record(
             store,
             schemas,
-            record_type=op.get("type"),
+            record_type=cast(str, op.get("type")),
             subject=op.get("subject"),
             payload=op.get("payload"),
             body=op.get("body"),

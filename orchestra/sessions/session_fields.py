@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 from datetime import datetime
+from typing import cast
 
 
 def _parse(ts: str) -> datetime | None:
@@ -52,7 +53,7 @@ def session_fields(events: Iterable[dict]) -> dict:
             if isinstance(value, (int, float)):
                 cost = float(value)
             continue
-        stamp = _parse(event.get("timestamp"))
+        stamp = _parse(cast(str, event.get("timestamp")))
         if stamp is not None:
             raw = event["timestamp"]
             if first is None or stamp < first[0]:
@@ -69,7 +70,7 @@ def session_fields(events: Iterable[dict]) -> dict:
         "branch": branch,
         "start": first[1] if first else None,
         "end": last[1] if last else None,
-        "duration_seconds": (last[0] - first[0]).total_seconds() if first else None,
+        "duration_seconds": (last[0] - first[0]).total_seconds() if first and last else None,
         "turns": turns,
         "cost_usd": cost,
         "skills": dict(skills),

@@ -487,7 +487,8 @@ def _plant_mutants(
             continue
         mutant_id = str(spec.get("id", ""))
         file_path = str(spec.get("file", ""))
-        patch = spec.get("patch") if isinstance(spec.get("patch"), dict) else {}
+        raw_patch = spec.get("patch")
+        patch = raw_patch if isinstance(raw_patch, dict) else {}
         old = str(patch.get("old", ""))
         new = str(patch.get("new", ""))
         entry: dict[str, Any] = {"id": mutant_id, "file": file_path, "status": "skipped"}

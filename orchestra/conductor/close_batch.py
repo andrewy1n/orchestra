@@ -683,35 +683,48 @@ def build_batch(
     work_cwd = Path(cwd) if cwd is not None else Path.cwd()
     resolved_store = Path(store_root) if store_root is not None else None
 
+    loader: CheckRunLoader
     if load_check_run is not None:
-        loader: CheckRunLoader = load_check_run
+        loader = load_check_run
     else:
-        def loader(check_run_id: str) -> dict[str, Any]:
+        def _store_check_run(check_run_id: str) -> dict[str, Any]:
             return default_load_check_run(check_run_id, store_root=resolved_store)
+
+        loader = _store_check_run
 
     # Unit tests inject load_check_run without a store: skip oracle store
     # lookups unless the caller also injects acceptance/amendment hooks.
+    acceptance_loader: AcceptanceLoader
     if load_acceptance is not None:
-        acceptance_loader: AcceptanceLoader = load_acceptance
+        acceptance_loader = load_acceptance
     elif load_check_run is None:
-        def acceptance_loader(acceptance_id: str) -> dict[str, Any]:
+        def _store_acceptance(acceptance_id: str) -> dict[str, Any]:
             return default_load_acceptance(acceptance_id, store_root=resolved_store)
+
+        acceptance_loader = _store_acceptance
     else:
-        def acceptance_loader(_acceptance_id: str) -> dict[str, Any]:
+        def _unavailable_acceptance(_acceptance_id: str) -> dict[str, Any]:
             raise AcceptanceStoreUnavailable(
                 "acceptance store not available in unit test hook"
             )
 
+        acceptance_loader = _unavailable_acceptance
+
+    amendment_lister: AmendmentLister
     if list_oracle_amendments is not None:
-        amendment_lister: AmendmentLister = list_oracle_amendments
+        amendment_lister = list_oracle_amendments
     elif load_check_run is None:
-        def amendment_lister(acceptance_id: str) -> list[dict[str, Any]]:
+        def _store_amendments(acceptance_id: str) -> list[dict[str, Any]]:
             return default_list_oracle_amendments(
                 acceptance_id, store_root=resolved_store
             )
+
+        amendment_lister = _store_amendments
     else:
-        def amendment_lister(_acceptance_id: str) -> list[dict[str, Any]]:
+        def _no_amendments(_acceptance_id: str) -> list[dict[str, Any]]:
             return []
+
+        amendment_lister = _no_amendments
 
     for entry in criteria:
         criterion_id = entry.get("criterion_id")

@@ -178,7 +178,7 @@ def merge_store(
         )
 
     counts: dict[str, dict[str, int]] = {}
-    renamed: dict[tuple[str, str], int] = {}
+    renamed: dict[tuple[str, str, str], int] = {}
     with target.write_lock():
         for snapshot in history:
             moved = rewriter.record(snapshot)
