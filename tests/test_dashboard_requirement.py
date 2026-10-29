@@ -188,7 +188,7 @@ def _run(store, width, scenario, interval=60.0, height=40):
                 app.target, EFFORT, PHASE, "R1",
             ))
             await _until(pilot, lambda: isinstance(app.screen, requirement_module.RequirementDetailScreen) and app.screen.loaded)
-            await app.workers.wait_for_complete()
+            await h.wait_workers(app)
             await scenario(app, pilot)
 
     asyncio.run(go())

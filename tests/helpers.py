@@ -470,3 +470,13 @@ class Tmux:
             os.close(self.client_fd)
         if self.socket_path:
             Path(self.socket_path).unlink(missing_ok=True)
+
+
+async def wait_workers(app) -> None:
+    """Wait for app workers; a CANCELLED worker is an exclusive-group race, not a failure."""
+    from textual.worker import WorkerCancelled
+
+    try:
+        await app.workers.wait_for_complete()
+    except WorkerCancelled:
+        return

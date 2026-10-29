@@ -30,6 +30,7 @@ from dashboard import model  # noqa: E402
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 DIST_INDEX = REPO_ROOT / "dashboard" / "web" / "ui" / "dist" / "index.html"
+UV_CACHE_DIR = os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")
 
 
 def _free_port() -> int:
@@ -42,6 +43,7 @@ def _env(home: Path | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
     if home is not None:
+        env.setdefault("UV_CACHE_DIR", UV_CACHE_DIR)
         env["HOME"] = str(home)
     return env
 
@@ -107,7 +109,11 @@ def _listen_addresses(pid: int) -> list[str]:
         fd_dir = Path(f"/proc/{owner}/fd")
         if not fd_dir.is_dir():
             continue
-        for fd in fd_dir.iterdir():
+        try:
+            fds = list(fd_dir.iterdir())
+        except OSError:
+            continue
+        for fd in fds:
             try:
                 target = os.readlink(fd)
             except OSError:

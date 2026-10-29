@@ -638,7 +638,7 @@ def _journal_run(store, scenario, size=(120, 40), interval=60.0):
         app = app_module.DashboardApp(open_store(store), interval=interval)
         async with app.run_test(size=size) as pilot:
             await _until(pilot, lambda: app.snapshot is not None and bool(app.query("#goal")))
-            await app.workers.wait_for_complete()
+            await h.wait_workers(app)
             await pilot.pause()
             await scenario(app, pilot)
 

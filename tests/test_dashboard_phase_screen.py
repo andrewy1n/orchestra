@@ -178,7 +178,7 @@ async def _until(pilot, condition, timeout=20.0):
 
 async def _ready(app, pilot):
     await _until(pilot, lambda: app.snapshot is not None and bool(app.query("#goal")))
-    await app.workers.wait_for_complete()
+    await h.wait_workers(app)
     await pilot.pause()
 
 
