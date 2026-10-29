@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-efa3ef1a-40a9-405c-bf02-e1d7c66872de",
+  "lifecycle_state": "asserted",
+  "payload": {
+    "basis": "execution-report rec-70848d36: R4, R6, R7, R10 red at e6b7d1957, green at 09561d29d after a hook-specific view and a live-effort constraint filter",
+    "claim": "The start hook reused the full handoff view and byte-truncated it, and took constraints from one arbitrary effort",
+    "effort": "session-handoff",
+    "invalidated_when": "cmd_start renders the full HANDOFF view again, or hook_constraints filters on a single effort",
+    "needs": "none"
+  },
+  "record_type": "tuner:finding",
+  "recorded_at": "2026-10-29T08:34:50+00:00",
+  "relationships": {},
+  "revision": "sha256:16310b570928e2e5ae2d2f162a8cc497dd22c81edc0b56e844fb5ba14c314b64",
+  "subject": "compact-hook-view"
+}
+---
+
+## Evidence
+
+At e6b7d1957 the R4, R6, R7 and R10 oracles failed on assertions: id links and Latest Proof/Backlog headings in the start context, alphabetical effort order, constraints from one effort only. At 09561d29d, with views.hook_handoff_sections and a live-effort filter in hook_constraints, all four pass.
+
+## Consequence
+
+The hook context no longer carries id links or proof and backlog sections, and constraints cover every live effort. The context still exceeds the cap until hook-budget lands.
+
+## Follow-up
+
+hook-budget applies the 9,000-character budget and puts constraints first.

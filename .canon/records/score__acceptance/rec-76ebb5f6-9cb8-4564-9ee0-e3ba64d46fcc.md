@@ -7,12 +7,12 @@
     "method": "check",
     "phase": "spec-analyze",
     "requirement": "R1",
-    "verify_command": "uv run orchestra analyze spec-analyze --stage plan --store /home/andrewyin/orchestra"
+    "verify_command": "uv run orchestra analyze spec-analyze --stage plan --store /home/andrewyin/orchestra/.canon"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T08:03:39+00:00",
+  "recorded_at": "2026-10-29T08:27:46+00:00",
   "relationships": {},
-  "revision": "sha256:c979f2c971084b8ab1aee382c60767801f5c1f3b186307fafb13b5bcdd952fef",
+  "revision": "sha256:f7527ad3ff1f9de9e4746533c29b4501cb21083a22f341e2366dcb5feb9f1558",
   "subject": "verify-spec-analyze-self"
 }
 ---

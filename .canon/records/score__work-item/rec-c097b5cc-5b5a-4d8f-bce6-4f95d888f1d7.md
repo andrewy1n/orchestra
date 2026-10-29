@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-c097b5cc-5b5a-4d8f-bce6-4f95d888f1d7",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "sonnet-verify",
     "decisions": [
       "hook-context-shape",
       "hook-constraints-scope"
@@ -14,7 +14,7 @@
     ],
     "effort": "session-handoff",
     "estimate_minutes": 5,
-    "executor": "inline",
+    "executor": "subagent",
     "kind": "repair",
     "phase": "hook-context-budget",
     "requirements": [
@@ -24,9 +24,9 @@
     "title": "Verify Fit session-start context under the hook cap"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-29T08:14:49+00:00",
+  "recorded_at": "2026-10-29T09:00:17+00:00",
   "relationships": {},
-  "revision": "sha256:cee60075528f1fd9735d3c42895134969b044b353647e62c2bb38c5ecd1de597",
+  "revision": "sha256:2ce451caa1f2a2b962f2a3c21687de6cd969418ab0bd28f2dba3ccfb517bbc5e",
   "subject": "verify-hook-context-budget"
 }
 ---
