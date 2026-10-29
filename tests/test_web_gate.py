@@ -15,10 +15,11 @@ EXACT_VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 AGENTS = ROOT / "AGENTS.md"
 
 
-def _ui_copy(tmp_path: Path) -> Path:
+def _ui_copy(tmp_path: Path, link_modules: bool = True) -> Path:
     dest = tmp_path / "ui"
     shutil.copytree(UI, dest, ignore=shutil.ignore_patterns("node_modules", "dist"))
-    (dest / "node_modules").symlink_to(UI / "node_modules")
+    if link_modules:
+        (dest / "node_modules").symlink_to(UI / "node_modules")
     return dest
 
 
@@ -108,10 +109,9 @@ def test_web_job_run_lines_pass(tmp_path):
     assert job("web"), "ci.yml has no web job"
     lines = run_lines("web")
     assert lines, "web job has no run lines"
-    copy = _ui_copy(tmp_path)
+    copy = _ui_copy(tmp_path, link_modules=False)
     for line in lines:
-        cwd = UI if line.startswith("npm ci") else copy
         result = subprocess.run(
-            line, shell=True, cwd=cwd, capture_output=True, text=True, check=False
+            line, shell=True, cwd=copy, capture_output=True, text=True, check=False
         )
         assert result.returncode == 0, f"{line}\n{_output(result)}"
