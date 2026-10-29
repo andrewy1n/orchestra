@@ -43,7 +43,7 @@ LISTED_TYPES = (
     "conductor:integration-report", "conductor:assessment", "conductor:proof-packet",
     "conductor:failed-attempt",
     "tuner:check-run", "tuner:finding", "tuner:investigation-observation",
-    "composer:idea",
+    "composer:idea", "composer:area",
 )
 
 SPEC_BODY = (
@@ -286,6 +286,31 @@ def _seed_beta(cli, defs) -> dict[str, str]:
     return {"task": task["id"]}
 
 
+AREA_SCOPE = "## Scope\n\nInvoices, receipts, and payment flows."
+
+
+def _seed_areas(cli, defs) -> None:
+    _create(cli, defs, "score:effort", "alpha", {"goal": "ship alpha", "kind": "deliver"})
+    _create(cli, defs, "composer:area", "billing", {"title": "Billing"}, AREA_SCOPE)
+    _create(cli, defs, "composer:area", "search", {"title": "Search"}, "## Scope\n\nQuery parsing and ranking.")
+    idea = "{}\n".format
+    _create(cli, defs, "composer:idea", "refund-flow", {"status": "open", "area": "billing"}, idea("Let customers request refunds."))
+    _create(
+        cli, defs, "composer:idea", "both-ways",
+        {"status": "open", "area": "billing", "effort": "alpha", "source": "chat"}, idea("Show receipts in the backlog and the area."),
+    )
+    _create(cli, defs, "composer:idea", "already-built", {"status": "promoted", "area": "billing"}, idea("Export invoices as PDF."))
+    _create(cli, defs, "composer:idea", "thrown-out", {"status": "dismissed", "area": "billing"}, idea("Crypto payments."))
+    moved = _create(cli, defs, "composer:idea", "moved-on", {"status": "open", "area": "billing"}, idea("Retry failed charges."))
+    result = cli(
+        "supersede", "--type", "composer:idea", "--id", moved["id"], "--expected-revision", "@current",
+        "--payload", json.dumps({"status": "promoted", "area": "billing"}),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    _create(cli, defs, "composer:idea", "typo-tolerance", {"status": "open", "area": "search"}, idea("Forgive typos in queries."))
+    _create(cli, defs, "composer:idea", "unfiled", {"status": "open"}, idea("Idea without an area."))
+
+
 def _labels(cli) -> dict[str, str]:
     labels: dict[str, str] = {}
     for record_type in LISTED_TYPES:
@@ -306,6 +331,20 @@ def _build(root: Path, _cli, defs) -> dict[str, Any]:
     alpha = _seed_alpha(cli, defs)
     beta = _seed_beta(cli, defs)
     return {"alpha": alpha, "beta": beta, "labels": _labels(cli)}
+
+
+def _build_areas(root: Path, _cli, defs) -> dict[str, Any]:
+    cli = _stepped_cli(root)
+    _seed_areas(cli, defs)
+    return {"labels": _labels(cli)}
+
+
+@pytest.fixture()
+def seeded_areas(store, monkeypatch):
+    monkeypatch.setenv("SE_WORKFLOW_SIGNED_BY", "shape-signer")
+    seed = stamped_store(store, "endpoint-shapes-areas", _build_areas)
+    client = TestClient(create_app(open_store(store)), raise_server_exceptions=False)
+    return client, seed, store
 
 
 @pytest.fixture()
@@ -423,6 +462,8 @@ CASES: dict[str, Callable[[dict[str, Any]], tuple[str, str, dict[str, Any], dict
     "needs-integration": _get(
         "/api/needs", effort="alpha", id=_id("conductor:integration-report", "route-phase-report")
     ),
+    "areas-rich": _get("/api/areas"),
+    "areas-minimal": _get("/api/areas"),
     "backlog-with-phase": _get("/api/backlog", effort="alpha", id=_id("composer:idea", "park-me")),
     "backlog-without-phase": _get("/api/backlog", effort="alpha", id=_id("composer:idea", "park-too")),
     "post-needs-approve": _needs_body("score:continuity-question", "alpha:which backend", "approve"),
@@ -448,8 +489,8 @@ def _render(value: Any) -> str:
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_endpoint_shape(name, seeded):
-    client, seed, store = seeded
+def test_endpoint_shape(name, request):
+    client, seed, store = request.getfixturevalue("seeded_areas" if name == "areas-rich" else "seeded")
     method, path, params, body = CASES[name](seed)
     response = client.request(method, path, params=params, json=body)
     observed = _normalizer(seed, store)({"status": response.status_code, "body": response.json()})

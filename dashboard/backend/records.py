@@ -14,7 +14,7 @@ CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 SOFT_TYPES = frozenset({
     "score:specification", "score:design", "conductor:assessment", "conductor:integration-report",
     "conductor:proof-packet", "conductor:release", "score:position", "composer:idea",
-    "score:milestone",
+    "score:milestone", "composer:area",
 })
 INACTIVE_STATES = ("superseded", "retracted")
 

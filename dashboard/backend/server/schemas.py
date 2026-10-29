@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, PlainSerializer, RootModel
 
 Timestamp = Annotated[
     datetime,
@@ -115,6 +115,27 @@ class EffortSummary(Model):
     tasks: list[TaskRow]
     needs_you: list[NeedsYouSummary]
     backlog: list[BacklogSummary]
+
+
+class AreaIdea(Model):
+    subject: str
+    text: str
+    status: str
+    area: str
+    effort: str
+    phase: str
+
+
+class AreaView(Model):
+    subject: str
+    title: str
+    scope: str
+    open_count: int
+    ideas: list[AreaIdea]
+
+
+class AreasResponse(RootModel[list[AreaView]]):
+    pass
 
 
 class SnapshotResponse(Model):

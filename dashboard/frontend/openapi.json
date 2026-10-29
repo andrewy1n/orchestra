@@ -186,6 +186,87 @@
         "title": "Approval",
         "type": "object"
       },
+      "AreaIdea": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "string"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "text",
+          "status",
+          "area",
+          "effort",
+          "phase"
+        ],
+        "title": "AreaIdea",
+        "type": "object"
+      },
+      "AreaView": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "$ref": "#/components/schemas/AreaIdea"
+            },
+            "title": "Ideas",
+            "type": "array"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "title",
+          "scope",
+          "open_count",
+          "ideas"
+        ],
+        "title": "AreaView",
+        "type": "object"
+      },
+      "AreasResponse": {
+        "items": {
+          "$ref": "#/components/schemas/AreaView"
+        },
+        "title": "AreasResponse",
+        "type": "array"
+      },
       "AssessmentView": {
         "properties": {
           "confidence": {
@@ -1959,6 +2040,54 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/areas": {
+      "get": {
+        "operationId": "areas_api_areas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Areas"
+      }
+    },
     "/api/backlog": {
       "get": {
         "operationId": "backlog_api_backlog_get",

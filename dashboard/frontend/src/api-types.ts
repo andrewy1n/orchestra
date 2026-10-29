@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Areas */
+        get: operations["areas_api_areas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/backlog": {
         parameters: {
             query?: never;
@@ -226,6 +243,36 @@ export interface components {
             /** Confirm Choices */
             confirm_choices: components["schemas"]["ConfirmChoice"][];
         };
+        /** AreaIdea */
+        AreaIdea: {
+            /** Area */
+            area: string;
+            /** Effort */
+            effort: string;
+            /** Phase */
+            phase: string;
+            /** Status */
+            status: string;
+            /** Subject */
+            subject: string;
+            /** Text */
+            text: string;
+        };
+        /** AreaView */
+        AreaView: {
+            /** Ideas */
+            ideas: components["schemas"]["AreaIdea"][];
+            /** Open Count */
+            open_count: number;
+            /** Scope */
+            scope: string;
+            /** Subject */
+            subject: string;
+            /** Title */
+            title: string;
+        };
+        /** AreasResponse */
+        AreasResponse: components["schemas"]["AreaView"][];
         /** AssessmentView */
         AssessmentView: {
             /** Confidence */
@@ -849,6 +896,9 @@ export type AgentAssignment = components['schemas']['AgentAssignment'];
 export type AgentReport = components['schemas']['AgentReport'];
 export type AgentWork = components['schemas']['AgentWork'];
 export type Approval = components['schemas']['Approval'];
+export type AreaIdea = components['schemas']['AreaIdea'];
+export type AreaView = components['schemas']['AreaView'];
+export type AreasResponse = components['schemas']['AreasResponse'];
 export type AssessmentView = components['schemas']['AssessmentView'];
 export type BacklogItem = components['schemas']['BacklogItem'];
 export type BacklogResponse = components['schemas']['BacklogResponse'];
@@ -890,6 +940,53 @@ export type TokenResponse = components['schemas']['TokenResponse'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type $defs = Record<string, never>;
 export interface operations {
+    areas_api_areas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreasResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     backlog_api_backlog_get: {
         parameters: {
             query: {

@@ -6,7 +6,7 @@ import threading
 from dataclasses import replace
 from typing import Any, Callable
 
-from dashboard.backend import approval, backlog, dismiss, journal, store
+from dashboard.backend import approval, areas, backlog, dismiss, journal, store
 from dashboard.backend.phase import (
     PhaseRow, load_decision_log, load_phase_detail, load_requirement_detail, tabs_for,
 )
@@ -152,6 +152,12 @@ class Reader:
 
     def snapshot(self) -> schemas.SnapshotResponse:
         return self.cache.snapshot_payload()
+
+    def areas(self) -> schemas.AreasResponse:
+        return self.cache.remember(
+            ("areas",),
+            lambda: schemas.AreasResponse([schemas.AreaView.model_validate(view) for view in areas.load_areas(self.target)]),
+        )
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
         def load() -> schemas.PhaseResponse:

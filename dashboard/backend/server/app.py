@@ -46,6 +46,10 @@ def create_app(target: Project):
     def snapshot() -> schemas.SnapshotResponse:
         return reader.snapshot()
 
+    @app.get("/api/areas", response_model=schemas.AreasResponse, responses=ERRORS)
+    def areas() -> schemas.AreasResponse:
+        return reader.areas()
+
     @app.get("/api/phase", response_model=schemas.PhaseResponse, responses=ERRORS)
     def phase(effort: str = Query(...), phase: str = Query(...)) -> schemas.PhaseResponse:
         return reader.phase(effort, phase)
