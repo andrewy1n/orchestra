@@ -8,6 +8,7 @@ dashboard/web/ui/dist/index.html.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import shutil
@@ -15,11 +16,13 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
+import pytest
 
 import helpers as h
 from conftest import REPO_ROOT, run_cli
@@ -33,6 +36,20 @@ DIST_INDEX = REPO_ROOT / "dashboard" / "web" / "ui" / "dist" / "index.html"
 UV_CACHE_DIR = os.environ.get("UV_CACHE_DIR") or str(Path.home() / ".cache" / "uv")
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _primed_script_environment():
+    uv = shutil.which("uv")
+    if uv is None:
+        return
+    lock_path = Path(tempfile.gettempdir()) / "orchestra-web-launch-prime.lock"
+    with lock_path.open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        subprocess.run(
+            [uv, "run", "--script", str(REPO_ROOT / "dashboard" / "web" / "__main__.py"), "--help"],
+            env=_env(), capture_output=True, timeout=300,
+        )
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -42,8 +59,9 @@ def _free_port() -> int:
 def _env(home: Path | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    env.setdefault("UV_CACHE_DIR", UV_CACHE_DIR)
+    env.pop("UV_PYTHON", None)
     if home is not None:
-        env.setdefault("UV_CACHE_DIR", UV_CACHE_DIR)
         env["HOME"] = str(home)
     return env
 

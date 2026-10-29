@@ -723,6 +723,13 @@ class NeedsYouDetailScreen(Screen[None]):
             await self.show(found)
 
     async def show(self, item: model.NeedsYouItem) -> None:
+        try:
+            await self._show(item)
+        except NoMatches:
+            if self.is_attached:
+                raise
+
+    async def _show(self, item: model.NeedsYouItem) -> None:
         if not self.is_attached:
             return
         colors = palette_from(self.app.get_css_variables())
