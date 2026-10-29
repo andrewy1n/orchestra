@@ -21,7 +21,7 @@
   {#if target}
     <Dialog.Content
       showCloseButton={false}
-      class="flex h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 sm:max-w-5xl"
+      class="flex h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl"
       data-detail={target.kind}
       aria-describedby={undefined}
       inert={overlay.pendingWrite ? true : undefined}
@@ -47,7 +47,7 @@
           {/if}
         </div>
       </header>
-      <div class="flex-1 overflow-y-auto px-4 py-3">
+      <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {#if overlay.detailLoading}
           <p class="empty-note">Loading…</p>
         {:else if overlay.detailError}

@@ -166,11 +166,6 @@ function openPhase(subject: string) {
 	openHash(phaseHref(polling.effort.effort, subject));
 }
 
-function _openPhase(subject: string) {
-	if (!polling.effort) return;
-	openHash(phaseHref(polling.effort.effort, subject));
-}
-
 export function bindPolling() {
 	polling.reset();
 	navigation.reset();
