@@ -54,6 +54,7 @@ installer = ["providers.json"]
 dev = [
     "pytest",
     "pytest-xdist",
+    "pytest-rerunfailures",
     "httpx",
     "pyyaml",
     "pip",
