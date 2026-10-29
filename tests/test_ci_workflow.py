@@ -249,3 +249,23 @@ def test_blocking_jobs_do_not_continue_on_error():
 def test_no_run_step_ends_with_or_true():
     for line in all_run_lines():
         assert not line.rstrip().endswith("|| true"), line
+
+
+def test_wheel_smoke_r1_wheel_job_exists():
+    assert "wheel" in jobs()
+
+
+def test_wheel_smoke_r2_wheel_job_is_blocking():
+    assert not job("wheel").get("continue-on-error")
+
+
+def test_wheel_smoke_r3_wheel_steps_do_not_continue_on_error():
+    steps = job("wheel").get("steps") or []
+    assert isinstance(steps, list), "wheel job steps are not a list"
+    for step in steps:
+        assert isinstance(step, dict), step
+        assert not step.get("continue-on-error"), step
+
+
+def test_wheel_smoke_r4_wheel_job_runs_script():
+    assert "python3 scripts/wheel_smoke.py" in run_lines("wheel")
