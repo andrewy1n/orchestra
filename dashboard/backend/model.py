@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-import contextlib
-import hashlib
-import os
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.project import Project
-from orchestra.canon.query import QueryError, parse_where, subject_matches, where_matches
-from orchestra.canon.store import StoreError
+from dashboard.backend import store
+from dashboard.backend.store import ModelError, change_token
 
 RECENT = timedelta(hours=24)
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
@@ -37,10 +32,6 @@ SOFT_TYPES = frozenset({
 })
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
 LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
-
-
-class ModelError(RuntimeError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -168,141 +159,22 @@ class Snapshot:
     generated_at: datetime
 
 
-def change_token(target: Project) -> str:
-    """Hash of the mtime of each record type directory.
-
-    The store writes a record by renaming a temp file into its type directory, so any create, update, or supersede moves that directory's mtime.
-    """
-    digest = hashlib.sha1()
-    try:
-        with os.scandir(target.store_path / "records") as entries:
-            for entry in sorted(entries, key=lambda e: e.name):
-                if entry.is_dir():
-                    digest.update(f"{entry.name}\0{entry.stat().st_mtime_ns}\n".encode())
-    except OSError:
-        pass
-    return digest.hexdigest()
-
-
-def _options(args: tuple[str, ...]) -> dict[str, list[str]]:
-    values: dict[str, list[str]] = {}
-    items = list(args)
-    index = 0
-    while index < len(items):
-        item = items[index]
-        if item.startswith("--") and index + 1 < len(items) and not items[index + 1].startswith("--"):
-            values.setdefault(item, []).append(items[index + 1])
-            index += 2
-        else:
-            index += 1
-    return values
-
-
-_catalog_lock = threading.Lock()
-_catalog_cache: dict[str, tuple[str, list[dict[str, Any]]]] = {}
-_pin = threading.local()
-
-
-@contextlib.contextmanager
-def _pinned_token(token: str):
-    _pin.token = token
-    try:
-        yield
-    finally:
-        _pin.token = None
-
-
-def _catalog(target: Project) -> list[dict[str, Any]]:
-    key = str(target.store_path)
-    with _catalog_lock:
-        token = getattr(_pin, "token", None) or change_token(target)
-        cached = _catalog_cache.get(key)
-        if cached and cached[0] == token:
-            return cached[1]
-        try:
-            records = target.records()
-            rows = attach_derived_all(records, target.derived(records))
-        except StoreError:
-            return []
-        _catalog_cache[key] = (token, rows)
-        return rows
-
-
-def _run(target: Project, *args: str) -> dict[str, Any]:
-    label = " ".join(args[:3])
-    if not args:
-        raise ModelError("missing store operation")
-    flags = _options(args[1:])
-    try:
-        if args[0] == "get":
-            record_id = (flags.get("--id") or [None])[0]
-            if not record_id:
-                raise ModelError("get requires --id")
-            record = target.get(record_id, (flags.get("--type") or [None])[0])
-            derived = next((row for row in _catalog(target) if row.get("id") == record_id), None)
-            return derived or record
-        if args[0] == "list":
-            rows = _catalog(target)
-            record_type = (flags.get("--type") or [None])[0]
-            if record_type:
-                rows = [row for row in rows if row.get("record_type") == record_type]
-            state = (flags.get("--state") or [None])[0]
-            if state:
-                rows = [row for row in rows if row.get("lifecycle_state") == state]
-            subject = (flags.get("--subject") or [None])[0]
-            if subject:
-                rows = [row for row in rows if subject_matches(row, subject)]
-            wheres = flags.get("--where") or []
-            if wheres:
-                filters = parse_where(wheres)
-                rows = [row for row in rows if where_matches(row, filters)]
-            return {"records": rows}
-    except (StoreError, QueryError, OSError, ValueError) as exc:
-        raise ModelError(f"{label} failed: {exc}") from exc
-    raise ModelError(f"unsupported store operation {args[0]!r}")
-
-
-def _declared_record_types(target: Project) -> frozenset[str] | None:
-    """Record type ids from the store's schema snapshots, or None if unreadable.
-
-    Used so list calls for orchestra types (phase, work-item, …) are no-ops on
-    foreign stores whose schemas do not declare them.
-    """
-    try:
-        return frozenset(target.schemas().types)
-    except (StoreError, OSError, ValueError):
-        return None
-
-
 def _list(
     target: Project,
     record_type: str,
     *,
     state: str | None = None,
-    where: tuple[str, ...] = (),
-    full: bool | None = None,
+    payload: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    declared = _declared_record_types(target)
+    declared = store.declared_record_types(target)
     if declared is not None and record_type not in declared:
         return []
-    args = ["list", "--type", record_type]
-    use_full = record_type in FULL_TYPES if full is None else full
-    if use_full:
-        args.append("--full")
-    if state:
-        args.extend(["--state", state])
-    for clause in where:
-        args.extend(["--where", clause])
     try:
-        output = _run(target, *args)
+        return store.list_records(target, record_type, state=state, payload=payload)
     except ModelError:
         if record_type in SOFT_TYPES:
             return []
         raise
-    try:
-        return output["records"]
-    except (KeyError, TypeError) as exc:
-        raise ModelError(f"list {record_type} returned unreadable output") from exc
 
 
 _SNAPSHOT_TYPES = (
@@ -317,7 +189,7 @@ _SNAPSHOT_TYPES = (
 
 def _list_all(target: Project, record_types: tuple[str, ...], token: str) -> dict[str, list[dict[str, Any]]]:
     def load(record_type: str) -> list[dict[str, Any]]:
-        with _pinned_token(token):
+        with store.pinned_token(token):
             return _list(target, record_type)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -1207,7 +1079,7 @@ def _phase_evidence(
 
 def load_snapshot(target: Project, now: datetime | None = None, token: str | None = None) -> Snapshot:
     token = token or change_token(target)
-    with _pinned_token(token):
+    with store.pinned_token(token):
         return _load_snapshot(target, now or datetime.now(timezone.utc), token)
 
 
@@ -1550,16 +1422,16 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     `get` yields the subject, effort, body, and outbound depends_on; one `list --subject --full`
     yields every record for the slug; one work-item `list` for the effort names linked tasks; one goal `list` maps merged efforts.
     """
-    item = _run(target, "get", "--type", "score:work-item", "--id", work_item_id)
+    item = store.get_record(target, work_item_id, "score:work-item")
     if "subject" not in item:
         raise ModelError(f"get score:work-item {work_item_id} returned unreadable output")
     aliases = _merge_aliases(_list(target, "score:effort"))
     item = _remapped([item], aliases)[0]
     slug, payload = item["subject"], _payload(item)
     effort = payload.get("effort", "")
-    records = _remapped(_run(target, "list", "--subject", slug, "--full").get("records", []), aliases)
-    efforts = _run(target, "list", "--type", "score:work-item", "--where", f"payload.effort={effort}")
-    rows = {row.id: row for row in _task_rows(efforts.get("records", []))}
+    records = _remapped(store.list_records(target, subject=slug), aliases)
+    efforts = store.list_records(target, "score:work-item", payload={"effort": effort})
+    rows = {row.id: row for row in _task_rows(efforts)}
     by_subject = {row.subject: row for row in rows.values()}
     mine = next((r for r in records if r["id"] == work_item_id), item)
     others = [r["subject"] for r in records if r["record_type"] == "score:work-item" and r["id"] != work_item_id]
@@ -1705,7 +1577,7 @@ def load_decision_log(
     }
 
     listed = _remapped(
-        _list(target, "score:decision", where=(f"payload.effort={effort}",), full=True),
+        _list(target, "score:decision", payload={"effort": effort}),
         aliases,
     )
     by_id = {record["id"]: record for record in listed}
@@ -1713,7 +1585,7 @@ def load_decision_log(
         for record in _remapped(
             _list(
                 target, "score:decision", state="superseded",
-                where=(f"payload.effort={effort}",), full=True,
+                payload={"effort": effort},
             ),
             aliases,
         ):
@@ -1757,7 +1629,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     record = next((r for r in snapshot_phases if r["subject"] == phase_subject), None)
     if record is None:
         raise ModelError(f"phase {phase_subject} not found in {effort}")
-    item = _run(target, "get", "--type", "score:phase", "--id", record["id"])
+    item = store.get_record(target, record["id"], "score:phase")
     tasks = _by_effort(_list(target, "score:work-item")).get(effort, [])
     effort_acceptances = by_effort("score:acceptance").get(effort, [])
     effort_checks = by_effort("tuner:check-run").get(effort, [])
@@ -1767,11 +1639,11 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         None,
     )
     phase_specs = _remapped(
-        _list(target, "score:specification", where=(f"payload.phase={phase_subject}",), full=True),
+        _list(target, "score:specification", payload={"phase": phase_subject}),
         aliases,
     )
     phase_designs = _remapped(
-        _list(target, "score:design", where=(f"payload.phase={phase_subject}",), full=True),
+        _list(target, "score:design", payload={"phase": phase_subject}),
         aliases,
     )
     spec = _newest(_for_phase(phase_specs, phase_subject, effort))
@@ -1814,7 +1686,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         r for r in _remapped(
             _list(
                 target, "conductor:proof-packet",
-                where=(f"payload.phase={phase_subject}",), full=True,
+                payload={"phase": phase_subject},
             ),
             aliases,
         )

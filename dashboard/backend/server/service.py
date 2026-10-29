@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-from dashboard.backend import approval, backlog, dismiss, journal, model
+from dashboard.backend import approval, backlog, dismiss, journal, model, store
 from orchestra.canon.project import Project
 
 
@@ -125,7 +125,7 @@ def needs_payload(item: model.NeedsYouItem) -> dict:
 
 
 class Cache:
-    """Snapshot and detail cache keyed by ``dashboard.backend.model.change_token``."""
+    """Snapshot and detail cache keyed by ``dashboard.backend.store.change_token``."""
 
     def __init__(self, target: Project) -> None:
         self.target = target
@@ -135,7 +135,7 @@ class Cache:
         self.details: dict[tuple, object] = {}
 
     def _current(self) -> model.Snapshot:
-        token = model.change_token(self.target)
+        token = store.change_token(self.target)
         with self.lock:
             if self.snapshot is not None and token == self.token:
                 return self.snapshot
@@ -148,7 +148,7 @@ class Cache:
             return snapshot
 
     def token_only(self) -> str:
-        token = model.change_token(self.target)
+        token = store.change_token(self.target)
         with self.lock:
             if token != self.token:
                 self.snapshot = None

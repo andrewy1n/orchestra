@@ -18,6 +18,7 @@ from dashboard.backend.dismiss import (
 )
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
+from dashboard.backend import store
 from dashboard.backend.model import EffortView, NeedsYouItem
 
 
@@ -98,7 +99,7 @@ def _cli_json(target: Project, *args: str) -> dict[str, Any]:
     if not record_id:
         return {}
     try:
-        record = target.get(record_id, record_type)
+        record = store.stored_record(target, record_id, record_type)
     except StoreError:
         return {}
     return record if isinstance(record, dict) else {}

@@ -16,6 +16,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
 from orchestra.canon.store import Store  # noqa: E402
 from dashboard.backend import model  # noqa: E402
+from dashboard.backend import store as backend_store  # noqa: E402
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
@@ -376,11 +377,11 @@ def test_change_token_stats_type_directories_not_records(store, cli, defs, monke
 def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
     _goal(cli, defs, "alpha")
     _work_item(cli, defs, "alpha", "a-task", "a-phase")
-    model._catalog_cache.clear()
+    backend_store._catalog_cache.clear()
     reads = []
     real = Store.iter_records
     monkeypatch.setattr(Store, "iter_records", lambda self, *a: reads.append(a) or real(self, *a))
-    model._catalog(_target(store))
+    backend_store._catalog(_target(store))
     assert len(reads) == 1
 
 
@@ -394,10 +395,10 @@ def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
 
 
 def test_raises_a_model_error_when_the_store_read_fails(store, monkeypatch):
-    def fail(target, *args):
+    def fail(target, *args, **kwargs):
         raise model.ModelError("list failed")
 
-    monkeypatch.setattr(model, "_run", fail)
+    monkeypatch.setattr(backend_store, "list_records", fail)
     with pytest.raises(model.ModelError):
         model.load_snapshot(_target(store))
 
@@ -546,13 +547,18 @@ def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
 
 def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
     calls = []
-    real = model._run
+    real_get, real_list = backend_store.get_record, backend_store.list_records
 
-    def spy(target, *args):
-        calls.append(args)
-        return real(target, *args)
+    def spy_get(target, *args, **kwargs):
+        calls.append(("get", args, kwargs))
+        return real_get(target, *args, **kwargs)
 
-    monkeypatch.setattr(model, "_run", spy)
+    def spy_list(target, *args, **kwargs):
+        calls.append(("list", args, kwargs))
+        return real_list(target, *args, **kwargs)
+
+    monkeypatch.setattr(backend_store, "get_record", spy_get)
+    monkeypatch.setattr(backend_store, "list_records", spy_list)
     _detail(detail_store)
     assert len(calls) == 4
 
@@ -973,16 +979,16 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     })
 
     calls = []
-    real = model._run
+    real = backend_store.list_records
 
-    def spy(target, *args):
-        calls.append(args)
-        return real(target, *args)
+    def spy(target, *args, **kwargs):
+        calls.append((args, kwargs))
+        return real(target, *args, **kwargs)
 
-    monkeypatch.setattr(model, "_run", spy)
+    monkeypatch.setattr(backend_store, "list_records", spy)
     detail = model.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
     assert any(
-        "conductor:assessment" in args and "--state" in args and "superseded" in args for args in calls
+        "conductor:assessment" in args and kwargs.get("state") == "superseded" for args, kwargs in calls
     )
     assert (detail.phase, detail.id, detail.text, detail.status, detail.next) == (
         "p-detail", "R1", "the traced requirement", "failed", "design",
@@ -1341,14 +1347,14 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
         assert view.release_ready is False
         assert view.needs_you == []
 
-        real = model._run
+        real = backend_store.list_records
 
-        def boom(target, *args):
+        def boom(target, *args, **kwargs):
             if "score:work-item" in args:
                 raise model.ModelError("work-item failed")
-            return real(target, *args)
+            return real(target, *args, **kwargs)
 
-        monkeypatch.setattr(model, "_run", boom)
+        monkeypatch.setattr(backend_store, "list_records", boom)
         with pytest.raises(model.ModelError):
             model.load_snapshot(_target(root))
     finally:
@@ -1362,18 +1368,18 @@ def test_list_skips_types_absent_from_store_schemas(monkeypatch):
     target = SimpleNamespace(schemas=lambda: SimpleNamespace(types={"score:effort": object()}))
     calls: list[tuple[str, ...]] = []
 
-    def boom(tgt, *args):
+    def boom(tgt, *args, **kwargs):
         calls.append(args)
         raise model.ModelError("list should not be called for undeclared types")
 
-    monkeypatch.setattr(model, "_run", boom)
+    monkeypatch.setattr(backend_store, "list_records", boom)
     assert model._list(target, "score:phase") == []
     assert model._list(target, "score:work-item") == []
     assert calls == []
 
     with pytest.raises(model.ModelError, match="should not be called"):
         model._list(target, "score:effort")
-    assert calls == [("list", "--type", "score:effort")]
+    assert calls == [("score:effort",)]
 
 
 def test_evidence_stage_returns_each_rule(store, cli, defs):

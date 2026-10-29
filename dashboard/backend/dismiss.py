@@ -15,6 +15,7 @@ from typing import Any
 
 from orchestra.canon.project import Project
 from orchestra.canon.store import StoreError
+from dashboard.backend import store
 from dashboard.backend.model import NeedsYouItem
 
 HUMAN_DISMISSIBLE = frozenset({
@@ -234,7 +235,7 @@ def _current_revision(target: Project, item: NeedsYouItem) -> str:
         "unsigned-check": "tuner:check-run",
     }.get(item.kind, "")
     try:
-        record = target.get(item.id, record_type or None)
+        record = store.stored_record(target, item.id, record_type or None)
     except StoreError as exc:
         raise DismissError(f"get failed: {exc}") from exc
     return str(record.get("revision") or "")

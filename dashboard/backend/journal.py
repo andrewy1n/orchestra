@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from orchestra.canon.project import Project
-from dashboard.backend import model
+from dashboard.backend import model, store
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -41,9 +41,9 @@ class JournalItem:
     task_id: str = ""
 
 
-def _soft_list(target: Project, record_type: str, *, where: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+def _soft_list(target: Project, record_type: str, *, payload: dict[str, str] | None = None) -> list[dict[str, Any]]:
     try:
-        return model._list(target, record_type, where=where, full=True)
+        return model._list(target, record_type, payload=payload)
     except model.ModelError:
         return []
 
@@ -163,7 +163,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
     tasks = model._remapped(
-        _soft_list(target, "score:work-item", where=(f"payload.effort={effort}",)),
+        _soft_list(target, "score:work-item", payload={"effort": effort}),
         aliases,
     )
     if not tasks:
@@ -175,7 +175,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
     phases = model._remapped(
-        _soft_list(target, "score:phase", where=(f"payload.effort={effort}",)),
+        _soft_list(target, "score:phase", payload={"effort": effort}),
         aliases,
     )
     phase_titles = {
@@ -283,7 +283,7 @@ def filter_items(items: list[JournalItem], needle: str) -> list[JournalItem]:
 
 def load_record(target: Project, record_id: str) -> dict[str, Any]:
     """Fetch one record by id (type optional on the CLI)."""
-    record = model._run(target, "get", "--id", record_id)
+    record = store.get_record(target, record_id)
     if "subject" not in record:
         raise model.ModelError(f"get {record_id} returned unreadable output")
     return record
