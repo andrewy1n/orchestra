@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-5de29fa0-0e3d-44bd-b819-a1de8c6ffee4",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/dashboard/test_data_layer.py:sha256:86ff0ac891e32708da3c09b2afcf5b23ec09754e76dd70a2290a8e4268c38ac2"
+    ],
+    "phase": "data-layer",
+    "requirement": "R1",
+    "test_ids": [
+      "tests/dashboard/test_data_layer.py::test_r1_only_store_py_calls_project_list_or_get"
+    ],
+    "verify_command": "uv run pytest tests/dashboard/test_data_layer.py::test_r1_only_store_py_calls_project_list_or_get -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T20:42:02+00:00",
+  "relationships": {},
+  "revision": "sha256:84f9dcdcac070d77f2af0f2939f299b60b15558b46a61e054d6f42754198c2c6",
+  "subject": "verify-data-layer-r1"
+}
+---
+
