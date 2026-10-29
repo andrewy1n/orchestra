@@ -483,3 +483,4 @@ async def wait_workers(app) -> None:
             return
         except WorkerCancelled:
             await asyncio.sleep(0)
+    raise AssertionError("workers kept cancelling and never completed")

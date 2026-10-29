@@ -153,13 +153,7 @@ def _dashboard_ready(app) -> bool:
 
 
 async def _wait_workers(app) -> None:
-    """Wait for workers; ignore CANCELLED races (exclusive groups under xdist)."""
-    from textual.worker import WorkerCancelled
-
-    try:
-        await app.workers.wait_for_complete()
-    except WorkerCancelled:
-        return
+    await h.wait_workers(app)
 
 
 def _run(store, width, scenario, interval=60.0, height=40, grouped=False):
