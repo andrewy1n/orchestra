@@ -16,6 +16,7 @@ from dashboard import backlog as backlog_module
 from dashboard import dismiss as dismiss_module
 from dashboard import gates
 from dashboard import journal
+from dashboard import journal_screen
 from dashboard import model
 from dashboard import selection
 from dashboard.commit import CommitScreen
@@ -88,7 +89,7 @@ def journal_panel_lines(
 
 def open_record_detail(app: App, record_id: str, *, task_id: str = "") -> None:
     """Push RecordDetailScreen when journal-screen provides it; else a thin stub."""
-    detail_cls = getattr(journal, "RecordDetailScreen", None)
+    detail_cls = getattr(journal_screen, "RecordDetailScreen", None)
     if detail_cls is None:
         detail_cls = _RecordDetailStub
         app.push_screen(detail_cls(app.target, record_id))
@@ -116,8 +117,8 @@ class _RecordDetailStub(Screen[None]):
 
 
 # Soft names so app imports if journal-screen has not landed the screens yet.
-JournalScreen = getattr(journal, "JournalScreen", None)
-RecordDetailScreen = getattr(journal, "RecordDetailScreen", None)
+JournalScreen = getattr(journal_screen, "JournalScreen", None)
+RecordDetailScreen = getattr(journal_screen, "RecordDetailScreen", None)
 
 
 def _pollable_detail_screens() -> tuple[type, ...]:
@@ -1227,7 +1228,7 @@ class DashboardApp(App[None]):
         elif isinstance(screen, BacklogDetailScreen):
             name = backlog_module.prompt(screen.item, screen.effort)
         elif JournalScreen is not None and isinstance(screen, JournalScreen):
-            table_cls = getattr(journal, "JournalTable", None)
+            table_cls = getattr(journal_screen, "JournalTable", None)
             table = (
                 screen.query_one("#journal-table", table_cls)
                 if table_cls is not None and screen.query("#journal-table") else None
@@ -1589,7 +1590,7 @@ class DashboardApp(App[None]):
         self.push_screen(PhaseScreen(self.target, pane.effort, subject, tab=open_tab))
 
     def action_open_journal(self) -> None:
-        screen_cls = JournalScreen or getattr(journal, "JournalScreen", None)
+        screen_cls = JournalScreen or getattr(journal_screen, "JournalScreen", None)
         if screen_cls is None:
             return
         pane = self.active_pane()
@@ -1830,10 +1831,10 @@ class DashboardApp(App[None]):
 def _journal_detail_screens() -> tuple[type, ...]:
     screens: list[type] = []
     for name in ("JournalScreen", "RecordDetailScreen"):
-        cls = getattr(journal, name, None)
+        cls = getattr(journal_screen, name, None)
         if cls is not None:
             screens.append(cls)
-    if getattr(journal, "RecordDetailScreen", None) is None:
+    if getattr(journal_screen, "RecordDetailScreen", None) is None:
         screens.append(_RecordDetailStub)
     return tuple(screens)
 

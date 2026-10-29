@@ -20,10 +20,11 @@ sys.path.insert(0, str(REPO_ROOT))
 from dashboard import app as app_module  # noqa: E402
 from orchestra.canon.project import open_store  # noqa: E402
 from dashboard import journal  # noqa: E402
+from dashboard import journal_screen  # noqa: E402
 from dashboard import model  # noqa: E402
 from dashboard import pager  # noqa: E402
 from dashboard import task_detail as detail_module  # noqa: E402
-from dashboard.journal import JournalScreen, JournalTable, RecordDetailScreen  # noqa: E402
+from dashboard.journal_screen import JournalScreen, JournalTable, RecordDetailScreen  # noqa: E402
 from test_dashboard_app import _detail_run, _open_by_enter, _run, _shown, _until  # noqa: E402
 from test_dashboard_pager import STUB_PAGER  # noqa: E402
 
@@ -588,7 +589,7 @@ def test_journal_panel_enter_opens_record_detail(store, cli, defs):
         await pilot.press("enter")
         await _until(pilot, lambda: app.screen is not app.screen_stack[0])
         screen = app.screen
-        detail_cls = getattr(journal, "RecordDetailScreen", None) or app_module._RecordDetailStub
+        detail_cls = getattr(journal_screen, "RecordDetailScreen", None) or app_module._RecordDetailStub
         assert isinstance(screen, detail_cls)
         assert getattr(screen, "record_id", None) == expected
 
