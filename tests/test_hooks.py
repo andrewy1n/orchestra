@@ -1,10 +1,11 @@
 import io
 import json
+import re
 
 import pytest
 
 from canon_support import create, make_project, point_effort_at, seed_effort
-from orchestra import cli
+from orchestra import cli, views
 from orchestra.stage import hooks
 
 
@@ -77,20 +78,6 @@ def test_hook_start_injects_active_constraints_for_focused_effort(repo, monkeypa
     _, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
     ctx = out["hookSpecificOutput"]["additionalContext"]
     assert "Active constraints:\n- **stay-small**: Keep it small" in ctx
-
-
-def test_hook_start_truncates_oversized_handoff(repo, monkeypatch, capsys):
-    for index in range(150):
-        create(
-            repo,
-            "composer:idea",
-            f"idea-{index:03d}-" + "x" * 80,
-            {"effort": "alpha", "status": "open"},
-        )
-    _, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
-    ctx = out["hookSpecificOutput"]["additionalContext"]
-    assert "handoff truncated" in ctx
-    assert "orchestra handoff" in ctx
 
 
 def test_hook_start_without_store_exits_silently(tmp_path, monkeypatch, capsys):
@@ -183,3 +170,312 @@ def test_hooks_never_write_records(repo, monkeypatch, capsys):
     run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=stdin)
     run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
     assert snapshot() == before
+
+
+HOOK_BUDGET = 9000
+LIVE_ROLES = {
+    "Goal",
+    "Position",
+    "In Progress",
+    "Blocking Question",
+    "Needs Human",
+    "Unsigned Manual Check",
+}
+CROWD = (
+    "alpha", "bravo", "charlie", "delta", "echo", "foxtrot",
+    "golf", "hotel", "india", "juliet", "kilo", "lima",
+)
+ID_LINK = re.compile(r"\(id: \[|\.canon/records/|rec-[0-9a-f]{8}-[0-9a-f]{4}-")
+
+
+def phase_of(slug):
+    return "p1" if slug == "alpha" else f"{slug}-p1"
+
+
+def add_effort(project, slug):
+    if slug != "alpha":
+        seed_effort(project, slug, phase=phase_of(slug))
+
+
+def fill_effort(project, slug, tasks=4):
+    subjects = []
+    for n in range(tasks):
+        subject = f"{slug}-task-{n}"
+        item = create(
+            project,
+            "score:work-item",
+            subject,
+            {
+                "title": f"Title of {slug} task {n}: " + "detail " * 20,
+                "phase": phase_of(slug),
+                "kind": "deliver",
+                "assignee": "",
+                "effort": slug,
+            },
+        )
+        project.update(item["id"], transition="in_progress")
+        subjects.append(subject)
+    create(
+        project,
+        "tuner:finding",
+        f"{slug}-needs-human",
+        {
+            "claim": f"Claim about {slug}: " + "risk " * 20,
+            "basis": "b",
+            "invalidated_when": "never",
+            "effort": slug,
+            "needs": "human",
+        },
+    )
+    create(
+        project,
+        "tuner:check-run",
+        f"{slug}-manual-check",
+        {
+            "criterion_id": f"{slug}-manual-check",
+            "revision": "r",
+            "result": "pass",
+            "effort": slug,
+            "method": "manual",
+            "signed_by": "",
+        },
+    )
+    create(
+        project,
+        "conductor:proof-packet",
+        f"{slug}-proof",
+        {"phase": phase_of(slug), "effort": slug, "revision": "abc123", "base": "main", "kind": "demo"},
+    )
+    create(project, "composer:idea", f"{slug}-later-idea", {"effort": slug, "status": "open"})
+    return subjects + [f"{slug}-needs-human", f"{slug}-manual-check"]
+
+
+def crowd_store(project):
+    owned = {}
+    for slug in CROWD:
+        add_effort(project, slug)
+        owned[slug] = fill_effort(project, slug)
+    return owned
+
+
+def set_position_recorded_at(project, slug, stamp):
+    from orchestra.canon.record_file import dump_record, load_record
+    from orchestra.canon.revision import with_revision
+
+    record_id = project.resolve("score:position", slug)["id"]
+    path = project.store_path / "records" / "score__position" / f"{record_id}.md"
+    record = load_record(path.read_text(), path)
+    record["recorded_at"] = stamp
+    path.write_text(dump_record(with_revision(record)))
+
+
+def add_constraint(project, subject, statement, effort):
+    create(
+        project,
+        "score:constraint",
+        subject,
+        {"statement": statement, "applies_to": "all", "effort": effort},
+        body="## Basis\n\nWhy.",
+    )
+
+
+def close_effort(project, slug):
+    goal = project.resolve("score:effort", slug)
+    project.supersede(goal["id"], payload={**goal["payload"], "status": "closed"})
+    position = project.resolve("score:position", slug)
+    project.supersede(position["id"], payload={**position["payload"], "status": "closed"})
+
+
+def claude_context(repo, monkeypatch, capsys):
+    _, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
+    return out["hookSpecificOutput"]["additionalContext"]
+
+
+def plain_context(repo, monkeypatch, capsys):
+    stdin = {"workspace_roots": [str(repo.project_root)], "conversation_id": "c1"}
+    _, out = run_hook(monkeypatch, capsys, "hook-start", stdin=stdin)
+    return out["additional_context"]
+
+
+def full_handoff(repo):
+    return views.render_view(views.HANDOFF, views.load_records(repo))
+
+
+def effort_sections(ctx):
+    sections = {}
+    current = None
+    for line in ctx.splitlines():
+        if line.startswith("## "):
+            words = line[3:].split()
+            current = words[0] if words else ""
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+    return {name: "\n".join(lines) for name, lines in sections.items()}
+
+
+def section_start(ctx, slug):
+    match = re.search(rf"^## {re.escape(slug)}\b", ctx, re.M)
+    return match.start() if match else None
+
+
+def constraints_block(ctx):
+    assert "Active constraints:" in ctx
+    rest = ctx[ctx.index("Active constraints:"):]
+    match = re.search(r"^## ", rest, re.M)
+    return rest[: match.start()] if match else rest
+
+
+def test_r1_start_context_fits_nine_thousand_chars_when_full_handoff_exceeds_ten_thousand(
+    repo, monkeypatch, capsys
+):
+    crowd_store(repo)
+    assert len(full_handoff(repo)) > 10000
+    assert len(claude_context(repo, monkeypatch, capsys)) <= HOOK_BUDGET
+
+
+def test_r2_start_context_begins_with_protocol_text(repo, monkeypatch, capsys):
+    crowd_store(repo)
+    assert claude_context(repo, monkeypatch, capsys).startswith(hooks.PROTOCOL)
+
+
+def test_r3_constraints_block_precedes_first_effort_section(repo, monkeypatch, capsys):
+    add_constraint(repo, "stay-small", "Keep it small", "alpha")
+    add_effort(repo, "bravo")
+    ctx = claude_context(repo, monkeypatch, capsys)
+    assert "Active constraints:" in ctx
+    starts = [s for s in (section_start(ctx, slug) for slug in ("alpha", "bravo")) if s is not None]
+    assert starts
+    assert ctx.index("Active constraints:") < min(starts)
+
+
+def test_r4_constraints_block_lists_constraints_from_every_live_effort(
+    repo, monkeypatch, capsys
+):
+    add_effort(repo, "bravo")
+    add_effort(repo, "charlie")
+    add_constraint(repo, "alpha-rule", "Alpha stays small", "alpha")
+    add_constraint(repo, "bravo-rule", "Bravo stays fast", "bravo")
+    add_constraint(repo, "charlie-rule", "Charlie stays typed", "charlie")
+    block = constraints_block(claude_context(repo, monkeypatch, capsys))
+    assert "Alpha stays small" in block
+    assert "Bravo stays fast" in block
+    assert "Charlie stays typed" in block
+
+
+def test_r5_constraints_block_omits_constraints_of_closed_efforts(repo, monkeypatch, capsys):
+    add_effort(repo, "bravo")
+    add_constraint(repo, "alpha-rule", "Alpha stays small", "alpha")
+    add_constraint(repo, "bravo-rule", "Bravo stays fast", "bravo")
+    close_effort(repo, "bravo")
+    ctx = claude_context(repo, monkeypatch, capsys)
+    assert "Alpha stays small" in constraints_block(ctx)
+    assert "Bravo stays fast" not in ctx
+    assert "bravo-rule" not in ctx
+
+
+def test_r6_effort_sections_show_only_live_roles(repo, monkeypatch, capsys):
+    fill_effort(repo, "alpha", tasks=1)
+    create(
+        repo,
+        "score:continuity-question",
+        "alpha",
+        {"owner": "human", "blocking": True, "scope": "alpha"},
+    )
+    ctx = claude_context(repo, monkeypatch, capsys)
+    sections = effort_sections(ctx)
+    headings = {
+        line[4:].strip()
+        for body in sections.values()
+        for line in body.splitlines()
+        if line.startswith("### ")
+    }
+    assert headings <= LIVE_ROLES
+    assert headings == LIVE_ROLES
+    assert "### Blocking Question" in sections["alpha"]
+    assert "alpha-proof" not in sections["alpha"]
+    assert "alpha-later-idea" not in sections["alpha"]
+
+
+def test_r7_start_context_has_no_record_id_links(repo, monkeypatch, capsys):
+    fill_effort(repo, "alpha")
+    add_constraint(repo, "stay-small", "Keep it small", "alpha")
+    ctx = claude_context(repo, monkeypatch, capsys)
+    assert ID_LINK.search(ctx) is None
+
+
+def test_r8_over_budget_start_context_omits_whole_effort_sections_only(
+    repo, monkeypatch, capsys
+):
+    owned = crowd_store(repo)
+    ctx = claude_context(repo, monkeypatch, capsys)
+    shown = effort_sections(ctx)
+    included = [slug for slug in CROWD if slug in shown]
+    omitted = [slug for slug in CROWD if slug not in shown]
+    assert included
+    assert omitted
+    for slug in included:
+        assert f"Goal of {slug}" in ctx
+        assert [s for s in owned[slug] if s not in ctx] == []
+    for slug in omitted:
+        assert [s for s in owned[slug] if s in ctx] == []
+        assert f"Goal of {slug}" not in ctx
+
+
+def test_r9_each_omitted_effort_is_named_on_a_line_pointing_to_its_effort_handoff(
+    repo, monkeypatch, capsys
+):
+    crowd_store(repo)
+    ctx = claude_context(repo, monkeypatch, capsys)
+    shown = effort_sections(ctx)
+    omitted = [slug for slug in CROWD if slug not in shown]
+    assert omitted
+    lines = ctx.splitlines()
+    for slug in omitted:
+        pointers = [
+            line
+            for line in lines
+            if re.search(rf"\b{re.escape(slug)}\b", line)
+            and (
+                f"orchestra handoff --effort {slug}" in line
+                or "orchestra handoff --effort <slug>" in line
+            )
+        ]
+        assert pointers, slug
+
+
+def test_r10_effort_sections_follow_position_recorded_at_newest_first(
+    repo, monkeypatch, capsys
+):
+    add_effort(repo, "bravo")
+    add_effort(repo, "charlie")
+    set_position_recorded_at(repo, "alpha", "2026-01-02T00:00:00+00:00")
+    set_position_recorded_at(repo, "bravo", "2026-01-01T00:00:00+00:00")
+    set_position_recorded_at(repo, "charlie", "2026-01-03T00:00:00+00:00")
+    ctx = claude_context(repo, monkeypatch, capsys)
+    starts = [section_start(ctx, slug) for slug in ("charlie", "alpha", "bravo")]
+    assert None not in starts
+    assert starts == sorted(starts)
+
+
+def test_r11_orchestra_handoff_keeps_every_effort_and_id_links_beyond_the_hook_budget(
+    repo, monkeypatch, capsys
+):
+    crowd_store(repo)
+    monkeypatch.chdir(repo.project_root)
+    assert cli.main(["handoff"]) == 0
+    text = capsys.readouterr().out
+    assert len(text) > 10000
+    assert all(section_start(text, slug) is not None for slug in CROWD)
+    assert ID_LINK.search(text)
+    assert "### Latest Proof" in text
+    assert "### Backlog" in text
+
+
+def test_r12_plain_start_context_matches_claude_budget_and_content(repo, monkeypatch, capsys):
+    crowd_store(repo)
+    claude = claude_context(repo, monkeypatch, capsys)
+    plain = plain_context(repo, monkeypatch, capsys)
+    assert plain == claude
+    assert len(plain) <= HOOK_BUDGET
+    assert ID_LINK.search(plain) is None
