@@ -704,3 +704,8 @@ schemas do not allow.
 
 Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
 `installer`. CI runs the same command in the `types` job.
+
+### Wheel check
+
+Run `python3 scripts/wheel_smoke.py` to build the wheel and smoke-test
+the install. The `wheel` job runs the same command.
