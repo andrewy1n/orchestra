@@ -548,10 +548,9 @@ def load_records(project: Any) -> list[Record]:
 def live_efforts(records: list[Record]) -> set[str]:
     return {
         effort
-        for role in (GOAL, POSITION)
         for r in records
-        if r["record_type"] == role.record_type
-        and role.select(r)
+        if r["record_type"] == GOAL.record_type
+        and GOAL.select(r)
         and (effort := effort_of(r))
     }
 
@@ -568,21 +567,25 @@ def _position_recorded_at(records: list[Record]) -> dict[str, str]:
     return stamps
 
 
+def _group_subjects(group: dict[str, list[Record]]) -> list[str]:
+    return sorted(
+        {str(r.get("subject", "")) for items in group.values() for r in items}
+    )
+
+
 def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
     live = live_efforts(records)
-    groups = {
-        name: group
-        for name, group in _group_records(HOOK_VIEW, records, None).items()
-        if name in live
-    }
+    groups = _group_records(HOOK_VIEW, records, None)
     stamps = _position_recorded_at(records)
-    stamped = sorted(n for n in groups if n in stamps)
+    stamped = sorted(n for n in groups if n in live and n in stamps)
     stamped.sort(key=stamps.__getitem__, reverse=True)
-    unstamped = sorted(n for n in groups if n not in stamps)
+    unstamped = sorted(n for n in groups if n in live and n not in stamps)
+    rest = sorted(n for n in groups if n not in live)
     sections = []
-    for name in (*stamped, *unstamped):
+    for name in (*stamped, *unstamped, *rest):
         lines = _group_lines(HOOK_VIEW, name, groups[name], [], link=False)
-        sections.append((name, "\n".join(lines).rstrip()))
+        label = name or ", ".join(_group_subjects(groups[name]))
+        sections.append((label, "\n".join(lines).rstrip()))
     return sections
 
 
