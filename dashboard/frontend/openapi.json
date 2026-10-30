@@ -564,6 +564,10 @@
       },
       "EffortSummary": {
         "properties": {
+          "area": {
+            "title": "Area",
+            "type": "string"
+          },
           "backlog": {
             "items": {
               "$ref": "#/components/schemas/BacklogSummary"
@@ -629,6 +633,7 @@
           "goal",
           "position",
           "kind",
+          "area",
           "finished",
           "release_ready",
           "phases",
