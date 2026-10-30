@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-adbb8b66-a7d4-4b6f-8997-c86ece5b5ae6",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "tdd",
+    "phase": "phase-level",
+    "requirement": "R18",
+    "verify_command": "cd dashboard/frontend && f=$(mktemp) && npx vitest run src/lib/screens/phaseNav.test.ts -t \"R18 \" --reporter=json --outputFile=$f >/dev/null 2>&1; jq -e \".numPassedTests>=1 and .numFailedTests==0\" $f"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-30T19:03:38+00:00",
+  "relationships": {},
+  "revision": "sha256:a0483bffed9eeca89503c36dcc60a90db0a8a49703d79ca40150a5367ca6a304",
+  "subject": "phase-nav-r18"
+}
+---
+
