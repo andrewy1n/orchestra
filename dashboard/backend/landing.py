@@ -7,6 +7,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from orchestra.canon.git_backend import run_git
+
 _TIMEOUT = 2
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
 _NEXT_HEADING = re.compile(r"^##\s+")
@@ -47,8 +49,9 @@ def _branch_name(section: str, subject: str) -> str:
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
     try:
-        return subprocess.run(
-            ["git", "-C", str(root), *args],
+        return run_git(
+            root,
+            *args,
             capture_output=True,
             text=True,
             timeout=_TIMEOUT,

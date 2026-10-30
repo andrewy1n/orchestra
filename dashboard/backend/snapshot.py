@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from orchestra.canon import record_payload
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -14,7 +15,7 @@ from dashboard.backend.phase import (
     MilestoneRow, PhaseRow, _latest_assessment_map, _milestone_rows, _phase_evidence, _phase_rows, attach_milestones,
 )
 from dashboard.backend.records import (
-    CHECK_RESULT, INACTIVE_STATES, _by_effort, _derived, _list, _live, _merge_aliases, _newest, _payload,
+    CHECK_RESULT, INACTIVE_STATES, _by_effort, _derived, _list, _live, _merge_aliases, _newest,
     _recorded_at, _remapped,
 )
 from dashboard.backend.store import change_token
@@ -126,7 +127,7 @@ def _list_all(target: Project, record_types: tuple[str, ...], token: str) -> dic
 def _structured_phases(specs: list[dict[str, Any]]) -> set[tuple[str, str]]:
     found = set()
     for record in _live(specs):
-        payload = _payload(record)
+        payload = record_payload(record)
         effort, phase = payload.get("effort") or "", payload.get("phase") or ""
         if effort and phase:
             found.add((effort, phase))
@@ -134,7 +135,7 @@ def _structured_phases(specs: list[dict[str, Any]]) -> set[tuple[str, str]]:
 
 
 def _needs_route(record: dict[str, Any]) -> bool:
-    payload = _payload(record)
+    payload = record_payload(record)
     status, nxt, confidence = payload.get("status", ""), payload.get("next", ""), payload.get("confidence", "")
     if status == "insufficient" or nxt == "execute":
         return False
@@ -144,14 +145,14 @@ def _needs_route(record: dict[str, Any]) -> bool:
 
 
 def _assessment_summary(record: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> tuple[str, bool]:
-    payload = _payload(record)
+    payload = record_payload(record)
     summary = f"{payload.get('requirement', '')} {payload.get('status', '')} {payload.get('next', '')}"
     if payload.get("next") in UPSTREAM_NEXT:
         summary += " upstream"
     links = (record.get("relationships") or {}).get("supersedes") or []
     previous = by_id.get(links[0]) if links else None
     if previous is not None:
-        old, new = _payload(previous).get("level") or "", payload.get("level") or ""
+        old, new = record_payload(previous).get("level") or "", payload.get("level") or ""
         if old != new:
             summary += f" level {old} to {new}"
     return summary, payload.get("status") in ("failed", "blocked")
@@ -175,7 +176,7 @@ def _backlog_items(records: list[dict[str, Any]]) -> list[BacklogItem]:
     for record in records:
         if record.get("lifecycle_state") in INACTIVE_STATES:
             continue
-        payload = _payload(record)
+        payload = record_payload(record)
         if payload.get("status") != "open":
             continue
         items.append(BacklogItem(
@@ -212,24 +213,24 @@ def _needs_you(
     items = []
     for record in questions:
         if record["lifecycle_state"] == "open":
-            kind = "blocking-question" if _payload(record).get("blocking") is True else "open-question"
-            items.append(item(kind, record, record["subject"], _payload(record).get("scope", "")))
+            kind = "blocking-question" if record_payload(record).get("blocking") is True else "open-question"
+            items.append(item(kind, record, record["subject"], record_payload(record).get("scope", "")))
     for record in findings:
-        if _payload(record).get("needs") == "human" and record["lifecycle_state"] in ("asserted", "supported", "disputed"):
-            items.append(item("needs-human", record, record["subject"], _payload(record).get("claim", "")))
+        if record_payload(record).get("needs") == "human" and record["lifecycle_state"] in ("asserted", "supported", "disputed"):
+            items.append(item("needs-human", record, record["subject"], record_payload(record).get("claim", "")))
     for record in checks:
-        payload = _payload(record)
+        payload = record_payload(record)
         if payload.get("method") == "manual" and payload.get("signed_by") == "" and not _derived(record).get("corrected"):
             acceptance = acceptances.get(payload.get("criterion_id", ""))
             subject = acceptance["subject"] if acceptance else record["subject"]
-            criterion = _payload(acceptance).get("criterion", "") if acceptance else ""
+            criterion = record_payload(acceptance).get("criterion", "") if acceptance else ""
             text = f"{criterion} {payload.get('result', '')}".strip()
             items.append(item("unsigned-check", record, subject, text))
     spec_phases = spec_phases or set()
     for (phase, requirement), record in sorted(_latest_assessment_map(assessments or []).items()):
         if phase not in spec_phases or not _needs_route(record):
             continue
-        payload = _payload(record)
+        payload = record_payload(record)
         status, nxt = payload.get("status", ""), payload.get("next", "")
         text = " ".join(part for part in (requirement, status, nxt) if part)
         items.append(NeedsYouItem(
@@ -239,14 +240,14 @@ def _needs_you(
         ))
     reports_by_phase: dict[str, list[dict[str, Any]]] = {}
     for record in _live(integrations or []):
-        phase = _payload(record).get("phase", "")
+        phase = record_payload(record).get("phase", "")
         if phase in spec_phases:
             reports_by_phase.setdefault(phase, []).append(record)
     for phase, records in reports_by_phase.items():
         latest = _newest(records)
         if latest is None:
             continue
-        result = _payload(latest).get("result", "")
+        result = record_payload(latest).get("result", "")
         if result not in ("fail", "blocked"):
             continue
         items.append(NeedsYouItem(
@@ -273,21 +274,21 @@ def _activity(
             )
 
     def work_item(record: dict[str, Any]) -> tuple[str | None, str]:
-        ref = _payload(record).get("work_item", "")
+        ref = record_payload(record).get("work_item", "")
         effort, subject = efforts_by_work_item.get(ref, (None, ref))
         return effort, subject
 
     for record in assignments:
         effort, subject = work_item(record)
-        add(_payload(record).get("effort") or effort, "assignment", record,
-            f"{subject} assigned to {_payload(record).get('executor', '')}")
+        add(record_payload(record).get("effort") or effort, "assignment", record,
+            f"{subject} assigned to {record_payload(record).get('executor', '')}")
     for record in reports:
         effort, subject = work_item(record)
-        payload = _payload(record)
+        payload = record_payload(record)
         add(effort, "execution-report", record, f"{subject} reported {payload.get('verdict', '')}",
             "fail" in (payload.get("result"), payload.get("verdict")))
     for record in checks:
-        payload = _payload(record)
+        payload = record_payload(record)
         outcome = CHECK_RESULT.get(payload.get("result", ""), payload.get("result", ""))
         method = payload.get("method", "").replace("check", "").strip()
         label = " ".join(part for part in (record["subject"], method, "check", outcome) if part)
@@ -295,19 +296,19 @@ def _activity(
     structured = structured or set()
     assessment_by_id = {record["id"]: record for record in assessments or []}
     for record in assessments or []:
-        payload = _payload(record)
+        payload = record_payload(record)
         if (payload.get("effort"), payload.get("phase")) not in structured:
             continue
         summary, failed = _assessment_summary(record, assessment_by_id)
         add(payload.get("effort"), "assessment", record, summary, failed)
     for record in integrations or []:
-        payload = _payload(record)
+        payload = record_payload(record)
         if (payload.get("effort"), payload.get("phase")) not in structured:
             continue
         result = payload.get("result", "")
         add(payload.get("effort"), "integration", record, f"{payload.get('phase', '')} {result}", result in ("fail", "blocked"))
     for record in releases or []:
-        payload = _payload(record)
+        payload = record_payload(record)
         if (payload.get("effort"), payload.get("phase")) not in structured:
             continue
         state = payload.get("state", "")
@@ -329,7 +330,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
     listed = {record_type: _remapped(records, aliases) for record_type, records in listed.items()}
     goals = [
         r for r in listed["score:effort"]
-        if r["lifecycle_state"] == "active" and _payload(r).get("status") != "closed"
+        if r["lifecycle_state"] == "active" and record_payload(r).get("status") != "closed"
     ]
     phases = _by_effort(listed["score:phase"])
     milestones = _by_effort(listed.get("score:milestone") or [])
@@ -344,7 +345,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
     acceptances_by_id = {record["id"]: record for record in acceptances_all}
     efforts_by_work_item = {}
     for task in all_tasks:
-        entry = (_payload(task).get("effort"), task["subject"])
+        entry = (record_payload(task).get("effort"), task["subject"])
         efforts_by_work_item[task["id"]] = entry
         efforts_by_work_item.setdefault(task["subject"], entry)
     specs = listed["score:specification"]
@@ -366,11 +367,11 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         efforts_by_work_item, now - RECENT, assessments, integrations, releases, structured,
     )
     positions = {
-        record["subject"]: _payload(record).get("position", "")
+        record["subject"]: record_payload(record).get("position", "")
         for record in listed["score:position"]
         if record["lifecycle_state"] == "active"
-        and _payload(record).get("status") != "closed"
-        and _payload(record).get("scope") == "effort"
+        and record_payload(record).get("status") != "closed"
+        and record_payload(record).get("scope") == "effort"
     }
     efforts = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
@@ -395,14 +396,14 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         )
         milestone_rows = _milestone_rows(milestones.get(effort, []), phase_rows)
         phase_rows = attach_milestones(phase_rows, milestone_rows)
-        kind = _payload(goal).get("kind") or ""
+        kind = record_payload(goal).get("kind") or ""
         journal_open = []
         if kind in ("repair", "evaluate"):
             open_items, _ = journal_ordered(load_journal(target, effort))
             journal_open = open_items
         efforts.append(EffortView(
             effort=effort,
-            goal=_payload(goal).get("goal", ""),
+            goal=record_payload(goal).get("goal", ""),
             phases=phase_rows,
             milestones=milestone_rows,
             tasks=_task_rows(

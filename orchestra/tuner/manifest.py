@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from orchestra.canon.git_backend import run_git
+
 MANIFEST_PATH = ".tuner/manifest.json"
 ALLOWLIST_PATH = ".tuner/allowed_signers"
 DEFAULT_RUNNER = (
@@ -258,10 +260,7 @@ def _run_git(
     check: bool = True,
 ) -> subprocess.CompletedProcess[bytes]:
     try:
-        result = subprocess.run(
-            ["git", "-C", str(cwd), "--no-pager", *args],
-            capture_output=True,
-        )
+        result = run_git(cwd, "--no-pager", *args, capture_output=True)
     except FileNotFoundError as exc:
         raise ManifestError("git is not available") from exc
     if check and result.returncode != 0:

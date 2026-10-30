@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.store import StoreError
 from dashboard.backend.dismiss import (
@@ -59,11 +60,6 @@ def action_label(action: str) -> str:
         ACTION_SIGN: "Sign",
         ACTION_ACCEPT: "Accept risk",
     }.get(action, action)
-
-
-def _payload(record: dict[str, Any]) -> dict[str, Any]:
-    payload = record.get("payload")
-    return payload if isinstance(payload, dict) else {}
 
 
 def _section(body: str, heading: str) -> str:
@@ -126,7 +122,7 @@ def _revisions_match(checked: str, head: str) -> bool:
 
 
 def _finding_evidence(item: NeedsYouItem, record: dict[str, Any]) -> list[tuple[str, str]]:
-    payload = _payload(record) if record else {}
+    payload = record_payload(record) if record else {}
     claim = (payload.get("claim") or item.text or "").strip()
     basis = (payload.get("basis") or "").strip()
     body = (record.get("body") if record else None) or item.body or ""
@@ -145,7 +141,7 @@ def _finding_evidence(item: NeedsYouItem, record: dict[str, Any]) -> list[tuple[
 def _check_evidence(
     target: Project, item: NeedsYouItem, root: Path, record: dict[str, Any],
 ) -> list[tuple[str, str]]:
-    payload = _payload(record) if record else {}
+    payload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
     checked_rev = str(payload.get("revision") or "").strip()
     head = _git_head(root)
@@ -154,7 +150,7 @@ def _check_evidence(
     if criterion_id:
         acceptance = _cli_json(target, "get", "--id", criterion_id, "--type", "score:acceptance")
         if acceptance:
-            acceptance_text = str(_payload(acceptance).get("criterion") or "").strip()
+            acceptance_text = str(record_payload(acceptance).get("criterion") or "").strip()
             if acceptance.get("body"):
                 acceptance_text = (
                     f"{acceptance_text}\n\n{(acceptance.get('body') or '').strip()}"

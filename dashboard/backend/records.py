@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from orchestra.canon import record_payload
 from datetime import datetime, timezone
 from typing import Any
 
@@ -37,18 +38,14 @@ def _list(
         raise
 
 
-def _payload(record: dict[str, Any]) -> dict[str, Any]:
-    return record.get("payload") or {}
-
-
 def _merge_aliases(goals: list[dict[str, Any]]) -> dict[str, str]:
-    return {old: goal["subject"] for goal in goals for old in _payload(goal).get("merged_from") or []}
+    return {old: goal["subject"] for goal in goals for old in record_payload(goal).get("merged_from") or []}
 
 
 def _remapped(records: list[dict[str, Any]], aliases: dict[str, str]) -> list[dict[str, Any]]:
     return [
-        {**record, "payload": {**_payload(record), "effort": aliases[_payload(record)["effort"]]}}
-        if _payload(record).get("effort") in aliases else record
+        {**record, "payload": {**record_payload(record), "effort": aliases[record_payload(record)["effort"]]}}
+        if record_payload(record).get("effort") in aliases else record
         for record in records
     ]
 
@@ -94,6 +91,6 @@ def _newest(records: list[dict[str, Any]]) -> dict[str, Any] | None:
 def _by_effort(records: list[dict[str, Any]], key: str = "effort") -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for record in records:
-        effort = record["subject"] if key == "subject" else _payload(record).get(key)
+        effort = record["subject"] if key == "subject" else record_payload(record).get(key)
         grouped.setdefault(effort, []).append(record)
     return grouped

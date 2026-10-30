@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from orchestra.canon import record_payload
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -56,7 +57,7 @@ def _phase_for_task(subject: str, tasks: list[dict[str, Any]]) -> tuple[str | No
     if not matches:
         return None, ""
     task = max(matches, key=lambda item: len(item["subject"]))
-    return records._payload(task).get("phase") or None, task["id"]
+    return record_payload(task).get("phase") or None, task["id"]
 
 
 def _plan_review_slug(scope: str) -> str | None:
@@ -78,7 +79,7 @@ def _question_open(record: dict[str, Any]) -> bool:
 
 def _finding_open(record: dict[str, Any]) -> bool:
     return (
-        records._payload(record).get("needs") == "human"
+        record_payload(record).get("needs") == "human"
         and record.get("lifecycle_state") in FINDING_OPEN_STATES
     )
 
@@ -107,7 +108,7 @@ def _finding_text(payload: dict[str, Any]) -> str:
 
 
 def _question_text(record: dict[str, Any], phase_titles: dict[str, str]) -> str:
-    scope = records._payload(record).get("scope") or ""
+    scope = record_payload(record).get("scope") or ""
     shown = _question_scope_text(scope, phase_titles)
     state = record.get("lifecycle_state") or ""
     if shown and state:
@@ -127,7 +128,7 @@ def _belongs_to_effort(
 ) -> bool:
     if by_subject:
         return record.get("subject") == effort
-    payload_effort = records._payload(record).get("effort")
+    payload_effort = record_payload(record).get("effort")
     if payload_effort:
         return payload_effort == effort
     return sole_goal
@@ -139,17 +140,17 @@ def _assignment_task(
     tasks_by_id: dict[str, dict[str, Any]],
     tasks_by_subject: dict[str, dict[str, Any]],
 ) -> tuple[str | None, str, str]:
-    ref = records._payload(record).get("assignment") or ""
+    ref = record_payload(record).get("assignment") or ""
     assignment = assignments.get(ref)
     if assignment is None:
         phase, task_id = _phase_for_task(record["subject"], list(tasks_by_subject.values()))
         return phase, task_id, record["subject"] if task_id else ""
-    work_ref = records._payload(assignment).get("work_item") or ""
+    work_ref = record_payload(assignment).get("work_item") or ""
     task = tasks_by_id.get(work_ref) or tasks_by_subject.get(work_ref)
     if task is None:
         phase, task_id = _phase_for_task(assignment["subject"], list(tasks_by_subject.values()))
         return phase, task_id, assignment["subject"] if task_id else assignment["subject"]
-    return records._payload(task).get("phase") or None, task["id"], task["subject"]
+    return record_payload(task).get("phase") or None, task["id"], task["subject"]
 
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
@@ -158,7 +159,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     goals = [
         record for record in records._list(target, "score:effort")
         if record.get("lifecycle_state") == "active"
-        and records._payload(record).get("status") != "closed"
+        and record_payload(record).get("status") != "closed"
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
@@ -169,7 +170,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     if not tasks:
         tasks = [
             record for record in records._remapped(_soft_list(target, "score:work-item"), aliases)
-            if records._payload(record).get("effort") == effort
+            if record_payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
@@ -179,7 +180,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         aliases,
     )
     phase_titles = {
-        record["subject"]: records._payload(record).get("title") or record["subject"]
+        record["subject"]: record_payload(record).get("title") or record["subject"]
         for record in phases
     }
 
@@ -206,7 +207,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _attempt_text(records._payload(record)), False, task_id,
+            records._recorded_at(record), _attempt_text(record_payload(record)), False, task_id,
         ))
 
     for record in listed["tuner:investigation-observation"]:
@@ -215,7 +216,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
             records._recorded_at(record),
-            records._payload(record).get("what_was_observed") or "",
+            record_payload(record).get("what_was_observed") or "",
             open_item, task_id,
         ))
 
@@ -223,12 +224,12 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         items.append(JournalItem(
             record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _finding_text(records._payload(record)),
+            records._recorded_at(record), _finding_text(record_payload(record)),
             _finding_open(record), task_id,
         ))
 
     for record in listed["score:continuity-question"]:
-        scope = records._payload(record).get("scope") or ""
+        scope = record_payload(record).get("scope") or ""
         slug = _plan_review_slug(scope)
         phase = slug if slug is not None else None
         items.append(JournalItem(
@@ -312,7 +313,7 @@ def list_markdown(items: list[JournalItem], *, scope: str) -> str:
 
 def record_markdown(record: dict[str, Any]) -> str:
     """Markdown for one record: type, subject, payload, body (R5)."""
-    payload = records._payload(record)
+    payload = record_payload(record)
     lines = [
         f"# {record.get('record_type', '')}",
         "",

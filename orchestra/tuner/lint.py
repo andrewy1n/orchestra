@@ -6,11 +6,11 @@ import ast
 import json
 import re
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Sequence
 
+from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import MANIFEST_PATH, load_manifest, resolve_commit
 from orchestra.tuner.runner import run_tests
 
@@ -140,8 +140,13 @@ def _is_raises_call(func: ast.AST) -> bool:
 def _checkout(cwd: Path, commit: str) -> tuple[Path, Path] | None:
     parent = Path(tempfile.mkdtemp(prefix="aff-lint-"))
     worktree = parent / "wt"
-    added = subprocess.run(
-        ["git", "-C", str(cwd), "worktree", "add", "--detach", str(worktree), commit],
+    added = run_git(
+        cwd,
+        "worktree",
+        "add",
+        "--detach",
+        str(worktree),
+        commit,
         capture_output=True,
     )
     if added.returncode != 0:
@@ -160,8 +165,12 @@ def _remove(cwd: Path, checked: tuple[Path, Path] | None) -> None:
     if checked is None:
         return
     parent, worktree = checked
-    subprocess.run(
-        ["git", "-C", str(cwd), "worktree", "remove", "--force", str(worktree)],
+    run_git(
+        cwd,
+        "worktree",
+        "remove",
+        "--force",
+        str(worktree),
         capture_output=True,
     )
     shutil.rmtree(parent, ignore_errors=True)

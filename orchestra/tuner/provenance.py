@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import (
     ALLOWLIST_PATH,
     MANIFEST_PATH,
@@ -52,11 +53,7 @@ def _git(cwd: Path | str, *args: str, config: tuple[str, ...] = ()) -> subproces
     prefix: list[str] = []
     for item in config:
         prefix.extend(["-c", item])
-    return subprocess.run(
-        ["git", "-C", str(cwd), "--no-pager", *prefix, *args],
-        capture_output=True,
-        text=True,
-    )
+    return run_git(cwd, "--no-pager", *prefix, *args, capture_output=True, text=True)
 
 
 def _oracle_commit(cwd: Path | str, at_commit: str, relpaths: list[str]) -> str | None:

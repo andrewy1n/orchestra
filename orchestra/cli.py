@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -12,6 +11,7 @@ from pathlib import Path
 from orchestra.conductor import reviewer
 from orchestra import status_cli, view_cli
 
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
 from orchestra.conductor import suite
@@ -391,8 +391,10 @@ def _cwd(args: argparse.Namespace) -> Path:
 
 
 def _git_root(directory: Path) -> Path:
-    result = subprocess.run(
-        ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+    result = run_git(
+        directory,
+        "rev-parse",
+        "--show-toplevel",
         capture_output=True,
         text=True,
     )

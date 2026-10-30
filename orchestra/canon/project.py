@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
 from orchestra.canon.derive import compute_derived
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
@@ -246,8 +246,10 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
 def _project_root(directory: str | Path) -> Path:
     directory = Path(directory)
     try:
-        proc = subprocess.run(
-            ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+        proc = run_git(
+            directory,
+            "rev-parse",
+            "--show-toplevel",
             capture_output=True,
             text=True,
         )
