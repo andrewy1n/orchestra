@@ -13,7 +13,7 @@
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { detailTarget, openHash } from "./detail";
-  import { currentRoute, routeLabel } from "./router";
+  import { currentRoute, effortName, routeLabel } from "./router";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
   let theme: Theme = $state(DEFAULT_THEME);
@@ -100,6 +100,10 @@
         <Journal />
       {:else if navigation.route.name === "area"}
         <Area />
+      {:else if navigation.route.name === "effort" && !effort}
+        {#if polling.snapshot}
+          <p class="empty-note">No effort named {effortName(navigation.route)}.</p>
+        {/if}
       {:else if effort}
         <Home {effort} />
       {:else if !polling.loading && !polling.error}

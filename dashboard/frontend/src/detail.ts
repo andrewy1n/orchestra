@@ -139,6 +139,11 @@ export function areaHref(subject: string): string {
 	return `#/area/${enc(subject)}`;
 }
 
+/** Hash href that opens the Home screen of an effort. */
+export function effortHref(name: string): string {
+	return `#/effort/${enc(name)}`;
+}
+
 /** Hash href that opens a journal record overlay. */
 export function recordHref(id: string): string {
 	return `#/record/${enc(id)}`;

@@ -1,3 +1,4 @@
+import { untrack } from "svelte";
 import { openHash, phaseHref } from "../../detail";
 import {
 	defaultPhase,
@@ -11,6 +12,7 @@ import {
 	initialExpandedMilestones,
 } from "../../milestones";
 import { startTokenPoller } from "../../poll";
+import { effortName } from "../../router";
 import { openBacklog } from "../../side";
 import type { EffortView, Snapshot, StatusTab } from "../../types";
 import { navigation } from "./route.svelte";
@@ -200,6 +202,12 @@ export function bindPolling() {
 			current,
 			polling.pinnedPhase,
 		);
+	});
+
+	$effect(() => {
+		const name = effortName(navigation.route);
+		if (name && untrack(() => polling.selectedEffort) !== name)
+			polling.selectEffort(name);
 	});
 
 	$effect(() => {
