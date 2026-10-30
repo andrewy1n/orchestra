@@ -9,6 +9,7 @@ from typing import Any
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.schema import SchemaSet, TypeDef, ref_targets
+from orchestra.canon.store import StoreError
 
 
 class ValidationError(Exception):
@@ -301,7 +302,7 @@ def validate_append_only_history(
             continue
         try:
             exists = backend.history_exists(record["record_type"], record["id"], record["revision"])
-        except ValueError as exc:
+        except (ValueError, StoreError) as exc:
             errors.append(f"{record['id']}: invalid append-only history path: {exc}")
             continue
         if not exists:
