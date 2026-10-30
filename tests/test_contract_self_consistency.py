@@ -1,6 +1,6 @@
 """Schema module self-consistency checks.
 
-Every check derives from the plan, run, and aff schema modules, so none
+Every check derives from the score, conductor, tuner, and composer schema modules, so none
 hardcode record type names or counts.
 """
 

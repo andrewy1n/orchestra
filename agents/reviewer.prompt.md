@@ -1,5 +1,5 @@
 ---
-name: se-reviewer
+name: reviewer
 description: >-
   Read-only phase-end reviewer for orchestra. Compares phase specs,
   acceptances, invariants, and the phase diff to the tree. Returns structured

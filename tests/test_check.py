@@ -211,7 +211,7 @@ def test_cli_blocked_missing_command(store, cli, resolved_contract):
         cli,
         resolved_contract,
         subject="blocked-task",
-        verify_command="se-workflow-definitely-missing-binary-xyz",
+        verify_command="orchestra-definitely-missing-binary-xyz",
         method="check",
     )
     result = _run_tuner("check", "--acceptance", acceptance["id"], cwd=store)

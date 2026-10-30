@@ -36,8 +36,8 @@ Reviewer writes no store records. Parent creates them.
    (work-item Description/Approach, acceptances, requirements/
    invariants, `git diff <base>..<phase-head>` only — no
    execution-report, check-run, assessment, or assignment text).
-2. Host `se-reviewer` if available; else read-only/explore subagent
-   with [se-reviewer.md](references/se-reviewer.md). Refuse reviewer
+2. Host `reviewer` if available; else read-only/explore subagent
+   with [reviewer.md](references/reviewer.md). Refuse reviewer
    store writes or tree mutation.
 3. Create `tuner:check-run` (`method: review`,
    `evidence_kind: review`, `revision` = phase head; `PASS`→`pass`,
