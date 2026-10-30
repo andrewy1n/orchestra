@@ -1,4 +1,4 @@
-import { leafTarget, openHash } from "../../detail";
+import { effortHref, leafTarget, openHash } from "../../detail";
 import { currentRoute } from "../../router";
 import { overlay } from "./overlay.svelte";
 import { leaveHref } from "./polling.svelte";
@@ -23,5 +23,9 @@ export function handleKey(event: KeyboardEvent, toggleTheme: () => void) {
 	if (leafTarget(current)) return;
 	if (current.name === "journal") {
 		openHash(leaveHref());
+		return;
+	}
+	if (current.name === "phase" && current.parts[1]) {
+		openHash(effortHref(current.parts[1]));
 	}
 }
