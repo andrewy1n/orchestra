@@ -36,6 +36,15 @@ their response. They do not call `canon`.
   code cannot show.
 - Use Conventional Commits. Keep the subject short and imperative.
 
+## Git
+
+- `main` is protected. Never push to it. Push a branch and open a PR.
+- A PR merges only when all CI checks pass. Admins follow the same rule.
+- Merge with `gh pr merge --squash`. `main` requires linear history.
+- Commit store changes on the same branch as the work they record.
+- Run `canon validate` before you push.
+- Ask the user before you merge, unless an active constraint says otherwise.
+
 ## Testing
 
 While you edit, run the affected test files with `uv run pytest <files>`.
