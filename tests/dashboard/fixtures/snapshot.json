@@ -2,6 +2,7 @@
   "body": {
     "efforts": [
       {
+        "area": "",
         "backlog": [
           {
             "id": "<composer:idea:park-me>",
@@ -247,6 +248,7 @@
         ]
       },
       {
+        "area": "",
         "backlog": [],
         "effort": "beta",
         "finished": false,
