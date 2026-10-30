@@ -54,6 +54,12 @@ class PhaseState {
 		return detailView("phase", this.payload, this.activePhaseTab);
 	});
 
+	state = $derived.by(() => {
+		const detail = (this.payload as { detail?: { state?: unknown } } | null)
+			?.detail;
+		return String(detail?.state ?? "").replace(/_/g, " ");
+	});
+
 	taskView = $derived.by(() => {
 		if (!this.target || this.activePhaseTab !== "tasks" || !this.payload) {
 			return null;

@@ -1764,3 +1764,24 @@ a.lrow {
 		@apply font-sans;
 	}
 }
+
+.phase-head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	margin-bottom: 12px;
+}
+
+.phase-title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.phase-state {
+	font-size: 13px;
+	text-transform: capitalize;
+	color: var(--muted, var(--ink));
+}

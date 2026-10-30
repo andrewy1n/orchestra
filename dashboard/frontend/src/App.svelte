@@ -6,6 +6,7 @@
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
+  import PhasePage from "$lib/screens/PhasePage.svelte";
   import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
@@ -14,7 +15,7 @@
   import { bindJournal } from "$lib/state/journal.svelte";
   import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
-  import { bindPhase, phase } from "$lib/state/phase.svelte";
+  import { bindPhase } from "$lib/state/phase.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
@@ -29,7 +30,7 @@
   bindPhase();
 
   const effort = $derived(polling.effort);
-  const target = $derived(overlay.target ?? phase.target);
+  const target = $derived(overlay.target);
   const railLevel = $derived(
     railItems(
       navigation.route,
@@ -100,6 +101,8 @@
         <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />
+      {:else if navigation.route.name === "phase"}
+        <PhasePage {theme} />
       {:else if navigation.route.name === "effort" && !effort}
         {#if polling.snapshot}
           <p class="empty-note">No effort named {effortName(navigation.route)}.</p>
@@ -130,5 +133,5 @@
   </footer>
 </div>
 
-<Overlay {theme} />
+<Overlay />
 <ConfirmModal />
