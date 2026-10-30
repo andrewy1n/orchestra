@@ -22,7 +22,7 @@ HUMAN_DISMISSIBLE = frozenset({
     "blocking-question", "open-question", "needs-human", "unsigned-check",
 })
 
-DEFAULT_SIGNER_ENV = "SE_WORKFLOW_SIGNED_BY"
+DEFAULT_SIGNER_ENV = "ORCHESTRA_SIGNED_BY"
 
 # Actions for dismiss_command / dismiss_item.
 ACTION_APPROVE = "approve"

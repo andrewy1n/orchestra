@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 MARKER = ".orchestra-install.json"
 
 CANONICAL_AGENT = """---
-name: se-reviewer
+name: reviewer
 description: Fixture reviewer
 ---
 Fixture reviewer body.

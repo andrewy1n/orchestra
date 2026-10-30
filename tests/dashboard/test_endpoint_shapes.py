@@ -341,7 +341,7 @@ def _build_areas(root: Path, _cli, defs) -> dict[str, Any]:
 
 @pytest.fixture()
 def seeded_areas(store, monkeypatch):
-    monkeypatch.setenv("SE_WORKFLOW_SIGNED_BY", "shape-signer")
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "shape-signer")
     seed = stamped_store(store, "endpoint-shapes-areas", _build_areas)
     client = TestClient(create_app(open_store(store)), raise_server_exceptions=False)
     return client, seed, store
@@ -349,7 +349,7 @@ def seeded_areas(store, monkeypatch):
 
 @pytest.fixture()
 def seeded(store, monkeypatch):
-    monkeypatch.setenv("SE_WORKFLOW_SIGNED_BY", "shape-signer")
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "shape-signer")
     seed = stamped_store(store, "endpoint-shapes", _build)
     client = TestClient(create_app(open_store(store)), raise_server_exceptions=False)
     return client, seed, store

@@ -339,7 +339,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     store_ensure = store_sub.add_parser(
         "ensure",
-        help="Create the store with the plan, run, and aff schemas when absent",
+        help="Create the store with the score, conductor, and tuner schemas when absent",
     )
     store_ensure.add_argument("--cwd", default=None, help="Directory (default: cwd)")
     store_ensure.add_argument(

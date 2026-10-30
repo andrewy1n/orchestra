@@ -1,4 +1,4 @@
-"""Tests for se-workflow close-batch -- the batch builder behind the
+"""Tests for orchestra close-batch -- the batch builder behind the
 verify-work `close` procedure.
 
 The pure `build_batch` tests exercise the refusal policy directly; the

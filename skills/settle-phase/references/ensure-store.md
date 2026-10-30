@@ -39,7 +39,7 @@ These are named commands, not files inside a checkout:
   its check-run.
 - `orchestra store path` prints the resolved store;
   `orchestra store run -- <args>` runs `canon` against it.
-- `aff` judges a claim in `.tuner/manifest.json`.
+- `orchestra verify` judges a claim in `.tuner/manifest.json`.
 
 Do not hardcode a plugin directory or a home checkout in a command.
 

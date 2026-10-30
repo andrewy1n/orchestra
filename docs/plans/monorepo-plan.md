@@ -96,7 +96,7 @@ Work on branch `phase/monorepo` in `~/orchestra`.
    in `tests/` until Phase 2.
 3. Rewrite imports: `canon.` → `orchestra.canon.`, `affidavit.` →
    `orchestra.tuner.`. Remove the git-URL dependencies and the `evidence`
-   extra. Declare test dependencies (`pytest`, `pytest-xdist`, `textual`) in
+   extra. Declare test dependencies (`pytest`, `pytest-xdist`) in
    `pyproject.toml`.
 4. Expose two scripts: `orchestra` and `canon`. Fold the affidavit CLI into
    `orchestra verify`. Delete `bin/aff` and any `aa` alias. Rename
@@ -115,8 +115,7 @@ Work on branch `phase/monorepo` in `~/orchestra`.
    `workflow-loop`) and affidavit (effort `evidence-layer`). The affidavit
    phase becomes `tuner-evidence-kind`.
 8. Set `settings.conductor.phase_gate.suite` to the full suite with `gate:
-   required`. Use `uv run pytest tests -q -n 4 -m "not tmux" && uv run pytest
-   tests -q -m tmux`.
+   required`. Use the three pytest commands in the README Testing section.
 9. Delete `orchestra/canon/legacy.py` and `canon migrate-legacy`. No legacy
    store is left after Phase 0.
 10. Re-create `~/website/.canon/` with `canon init --schemas

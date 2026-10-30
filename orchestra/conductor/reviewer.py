@@ -427,7 +427,7 @@ def grade_reviewer_inputs(
     records: Sequence[Mapping[str, Any]],
     phase_diff: str,
 ) -> dict[str, Any]:
-    """Deterministic stub mirroring ``agents/se-reviewer.md`` spec-gap grading.
+    """Deterministic stub mirroring ``agents/reviewer.md`` spec-gap grading.
 
     When a work-item description promises UI labels that neither that task's
     acceptance criteria nor the phase diff cover, return NEEDS_WORK with a
