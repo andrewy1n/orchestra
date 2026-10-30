@@ -35,9 +35,11 @@ def test_handoff_has_goal_and_position_under_effort_heading(project):
     assert "### Position\n- **alpha**: midway; effort" in text
 
 
-def test_handoff_links_use_new_record_path(project):
+def test_handoff_references_record_ids_without_file_links(project):
     text = render(project, "handoff")
-    assert ".canon/records/score__effort/rec-" in text
+    assert project.resolve("score:effort", "alpha")["id"] in text
+    assert ".canon/" not in text
+    assert "](" not in text
 
 
 def test_handoff_has_no_store_state_line(project):
@@ -347,7 +349,7 @@ def test_cli_view_without_store_fails_cleanly(tmp_path, monkeypatch, capsys):
     assert "No artifact store" in capsys.readouterr().err
 
 
-def test_r11_cli_handoff_keeps_id_links_latest_proof_and_backlog(project, monkeypatch, capsys):
+def test_r11_cli_handoff_keeps_ids_latest_proof_and_backlog(project, monkeypatch, capsys):
     create(
         project,
         "conductor:proof-packet",
@@ -357,6 +359,6 @@ def test_r11_cli_handoff_keeps_id_links_latest_proof_and_backlog(project, monkey
     create(project, "composer:idea", "later-idea", {"effort": "alpha", "status": "open"})
     code, out = run_cli(monkeypatch, capsys, project, "handoff")
     assert code == 0
-    assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo _(id: [rec-" in out.out
-    assert "### Backlog\n- **later-idea**: alpha; open _(id: [rec-" in out.out
-    assert "](.canon/records/score__effort/rec-" in out.out
+    assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo _(id: rec-" in out.out
+    assert "### Backlog\n- **later-idea**: alpha; open _(id: rec-" in out.out
+    assert ".canon/" not in out.out
