@@ -139,6 +139,11 @@ export function areaHref(subject: string): string {
 	return `#/area/${enc(subject)}`;
 }
 
+/** Hash href that opens the Home screen of an effort. */
+export function effortHref(name: string): string {
+	return `#/effort/${enc(name)}`;
+}
+
 /** Hash href that opens a journal record overlay. */
 export function recordHref(id: string): string {
 	return `#/record/${enc(id)}`;
@@ -194,12 +199,12 @@ export function openHash(hash: string): void {
 
 /**
  * Overlay Back / Esc. Step to the previous in-app screen.
- * With no in-app history, return to the dashboard.
+ * With no in-app history, open `fallback`.
  */
-export function closeDetail(): void {
+export function closeDetail(fallback = ""): void {
 	const prev = backStack.pop();
 	rewinding = true;
-	openHash(prev ?? "");
+	openHash(prev ?? fallback);
 	rewinding = false;
 }
 

@@ -1,4 +1,5 @@
-import { openHash, phaseHref } from "../../detail";
+import { untrack } from "svelte";
+import { effortHref, openHash, phaseHref } from "../../detail";
 import {
 	defaultPhase,
 	filteredTasks,
@@ -11,8 +12,10 @@ import {
 	initialExpandedMilestones,
 } from "../../milestones";
 import { startTokenPoller } from "../../poll";
+import { effortName } from "../../router";
 import { openBacklog } from "../../side";
 import type { EffortView, Snapshot, StatusTab } from "../../types";
+import { routeEffort } from "./areas";
 import { navigation } from "./route.svelte";
 
 const JOURNAL_TEASER_KINDS = new Set(["repair", "evaluate"]);
@@ -161,6 +164,16 @@ class Polling {
 
 export const polling = new Polling();
 
+export function leaveHref(): string {
+	const name =
+		routeEffort(
+			navigation.route,
+			polling.snapshot?.efforts ?? [],
+			polling.selectedEffort,
+		)?.effort ?? polling.selectedEffort;
+	return name ? effortHref(name) : "";
+}
+
 function openPhase(subject: string) {
 	if (!polling.effort) return;
 	openHash(phaseHref(polling.effort.effort, subject));
@@ -200,6 +213,12 @@ export function bindPolling() {
 			current,
 			polling.pinnedPhase,
 		);
+	});
+
+	$effect(() => {
+		const name = effortName(navigation.route);
+		if (name && untrack(() => polling.selectedEffort) !== name)
+			polling.selectEffort(name);
 	});
 
 	$effect(() => {

@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-b3a95730-654b-4777-bdab-6aec6df3cdf0",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-5e3ca47a-1650-42a3-8bc8-dc3c01034eb1",
+    "duration_s": 1.58058,
+    "effort": "canon-db-store",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-5e3ca47a-1650-42a3-8bc8-dc3c01034eb1",
+      "rec-1529693a-ac8c-4cfd-a705-495b27e8ce6a"
+    ],
+    "method": "tdd",
+    "output_sha256": "fb06be0765e83a121766a431badbf4b5e658484ef7d68ebf045206ac10377a05",
+    "requirement": "R5",
+    "result": "pass",
+    "revision": "ea2d38241606592cac23617f1726db6661d4a9b5",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T09:18:34+00:00",
+  "relationships": {},
+  "revision": "sha256:49ce6c3cc4462a79edfb4c78e7737e1695ef1f9961767155b66b81d98c132896",
+  "subject": "backend-boundary-r5"
+}
+---
+
+......                                                                   [100%]
+6 passed in 1.37s

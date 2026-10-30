@@ -121,80 +121,34 @@ async function mountApp(areas: AreasResponse, hash = "") {
 }
 
 describe("areas", () => {
-	it("R6 home lists each area with its title, open count and link", async () => {
-		await mountApp([billing]);
-		const heading = [...document.querySelectorAll("h2")].find(
-			(h) => h.textContent?.trim() === "Areas",
-		);
-		expect(heading).toBeTruthy();
-		const rows = document.querySelectorAll("[data-areas] [data-area]");
-		expect(rows).toHaveLength(1);
-		expect(rows[0]?.textContent).toContain("Billing");
-		expect(rows[0]?.textContent).toContain("2 open");
-		expect(rows[0]?.getAttribute("href")).toBe("#/area/billing");
-	});
-
-	it("R6 home hides the Areas section when there are no areas", async () => {
-		await mountApp([]);
+	it("R6 effort home no longer lists the areas block", async () => {
+		await mountApp([billing], "#/effort/dashboard");
 		expect(document.querySelector("[data-areas]")).toBeNull();
 		expect(document.querySelector("[data-task-table]")).not.toBeNull();
 	});
 
-	it("R7 area screen shows the title, rendered scope and open ideas first", async () => {
+	it("R6 home route lists each area as a card link instead", async () => {
+		await mountApp([billing]);
+		const cards = document.querySelectorAll("[data-area-card]");
+		expect(cards).toHaveLength(1);
+		expect(cards[0]?.getAttribute("href")).toBe("#/area/billing");
+		expect(document.querySelector("[data-task-table]")).toBeNull();
+	});
+
+	it("area screen renders the scope markdown and the breadcrumb title", async () => {
 		await mountApp([billing], areaHref("billing"));
 		const screen = document.querySelector("[data-area-screen]");
-		expect(screen).not.toBeNull();
-		expect(screen?.textContent).toContain("Billing");
 		expect(screen?.querySelector("[data-area-scope] strong")?.textContent).toBe(
 			"payment",
 		);
-		const subjects = [...screen!.querySelectorAll("[data-idea]")].map((el) =>
-			el.getAttribute("data-idea"),
+		expect(document.querySelector("[data-breadcrumb]")?.textContent).toContain(
+			"Billing",
 		);
-		expect(subjects.slice(0, 2)).toEqual(["refund-flow", "invoice-pdf"]);
-		const openList = screen?.querySelector("[data-area-open]");
-		expect(openList?.querySelectorAll("[data-idea]")).toHaveLength(2);
-	});
-
-	it("R8 moved ideas are collapsed and link to their effort or phase", async () => {
-		await mountApp([billing], areaHref("billing"));
-		const toggle = document.querySelector("[data-area-moved-toggle]");
-		expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-		const content = document.querySelector("[data-slot='collapsible-content']");
-		expect(content?.getAttribute("data-state")).toBe("closed");
-		expect(content?.hasAttribute("hidden")).toBe(true);
-		(toggle as HTMLElement).click();
-		await settle();
-		expect(toggle?.getAttribute("aria-expanded")).toBe("true");
-		expect(content?.getAttribute("data-state")).toBe("open");
-		const phaseLink = document.querySelector('[data-idea-link="phase"]');
-		expect(phaseLink?.getAttribute("href")).toBe(
-			"#/phase/dashboard/areas-and-ideas",
-		);
-		const effortLink = document.querySelector('[data-idea-link="effort"]');
-		expect(effortLink?.textContent?.trim()).toBe("web");
-		(effortLink as HTMLElement).click();
-		await settle();
-		expect(window.location.hash).toBe("");
-		expect(
-			document.querySelector("[data-effort-title]")?.textContent?.trim(),
-		).toBe("web");
-	});
-
-	it("R9 area screen renders no promote or dismiss controls", async () => {
-		await mountApp([billing], areaHref("billing"));
-		const screen = document.querySelector("[data-area-screen]");
-		const labels = [...screen!.querySelectorAll("button")].map(
-			(b) => b.textContent ?? "",
-		);
-		expect(labels.join(" ")).not.toMatch(/promote|dismiss/i);
+		expect(screen?.querySelector("[data-area-moved]")).toBeNull();
 		expect(screen?.innerHTML).not.toMatch(/promote\b|dismiss/i);
-		expect(
-			screen?.querySelector("[data-act]:not([data-act='close-area'])"),
-		).toBeNull();
 	});
 
-	it("R10 router resolves the area hash to the area screen and survives a reload", async () => {
+	it("router resolves the area hash to the area screen and survives a reload", async () => {
 		const route = parseRoute(areaHref("billing"));
 		expect(route.name).toBe("area");
 		expect(route.parts).toEqual(["area", "billing"]);
@@ -206,7 +160,7 @@ describe("areas", () => {
 		document.body.innerHTML = "";
 		await mountApp([billing], areaHref("billing"));
 		expect(document.querySelector("[data-area-screen]")?.textContent).toContain(
-			"Billing",
+			"Invoices and",
 		);
 	});
 });

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Badge } from "$lib/components/ui/badge";
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
   import { areaHref, openHash, taskHref } from "../../detail";
@@ -9,6 +8,9 @@
 
   let { effort }: { effort: EffortView } = $props();
   const hasMilestones = $derived(polling.hasMilestones);
+  const owner = $derived(
+    effort.area ? areas.items.find((item) => item.subject === effort.area) : undefined,
+  );
 
   function statusLabel(status: string): string {
     const known: Record<string, string> = {
@@ -29,6 +31,9 @@
 
 <header class="effort-head">
   <h1 class="effort-title" data-effort-title>{effort.effort}</h1>
+  {#if owner}
+    <a class="area-chip" data-area-chip href={areaHref(owner.subject)}>{owner.title}</a>
+  {/if}
   <p class="goal" data-goal>{effort.goal}</p>
 </header>
 
@@ -188,15 +193,3 @@
     {/each}
   {/if}
 </div>
-
-{#if areas.items.length}
-  <section class="areas-block" data-areas>
-    <h2 class="ptitle">Areas</h2>
-    {#each areas.items as area (area.subject)}
-      <a class="lrow clickable area-row" href={areaHref(area.subject)} data-area={area.subject}>
-        <span class="text">{area.title || area.subject}</span>
-        <Badge variant="secondary">{area.open_count} open</Badge>
-      </a>
-    {/each}
-  </section>
-{/if}

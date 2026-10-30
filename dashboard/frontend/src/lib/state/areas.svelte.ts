@@ -32,9 +32,14 @@ export function bindAreas() {
 		void getJson<AreasResponse>("areas")
 			.then((data) => {
 				if (cancelled) return;
-				areas.items = data;
 				areas.loaded = true;
-				areas.error = "";
+				if (Array.isArray(data)) {
+					areas.items = data;
+					areas.error = "";
+				} else {
+					areas.items = [];
+					areas.error = "Areas response is not a list";
+				}
 			})
 			.catch((err: unknown) => {
 				if (cancelled) return;

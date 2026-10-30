@@ -2,7 +2,7 @@
 
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { needsHref } from "../../detail";
+import { effortHref, needsHref } from "../../detail";
 import type { DeepPartial, EffortView, Snapshot } from "../../types";
 
 let mounted: ReturnType<typeof mount> | undefined;
@@ -238,6 +238,7 @@ describe("detail and confirm dialogs", () => {
 describe("detail dialog opener focus", () => {
 	it("returns focus to the opener after Escape closes the detail overlay", async () => {
 		stubFetch();
+		window.location.hash = effortHref("dashboard");
 		await mountApp();
 		const row = document.querySelector<HTMLElement>('[data-needs="q1"]');
 		expect(row).toBeTruthy();

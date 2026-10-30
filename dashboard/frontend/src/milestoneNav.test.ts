@@ -22,7 +22,7 @@ import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
 import { appSource } from "./appSource";
-import { phaseHref } from "./detail";
+import { effortHref, phaseHref } from "./detail";
 import { filteredTasks, resolvedPhase } from "./efforts";
 import {
 	groupPhasesByMilestone,
@@ -112,7 +112,10 @@ function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
 	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
+let homeEffort = "";
+
 function stubFetch(snap: Snapshot, details: Record<string, unknown> = {}) {
+	homeEffort = snap.efforts[0]?.effort ?? "";
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async (input: RequestInfo | URL) => {
@@ -153,6 +156,7 @@ function stubFetch(snap: Snapshot, details: Record<string, unknown> = {}) {
 
 async function tryMountApp(): Promise<boolean> {
 	try {
+		if (!window.location.hash) window.location.hash = effortHref(homeEffort);
 		const module = await import("./App.svelte");
 		mounted = mount(module.default as Component, { target: document.body });
 		await vi.advanceTimersByTimeAsync(0);

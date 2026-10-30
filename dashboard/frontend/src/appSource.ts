@@ -7,7 +7,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const FILES = [
 	"App.svelte",
 	"lib/screens/Area.svelte",
-	"lib/screens/EffortRail.svelte",
+	"lib/screens/Breadcrumb.svelte",
+	"lib/screens/Rail.svelte",
 	"lib/screens/Home.svelte",
 	"lib/screens/Journal.svelte",
 	"lib/screens/NeedsRows.svelte",

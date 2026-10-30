@@ -158,27 +158,6 @@ def test_r11_a_store_without_areas_returns_an_empty_list(store, cli):
     assert response.json() == []
 
 
-def _home_sources() -> str:
-    home = SCREENS / "Home.svelte"
-    assert home.is_file(), f"missing {home}"
-    text = home.read_text()
-    parts = [text]
-    for name in re.findall(r"""from\s+["']\./([\w.-]+\.svelte)["']""", text):
-        imported = SCREENS / name
-        if imported.is_file():
-            parts.append(imported.read_text())
-    return "\n".join(parts)
-
-
-def test_r6_home_has_an_areas_section_with_open_counts():
-    sources = _home_sources()
-    assert re.search(r"<h[1-6][^>]*>\s*Areas\b", sources), "Home has no Areas heading"
-    assert "open_count" in sources, "Home does not show the open idea count of an area"
-    state = UI_SRC / "lib" / "state" / "areas.svelte.ts"
-    assert state.is_file(), f"missing {state}"
-    assert "/api/areas" in state.read_text()
-
-
 def test_r9_area_screen_has_no_promote_or_dismiss_action():
     screen = SCREENS / "Area.svelte"
     assert screen.is_file(), f"missing {screen}"

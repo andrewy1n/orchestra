@@ -132,7 +132,7 @@ describe("web-dashboard main", () => {
 	});
 
 	it("R6: The effort rail shows each effort's name, kind, and needs-you count.", async () => {
-		expect(appSource).toContain("data-effort=");
+		expect(appSource).toContain("data-rail-item=");
 		expect(appSource).toMatch(/view\.kind/);
 		expect(appSource).toMatch(/needs you/);
 
@@ -174,12 +174,13 @@ describe("web-dashboard main", () => {
 				});
 			}),
 		);
+		window.location.hash = "#/effort/dashboard";
 		if (await tryMountApp()) {
-			const dash = document.querySelector('[data-effort="dashboard"]');
+			const dash = document.querySelector('[data-rail-item="dashboard"]');
 			expect(dash?.textContent).toContain("dashboard");
 			expect(dash?.textContent).toContain("deliver");
 			expect(dash?.textContent).toMatch(/2 needs you/);
-			const repair = document.querySelector('[data-effort="flaky-suite"]');
+			const repair = document.querySelector('[data-rail-item="flaky-suite"]');
 			expect(repair?.textContent).toContain("repair");
 		}
 	});
@@ -232,6 +233,7 @@ describe("web-dashboard main", () => {
 				});
 			}),
 		);
+		window.location.hash = "#/effort/alpha";
 		if (await tryMountApp()) {
 			expect(document.querySelector("[data-effort-title]")?.textContent).toBe(
 				"alpha",
@@ -240,8 +242,10 @@ describe("web-dashboard main", () => {
 				"Alpha goal text",
 			);
 			document
-				.querySelector<HTMLButtonElement>('[data-effort="beta"]')!
+				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
 				.click();
+			await vi.advanceTimersByTimeAsync(0);
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
 			flushSync();
 			expect(document.querySelector("[data-goal]")?.textContent).toBe(
 				"Beta goal text",

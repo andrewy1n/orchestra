@@ -3,6 +3,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { overlay } from "$lib/state/overlay.svelte";
+  import { leaveHref } from "$lib/state/polling.svelte";
   import { closeDetail } from "../../detail";
   import type { Theme } from "../../theme";
   import { chipVariant } from "./chipVariant";
@@ -15,7 +16,7 @@
 <Dialog.Root
   open={Boolean(target)}
   onOpenChange={(open) => {
-    if (!open) closeDetail();
+    if (!open) closeDetail(leaveHref());
   }}
 >
   {#if target}
@@ -34,7 +35,7 @@
           variant="outline"
           size="sm"
           data-act="close-detail"
-          onclick={closeDetail}
+          onclick={() => closeDetail(leaveHref())}
         >
           Back
         </Button>

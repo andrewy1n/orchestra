@@ -1,5 +1,6 @@
 <script lang="ts">
   import { journal } from "$lib/state/journal.svelte";
+  import { leaveHref } from "$lib/state/polling.svelte";
   import { openHash, recordHref } from "../../detail";
 </script>
 
@@ -9,7 +10,7 @@
       type="button"
       class="back"
       data-act="close-journal"
-      onclick={() => openHash("")}
+      onclick={() => openHash(leaveHref())}
     >
       Back
     </button>
