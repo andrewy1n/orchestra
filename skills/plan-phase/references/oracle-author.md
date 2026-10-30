@@ -20,8 +20,8 @@ Parent then, for each such acceptance:
    `orchestra check` can run.
 2. Run `orchestra check --acceptance <acceptance-id> --cwd <repo-or-worktree>`
    (expect fail).
-3. Freeze **only** when that fail is assertion-level (use
-   `tuner.oracle_red.is_assertion_level_red` on the check-run, or
+3. Freeze **only** when that fail is assertion-level (run
+   `orchestra verify assertion-red` on the check-run JSON, or
    equivalent: `result=fail` with assertion failure for a failing node
    — not ImportError / collection ERROR alone).
 4. On assertion-level red, parent writes freeze fields and the derived
