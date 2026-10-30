@@ -6,7 +6,7 @@
     "effort": "package-layout",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_shared_helpers.py:sha256:99e041d0d4d8ff2bb47d79ea121fb1862a6d5766122661d56eff2bd634c0e982"
+      "tests/test_shared_helpers.py:sha256:52b63036eb9a42dfca79cdc0bddd3101957d3f8b1dbb2d0a062fa629e6b47ddb"
     ],
     "phase": "shared-helpers",
     "requirement": "R19",
@@ -16,9 +16,9 @@
     "verify_command": "python3 -m pytest tests/test_shared_helpers.py::test_r19_canon_record_payload -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-28T09:36:25+00:00",
+  "recorded_at": "2026-10-30T00:36:35+00:00",
   "relationships": {},
-  "revision": "sha256:8232f7f903b18993a848d7fd1a6f885ff0a0b9dfeac84e4be087067869f05ae8",
+  "revision": "sha256:a46efc0b754d599d4c0905d8b475d564a73ef576f69863c80ef2d5ed80a0cd96",
   "subject": "canon-record-payload"
 }
 ---
