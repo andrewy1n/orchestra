@@ -1,0 +1,37 @@
+---
+{
+  "id": "rec-d57ab230-2eae-4b81-ac44-acad1f5e76a3",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-a7ef8991-5dc2-4b27-98bb-b3823d82b02e",
+    "duration_s": 8.976491,
+    "effort": "ci",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-a7ef8991-5dc2-4b27-98bb-b3823d82b02e"
+    ],
+    "method": "check",
+    "output_sha256": "96561c8d38124b46c490cf6ace49641c0694060fe326611a179e22cca6ab9d78",
+    "requirement": "R8",
+    "result": "pass",
+    "revision": "e30e12396e0f6d2e661cd76afb50c983b4d58ce5",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T00:57:22+00:00",
+  "relationships": {},
+  "revision": "sha256:7d01327740ab1fb27ebd8d5630d68725043866f4c6ef3c6ff435e6c77029590d",
+  "subject": "verify-wheel-smoke"
+}
+---
+
+orchestra --help: pass
+canon --help: pass
+canon init: pass
+canon validate: pass
+orchestra install --list: pass
+import dashboard: pass
+import dashboard.backend.server: pass
+import installer: pass
+import installer.adapters: pass

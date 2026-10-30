@@ -6,7 +6,7 @@
     "effort": "package-layout",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_shared_helpers.py:sha256:99e041d0d4d8ff2bb47d79ea121fb1862a6d5766122661d56eff2bd634c0e982"
+      "tests/test_shared_helpers.py:sha256:52b63036eb9a42dfca79cdc0bddd3101957d3f8b1dbb2d0a062fa629e6b47ddb"
     ],
     "phase": "shared-helpers",
     "requirement": "R4",
@@ -16,9 +16,9 @@
     "verify_command": "python3 -m pytest tests/test_shared_helpers.py::test_r4_suite_omits_hash -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-28T09:36:24+00:00",
+  "recorded_at": "2026-10-30T00:36:34+00:00",
   "relationships": {},
-  "revision": "sha256:eeb1e0f8b82d429c76aaff98f9f8ab81f4c2dfc13ea9f2be842d0c86fd13b863",
+  "revision": "sha256:f58e598e264e6b7c398720e75c85a23eb8937df30bb6cc64b958b1c4f7e38f54",
   "subject": "share-output-parser-no-hash"
 }
 ---

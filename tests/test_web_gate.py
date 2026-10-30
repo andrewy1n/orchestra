@@ -18,8 +18,11 @@ AGENTS = ROOT / "AGENTS.md"
 def _ui_copy(tmp_path: Path, link_modules: bool = True) -> Path:
     dest = tmp_path / "ui"
     shutil.copytree(UI, dest, ignore=shutil.ignore_patterns("node_modules", "dist"))
-    if link_modules:
+    if link_modules and (UI / "node_modules").is_dir():
         (dest / "node_modules").symlink_to(UI / "node_modules")
+    elif link_modules:
+        installed = _npm(dest, "ci", "--no-audit", "--no-fund")
+        assert installed.returncode == 0, _output(installed)
     return dest
 
 

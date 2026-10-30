@@ -56,6 +56,11 @@ def uses_uv(name):
     )
 
 
+def runs_only_npm(name):
+    lines = run_lines(name)
+    return bool(lines) and all(line.startswith("npm ") for line in lines)
+
+
 def setup_uv_steps(name):
     return [
         step
@@ -119,6 +124,8 @@ def test_r8_every_job_runs_python_3_10():
     found = jobs()
     assert found
     for name in found:
+        if not setup_uv_steps(name) and runs_only_npm(name):
+            continue
         versions = [
             str(step.get("with", {}).get("python-version"))
             for step in setup_uv_steps(name)
@@ -234,6 +241,26 @@ def test_blocking_jobs_do_not_continue_on_error():
 def test_no_run_step_ends_with_or_true():
     for line in all_run_lines():
         assert not line.rstrip().endswith("|| true"), line
+
+
+def test_wheel_smoke_r1_wheel_job_exists():
+    assert "wheel" in jobs()
+
+
+def test_wheel_smoke_r2_wheel_job_is_blocking():
+    assert not job("wheel").get("continue-on-error")
+
+
+def test_wheel_smoke_r3_wheel_steps_do_not_continue_on_error():
+    steps = job("wheel").get("steps") or []
+    assert isinstance(steps, list), "wheel job steps are not a list"
+    for step in steps:
+        assert isinstance(step, dict), step
+        assert not step.get("continue-on-error"), step
+
+
+def test_wheel_smoke_r4_wheel_job_runs_script():
+    assert "python3 scripts/wheel_smoke.py" in run_lines("wheel")
 
 
 WEB_DIR = "dashboard/frontend"

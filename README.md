@@ -552,3 +552,12 @@ schemas do not allow.
 
 Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
 `installer`. CI runs the same command in the `types` job.
+
+### Wheel check
+
+Run `npm ci && npm run build` in `dashboard/frontend`, then run
+`python3 scripts/wheel_smoke.py` to build the wheel and smoke-test the
+install. The script copies `dashboard/frontend/dist` into the wheel and
+checks that the installed server answers `GET /` with the built
+`index.html`. Pass `--dist PATH` to use another build directory. The
+`wheel` job builds the frontend, then runs the same command.
