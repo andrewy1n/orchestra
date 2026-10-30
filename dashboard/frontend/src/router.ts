@@ -17,7 +17,8 @@ export type RouteName =
 	| "picker"
 	| "journal"
 	| "milestone"
-	| "area";
+	| "area"
+	| "effort";
 
 export interface Route {
 	/** First path segment, or `home` when the hash is empty. */
@@ -40,6 +41,7 @@ const NAMES: ReadonlySet<string> = new Set<RouteName>([
 	"journal",
 	"milestone",
 	"area",
+	"effort",
 ]);
 
 /** Parse a `location.hash` value into a route. */
@@ -75,4 +77,9 @@ export function routeLabel(route: Route): string {
 /** Subject of an `#/area/<subject>` route, or an empty string. */
 export function areaSubject(route: Route): string {
 	return route.name === "area" ? (route.parts[1] ?? "") : "";
+}
+
+/** Name of an `#/effort/<name>` route, or an empty string. */
+export function effortName(route: Route): string {
+	return route.name === "effort" ? (route.parts[1] ?? "") : "";
 }
