@@ -150,11 +150,11 @@ function clickBack() {
 }
 
 describe("leaving an overlay from a fresh load", () => {
-	it("R18 a task deep link of a later effort closed with Back ends on that effort", async () => {
+	it("R18 a task deep link of a later effort closed with Back ends on its phase page", async () => {
 		await mountAt(taskHref("t-cap"));
 		clickBack();
 		await settle();
-		expect(window.location.hash).toBe("#/effort/refunds");
+		expect(window.location.hash).toBe("#/phase/refunds/caps");
 	});
 
 	it("R18 an approved needs item of a later effort ends on that effort", async () => {

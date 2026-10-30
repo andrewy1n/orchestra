@@ -10,7 +10,7 @@
   import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
-  import { railItems } from "$lib/state/areas";
+  import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { handleKey } from "$lib/state/keys";
@@ -31,6 +31,10 @@
 
   const effort = $derived(polling.effort);
   const target = $derived(overlay.target);
+  const onPhasePage = $derived(
+    navigation.route.name === "phase" ||
+      routePhase(navigation.route, polling.snapshot?.efforts ?? []) !== null,
+  );
   const railLevel = $derived(
     railItems(
       navigation.route,
@@ -101,7 +105,7 @@
         <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />
-      {:else if navigation.route.name === "phase"}
+      {:else if onPhasePage}
         <PhasePage {theme} />
       {:else if navigation.route.name === "effort" && !effort}
         {#if polling.snapshot}

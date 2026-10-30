@@ -115,9 +115,20 @@ export function routePhase(
 	route: Route,
 	efforts: EffortView[],
 ): RoutePhase | null {
-	if (route.name !== "phase") return null;
-	const effort = efforts.find((view) => view.effort === route.parts[1]);
-	const phase = effort?.phases.find((row) => row.subject === route.parts[2]);
+	let effortName: string | undefined = route.parts[1];
+	let phaseName: string | undefined = route.parts[2];
+	if (route.name === "task") {
+		const id = route.parts[1];
+		const owner = efforts.find((view) =>
+			view.tasks.some((task) => task.id === id),
+		);
+		effortName = owner?.effort;
+		phaseName = owner?.tasks.find((task) => task.id === id)?.phase ?? undefined;
+	} else if (route.name !== "phase" && route.name !== "requirement") {
+		return null;
+	}
+	const effort = efforts.find((view) => view.effort === effortName);
+	const phase = effort?.phases.find((row) => row.subject === phaseName);
 	return effort && phase ? { effort, phase } : null;
 }
 
