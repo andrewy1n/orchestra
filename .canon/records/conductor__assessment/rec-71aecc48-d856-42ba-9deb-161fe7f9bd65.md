@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-71aecc48-d856-42ba-9deb-161fe7f9bd65",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "dashboard",
+    "missing": "",
+    "next": "release",
+    "phase": "phase-level",
+    "requirement": "R12",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-30T19:28:41+00:00",
+  "relationships": {},
+  "revision": "sha256:85d2c981df5be5d6d4649179dc5850707c4db00e541024ffe8adbf0a7f4a0bc4",
+  "subject": "phase-level-R12"
+}
+---
+
+## Evidence
+
+Check-run rec-7c981994-410b-4b73-9d2b-e5062752e95c passes at 182a9ac43 (acceptance verify_command: the vitest case titled "R12 " in x). The oracle test was red against the tree at the oracle commit 8096a75ae and is green now.
+
+## Missing
+
+none
+
+## Reason
+
+The frozen oracle for R12 passes with the task code in place.

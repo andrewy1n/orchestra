@@ -8,31 +8,15 @@ import {
 	writePath,
 } from "../../actions";
 import { getJson, postJson } from "../../api";
-import {
-	closeDetail,
-	type DetailTarget,
-	detailTarget,
-	openHash,
-	phaseHref,
-	requirementHref,
-	taskHref,
-} from "../../detail";
-import { detailView, evidenceBoard, taskBoard } from "../../detailView";
-import { linkifyText, type RefContext } from "../../links";
-import { renderMarkdown } from "../../markdown";
-import { buildPhaseChrome } from "../../phaseChrome";
-import { buildWaveGraph } from "../../taskGraph";
+import { closeDetail, type DetailTarget, leafTarget } from "../../detail";
+import { detailView } from "../../detailView";
+import { defaultPhase } from "../../efforts";
+import type { RefContext } from "../../links";
 import type { Snapshot } from "../../types";
+import { routePhase } from "./areas";
 import { leaveHref, polling } from "./polling.svelte";
+import { linkContext } from "./refs";
 import { navigation } from "./route.svelte";
-
-function escHtml(value: string): string {
-	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
-}
 
 class OverlayState {
 	detailPayload: unknown = $state(null);
@@ -45,51 +29,26 @@ class OverlayState {
 	writeError = $state("");
 	writeBusy = $state(false);
 
-	target: DetailTarget | null = $derived(detailTarget(navigation.route));
+	target: DetailTarget | null = $derived(leafTarget(navigation.route));
 
 	linkCtx: RefContext | null = $derived.by(() => {
-		const snapshot = polling.snapshot;
-		if (!snapshot) return null;
 		const route = navigation.route;
 		const target = this.target;
 		const effort = polling.effort;
-		const phaseSubject = polling.phaseSubject;
+		const efforts = polling.snapshot?.efforts ?? [];
 		const effortName =
-			target?.kind === "phase"
+			target?.kind === "requirement"
 				? (route.parts[1] ?? effort?.effort ?? null)
-				: target?.kind === "requirement"
-					? (route.parts[1] ?? effort?.effort ?? null)
-					: (effort?.effort ?? polling.selectedEffort ?? null);
+				: (effort?.effort ?? polling.selectedEffort ?? null);
+		const view = efforts.find((row) => row.effort === effortName);
+		const phaseSubject =
+			routePhase(route, efforts)?.phase.subject ??
+			(view ? defaultPhase(view) : null);
 		const phaseName =
-			target?.kind === "phase"
+			target?.kind === "requirement"
 				? (route.parts[2] ?? phaseSubject)
-				: target?.kind === "requirement"
-					? (route.parts[2] ?? phaseSubject)
-					: phaseSubject;
-		return {
-			snapshot,
-			effort: effortName,
-			phase: phaseName,
-			detail:
-				this.detailPayload && typeof this.detailPayload === "object"
-					? (this.detailPayload as Record<string, unknown>)
-					: null,
-		};
-	});
-
-	phaseTabs: string[] = $derived.by(() => {
-		if (this.target?.kind !== "phase") return [];
-		if (!this.detailPayload || typeof this.detailPayload !== "object")
-			return [];
-		const tabs = (this.detailPayload as { tabs?: unknown }).tabs;
-		return Array.isArray(tabs) ? tabs.map(String) : [];
-	});
-
-	activePhaseTab = $derived.by(() => {
-		const target = this.target;
-		if (target?.kind !== "phase") return "";
-		if (target.tab && this.phaseTabs.includes(target.tab)) return target.tab;
-		return this.phaseTabs[0] ?? "";
+				: phaseSubject;
+		return linkContext(effortName, phaseName, this.detailPayload);
 	});
 
 	overlayChoices: ConfirmChoice[] = $derived.by(() => {
@@ -112,72 +71,7 @@ class OverlayState {
 
 	overlayView = $derived.by(() => {
 		if (!this.target || !this.detailPayload) return null;
-		return detailView(
-			this.target.kind,
-			this.detailPayload,
-			this.activePhaseTab,
-		);
-	});
-
-	taskView = $derived.by(() => {
-		if (
-			this.target?.kind !== "phase" ||
-			this.activePhaseTab !== "tasks" ||
-			!this.detailPayload
-		) {
-			return null;
-		}
-		return taskBoard(this.detailPayload);
-	});
-
-	evidenceView = $derived.by(() => {
-		if (
-			this.target?.kind !== "phase" ||
-			this.activePhaseTab !== "evidence" ||
-			!this.detailPayload
-		) {
-			return null;
-		}
-		return evidenceBoard(this.detailPayload);
-	});
-
-	phaseChrome = $derived.by(() => {
-		if (this.target?.kind !== "phase" || !this.detailPayload) return null;
-		return buildPhaseChrome(this.detailPayload, {
-			position: polling.effort?.position ?? null,
-		});
-	});
-
-	phaseTaskGraph = $derived.by(() => {
-		if (this.target?.kind !== "phase" || !this.detailPayload) return null;
-		if (this.activePhaseTab !== "overview") return null;
-		const detail = (this.detailPayload as { detail?: { tasks?: unknown } })
-			.detail;
-		const tasks = Array.isArray(detail?.tasks) ? detail.tasks : [];
-		return buildWaveGraph(
-			tasks
-				.map((row) => {
-					const task = row as {
-						id?: string;
-						subject?: string;
-						title?: string;
-						status?: string;
-						wave?: number | null;
-						depends_on?: string[];
-						waits_on?: string[];
-					};
-					return {
-						id: String(task.id || ""),
-						subject: task.subject,
-						title: task.title,
-						status: String(task.status || ""),
-						wave: task.wave,
-						depends_on: task.depends_on,
-						waits_on: task.waits_on,
-					};
-				})
-				.filter((task) => task.id),
-		);
+		return detailView(this.target.kind, this.detailPayload);
 	});
 
 	reset() {
@@ -186,36 +80,6 @@ class OverlayState {
 		this.detailLoading = false;
 		this.cancelConfirm();
 		this.writeError = "";
-	}
-
-	linkify(text: string): string {
-		if (!this.linkCtx) return escHtml(text);
-		return linkifyText(text, this.linkCtx, escHtml);
-	}
-
-	md(body: string): string {
-		return renderMarkdown(body, this.linkCtx);
-	}
-
-	openRequirement(id: string) {
-		const route = navigation.route;
-		const effortName = route.parts[1] || polling.effort?.effort || "";
-		const phaseName = route.parts[2] || "";
-		if (!effortName || !phaseName || !id) return;
-		openHash(requirementHref(effortName, phaseName, id));
-	}
-
-	openGraphTask(id: string) {
-		if (!id) return;
-		openHash(taskHref(id));
-	}
-
-	selectPhaseTab(tab: string) {
-		if (!polling.effort || !this.target || this.target.kind !== "phase") return;
-		const effortName = navigation.route.parts[1];
-		const phaseName = navigation.route.parts[2];
-		if (!effortName || !phaseName) return;
-		openHash(phaseHref(effortName, phaseName, tab));
 	}
 
 	cancelConfirm = () => {

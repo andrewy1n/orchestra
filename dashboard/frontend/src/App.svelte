@@ -6,14 +6,16 @@
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
+  import PhasePage from "$lib/screens/PhasePage.svelte";
   import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
-  import { railItems } from "$lib/state/areas";
+  import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
+  import { bindPhase } from "$lib/state/phase.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
@@ -25,9 +27,14 @@
   bindJournal();
   bindAreas();
   bindOverlay();
+  bindPhase();
 
   const effort = $derived(polling.effort);
   const target = $derived(overlay.target);
+  const onPhasePage = $derived(
+    navigation.route.name === "phase" ||
+      routePhase(navigation.route, polling.snapshot?.efforts ?? []) !== null,
+  );
   const railLevel = $derived(
     railItems(
       navigation.route,
@@ -98,6 +105,8 @@
         <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />
+      {:else if onPhasePage}
+        <PhasePage {theme} />
       {:else if navigation.route.name === "effort" && !effort}
         {#if polling.snapshot}
           <p class="empty-note">No effort named {effortName(navigation.route)}.</p>
@@ -114,7 +123,11 @@
     {/if}
     {#if railLevel !== "product"}
       <label class="rail-toggle-label" for="rail-toggle"
-        >{railLevel === "area" ? "Areas" : "Efforts"}</label
+        >{railLevel === "area"
+          ? "Areas"
+          : railLevel === "phase"
+            ? "Phases"
+            : "Efforts"}</label
       >
     {/if}
   </div>
@@ -128,5 +141,5 @@
   </footer>
 </div>
 
-<Overlay {theme} />
+<Overlay />
 <ConfirmModal />

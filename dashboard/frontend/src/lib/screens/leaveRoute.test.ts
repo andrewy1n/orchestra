@@ -2,7 +2,7 @@
 
 import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { needsHref, phaseHref, taskHref } from "../../detail";
+import { needsHref, taskHref } from "../../detail";
 import type { DeepPartial, EffortView, Snapshot } from "../../types";
 
 let mounted: ReturnType<typeof mount> | undefined;
@@ -150,18 +150,11 @@ function clickBack() {
 }
 
 describe("leaving an overlay from a fresh load", () => {
-	it("R18 a phase deep link of a later effort closed with Back ends on that effort", async () => {
-		await mountAt(phaseHref("refunds", "caps"));
-		clickBack();
-		await settle();
-		expect(window.location.hash).toBe("#/effort/refunds");
-	});
-
-	it("R18 a task deep link of a later effort closed with Back ends on that effort", async () => {
+	it("R18 a task deep link of a later effort closed with Back ends on its phase page", async () => {
 		await mountAt(taskHref("t-cap"));
 		clickBack();
 		await settle();
-		expect(window.location.hash).toBe("#/effort/refunds");
+		expect(window.location.hash).toBe("#/phase/refunds/caps");
 	});
 
 	it("R18 an approved needs item of a later effort ends on that effort", async () => {

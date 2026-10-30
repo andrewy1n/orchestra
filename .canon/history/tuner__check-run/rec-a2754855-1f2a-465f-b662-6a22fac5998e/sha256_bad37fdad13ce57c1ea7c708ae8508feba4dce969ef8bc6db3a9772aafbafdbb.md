@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-a2754855-1f2a-465f-b662-6a22fac5998e",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-adbb8b66-a7d4-4b6f-8997-c86ece5b5ae6",
+    "duration_s": 2.615317,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-adbb8b66-a7d4-4b6f-8997-c86ece5b5ae6",
+      "rec-da2982f1-dc08-41aa-9ca1-8f6fe40ed479"
+    ],
+    "method": "tdd",
+    "output_sha256": "a17fcf0a2f50e2d495e4f90ce263410edc183add6c62699a2facbccf60410f74",
+    "requirement": "R18",
+    "result": "pass",
+    "revision": "9d2b21aa0b6578768a5ede01fe75a0bbaf685f07",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T19:32:06+00:00",
+  "relationships": {},
+  "revision": "sha256:bad37fdad13ce57c1ea7c708ae8508feba4dce969ef8bc6db3a9772aafbafdbb",
+  "subject": "phase-nav-r18"
+}
+---
+
+true

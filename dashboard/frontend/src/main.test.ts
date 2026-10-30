@@ -255,7 +255,6 @@ describe("web-dashboard main", () => {
 
 	it("R9: Selecting one phase limits the task rows to that phase.", async () => {
 		expect(appSource).toContain("data-phase=");
-		expect(appSource).toContain("data-phase-control");
 
 		const view = effort({
 			effort: "dashboard",
@@ -418,52 +417,5 @@ describe("web-dashboard main", () => {
 		expect(shown.find((v) => v.effort === "packaging")!.needs_you.length).toBe(
 			1,
 		);
-	});
-
-	it("R33: Selecting all phases shows every task in the effort.", async () => {
-		expect(appSource).toContain('data-phase="all"');
-		expect(appSource).toMatch(/All phases/);
-
-		const view = effort({
-			effort: "dashboard",
-			phases: [
-				{
-					subject: "phase-a",
-					title: "Phase A",
-					ordinal: 1,
-					state: "done",
-					done: 1,
-					total: 1,
-				},
-				{
-					subject: "phase-b",
-					title: "Phase B",
-					ordinal: 2,
-					state: "in_progress",
-					done: 0,
-					total: 1,
-				},
-			],
-			tasks: [
-				{
-					id: "ta",
-					subject: "a",
-					title: "Task A",
-					phase: "phase-a",
-					status: "done",
-				},
-				{
-					id: "tb",
-					subject: "b",
-					title: "Task B",
-					phase: "phase-b",
-					status: "ready",
-				},
-			],
-		});
-
-		expect(resolvedPhase(view, "all")).toBeNull();
-		const all = filteredTasks(view, null, "all");
-		expect(all.map((t) => t.id).sort()).toEqual(["ta", "tb"]);
 	});
 });

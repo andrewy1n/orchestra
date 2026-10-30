@@ -13,13 +13,15 @@ const FILES = [
 	"lib/screens/Journal.svelte",
 	"lib/screens/NeedsRows.svelte",
 	"lib/screens/Overlay.svelte",
-	"lib/screens/PhaseOverlay.svelte",
+	"lib/screens/PhasePage.svelte",
 	"lib/screens/ConfirmModal.svelte",
 	"lib/screens/SideRail.svelte",
 	"lib/state/polling.svelte.ts",
 	"lib/state/areas.svelte.ts",
 	"lib/state/journal.svelte.ts",
 	"lib/state/overlay.svelte.ts",
+	"lib/state/phase.svelte.ts",
+	"lib/state/refs.ts",
 	"lib/state/route.svelte.ts",
 ];
 

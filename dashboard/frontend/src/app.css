@@ -589,47 +589,6 @@ button {
 	color: var(--ink-2);
 }
 
-.stepper {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 4px 8px;
-	padding: 8px 0 10px;
-	border-top: 1px solid var(--line);
-	border-bottom: 1px solid var(--line);
-}
-
-.seg {
-	border: 1px solid transparent;
-	border-radius: var(--corner);
-	padding: 3px 8px;
-	color: var(--text-muted);
-	font-size: 12.5px;
-	white-space: nowrap;
-}
-
-.seg:hover {
-	border-color: var(--line-2);
-}
-
-.seg.on {
-	background: var(--accent-bg);
-	border-color: transparent;
-	color: var(--ink);
-	box-shadow: inset 2px 0 0 var(--brand);
-}
-
-.seg.live {
-	color: var(--brand);
-}
-
-.seg .cnt {
-	color: var(--text-muted);
-	margin-left: 6px;
-	font-variant-numeric: tabular-nums;
-	font-size: 14px;
-}
-
 .phases-block {
 	padding: 10px 0 12px;
 	border-top: 1px solid var(--line);
@@ -713,8 +672,7 @@ button {
 
 .phase-row {
 	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
+	align-items: center;
 	gap: 10px;
 	width: 100%;
 	padding: 7px 10px 7px 28px;
@@ -723,6 +681,7 @@ button {
 	background: transparent;
 	color: var(--ink-2);
 	text-align: left;
+	text-decoration: none;
 	cursor: pointer;
 	font-size: 14px;
 	font-weight: 400;
@@ -731,12 +690,6 @@ button {
 
 .phase-row:hover {
 	background: var(--sunken);
-}
-
-.phase-row.on {
-	background: var(--accent-bg);
-	color: var(--ink);
-	box-shadow: inset 2px 0 0 var(--brand);
 }
 
 .phase-row.live .name {
@@ -760,8 +713,22 @@ button {
 	white-space: nowrap;
 }
 
-.phases-all {
-	margin-top: 8px;
+.phases-block > .phase-row {
+	padding-left: 10px;
+}
+
+.phase-row .bar {
+	flex: 0 0 96px;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--sunken);
+	overflow: hidden;
+}
+
+.phase-row .bar-fill {
+	display: block;
+	height: 100%;
+	background: var(--brand);
 }
 
 .tabs {
@@ -1603,7 +1570,6 @@ a.lrow {
 
 @media (pointer: coarse) {
 	.tab,
-	.seg,
 	.theme-switch,
 	.show-finished,
 	.phase-row,
@@ -1763,4 +1729,25 @@ a.lrow {
 	html {
 		@apply font-sans;
 	}
+}
+
+.phase-head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	margin-bottom: 12px;
+}
+
+.phase-title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.phase-state {
+	font-size: 13px;
+	text-transform: capitalize;
+	color: var(--muted, var(--ink));
 }

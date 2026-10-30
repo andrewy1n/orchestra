@@ -44,15 +44,11 @@ export function groupPhasesByMilestone(effort: EffortView): MilestoneGroup[] {
 
 /**
  * Milestone subjects that should start expanded.
- * Groups start collapsed; only the milestone that contains the selected
- * phase (or the default phase when following) opens. Done milestones stay
- * collapsed unless that focus phase lives in them.
+ * Groups start collapsed; only the milestone that contains the default
+ * phase opens.
  */
-export function initialExpandedMilestones(
-	effort: EffortView,
-	phaseSubject: string | null,
-): Set<string> {
-	const focus = phaseSubject ?? defaultPhase(effort);
+export function initialExpandedMilestones(effort: EffortView): Set<string> {
+	const focus = defaultPhase(effort);
 	const expanded = new Set<string>();
 	if (focus) {
 		const phase = effort.phases.find((row) => row.subject === focus);
