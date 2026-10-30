@@ -358,6 +358,10 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Append this file's text to the idea body below the title",
     )
+
+    place = sub.add_parser("place", help="Place an effort in a composer area")
+    place.add_argument("effort", help="score:effort subject slug")
+    place.add_argument("area", help="composer:area subject slug")
     return parser
 
 
@@ -772,6 +776,19 @@ def _cmd_idea(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_place(args: argparse.Namespace) -> int:
+    from orchestra.composer.placement import PlacementError, place
+
+    try:
+        project = open_store(Path.cwd())
+        record = place(project, args.effort, args.area)
+    except (PlacementError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra place: {exc}", file=sys.stderr)
+        return 1
+    print(record["subject"])
+    return 0
+
+
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
     from orchestra.canon.store import Store
     from orchestra.canon.sync import init_store
@@ -869,6 +886,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_store_ensure(args)
     if args.command == "idea":
         return _cmd_idea(args)
+    if args.command == "place":
+        return _cmd_place(args)
     if args.command == "status":
         return status_cli.run(args)
     if args.command in view_cli.COMMANDS:
