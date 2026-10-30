@@ -10,6 +10,7 @@ import {
 import { getJson, postJson } from "../../api";
 import { closeDetail, type DetailTarget, leafTarget } from "../../detail";
 import { detailView } from "../../detailView";
+import { defaultPhase } from "../../efforts";
 import type { RefContext } from "../../links";
 import type { Snapshot } from "../../types";
 import { routePhase } from "./areas";
@@ -34,12 +35,15 @@ class OverlayState {
 		const route = navigation.route;
 		const target = this.target;
 		const effort = polling.effort;
-		const phaseSubject =
-			routePhase(route, polling.snapshot?.efforts ?? [])?.phase.subject ?? null;
+		const efforts = polling.snapshot?.efforts ?? [];
 		const effortName =
 			target?.kind === "requirement"
 				? (route.parts[1] ?? effort?.effort ?? null)
 				: (effort?.effort ?? polling.selectedEffort ?? null);
+		const view = efforts.find((row) => row.effort === effortName);
+		const phaseSubject =
+			routePhase(route, efforts)?.phase.subject ??
+			(view ? defaultPhase(view) : null);
 		const phaseName =
 			target?.kind === "requirement"
 				? (route.parts[2] ?? phaseSubject)
