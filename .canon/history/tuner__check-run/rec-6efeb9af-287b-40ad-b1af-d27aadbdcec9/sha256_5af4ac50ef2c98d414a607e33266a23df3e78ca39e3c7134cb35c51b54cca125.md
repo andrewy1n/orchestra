@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-6efeb9af-287b-40ad-b1af-d27aadbdcec9",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-03b0ee08-8958-4e55-ad67-94993e971b8e",
+    "duration_s": 0.544118,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-03b0ee08-8958-4e55-ad67-94993e971b8e",
+      "rec-9a4e6c80-aea9-4693-9c18-418c17476a31"
+    ],
+    "method": "tdd",
+    "output_sha256": "a71df3ef716cabe43ead70bd8311cda3aeadcb986bea501da0ea9262f31c3925",
+    "requirement": "R8",
+    "result": "pass",
+    "revision": "f524675b1a935ea23600c7391e02be9ac2c3b49f",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T07:05:10+00:00",
+  "relationships": {},
+  "revision": "sha256:5af4ac50ef2c98d414a607e33266a23df3e78ca39e3c7134cb35c51b54cca125",
+  "subject": "engage-place-step"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.02s

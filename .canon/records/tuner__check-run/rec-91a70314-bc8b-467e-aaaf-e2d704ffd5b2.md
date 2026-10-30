@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-91a70314-bc8b-467e-aaaf-e2d704ffd5b2",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-507601d2-51d6-494c-bece-64d5fedd8b43",
+    "duration_s": 1.060741,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-507601d2-51d6-494c-bece-64d5fedd8b43",
+      "rec-568adea4-746e-400b-894d-e40f1bdf1b47"
+    ],
+    "method": "tdd",
+    "output_sha256": "0c33791aa03cbc8826ba04efd1b062adb3baa875c47625e4de7090bd753d7635",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "67db85842f1120c7921d17cf108ee351c6ff626b",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T07:07:33+00:00",
+  "relationships": {},
+  "revision": "sha256:2f757173a56c03226a6f84d9548c0ce8cd3a3bc5d3bec47d73be8377bf85d114",
+  "subject": "place-command-no-effort"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.48s

@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-c0020f69-aa62-4d82-9d82-b9cefc6dcc9d",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "effort-area-link",
+    "requirement": "R7",
+    "verify_command": "cd dashboard/frontend && npm run api-types:check"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-30T06:53:42+00:00",
+  "relationships": {},
+  "revision": "sha256:4d028bf063a073b4eb23f1cd090120e1c9f9cd73458d7eaffac8cb5812c36ae7",
+  "subject": "snapshot-area-types"
+}
+---
+
