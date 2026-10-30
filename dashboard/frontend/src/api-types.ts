@@ -386,6 +386,8 @@ export interface components {
         };
         /** EffortSummary */
         EffortSummary: {
+            /** Area */
+            area: string;
             /** Backlog */
             backlog: components["schemas"]["BacklogSummary"][];
             /** Effort */

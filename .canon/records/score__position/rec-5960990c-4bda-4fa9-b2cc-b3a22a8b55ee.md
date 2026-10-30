@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-5960990c-4bda-4fa9-b2cc-b3a22a8b55ee",
-  "lifecycle_state": "active",
+  "lifecycle_state": "superseded",
   "payload": {
     "effort": "evidence-layer",
     "phase": "second-runner",
@@ -9,13 +9,13 @@
     "scope": "effort"
   },
   "record_type": "score:position",
-  "recorded_at": "2026-10-18T10:23:31+00:00",
+  "recorded_at": "2026-10-30T07:34:07+00:00",
   "relationships": {
     "supersedes": [
       "rec-df26ec04-f59f-4d2e-940d-f2d314578190"
     ]
   },
-  "revision": "sha256:66f2780a1b66e8be6b48d412bf85862212fe631949fbae21c4605c6bc4630095",
+  "revision": "sha256:f50aa0640dbd6732abcb4e4cc70f1bb6d78ef97022c8b969ea79ef719d0daa8e",
   "subject": "evidence-layer",
   "time": {
     "as_of": "2026-10-18T10:23:31+00:00"

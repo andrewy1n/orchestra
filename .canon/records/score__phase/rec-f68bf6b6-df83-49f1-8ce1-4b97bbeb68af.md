@@ -1,16 +1,16 @@
 ---
 {
   "id": "rec-f68bf6b6-df83-49f1-8ce1-4b97bbeb68af",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "withdrawn",
   "payload": {
     "effort": "evidence-layer",
     "ordinal": 12,
     "title": "A non-Python runner through the adapter"
   },
   "record_type": "score:phase",
-  "recorded_at": "2026-10-17T22:58:47+00:00",
+  "recorded_at": "2026-10-30T07:34:05+00:00",
   "relationships": {},
-  "revision": "sha256:26188feb8da5cd846070a89155e164a884256f82fd515f8a2566c8b91b001c1c",
+  "revision": "sha256:1c574adacce4a09fa430afce603784b6e26e23aa5713faf2153269ed630f9e59",
   "subject": "second-runner"
 }
 ---

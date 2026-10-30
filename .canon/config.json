@@ -4,7 +4,7 @@
     "score": "1.1.0",
     "conductor": "1.0.0",
     "tuner": "1.0.0",
-    "composer": "1.0.0"
+    "composer": "1.1.0"
   },
   "settings": {
     "conductor": {

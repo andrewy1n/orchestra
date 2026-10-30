@@ -108,6 +108,7 @@ class EffortSummary(Model):
     goal: str
     position: str
     kind: str
+    area: str
     finished: bool
     release_ready: bool
     phases: list[PhaseSummary]

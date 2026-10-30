@@ -1,16 +1,16 @@
 ---
 {
   "id": "rec-47faad46-864c-40bd-baf1-d0d46755ca4b",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "withdrawn",
   "payload": {
     "effort": "evidence-layer",
     "ordinal": 13,
     "title": "End to end on an external repo and through orchestra"
   },
   "record_type": "score:phase",
-  "recorded_at": "2026-10-17T22:58:47+00:00",
+  "recorded_at": "2026-10-30T07:34:04+00:00",
   "relationships": {},
-  "revision": "sha256:474b60adfa7476291f68d5bac8f69d83617e7ff64c1723335d9a227ac752da50",
+  "revision": "sha256:4a1cca209f98f5c0f27bb4ca24ea60c71b507fcd7cd9cc703b910a744622d0fc",
   "subject": "evidence-e2e"
 }
 ---

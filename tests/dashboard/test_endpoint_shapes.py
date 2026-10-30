@@ -519,3 +519,24 @@ def test_every_route_is_covered(seeded):
     }
     covered = {(build(seed)[0], build(seed)[1]) for build in CASES.values()}
     assert routes <= covered
+
+
+def _plain_create(cli, record_type: str, subject: str, payload: dict, body: str | None = None) -> None:
+    args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
+    if body is not None:
+        args.extend(["--body", body])
+    result = cli(*args)
+    assert result.returncode == 0, f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+
+
+def test_snapshot_effort_carries_area(store, cli):
+    for effort in ("placed-effort", "unplaced-effort"):
+        _plain_create(cli, "score:effort", effort, {"goal": f"goal of {effort}", "kind": "deliver"})
+    _plain_create(cli, "composer:area", "billing", {"title": "Billing"}, AREA_SCOPE)
+    _plain_create(cli, "composer:placement", "placed-effort", {"area": "billing"})
+    client = TestClient(create_app(open_store(store)), raise_server_exceptions=False)
+    response = client.get("/api/snapshot")
+    assert response.status_code == 200, response.text
+    rows = {row["effort"]: row for row in response.json()["efforts"]}
+    assert rows["placed-effort"].get("area") == "billing"
+    assert rows["unplaced-effort"].get("area") == ""

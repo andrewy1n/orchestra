@@ -55,6 +55,7 @@ def effort_summary(view: EffortView) -> schemas.EffortSummary:
         goal=view.goal,
         position=view.position,
         kind=view.kind,
+        area=view.area,
         finished=view.finished,
         release_ready=view.release_ready,
         phases=[phase_summary(phase) for phase in view.phases],

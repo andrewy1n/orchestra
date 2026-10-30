@@ -33,6 +33,7 @@ FULL_TYPES = (
     "conductor:proof-packet", "composer:idea",
 )
 UPSTREAM_NEXT = frozenset({"specify", "design", "plan"})
+PLACEMENT_TYPE = "composer:placement"
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,7 @@ class EffortView:
     kind: str = ""
     journal_open: list = field(default_factory=list)
     backlog: list[BacklogItem] = field(default_factory=list)
+    area: str = ""
 
     @property
     def finished(self) -> bool:
@@ -111,7 +113,7 @@ _SNAPSHOT_TYPES = (
     "tuner:finding", "tuner:check-run", "conductor:assignment", "conductor:assignment-amendment",
     "conductor:execution-report",
     "score:specification", "score:design", "conductor:assessment", "conductor:integration-report", "conductor:release",
-    "score:position", "composer:idea",
+    "score:position", "composer:idea", PLACEMENT_TYPE,
 )
 
 
@@ -373,6 +375,10 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         and record_payload(record).get("status") != "closed"
         and record_payload(record).get("scope") == "effort"
     }
+    areas = {
+        record["subject"]: record_payload(record).get("area") or ""
+        for record in _live(listed[PLACEMENT_TYPE])
+    }
     efforts = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -425,6 +431,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
             kind=kind,
             journal_open=journal_open,
             backlog=_backlog_items(backlog_by_effort.get(effort, [])),
+            area=areas.get(effort, ""),
         ))
     efforts.sort(key=lambda view: view.finished)
     return Snapshot(efforts, token, now)
