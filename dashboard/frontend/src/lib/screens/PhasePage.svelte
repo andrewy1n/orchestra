@@ -3,11 +3,24 @@
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { phase } from "$lib/state/phase.svelte";
   import { md, openGraphTask, openRequirement } from "$lib/state/refs";
+  import { openHash, taskHref } from "../../detail";
+  import { STATUS_TABS } from "../../efforts";
   import TaskGraphBoard from "../../TaskGraphBoard.svelte";
   import type { Theme } from "../../theme";
   import { chipVariant } from "./chipVariant";
 
   let { theme }: { theme: Theme } = $props();
+
+  function statusLabel(status: string): string {
+    const known: Record<string, string> = {
+      done: "Done",
+      running: "Running",
+      ready: "Ready",
+      waiting: "Waiting",
+      withdrawn: "Withdrawn",
+    };
+    return known[status] ?? status.replace(/_/g, " ");
+  }
 </script>
 
 <div class="phase-page" data-phase-page data-detail="phase">
@@ -71,6 +84,48 @@
         onselect={(id) => openGraphTask(id)}
         colorMode={theme}
       />
+    {/if}
+    {#if phase.activePhaseTab === "overview" && phase.routeEffort}
+      <div class="tabs" data-status-tabs>
+        {#each STATUS_TABS as tab}
+          <button
+            type="button"
+            class="tab"
+            class:on={phase.statusTab === tab.name}
+            data-tab={tab.name}
+            aria-current={phase.statusTab === tab.name ? "true" : undefined}
+            onclick={() => phase.chooseTab(tab.name)}
+          >
+            <b>{tab.label}</b>
+            {#if phase.counts}
+              <span class="n">({phase.counts[tab.name]})</span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+
+      <div class="table" data-task-table style="--cols: 118px 1fr">
+        <div class="trow thead">
+          <span>Status</span>
+          <span>Task</span>
+        </div>
+        {#if phase.tasks.length === 0}
+          <p class="empty-note">No tasks in this tab.</p>
+        {:else}
+          {#each phase.tasks as task (task.id)}
+            <button
+              type="button"
+              class="trow task clickable"
+              data-task={task.id}
+              data-phase-of={task.phase}
+              onclick={() => openHash(taskHref(task.id))}
+            >
+              <span class="st {task.status}">{statusLabel(task.status)}</span>
+              <span class="title">{task.title || task.subject}</span>
+            </button>
+          {/each}
+        {/if}
+      </div>
     {/if}
     {#if phase.taskView}
       <div class="task-board" data-task-board data-detail-section="Tasks">
