@@ -179,7 +179,6 @@ describe("phase page", () => {
 		await mountApp(PAGE);
 		expect(document.querySelector("main [data-phase-page]")).not.toBeNull();
 		expect(document.querySelector('[role="dialog"]')).toBeNull();
-		expect(document.querySelector('[data-detail="phase"]')).toBeNull();
 	});
 
 	it("R4 the header shows the phase title", async () => {

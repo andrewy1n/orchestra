@@ -1,4 +1,4 @@
-import { detailTarget, openHash } from "../../detail";
+import { leafTarget, openHash } from "../../detail";
 import { currentRoute } from "../../router";
 import { overlay } from "./overlay.svelte";
 import { leaveHref } from "./polling.svelte";
@@ -12,7 +12,7 @@ export function handleKey(event: KeyboardEvent, toggleTheme: () => void) {
 		) {
 			return;
 		}
-		if (overlay.pendingWrite || detailTarget(currentRoute())) return;
+		if (overlay.pendingWrite || leafTarget(currentRoute())) return;
 		event.preventDefault();
 		toggleTheme();
 		return;
@@ -20,7 +20,7 @@ export function handleKey(event: KeyboardEvent, toggleTheme: () => void) {
 	if (event.key !== "Escape") return;
 	if (overlay.pendingWrite) return;
 	const current = currentRoute();
-	if (detailTarget(current)) return;
+	if (leafTarget(current)) return;
 	if (current.name === "journal") {
 		openHash(leaveHref());
 	}

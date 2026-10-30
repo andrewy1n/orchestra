@@ -12,7 +12,6 @@ import { closeDetail, type DetailTarget, leafTarget } from "../../detail";
 import { detailView } from "../../detailView";
 import type { RefContext } from "../../links";
 import type { Snapshot } from "../../types";
-import { phase } from "./phase.svelte";
 import { leaveHref, polling } from "./polling.svelte";
 import { linkContext } from "./refs";
 import { navigation } from "./route.svelte";
@@ -179,7 +178,7 @@ export function bindOverlay() {
 	let focusLock = "";
 
 	$effect(() => {
-		const target = overlay.target ?? phase.target;
+		const target = overlay.target;
 		const key = overlay.pendingWrite
 			? "confirm"
 			: target

@@ -3,22 +3,13 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { overlay } from "$lib/state/overlay.svelte";
-  import { phase } from "$lib/state/phase.svelte";
   import { leaveHref } from "$lib/state/polling.svelte";
   import { md } from "$lib/state/refs";
   import { closeDetail } from "../../detail";
-  import type { Theme } from "../../theme";
   import { chipVariant } from "./chipVariant";
-  import PhaseOverlay from "./PhaseOverlay.svelte";
 
-  let { theme }: { theme: Theme } = $props();
-  const target = $derived(overlay.target ?? phase.target);
-  const isPhase = $derived(target?.kind === "phase");
-  const view = $derived(isPhase ? phase.view : overlay.overlayView);
-  const linkCtx = $derived(isPhase ? phase.linkCtx : overlay.linkCtx);
-  const loading = $derived(isPhase ? phase.loading : overlay.detailLoading);
-  const error = $derived(isPhase ? phase.error : overlay.detailError);
-  const payload = $derived(isPhase ? phase.payload : overlay.detailPayload);
+  const target = $derived(overlay.target);
+  const view = $derived(overlay.overlayView);
 </script>
 
 <Dialog.Root
@@ -57,13 +48,12 @@
         </div>
       </header>
       <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {#if loading}
+        {#if overlay.detailLoading}
           <p class="empty-note">Loading…</p>
-        {:else if error}
-          <p class="error-note">{error}</p>
-        {:else if payload && view}
-          <PhaseOverlay kind={target.kind} {theme} />
-          {#if !phase.phaseChrome && view.chips.length}
+        {:else if overlay.detailError}
+          <p class="error-note">{overlay.detailError}</p>
+        {:else if overlay.detailPayload && view}
+          {#if view.chips.length}
             <div class="chips" data-detail-chips>
               {#each view.chips as chip (chip.label)}
                 <Badge variant={chipVariant(chip.tone)}>{chip.label}</Badge>
@@ -80,7 +70,7 @@
             <div
               class="md section-card"
               data-detail-section={section.title || "body"}
-            >{@html md(section.body, linkCtx)}</div>
+            >{@html md(section.body, overlay.linkCtx)}</div>
           {/each}
           {#if overlay.overlayChoices.length}
             <div class="overlay-actions" data-write-actions>
