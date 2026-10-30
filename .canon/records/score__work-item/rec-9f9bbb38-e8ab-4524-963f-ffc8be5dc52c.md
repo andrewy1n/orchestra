@@ -1,0 +1,40 @@
+---
+{
+  "id": "rec-9f9bbb38-e8ab-4524-963f-ffc8be5dc52c",
+  "lifecycle_state": "done",
+  "payload": {
+    "assignee": "subagent-e2e-area-seed",
+    "decisions": [
+      "landing-product-index"
+    ],
+    "depends_on": [
+      "product-index"
+    ],
+    "effort": "dashboard",
+    "estimate_minutes": 10,
+    "executor": "subagent",
+    "kind": "deliver",
+    "phase": "area-levels",
+    "requirements": [
+      "R28",
+      "R29"
+    ],
+    "size": "S",
+    "title": "Seed an area in the Playwright store and click its card"
+  },
+  "record_type": "score:work-item",
+  "recorded_at": "2026-10-30T08:31:44+00:00",
+  "relationships": {},
+  "revision": "sha256:89c5370f98ab3e053fc579cf61871705a9ef122cefae4eb7bb3967daf2d6944e",
+  "subject": "e2e-area-seed"
+}
+---
+
+## Description
+
+R28: The Playwright test sees a seeded area card on `#/`.
+R29: In the Playwright test, a click on a seeded area card opens `#/area/<subject>`.
+
+## Approach
+
+Edit `dashboard/frontend/e2e/serve.py`: add `composer` to the schemas in `canon init --schemas`, create one `composer:area` (subject `e2e-area`, payload `title`, body with a `## Scope` section as other areas have) and one `composer:placement` (subject = the seeded effort, payload `area`). Use `orchestra place` or `canon create` as the helper already does. Edit `e2e/app.spec.ts`: change the existing test to open `#/effort/e2e-alpha`, and add two tests. The test named `R28 the product index shows the seeded area card` goes to `/` and expects `[data-area-card="e2e-area"]` to be visible. The test named `R29 a click on the area card opens the area page` clicks that card and expects the URL hash to be `#/area/e2e-area`. Run `npm run e2e` from `dashboard/frontend`. Run `npm run lint` too.

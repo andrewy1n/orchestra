@@ -1,0 +1,36 @@
+---
+{
+  "id": "rec-1eac74d5-2a4c-4fc9-a8f8-99dbc35145da",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "dashboard",
+    "missing": "",
+    "next": "release",
+    "phase": "area-levels",
+    "requirement": "R9",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-30T09:24:15+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-43b7a580-d00b-452b-9960-b77258e17f85"
+    ]
+  },
+  "revision": "sha256:1416a14cfb0b35e22a5e5287fbd998540800865fb3f77c579ab8a1ee21fea904",
+  "subject": "area-levels-R9"
+}
+---
+
+## Evidence
+
+- fix-area-levels-app-size (R9, tdd): green check-run rec-e65a61bf-3c58-4d06-a5a8-b3a0c3c6a3ff at 775ca3e848e0
+
+## Missing
+
+none
+
+## Reason
+
+Every check this task runs for R9 passed. For oracle-backed acceptances the assertion-level red, the green at a descendant revision, and the frozen hashes all hold. The phase verification task re-checks R9 later.

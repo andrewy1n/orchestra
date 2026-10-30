@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-bdf1f565-b746-4a1d-9fb1-db7a2a3c63e3",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "canon-db-store",
+    "method": "check",
+    "phase": "access-layer",
+    "requirement": "R7",
+    "verify_command": "/home/andrewyin/orchestra/.venv/bin/python -m pytest -p no:rerunfailures  --confcutdir=tests/canon tests/canon/test_backend_boundary.py::test_orchestra_store_creation_uses_backend_factory -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-30T08:44:09+00:00",
+  "relationships": {},
+  "revision": "sha256:09cecadcee6e687be9aa5c39acb65c2321dcf26e021b244faaaad4c1f87df6c2",
+  "subject": "verify-access-layer-r7"
+}
+---
+

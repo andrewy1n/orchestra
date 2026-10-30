@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-9446a3c2-f54b-4ba7-8d21-eee25edb89df",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "dashboard",
+    "missing": "",
+    "next": "release",
+    "phase": "area-levels",
+    "requirement": "R2",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-30T08:27:28+00:00",
+  "relationships": {},
+  "revision": "sha256:82609c2fb7ce0caaa29c3510f9035f3d97ffbe908f6b12bd6f510c4ee5a34f88",
+  "subject": "area-levels-R2"
+}
+---
+
+## Evidence
+
+- product-index-r2 (R2, tdd): green check-run rec-85f18b8e-1e5d-46d3-98da-8f652c574058 at 3384242e730e
+
+## Missing
+
+none
+
+## Reason
+
+Every check this task runs for R2 passed. For oracle-backed acceptances the assertion-level red, the green at a descendant revision, and the frozen hashes all hold. The phase verification task re-checks R2 later.
