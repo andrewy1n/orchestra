@@ -1,0 +1,133 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [
+        {
+          "check": {
+            "evidence_kind": "",
+            "id": "<tuner:check-run:task-ready-check>",
+            "method": "check",
+            "recorded_at": "<timestamp>",
+            "result": "pass",
+            "revision": "abc123",
+            "signed_by": "runner"
+          },
+          "criterion": "the endpoint keeps its shape",
+          "id": "<score:acceptance:task-ready-acc>",
+          "method": "check",
+          "subject": "task-ready-acc",
+          "verify_command": "uv run pytest -q"
+        }
+      ],
+      "agent_work": [
+        {
+          "amendments": [
+            {
+              "correction": "use the new fixture name.",
+              "id": "<conductor:assignment-amendment:task-ready-a1-fix>",
+              "recorded_at": "<timestamp>"
+            }
+          ],
+          "assignment": {
+            "body": "",
+            "executor": "subagent",
+            "id": "<conductor:assignment:task-ready-a1>",
+            "orientation": "read the brief first.\n\nextra assignment text.",
+            "recorded_at": "<timestamp>",
+            "subject": "task-ready-a1"
+          },
+          "report": {
+            "body": "report text.\n",
+            "id": "<conductor:execution-report:task-ready-report>",
+            "recorded_at": "<timestamp>",
+            "result": "done",
+            "verdict": "pass"
+          }
+        }
+      ],
+      "assignee": "",
+      "blocks": [
+        {
+          "id": "<score:work-item:task-next>",
+          "status": "waiting",
+          "subject": "task-next",
+          "title": "title of task-next"
+        }
+      ],
+      "body": "## Description\n\nplaceholder text for Description.\n",
+      "decisions": [
+        "d-one"
+      ],
+      "depends_on": [],
+      "effort": "alpha",
+      "estimate_minutes": 30,
+      "executor": "inline",
+      "id": "<score:work-item:task-ready>",
+      "phase": "p-work",
+      "related": [
+        {
+          "id": "<tuner:finding:task-ready-claim>",
+          "kind": "finding",
+          "subject": "task-ready-claim",
+          "text": "the shape is stable"
+        },
+        {
+          "id": "<conductor:failed-attempt:task-ready-failed>",
+          "kind": "failed-attempt",
+          "subject": "task-ready-failed",
+          "text": "run the slow suite"
+        },
+        {
+          "id": "<tuner:investigation-observation:task-ready-observed>",
+          "kind": "observation",
+          "subject": "task-ready-observed",
+          "text": "the shape drifted"
+        }
+      ],
+      "requirements": [
+        "R1"
+      ],
+      "running_since": null,
+      "size": "M",
+      "status": "ready",
+      "subject": "task-ready",
+      "timeline": [
+        {
+          "body": "",
+          "id": "<tuner:check-run:task-ready-check>",
+          "kind": "check-run",
+          "recorded_at": "<timestamp>",
+          "revision": "abc123",
+          "summary": "check check passed"
+        },
+        {
+          "body": "## Orientation\n\nread the brief first.\n\nextra assignment text.\n",
+          "id": "<conductor:assignment:task-ready-a1>",
+          "kind": "assignment",
+          "recorded_at": "<timestamp>",
+          "revision": "",
+          "summary": "assigned to subagent"
+        },
+        {
+          "body": "## Correction\n\nuse the new fixture name.\n",
+          "id": "<conductor:assignment-amendment:task-ready-a1-fix>",
+          "kind": "assignment-amendment",
+          "recorded_at": "<timestamp>",
+          "revision": "",
+          "summary": "amended"
+        },
+        {
+          "body": "report text.\n",
+          "id": "<conductor:execution-report:task-ready-report>",
+          "kind": "execution-report",
+          "recorded_at": "<timestamp>",
+          "revision": "abc123",
+          "summary": "reported pass"
+        }
+      ],
+      "title": "title of task-ready",
+      "wave": 1
+    }
+  },
+  "status": 200
+}

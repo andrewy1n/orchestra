@@ -633,7 +633,7 @@ def _is_import_check(event: dict) -> bool:
     text = event.get("text") or ""
     return any(
         _imports(text, module)
-        for module in ("dashboard", "dashboard.web", "installer", "installer.adapters")
+        for module in ("dashboard", "dashboard.backend.server", "installer", "installer.adapters")
     )
 
 
@@ -796,7 +796,7 @@ def test_wheel_smoke_r14_import_dashboard():
 
 
 def test_wheel_smoke_r15_import_dashboard_web():
-    _assert_import("dashboard.web")
+    _assert_import("dashboard.backend.server")
 
 
 def test_wheel_smoke_r16_import_installer():

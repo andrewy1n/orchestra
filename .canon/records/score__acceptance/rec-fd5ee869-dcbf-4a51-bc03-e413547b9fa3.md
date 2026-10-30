@@ -1,0 +1,19 @@
+---
+{
+  "id": "rec-fd5ee869-dcbf-4a51-bc03-e413547b9fa3",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "check",
+    "phase": "ui-structure",
+    "requirement": "R12",
+    "verify_command": "uv run pytest tests/dashboard/test_web_dashboard.py tests/dashboard/test_web_dashboard_launch.py -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T21:36:42+00:00",
+  "relationships": {},
+  "revision": "sha256:0301dee97f643ec51d290394bfe31999b024c34b0c12dd8257c95c5e5db0e102",
+  "subject": "verify-ui-structure"
+}
+---
+

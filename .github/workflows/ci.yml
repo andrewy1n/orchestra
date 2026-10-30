@@ -62,19 +62,6 @@ jobs:
       - run: uv sync --locked --group dev
       - run: uv run pytest -q -p no:cacheprovider -n auto tests --ignore=tests/canon --ignore=tests/tuner
 
-  test-tmux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.10"
-          enable-cache: true
-      - run: sudo apt-get install -y tmux
-      - run: uv sync --locked --group dev
-      - run: uv run pytest -q -p no:cacheprovider tests --ignore=tests/canon --ignore=tests/tuner -m tmux --reruns 2
-
   types:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -86,6 +73,31 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --group dev
       - run: uv run basedpyright
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/frontend/package-lock.json
+      - run: npm ci
+        working-directory: dashboard/frontend
+      - run: npm run lint
+        working-directory: dashboard/frontend
+      - run: npm run check
+        working-directory: dashboard/frontend
+      - run: npm test
+        working-directory: dashboard/frontend
+      - run: npm run build
+        working-directory: dashboard/frontend
 
   wheel:
     runs-on: ubuntu-latest

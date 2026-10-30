@@ -1,0 +1,61 @@
+{
+  "body": [
+    {
+      "ideas": [
+        {
+          "area": "billing",
+          "effort": "",
+          "phase": "",
+          "status": "open",
+          "subject": "refund-flow",
+          "text": "Let customers request refunds."
+        },
+        {
+          "area": "billing",
+          "effort": "alpha",
+          "phase": "",
+          "status": "open",
+          "subject": "both-ways",
+          "text": "Show receipts in the backlog and the area."
+        },
+        {
+          "area": "billing",
+          "effort": "",
+          "phase": "",
+          "status": "promoted",
+          "subject": "already-built",
+          "text": "Export invoices as PDF."
+        },
+        {
+          "area": "billing",
+          "effort": "",
+          "phase": "",
+          "status": "promoted",
+          "subject": "moved-on",
+          "text": "Retry failed charges."
+        }
+      ],
+      "open_count": 2,
+      "scope": "Invoices, receipts, and payment flows.",
+      "subject": "billing",
+      "title": "Billing"
+    },
+    {
+      "ideas": [
+        {
+          "area": "search",
+          "effort": "",
+          "phase": "",
+          "status": "open",
+          "subject": "typo-tolerance",
+          "text": "Forgive typos in queries."
+        }
+      ],
+      "open_count": 1,
+      "scope": "Query parsing and ranking.",
+      "subject": "search",
+      "title": "Search"
+    }
+  ],
+  "status": 200
+}

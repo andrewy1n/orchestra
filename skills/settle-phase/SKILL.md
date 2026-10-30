@@ -71,9 +71,11 @@ canon supersede --type composer:idea --id <id> \
 2. Read context: the phase record, milestones for this effort,
    `score:decision` and `score:constraint` records with
    `payload.effort` = focus, assessments for this phase, and the code
-   paths the phase names or implies.
+   paths the phase names or implies. Read the effort's `score:brief`
+   when one exists.
 
 ```bash
+canon list --type score:brief --subject <focus> --exact-subject --state active --full
 canon list --type score:milestone --where payload.effort=<focus> --state active --full
 canon list --type score:decision --where payload.effort=<focus> --state active --full
 canon list --type score:constraint --where payload.effort=<focus> --state active --full
@@ -210,10 +212,21 @@ canon update --type score:continuity-question --id <question-id> \
   --transition answered --expected-revision <revision>
 ```
 
-10. Run `canon validate`. Show the user
+10. Run `canon validate`. Resolve every marker first (see Markers).
+    Show the user
     the specification, the design, the decisions, and the phase
     approach. Next is `plan-phase` for this phase, including after a
     `next` `design` supersede.
+
+## Markers
+
+Write `[NEEDS CLARIFICATION: <question>]` in a specification or design
+body where a fact is unknown and a guess would be wrong. Do not use it
+anywhere else. `orchestra analyze` reports each marker as an error.
+
+Resolve every marker before settle-phase ends: ask the user, replace the
+marker with the answer, and supersede the record. Do not finish with a
+marker left in a specification or design body.
 
 ## Do not
 

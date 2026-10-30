@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-9b12ab25-0346-4d54-acce-ce633edb6d2d",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-892d294e-05b7-40fe-b3b2-16a42ba162f9",
+    "duration_s": 0.403258,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-892d294e-05b7-40fe-b3b2-16a42ba162f9",
+      "rec-f3c8c6cc-661a-4880-97e7-a69d89daac86"
+    ],
+    "method": "tdd",
+    "output_sha256": "fa8e3e1f0a4b084326a7027307e5cc3a94f799f9733ea598c3b878fa3c70f37c",
+    "requirement": "R1",
+    "result": "pass",
+    "revision": "ce11401e99ae604bc3e18d97375916d676dab191",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T20:22:11+00:00",
+  "relationships": {},
+  "revision": "sha256:c530a4b4915f070de185aadbb2cebfd2d5a727f8f3c2d06da9cad90d0469fa4d",
+  "subject": "verify-remove-textual-r1"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.18s

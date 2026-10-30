@@ -290,9 +290,9 @@ def test_r1_dashboard(editable_install: _Install) -> None:
     _assert_success(_run_install_import(editable_install, "dashboard"))
 
 
-def test_r2_dashboard_web(editable_install: _Install) -> None:
-    """R2: An editable install imports `dashboard.web` when the repository root is absent from `sys.path`."""
-    _assert_success(_run_install_import(editable_install, "dashboard.web"))
+def test_r2_dashboard_backend_server(editable_install: _Install) -> None:
+    """R2: An editable install imports `dashboard.backend.server` when the repository root is absent from `sys.path`."""
+    _assert_success(_run_install_import(editable_install, "dashboard.backend.server"))
 
 
 def test_r3_installer(editable_install: _Install) -> None:
@@ -303,16 +303,6 @@ def test_r3_installer(editable_install: _Install) -> None:
 def test_r4_installer_adapters(editable_install: _Install) -> None:
     """R4: An editable install imports `installer.adapters` when the repository root is absent from `sys.path`."""
     _assert_success(_run_install_import(editable_install, "installer.adapters"))
-
-
-def test_r5_textual(editable_install: _Install) -> None:
-    """R5: That install imports `textual`."""
-    _assert_success(_run_install_import(editable_install, "textual"))
-
-
-def test_r6_rich(editable_install: _Install) -> None:
-    """R6: That install imports `rich`."""
-    _assert_success(_run_install_import(editable_install, "rich"))
 
 
 def test_r7_fastapi(editable_install: _Install) -> None:

@@ -1,0 +1,24 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "assessments": [
+        {
+          "confidence": "high",
+          "id": "<conductor:assessment:route-phase-R1>",
+          "level": "design",
+          "next": "design",
+          "status": "failed"
+        }
+      ],
+      "decisions": [],
+      "id": "R1",
+      "next": "design",
+      "phase": "route-phase",
+      "status": "failed",
+      "tasks": [],
+      "text": ""
+    }
+  },
+  "status": 200
+}

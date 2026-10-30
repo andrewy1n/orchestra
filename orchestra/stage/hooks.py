@@ -20,8 +20,8 @@ PROTOCOL = (
     "and fix every error."
 )
 
-MAX_HANDOFF_BYTES = 16384
-MAX_HOOK_CONSTRAINTS = 8
+HOOK_CONTEXT_BUDGET = 9000
+MAX_HOOK_CONSTRAINTS = 20
 MAX_CONSTRAINT_STATEMENT_CHARS = 220
 
 CLAUDE = "--claude"
@@ -90,21 +90,6 @@ def _load_baseline(root: Path, data: dict[str, Any]) -> set[str] | None:
         return None
 
 
-def _truncate(handoff: str) -> str:
-    encoded = handoff.encode("utf-8")
-    if len(encoded) <= MAX_HANDOFF_BYTES:
-        return handoff
-    head = encoded[:MAX_HANDOFF_BYTES]
-    boundary = head.rfind(b"\n")
-    if boundary > 0:
-        head = head[:boundary]
-    text = head.decode("utf-8", errors="ignore").rstrip()
-    return (
-        f"{text}\n\n[... handoff truncated at {MAX_HANDOFF_BYTES} bytes; "
-        "run `orchestra handoff` for the full handoff ...]"
-    )
-
-
 def _constraint_lines(records: list[dict[str, Any]]) -> list[str]:
     items, total = views.hook_constraints(records, MAX_HOOK_CONSTRAINTS)
     if not items:
@@ -118,6 +103,40 @@ def _constraint_lines(records: list[dict[str, Any]]) -> list[str]:
     if total > len(items):
         lines.append(f"(+{total - len(items)} more not shown)")
     return lines
+
+
+def _assemble_start(
+    constraint_lines: list[str], sections: list[tuple[str, str]]
+) -> str:
+    def build(shown: list[str], omitted: list[str]) -> str:
+        parts = [
+            PROTOCOL,
+            *constraint_lines,
+            "",
+            "\n\n".join(["# Project Handoff", *shown]),
+        ]
+        if omitted:
+            parts.extend(
+                [
+                    "",
+                    f"Not shown: {', '.join(omitted)}. "
+                    "Run `orchestra handoff --effort <slug>`.",
+                ]
+            )
+        parts.extend(["", "Other views: `orchestra view plan|status|verification`."])
+        return "\n".join(parts).strip() + "\n"
+
+    count = 0
+    while count < len(sections):
+        shown = [text for _, text in sections[: count + 1]]
+        omitted = [name for name, _ in sections[count + 1 :]]
+        if len(build(shown, omitted)) > HOOK_CONTEXT_BUDGET:
+            break
+        count += 1
+    return build(
+        [text for _, text in sections[:count]],
+        [name for name, _ in sections[count:]],
+    )
 
 
 def _wrap_start(fmt: str, ctx: str) -> dict[str, Any]:
@@ -139,14 +158,9 @@ def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
             return None
         records = views.load_records(project)
         _save_baseline(project, root, data)
-        parts = [PROTOCOL]
-        handoff = views.render_view(views.HANDOFF, records)
-        parts.extend(["", _truncate(handoff)])
-        parts.extend(_constraint_lines(records))
-        parts.extend(
-            ["", "Other views: `orchestra view plan|status|verification`."]
+        ctx = _assemble_start(
+            _constraint_lines(records), views.hook_handoff_sections(records)
         )
-        ctx = "\n".join(parts).strip() + "\n"
     except Exception as exc:
         ctx = f"orchestra session-start failed: {exc}\n"
     return _wrap_start(fmt, ctx)

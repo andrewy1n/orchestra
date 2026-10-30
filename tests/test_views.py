@@ -345,3 +345,18 @@ def test_cli_view_without_store_fails_cleanly(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert cli.main(["handoff"]) == 1
     assert "No artifact store" in capsys.readouterr().err
+
+
+def test_r11_cli_handoff_keeps_id_links_latest_proof_and_backlog(project, monkeypatch, capsys):
+    create(
+        project,
+        "conductor:proof-packet",
+        "p1",
+        {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
+    )
+    create(project, "composer:idea", "later-idea", {"effort": "alpha", "status": "open"})
+    code, out = run_cli(monkeypatch, capsys, project, "handoff")
+    assert code == 0
+    assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo _(id: [rec-" in out.out
+    assert "### Backlog\n- **later-idea**: alpha; open _(id: [rec-" in out.out
+    assert "](.canon/records/score__effort/rec-" in out.out

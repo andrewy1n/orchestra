@@ -1,0 +1,6 @@
+{
+  "body": {
+    "error": "unsupported action 'archive'"
+  },
+  "status": 400
+}

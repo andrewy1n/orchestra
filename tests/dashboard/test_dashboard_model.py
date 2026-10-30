@@ -1,0 +1,2144 @@
+"""Tests for the dashboard loaders: the dashboard snapshot built from store records."""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+import helpers as h
+from conftest import REPO_ROOT, build_store, run_cli, stamped_store
+
+sys.path.insert(0, str(REPO_ROOT))
+from orchestra.canon.project import open_store  # noqa: E402
+from orchestra.canon.store import Store  # noqa: E402
+from dashboard.backend import phase as phase_mod  # noqa: E402
+from dashboard.backend import records  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
+from dashboard.backend import task as task_mod  # noqa: E402
+from dashboard.backend import store as backend_store  # noqa: E402
+
+
+def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
+    h.create_generic_record(
+        cli, defs, "score:effort", subject=effort,
+        extra_payload={"goal": f"ship {effort}", "kind": kind},
+    )
+
+
+def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> None:
+    record = h.create_generic_record(
+        cli, defs, "score:phase", subject=subject,
+        extra_payload={"title": f"title of {subject}", "ordinal": ordinal, "effort": effort},
+    )
+    h.transition(cli, "score:phase", record, *states)
+
+
+def _work_item(cli, defs, effort: str, subject: str, phase: str, *rels: str, assignee: str = "") -> dict:
+    payload = {"title": f"title of {subject}", "phase": phase, "kind": "deliver", "assignee": assignee, "effort": effort}
+    h.ensure_refs(cli, defs, defs["score:work-item"], payload)
+    args = ["create", "--type", "score:work-item", "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    result = cli(*args, "--body", h.generic_body(defs["score:work-item"]))
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["record"]
+
+
+def _target(store):
+    return open_store(store)
+
+
+def _effort(snapshot: snapshot_mod.Snapshot, name: str) -> snapshot_mod.EffortView:
+    return next(view for view in snapshot.efforts if view.effort == name)
+
+
+@pytest.fixture()
+def defs(resolved_contract):
+    return h.record_defs_by_id(resolved_contract)
+
+
+def _seed_models(cli, defs):
+    _goal(cli, defs, "alpha")
+    _goal(cli, defs, "beta")
+    _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")
+    _phase(cli, defs, "alpha", "a-two", 2, "in_progress")
+    _phase(cli, defs, "beta", "b-one", 1)
+    running = _work_item(cli, defs, "alpha", "a-running", "a-two", assignee="agent-7")
+    h.transition(cli, "score:work-item", running, "in_progress")
+    _work_item(cli, defs, "alpha", "a-ready", "a-two")
+    _work_item(cli, defs, "alpha", "a-waiting", "a-two", f"depends_on:{running['id']}")
+    done = _work_item(cli, defs, "alpha", "a-done", "a-one")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
+    withdrawn = _work_item(cli, defs, "alpha", "a-withdrawn", "a-one")
+    h.transition(cli, "score:work-item", withdrawn, "withdrawn")
+    _work_item(cli, defs, "beta", "b-ready", "b-one")
+    h.closed_effort(cli, defs, "gone")
+    _work_item(cli, defs, "gone", "gone-ready", "gone-phase")
+
+
+@pytest.fixture()
+def seeded(store):
+    stamped_store(store, "model-seeded", lambda root, cli, defs: _seed_models(cli, defs))
+    return store
+
+
+def test_groups_records_per_live_effort_and_skips_efforts_without_an_active_goal(seeded):
+    snapshot = snapshot_mod.load_snapshot(_target(seeded))
+    assert sorted(view.effort for view in snapshot.efforts) == ["alpha", "beta"]
+    assert _effort(snapshot, "alpha").goal == "ship alpha"
+    assert [task.subject for task in _effort(snapshot, "beta").tasks] == ["b-ready"]
+
+
+def test_classifies_tasks_with_title_phase_assignee_and_wave(seeded):
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").tasks}
+    assert {subject: task.status for subject, task in tasks.items()} == {
+        "a-running": "running", "a-ready": "ready", "a-waiting": "waiting",
+        "a-done": "done", "a-withdrawn": "withdrawn",
+    }
+    running = tasks["a-running"]
+    assert (running.title, running.phase, running.assignee, running.wave) == ("title of a-running", "a-two", "agent-7", 1)
+    assert tasks["a-waiting"].wave == 2
+
+
+def test_orders_tasks_running_ready_waiting_done_withdrawn(seeded):
+    tasks = _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").tasks
+    assert [task.status for task in tasks] == ["running", "ready", "waiting", "done", "withdrawn"]
+
+
+def test_reports_phase_ordinal_state_and_done_over_total_excluding_withdrawn(seeded):
+    phases = _effort(snapshot_mod.load_snapshot(_target(seeded)), "alpha").phases
+    assert [(p.ordinal, p.title, p.state, p.done, p.total) for p in phases] == [
+        (1, "title of a-one", "done", 1, 1),
+        (2, "title of a-two", "in_progress", 0, 3),
+    ]
+    assert _effort(snapshot_mod.load_snapshot(_target(seeded)), "beta").phases[0].state == "planned"
+
+
+def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    for blocking, scope in ((True, "block-scope"), (False, "open-scope")):
+        h.create_generic_record(
+            cli, defs, "score:continuity-question", subject="alpha",
+            extra_payload={"blocking": blocking, "scope": scope},
+        )
+    answered = h.create_generic_record(
+        cli, defs, "score:continuity-question", subject="alpha",
+        extra_payload={"blocking": True, "scope": "answered-scope"},
+    )
+    h.transition(cli, "score:continuity-question", answered, "answered")
+    h.create_generic_record(
+        cli, defs, "tuner:finding", subject="f-human",
+        extra_payload={"claim": "human decides", "needs": "human", "effort": "alpha"},
+    )
+    h.create_generic_record(
+        cli, defs, "tuner:finding", subject="f-agent",
+        extra_payload={"claim": "agent decides", "needs": "agent", "effort": "alpha"},
+    )
+    retracted = h.create_generic_record(
+        cli, defs, "tuner:finding", subject="f-retracted",
+        extra_payload={"claim": "retracted claim", "needs": "human", "effort": "alpha"},
+    )
+    h.transition(cli, "tuner:finding", retracted, "retracted")
+    check_payload = {"method": "manual", "signed_by": "", "result": "pass", "effort": "alpha"}
+    h.create_generic_record(cli, defs, "tuner:check-run", subject="c-unsigned", extra_payload=check_payload)
+    h.create_generic_record(
+        cli, defs, "tuner:check-run", subject="c-signed", extra_payload={**check_payload, "signed_by": "ayin"},
+    )
+    h.create_generic_record(
+        cli, defs, "tuner:check-run", subject="c-automatic", extra_payload={**check_payload, "method": "check"},
+    )
+    corrected = h.create_generic_record(cli, defs, "tuner:check-run", subject="c-corrected", extra_payload=check_payload)
+    result = cli("correct", "--type", "tuner:check-run", "--id", corrected["id"], "--payload", json.dumps({"signed_by": "ayin"}))
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
+    assert sorted((item.kind, item.text) for item in items if item.kind != "unsigned-check") == [
+        ("blocking-question", "block-scope"),
+        ("needs-human", "human decides"),
+        ("open-question", "open-scope"),
+    ]
+    assert sorted(item.subject for item in items if item.kind == "unsigned-check") == ["c-unsigned"]
+    assert [item.kind for item in items][:1] == ["blocking-question"]
+
+
+def test_unsigned_check_reads_as_its_criterion_and_task_not_a_record_id(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    acceptance = _record(cli, defs, "score:acceptance", "u-task-perf",
+                         {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha",
+                          "phase": "a-one"})
+    check_payload = {"method": "manual", "signed_by": "", "result": "pass", "revision": "r", "effort": "alpha"}
+    _record(cli, defs, "tuner:check-run", "u-check", {**check_payload, "criterion_id": acceptance["id"]})
+    _record(cli, defs, "tuner:check-run", "u-orphan", {**check_payload, "criterion_id": "rec-missing"})
+
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
+    assert sorted((item.subject, item.text) for item in items) == [
+        ("u-orphan", "pass"),
+        ("u-task-perf", "pages render pass"),
+    ]
+    assert not any("rec-" in item.text or "rec-" in item.subject for item in items)
+
+
+def test_needs_you_items_carry_record_type_and_full_body(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _record(cli, defs, "score:continuity-question", "alpha",
+            {"owner": "ayin", "blocking": True, "scope": "which renderer"},
+            "Pick the PDF renderer before the render task starts.")
+    _record(cli, defs, "tuner:finding", "f-human",
+            {"claim": "human decides", "basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"})
+
+    items = {item.kind: item for item in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you}
+    assert items["blocking-question"].record_type == "score:continuity-question"
+    assert items["blocking-question"].body.strip() == "Pick the PDF renderer before the render task starts."
+    assert items["needs-human"].record_type == "tuner:finding"
+    assert "placeholder text for Follow-up." in items["needs-human"].body
+
+
+def test_needs_you_items_link_to_the_task_with_the_longest_matching_slug(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _goal(cli, defs, "beta")
+    pdf = _work_item(cli, defs, "alpha", "pdf", "a-one")
+    render = _work_item(cli, defs, "alpha", "pdf-render", "a-one")
+    _work_item(cli, defs, "beta", "pdf-render-check", "b-one")
+    finding = {"basis": "b", "needs": "human", "effort": "alpha", "invalidated_when": "w"}
+    _record(cli, defs, "tuner:finding", "pdf-render", {**finding, "claim": "exact"})
+    _record(cli, defs, "tuner:finding", "pdf-render-check", {**finding, "claim": "prefix"})
+    _record(cli, defs, "tuner:finding", "pdfx-render", {**finding, "claim": "no boundary"})
+    _record(cli, defs, "tuner:finding", "pdf-other", {**finding, "claim": "short prefix"})
+    acceptance = _record(cli, defs, "score:acceptance", "pdf-render-perf",
+                         {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha",
+                          "phase": "a-one"})
+    _record(cli, defs, "tuner:check-run", "u-check",
+            {"method": "manual", "signed_by": "", "result": "pass", "revision": "r", "effort": "alpha",
+             "criterion_id": acceptance["id"]})
+
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
+    assert sorted((item.text, item.task_id) for item in items) == sorted([
+        ("exact", render["id"]),
+        ("prefix", render["id"]),
+        ("no boundary", ""),
+        ("short prefix", pdf["id"]),
+        ("pages render pass", render["id"]),
+    ])
+
+
+def test_needs_you_effort_level_question_links_to_no_task(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _work_item(cli, defs, "alpha", "alpha-task", "a-one")
+    h.create_generic_record(
+        cli, defs, "score:continuity-question", subject="alpha",
+        extra_payload={"blocking": False, "scope": "effort scope"},
+    )
+
+    items = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you
+    assert [(item.kind, item.task_id) for item in items] == [("open-question", "")]
+
+
+def test_needs_you_item_defaults_keep_the_four_field_constructor_working():
+    item = snapshot_mod.NeedsYouItem("needs-human", "rec-1", "s", "t")
+    assert (item.record_type, item.body, item.task_id, item.revision) == ("", "", "", "")
+
+
+def test_approval_needs_you_items_carry_displayed_revision(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    question = h.create_generic_record(
+        cli, defs, "score:continuity-question", subject="alpha",
+        extra_payload={"blocking": True, "scope": "plan-review:alpha"},
+    )
+    finding = h.create_generic_record(
+        cli, defs, "tuner:finding", subject="f-human",
+        extra_payload={"claim": "human decides", "needs": "human", "effort": "alpha"},
+    )
+    acceptance = _record(
+        cli, defs, "score:acceptance", "u-task",
+        {"criterion": "pages render", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "a-one"},
+    )
+    check = _record(
+        cli, defs, "tuner:check-run", "u-check",
+        {
+            "criterion_id": acceptance["id"], "method": "manual", "result": "pass",
+            "signed_by": "", "revision": "r", "effort": "alpha",
+        },
+    )
+
+    items = {item.kind: item for item in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").needs_you}
+    assert items["blocking-question"].revision == question["revision"]
+    assert items["needs-human"].revision == finding["revision"]
+    assert items["unsigned-check"].revision == check["revision"]
+    assert "@current" not in {
+        items["blocking-question"].revision,
+        items["needs-human"].revision,
+        items["unsigned-check"].revision,
+    }
+
+
+def test_recent_activity_lists_last_24h_newest_first_and_resolves_reports_to_their_effort(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _goal(cli, defs, "beta")
+    item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    h.create_generic_record(
+        cli, defs, "conductor:assignment", subject="a-assign",
+        extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
+    )
+    h.create_generic_record(
+        cli, defs, "conductor:execution-report", subject="a-report",
+        extra_payload={"work_item": item["subject"], "result": "done it", "verdict": "pass"},
+    )
+    h.create_generic_record(
+        cli, defs, "tuner:check-run", subject="a-check",
+        extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
+    )
+    h.run_cli_48h_ago(
+        store, "create", "--type", "tuner:check-run", "--subject", "a-old-check",
+        "--payload", json.dumps({
+            "method": "check", "signed_by": "", "result": "pass", "effort": "alpha",
+            "criterion_id": "c-1", "revision": "r-1",
+        }),
+    )
+
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    activity = _effort(snapshot, "alpha").activity
+    assert sorted((a.kind, a.subject) for a in activity) == [
+        ("assignment", "a-assign"), ("check-run", "a-check"), ("execution-report", "a-report"),
+    ]
+    stamps = [a.recorded_at for a in activity]
+    assert stamps == sorted(stamps, reverse=True)
+    assert _effort(snapshot, "beta").activity == []
+
+
+def test_activity_marks_failed_check_runs_and_failed_reports_only(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    h.create_generic_record(
+        cli, defs, "conductor:assignment", subject="a-assign",
+        extra_payload={"work_item": item["subject"], "executor": "sub-1", "effort": "alpha"},
+    )
+    for subject, result, verdict in (
+        ("a-report-pass", "pass", "pass"), ("a-report-result-fail", "fail", "pass"), ("a-report-verdict-fail", "pass", "fail"),
+    ):
+        h.create_generic_record(
+            cli, defs, "conductor:execution-report", subject=subject,
+            extra_payload={"work_item": item["subject"], "result": result, "verdict": verdict},
+        )
+    for subject, result in (("a-check-pass", "pass"), ("a-check-fail", "fail")):
+        h.create_generic_record(
+            cli, defs, "tuner:check-run", subject=subject,
+            extra_payload={"method": "check", "signed_by": "", "result": result, "effort": "alpha"},
+        )
+
+    activity = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").activity
+    assert sorted(a.subject for a in activity if a.failed) == [
+        "a-check-fail", "a-report-result-fail", "a-report-verdict-fail",
+    ]
+    assert len(activity) == 6
+
+
+def test_activity_window_follows_the_supplied_clock(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    h.create_generic_record(
+        cli, defs, "tuner:check-run", subject="a-check",
+        extra_payload={"method": "check", "signed_by": "", "result": "pass", "effort": "alpha"},
+    )
+    later = datetime.now(timezone.utc) + timedelta(hours=25)
+    assert _effort(snapshot_mod.load_snapshot(_target(store), now=later), "alpha").activity == []
+
+
+def test_change_token_is_stable_until_the_store_changes(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    target = _target(store)
+    first = snapshot_mod.load_snapshot(target).token
+    assert snapshot_mod.load_snapshot(target).token == first
+    assert snapshot_mod.change_token(target) == first
+    _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    assert snapshot_mod.change_token(target) != first
+
+
+def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    target = _target(store)
+    walks = []
+    real = snapshot_mod.change_token
+    monkeypatch.setattr(snapshot_mod, "change_token", lambda t: walks.append(t) or real(t))
+    snapshot_mod.load_snapshot(target)
+    assert len(walks) == 1
+
+
+def test_change_token_stats_type_directories_not_records(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    for index in range(5):
+        _work_item(cli, defs, "alpha", f"a-task-{index}", "a-phase")
+    target = _target(store)
+    stats = []
+    real = os.stat
+    monkeypatch.setattr(os, "stat", lambda *a, **k: stats.append(a) or real(*a, **k))
+    snapshot_mod.change_token(target)
+    assert len(stats) <= len(list((target.store_path / "records").iterdir()))
+
+
+def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    backend_store._catalog_cache.clear()
+    reads = []
+    real = Store.iter_records
+    monkeypatch.setattr(Store, "iter_records", lambda self, *a: reads.append(a) or real(self, *a))
+    backend_store._catalog(_target(store))
+    assert len(reads) == 1
+
+
+def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    target = _target(store)
+    before = snapshot_mod.change_token(target)
+    h.transition(cli, "score:work-item", item, "in_progress")
+    assert snapshot_mod.change_token(target) != before
+
+
+def test_raises_a_model_error_when_the_store_read_fails(store, monkeypatch):
+    def fail(target, *args, **kwargs):
+        raise backend_store.ModelError("list failed")
+
+    monkeypatch.setattr(backend_store, "list_records", fail)
+    with pytest.raises(backend_store.ModelError):
+        snapshot_mod.load_snapshot(_target(store))
+
+
+def test_store_with_no_goals_has_no_efforts(store):
+    assert snapshot_mod.load_snapshot(_target(store)).efforts == []
+
+
+def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
+    _goal(cli, defs, "open-one")
+    closed = h.create_generic_record(
+        cli, defs, "score:effort", subject="closed-one",
+        extra_payload={"goal": "ship closed-one", "kind": "deliver"},
+    )
+    result = cli(
+        "supersede", "--type", "score:effort", "--id", closed["id"],
+        "--expected-revision", closed["revision"], "--payload", json.dumps({**closed["payload"], "status": "closed"}),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    assert [view.effort for view in snapshot_mod.load_snapshot(_target(store)).efforts] == ["open-one"]
+
+
+def _record(cli, defs, record_type: str, subject: str, payload: dict, body: str | None = None, *rels: str) -> dict:
+    h.ensure_refs(cli, defs, defs[record_type], payload)
+    args = ["create", "--type", record_type, "--subject", subject, "--payload", json.dumps(h.with_rels(cli, payload, rels))]
+    body = body if body is not None else h.generic_body(defs[record_type])
+    if body:
+        args.extend(["--body", body])
+    result = cli(*args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["record"]
+
+
+@pytest.fixture()
+def detail_store(store, cli, defs):
+    dep = _work_item(cli, defs, "alpha", "d-dep", "a-one")
+    h.transition(cli, "score:work-item", dep, "in_progress", "done")
+    task = _work_item(cli, defs, "alpha", "d-task", "a-one", f"depends_on:{dep['id']}", assignee="sub-d")
+    h.transition(cli, "score:work-item", task, "in_progress")
+    blocked = _work_item(cli, defs, "alpha", "d-blocked", "a-two", f"depends_on:{task['id']}")
+    sibling = _work_item(cli, defs, "alpha", "d-task-other", "a-one")
+    _record(cli, defs, "score:acceptance", "d-task",
+            {"criterion": "first", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
+    signoff = _record(cli, defs, "score:acceptance", "d-task-signoff",
+                      {"criterion": "second", "method": "manual", "verify_command": "", "effort": "alpha", "phase": "a-one"})
+    _record(cli, defs, "score:acceptance", "d-task-other",
+            {"criterion": "foreign", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
+    first = _record(cli, defs, "score:acceptance", "d-task-first",
+                    {"criterion": "third", "method": "check", "verify_command": "true", "effort": "alpha", "phase": "a-one"})
+    h.run_cli_48h_ago(
+        store, "create", "--type", "tuner:check-run", "--subject", "d-task-signoff", "--payload",
+        json.dumps({"criterion_id": signoff["id"], "method": "manual", "result": "fail", "signed_by": "",
+                    "revision": "rev-early", "effort": "alpha"}),
+    )
+    _record(cli, defs, "tuner:check-run", "d-task-signoff",
+            {"criterion_id": signoff["id"], "method": "manual", "result": "pass", "signed_by": "ayin",
+             "revision": "rev-late", "effort": "alpha"})
+    _record(cli, defs, "tuner:check-run", "d-task-other",
+            {"criterion_id": "x", "method": "check", "result": "pass", "signed_by": "", "revision": "r", "effort": "alpha"})
+    _record(cli, defs, "tuner:check-run", "d-task-first",
+            {"criterion_id": first["id"], "method": "check", "result": "pass", "signed_by": "", "revision": "r2", "effort": "beta"})
+    assignment = _record(cli, defs, "conductor:assignment", "d-task",
+                         {"work_item": task["subject"], "executor": "sub-d", "effort": "alpha"}, "## Orientation\n\nstart here")
+    _record(cli, defs, "conductor:assignment-amendment", "d-task",
+            {"assignment": "d-task", "effort": "alpha"}, "## Correction\n\nuse this")
+    _record(cli, defs, "conductor:execution-report", "d-task",
+            {"work_item": task["subject"], "assignment": assignment["subject"], "result": "pass", "verdict": "pass", "revision": "abc"},
+            "evidence body")
+    _record(cli, defs, "conductor:execution-report", "d-task-other",
+            {"work_item": sibling["subject"], "assignment": "x", "result": "pass", "verdict": "pass", "revision": "zzz"}, "foreign body")
+    _record(cli, defs, "tuner:finding", "d-task",
+            {"claim": "a claim", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
+    _record(cli, defs, "tuner:finding", "d-task-other",
+            {"claim": "foreign claim", "basis": "b", "needs": "agent", "effort": "alpha", "invalidated_when": "w"})
+    _record(cli, defs, "score:decision", "d-task-choice",
+            {"choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "a-one"})
+    _record(cli, defs, "conductor:failed-attempt", "d-task",
+            {"attempted_action": "tried x", "retry_when": "later", "effort": "alpha"})
+    _record(cli, defs, "tuner:investigation-observation", "d-task",
+            {"what_was_observed": "saw y", "effort": "alpha", "environment": "e", "observed_time": "t", "source": "s"})
+    return store, task, dep, blocked
+
+
+def _detail(detail_store) -> task_mod.TaskDetail:
+    store, task, _, _ = detail_store
+    return task_mod.load_task_detail(_target(store), task["id"])
+
+
+def test_detail_returns_the_work_item_fields(detail_store):
+    detail = _detail(detail_store)
+    assert (detail.id, detail.subject, detail.title, detail.status) == (
+        detail_store[1]["id"], "d-task", "title of d-task", "running")
+    assert (detail.phase, detail.assignee, detail.wave, detail.effort) == ("a-one", "sub-d", 2, "alpha")
+    assert detail.body
+
+
+def test_detail_links_dependencies_and_blocked_tasks_with_subject_and_status(detail_store):
+    detail = _detail(detail_store)
+    assert [(t.subject, t.status) for t in detail.depends_on] == [("d-dep", "done")]
+    assert [(t.subject, t.status) for t in detail.blocks] == [("d-blocked", "waiting")]
+
+
+def test_detail_pairs_each_acceptance_with_its_latest_check_run(detail_store):
+    by_subject = {a.subject: a for a in _detail(detail_store).acceptances}
+    assert sorted(by_subject) == ["d-task", "d-task-first", "d-task-signoff"]
+    signoff = by_subject["d-task-signoff"]
+    assert (signoff.criterion, signoff.method) == ("second", "manual")
+    assert (signoff.check.result, signoff.check.method, signoff.check.signed_by, signoff.check.revision) == (
+        "pass", "manual", "ayin", "rev-late")
+    assert by_subject["d-task"].check is None
+    assert by_subject["d-task-first"].check is None
+
+
+def test_detail_timeline_is_oldest_first_and_carries_report_bodies(detail_store):
+    timeline = _detail(detail_store).timeline
+    assert [e.kind for e in timeline if e.kind != "check-run"] == ["assignment", "assignment-amendment", "execution-report"]
+    stamps = [e.recorded_at for e in timeline]
+    assert stamps == sorted(stamps)
+    report = next(e for e in timeline if e.kind == "execution-report")
+    assert report.body.strip() == "evidence body"
+    assert sum(e.kind == "check-run" for e in timeline) == 2
+
+
+def test_detail_timeline_events_carry_revision_for_reports_and_check_runs_only(detail_store):
+    timeline = _detail(detail_store).timeline
+    revisions = {e.kind: e.revision for e in timeline if e.kind != "check-run"}
+    assert revisions == {"assignment": "", "assignment-amendment": "", "execution-report": "abc"}
+    assert sorted(e.revision for e in timeline if e.kind == "check-run") == ["rev-early", "rev-late"]
+
+
+def test_detail_lists_related_findings_decisions_attempts_and_observations(detail_store):
+    related = {(r.kind, r.text) for r in _detail(detail_store).related}
+    assert related == {
+        ("finding", "a claim"), ("decision", "go left"), ("failed-attempt", "tried x"),
+        ("observation", "saw y"),
+    }
+
+
+def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
+    detail = _detail(detail_store)
+    texts = [e.body for e in detail.timeline] + [r.text for r in detail.related]
+    assert not any("foreign" in text for text in texts)
+    assert all(a.criterion != "foreign" for a in detail.acceptances)
+
+
+def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
+    calls = []
+    real_get, real_list = backend_store.get_record, backend_store.list_records
+
+    def spy_get(target, *args, **kwargs):
+        calls.append(("get", args, kwargs))
+        return real_get(target, *args, **kwargs)
+
+    def spy_list(target, *args, **kwargs):
+        calls.append(("list", args, kwargs))
+        return real_list(target, *args, **kwargs)
+
+    monkeypatch.setattr(backend_store, "get_record", spy_get)
+    monkeypatch.setattr(backend_store, "list_records", spy_list)
+    _detail(detail_store)
+    assert len(calls) == 4
+
+
+def test_detail_of_an_unknown_id_raises_a_model_error(store):
+    with pytest.raises(backend_store.ModelError):
+        task_mod.load_task_detail(_target(store), "rec-missing")
+
+
+def _signoff_task(cli, defs, effort, phase, subject, manual_signed_by=None, result="pass"):
+    task = _work_item(cli, defs, effort, subject, phase)
+    h.transition(cli, "score:work-item", task, "in_progress")
+    acceptance = _record(cli, defs, "score:acceptance", subject,
+                         {"criterion": "reviewed", "method": "manual", "verify_command": "", "effort": effort, "phase": phase})
+    if manual_signed_by is not None:
+        _record(cli, defs, "tuner:check-run", subject,
+                {"criterion_id": acceptance["id"], "method": "manual", "result": result,
+                 "signed_by": manual_signed_by, "revision": "r", "effort": effort})
+    return task
+
+
+def _awaiting(store, effort="alpha"):
+    phases = _effort(snapshot_mod.load_snapshot(_target(store)), effort).phases
+    return {p.subject: p.awaiting_signoff for p in phases}
+
+
+def test_phase_awaits_sign_off_when_every_open_task_waits_only_on_an_unsigned_manual_check(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    for ordinal, name in enumerate(("p-wait", "p-plain", "p-mixed", "p-signed", "p-failed", "p-done"), 1):
+        _phase(cli, defs, "alpha", name, ordinal, "in_progress")
+    _signoff_task(cli, defs, "alpha", "p-wait", "t-wait", manual_signed_by="")
+    plain = _work_item(cli, defs, "alpha", "t-plain", "p-plain")
+    h.transition(cli, "score:work-item", plain, "in_progress")
+    _signoff_task(cli, defs, "alpha", "p-mixed", "t-mixed", manual_signed_by="")
+    plain = _work_item(cli, defs, "alpha", "t-other", "p-mixed")
+    h.transition(cli, "score:work-item", plain, "in_progress")
+    _signoff_task(cli, defs, "alpha", "p-signed", "t-signed", manual_signed_by="ayin")
+    _signoff_task(cli, defs, "alpha", "p-failed", "t-failed", manual_signed_by="", result="fail")
+    finished = _work_item(cli, defs, "alpha", "t-finished", "p-done")
+    h.transition(cli, "score:work-item", finished, "in_progress", "done")
+    assert _awaiting(store) == {
+        "p-wait": True, "p-plain": False, "p-mixed": False, "p-signed": False, "p-failed": False, "p-done": False,
+    }
+
+
+def test_a_phase_with_a_done_task_and_one_task_awaiting_sign_off_is_awaiting(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
+    finished = _work_item(cli, defs, "alpha", "t-finished", "p-one")
+    h.transition(cli, "score:work-item", finished, "in_progress", "done")
+    _signoff_task(cli, defs, "alpha", "p-one", "t-wait", manual_signed_by="")
+    assert _awaiting(store) == {"p-one": True}
+
+
+def test_phase_detail_carries_body_decisions_constraints_and_tasks(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
+    _phase(cli, defs, "alpha", "p-two", 2)
+    task = _work_item(cli, defs, "alpha", "t-one", "p-one")
+    _work_item(cli, defs, "alpha", "t-elsewhere", "p-two")
+    _record(cli, defs, "score:decision", "p-one-choice",
+            {"choice": "go left", "alternatives": "right", "effort": "alpha", "phase": "p-one"})
+    _record(cli, defs, "score:decision", "p-two-choice",
+            {"choice": "go right", "alternatives": "left", "effort": "alpha", "phase": "p-two"})
+    _record(cli, defs, "score:constraint", "p-one-limit",
+            {"statement": "no network", "applies_to": "p-one", "effort": "alpha"})
+    _record(cli, defs, "score:constraint", "other-limit",
+            {"statement": "elsewhere", "applies_to": "p-two", "effort": "alpha"})
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-one")
+    assert (detail.subject, detail.title, detail.state, detail.awaiting_signoff) == ("p-one", "title of p-one", "in_progress", False)
+    assert "placeholder text for Problem" in detail.body
+    assert [d.text for d in detail.decisions] == ["go left"]
+    assert [c.text for c in detail.constraints] == ["no network"]
+    assert [t.id for t in detail.tasks] == [task["id"]]
+
+
+def test_phase_detail_for_an_unknown_phase_raises(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    with pytest.raises(backend_store.ModelError):
+        phase_mod.load_phase_detail(_target(store), "alpha", "nope")
+
+
+def _phase_row(state: str) -> phase_mod.PhaseRow:
+    return phase_mod.PhaseRow(subject=f"p-{state}", title="", ordinal=1, state=state, done=0, total=0)
+
+
+def _task_row(status: str) -> task_mod.TaskRow:
+    return task_mod.TaskRow(id=status, subject=f"t-{status}", title="", phase="", assignee="", wave=None, status=status)
+
+
+@pytest.mark.parametrize(("phases", "tasks", "finished"), [
+    (["done"], ["done", "withdrawn"], True),
+    ([], ["done"], True),
+    (["done", "done"], [], True),
+    ([], [], False),
+    ([], ["withdrawn"], False),
+    (["done", "in_progress"], ["done"], False),
+    (["planned"], [], False),
+    (["done"], ["done", "ready"], False),
+    (["done"], ["running"], False),
+    (["done"], ["waiting"], False),
+])
+def test_effort_is_finished_only_when_every_phase_and_counted_task_is_done(phases, tasks, finished):
+    view = snapshot_mod.EffortView(
+        effort="e", goal="", phases=[_phase_row(s) for s in phases], tasks=[_task_row(s) for s in tasks],
+    )
+    assert view.finished is finished
+
+
+def test_finished_efforts_sort_after_live_ones(store, cli, defs):
+    for effort in ("alpha", "beta", "gamma"):
+        _goal(cli, defs, effort)
+    _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")
+    done = _work_item(cli, defs, "alpha", "a-done", "a-one")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
+    _phase(cli, defs, "beta", "b-one", 1, "in_progress")
+    _work_item(cli, defs, "beta", "b-ready", "b-one")
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    assert [(view.effort, view.finished) for view in snapshot.efforts] == [
+        ("beta", False), ("gamma", False), ("alpha", True),
+    ]
+
+
+def _assign(cli, defs, work_item: str, executor: str) -> dict:
+    return h.create_generic_record(
+        cli, defs, "conductor:assignment", subject=f"{executor}-assign",
+        extra_payload={"work_item": work_item, "executor": executor, "effort": "alpha"},
+    )
+
+
+def test_waits_on_lists_only_unfinished_dependency_slugs_in_dependency_order(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    done = _work_item(cli, defs, "alpha", "w-done", "p-one")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
+    later = _work_item(cli, defs, "alpha", "w-later", "p-one")
+    active = _work_item(cli, defs, "alpha", "w-active", "p-one")
+    h.transition(cli, "score:work-item", active, "in_progress")
+    _work_item(
+        cli, defs, "alpha", "w-task", "p-one",
+        f"depends_on:{later['id']}", f"depends_on:{done['id']}", f"depends_on:{active['id']}",
+    )
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
+    assert tasks["w-task"].waits_on == ("w-later", "w-active")
+    assert tasks["w-later"].waits_on == ()
+
+
+def test_phase_detail_task_rows_carry_waits_on(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
+    dep = _work_item(cli, defs, "alpha", "w-dep", "p-one")
+    _work_item(cli, defs, "alpha", "w-task", "p-one", f"depends_on:{dep['id']}")
+    tasks = {t.subject: t for t in phase_mod.load_phase_detail(_target(store), "alpha", "p-one").tasks}
+    assert tasks["w-task"].waits_on == ("w-dep",)
+
+
+def test_task_rows_include_depends_on_task_ids(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-one", 1, "in_progress")
+    dep = _work_item(cli, defs, "alpha", "w-dep", "p-one")
+    _work_item(cli, defs, "alpha", "w-task", "p-one", f"depends_on:{dep['id']}")
+    snap = {t.subject: t for t in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
+    phase = {t.subject: t for t in phase_mod.load_phase_detail(_target(store), "alpha", "p-one").tasks}
+    assert snap["w-task"].depends_on == (dep["id"],)
+    assert phase["w-task"].depends_on == (dep["id"],)
+    assert snap["w-dep"].depends_on == ()
+
+
+def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    running = _work_item(cli, defs, "alpha", "r-running", "p-one")
+    h.transition(cli, "score:work-item", running, "in_progress")
+    h.run_cli_48h_ago(
+        store, "create", "--type", "conductor:assignment", "--subject", "old-assign",
+        "--payload", json.dumps({"work_item": running["subject"], "executor": "old", "effort": "alpha"}),
+        "--body", h.generic_body(defs["conductor:assignment"]),
+    )
+    latest = _assign(cli, defs, "r-running", "new")
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
+    assert tasks["r-running"].running_since == datetime.fromisoformat(latest["recorded_at"])
+
+
+def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    ready = _work_item(cli, defs, "alpha", "r-ready", "p-one")
+    _assign(cli, defs, ready["subject"], "ready")
+    done = _work_item(cli, defs, "alpha", "r-done", "p-one")
+    _assign(cli, defs, done["subject"], "done")
+    h.transition(cli, "score:work-item", done, "in_progress", "done")
+    unassigned = _work_item(cli, defs, "alpha", "r-unassigned", "p-one")
+    h.transition(cli, "score:work-item", unassigned, "in_progress")
+    tasks = {task.subject: task for task in _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").tasks}
+    assert [tasks[s].running_since for s in ("r-ready", "r-done", "r-unassigned")] == [None, None, None]
+
+
+def test_task_row_defaults_leave_waits_on_empty_and_running_since_unset():
+    row = _task_row("running")
+    assert (row.waits_on, row.running_since) == ((), None)
+
+
+def _merged_store(cli, defs):
+    h.create_generic_record(
+        cli, defs, "score:effort", subject="merged",
+        extra_payload={"goal": "ship merged", "kind": "deliver", "merged_from": ["old-a", "old-b"]},
+    )
+    _phase(cli, defs, "merged", "m-one", 1, "in_progress")
+    task = _work_item(cli, defs, "merged", "m-task", "m-one")
+    h.transition(cli, "score:work-item", task, "in_progress")
+    _record(cli, defs, "tuner:check-run", "m-task",
+            {"criterion_id": "x", "method": "manual", "result": "pass", "signed_by": "", "revision": "r", "effort": "old-a"})
+    return task
+
+
+def test_snapshot_counts_a_check_run_of_a_merged_effort_under_the_new_effort(store, cli, defs):
+    _merged_store(cli, defs)
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "merged")
+    assert [item.kind for item in view.needs_you] == ["unsigned-check"]
+    assert [item.kind for item in view.activity] == ["check-run"]
+
+
+def test_task_detail_lists_a_check_run_recorded_under_a_merged_effort(store, cli, defs):
+    task = _merged_store(cli, defs)
+    detail = task_mod.load_task_detail(_target(store), task["id"])
+    assert [e.kind for e in detail.timeline] == ["check-run"]
+
+
+def _body(defs, record_type: str, fills: dict | None = None) -> str | None:
+    required = defs[record_type].get("required_sections") or []
+    if not required:
+        return None
+    fills = fills or {}
+    return "\n\n".join(f"## {name}\n\n{fills.get(name, 'placeholder.')}" for name in required)
+
+
+def _spec(cli, defs, phase: str, requirements: str = "R1", *, weight: str = "light", body: str | None = None, non_goals: str = "none", effort: str = "alpha") -> dict:
+    if body is None:
+        lines = "\n".join(f"{part.strip()}: text of {part.strip()}" for part in requirements.split(",") if part.strip())
+        body = _body(defs, "score:specification", {"Requirements": lines, "Non-goals": non_goals})
+    return _record(cli, defs, "score:specification", phase, {
+        "weight": weight, "phase": phase, "effort": effort, "requirements": h.csv(requirements),
+    }, body)
+
+
+def _design(cli, defs, phase: str, decisions: str = "", *, effort: str = "alpha") -> dict:
+    for subject in h.csv(decisions):
+        if not json.loads(cli("list", "--type", "score:decision", "--subject", subject).stdout)["records"]:
+            _decision(cli, defs, subject, phase, "chosen", effort=effort)
+    return _record(cli, defs, "score:design", phase, {"phase": phase, "effort": effort, "decisions": h.csv(decisions)})
+
+
+def _decision(cli, defs, subject: str, phase: str, choice: str, *, effort: str = "alpha") -> dict:
+    return _record(cli, defs, "score:decision", subject, {
+        "choice": choice, "alternatives": "other", "phase": phase, "effort": effort,
+    })
+
+
+def _task(cli, defs, subject: str, phase: str, requirements: str = "", decisions: str = "", *, done: bool = False, effort: str = "alpha") -> dict:
+    payload = {"title": subject, "phase": phase, "kind": "deliver", "assignee": "", "effort": effort}
+    if requirements:
+        payload["requirements"] = h.csv(requirements)
+    if decisions:
+        payload["decisions"] = h.csv(decisions)
+    record = _record(cli, defs, "score:work-item", subject, payload)
+    if done:
+        record = h.transition(cli, "score:work-item", record, "in_progress", "done")
+    return record
+
+
+def _accept(cli, defs, subject: str, phase: str, requirement: str, *, effort: str = "alpha") -> dict:
+    return _record(cli, defs, "score:acceptance", subject, {
+        "criterion": subject, "method": "check", "phase": phase, "effort": effort,
+        "verify_command": "true", "requirement": requirement,
+    })
+
+
+def _check(cli, defs, subject: str, acceptance_id: str, result: str, requirement: str, evidence_kind: str) -> dict:
+    return _record(cli, defs, "tuner:check-run", subject, {
+        "criterion_id": acceptance_id, "revision": "dirty", "result": result, "effort": "alpha",
+        "method": "check", "signed_by": "ayin", "requirement": requirement, "evidence_kind": evidence_kind,
+    })
+
+
+def _assessment(cli, defs, phase: str, requirement: str, **fields) -> dict:
+    payload = {
+        "requirement": requirement, "phase": phase, "effort": fields.pop("effort", "alpha"), "missing": "",
+        "confidence": "high", "status": "failed", "next": "execute", "level": "implementation",
+    }
+    payload.update(fields)
+    if payload.get("status") == "verified":
+        payload.pop("level", None)
+    return _record(cli, defs, "conductor:assessment", f"{phase}-{requirement}", payload)
+
+
+def _supersede(cli, defs, record_type: str, record: dict, payload: dict) -> dict:
+    args = [
+        "supersede", "--type", record_type, "--id", record["id"],
+        "--expected-revision", record["revision"], "--payload", json.dumps({**record["payload"], **payload}),
+    ]
+    body = _body(defs, record_type)
+    if body:
+        args.extend(["--body", body])
+    result = cli(*args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["record"]
+
+
+def _report(cli, defs, phase: str, result: str, conflicts: str = "none", *, subject: str | None = None, effort: str = "alpha") -> dict:
+    body = _body(defs, "conductor:integration-report", {"Conflicts": conflicts})
+    return _record(cli, defs, "conductor:integration-report", subject or f"{phase}-report", {
+        "phase": phase, "effort": effort, "result": result, "revision": "dirty",
+    }, body)
+
+
+def _release(cli, defs, phase: str, state: str, *, effort: str = "alpha") -> dict:
+    return _record(cli, defs, "conductor:release", phase, {"state": state, "phase": phase, "effort": effort})
+
+
+ROW_SPEC = """## Non-goals
+
+R1: decoy
+
+No new screen.
+
+## Requirements
+
+R1: alpha holds
+R2: beta holds
+
+## Acceptance criteria
+
+ok
+
+## Constraints
+
+ok
+
+## Invariants
+
+ok
+
+## Assumptions
+
+ok
+"""
+
+
+def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-rows", 1, "in_progress")
+    _phase(cli, defs, "alpha", "p-other", 2)
+    _spec(cli, defs, "p-rows", "R1, R2", weight="full", body=ROW_SPEC)
+    _decision(cli, defs, "use-columns", "p-rows", "two")
+    _design(cli, defs, "p-rows", "use-columns")
+    _task(cli, defs, "row-a", "p-rows", "R1")
+    _task(cli, defs, "row-b", "p-rows", "R1")
+    _task(cli, defs, "row-c", "p-rows", "R2")
+    _task(cli, defs, "row-d", "p-rows", "R10")
+    verified = _assessment(cli, defs, "p-rows", "R1", status="verified", next="release", confidence="high")
+    _supersede(cli, defs, "conductor:assessment", verified, {
+        "status": "failed", "level": "design", "next": "design", "confidence": "high",
+    })
+    own = _accept(cli, defs, "row-c-check", "p-rows", "R2")
+    h.run_cli_48h_ago(
+        store, "create", "--type", "tuner:check-run", "--subject", "row-c-pass",
+        "--payload", json.dumps({
+            "criterion_id": own["id"], "revision": "dirty", "result": "pass", "effort": "alpha",
+            "method": "check", "signed_by": "ayin", "requirement": "R2", "evidence_kind": "unit",
+        }),
+    )
+    _check(cli, defs, "row-c-fail", own["id"], "fail", "R2", "integration")
+    other = _accept(cli, defs, "other-check", "p-other", "R2")
+    _check(cli, defs, "other-pass", other["id"], "pass", "R2", "unit")
+
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    phase = next(row for row in view.phases if row.subject == "p-rows")
+    evidence = phase.evidence
+    assert evidence is not None
+    assert evidence.phase == "p-rows"
+    assert evidence.weight == "full"
+    assert evidence.non_goals == "R1: decoy\n\nNo new screen."
+    assert [(item.subject, item.choice) for item in evidence.decisions] == [("use-columns", "two")]
+    assert [(row.id, row.phase, row.text, row.status, row.next, row.tasks) for row in evidence.requirements] == [
+        ("R1", "p-rows", "alpha holds", "failed", "design", 2),
+        ("R2", "p-rows", "beta holds", "unassessed", "", 1),
+    ]
+    assert evidence.requirements[0].latest_check is None
+    assert evidence.requirements[1].latest_check.result == "fail"
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-rows")
+    assert [row.id for row in detail.evidence.requirements] == ["R1", "R2"]
+
+
+def test_evidence_requirement_detail_includes_superseded_assessments(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-detail", 1, "in_progress")
+    _spec(cli, defs, "p-detail", "R1", body=_body(defs, "score:specification", {
+        "Requirements": "R1: the traced requirement",
+    }))
+    _decision(cli, defs, "design-only", "p-detail", "nope")
+    _design(cli, defs, "p-detail", "design-only")
+    _decision(cli, defs, "pick-a", "p-detail", "alpha")
+    _decision(cli, defs, "pick-b", "p-detail", "beta")
+    traced = _task(cli, defs, "trace-yes", "p-detail", "R1", "pick-a, pick-b")
+    _task(cli, defs, "trace-no", "p-detail", "R2", "design-only")
+    acceptance = _accept(cli, defs, "trace-yes-acc", "p-detail", "R1")
+    _accept(cli, defs, "other-acc", "p-detail", "R2")
+    h.run_cli_48h_ago(
+        store, "create", "--type", "tuner:check-run", "--subject", "trace-early",
+        "--payload", json.dumps({
+            "criterion_id": acceptance["id"], "revision": "dirty", "result": "fail", "effort": "alpha",
+            "method": "check", "signed_by": "ayin", "requirement": "R1", "evidence_kind": "integration",
+        }),
+    )
+    _check(cli, defs, "trace-late", acceptance["id"], "pass", "R1", "unit")
+    first = _assessment(
+        cli, defs, "p-detail", "R1", status="failed", level="implementation", next="execute", confidence="low",
+    )
+    second = _supersede(cli, defs, "conductor:assessment", first, {
+        "status": "failed", "level": "design", "next": "design", "confidence": "high",
+    })
+
+    calls = []
+    real = backend_store.list_records
+
+    def spy(target, *args, **kwargs):
+        calls.append((args, kwargs))
+        return real(target, *args, **kwargs)
+
+    monkeypatch.setattr(backend_store, "list_records", spy)
+    detail = phase_mod.load_requirement_detail(_target(store), "alpha", "p-detail", "R1")
+    assert any(
+        "conductor:assessment" in args and kwargs.get("state") == "superseded" for args, kwargs in calls
+    )
+    assert (detail.phase, detail.id, detail.text, detail.status, detail.next) == (
+        "p-detail", "R1", "the traced requirement", "failed", "design",
+    )
+    assert [(item.subject, item.choice) for item in detail.decisions] == [("pick-a", "alpha"), ("pick-b", "beta")]
+    assert [task.id for task in detail.tasks] == [traced["id"]]
+    assert len(detail.acceptances) == 1
+    assert (detail.acceptances[0].check.result, detail.acceptances[0].check.evidence_kind) == ("pass", "unit")
+    assert [(item.id, item.status, item.level, item.next, item.confidence) for item in detail.assessments] == [
+        (first["id"], "failed", "implementation", "execute", "low"),
+        (second["id"], "failed", "design", "design", "high"),
+    ]
+
+
+def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    for ordinal, subject in enumerate(("act", "act-pass", "act-block", "act-bad", "act-ok", "act-old"), 1):
+        _phase(cli, defs, "alpha", subject, ordinal)
+        _spec(cli, defs, subject, "R1, R2, R3" if subject == "act" else "R1")
+    old_body = _body(defs, "conductor:assessment")
+    h.run_cli_48h_ago(
+        store, "create", "--type", "conductor:assessment", "--subject", "act-old-R9",
+        "--payload", json.dumps({
+            "requirement": "R9", "status": "failed", "level": "implementation", "next": "execute",
+            "confidence": "high", "phase": "act-old", "effort": "alpha", "missing": "",
+        }),
+        "--body", old_body,
+    )
+    h.run_cli_48h_ago(
+        store, "create", "--type", "conductor:integration-report", "--subject", "act-old-report",
+        "--payload", json.dumps({"phase": "act-old", "effort": "alpha", "result": "fail", "revision": "dirty"}),
+        "--body", _body(defs, "conductor:integration-report"),
+    )
+    previous = _assessment(
+        cli, defs, "act", "R1", status="failed", level="implementation", next="execute", confidence="high",
+    )
+    _supersede(cli, defs, "conductor:assessment", previous, {
+        "status": "failed", "level": "design", "next": "design", "confidence": "low",
+    })
+    _assessment(cli, defs, "act", "R2", status="verified", next="release", confidence="high")
+    _assessment(cli, defs, "act", "R3", status="blocked", level="plan", next="plan", confidence="high")
+    _report(cli, defs, "act", "fail", "ports disagree")
+    _report(cli, defs, "act-pass", "pass", "clean")
+    _report(cli, defs, "act-block", "blocked", "waiting")
+    _release(cli, defs, "act-bad", "failed")
+    _release(cli, defs, "act-ok", "ready")
+
+    activity = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").activity
+    assert all("R9" not in item.summary and item.subject != "act-old-report" for item in activity)
+    assessments = [item for item in activity if item.kind == "assessment"]
+    assert sorted(item.summary for item in assessments if item.summary.startswith("R1 ")) == [
+        "R1 failed design upstream level implementation to design",
+        "R1 failed execute",
+    ]
+    assert all(item.failed for item in assessments if item.summary.startswith("R1 "))
+    verified = next(item for item in assessments if item.summary.startswith("R2 "))
+    assert verified.summary == "R2 verified release"
+    assert verified.failed is False
+    blocked = next(item for item in assessments if item.summary.startswith("R3 "))
+    assert blocked.summary == "R3 blocked plan upstream"
+    assert blocked.failed is True
+    assert {(item.summary, item.failed) for item in activity if item.kind == "integration"} == {
+        ("act fail", True), ("act-pass pass", False), ("act-block blocked", True),
+    }
+    assert {(item.summary, item.failed) for item in activity if item.kind == "release"} == {
+        ("act-bad failed", True), ("act-ok ready", False),
+    }
+
+
+def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    h.create_generic_record(
+        cli, defs, "score:continuity-question", subject="alpha",
+        extra_payload={"blocking": True, "scope": "hold"},
+    )
+    cases = {
+        "n-up": dict(status="failed", level="design", next="design", confidence="high"),
+        "n-block": dict(status="blocked", level="verification", next="verify", confidence="high"),
+        "n-low": dict(status="failed", level="integration", next="integrate", confidence="low"),
+        "n-exec": dict(status="failed", level="implementation", next="execute", confidence="low"),
+        "n-ver": dict(status="failed", level="verification", next="verify", confidence="low"),
+        "n-ins": dict(status="insufficient", level="specification", next="specify", confidence="low"),
+        "n-execblock": dict(status="blocked", level="implementation", next="execute", confidence="high"),
+    }
+    for ordinal, (subject, fields) in enumerate(cases.items(), 1):
+        _phase(cli, defs, "alpha", subject, ordinal)
+        _spec(cli, defs, subject)
+        _assessment(cli, defs, subject, "R1", **fields)
+    for ordinal, subject in enumerate(("n-fail", "n-blocked", "n-pass"), len(cases) + 1):
+        _phase(cli, defs, "alpha", subject, ordinal)
+        _spec(cli, defs, subject)
+    _report(cli, defs, "n-fail", "fail", "ports disagree")
+    _report(cli, defs, "n-blocked", "blocked", "stuck")
+    h.run_cli_48h_ago(
+        store, "create", "--type", "conductor:integration-report", "--subject", "n-pass-old",
+        "--payload", json.dumps({"phase": "n-pass", "effort": "alpha", "result": "fail", "revision": "dirty"}),
+        "--body", _body(defs, "conductor:integration-report", {"Conflicts": "old"}),
+    )
+    _report(cli, defs, "n-pass", "pass", "clean", subject="n-pass-new")
+
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    assert snapshot_mod.NEEDS_ORDER[:3] == ("blocking-question", "loop-route", "integration")
+    kinds = [item.kind for item in view.needs_you]
+    assert kinds == sorted(kinds, key=lambda kind: snapshot_mod.NEEDS_ORDER.index(kind))
+    assert kinds[0] == "blocking-question"
+    routes = [item for item in view.needs_you if item.kind == "loop-route"]
+    assert sorted((item.phase, item.requirement, item.status, item.next) for item in routes) == [
+        ("n-block", "R1", "blocked", "verify"),
+        ("n-low", "R1", "failed", "integrate"),
+        ("n-up", "R1", "failed", "design"),
+    ]
+    assert all(item.requirement in item.text and item.status in item.text and item.next in item.text for item in routes)
+    integrations = [item for item in view.needs_you if item.kind == "integration"]
+    assert sorted((item.phase, item.requirement, item.result) for item in integrations) == [
+        ("n-blocked", "", "blocked"),
+        ("n-fail", "", "fail"),
+    ]
+    assert all(item.phase in item.text and item.result in item.text for item in integrations)
+    assert not any(item.phase in {"n-exec", "n-ver", "n-ins", "n-execblock", "n-pass"} for item in view.needs_you)
+    by_phase = {phase.subject: phase for phase in view.phases}
+    assert (by_phase["n-fail"].evidence.integration.result, by_phase["n-fail"].evidence.integration.conflicts) == (
+        "fail", "ports disagree",
+    )
+    assert by_phase["n-pass"].evidence.integration.result == "pass"
+    assert by_phase["n-pass"].evidence.integration.conflicts == "clean"
+
+
+def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _goal(cli, defs, "beta")
+    _goal(cli, defs, "gamma")
+    _phase(cli, defs, "alpha", "rel-open", 1, "in_progress")
+    _spec(cli, defs, "rel-open")
+    _task(cli, defs, "rel-open-task", "rel-open")
+    _release(cli, defs, "rel-open", "ready")
+    _phase(cli, defs, "beta", "rel-done", 1, "in_progress", "done")
+    _spec(cli, defs, "rel-done", effort="beta")
+    _task(cli, defs, "rel-done-task", "rel-done", done=True, effort="beta")
+    _release(cli, defs, "rel-done", "ready", effort="beta")
+    _phase(cli, defs, "gamma", "rel-failed", 1, "in_progress")
+    _spec(cli, defs, "rel-failed", effort="gamma")
+    _release(cli, defs, "rel-failed", "failed", effort="gamma")
+
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    alpha = _effort(snapshot, "alpha")
+    beta = _effort(snapshot, "beta")
+    gamma = _effort(snapshot, "gamma")
+    assert alpha.release_ready is True
+    assert alpha.finished is False
+    assert alpha.phases[0].evidence.release_ready is True
+    assert beta.release_ready is True
+    assert beta.finished is True
+    assert gamma.release_ready is False
+    assert gamma.phases[0].evidence is not None
+    assert gamma.phases[0].evidence.release_ready is False
+    live = snapshot_mod.EffortView(
+        "e", "", phases=[_phase_row("in_progress")], tasks=[_task_row("ready")], release_ready=True,
+    )
+    done = snapshot_mod.EffortView(
+        "e", "", phases=[_phase_row("done")], tasks=[_task_row("done")], release_ready=True,
+    )
+    assert live.finished is False
+    assert done.finished is True
+
+
+def test_evidence_simple_phase_adds_no_items(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-simple", 1, "in_progress")
+    _task(cli, defs, "simple-task", "p-simple")
+    _assessment(cli, defs, "p-simple", "R1", status="failed", level="design", next="design", confidence="low")
+    _report(cli, defs, "p-simple", "fail", "clash")
+    _release(cli, defs, "p-simple", "ready")
+
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    assert view.phases[0].evidence is None
+    assert view.release_ready is False
+    assert view.finished is False
+    assert view.needs_you == []
+    assert view.activity == []
+    assert phase_mod.load_phase_detail(_target(store), "alpha", "p-simple").evidence is None
+
+
+def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-matrix", 1, "in_progress")
+    _spec(cli, defs, "p-matrix", "R1, R2, R3, R4, R5", weight="full", body=_body(defs, "score:specification", {
+        "Requirements": "\n".join([
+            "R1: verified row",
+            "R2: failed check row",
+            "R3: blocked row",
+            "R4: upstream row",
+            "R5: unassessed row",
+        ]),
+        "Non-goals": "none",
+    }))
+    _design(cli, defs, "p-matrix", "matrix-cols")
+    _task(cli, defs, "m-a", "p-matrix", "R1", done=True)
+    _task(cli, defs, "m-b", "p-matrix", "R1")
+    _task(cli, defs, "m-c", "p-matrix", "R2")
+    _assessment(cli, defs, "p-matrix", "R1", status="verified", next="release", confidence="high")
+    _assessment(cli, defs, "p-matrix", "R2", status="failed", level="implementation", next="execute", confidence="high")
+    _assessment(cli, defs, "p-matrix", "R3", status="blocked", level="plan", next="plan", confidence="high")
+    _assessment(cli, defs, "p-matrix", "R4", status="failed", level="design", next="design", confidence="high")
+    acc = _accept(cli, defs, "m-r2-acc", "p-matrix", "R2")
+    _check(cli, defs, "m-r2-fail", acc["id"], "fail", "R2", "integration")
+    _release(cli, defs, "p-matrix", "failed")
+
+    evidence = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").phases[0].evidence
+    assert evidence is not None
+    assert evidence.release_state == "failed"
+    by_id = {row.id: row for row in evidence.requirements}
+    assert list(by_id) == ["R1", "R2", "R3", "R4", "R5"]
+
+    r1 = by_id["R1"]
+    assert (r1.text, r1.status, r1.next, r1.tasks, r1.tasks_done, r1.confidence) == (
+        "verified row", "verified", "", 2, 1, "high",
+    )
+    assert r1.check_kind == "" and r1.check_at is None and r1.latest_check is None
+
+    r2 = by_id["R2"]
+    assert r2.latest_check is not None and r2.latest_check.result == "fail"
+    assert r2.check_kind == "integration" and r2.check_at == r2.latest_check.recorded_at
+
+    r5 = by_id["R5"]
+    assert (r5.status, r5.next, r5.confidence, r5.tasks, r5.tasks_done) == ("unassessed", "", "", 0, 0)
+
+
+def test_matrix_no_specification_has_no_evidence(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-plain", 1, "in_progress")
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-plain")
+    assert detail.evidence is None
+    assert "evidence" not in phase_mod.tabs_for(detail)
+
+
+def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-full", 1, "in_progress")
+    _phase(cli, defs, "alpha", "p-plain", 2, "in_progress")
+    _spec(cli, defs, "p-full", "R1", body=_body(defs, "score:specification", {
+        "Requirements": "R1: structured holds",
+        "Non-goals": "none",
+    }))
+    design_body = _body(defs, "score:design", {"Architecture": "one pane per tab"})
+    _decision(cli, defs, "pick-cols", "p-full", "columns")
+    _record(cli, defs, "score:design", "p-full", {
+        "phase": "p-full", "effort": "alpha", "decisions": ["pick-cols"],
+    }, design_body)
+    full = phase_mod.load_phase_detail(_target(store), "alpha", "p-full")
+    plain = phase_mod.load_phase_detail(_target(store), "alpha", "p-plain")
+    assert full.structured is True
+    assert "structured holds" in full.spec_body
+    assert "one pane per tab" in full.design_body
+    assert phase_mod.tabs_for(full) == (
+        "overview", "spec", "design", "decisions", "evidence", "tasks",
+    )
+    assert plain.structured is False
+    assert phase_mod.tabs_for(plain) == ("overview", "spec", "decisions", "tasks")
+
+
+def test_phase_screen_tabs_when_specification_type_is_missing():
+    import shutil
+
+    root = build_store({"specification", "design", "assessment", "integration-report", "release"})
+    try:
+        defs = h.schema_defs()
+
+        def cli(*args):
+            return run_cli(*args, root=root)
+
+        _goal(cli, defs, "alpha")
+        _phase(cli, defs, "alpha", "legacy-phase", 1, "in_progress")
+        detail = phase_mod.load_phase_detail(_target(root), "alpha", "legacy-phase")
+        assert detail.structured is False
+        assert detail.spec_body == ""
+        assert detail.design_body == ""
+        assert phase_mod.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_phase_screen_simple_detail_carries_body_and_constraints(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-simple", 1, "in_progress")
+    _record(cli, defs, "score:constraint", "simple-limit", {
+        "statement": "stay offline", "applies_to": "p-simple", "effort": "alpha",
+    })
+    detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-simple")
+    assert detail.structured is False
+    assert "placeholder text for Problem" in detail.body
+    assert [c.text for c in detail.constraints] == ["stay offline"]
+    assert detail.spec_body == ""
+    assert detail.design_body == ""
+    assert phase_mod.tabs_for(detail) == ("overview", "spec", "decisions", "tasks")
+
+
+def test_phase_screen_decision_log_scopes_and_history(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "p-early", 1, "in_progress")
+    _phase(cli, defs, "alpha", "p-late", 2, "in_progress")
+    early_body = _body(defs, "score:decision", {
+        "Rationale": "early wins", "Counter-argument": "maybe late",
+    })
+    late_body = _body(defs, "score:decision", {
+        "Rationale": "late wins", "Counter-argument": "maybe early",
+    })
+    _record(cli, defs, "score:decision", "choose-early", {
+        "choice": "left", "alternatives": "right", "effort": "alpha", "phase": "p-early",
+    }, early_body)
+    first = _record(cli, defs, "score:decision", "choose-late", {
+        "choice": "old", "alternatives": "new", "effort": "alpha", "phase": "p-late",
+    }, late_body)
+    second = _supersede(cli, defs, "score:decision", first, {"choice": "new"})
+
+    phase_log = phase_mod.load_decision_log(_target(store), "alpha", "p-late", history=False)
+    assert [title for title, _ in phase_log.groups] == ["title of p-late"]
+    entries = phase_log.groups[0][1]
+    assert [(e.subject, e.choice, e.alternatives, e.rationale, e.counter, e.superseded) for e in entries] == [
+        ("choose-late", "new", "new", "placeholder.", "placeholder.", ()),
+    ]
+
+    effort_log = phase_mod.load_decision_log(_target(store), "alpha", None, history=False)
+    assert [title for title, _ in effort_log.groups] == ["title of p-early", "title of p-late"]
+    assert [e.subject for e in effort_log.groups[0][1]] == ["choose-early"]
+    assert effort_log.groups[0][1][0].rationale == "early wins"
+    assert effort_log.groups[0][1][0].counter == "maybe late"
+
+    history_log = phase_mod.load_decision_log(_target(store), "alpha", "p-late", history=True)
+    active = history_log.groups[0][1][0]
+    assert active.subject == "choose-late"
+    assert active.choice == "new"
+    assert len(active.superseded) == 1
+    prior = active.superseded[0]
+    assert (prior.subject, prior.choice) == ("choose-late", "old")
+    assert prior.rationale == "late wins"
+    assert prior.superseded == ()
+    assert second["id"] != first["id"]
+
+
+def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
+    import shutil
+
+    root = build_store({"specification", "design", "assessment", "integration-report", "release"})
+    try:
+        rejected = run_cli("list", "--type", "conductor:assessment", root=root)
+        assert rejected.returncode != 0
+        defs = h.schema_defs()
+
+        def cli(*args):
+            return run_cli(*args, root=root)
+
+        _goal(cli, defs, "alpha")
+        _phase(cli, defs, "alpha", "legacy-phase", 1)
+        view = _effort(snapshot_mod.load_snapshot(_target(root)), "alpha")
+        assert view.phases[0].evidence is None
+        assert view.release_ready is False
+        assert view.needs_you == []
+
+        real = backend_store.list_records
+
+        def boom(target, *args, **kwargs):
+            if "score:work-item" in args:
+                raise backend_store.ModelError("work-item failed")
+            return real(target, *args, **kwargs)
+
+        monkeypatch.setattr(backend_store, "list_records", boom)
+        with pytest.raises(backend_store.ModelError):
+            snapshot_mod.load_snapshot(_target(root))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_list_skips_types_absent_from_store_schemas(monkeypatch):
+    """Foreign stores lack score:phase; the dashboard skips undeclared types instead of listing them."""
+    from types import SimpleNamespace
+
+    target = SimpleNamespace(schemas=lambda: SimpleNamespace(types={"score:effort": object()}))
+    calls: list[tuple[str, ...]] = []
+
+    def boom(tgt, *args, **kwargs):
+        calls.append(args)
+        raise backend_store.ModelError("list should not be called for undeclared types")
+
+    monkeypatch.setattr(backend_store, "list_records", boom)
+    assert records._list(target, "score:phase") == []
+    assert records._list(target, "score:work-item") == []
+    assert calls == []
+
+    with pytest.raises(backend_store.ModelError, match="should not be called"):
+        records._list(target, "score:effort")
+    assert calls == [("score:effort",)]
+
+
+def test_evidence_stage_returns_each_rule(store, cli, defs):
+    _goal(cli, defs, "alpha")
+
+    def open_phase(subject: str, ordinal: int) -> None:
+        _phase(cli, defs, "alpha", subject, ordinal)
+        _spec(cli, defs, subject, "R1, R2" if subject in {"s-verified", "s-earliest", "s-partial"} else "R1")
+
+    open_phase("s-ready", 1)
+    _assessment(cli, defs, "s-ready", "R1", status="failed", next="execute", level="implementation")
+    _release(cli, defs, "s-ready", "ready")
+
+    for ordinal, (subject, nxt, level) in enumerate((
+        ("s-specify", "specify", "specification"),
+        ("s-design", "design", "design"),
+        ("s-plan", "plan", "plan"),
+        ("s-execute", "execute", "implementation"),
+        ("s-nextint", "integrate", "integration"),
+        ("s-nextverify", "verify", "verification"),
+        ("s-nextrelease", "release", "unknown"),
+    ), 2):
+        open_phase(subject, ordinal)
+        _assessment(cli, defs, subject, "R1", status="failed", next=nxt, level=level, confidence="high")
+
+    open_phase("s-verified", 9)
+    _assessment(cli, defs, "s-verified", "R1", status="verified", next="release", confidence="high")
+    _assessment(cli, defs, "s-verified", "R2", status="verified", next="release", confidence="high")
+    _release(cli, defs, "s-verified", "failed")
+
+    open_phase("s-earliest", 10)
+    _assessment(cli, defs, "s-earliest", "R1", status="failed", next="verify", level="verification")
+    _assessment(cli, defs, "s-earliest", "R2", status="failed", next="plan", level="plan")
+
+    open_phase("s-partial", 11)
+    _assessment(cli, defs, "s-partial", "R1", status="verified", next="release", confidence="high")
+
+    open_phase("s-nodesign", 12)
+
+    open_phase("s-notasks", 13)
+    _design(cli, defs, "s-notasks")
+
+    open_phase("s-opentask", 14)
+    _design(cli, defs, "s-opentask")
+    _task(cli, defs, "s-opentask-task", "s-opentask")
+
+    open_phase("s-integrate", 15)
+    _design(cli, defs, "s-integrate")
+    _task(cli, defs, "s-integrate-a", "s-integrate", done=True)
+    _task(cli, defs, "s-integrate-b", "s-integrate", done=True)
+    _report(cli, defs, "s-integrate", "fail", "drift")
+    _accept(cli, defs, "s-integrate-acc", "s-integrate", "R1")
+
+    open_phase("s-verify", 16)
+    _design(cli, defs, "s-verify")
+    _task(cli, defs, "s-verify-task", "s-verify", done=True)
+    _accept(cli, defs, "s-verify-acc", "s-verify", "R1")
+
+    open_phase("s-assess", 17)
+    _design(cli, defs, "s-assess")
+    _task(cli, defs, "s-assess-task", "s-assess", done=True)
+    acceptance = _accept(cli, defs, "s-assess-acc", "s-assess", "R1")
+    _check(cli, defs, "s-assess-check", acceptance["id"], "pass", "R1", "unit")
+
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    integrate = [task for task in view.tasks if task.phase == "s-integrate"]
+    assert len(integrate) == 2 and len({task.wave for task in integrate}) == 1
+    assert {phase.subject: phase.evidence.stage for phase in view.phases} == {
+        "s-ready": "release",
+        "s-specify": "specify",
+        "s-design": "design",
+        "s-plan": "plan",
+        "s-execute": "execute",
+        "s-nextint": "integrate",
+        "s-nextverify": "verify",
+        "s-nextrelease": "release",
+        "s-verified": "release",
+        "s-earliest": "plan",
+        "s-partial": "design",
+        "s-nodesign": "design",
+        "s-notasks": "plan",
+        "s-opentask": "execute",
+        "s-integrate": "integrate",
+        "s-verify": "verify",
+        "s-assess": "assess",
+    }
+    flags = {phase.subject: phase.evidence.release_ready for phase in view.phases}
+    assert flags["s-ready"] is True
+    assert flags["s-verified"] is False
+    assert flags["s-nextrelease"] is False
+    assert view.release_ready is True
+
+
+def _estimated(ident: str, wave: int | None, executor: str, minutes: int | None) -> task_mod.TaskRow:
+    return task_mod.TaskRow(
+        id=ident, subject=ident, title="", phase="p", assignee="", wave=wave, status="ready",
+        executor=executor, estimate_minutes=minutes,
+    )
+
+
+def test_estimate_view_sitting_phrase():
+    assert phase_mod.sitting_phrase("Size: more than one sitting") == "more than one"
+    assert phase_mod.sitting_phrase("Size: more than one sitting.") == "more than one"
+    assert phase_mod.sitting_phrase("## Approach\n\nSize: one sitting\n") == "one sitting"
+    assert phase_mod.sitting_phrase("Size: one sitting\nSize: more than one sitting") == "one sitting"
+    assert phase_mod.sitting_phrase("## Problem\n\nNo size line here.\n") == ""
+
+
+def test_estimate_view_wave_rule():
+    tasks = [
+        _estimated("in-a", 1, "inline", 10),
+        _estimated("in-b", 1, "inline", 15),
+        _estimated("sub-a", 2, "subagent", 10),
+        _estimated("sub-b", 2, "subagent", 40),
+        _estimated("sub-blank", 2, "subagent", None),
+        _estimated("zero", 3, "inline", 0),
+    ]
+    elapsed, unset = phase_mod.phase_elapsed(tasks)
+    assert elapsed == 10 + 15 + 40
+    assert elapsed != sum(task.estimate_minutes or 0 for task in tasks)
+    assert unset == 1
+    assert phase_mod.phase_elapsed([_estimated("only-zero", 1, "subagent", 0)]) == (0, 0)
+    separate = [
+        _estimated("lone-a", None, "subagent", 10),
+        _estimated("lone-b", None, "subagent", 40),
+    ]
+    assert phase_mod.phase_elapsed(separate) == (50, 0)
+
+
+def test_estimate_view_unset_count():
+    elapsed, unset = phase_mod.phase_elapsed([
+        _estimated("missing-a", 1, "inline", None),
+        _estimated("missing-b", 1, "inline", None),
+        _estimated("known", 1, "inline", 25),
+    ])
+    assert (elapsed, unset) == (25, 2)
+    elapsed, unset = phase_mod.phase_elapsed([
+        _estimated("none-a", 1, "subagent", None),
+        _estimated("none-b", 2, "inline", None),
+    ])
+    assert elapsed is None
+    assert unset == 2
+
+
+def _estimate_record(subject: str, **payload) -> dict:
+    fields = {"title": subject, "phase": "p-est", "assignee": ""}
+    fields.update(payload)
+    return {
+        "id": f"id-{subject}",
+        "subject": subject,
+        "lifecycle_state": "planned",
+        "payload": fields,
+        "derived": {"wave": 1, "ready": True},
+        "relationships": {},
+    }
+
+
+def test_estimate_view_row_fields(store, cli, defs):
+    sized = _estimate_record("sized", size="L", estimate_minutes=25, executor="inline")
+    zero = _estimate_record("zero", size="", estimate_minutes=0, executor="")
+    blank = _estimate_record("blank")
+    null = _estimate_record("null", size=None, estimate_minutes=None, executor=None)
+    rows = {row.subject: row for row in task_mod._task_rows([sized, zero, blank, null])}
+    assert (rows["sized"].size, rows["sized"].estimate_minutes, rows["sized"].executor) == ("L", 25, "inline")
+    assert (rows["zero"].size, rows["zero"].estimate_minutes, rows["zero"].executor) == ("", 0, "subagent")
+    assert (rows["blank"].size, rows["blank"].estimate_minutes, rows["blank"].executor) == ("", None, "subagent")
+    assert rows["null"].estimate_minutes is None
+    assert rows["null"].executor == "subagent"
+
+    phase = {
+        "id": "phase-est",
+        "subject": "p-est",
+        "lifecycle_state": "in_progress",
+        "payload": {"title": "Estimates", "ordinal": 1},
+        "body": "Size: more than one sitting.",
+    }
+    phase_row = phase_mod._phase_rows([phase], [sized])[0]
+    assert phase_row.sitting == "more than one"
+    assert phase_row.elapsed_minutes == 25
+    assert phase_row.unset_estimates == 0
+
+    _goal(cli, defs, "alpha")
+    body = "## Problem\n\nplaceholder.\n\n## Approach\n\nSize: more than one sitting.\n\n## Exit criteria\n\nplaceholder.\n"
+    _record(cli, defs, "score:phase", "p-snap", {"title": "Snap", "ordinal": 1, "effort": "alpha"}, body)
+    _record(cli, defs, "score:work-item", "snap-task", {
+        "title": "Snap task", "phase": "p-snap", "kind": "deliver", "assignee": "", "effort": "alpha",
+        "size": "L", "estimate_minutes": 25, "executor": "inline",
+    })
+    _record(cli, defs, "score:work-item", "snap-zero", {
+        "title": "Snap zero", "phase": "p-snap", "kind": "deliver", "assignee": "", "effort": "alpha",
+        "estimate_minutes": 0, "executor": "inline",
+    })
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    snap = view.phases[0]
+    assert snap.sitting == "more than one"
+    assert snap.elapsed_minutes == 25
+    assert snap.unset_estimates == 0
+    tasks = {task.subject: task for task in view.tasks}
+    assert (tasks["snap-task"].size, tasks["snap-task"].estimate_minutes, tasks["snap-task"].executor) == (
+        "L", 25, "inline",
+    )
+    assert tasks["snap-zero"].estimate_minutes == 0
+    assert tasks["snap-zero"].size == ""
+
+
+def test_estimate_view_blank_executor(store, cli, defs):
+    task = _work_item(cli, defs, "alpha", "blank-task", "p-one")
+    detail = task_mod.load_task_detail(_target(store), task["id"])
+    assert detail.executor == "subagent"
+    assert detail.size == ""
+    assert detail.estimate_minutes is None
+
+
+# --- gates vocabulary (human-gates / gates-vocab) ---
+
+from dashboard.backend import gates  # noqa: E402
+
+
+def _gates_phase(
+    subject: str, title: str, ordinal: int, state: str, *,
+    decisions: tuple[phase_mod.DecisionChoice, ...] | None = None,
+) -> phase_mod.PhaseRow:
+    evidence = None
+    if decisions is not None:
+        evidence = phase_mod.PhaseEvidence(
+            phase=subject, weight="", requirements=(), stage="", integration=None,
+            release_ready=False, decisions=decisions, non_goals="",
+        )
+    return phase_mod.PhaseRow(subject, title, ordinal, state, 0, 0, evidence=evidence)
+
+
+def _gates_task(
+    subject: str, phase: str, status: str, *, wave: int | None = 1,
+    estimate_minutes: int | None = None, last_record_at: datetime | None = None,
+) -> task_mod.TaskRow:
+    return task_mod.TaskRow(
+        id=f"id-{subject}", subject=subject, title=subject, phase=phase,
+        assignee="", wave=wave, status=status, estimate_minutes=estimate_minutes,
+        last_record_at=last_record_at,
+    )
+
+
+def _gates_view(
+    effort: str = "dashboard",
+    *,
+    phases: list[phase_mod.PhaseRow] | None = None,
+    tasks: list[task_mod.TaskRow] | None = None,
+    needs_you: list[snapshot_mod.NeedsYouItem] | None = None,
+) -> snapshot_mod.EffortView:
+    return snapshot_mod.EffortView(
+        effort, f"goal for {effort}",
+        phases=list(phases or []),
+        tasks=list(tasks or []),
+        needs_you=list(needs_you or []),
+    )
+
+
+def test_gates_action_label_verbs_for_each_needs_you_kind():
+    view = _gates_view(phases=[_gates_phase("human-gates", "Human gates", 1, "planned")])
+    cases = [
+        (snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"), "Review plan"),
+        (snapshot_mod.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer"), "Answer"),
+        (snapshot_mod.NeedsYouItem("open-question", "3", "dashboard", "nice-to-have"), "Answer"),
+        (snapshot_mod.NeedsYouItem("needs-human", "4", "as-dry-run", "claim text"), "Decide"),
+        (snapshot_mod.NeedsYouItem("unsigned-check", "5", "as-dry-run", "criterion pass"), "Sign off"),
+        (snapshot_mod.NeedsYouItem("loop-route", "6", "r1", "R1 upstream design", next="design", requirement="R1"), "Route to design"),
+        (snapshot_mod.NeedsYouItem("integration", "7", "phase-a", "phase-a fail", phase="phase-a", result="fail"), "Fix integration"),
+        (snapshot_mod.NeedsYouItem("merge-branch", "8", "human-gates", "phase/human-gates", phase="human-gates"), "Merge branch"),
+    ]
+    for item, expected in cases:
+        assert gates.action_label(item, view) == expected
+
+
+def test_gates_action_label_plan_review_shows_phase_title_not_raw_scope():
+    view = _gates_view(phases=[
+        _gates_phase("human-gates", "Show the human gates", 1, "planned"),
+    ])
+    item = snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
+    assert gates.action_label(item, view) == "Review plan"
+    assert gates.item_text(item, view) == "Show the human gates"
+    assert "plan-review:" not in gates.item_text(item, view)
+    other = snapshot_mod.NeedsYouItem("blocking-question", "2", "dashboard", "pick-renderer")
+    assert gates.item_text(other, view) == "pick-renderer"
+
+
+def test_gates_prompt_names_effort_subject_or_phase_and_action():
+    view = _gates_view(
+        "dashboard",
+        phases=[_gates_phase("human-gates", "Human gates", 1, "planned")],
+    )
+    plan = snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates")
+    assert gates.prompt(plan, view) == (
+        "Walk me through the plan for phase human-gates (effort dashboard) so I can review it."
+    )
+    sign = snapshot_mod.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass")
+    sa = _gates_view("session-analysis")
+    assert gates.prompt(sign, sa) == (
+        "Sign off the manual check for as-dry-run (effort session-analysis)."
+    )
+    decide = snapshot_mod.NeedsYouItem("needs-human", "3", "join-gap", "ambiguous join")
+    assert "Decide" in gates.prompt(decide, sa) or "decide" in gates.prompt(decide, sa).lower()
+    assert "session-analysis" in gates.prompt(decide, sa)
+    assert "join-gap" in gates.prompt(decide, sa)
+    route = snapshot_mod.NeedsYouItem(
+        "loop-route", "4", "r1", "R1 upstream design",
+        phase="human-gates", requirement="R1", next="design",
+    )
+    text = gates.prompt(route, view)
+    assert "dashboard" in text and "design" in text and "R1" in text
+    merge = snapshot_mod.NeedsYouItem("merge-branch", "5", "human-gates", "branch", phase="human-gates")
+    assert "Merge" in gates.prompt(merge, view) and "human-gates" in gates.prompt(merge, view)
+
+
+def test_gates_next_step_plan_review():
+    view = _gates_view(needs_you=[
+        snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "plan-review:human-gates"),
+    ])
+    assert gates.next_step(view, {}) == "review the human-gates plan (plan-phase)"
+
+
+def test_gates_next_step_other_blocking():
+    view = _gates_view(needs_you=[
+        snapshot_mod.NeedsYouItem("blocking-question", "1", "dashboard", "pick-renderer"),
+    ])
+    assert gates.next_step(view, {}) == "answer: pick-renderer"
+
+
+def test_gates_next_step_merge_unmerged_done_phase():
+    from dashboard.backend.landing import Landing
+    view = _gates_view(phases=[
+        _gates_phase("human-gates", "Human gates", 1, "done"),
+    ])
+    landing = {"human-gates": Landing("phase/human-gates", True, 3, False)}
+    assert gates.next_step(view, landing) == "merge phase/human-gates (execute-phase)"
+
+
+def test_gates_next_step_loop_route_and_unsigned():
+    route_view = _gates_view(needs_you=[
+        snapshot_mod.NeedsYouItem(
+            "loop-route", "1", "r1", "R1 upstream design",
+            requirement="R1", next="design",
+        ),
+    ])
+    assert gates.next_step(route_view, {}) == "design for R1 (settle-phase)"
+    unsigned_view = _gates_view(needs_you=[
+        snapshot_mod.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass"),
+    ])
+    assert gates.next_step(unsigned_view, {}) == "sign off as-dry-run (verify-work)"
+
+
+def test_gates_next_step_running_and_ready():
+    running = _gates_view(tasks=[
+        _gates_task("a", "p", "running", wave=2),
+        _gates_task("b", "p", "running", wave=2),
+    ])
+    assert gates.next_step(running, {}) == "wave 2 running: 2 tasks"
+    ready = _gates_view(tasks=[
+        _gates_task("a", "p", "ready", wave=3),
+        _gates_task("b", "p", "ready", wave=3),
+    ])
+    assert gates.next_step(ready, {}) == "execute-phase wave 3"
+
+
+def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
+    close_view = _gates_view(
+        phases=[_gates_phase("human-gates", "Human gates", 1, "in_progress")],
+        tasks=[_gates_task("a", "human-gates", "done"), _gates_task("b", "human-gates", "done")],
+    )
+    assert gates.next_step(close_view, {}) == "close human-gates (verify-work)"
+
+    settle_view = _gates_view(phases=[
+        _gates_phase("human-gates", "Human gates", 1, "planned", decisions=()),
+    ])
+    assert gates.next_step(settle_view, {}) == "settle-phase human-gates"
+
+    plan_view = _gates_view(phases=[
+        _gates_phase(
+            "human-gates", "Human gates", 1, "planned",
+            decisions=(phase_mod.DecisionChoice("needs-you-copy-prompt", "chosen"),),
+        ),
+    ])
+    assert gates.next_step(plan_view, {}) == "plan-phase human-gates"
+
+
+def test_gates_next_step_every_phase_done():
+    view = _gates_view(phases=[
+        _gates_phase("one", "One", 1, "done"),
+        _gates_phase("two", "Two", 2, "done"),
+    ])
+    assert gates.next_step(view, {}) == "close the effort or add a phase"
+
+
+def test_gates_quiet_threshold_for_running_tasks():
+    now = datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc)
+    quiet_est = _gates_task(
+        "a", "p", "running", estimate_minutes=10,
+        last_record_at=now - timedelta(minutes=21),
+    )
+    assert gates.is_quiet(quiet_est, now) is True
+    fresh_est = _gates_task(
+        "b", "p", "running", estimate_minutes=10,
+        last_record_at=now - timedelta(minutes=19),
+    )
+    assert gates.is_quiet(fresh_est, now) is False
+    quiet_default = _gates_task(
+        "c", "p", "running", estimate_minutes=None,
+        last_record_at=now - timedelta(minutes=61),
+    )
+    assert gates.is_quiet(quiet_default, now) is True
+    fresh_default = _gates_task(
+        "d", "p", "running", estimate_minutes=None,
+        last_record_at=now - timedelta(minutes=59),
+    )
+    assert gates.is_quiet(fresh_default, now) is False
+    not_running = _gates_task(
+        "e", "p", "ready", estimate_minutes=10,
+        last_record_at=now - timedelta(minutes=100),
+    )
+    assert gates.is_quiet(not_running, now) is False
+    no_stamp = _gates_task("f", "p", "running", estimate_minutes=10, last_record_at=None)
+    assert gates.is_quiet(no_stamp, now) is False
+
+
+def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
+    from dashboard.backend.landing import Landing
+
+    view = _gates_view(
+        phases=[
+            _gates_phase("alpha", "Alpha", 1, "done"),
+            _gates_phase("beta", "Beta", 2, "done"),
+            _gates_phase("gamma", "Gamma", 3, "in_progress"),
+        ],
+        needs_you=[
+            snapshot_mod.NeedsYouItem(
+                "integration", "int-1", "alpha-int", "alpha fail",
+                phase="alpha", result="fail",
+            ),
+            snapshot_mod.NeedsYouItem("needs-human", "h-1", "finding", "claim"),
+        ],
+    )
+    landing = {
+        "alpha": Landing("phase/alpha", True, 3, False),
+        "beta": Landing("phase/beta", True, 1, False),
+        "gamma": Landing("phase/gamma", True, 2, False),
+    }
+    merged = gates.merge_landing_needs(view, landing)
+    kinds = [item.kind for item in merged.needs_you]
+    assert kinds == sorted(kinds, key=lambda kind: snapshot_mod.NEEDS_ORDER.index(kind))
+    assert "merge-branch" in snapshot_mod.NEEDS_ORDER
+    assert snapshot_mod.NEEDS_ORDER.index("merge-branch") == snapshot_mod.NEEDS_ORDER.index("integration") + 1
+    assert kinds.index("integration") < kinds.index("merge-branch")
+    assert kinds.index("merge-branch") < kinds.index("needs-human")
+
+    merge_items = [item for item in merged.needs_you if item.kind == "merge-branch"]
+    assert [(item.id, item.phase, item.text, item.body) for item in merge_items] == [
+        ("merge:alpha", "alpha", "phase/alpha", "3 ahead"),
+        ("merge:beta", "beta", "phase/beta", "1 ahead"),
+    ]
+    assert all(item.subject == item.phase for item in merge_items)
+    assert "3" in merge_items[0].body and "phase/alpha" in merge_items[0].text
+
+
+def test_gates_landing_item_skips_merged_missing_and_not_done():
+    from dashboard.backend.landing import Landing
+
+    view = _gates_view(phases=[
+        _gates_phase("done-merged", "Merged", 1, "done"),
+        _gates_phase("done-missing", "Missing", 2, "done"),
+        _gates_phase("done-gone", "Gone", 3, "done"),
+        _gates_phase("live", "Live", 4, "in_progress"),
+    ])
+    landing = {
+        "done-merged": Landing("phase/done-merged", True, 0, True),
+        "done-missing": Landing("phase/done-missing", False, 0, False),
+        "live": Landing("phase/live", True, 4, False),
+    }
+    merged = gates.merge_landing_needs(view, landing)
+    assert [item.kind for item in merged.needs_you] == []
+
+
+def test_gates_quiet_adds_no_needs_you_item():
+    now = datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc)
+    quiet = _gates_task(
+        "quiet-task", "human-gates", "running", estimate_minutes=10,
+        last_record_at=now - timedelta(minutes=30),
+    )
+    assert gates.is_quiet(quiet, now) is True
+    view = _gates_view(
+        phases=[_gates_phase("human-gates", "Human gates", 1, "in_progress")],
+        tasks=[quiet],
+    )
+    assert view.needs_you == []
+    assert gates.merge_landing_needs(view, {}).needs_you == []
+
+
+def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    body = (
+        "## Problem\n\nplaceholder.\n\n## Approach\n\nShip it.\n\n"
+        "## Landing\n\n- Branch: `phase/p-land`\n\n"
+        "## Exit criteria\n\nplaceholder.\n"
+    )
+    phase = _record(
+        cli, defs, "score:phase", "p-land",
+        {"title": "Land", "ordinal": 1, "effort": "alpha"}, body,
+    )
+    h.transition(cli, "score:phase", phase, "in_progress")
+    task = _work_item(cli, defs, "alpha", "land-run", "p-land")
+    h.transition(cli, "score:work-item", task, "in_progress")
+    assignment = _assign(cli, defs, "land-run", "agent")
+    amendment = _record(
+        cli, defs, "conductor:assignment-amendment", "land-run",
+        {"assignment": assignment["subject"], "effort": "alpha"},
+        "## Correction\n\nlater",
+    )
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    assert view.phases[0].body == body
+    assert "Landing" in view.phases[0].body
+    running = {t.subject: t for t in view.tasks}["land-run"]
+    assert running.running_since is not None
+    assert running.last_record_at == datetime.fromisoformat(amendment["recorded_at"])
+
+
+def test_journal_kind_repair_and_evaluate_carry_journal_open(store, cli, defs):
+    from dashboard.backend import journal as journal_mod
+
+    for effort, kind in (("repair-e", "repair"), ("eval-e", "evaluate")):
+        _goal(cli, defs, effort, kind=kind)
+        _phase(cli, defs, effort, f"{effort}-phase", 1, "in_progress")
+        _work_item(cli, defs, effort, f"{effort}-task", f"{effort}-phase")
+        _record(
+            cli, defs, "tuner:finding", f"{effort}-task",
+            {"claim": f"{effort} claim", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
+        )
+        _record(
+            cli, defs, "score:continuity-question", effort,
+            {"owner": "user", "blocking": False, "scope": "effort-open"},
+        )
+
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    for effort, kind in (("repair-e", "repair"), ("eval-e", "evaluate")):
+        view = _effort(snapshot, effort)
+        assert view.kind == kind
+        assert view.journal_open
+        assert all(item.open for item in view.journal_open)
+        open_items, _ = journal_mod.ordered(journal_mod.load_journal(_target(store), effort))
+        assert [item.id for item in view.journal_open] == [item.id for item in open_items]
+
+
+def test_journal_kind_deliver_and_incidental_skip_journal_open(store, cli, defs, monkeypatch):
+    from dashboard.backend import journal as journal_mod
+
+    for effort, kind in (("deliver-e", "deliver"), ("incidental-e", "incidental")):
+        _goal(cli, defs, effort, kind=kind)
+        _phase(cli, defs, effort, f"{effort}-phase", 1, "in_progress")
+        _work_item(cli, defs, effort, f"{effort}-task", f"{effort}-phase")
+        _record(
+            cli, defs, "tuner:finding", f"{effort}-task",
+            {"claim": f"{effort} claim", "basis": "b", "needs": "human", "effort": effort, "invalidated_when": "w"},
+        )
+
+    calls = []
+
+    def boom(target, effort):
+        calls.append(effort)
+        raise AssertionError("load_journal must not run for deliver/incidental")
+
+    monkeypatch.setattr(journal_mod, "load_journal", boom)
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    for effort, kind in (("deliver-e", "deliver"), ("incidental-e", "incidental")):
+        view = _effort(snapshot, effort)
+        assert view.kind == kind
+        assert view.journal_open == []
+    assert calls == []
+
+
+def _backlog(cli, defs, subject: str, effort: str, *, status: str = "open", source: str = "",
+             phase: str = "", body: str = "") -> dict:
+    payload = {"effort": effort, "status": status}
+    if source:
+        payload["source"] = source
+    if phase:
+        payload["phase"] = phase
+    args = [
+        "create", "--type", "composer:idea", "--subject", subject,
+        "--payload", json.dumps(payload),
+    ]
+    if body:
+        args.extend(["--body", body])
+    result = cli(*args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)["record"]
+
+
+def test_backlog_open_items_group_by_effort_and_skip_closed(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    _goal(cli, defs, "beta")
+    open_a = _backlog(cli, defs, "park-a", "alpha", body="## Note\n\ndo alpha later")
+    _backlog(cli, defs, "park-b", "beta", body="## Note\n\ndo beta later")
+    promoted = _backlog(cli, defs, "park-promoted", "alpha")
+    cli(
+        "supersede", "--type", "composer:idea", "--id", promoted["id"],
+        "--expected-revision", "@current",
+        "--payload", json.dumps({"effort": "alpha", "status": "promoted"}),
+    )
+    dismissed = _backlog(cli, defs, "park-dismissed", "alpha")
+    cli(
+        "supersede", "--type", "composer:idea", "--id", dismissed["id"],
+        "--expected-revision", "@current",
+        "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
+    )
+    question = h.create_generic_record(
+        cli, defs, "score:continuity-question", subject="alpha",
+        extra_payload={"blocking": True, "scope": "still-a-gate"},
+    )
+
+    snapshot = snapshot_mod.load_snapshot(_target(store))
+    alpha = _effort(snapshot, "alpha")
+    beta = _effort(snapshot, "beta")
+    assert [item.subject for item in alpha.backlog] == ["park-a"]
+    assert alpha.backlog[0].id == open_a["id"]
+    assert alpha.backlog[0].text == "do alpha later"
+    assert [item.subject for item in beta.backlog] == ["park-b"]
+    assert all(item.status == "open" for item in alpha.backlog + beta.backlog)
+    assert not any(item.id == open_a["id"] for item in alpha.needs_you)
+    assert any(item.id == question["id"] for item in alpha.needs_you)
+
+
+def test_backlog_never_lands_in_needs_you(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    item = _backlog(cli, defs, "parked-only", "alpha", body="parked work")
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    assert [entry.subject for entry in view.backlog] == ["parked-only"]
+    assert view.backlog[0].id == item["id"]
+    assert view.needs_you == []
+
+
+def test_attempt_row_fields_default_budget():
+    retried = _estimate_record("retried", attempts=1)
+    fresh = _estimate_record("fresh")
+    zero = _estimate_record("zero", attempts=0)
+    rows = {row.subject: row for row in task_mod._task_rows([retried, fresh, zero])}
+    assert rows["retried"].attempts == 1
+    assert rows["retried"].retry_budget == 2
+    assert rows["fresh"].attempts == 0
+    assert rows["fresh"].retry_budget == 2
+    assert rows["zero"].attempts == 0
+
+
+def test_attempt_budget_from_phase_run_facts():
+    assert task_mod.retry_max_redispatches("") == 2
+    assert task_mod.retry_max_redispatches("retry_max_redispatches: 5") == 5
+    assert task_mod.retry_max_redispatches("## Run facts\n\n- retry_max_redispatches: 4\n") == 4
+    task = _estimate_record("retried", attempts=2, phase="p-retry")
+    phase = {
+        "id": "phase-retry",
+        "subject": "p-retry",
+        "lifecycle_state": "in_progress",
+        "payload": {"title": "Retry", "ordinal": 1},
+        "body": "retry_max_redispatches: 5\n",
+    }
+    row = task_mod._task_rows([task], phases=[phase])[0]
+    assert row.attempts == 2
+    assert row.retry_budget == 5
+
+
+def test_attempt_snapshot_reads_payload_and_run_facts(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    body = (
+        "## Problem\n\nplaceholder.\n\n"
+        "## Approach\n\nretry_max_redispatches: 3\n\n"
+        "## Exit criteria\n\nplaceholder.\n"
+    )
+    phase = _record(
+        cli, defs, "score:phase", "p-attempt",
+        {"title": "Attempt", "ordinal": 1, "effort": "alpha"}, body,
+    )
+    h.transition(cli, "score:phase", phase, "in_progress")
+    retried = _record(cli, defs, "score:work-item", "attempt-task", {
+        "title": "Retried task", "phase": "p-attempt", "kind": "deliver",
+        "assignee": "", "effort": "alpha", "attempts": 1,
+    })
+    _record(cli, defs, "score:work-item", "fresh-task", {
+        "title": "Fresh task", "phase": "p-attempt", "kind": "deliver",
+        "assignee": "", "effort": "alpha",
+    })
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    tasks = {task.subject: task for task in view.tasks}
+    assert tasks["attempt-task"].attempts == 1
+    assert tasks["attempt-task"].retry_budget == 3
+    assert tasks["attempt-task"].id == retried["id"]
+    assert tasks["fresh-task"].attempts == 0
+    assert tasks["fresh-task"].retry_budget == 3
+
+
+def _suite_check(
+    subject: str, result: str, revision: str = "abc1234deadbeef", *, body: str = "",
+) -> dict:
+    return {
+        "id": f"id-{subject}-{result}",
+        "subject": subject,
+        "lifecycle_state": "recorded",
+        "recorded_at": "2026-01-01T12:00:00+00:00",
+        "payload": {
+            "criterion_id": "suite",
+            "revision": revision,
+            "result": result,
+            "effort": "alpha",
+            "method": "check",
+            "signed_by": "",
+            "evidence_kind": "integration",
+        },
+        "body": body,
+    }
+
+
+def test_suite_status_label_pass_fail_running():
+    assert phase_mod.suite_status_label("p-ok", [_suite_check("p-ok-suite", "pass", "abcdef0123456789")]) == "suite ok@abcdef0"
+    assert phase_mod.suite_status_label("p-bad", [_suite_check("p-bad-suite", "fail", "deadbeef")]) == "suite fail@deadbee"
+    assert phase_mod.suite_status_label(
+        "p-run",
+        [_suite_check("p-run-suite", "blocked", body="suite-running in worktree")],
+    ) == "suite running"
+    assert phase_mod.suite_status_label("p-none", []) == ""
+    assert phase_mod.suite_status_label("p-ok", [_suite_check("other-suite", "pass")]) == ""
+    wrong_kind = _suite_check("p-ok-suite", "pass")
+    wrong_kind["payload"]["evidence_kind"] = "unit"
+    assert phase_mod.suite_status_label("p-ok", [wrong_kind]) == ""
+    # Legacy `-tier2` subjects still display (suite labels).
+    assert phase_mod.suite_status_label(
+        "p-legacy",
+        [_suite_check("p-legacy-tier2", "pass", "feedface")],
+    ) == "suite ok@feedfac"
+    assert phase_mod.suite_status_label(
+        "p-pref",
+        [
+            _suite_check("p-pref-tier2", "fail", "deadbeef"),
+            _suite_check("p-pref-suite", "pass", "abcdef0123456789"),
+        ],
+    ) == "suite ok@abcdef0"
+
+
+def test_suite_phase_row_from_snapshot(store, cli, defs):
+    _goal(cli, defs, "alpha")
+    phase = _record(
+        cli, defs, "score:phase", "sp",
+        {"title": "Suite phase", "ordinal": 1, "effort": "alpha"},
+    )
+    h.transition(cli, "score:phase", phase, "in_progress")
+    _record(cli, defs, "score:work-item", "sp-task", {
+        "title": "Task", "phase": "sp", "kind": "deliver", "assignee": "", "effort": "alpha",
+    })
+    _record(cli, defs, "tuner:check-run", "sp-suite", {
+        "criterion_id": "suite", "revision": "abc1234deadbeef", "result": "pass",
+        "effort": "alpha", "method": "check", "signed_by": "", "evidence_kind": "integration",
+    })
+    view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
+    row = next(p for p in view.phases if p.subject == "sp")
+    assert row.suite == "suite ok@abc1234"

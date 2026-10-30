@@ -1,0 +1,32 @@
+{
+  "body": {
+    "decisions": {
+      "groups": []
+    },
+    "detail": {
+      "awaiting_signoff": false,
+      "body": "## Problem\n\nplaceholder text for Problem.\n\n## Approach\n\nplaceholder text for Approach.\n\n## Exit criteria\n\nplaceholder text for Exit criteria.\n",
+      "constraints": [],
+      "decisions": [],
+      "design_body": "",
+      "effort": "alpha",
+      "evidence": null,
+      "milestone": "",
+      "milestone_title": "",
+      "proof": null,
+      "spec_body": "",
+      "state": "done",
+      "structured": false,
+      "subject": "merge-phase",
+      "tasks": [],
+      "title": "title of merge-phase"
+    },
+    "tabs": [
+      "overview",
+      "spec",
+      "decisions",
+      "tasks"
+    ]
+  },
+  "status": 200
+}

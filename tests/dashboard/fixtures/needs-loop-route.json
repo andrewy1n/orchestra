@@ -1,0 +1,23 @@
+{
+  "body": {
+    "item": {
+      "approval": {
+        "confirm_choices": []
+      },
+      "body": "",
+      "id": "<conductor:assessment:route-phase-R1>",
+      "kind": "loop-route",
+      "next": "design",
+      "phase": "route-phase",
+      "record_type": "conductor:assessment",
+      "requirement": "R1",
+      "result": "",
+      "revision": "<rev:conductor:assessment:route-phase-R1>",
+      "status": "failed",
+      "subject": "route-phase-R1",
+      "task_id": "",
+      "text": "R1 failed design"
+    }
+  },
+  "status": 200
+}

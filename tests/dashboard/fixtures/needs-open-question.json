@@ -1,0 +1,34 @@
+{
+  "body": {
+    "item": {
+      "approval": {
+        "confirm_choices": [
+          {
+            "action": "approve",
+            "label": "Approve",
+            "note_required": false
+          },
+          {
+            "action": "reject",
+            "label": "Reject",
+            "note_required": true
+          }
+        ]
+      },
+      "body": "",
+      "id": "<score:continuity-question:alpha:port-choice>",
+      "kind": "open-question",
+      "next": "",
+      "phase": "",
+      "record_type": "score:continuity-question",
+      "requirement": "",
+      "result": "",
+      "revision": "<rev:score:continuity-question:alpha:port-choice>",
+      "status": "",
+      "subject": "alpha",
+      "task_id": "",
+      "text": "port-choice"
+    }
+  },
+  "status": 200
+}

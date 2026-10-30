@@ -7,7 +7,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 CI = WORKFLOWS / "ci.yml"
-TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra", "test-tmux")
+TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra")
 
 
 def load():
@@ -176,23 +176,8 @@ def test_r17_runs_remaining_tests():
         "pytest" in line
         and "-n auto" in line
         and "tests --ignore=tests/canon --ignore=tests/tuner" in line
-        and "-m tmux" not in line
         for line in all_run_lines()
     )
-
-
-def test_r18_tmux_job_installs_tmux():
-    assert any(
-        "apt-get install" in line and "tmux" in line for line in run_lines("test-tmux")
-    )
-
-
-def test_r19_tmux_job_runs_tmux_marker_without_xdist():
-    lines = [line for line in run_lines("test-tmux") if "pytest" in line]
-    assert lines
-    for line in lines:
-        assert "-m tmux" in line
-        assert not re.search(r"(^|\s)-n(\s|$)", line)
 
 
 def test_r20_test_jobs_do_not_need_each_other():
@@ -269,3 +254,52 @@ def test_wheel_smoke_r3_wheel_steps_do_not_continue_on_error():
 
 def test_wheel_smoke_r4_wheel_job_runs_script():
     assert "python3 scripts/wheel_smoke.py" in run_lines("wheel")
+
+
+WEB_DIR = "dashboard/frontend"
+WEB_COMMANDS = ("npm ci", "npm run lint", "npm run check", "npm test", "npm run build")
+
+
+def _web_steps():
+    spec = job("web")
+    default_dir = spec.get("defaults", {}).get("run", {}).get("working-directory")
+    pairs = []
+    for step in spec.get("steps", []):
+        if "run" not in step:
+            continue
+        workdir = step.get("working-directory", default_dir)
+        for line in step["run"].splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("cd ") and line[3:].strip().rstrip("/") == WEB_DIR:
+                workdir = WEB_DIR
+                continue
+            pairs.append((line, workdir))
+    return pairs
+
+
+def test_r1_web_job_runs_the_five_commands_in_order():
+    pairs = _web_steps()
+    commands = [line for line, _ in pairs]
+    positions = []
+    for command in WEB_COMMANDS:
+        assert command in commands, f"web job does not run {command}"
+        positions.append(commands.index(command))
+    assert positions == sorted(positions), f"web commands out of order: {commands}"
+    for command in WEB_COMMANDS:
+        workdir = dict(pairs)[command]
+        assert workdir is not None and workdir.rstrip("/") == WEB_DIR, (
+            f"{command} runs in {workdir}"
+        )
+
+
+def test_r2_web_job_has_no_path_filter():
+    spec = job("web")
+    assert "if" not in spec, "web job has a job-level if"
+    on = triggers()
+    for key in ("push", "pull_request"):
+        assert key in on, f"web job does not run on {key}"
+        trigger = on[key] or {}
+        assert "paths" not in trigger, f"{key} trigger has paths"
+        assert "paths-ignore" not in trigger, f"{key} trigger has paths-ignore"

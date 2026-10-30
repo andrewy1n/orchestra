@@ -89,7 +89,7 @@ work-item subject in `depends_on`. One thin acceptance per exit
 criterion (suffixed subjects), each naming exactly one requirement id.
 Acceptances come from phase exit criteria; at least one is an
 integration check through the real entry point. A `verify_command`
-that runs the whole `tests` tree, or `tests/test_dashboard_app.py`
+that runs the whole `tests` tree, or `tests/dashboard/test_web_dashboard.py`
 without a `-k` filter for this phase, is not a verification
 acceptance.
 

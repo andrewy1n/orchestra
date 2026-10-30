@@ -6,7 +6,7 @@
     "effort": "package-layout",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_shared_helpers.py:sha256:99e041d0d4d8ff2bb47d79ea121fb1862a6d5766122661d56eff2bd634c0e982"
+      "tests/test_shared_helpers.py:sha256:52b63036eb9a42dfca79cdc0bddd3101957d3f8b1dbb2d0a062fa629e6b47ddb"
     ],
     "phase": "shared-helpers",
     "requirement": "R18",
@@ -16,9 +16,9 @@
     "verify_command": "python3 -m pytest tests/test_shared_helpers.py::test_r18_approval_omits_getter -q"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-28T09:36:24+00:00",
+  "recorded_at": "2026-10-30T00:36:34+00:00",
   "relationships": {},
-  "revision": "sha256:dd8e9050fe048c464f40c5e6c86acaf90a41968b85a718e96f433079a7332723",
+  "revision": "sha256:50e821e2526658d0bd8019ffdb23d614be050f7fd9f14bbbbec7c6c33fffd5ee",
   "subject": "canon-record-payload-approval"
 }
 ---

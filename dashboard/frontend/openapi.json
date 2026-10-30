@@ -1,0 +1,2808 @@
+{
+  "components": {
+    "schemas": {
+      "AcceptanceRow": {
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "criterion": {
+            "title": "Criterion",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "verify_command": {
+            "title": "Verify Command",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "criterion",
+          "method",
+          "verify_command",
+          "check"
+        ],
+        "title": "AcceptanceRow",
+        "type": "object"
+      },
+      "AgentAmendment": {
+        "properties": {
+          "correction": {
+            "title": "Correction",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recorded_at",
+          "correction"
+        ],
+        "title": "AgentAmendment",
+        "type": "object"
+      },
+      "AgentAssignment": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "executor": {
+            "title": "Executor",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "orientation": {
+            "title": "Orientation",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "recorded_at",
+          "executor",
+          "orientation",
+          "body"
+        ],
+        "title": "AgentAssignment",
+        "type": "object"
+      },
+      "AgentReport": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recorded_at",
+          "result",
+          "verdict",
+          "body"
+        ],
+        "title": "AgentReport",
+        "type": "object"
+      },
+      "AgentWork": {
+        "properties": {
+          "amendments": {
+            "items": {
+              "$ref": "#/components/schemas/AgentAmendment"
+            },
+            "title": "Amendments",
+            "type": "array"
+          },
+          "assignment": {
+            "$ref": "#/components/schemas/AgentAssignment"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "assignment",
+          "amendments",
+          "report"
+        ],
+        "title": "AgentWork",
+        "type": "object"
+      },
+      "Approval": {
+        "properties": {
+          "confirm_choices": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmChoice"
+            },
+            "title": "Confirm Choices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "confirm_choices"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "AreaIdea": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "string"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "text",
+          "status",
+          "area",
+          "effort",
+          "phase"
+        ],
+        "title": "AreaIdea",
+        "type": "object"
+      },
+      "AreaView": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "$ref": "#/components/schemas/AreaIdea"
+            },
+            "title": "Ideas",
+            "type": "array"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "title",
+          "scope",
+          "open_count",
+          "ideas"
+        ],
+        "title": "AreaView",
+        "type": "object"
+      },
+      "AreasResponse": {
+        "items": {
+          "$ref": "#/components/schemas/AreaView"
+        },
+        "title": "AreasResponse",
+        "type": "array"
+      },
+      "AssessmentView": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "level",
+          "next",
+          "confidence"
+        ],
+        "title": "AssessmentView",
+        "type": "object"
+      },
+      "BacklogItem": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "effort",
+          "text",
+          "status",
+          "source",
+          "phase",
+          "body",
+          "record_type"
+        ],
+        "title": "BacklogItem",
+        "type": "object"
+      },
+      "BacklogResponse": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/BacklogItem"
+          }
+        },
+        "required": [
+          "item"
+        ],
+        "title": "BacklogResponse",
+        "type": "object"
+      },
+      "BacklogSummary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "text",
+          "source",
+          "phase",
+          "status"
+        ],
+        "title": "BacklogSummary",
+        "type": "object"
+      },
+      "CheckRun": {
+        "properties": {
+          "evidence_kind": {
+            "title": "Evidence Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "signed_by": {
+            "title": "Signed By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "result",
+          "method",
+          "signed_by",
+          "revision",
+          "recorded_at",
+          "evidence_kind"
+        ],
+        "title": "CheckRun",
+        "type": "object"
+      },
+      "ConfirmChoice": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "note_required": {
+            "title": "Note Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "action",
+          "label",
+          "note_required"
+        ],
+        "title": "ConfirmChoice",
+        "type": "object"
+      },
+      "DecisionChoice": {
+        "properties": {
+          "choice": {
+            "title": "Choice",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "choice"
+        ],
+        "title": "DecisionChoice",
+        "type": "object"
+      },
+      "DecisionEntry": {
+        "properties": {
+          "alternatives": {
+            "title": "Alternatives",
+            "type": "string"
+          },
+          "choice": {
+            "title": "Choice",
+            "type": "string"
+          },
+          "counter": {
+            "title": "Counter",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "superseded": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionEntry"
+            },
+            "title": "Superseded",
+            "type": "array"
+          }
+        },
+        "required": [
+          "subject",
+          "phase",
+          "choice",
+          "alternatives",
+          "rationale",
+          "counter",
+          "superseded"
+        ],
+        "title": "DecisionEntry",
+        "type": "object"
+      },
+      "DecisionLog": {
+        "properties": {
+          "groups": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/DecisionEntry"
+                  },
+                  "type": "array"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Groups",
+            "type": "array"
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "title": "DecisionLog",
+        "type": "object"
+      },
+      "EffortSummary": {
+        "properties": {
+          "backlog": {
+            "items": {
+              "$ref": "#/components/schemas/BacklogSummary"
+            },
+            "title": "Backlog",
+            "type": "array"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "milestones": {
+            "items": {
+              "$ref": "#/components/schemas/MilestoneRow"
+            },
+            "title": "Milestones",
+            "type": "array"
+          },
+          "needs_you": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsYouSummary"
+            },
+            "title": "Needs You",
+            "type": "array"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseSummary"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "release_ready": {
+            "title": "Release Ready",
+            "type": "boolean"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskRow"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "effort",
+          "goal",
+          "position",
+          "kind",
+          "finished",
+          "release_ready",
+          "phases",
+          "milestones",
+          "tasks",
+          "needs_you",
+          "backlog"
+        ],
+        "title": "EffortSummary",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IntegrationView": {
+        "properties": {
+          "conflicts": {
+            "title": "Conflicts",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result",
+          "conflicts"
+        ],
+        "title": "IntegrationView",
+        "type": "object"
+      },
+      "JournalItem": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "open": {
+            "title": "Open",
+            "type": "boolean"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "record_type",
+          "subject",
+          "phase",
+          "recorded_at",
+          "text",
+          "open",
+          "task_id"
+        ],
+        "title": "JournalItem",
+        "type": "object"
+      },
+      "JournalResponse": {
+        "properties": {
+          "open": {
+            "items": {
+              "$ref": "#/components/schemas/JournalItem"
+            },
+            "title": "Open",
+            "type": "array"
+          },
+          "rest": {
+            "items": {
+              "$ref": "#/components/schemas/JournalItem"
+            },
+            "title": "Rest",
+            "type": "array"
+          }
+        },
+        "required": [
+          "open",
+          "rest"
+        ],
+        "title": "JournalResponse",
+        "type": "object"
+      },
+      "LinkedTask": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "title",
+          "status"
+        ],
+        "title": "LinkedTask",
+        "type": "object"
+      },
+      "MilestoneRow": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subject",
+          "title",
+          "ordinal",
+          "state",
+          "done",
+          "total",
+          "id"
+        ],
+        "title": "MilestoneRow",
+        "type": "object"
+      },
+      "NeedsResponse": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/NeedsYouItem"
+          }
+        },
+        "required": [
+          "item"
+        ],
+        "title": "NeedsResponse",
+        "type": "object"
+      },
+      "NeedsYouItem": {
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/Approval"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "requirement": {
+            "title": "Requirement",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "subject",
+          "text",
+          "record_type",
+          "body",
+          "task_id",
+          "phase",
+          "requirement",
+          "status",
+          "next",
+          "result",
+          "revision",
+          "approval"
+        ],
+        "title": "NeedsYouItem",
+        "type": "object"
+      },
+      "NeedsYouSummary": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "requirement": {
+            "title": "Requirement",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "subject",
+          "text",
+          "record_type",
+          "task_id",
+          "phase",
+          "requirement",
+          "status",
+          "next",
+          "result",
+          "revision"
+        ],
+        "title": "NeedsYouSummary",
+        "type": "object"
+      },
+      "OkResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "OkResponse",
+        "type": "object"
+      },
+      "PhaseDetail": {
+        "properties": {
+          "awaiting_signoff": {
+            "title": "Awaiting Signoff",
+            "type": "boolean"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedRecord"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedRecord"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "design_body": {
+            "title": "Design Body",
+            "type": "string"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhaseEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "milestone": {
+            "title": "Milestone",
+            "type": "string"
+          },
+          "milestone_title": {
+            "title": "Milestone Title",
+            "type": "string"
+          },
+          "proof": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProofView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spec_body": {
+            "title": "Spec Body",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "structured": {
+            "title": "Structured",
+            "type": "boolean"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskRow"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "effort",
+          "title",
+          "state",
+          "awaiting_signoff",
+          "body",
+          "decisions",
+          "constraints",
+          "tasks",
+          "evidence",
+          "spec_body",
+          "design_body",
+          "structured",
+          "milestone",
+          "milestone_title",
+          "proof"
+        ],
+        "title": "PhaseDetail",
+        "type": "object"
+      },
+      "PhaseEvidence": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionChoice"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "integration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntegrationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "non_goals": {
+            "title": "Non Goals",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "release_ready": {
+            "title": "Release Ready",
+            "type": "boolean"
+          },
+          "release_state": {
+            "title": "Release State",
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementRow"
+            },
+            "title": "Requirements",
+            "type": "array"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "weight",
+          "requirements",
+          "stage",
+          "integration",
+          "release_ready",
+          "decisions",
+          "non_goals",
+          "release_state"
+        ],
+        "title": "PhaseEvidence",
+        "type": "object"
+      },
+      "PhaseResponse": {
+        "properties": {
+          "decisions": {
+            "$ref": "#/components/schemas/DecisionLog"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/PhaseDetail"
+          },
+          "tabs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tabs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail",
+          "tabs",
+          "decisions"
+        ],
+        "title": "PhaseResponse",
+        "type": "object"
+      },
+      "PhaseSummary": {
+        "properties": {
+          "awaiting_signoff": {
+            "title": "Awaiting Signoff",
+            "type": "boolean"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "elapsed_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Minutes"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "milestone": {
+            "title": "Milestone",
+            "type": "string"
+          },
+          "milestone_title": {
+            "title": "Milestone Title",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "release_ready": {
+            "title": "Release Ready",
+            "type": "boolean"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirements"
+          },
+          "sitting": {
+            "title": "Sitting",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "suite": {
+            "title": "Suite",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unset_estimates": {
+            "title": "Unset Estimates",
+            "type": "integer"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "subject",
+          "title",
+          "ordinal",
+          "state",
+          "done",
+          "total",
+          "id",
+          "awaiting_signoff",
+          "sitting",
+          "elapsed_minutes",
+          "unset_estimates",
+          "suite",
+          "milestone",
+          "milestone_title",
+          "stage",
+          "verified",
+          "requirements",
+          "release_ready"
+        ],
+        "title": "PhaseSummary",
+        "type": "object"
+      },
+      "ProofView": {
+        "properties": {
+          "attention": {
+            "title": "Attention",
+            "type": "string"
+          },
+          "base": {
+            "title": "Base",
+            "type": "string"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "look": {
+            "title": "Look",
+            "type": "string"
+          },
+          "machine": {
+            "title": "Machine",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "revision",
+          "base",
+          "look",
+          "attention",
+          "machine",
+          "diff"
+        ],
+        "title": "ProofView",
+        "type": "object"
+      },
+      "RecordResponse": {
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/StoredRecord"
+          }
+        },
+        "required": [
+          "record"
+        ],
+        "title": "RecordResponse",
+        "type": "object"
+      },
+      "RelatedRecord": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "subject",
+          "text"
+        ],
+        "title": "RelatedRecord",
+        "type": "object"
+      },
+      "RequirementDetail": {
+        "properties": {
+          "acceptances": {
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceRow"
+            },
+            "title": "Acceptances",
+            "type": "array"
+          },
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/AssessmentView"
+            },
+            "title": "Assessments",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionChoice"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskRow"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "id",
+          "text",
+          "status",
+          "next",
+          "decisions",
+          "tasks",
+          "acceptances",
+          "assessments"
+        ],
+        "title": "RequirementDetail",
+        "type": "object"
+      },
+      "RequirementResponse": {
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/RequirementDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "RequirementResponse",
+        "type": "object"
+      },
+      "RequirementRow": {
+        "properties": {
+          "check_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check At"
+          },
+          "check_kind": {
+            "title": "Check Kind",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "latest_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next": {
+            "title": "Next",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tasks": {
+            "title": "Tasks",
+            "type": "integer"
+          },
+          "tasks_done": {
+            "title": "Tasks Done",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "id",
+          "text",
+          "status",
+          "next",
+          "latest_check",
+          "tasks",
+          "tasks_done",
+          "confidence",
+          "check_kind",
+          "check_at"
+        ],
+        "title": "RequirementRow",
+        "type": "object"
+      },
+      "SnapshotResponse": {
+        "properties": {
+          "efforts": {
+            "items": {
+              "$ref": "#/components/schemas/EffortSummary"
+            },
+            "title": "Efforts",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "store": {
+            "title": "Store",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "generated_at",
+          "store",
+          "efforts"
+        ],
+        "title": "SnapshotResponse",
+        "type": "object"
+      },
+      "StoredRecord": {
+        "additionalProperties": true,
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lifecycle_state": {
+            "title": "Lifecycle State",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "relationships": {
+            "additionalProperties": true,
+            "title": "Relationships",
+            "type": "object"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "record_type",
+          "subject",
+          "lifecycle_state",
+          "revision",
+          "recorded_at",
+          "body",
+          "payload",
+          "relationships"
+        ],
+        "title": "StoredRecord",
+        "type": "object"
+      },
+      "TaskDetail": {
+        "properties": {
+          "acceptances": {
+            "items": {
+              "$ref": "#/components/schemas/AcceptanceRow"
+            },
+            "title": "Acceptances",
+            "type": "array"
+          },
+          "agent_work": {
+            "items": {
+              "$ref": "#/components/schemas/AgentWork"
+            },
+            "title": "Agent Work",
+            "type": "array"
+          },
+          "assignee": {
+            "title": "Assignee",
+            "type": "string"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/LinkedTask"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "depends_on": {
+            "items": {
+              "$ref": "#/components/schemas/LinkedTask"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "estimate_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimate Minutes"
+          },
+          "executor": {
+            "title": "Executor",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedRecord"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requirements",
+            "type": "array"
+          },
+          "running_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Since"
+          },
+          "size": {
+            "title": "Size",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEvent"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "wave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wave"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "effort",
+          "title",
+          "status",
+          "phase",
+          "wave",
+          "assignee",
+          "body",
+          "depends_on",
+          "blocks",
+          "acceptances",
+          "timeline",
+          "related",
+          "running_since",
+          "requirements",
+          "decisions",
+          "size",
+          "estimate_minutes",
+          "executor",
+          "agent_work"
+        ],
+        "title": "TaskDetail",
+        "type": "object"
+      },
+      "TaskResponse": {
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/TaskDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "TaskResponse",
+        "type": "object"
+      },
+      "TaskRow": {
+        "properties": {
+          "assignee": {
+            "title": "Assignee",
+            "type": "string"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "estimate_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimate Minutes"
+          },
+          "executor": {
+            "title": "Executor",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_record_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Record At"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "retry_budget": {
+            "title": "Retry Budget",
+            "type": "integer"
+          },
+          "running_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Since"
+          },
+          "size": {
+            "title": "Size",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "waits_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Waits On",
+            "type": "array"
+          },
+          "wave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wave"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "title",
+          "phase",
+          "assignee",
+          "wave",
+          "status",
+          "waits_on",
+          "depends_on",
+          "running_since",
+          "size",
+          "estimate_minutes",
+          "executor",
+          "last_record_at",
+          "attempts",
+          "retry_budget"
+        ],
+        "title": "TaskRow",
+        "type": "object"
+      },
+      "TimelineEvent": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "recorded_at",
+          "summary",
+          "body",
+          "revision"
+        ],
+        "title": "TimelineEvent",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "orchestra dashboard",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/areas": {
+      "get": {
+        "operationId": "areas_api_areas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Areas"
+      }
+    },
+    "/api/backlog": {
+      "get": {
+        "operationId": "backlog_api_backlog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "effort",
+            "required": true,
+            "schema": {
+              "title": "Effort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacklogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backlog"
+      },
+      "post": {
+        "operationId": "write_backlog_api_backlog_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Write Backlog"
+      }
+    },
+    "/api/journal": {
+      "get": {
+        "operationId": "journal_api_journal_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "effort",
+            "required": true,
+            "schema": {
+              "title": "Effort",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Journal"
+      }
+    },
+    "/api/needs": {
+      "get": {
+        "operationId": "needs_api_needs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "effort",
+            "required": true,
+            "schema": {
+              "title": "Effort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Needs"
+      },
+      "post": {
+        "operationId": "write_needs_api_needs_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Write Needs"
+      }
+    },
+    "/api/phase": {
+      "get": {
+        "operationId": "phase_api_phase_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "effort",
+            "required": true,
+            "schema": {
+              "title": "Effort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phase",
+            "required": true,
+            "schema": {
+              "title": "Phase",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Phase"
+      }
+    },
+    "/api/record": {
+      "get": {
+        "operationId": "record_api_record_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record"
+      }
+    },
+    "/api/requirement": {
+      "get": {
+        "operationId": "requirement_api_requirement_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "effort",
+            "required": true,
+            "schema": {
+              "title": "Effort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phase",
+            "required": true,
+            "schema": {
+              "title": "Phase",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Requirement"
+      }
+    },
+    "/api/snapshot": {
+      "get": {
+        "operationId": "snapshot_api_snapshot_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Snapshot"
+      }
+    },
+    "/api/task": {
+      "get": {
+        "operationId": "task_api_task_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task"
+      }
+    },
+    "/api/token": {
+      "get": {
+        "operationId": "token_api_token_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Token"
+      }
+    }
+  }
+}

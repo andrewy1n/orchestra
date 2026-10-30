@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from orchestra.conductor import reviewer
-from orchestra import view_cli
+from orchestra import status_cli, view_cli
 
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.store import StoreError
@@ -18,6 +18,7 @@ from orchestra.conductor import suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 
 from orchestra.sessions import aggregate as aggregate_sessions
+from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import report as report_sessions
 
 
@@ -34,6 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)
+    status_cli.add_parser(sub)
     sub.add_parser(
         "verify",
         add_help=False,
@@ -226,6 +228,30 @@ def _build_parser() -> argparse.ArgumentParser:
         "--out",
         default="-",
         help="Brief path, or '-' for stdout (default)",
+    )
+
+    analyze = sub.add_parser(
+        "analyze",
+        help="Check a phase's specification, design, work-items, and acceptances for consistency",
+    )
+    analyze.add_argument("phase", help="Phase slug")
+    analyze.add_argument(
+        "--stage",
+        choices=("plan", "close"),
+        default="plan",
+        help="Checks to run (default: plan)",
+    )
+    analyze.add_argument("--json", action="store_true", help="Print one JSON object")
+    analyze.add_argument(
+        "--cwd",
+        default=None,
+        help="Directory the store is resolved from (default: process cwd)",
+    )
+    analyze.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: resolve from --cwd)",
     )
 
     suite_parser = sub.add_parser(
@@ -490,6 +516,39 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     destination.write_text(brief, encoding="utf-8")
     print(destination)
     return 0
+
+
+def _cmd_analyze(args: argparse.Namespace) -> int:
+    try:
+        records = open_store(_cwd(args), store=args.store).records()
+    except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    if not any(
+        r.get("record_type") == "score:phase" and r.get("subject") == args.phase
+        for r in records
+    ):
+        print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
+        return 2
+    report = analyze_phase(records, args.phase, args.stage)
+    if args.json:
+        _print_json(
+            {
+                "phase": report.phase,
+                "stage": report.stage,
+                "skipped": report.skipped,
+                "findings": [f.to_dict() for f in report.findings],
+            }
+        )
+    elif report.skipped:
+        print(f"{args.phase}: skipped, no active specification")
+    else:
+        for f in report.findings:
+            print(f"{f.severity} {f.code} {f.subject}: {f.message}")
+        errors = sum(f.severity == "error" for f in report.findings)
+        warnings = len(report.findings) - errors
+        print(f"{args.phase} ({args.stage}): {errors} errors, {warnings} warnings")
+    return 0 if report.ok else 1
 
 
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
@@ -788,6 +847,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     if args.command == "review-brief":
         return _cmd_review_brief(args)
+    if args.command == "analyze":
+        return _cmd_analyze(args)
     if args.command == "suite":
         if args.action == "policy":
             return _cmd_suite_policy(args)
@@ -806,6 +867,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_store_ensure(args)
     if args.command == "idea":
         return _cmd_idea(args)
+    if args.command == "status":
+        return status_cli.run(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
