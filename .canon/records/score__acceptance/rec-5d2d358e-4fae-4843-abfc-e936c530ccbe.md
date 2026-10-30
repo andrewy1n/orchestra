@@ -6,7 +6,7 @@
     "effort": "ci",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_wheel_smoke.py:sha256:7b2d294d69a80da4963e22022debc06efcc860b032e405c04ceb663fd91709ee"
+      "tests/test_wheel_smoke.py:sha256:c3117f02208329848501bf5dd4ca813a76522b670b37dd327d04f7dde7cf1277"
     ],
     "phase": "wheel-smoke",
     "requirement": "R14",
@@ -16,9 +16,9 @@
     "verify_command": "uv run -q pytest -q -p no:cacheprovider tests/test_wheel_smoke.py::test_wheel_smoke_r14_import_dashboard"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T09:18:52+00:00",
+  "recorded_at": "2026-10-30T00:58:05+00:00",
   "relationships": {},
-  "revision": "sha256:f756d7dcddb2d22584aefe8cd2e83d515875ed1c8cde0363cdd90e0a04b04612",
+  "revision": "sha256:e8912bfeb8f78d100be43a3b5dad1258bfd231702de1eba62c2f80a55ff2b997",
   "subject": "wheel-smoke-script-dashboard"
 }
 ---

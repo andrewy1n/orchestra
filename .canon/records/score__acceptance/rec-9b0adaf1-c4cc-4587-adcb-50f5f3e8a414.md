@@ -6,7 +6,7 @@
     "effort": "ci",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_wheel_smoke.py:sha256:7b2d294d69a80da4963e22022debc06efcc860b032e405c04ceb663fd91709ee"
+      "tests/test_wheel_smoke.py:sha256:c3117f02208329848501bf5dd4ca813a76522b670b37dd327d04f7dde7cf1277"
     ],
     "phase": "wheel-smoke",
     "requirement": "R19",
@@ -16,9 +16,9 @@
     "verify_command": "uv run -q pytest -q -p no:cacheprovider tests/test_wheel_smoke.py::test_wheel_smoke_r19_missing_providers_json"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T09:18:54+00:00",
+  "recorded_at": "2026-10-30T00:58:13+00:00",
   "relationships": {},
-  "revision": "sha256:02f02398d3b8b8fbb8cb34cdd7437a256b14b33e7d8dc26d1acc90739ea65f75",
+  "revision": "sha256:46f3d24112a5553d0e567a50ff0ddafdd197fa19b25f12532325d7ad2c845cae",
   "subject": "wheel-smoke-script-providers"
 }
 ---

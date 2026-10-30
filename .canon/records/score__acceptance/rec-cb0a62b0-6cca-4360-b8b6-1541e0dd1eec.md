@@ -6,7 +6,7 @@
     "effort": "ci",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_ci_workflow.py:sha256:e839efff9503c259300d40040f0477fde9d003a64d3fb2871b5089849dd2ea0c"
+      "tests/test_ci_workflow.py:sha256:bb26f911894bce9e7b7b10d859e0c7f4f7a7dd4a1eca0a72b26049f233b37f2f"
     ],
     "phase": "wheel-smoke",
     "requirement": "R2",
@@ -16,9 +16,9 @@
     "verify_command": "uv run -q pytest -q -p no:cacheprovider tests/test_ci_workflow.py::test_wheel_smoke_r2_wheel_job_is_blocking"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T09:18:45+00:00",
+  "recorded_at": "2026-10-30T00:58:15+00:00",
   "relationships": {},
-  "revision": "sha256:63f6ff56f36e3006e885ead08a0182dbe6bf4cf5c5d260c2781900c78173d995",
+  "revision": "sha256:8fd3795cf268c33c357957e07c8ee79b2bc9270fb9745337970aefd773a0e21e",
   "subject": "wheel-job-blocking"
 }
 ---

@@ -7,12 +7,12 @@
     "claim": "R22 needs a human: the wheel job cannot be observed until phase/wheel-smoke is pushed and a pull request exists",
     "effort": "ci",
     "invalidated_when": "a pull_request ci.yml run for that SHA shows the wheel job conclusion success",
-    "needs": "human"
+    "needs": "none"
   },
   "record_type": "tuner:finding",
-  "recorded_at": "2026-10-29T09:36:00+00:00",
+  "recorded_at": "2026-10-30T00:56:44+00:00",
   "relationships": {},
-  "revision": "sha256:5b59a95f9ea1551c95d0f6d006e674b0d86870d56a14a00f1357c4435fa029f6",
+  "revision": "sha256:18612b77db9ad9c5e8e6300d13a1a34ac8b8eee71f8a74cc82b61dd36b5b107f",
   "subject": "wheel-smoke-R22"
 }
 ---

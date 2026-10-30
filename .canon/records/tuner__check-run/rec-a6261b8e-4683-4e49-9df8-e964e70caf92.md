@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-a6261b8e-4683-4e49-9df8-e964e70caf92",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-1149db41-634c-4161-9637-717467eb6236",
+    "duration_s": 0.233185,
+    "effort": "ci",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-1149db41-634c-4161-9637-717467eb6236"
+    ],
+    "method": "tdd",
+    "output_sha256": "35d86279d96ed65491ba8ff0748e1c8e7891711531404dc5d4b9cd6ae33de3ec",
+    "requirement": "R7",
+    "result": "pass",
+    "revision": "e30e12396e0f6d2e661cd76afb50c983b4d58ce5",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T00:54:59+00:00",
+  "relationships": {},
+  "revision": "sha256:5e2e1bdc50091d364a6da2d8de4dd44efeb41b2c9a36af27df4a5fe985bafba2",
+  "subject": "wheel-smoke-script-cwd"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.03s

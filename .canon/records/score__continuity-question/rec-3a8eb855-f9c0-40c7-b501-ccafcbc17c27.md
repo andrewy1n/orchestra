@@ -1,16 +1,16 @@
 ---
 {
   "id": "rec-3a8eb855-f9c0-40c7-b501-ccafcbc17c27",
-  "lifecycle_state": "open",
+  "lifecycle_state": "answered",
   "payload": {
     "blocking": true,
     "owner": "user",
     "scope": "assess:wheel-smoke-R22"
   },
   "record_type": "score:continuity-question",
-  "recorded_at": "2026-10-29T09:35:59+00:00",
+  "recorded_at": "2026-10-30T00:56:46+00:00",
   "relationships": {},
-  "revision": "sha256:b6d8bfeed70c64d8042f928c2c97604d8839a4a4320ed4e1a93ac3baa5f97f6c",
+  "revision": "sha256:ee26c610ea1a7040cbdb89979e049b770520262904d4f4b092e0b777991d86ca",
   "subject": "ci"
 }
 ---

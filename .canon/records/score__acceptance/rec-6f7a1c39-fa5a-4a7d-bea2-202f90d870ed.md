@@ -6,7 +6,7 @@
     "effort": "ci",
     "method": "tdd",
     "oracle_hashes": [
-      "tests/test_wheel_smoke.py:sha256:7b2d294d69a80da4963e22022debc06efcc860b032e405c04ceb663fd91709ee"
+      "tests/test_wheel_smoke.py:sha256:c3117f02208329848501bf5dd4ca813a76522b670b37dd327d04f7dde7cf1277"
     ],
     "phase": "wheel-smoke",
     "requirement": "R6",
@@ -16,9 +16,9 @@
     "verify_command": "uv run -q pytest -q -p no:cacheprovider tests/test_wheel_smoke.py::test_wheel_smoke_r6_installs_into_new_venv"
   },
   "record_type": "score:acceptance",
-  "recorded_at": "2026-10-29T09:18:48+00:00",
+  "recorded_at": "2026-10-30T00:58:06+00:00",
   "relationships": {},
-  "revision": "sha256:c88638ee2eb8380bdddd01ad7769cda69a2c03352a908d793ca9f05a73e1713f",
+  "revision": "sha256:58b347ba8ec854c52f3c3b453241710adf0db0d0d07de591b65e8b6e2ab9eeaf",
   "subject": "wheel-smoke-script-venv"
 }
 ---
