@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-c0f000bd-36cb-43d1-a813-64cab0fe02df",
-  "lifecycle_state": "asserted",
+  "lifecycle_state": "retracted",
   "payload": {
     "basis": "R8 says effort; the design invariant says the phase ref is set when a phase exists; init creates placeholder phases",
     "claim": "judgment on promote-writers: init promotes with effort only, leaving the idea phase ref empty",
@@ -10,9 +10,9 @@
     "needs": "human"
   },
   "record_type": "tuner:finding",
-  "recorded_at": "2026-10-28T07:44:20+00:00",
+  "recorded_at": "2026-10-30T07:03:51+00:00",
   "relationships": {},
-  "revision": "sha256:68106eb17c5344c4bab3f94741d81142bb6a8236b96f803c0eb74b929b1d52c0",
+  "revision": "sha256:bd0c73118b25fc8bea4fdea6b591e2fba2f07052d64243703e8f45f771dac553",
   "subject": "review-promote-writers-init-phase-ref"
 }
 ---
