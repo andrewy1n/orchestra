@@ -1,0 +1,28 @@
+---
+{
+  "id": "rec-7fa7dfe1-419d-4eb3-89f3-a2e233b7ab6d",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "phase-level-review",
+    "effort": "dashboard",
+    "evidence_kind": "review",
+    "method": "review",
+    "result": "pass",
+    "revision": "a4d00fb6b330a12734ea8eafb33eafa21d121257",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-30T19:58:24+00:00",
+  "relationships": {},
+  "revision": "sha256:fba0834c4af5a34f66e87a6fcebf976a9e1bf54bcca3924123f9f8980ce7de17",
+  "subject": "phase-level-review"
+}
+---
+
+verdict: PASS
+findings: []
+integration:
+  interfaces: PhaseState (phase.svelte.ts) loads GET /api/phase keyed on effort and phase, and owns the view models, status tabs, counts, tasks and chooseTab. PhasePage.svelte replaces PhaseOverlay.svelte, keeps data-detail="phase" on its root, and mounts from App.svelte when the route is phase or routePhase() resolves, which includes requirement and task routes so a leaf modal opens over the page. Shared helpers (md, linkify, linkContext, openRequirement, openGraphTask) live once in refs.ts. areas.ts gains routePhase, a phase rail level and a phase breadcrumb crumb. Rail.svelte folds done phases other than the current one. keys.ts uses leafTarget and Esc on a phase route opens the effort page. leaveHref() returns the phase href for task and requirement routes. Overlay.svelte handles leaf kinds only. Home.svelte renders phase rows as links with a progressbar and has no task table, status tabs or All phases control. linkCtx uses routePhase(route, efforts)?.phase.subject ?? defaultPhase(view).
+  assumptions: The reviewer read no execution reports, check-runs, assessments or assignment notes, and ran no tests, build or lint. It assumed polling.selectedEffort follows effortName(route), unchanged by this phase, and that the named test files are the intended frozen set.
+  invariants: Link-context fix confirmed on the effort page, needs, backlog and record modals, and routes that resolve a phase keep it. No removed state is referenced. Hash routing only, no new dependencies. The phase page writes nothing. The URL decides the selected phase. Existing deep links resolve. Leaf views stay modals. Esc opens the effort page, and defers to the dialog when a leaf modal is open. api-types.ts untouched. Breadcrumb is Product > [area] > effort > phase title. Rail toggle label is Phases at the phase level.
+  conflicts: none
