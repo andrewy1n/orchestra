@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from orchestra.canon.oplog import _seq_name, read_ops
-from orchestra.canon.paths import PathValidationError, type_dir_name, validate_namespace, validate_record_type
-from orchestra.canon.record_file import dump_record, prepare_record
+from orchestra.canon.backend import Backend, open_backend
+from orchestra.canon.paths import PathValidationError, validate_namespace, validate_record_type
+from orchestra.canon.record_file import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaSet, ref_targets
-from orchestra.canon.store import Store, StoreError
+from orchestra.canon.store import StoreError
 from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]
@@ -95,25 +94,13 @@ class _Rewriter:
         return stamped
 
 
-def _read_log(source: Store) -> list[tuple[str, list[dict[str, Any]]]]:
-    chains: list[tuple[str, list[dict[str, Any]]]] = []
-    if not source.log_dir.is_dir():
-        return chains
-    for chain_dir in sorted(source.log_dir.glob("*/*")):
-        if chain_dir.is_dir():
-            ops = read_ops(chain_dir)
-            if ops:
-                chains.append((chain_dir.name, ops))
-    return chains
-
-
 def _count(table: dict[str, dict[str, int]], key: str, field: str) -> None:
     row = table.setdefault(key, {"records": 0, "history": 0, "log": 0})
     row[field] += 1
 
 
 def merge_store(
-    target: Store,
+    target: Backend,
     schemas: SchemaSet,
     source_dir: str | Path,
     *,
@@ -127,10 +114,10 @@ def merge_store(
     declared by the target schemas. Returns a summary that includes the
     result of validating the target afterwards.
     """
-    source = Store(Path(source_dir))
-    if not source.records_dir.is_dir():
-        raise MergeError(f"{source.root} is not a store: records/ is missing")
-    if source.root.resolve() == target.root.resolve():
+    source = open_backend(Path(source_dir))
+    if not source.has_record_collection():
+        raise MergeError(f"{source_dir} is not a store: records/ is missing")
+    if source.same_store(target):
         raise MergeError("source and target are the same store")
     namespaces = namespaces or {}
     renames: Renames = {}
@@ -140,8 +127,8 @@ def merge_store(
     rewriter = _Rewriter(schemas, namespaces, renames)
 
     records = list(source.iter_records())
-    history = [snapshot for _, snapshot in source.iter_history()]
-    chains = _read_log(source)
+    history = list(source.read_history())
+    chains = list(source.iter_chains())
 
     unknown = sorted(
         {
@@ -179,7 +166,7 @@ def merge_store(
 
     counts: dict[str, dict[str, int]] = {}
     renamed: dict[tuple[str, str, str], int] = {}
-    with target.write_lock():
+    with target.transaction():
         for snapshot in history:
             moved = rewriter.record(snapshot)
             target.archive_history(moved)
@@ -193,26 +180,17 @@ def merge_store(
                     content["conflict_revision"] = rewriter.revisions.get(
                         content["conflict_revision"], content["conflict_revision"]
                     )
-                path = (
-                    target.log_dir
-                    / type_dir_name(moved["record_type"])
-                    / record_id
-                    / _seq_name(op["seq"])
-                )
-                text = json.dumps(content, sort_keys=True, separators=(",", ":"))
-                target._atomic_write(path, text, overwrite=False)
+                target.import_op(moved["record_type"], record_id, {**content, "seq": op["seq"]})
                 _count(counts, moved["record_type"], "log")
         for record in records:
             moved = rewriter.record(record)
-            target._atomic_write(
-                target.record_path(moved["record_type"], moved["id"]), dump_record(moved), overwrite=False
-            )
+            target.import_record(moved)
             _count(counts, moved["record_type"], "records")
             if moved["subject"] != record["subject"]:
                 key = (moved["record_type"], record["subject"], moved["subject"])
                 renamed[key] = renamed.get(key, 0) + 1
 
-    errors = validate_store(schemas, store_root=target.root)
+    errors = validate_store(schemas, backend=target)
     return {
         "types": dict(sorted(counts.items())),
         "totals": {

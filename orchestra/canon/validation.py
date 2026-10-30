@@ -4,15 +4,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from subprocess import CompletedProcess
 from typing import Any
 
-from orchestra.canon.git_backend import run_git
+from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.index import SUPERSEDED, RecordIndex
-from orchestra.canon.oplog import fold, read_ops
-from orchestra.canon.paths import revision_filename, type_dir_name
-from orchestra.canon.record_file import RECORD_GLOB, RECORD_SUFFIX, RecordFileError, load_record
-from orchestra.canon.revision import compute_revision
 from orchestra.canon.schema import SchemaSet, TypeDef, ref_targets
 
 
@@ -215,231 +210,6 @@ def validate_record(
         raise ValidationError("; ".join(errors))
 
 
-def _validate_history_path_layout(path: Path, history_root: Path, snapshot: dict[str, Any], errors: list[str]) -> None:
-    try:
-        rel = path.relative_to(history_root)
-    except ValueError:
-        errors.append(f"history snapshot outside history root: {path}")
-        return
-    parts = rel.parts
-    if len(parts) != 3:
-        errors.append(f"history snapshot bad layout: {path}")
-        return
-    type_dir, record_id, filename = parts
-    record_type = snapshot.get("record_type")
-    snapshot_id = snapshot.get("id")
-    revision = snapshot.get("revision")
-    if not record_type or not snapshot_id or not revision:
-        errors.append(f"history snapshot missing type/id/revision: {path}")
-        return
-    try:
-        expected_type_dir = type_dir_name(record_type)
-        expected_filename = revision_filename(revision)
-    except ValueError as exc:
-        errors.append(f"history snapshot invalid path fields: {path}: {exc}")
-        return
-    if type_dir != expected_type_dir:
-        errors.append(
-            f"history snapshot type directory mismatch: {path} expected {expected_type_dir!r}"
-        )
-    if record_id != snapshot_id:
-        errors.append(
-            f"history snapshot record id mismatch: {path} expected parent {snapshot_id!r}"
-        )
-    if filename != expected_filename:
-        errors.append(
-            f"history snapshot revision filename mismatch: {path} expected {expected_filename!r}"
-        )
-
-
-def validate_history(store_root: Path, records: list[dict[str, Any]], errors: list[str]) -> None:
-    history_root = store_root / "history"
-    if not history_root.is_dir():
-        return
-    known_ids = {record["id"] for record in records}
-    for path in sorted(history_root.rglob(RECORD_GLOB)):
-        try:
-            snapshot = load_record(path.read_text(), path)
-        except RecordFileError as exc:
-            errors.append(f"history malformed record file {path}: {exc}")
-            continue
-        if not isinstance(snapshot, dict):
-            errors.append(f"history snapshot must be a record object: {path}")
-            continue
-        if snapshot.get("revision") != compute_revision(snapshot):
-            errors.append(f"history tamper detected: {path}")
-            continue
-        _validate_history_path_layout(path, history_root, snapshot, errors)
-        record_id = snapshot.get("id")
-        record_type = snapshot.get("record_type")
-        if record_id not in known_ids:
-            errors.append(f"history snapshot {path.name}: unknown record id {record_id!r}")
-        if record_type and record_id:
-            expected = (
-                store_root
-                / "records"
-                / type_dir_name(record_type)
-                / f"{record_id}{RECORD_SUFFIX}"
-            )
-            if not expected.is_file():
-                errors.append(f"history snapshot {path.name}: no live record for {record_id}")
-
-
-def _run_git(cwd: Path, *args: str) -> CompletedProcess[str] | None:
-    try:
-        return run_git(cwd, *args, capture_output=True, text=True)
-    except OSError:
-        return None
-
-
-def _git_toplevel(path: Path) -> Path | None:
-    result = _run_git(path, "rev-parse", "--show-toplevel")
-    if result is None or result.returncode != 0:
-        return None
-    return Path(result.stdout.strip())
-
-
-def _git_head_exists(repo_root: Path) -> bool:
-    result = _run_git(repo_root, "rev-parse", "--verify", "-q", "HEAD")
-    return result is not None and result.returncode == 0
-
-
-def _authorized_record_rewrite(store_root: Path, records_rel: str, offending: str) -> bool:
-    """True when a modified `records/` path is a rewrite the store's own op
-    log can account for, not an out-of-band edit.
-
-    `oplog.append_resolved_op` bakes the exact record dict into every
-    accepted create/write op, and `Store._materialize` always writes
-    `dump_record(fold(read_ops(chain_dir)))` -- the chain's folded state --
-    to the record path (see `store.py`). So if the record currently on disk
-    equals that fold, some accepted op in *this record's own chain*
-    produced it, whether or not that op or the record file has been
-    committed yet. Nothing here needs the record file, or the op that
-    produced it, to be committed -- only that they agree with each other.
-
-    Deliberately does not accept a bare "revision is self-consistent"
-    record: `revision` is a public, deterministic hash of the record's own
-    content (see `revision.py`), so a hand-edited record paired with a
-    hand-recomputed revision proves nothing.
-
-    What this catches is an edit made without going through the runtime --
-    the realistic case, an agent or a person fixing a record file by hand.
-    It is not proof of authorship: ops are unsigned JSON, so an edit that
-    also appends a matching op to the chain passes. Treat it as a
-    consistency check between a record and its own log, not as tamper
-    evidence; `git diff` remains the thing that shows a reader what changed.
-    """
-    prefix = f"{records_rel}/"
-    if not offending.startswith(prefix):
-        return False
-    parts = offending[len(prefix) :].split("/")
-    if len(parts) != 2:
-        return False
-    type_dir, filename = parts
-    if not filename.endswith(RECORD_SUFFIX):
-        return False
-    record_id = filename[: -len(RECORD_SUFFIX)]
-    path = store_root / "records" / type_dir / filename
-    try:
-        text = path.read_text()
-    except OSError:
-        return False
-    try:
-        record = load_record(text, path)
-    except RecordFileError:
-        return False
-    if not isinstance(record, dict):
-        return False
-    if record.get("id") != record_id:
-        return False
-    record_type = record.get("record_type")
-    if not isinstance(record_type, str):
-        return False
-    try:
-        expected_type_dir = type_dir_name(record_type)
-    except ValueError:
-        return False
-    if expected_type_dir != type_dir:
-        return False
-    chain_dir = store_root / "log" / type_dir / record_id
-    return fold(read_ops(chain_dir)) == record
-
-
-def validate_immutability(store_root: Path, errors: list[str]) -> None:
-    """Fail on any store path that exists in git HEAD but was changed or removed
-    in the working tree. Supersede is the only sanctioned mutation path, and it
-    always writes a new record id -- so any in-place change to a path git already
-    committed is a violation by construction, unless the op log accounts for it
-    (see `_authorized_record_rewrite`). New, uncommitted paths are fine.
-
-    History snapshots (`Store.archive_history`/`Store.iter_history`) are
-    write-once, so a committed snapshot changing at all is a tamper by the same
-    rule as a record file. `config.json` and `schemas/` change whenever
-    `schemas sync` runs, so they are exempt.
-    """
-    if not store_root.exists():
-        return
-    repo_root = _git_toplevel(store_root)
-    if repo_root is None:
-        return
-    if not _git_head_exists(repo_root):
-        return
-    try:
-        rel = store_root.resolve().relative_to(repo_root.resolve())
-    except ValueError:
-        return
-    config_rel = (rel / "config.json").as_posix()
-    schemas_rel = (rel / "schemas").as_posix() + "/"
-    records_rel = (rel / "records").as_posix()
-    result = _run_git(repo_root, "diff", "--name-status", "HEAD", "--", rel.as_posix())
-    if result is None or result.returncode != 0:
-        return
-    for line in result.stdout.splitlines():
-        line = line.rstrip("\n")
-        if not line.strip():
-            continue
-        parts = line.split("\t")
-        status = parts[0]
-        if status.startswith("A"):
-            continue
-        offending = parts[1] if len(parts) > 1 else line
-        if offending == config_rel or offending.startswith(schemas_rel):
-            continue
-        if not status.startswith("D") and _authorized_record_rewrite(
-            store_root, records_rel, offending
-        ):
-            continue
-        errors.append(
-            f"immutability violation: committed store path modified or deleted "
-            f"(git status {status}): {offending}"
-        )
-
-
-def load_records_for_validation(store_root: Path, errors: list[str]) -> list[dict[str, Any]]:
-    records_dir = store_root / "records"
-    if not records_dir.is_dir():
-        return []
-    records: list[dict[str, Any]] = []
-    for path in sorted(records_dir.rglob("*")):
-        # Skipping these quietly would validate an unmigrated store as clean.
-        if path.is_file() and path.suffix != RECORD_SUFFIX:
-            errors.append(f"unrecognized record file (expected {RECORD_SUFFIX}): {path}")
-    for path in sorted(records_dir.rglob(RECORD_GLOB)):
-        try:
-            record = load_record(path.read_text(), path)
-        except RecordFileError as exc:
-            errors.append(f"record malformed record file {path}: {exc}")
-            continue
-        if not isinstance(record, dict):
-            errors.append(f"record file must be a record object: {path}")
-            continue
-        if record.get("revision") != compute_revision(record):
-            errors.append(f"record revision tamper detected: {path}")
-            continue
-        records.append(record)
-    return records
-
-
 _SECTION_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$")
 
 
@@ -523,24 +293,18 @@ def _current_errors(records: list[dict[str, Any]], schemas: SchemaSet, errors: l
 
 
 def validate_append_only_history(
-    store_root: Path, records: list[dict[str, Any]], schemas: SchemaSet, errors: list[str]
+    backend: Backend, records: list[dict[str, Any]], schemas: SchemaSet, errors: list[str]
 ) -> None:
     for record in records:
         type_def = schemas.types.get(record.get("record_type", ""))
         if type_def is None or not type_def.lifecycle.appends_only:
             continue
         try:
-            path = (
-                store_root
-                / "history"
-                / type_dir_name(record["record_type"])
-                / record["id"]
-                / revision_filename(record["revision"])
-            )
+            exists = backend.history_exists(record["record_type"], record["id"], record["revision"])
         except ValueError as exc:
             errors.append(f"{record['id']}: invalid append-only history path: {exc}")
             continue
-        if not path.is_file():
+        if not exists:
             errors.append(f"{record['id']}: event record missing create audit snapshot")
 
 
@@ -550,10 +314,13 @@ def validate_store(
     *,
     store_root: Path | None = None,
     immutability: bool = True,
+    backend: Backend | None = None,
 ) -> list[str]:
     errors: list[str] = []
-    if records is None and store_root is not None:
-        records = load_records_for_validation(store_root, errors)
+    if backend is None and store_root is not None:
+        backend = open_backend(store_root)
+    if records is None and backend is not None:
+        records = list(backend.iter_records(errors=errors))
     records = records or []
     index = RecordIndex(records)
     for record in records:
@@ -561,11 +328,9 @@ def validate_store(
     _current_errors(records, schemas, errors)
     _supersede_errors(records, schemas, index, errors)
     _correct_errors(records, index, errors)
-    if store_root is not None:
-        validate_history(store_root, records, errors)
-        validate_append_only_history(store_root, records, schemas, errors)
-        if immutability:
-            validate_immutability(store_root, errors)
+    if backend is not None:
+        backend.check_integrity(errors, immutability=immutability)
+        validate_append_only_history(backend, records, schemas, errors)
     return errors
 
 

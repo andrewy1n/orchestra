@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
 from orchestra.canon.store import StoreError
 
@@ -180,6 +181,14 @@ def load_module(path: Path) -> dict[str, Any]:
     return validate_module(data, str(path))
 
 
+def parse_module(text: str, source: str) -> dict[str, Any]:
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SchemaError(f"malformed JSON in schema module {source}: {exc}") from exc
+    return validate_module(data, source)
+
+
 def type_defs(module: dict[str, Any]) -> dict[str, TypeDef]:
     namespace = module["namespace"]
     defs: dict[str, TypeDef] = {}
@@ -218,20 +227,21 @@ class SchemaSet:
         return {ns: module["version"] for ns, module in self.modules.items()}
 
     @classmethod
-    def load(cls, store_root: Path, config: dict[str, Any]) -> "SchemaSet":
+    def load(cls, store_root: Path | Backend, config: dict[str, Any]) -> "SchemaSet":
+        backend = open_backend(store_root, config) if isinstance(store_root, Path) else store_root
         modules: dict[str, dict[str, Any]] = {}
         for namespace, version in config["schemas"].items():
-            path = store_root / "schemas" / f"{namespace}.json"
-            if not path.is_file():
+            text = backend.read_snapshot(namespace)
+            if text is None:
                 raise SchemaError(
                     f"missing schema snapshot for {namespace!r}: run `canon schemas sync`"
                 )
-            module = load_module(path)
+            module = parse_module(text, f"schema snapshot {namespace!r}")
             if module["namespace"] != namespace:
-                raise SchemaError(f"{path}: snapshot namespace is {module['namespace']!r}")
+                raise SchemaError(f"{namespace}: snapshot namespace is {module['namespace']!r}")
             if module["version"] != version:
                 raise SchemaError(
-                    f"{path}: snapshot is {module['version']}, config.json pins {version}"
+                    f"{namespace}: snapshot is {module['version']}, config.json pins {version}"
                 )
             modules[namespace] = module
         return cls(modules)
