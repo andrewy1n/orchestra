@@ -491,6 +491,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return EXIT_VALIDATION if errors else EXIT_OK
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    project = _command_project(args)
+    backend = open_backend(project.store_path)
+    path = backend.backup(args.keep)
+    _emit_json({"backup": str(path)})
+    return EXIT_OK
+
+
 def cmd_schemas_sync(args: argparse.Namespace) -> int:
     project = _command_project(args)
     result = sync_store(open_backend(project.store_path))
@@ -751,6 +759,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="json prints {status, errors}; text prints one error per line",
     )
     p_validate.set_defaults(func=cmd_validate)
+
+    p_backup = sub.add_parser("backup", help="Back up a SQLite store")
+    p_backup.add_argument("--keep", type=int, default=14)
+    p_backup.set_defaults(func=cmd_backup)
 
     p_schemas = sub.add_parser("schemas", help="Manage the schema modules of a store")
     schemas_sub = p_schemas.add_subparsers(dest="schemas_command", required=True)

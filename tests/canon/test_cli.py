@@ -271,7 +271,7 @@ def test_the_declared_mutating_commands_cover_every_writing_subcommand():
     parser = canon_cli.build_parser()
     sub = next(a for a in parser._actions if a.dest == "command")
     commands = set(sub.choices)
-    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "merge"}
+    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "merge", "backup"}
     assert canon_cli.MUTATING_COMMANDS == {"init", "create", "update", "supersede", "correct", "apply", "merge"}
 
 

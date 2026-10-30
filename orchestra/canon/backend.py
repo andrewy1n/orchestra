@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
 from pathlib import Path
@@ -59,6 +61,7 @@ class Backend(Protocol):
     def has_record_collection(self) -> bool: ...
     def same_store(self, other: object) -> bool: ...
     def change_token(self) -> str: ...
+    def backup(self, keep: int = 14) -> str: ...
 
 
 def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Backend:
@@ -67,6 +70,25 @@ def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Back
     if config is None:
         config = store.load_config() if store.has_config() else {}
     selected = config.get("backend", "files")
+    if selected == "sqlite":
+        from orchestra.canon.sqlite_backend import SqliteBackend
+
+        data_root = store_root
+        for name in ("store-binding.local.json", "store-binding.json"):
+            binding = store_root / name
+            if binding.is_file():
+                try:
+                    value = json.loads(binding.read_text())["store"]
+                except (ValueError, KeyError, TypeError) as exc:
+                    raise StoreError(
+                        f"invalid store binding at {binding}: {exc}"
+                    ) from exc
+                if value == "global":
+                    data_root = Path.home() / ".canon" / store_root.parent.name
+                elif value != "local":
+                    raise StoreError(f"invalid store binding at {binding}: {value!r}")
+                break
+        return SqliteBackend(store_root, data_root)
     if selected != "files":
         raise StoreError(f"unsupported store backend: {selected!r}")
     return store

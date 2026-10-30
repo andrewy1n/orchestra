@@ -4,15 +4,34 @@
       "id": "db-contested-update",
       "text": "Of two processes updating one record from the same revision, exactly one succeeds; canon body normalization remains unchanged.",
       "tests": [
-        "tests/canon/test_db_backend_contract.py::test_multiprocess_same_revision_has_exactly_one_winner"
+        "tests/canon/test_db_backend_contention.py::test_same_revision_has_one_winner_with_normalized_body"
       ],
       "oracle_hashes": {
-        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6"
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6",
+        "tests/canon/test_db_backend_contention.py": "sha256:110c0037862d10558b995208954772396216279ebac57f1a3fc9a0e96b8813c0"
       },
       "evidence_kind": "integration"
     }
   ],
-  "amendments": [],
+  "amendments": [
+    {
+      "claim": "db-contested-update",
+      "old_tests": [
+        "tests/canon/test_db_backend_contract.py::test_multiprocess_same_revision_has_exactly_one_winner"
+      ],
+      "new_tests": [
+        "tests/canon/test_db_backend_contention.py::test_same_revision_has_one_winner_with_normalized_body"
+      ],
+      "old_hashes": {
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6"
+      },
+      "new_hashes": {
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6",
+        "tests/canon/test_db_backend_contention.py": "sha256:110c0037862d10558b995208954772396216279ebac57f1a3fc9a0e96b8813c0"
+      },
+      "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgVmJ1C6fuCvVpKLJXp3QCYdwlJB\n/4KVX0QM3QMZ1ZTGAAAAAPdHVuZXItYW1lbmRtZW50AAAAAAAAAAZzaGE1MTIAAABTAAAA\nC3NzaC1lZDI1NTE5AAAAQAD55cUtxlmJ6ziQlN8TNOQzXedjS0Ny7TIxAa3LDjg0YY+Fyg\ngG27EUisHCkj1s+6RIZFbjCdXsNioUBGkB6Ag=\n-----END SSH SIGNATURE-----\n"
+    }
+  ],
   "runner": [
     "uv",
     "run",

@@ -119,16 +119,17 @@ class Project:
     ) -> dict[str, Any]:
         """Write one record and return the stored record, including id and revision."""
         store, schemas = self._session()
-        return _create_record(
-            store,
-            schemas,
-            record_type=record_type,
-            subject=subject,
-            payload=payload,
-            body=body,
-            time=time,
-            provenance=provenance,
-        )
+        with store.transaction():
+            return _create_record(
+                store,
+                schemas,
+                record_type=record_type,
+                subject=subject,
+                payload=payload,
+                body=body,
+                time=time,
+                provenance=provenance,
+            )
 
     def update(
         self,
@@ -150,7 +151,8 @@ class Project:
             "body": body,
             "expected_revision": expected_revision,
         }
-        return _update_record(store, schemas, op)
+        with store.transaction():
+            return _update_record(store, schemas, op)
 
     def supersede(
         self,
@@ -170,7 +172,8 @@ class Project:
             "body": body,
             "expected_revision": expected_revision,
         }
-        return _supersede_record(store, schemas, op)
+        with store.transaction():
+            return _supersede_record(store, schemas, op)
 
     def correct(
         self,
@@ -192,7 +195,8 @@ class Project:
             "subject": subject,
             "expected_revision": expected_revision,
         }
-        return _correct_record(store, schemas, op)
+        with store.transaction():
+            return _correct_record(store, schemas, op)
 
     def apply(self, operations: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Write each operation and return each result.
@@ -204,7 +208,8 @@ class Project:
         results: list[dict[str, Any]] = []
         for index, op in enumerate(operations, start=1):
             try:
-                result = _apply_operation(store, schemas, op)
+                with store.transaction():
+                    result = _apply_operation(store, schemas, op)
             except (StoreError, ValidationError) as exc:
                 verb = op.get("op") if isinstance(op, dict) else None
                 result = {
@@ -237,6 +242,11 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
     bound = _binding_file(root)
     if bound is not None:
         path, kind = bound
+        metadata = root / ".canon"
+        if kind == "global" and _has_config(metadata):
+            config = open_backend(metadata, {}).load_config()
+            if config.get("backend") == "sqlite":
+                return _open(root, metadata, Binding(kind, str(path)))
         return _open(root, _place(root, kind), Binding(kind, str(path)))
 
     local = root / ".canon"

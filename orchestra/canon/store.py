@@ -505,6 +505,9 @@ class Store:
         if immutability:
             validate_immutability(self.root, errors)
 
+    def backup(self, keep: int = 14) -> str:
+        raise StoreError("backup requires a SQLite store")
+
     def change_token(self) -> str:
         digest = hashlib.sha1()
         try:
