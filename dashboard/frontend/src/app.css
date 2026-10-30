@@ -337,15 +337,21 @@ button {
 	white-space: normal;
 }
 
-.area-moved-trigger {
+.area-stats {
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 4px 0;
+	gap: 16px;
+	margin: 0;
 	font-size: 12px;
-	font-weight: 600;
-	color: var(--ink-2);
-	cursor: pointer;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.effort-row {
+	grid-template-columns: 5rem minmax(0, 1fr) auto;
+}
+
+.area-needs .needs-row .text .meta {
+	margin-right: 6px;
 }
 
 .product-index {
