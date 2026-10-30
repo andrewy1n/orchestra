@@ -1,0 +1,158 @@
+import { getJson } from "../../api";
+import {
+	type DetailTarget,
+	detailTarget,
+	openHash,
+	phaseHref,
+} from "../../detail";
+import { detailView, evidenceBoard, taskBoard } from "../../detailView";
+import type { RefContext } from "../../links";
+import { buildPhaseChrome } from "../../phaseChrome";
+import { buildWaveGraph } from "../../taskGraph";
+import { polling } from "./polling.svelte";
+import { linkContext } from "./refs";
+import { navigation } from "./route.svelte";
+
+class PhaseState {
+	payload: unknown = $state(null);
+	error = $state("");
+	loading = $state(false);
+
+	target: DetailTarget | null = $derived.by(() => {
+		const target = detailTarget(navigation.route);
+		return target?.kind === "phase" ? target : null;
+	});
+
+	apiPath = $derived(this.target?.apiPath ?? "");
+
+	linkCtx: RefContext | null = $derived.by(() => {
+		if (!this.target) return null;
+		const route = navigation.route;
+		return linkContext(
+			route.parts[1] ?? polling.effort?.effort ?? null,
+			route.parts[2] ?? polling.phaseSubject,
+			this.payload,
+		);
+	});
+
+	phaseTabs: string[] = $derived.by(() => {
+		if (!this.target) return [];
+		if (!this.payload || typeof this.payload !== "object") return [];
+		const tabs = (this.payload as { tabs?: unknown }).tabs;
+		return Array.isArray(tabs) ? tabs.map(String) : [];
+	});
+
+	activePhaseTab = $derived.by(() => {
+		const target = this.target;
+		if (!target) return "";
+		if (target.tab && this.phaseTabs.includes(target.tab)) return target.tab;
+		return this.phaseTabs[0] ?? "";
+	});
+
+	view = $derived.by(() => {
+		if (!this.target || !this.payload) return null;
+		return detailView("phase", this.payload, this.activePhaseTab);
+	});
+
+	taskView = $derived.by(() => {
+		if (!this.target || this.activePhaseTab !== "tasks" || !this.payload) {
+			return null;
+		}
+		return taskBoard(this.payload);
+	});
+
+	evidenceView = $derived.by(() => {
+		if (!this.target || this.activePhaseTab !== "evidence" || !this.payload) {
+			return null;
+		}
+		return evidenceBoard(this.payload);
+	});
+
+	phaseChrome = $derived.by(() => {
+		if (!this.target || !this.payload) return null;
+		return buildPhaseChrome(this.payload, {
+			position: polling.effort?.position ?? null,
+		});
+	});
+
+	phaseTaskGraph = $derived.by(() => {
+		if (!this.target || !this.payload) return null;
+		if (this.activePhaseTab !== "overview") return null;
+		const detail = (this.payload as { detail?: { tasks?: unknown } }).detail;
+		const tasks = Array.isArray(detail?.tasks) ? detail.tasks : [];
+		return buildWaveGraph(
+			tasks
+				.map((row) => {
+					const task = row as {
+						id?: string;
+						subject?: string;
+						title?: string;
+						status?: string;
+						wave?: number | null;
+						depends_on?: string[];
+						waits_on?: string[];
+					};
+					return {
+						id: String(task.id || ""),
+						subject: task.subject,
+						title: task.title,
+						status: String(task.status || ""),
+						wave: task.wave,
+						depends_on: task.depends_on,
+						waits_on: task.waits_on,
+					};
+				})
+				.filter((task) => task.id),
+		);
+	});
+
+	reset() {
+		this.payload = null;
+		this.error = "";
+		this.loading = false;
+	}
+
+	selectPhaseTab(tab: string) {
+		if (!polling.effort || !this.target) return;
+		const effortName = navigation.route.parts[1];
+		const phaseName = navigation.route.parts[2];
+		if (!effortName || !phaseName) return;
+		openHash(phaseHref(effortName, phaseName, tab));
+	}
+}
+
+export const phase = new PhaseState();
+
+export function bindPhase() {
+	phase.reset();
+
+	$effect(() => {
+		const path = phase.apiPath;
+		if (!path) {
+			phase.reset();
+			return;
+		}
+		let cancelled = false;
+		phase.payload = null;
+		phase.error = "";
+		phase.loading = true;
+		void getJson<unknown>(path)
+			.then((data) => {
+				if (!cancelled) {
+					phase.payload = data;
+					phase.error = "";
+					phase.loading = false;
+				}
+			})
+			.catch((err: unknown) => {
+				if (!cancelled) {
+					phase.payload = null;
+					phase.error = err instanceof Error ? err.message : String(err);
+					phase.loading = false;
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
+}

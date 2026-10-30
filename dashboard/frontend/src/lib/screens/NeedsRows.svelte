@@ -1,5 +1,6 @@
 <script lang="ts">
   import { overlay } from "$lib/state/overlay.svelte";
+  import { linkify } from "$lib/state/refs";
   import { needsHref, openHash } from "../../detail";
   import { scanNeeds } from "../../detailView";
   import type { EffortView } from "../../types";
@@ -27,6 +28,6 @@
   >
     <span class="kind">{scan.kind}</span>
     {#if scan.place}<span class="where">{scan.place}</span>{/if}
-    <span class="text">{@html overlay.linkify(scan.claim)}</span>
+    <span class="text">{@html linkify(scan.claim, overlay.linkCtx)}</span>
   </button>
 {/each}
