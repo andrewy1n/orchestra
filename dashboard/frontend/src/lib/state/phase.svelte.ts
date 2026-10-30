@@ -1,3 +1,4 @@
+import { untrack } from "svelte";
 import { getJson } from "../../api";
 import {
 	type DetailTarget,
@@ -6,9 +7,11 @@ import {
 	phaseHref,
 } from "../../detail";
 import { detailView, evidenceBoard, taskBoard } from "../../detailView";
+import { filteredTasks, tabCounts } from "../../efforts";
 import type { RefContext } from "../../links";
 import { buildPhaseChrome } from "../../phaseChrome";
 import { buildWaveGraph } from "../../taskGraph";
+import type { EffortView, StatusTab } from "../../types";
 import { polling } from "./polling.svelte";
 import { linkContext } from "./refs";
 import { navigation } from "./route.svelte";
@@ -17,6 +20,8 @@ class PhaseState {
 	payload: unknown = $state(null);
 	error = $state("");
 	loading = $state(false);
+	statusTab: StatusTab = $state("active");
+	tabPinnedFor = $state("");
 
 	target: DetailTarget | null = $derived.by(() => {
 		const target = detailTarget(navigation.route);
@@ -34,6 +39,34 @@ class PhaseState {
 			this.payload,
 		);
 	});
+
+	routeEffort: EffortView | null = $derived.by(() => {
+		if (!this.target) return null;
+		const name = navigation.route.parts[1];
+		return (
+			polling.snapshot?.efforts.find((view) => view.effort === name) ?? null
+		);
+	});
+
+	routePhase: string | null = $derived(
+		this.target ? (navigation.route.parts[2] ?? null) : null,
+	);
+
+	routeKey = $derived(
+		this.routeEffort && this.routePhase
+			? `${this.routeEffort.effort}/${this.routePhase}`
+			: "",
+	);
+
+	counts = $derived(
+		this.routeEffort ? tabCounts(this.routeEffort, this.routePhase) : null,
+	);
+
+	tasks = $derived(
+		this.routeEffort
+			? filteredTasks(this.routeEffort, this.routePhase, this.statusTab)
+			: [],
+	);
 
 	phaseTabs: string[] = $derived.by(() => {
 		if (!this.target) return [];
@@ -116,6 +149,13 @@ class PhaseState {
 		this.payload = null;
 		this.error = "";
 		this.loading = false;
+		this.statusTab = "active";
+		this.tabPinnedFor = "";
+	}
+
+	chooseTab(name: StatusTab) {
+		this.statusTab = name;
+		this.tabPinnedFor = this.routeKey;
 	}
 
 	selectPhaseTab(tab: string) {
@@ -131,6 +171,31 @@ export const phase = new PhaseState();
 
 export function bindPhase() {
 	phase.reset();
+
+	$effect(() => {
+		phase.routeKey;
+		untrack(() => {
+			phase.statusTab = "active";
+			phase.tabPinnedFor = "";
+		});
+	});
+
+	$effect(() => {
+		const current = phase.routeEffort;
+		if (!current || phase.tabPinnedFor === phase.routeKey) return;
+		const nextCounts = tabCounts(current, phase.routePhase);
+		if (
+			current.needs_you.length > 0 &&
+			nextCounts.active === 0 &&
+			phase.statusTab === "active"
+		) {
+			const fallback =
+				(["done", "waiting", "ready", "running", "all"] as StatusTab[]).find(
+					(name) => nextCounts[name] > 0,
+				) ?? "all";
+			phase.statusTab = fallback;
+		}
+	});
 
 	$effect(() => {
 		const path = phase.apiPath;
