@@ -1,0 +1,24 @@
+---
+{
+  "id": "rec-b54b9a3a-45db-4c76-8e8f-d2f5f9b8bc42",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "mypy-gate-review",
+    "effort": "ci",
+    "evidence_kind": "review",
+    "method": "review",
+    "result": "pass",
+    "revision": "7b71e0a294ca6c158d05d031179fdacc805a358e",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T08:14:01+00:00",
+  "relationships": {},
+  "revision": "sha256:cf7121fccc6a5a3168afe89dbc8f04104f8844a60733d84c28348a4c3ec91b5e",
+  "subject": "mypy-gate-review"
+}
+---
+
+verdict: PASS
+findings: []
+integration: see the integration-report for mypy-gate. Reviewer confirmed the baseline has no orchestra/ key, uv run basedpyright prints 0 errors, no inline suppressions were added, and every orchestra/ edit is a type-only or runtime no-op change.

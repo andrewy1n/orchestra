@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from test_verdict import VERIFY, APP_GREEN, APP_RED, CLAIM, _repo
 
 
-def _path_without_runtime() -> str:
-    kept: list[str] = []
+def _path_without_runtime(shim_dir: Path) -> str:
+    kept: list[str] = [str(shim_dir)]
     for entry in os.environ.get("PATH", "").split(os.pathsep):
         if not entry:
             continue
@@ -21,11 +22,20 @@ def _path_without_runtime() -> str:
     return os.pathsep.join(kept)
 
 
+def _python_shim(shim_dir: Path) -> None:
+    shim_dir.mkdir()
+    shim = shim_dir / "python3"
+    shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    shim.chmod(0o755)
+
+
 def test_verdict_without_runtime(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _base, head = _repo(root, base_app=APP_RED, head_app=APP_GREEN, branch=True)
+    shim_dir = tmp_path / "shim"
+    _python_shim(shim_dir)
     env = os.environ.copy()
-    env["PATH"] = _path_without_runtime()
+    env["PATH"] = _path_without_runtime(shim_dir)
     proc = subprocess.run(
         [*VERIFY, "verdict", "--at", head, CLAIM],
         cwd=str(root),

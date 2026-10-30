@@ -1,0 +1,36 @@
+---
+{
+  "id": "rec-58df7b9c-79da-4c64-acaa-2b803ff61d8a",
+  "lifecycle_state": "superseded",
+  "payload": {
+    "confidence": "high",
+    "effort": "ci",
+    "missing": "",
+    "next": "release",
+    "phase": "ci-workflow",
+    "requirement": "R19",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T05:57:59+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-d2f1413c-e5a3-4b1b-8a0c-c82584c70963"
+    ]
+  },
+  "revision": "sha256:2d8e7dc1ec452424eb933506c161f6565920311eff57bf007909b2b1809bd44c",
+  "subject": "ci-workflow-R19"
+}
+---
+
+## Evidence
+
+Verification check-run rec-8c4576f1-a361-48a4-9abc-f10d284c0262 passed at 2835bd8049daef46fec360ac67c4a73bcfe141a6: tmux pass without -n exits 0. Earlier task-level check-runs for this requirement also passed.
+
+## Missing
+
+none
+
+## Reason
+
+The acceptance command exercises the requirement directly and passed.

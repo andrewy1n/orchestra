@@ -6,7 +6,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from orchestra.canon.derive import compute_derived
 from orchestra.canon.git_backend import run_git
@@ -76,10 +76,13 @@ class Project:
         store, _ = self._session()
         return list(store.iter_records())
 
-    def derived(self) -> dict[str, dict[str, Any]]:
-        """Return read-time values (`ready`, `wave`, `referenced_by`, `corrected`) by record id."""
+    def derived(self, records: list[dict[str, Any]] | None = None) -> dict[str, dict[str, Any]]:
+        """Return read-time values (`ready`, `wave`, `referenced_by`, `corrected`) by record id.
+
+        Pass the full record list from `records()` to skip a second read of the store.
+        """
         store, schemas = self._session()
-        return compute_derived(list(store.iter_records()), schemas)
+        return compute_derived(list(store.iter_records()) if records is None else records, schemas)
 
     def resolve(self, record_type: str, subject: str) -> dict[str, Any]:
         """Return the latest record of the type with the subject."""
@@ -549,7 +552,7 @@ def _apply_operation(store: Store, schemas: SchemaSet, op: Any) -> dict[str, Any
         stored = _create_record(
             store,
             schemas,
-            record_type=op.get("type"),
+            record_type=cast(str, op.get("type")),
             subject=op.get("subject"),
             payload=op.get("payload"),
             body=op.get("body"),

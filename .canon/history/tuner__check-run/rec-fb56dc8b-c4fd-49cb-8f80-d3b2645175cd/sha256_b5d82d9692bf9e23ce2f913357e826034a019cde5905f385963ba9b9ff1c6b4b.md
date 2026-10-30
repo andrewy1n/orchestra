@@ -1,0 +1,31 @@
+---
+{
+  "id": "rec-fb56dc8b-c4fd-49cb-8f80-d3b2645175cd",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-5e60bb25-3213-4560-862f-98e26e57f4ec",
+    "duration_s": 6.051196,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-5e60bb25-3213-4560-862f-98e26e57f4ec",
+      "rec-3f0bfee9-691a-4909-8b13-245eabdc6f6b"
+    ],
+    "method": "tdd",
+    "output_sha256": "3b1659fd14b87046d76c161a243dd31df74f83975ec226634b3299a406d6522c",
+    "requirement": "R3",
+    "result": "pass",
+    "revision": "9ffd2768a9badf1dffebc49d1bf868acea25179a",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T19:01:43+00:00",
+  "relationships": {},
+  "revision": "sha256:b5d82d9692bf9e23ce2f913357e826034a019cde5905f385963ba9b9ff1c6b4b",
+  "subject": "verify-node-ci-gate-fails"
+}
+---
+
+.                                                                        [100%]
+1 passed in 5.82s

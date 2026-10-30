@@ -1,0 +1,27 @@
+---
+{
+  "id": "rec-00bfaf2d-3df7-4cdb-adad-7bb982fde613",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "workflow-loop",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/test_analyze.py:sha256:83aaf64c53f81cb1dba795c57cb79a5131aee1603c1547d8740957d4bcb0526b"
+    ],
+    "phase": "spec-analyze",
+    "requirement": "R16",
+    "test_ids": [
+      "tests/test_analyze.py::test_r16_compound_requirement_with_and_is_warning_only",
+      "tests/test_analyze.py::test_r16_compound_requirement_with_semicolon_is_warning_only",
+      "tests/test_analyze.py::test_r16_warning_is_printed_in_text_output"
+    ],
+    "verify_command": "uv run pytest tests/test_analyze.py::test_r16_compound_requirement_with_and_is_warning_only tests/test_analyze.py::test_r16_compound_requirement_with_semicolon_is_warning_only tests/test_analyze.py::test_r16_warning_is_printed_in_text_output -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T08:12:29+00:00",
+  "relationships": {},
+  "revision": "sha256:1ab6e1742bd7a9e058646b94c7d52ff15cf2bbe6b5b537270449fd70fba82fea",
+  "subject": "analyze-plan-checks-r16"
+}
+---
+

@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-c1a7dc82-0f10-454f-b3ed-fe6a1a7ce7c9",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-09fe91f2-9fdb-4f90-8f72-93610437a6b6",
+    "duration_s": 0.522901,
+    "effort": "package-layout",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-09fe91f2-9fdb-4f90-8f72-93610437a6b6"
+    ],
+    "method": "tdd",
+    "output_sha256": "35d86279d96ed65491ba8ff0748e1c8e7891711531404dc5d4b9cd6ae33de3ec",
+    "requirement": "R8",
+    "result": "pass",
+    "revision": "a802795444e18567e5c2022fb38a21fb67a6f089",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T09:47:50+00:00",
+  "relationships": {},
+  "revision": "sha256:ffdc3365817a67018a302cf74292e7d5eaa5a917325fdacb4213ff85218bc9cc",
+  "subject": "tuner-sign"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.03s

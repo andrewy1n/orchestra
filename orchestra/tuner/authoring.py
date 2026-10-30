@@ -54,7 +54,7 @@ def freeze(cwd: Path | str, claim_ids: Sequence[str] = ()) -> None:
             raise AuthoringError(f"unknown claim id {claim_id!r}")
 
     global_support = _support_list(document.get("support_files"), "support_files")
-    updates: dict[str, dict[str, str]] = {}
+    updates: dict[Any, dict[str, str]] = {}
     for claim_id in selected:
         claim = by_id[claim_id]
         for relpath in (

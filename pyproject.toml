@@ -9,8 +9,6 @@ description = "Product planning through verified code, run by agents"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "textual>=0.80",
-    "rich",
     "fastapi",
     "uvicorn",
 ]
@@ -36,7 +34,8 @@ packages = [
     "orchestra.stage",
     "orchestra.sessions",
     "dashboard",
-    "dashboard.web",
+    "dashboard.backend",
+    "dashboard.backend.server",
     "installer",
     "installer.adapters",
 ]
@@ -54,10 +53,13 @@ installer = ["providers.json"]
 dev = [
     "pytest",
     "pytest-xdist",
+    "pytest-rerunfailures",
     "httpx",
+    "pyyaml",
     "pip",
     "setuptools",
     "wheel",
+    "basedpyright==1.40.2",
 ]
 
 [project.entry-points."canon.schemas"]
@@ -65,3 +67,11 @@ score = "orchestra.score.schemas"
 conductor = "orchestra.conductor.schemas"
 tuner = "orchestra.tuner.schemas"
 composer = "orchestra.composer.schemas"
+
+[tool.ruff.lint]
+select = ["F"]
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.10"
+include = ["orchestra", "dashboard", "installer"]

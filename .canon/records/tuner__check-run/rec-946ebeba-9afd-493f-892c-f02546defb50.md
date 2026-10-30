@@ -1,0 +1,47 @@
+---
+{
+  "id": "rec-946ebeba-9afd-493f-892c-f02546defb50",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-2b7626c2-cd4f-4335-9d07-3045d1080a51",
+    "duration_s": 0.577113,
+    "effort": "workflow-loop",
+    "exit_code": 1,
+    "failing_node_ids": [
+      "tests/test_effort_brief.py::test_r8_validate_is_clean_for_a_prior_effort_after_sync"
+    ],
+    "informed_by": [
+      "rec-2b7626c2-cd4f-4335-9d07-3045d1080a51"
+    ],
+    "method": "tdd",
+    "output_sha256": "9d32b9660b613573ba7a4d43c5e9bc6d83ef5939c2e5fa0350f49086d5a1ab29",
+    "requirement": "R8",
+    "result": "fail",
+    "revision": "81eadd1bdcd9342782e4672d25be9bc425693a43",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T17:14:51+00:00",
+  "relationships": {},
+  "revision": "sha256:92719aef1ad533e15635d6a5037b268aa85a05697fae2918967a28bed097faa4",
+  "subject": "brief-schema-r8"
+}
+---
+
+F                                                                                                                                                                                                                                                  [100%]
+======================================================================================================================== FAILURES ========================================================================================================================
+________________________________________________________________________________________________ test_r8_validate_is_clean_for_a_prior_effort_after_sync _________________________________________________________________________________________________
+
+synced_store = (PosixPath('/tmp/se-workflow-test-i37ps2hm'), CompletedProcess(args=['/home/andrewyin/orchestra/.worktrees/effort-brie...    "to": "1.0.0",\n      "action": "updated"\n    }\n  },\n  "migrated_records": 0,\n  "errors": []\n}\n', stderr=''))
+
+    def test_r8_validate_is_clean_for_a_prior_effort_after_sync(synced_store):
+        root, sync = synced_store
+        assert sync.returncode == 0, _output(sync)
+>       assert "brief" in _snapshot(root)["types"]
+E       AssertionError: assert 'brief' in {'effort': {'purpose': 'Live outcome of this effort', 'lifecycle': 'current', 'fields': {'goal': {'type': 'string'}, '...'milestone': {'ref': 'score:milestone', 'optional': True}}, 'sections': ['Problem', 'Approach', 'Exit criteria']}, ...}
+
+tests/test_effort_brief.py:142: AssertionError
+================================================================================================================ short test summary info =================================================================================================================
+FAILED tests/test_effort_brief.py::test_r8_validate_is_clean_for_a_prior_effort_after_sync - AssertionError: assert 'brief' in {'effort': {'purpose': 'Live outcome of this effort', 'lifecycle': 'current', 'fields': {'goal': {'type': 'string'}, '.....
+1 failed in 0.30s

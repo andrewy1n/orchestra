@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
@@ -21,10 +20,8 @@ from orchestra.conductor.suite import (  # noqa: E402
     advisory_finding_payload,
     build_suite_check_run_payload,
     cluster_by_module,
-    load_suite_policy,
     module_fix_subject,
     normalize_suite_policy,
-    orphan_recovery_hint,
     parse_failing_node_ids,
     phase_suite_gate_holds,
     poll_suite,
@@ -505,7 +502,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     flat = _skill_flat()
     assert "Do not waive `phase_gate.suite`" in flat
     assert "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)" in flat
-    assert "closing verification → reviewer → integration-report → suite → phase gate" in flat
+    assert "closing verification → analyze → reviewer → integration-report → suite → phase gate" in flat
     assert "orchestra suite record" in text
     assert "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat
 
@@ -522,11 +519,12 @@ def test_execute_phase_documents_no_agent_waiver_of_suite_policy():
 
 def test_readme_suite_command_matches_testing_section():
     cmd = readme_suite_command()
-    assert '-n 4 -m "not tmux"' in cmd
-    assert "-m tmux" in cmd
+    assert cmd == "uv run pytest tests -q -n 4"
+    assert "tmux" not in cmd
+    assert "&&" not in cmd
     readme = README.read_text()
-    # README rename may land in suite-docs-tests; command shape is authoritative.
-    assert '-n 4 -m "not tmux"' in readme
+    assert f"falls back to `{cmd}`" in " ".join(readme.split())
+    assert "-m tmux" not in readme
 
 
 def test_evidence_kind_integration_not_regression():

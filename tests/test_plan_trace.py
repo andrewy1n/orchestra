@@ -103,7 +103,6 @@ def test_create_examples_match_atomic_thin_shape():
 
 def test_plan_phase_trace_invocations_are_contract_legal(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    bundles = {bundle["id"]: bundle for bundle in resolved_contract.get("bundles", [])}
     violations = check_skill_text(_text(), defs)
     assert not violations, "\n".join(violations)
 

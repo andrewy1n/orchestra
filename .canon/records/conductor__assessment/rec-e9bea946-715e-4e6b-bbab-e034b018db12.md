@@ -1,0 +1,32 @@
+---
+{
+  "id": "rec-e9bea946-715e-4e6b-bbab-e034b018db12",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "ci",
+    "missing": "",
+    "next": "release",
+    "phase": "ci-workflow",
+    "requirement": "R20",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-28T21:12:36+00:00",
+  "relationships": {},
+  "revision": "sha256:c4288bca1abb7cd15de797aba038ee0825ba62cfa0ff23f4390bc5e59dbb026f",
+  "subject": "ci-workflow-R20"
+}
+---
+
+## Evidence
+
+Check-run rec-08bea39c-f61c-47e2-b7cb-8e135e37620a passed at 1eb08185ff7eec1ebe4a62b02b2a2a25eec6a843: tests/test_ci_workflow.py -k test_r20_ asserts the parsed ci.yml.
+
+## Missing
+
+none
+
+## Reason
+
+The structure test parses the workflow and asserts the requirement directly. It failed on assertion before ci.yml existed and passes now.

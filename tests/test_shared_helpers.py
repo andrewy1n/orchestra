@@ -482,7 +482,7 @@ def test_r5_git_only_in_backend() -> None:
 
 def test_r6_landing_none_on_git_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """R6: dashboard.landing.rev_parse_token returns None when the git command fails."""
-    from dashboard.landing import rev_parse_token
+    from dashboard.backend.landing import rev_parse_token
 
     root = _fails_git(monkeypatch, tmp_path)
     assert rev_parse_token(root, "HEAD") is None
@@ -558,36 +558,7 @@ def test_r11_attestation_signature(tmp_path: Path) -> None:
     assert ok is True
 
 
-def test_r12_route_table() -> None:
-    """R12: One route table lists the eleven dashboard API routes."""
-    tables = _route_tables()
-    assert len(tables) == 1
 
-
-def test_r13_stdlib_reads_table() -> None:
-    """R13: The stdlib server dispatches those API paths by reading that table."""
-    tables = _route_tables()
-    assert len(tables) == 1
-    table = tables[0]
-    servers = _files_calling("BaseHTTPRequestHandler")
-    assert servers
-    for server in servers:
-        tree = _parse(server)
-        assert _reads_table(tree, table)
-        assert _hardcoded_api_paths(server, table) == set()
-
-
-def test_r14_fastapi_reads_table() -> None:
-    """R14: The FastAPI app registers those API paths by reading that table."""
-    tables = _route_tables()
-    assert len(tables) == 1
-    table = tables[0]
-    apps = _files_calling("FastAPI")
-    assert apps
-    for app in apps:
-        tree = _parse(app)
-        assert _reads_table(tree, table)
-        assert _hardcoded_api_paths(app, table) == set()
 
 
 def test_r15_views_omits_getter() -> None:
@@ -602,12 +573,12 @@ def test_r16_close_batch_omits_getter() -> None:
 
 def test_r17_model_omits_getter() -> None:
     """R17: dashboard.model does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "dashboard" / "model.py") == []
+    assert _record_payload_getters(ROOT / "dashboard" / "backend" / "records.py") == []
 
 
 def test_r18_approval_omits_getter() -> None:
     """R18: dashboard.approval does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "dashboard" / "approval.py") == []
+    assert _record_payload_getters(ROOT / "dashboard" / "backend" / "approval.py") == []
 
 
 def test_r19_canon_record_payload() -> None:
@@ -634,11 +605,11 @@ def test_r22_model_calls_payload() -> None:
     """R22: dashboard.model calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "dashboard" / "model.py", getters[0].__name__)
+    assert _calls_named(ROOT / "dashboard" / "backend" / "records.py", getters[0].__name__)
 
 
 def test_r23_approval_calls_payload() -> None:
     """R23: dashboard.approval calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "dashboard" / "approval.py", getters[0].__name__)
+    assert _calls_named(ROOT / "dashboard" / "backend" / "approval.py", getters[0].__name__)

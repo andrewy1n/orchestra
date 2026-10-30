@@ -1,7 +1,7 @@
 {
   "format": "canon/1",
   "schemas": {
-    "score": "1.0.0",
+    "score": "1.1.0",
     "conductor": "1.0.0",
     "tuner": "1.0.0",
     "composer": "1.0.0"
@@ -11,7 +11,7 @@
       "phase_gate": {
         "suite": {
           "mode": "full",
-          "command": "scripts/test.sh",
+          "command": "uv run pytest -q -n auto --confcutdir=tests/canon tests/canon && uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner && uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner",
           "gate": "advisory"
         }
       }

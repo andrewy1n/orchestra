@@ -1,7 +1,22 @@
 {
   "namespace": "score",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": {
+    "brief": {
+      "purpose": "Why, for whom, and how success is measured for an effort",
+      "lifecycle": "current",
+      "fields": {
+        "effort": {
+          "ref": "score:effort"
+        }
+      },
+      "sections": [
+        "Problem",
+        "Users",
+        "Success measure",
+        "Non-goals"
+      ]
+    },
     "effort": {
       "purpose": "Live outcome of this effort",
       "lifecycle": "current",

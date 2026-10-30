@@ -52,7 +52,6 @@ _SHIM_DIRS: list[Path] = []
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "tmux: drives a real tmux server; run serially")
     _configure_environment()
 
 
@@ -65,12 +64,6 @@ def pytest_unconfigure(config):
 def _preimport_tuner_binding():
     """Let binding capture the real run_verdict before any test patches it."""
     import orchestra.tuner.binding  # noqa: F401
-
-
-def pytest_collection_modifyitems(items):
-    for item in items:
-        if item.path.name in ("test_tmux_integration.py", "test_e2e_dashboard.py", "test_tmux_entry.py"):
-            item.add_marker(pytest.mark.tmux)
 
 
 def run_cli(*args: str, root: Path | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:

@@ -1,0 +1,36 @@
+---
+{
+  "id": "rec-fd5dc3fe-25f4-4a8b-afb5-78cb76daea50",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-f0b5a5b1-13c8-4d53-9236-b66663368543",
+    "duration_s": 0.853396,
+    "effort": "dashboard",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-f0b5a5b1-13c8-4d53-9236-b66663368543"
+    ],
+    "method": "tdd",
+    "output_sha256": "7e9f5b326008609558f087626fcc14f9e516ca8fc98d5144a922663c1c4bd535",
+    "requirement": "R4",
+    "result": "pass",
+    "revision": "c63972ccaeb7aa183f573289196241789851ec9b",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-29T22:38:24+00:00",
+  "relationships": {},
+  "revision": "sha256:382dde1ef9d1f3b4a556002e26a9a9f6b7363b8433f8ce4c974dcab1bb78b21b",
+  "subject": "verify-areas-and-ideas-r4"
+}
+---
+
+.                                                                        [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/andrewyin/orchestra/.worktrees/areas-and-ideas/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 1 warning in 0.60s

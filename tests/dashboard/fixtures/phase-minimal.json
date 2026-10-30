@@ -1,0 +1,51 @@
+{
+  "body": {
+    "decisions": {
+      "groups": []
+    },
+    "detail": {
+      "awaiting_signoff": false,
+      "body": "## Problem\n\nplaceholder text for Problem.\n\n## Approach\n\nplaceholder text for Approach.\n\n## Exit criteria\n\nplaceholder text for Exit criteria.\n",
+      "constraints": [],
+      "decisions": [],
+      "design_body": "",
+      "effort": "beta",
+      "evidence": null,
+      "milestone": "",
+      "milestone_title": "",
+      "proof": null,
+      "spec_body": "",
+      "state": "planned",
+      "structured": false,
+      "subject": "b-one",
+      "tasks": [
+        {
+          "assignee": "",
+          "attempts": 0,
+          "depends_on": [],
+          "estimate_minutes": null,
+          "executor": "subagent",
+          "id": "<score:work-item:b-task>",
+          "last_record_at": null,
+          "phase": "b-one",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "",
+          "status": "ready",
+          "subject": "b-task",
+          "title": "title of b-task",
+          "waits_on": [],
+          "wave": 1
+        }
+      ],
+      "title": "title of b-one"
+    },
+    "tabs": [
+      "overview",
+      "spec",
+      "decisions",
+      "tasks"
+    ]
+  },
+  "status": 200
+}

@@ -46,8 +46,7 @@ SUITE_GATES = ("required", "advisory", "deferred")
 DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
-FAST_SUITE_CMD = 'uv run pytest tests -q -n 4 -m "not tmux"'
-TMUX_SUITE_CMD = "uv run pytest tests -q -m tmux"
+FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
 
 @dataclass(frozen=True)
 class SuitePolicy:
@@ -169,8 +168,7 @@ def is_suite_subject(subject: str) -> bool:
 
 
 def readme_suite_command() -> str:
-    """Command chain matching README Testing full suite (fast then tmux)."""
-    return f"{FAST_SUITE_CMD} && {TMUX_SUITE_CMD}"
+    return FAST_SUITE_CMD
 
 
 def suite_command_for_policy(policy: SuitePolicy) -> str:

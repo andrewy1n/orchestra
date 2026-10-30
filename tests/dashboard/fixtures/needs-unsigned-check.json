@@ -1,0 +1,29 @@
+{
+  "body": {
+    "item": {
+      "approval": {
+        "confirm_choices": [
+          {
+            "action": "sign",
+            "label": "Sign",
+            "note_required": false
+          }
+        ]
+      },
+      "body": "",
+      "id": "<tuner:check-run:unsigned-check>",
+      "kind": "unsigned-check",
+      "next": "",
+      "phase": "",
+      "record_type": "tuner:check-run",
+      "requirement": "",
+      "result": "",
+      "revision": "<rev:tuner:check-run:unsigned-check>",
+      "status": "",
+      "subject": "task-ready-acc",
+      "task_id": "<score:work-item:task-ready>",
+      "text": "the endpoint keeps its shape pass"
+    }
+  },
+  "status": 200
+}

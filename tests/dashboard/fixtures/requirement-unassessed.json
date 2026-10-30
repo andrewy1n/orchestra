@@ -1,0 +1,35 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "assessments": [],
+      "decisions": [],
+      "id": "R2",
+      "next": "",
+      "phase": "p-work",
+      "status": "unassessed",
+      "tasks": [
+        {
+          "assignee": "",
+          "attempts": 0,
+          "depends_on": [],
+          "estimate_minutes": null,
+          "executor": "subagent",
+          "id": "<score:work-item:task-next>",
+          "last_record_at": null,
+          "phase": "p-work",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "",
+          "status": "waiting",
+          "subject": "task-next",
+          "title": "title of task-next",
+          "waits_on": [],
+          "wave": 2
+        }
+      ],
+      "text": ""
+    }
+  },
+  "status": 200
+}

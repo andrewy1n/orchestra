@@ -1,0 +1,45 @@
+{
+	"name": "dashboard-ui",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json && npm run api-types:check",
+		"lint": "biome check --error-on-warnings .",
+		"api-types": "openapi-typescript openapi.json -o src/api-types.ts --root-types --root-types-no-schema-prefix",
+		"api-types:check": "t=$(mktemp) && openapi-typescript openapi.json -o \"$t\" --root-types --root-types-no-schema-prefix && diff -u src/api-types.ts \"$t\" || { echo \"src/api-types.ts is out of date: run npm run api-types\" >&2; exit 1; }"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.4",
+		"@fontsource-variable/inter": "5.3.0",
+		"@internationalized/date": "3.12.4",
+		"@lucide/svelte": "1.64.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"@tailwindcss/vite": "^4.3.3",
+		"@tsconfig/svelte": "^5.0.8",
+		"@types/node": "^24.13.3",
+		"@xyflow/svelte": "^1.7.0",
+		"bits-ui": "2.20.2",
+		"cn": "0.5.0",
+		"jsdom": "^29.1.1",
+		"openapi-typescript": "7.13.0",
+		"shadcn-svelte": "1.7.2",
+		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
+		"tailwind-variants": "3.3.1",
+		"tailwindcss": "^4.3.3",
+		"tw-animate-css": "1.4.0",
+		"typescript": "~6.0.2",
+		"vite": "^8.3.0",
+		"vitest": "^5.0.5"
+	},
+	"overrides": {
+		"openapi-typescript": {
+			"typescript": "$typescript"
+		}
+	}
+}

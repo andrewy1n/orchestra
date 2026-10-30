@@ -1,0 +1,20 @@
+{
+  "body": {
+    "record": {
+      "body": "",
+      "id": "<score:continuity-question:alpha:which backend>",
+      "lifecycle_state": "open",
+      "payload": {
+        "blocking": true,
+        "owner": "andrew",
+        "scope": "which backend"
+      },
+      "record_type": "score:continuity-question",
+      "recorded_at": "<timestamp>",
+      "relationships": {},
+      "revision": "<rev:score:continuity-question:alpha:which backend>",
+      "subject": "alpha"
+    }
+  },
+  "status": 200
+}

@@ -1,0 +1,29 @@
+---
+{
+  "id": "rec-c9cd1aef-c4f7-4ce2-b709-3f1ed1d2021f",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-ebbd394b-633a-4efc-b315-7594313aa953",
+    "diff_sha256": "cb9362ed51af8111f0d07dd66e063aa7dbd3e71f9a5a8adf00a5e4c8b4b3dd84",
+    "duration_s": 0.02146,
+    "effort": "ci",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-ebbd394b-633a-4efc-b315-7594313aa953"
+    ],
+    "method": "check",
+    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requirement": "R30",
+    "result": "pass",
+    "revision": "dirty",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T21:14:27+00:00",
+  "relationships": {},
+  "revision": "sha256:52e7680c2758fe067e5c495f427667d10108945db90317be0e1bffec552620df",
+  "subject": "verify-ci-workflow-r30"
+}
+---
+

@@ -35,7 +35,7 @@ def test_plan_phase_limits_verification_to_phase_checks():
 def test_plan_phase_rejects_whole_suite_and_unfiltered_app_file():
     text = _flat(_text("plan-phase"))
     assert "whole `tests` tree" in text
-    assert "`tests/test_dashboard_app.py` without a `-k` filter for this phase" in text
+    assert "`tests/dashboard/test_web_dashboard.py` without a `-k` filter for this phase" in text
     assert "is not a verification acceptance" in text
 
 
@@ -67,7 +67,7 @@ def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
         assert mode in readme
     for gate in ("required", "advisory", "deferred"):
         assert gate in readme
-    assert "`mode=full` and `gate=required`" in readme
+    assert "`mode=full` and `gate=advisory`" in readme
     assert "`<phase>-suite`" in readme
     assert "tier-2" not in readme and "tier2" not in readme
 

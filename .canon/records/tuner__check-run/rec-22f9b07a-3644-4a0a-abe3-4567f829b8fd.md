@@ -1,0 +1,30 @@
+---
+{
+  "id": "rec-22f9b07a-3644-4a0a-abe3-4567f829b8fd",
+  "lifecycle_state": "recorded",
+  "payload": {
+    "criterion_id": "rec-e28409f3-18c0-480a-8b30-3e502c1547f9",
+    "duration_s": 0.57564,
+    "effort": "package-layout",
+    "exit_code": 0,
+    "informed_by": [
+      "rec-e28409f3-18c0-480a-8b30-3e502c1547f9"
+    ],
+    "method": "tdd",
+    "output_sha256": "f4c77b58e2280613a49ba18da1c4a02d440e862c49a6c8fe5daaf277333ff99d",
+    "requirement": "R6",
+    "result": "pass",
+    "revision": "ca77219de4cb393d3b91d0a1a6f173160c784ec3",
+    "runner": "orchestra",
+    "signed_by": ""
+  },
+  "record_type": "tuner:check-run",
+  "recorded_at": "2026-10-28T09:36:01+00:00",
+  "relationships": {},
+  "revision": "sha256:bfbccc29d8735cfdebaf6641f1341fefb4fc52f4fc9cee3f72b63fd400c07ffd",
+  "subject": "canon-git-backend-landing"
+}
+---
+
+.                                                                        [100%]
+1 passed in 0.04s

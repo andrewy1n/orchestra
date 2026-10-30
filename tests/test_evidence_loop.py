@@ -82,7 +82,7 @@ def _acceptance(cli, defs, subject: str, phase: str, *, requirement: str | None 
         "method": "check",
         "phase": phase,
         "effort": EFFORT,
-        "verify_command": "uv run --with textual --with pytest python -m pytest tests/test_evidence_loop.py -q",
+        "verify_command": "uv run --with pytest python -m pytest tests/test_evidence_loop.py -q",
     }
     if requirement is not None:
         payload["requirement"] = requirement

@@ -1,0 +1,25 @@
+---
+{
+  "id": "rec-46b4ecbc-355b-42a2-a6fe-729f3cb6e3a2",
+  "lifecycle_state": "active",
+  "payload": {
+    "effort": "dashboard",
+    "method": "tdd",
+    "oracle_hashes": [
+      "tests/dashboard/test_data_layer.py:sha256:86ff0ac891e32708da3c09b2afcf5b23ec09754e76dd70a2290a8e4268c38ac2"
+    ],
+    "phase": "data-layer",
+    "requirement": "R8",
+    "test_ids": [
+      "tests/dashboard/test_data_layer.py::test_r8_sync_check_passes_clean_and_fails_when_stale"
+    ],
+    "verify_command": "uv run pytest tests/dashboard/test_data_layer.py::test_r8_sync_check_passes_clean_and_fails_when_stale -q"
+  },
+  "record_type": "score:acceptance",
+  "recorded_at": "2026-10-29T20:41:57+00:00",
+  "relationships": {},
+  "revision": "sha256:51e07104d8ea4d618def481227e832b01153eee9b42717cc6531b934dff0a815",
+  "subject": "api-types-codegen-sync"
+}
+---
+

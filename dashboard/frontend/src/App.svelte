@@ -1,0 +1,124 @@
+<script lang="ts">
+  import { onMount } from "svelte";
+  import Area from "$lib/screens/Area.svelte";
+  import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
+  import EffortRail from "$lib/screens/EffortRail.svelte";
+  import Home from "$lib/screens/Home.svelte";
+  import Journal from "$lib/screens/Journal.svelte";
+  import Overlay from "$lib/screens/Overlay.svelte";
+  import SideRail from "$lib/screens/SideRail.svelte";
+  import { bindAreas } from "$lib/state/areas.svelte";
+  import { bindJournal } from "$lib/state/journal.svelte";
+  import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
+  import { bindPolling, polling } from "$lib/state/polling.svelte";
+  import { navigation } from "$lib/state/route.svelte";
+  import { detailTarget, openHash } from "./detail";
+  import { currentRoute, routeLabel } from "./router";
+  import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
+
+  let theme: Theme = $state(DEFAULT_THEME);
+
+  bindPolling();
+  bindJournal();
+  bindAreas();
+  bindOverlay();
+
+  const effort = $derived(polling.effort);
+  const target = $derived(overlay.target);
+
+  $effect(() => {
+    applyTheme(theme);
+  });
+
+  function onToggleTheme() {
+    theme = toggle(theme);
+  }
+
+  onMount(() => {
+    const stopRoute = navigation.listen();
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "t" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const el = event.target;
+        if (
+          el instanceof HTMLElement &&
+          el.closest("input, textarea, select, [contenteditable='true']")
+        ) {
+          return;
+        }
+        if (overlay.pendingWrite || detailTarget(currentRoute())) return;
+        event.preventDefault();
+        onToggleTheme();
+        return;
+      }
+      if (event.key !== "Escape") return;
+      if (overlay.pendingWrite) return;
+      const current = currentRoute();
+      if (detailTarget(current)) return;
+      if (current.name === "journal") {
+        openHash("");
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+
+    const stopPolling = polling.start();
+
+    return () => {
+      stopPolling();
+      stopRoute();
+      window.removeEventListener("keydown", onKey, true);
+    };
+  });
+</script>
+
+<div class="app" inert={target || overlay.pendingWrite ? true : undefined}>
+  <header class="topbar">
+    <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
+    <div class="crumbs" aria-live="polite">{routeLabel(navigation.route)}</div>
+    <div class="top-actions">
+      <button
+        type="button"
+        class="theme-switch"
+        data-act="theme"
+        role="switch"
+        aria-checked={theme === "dark"}
+        title="Theme (t)"
+        onclick={onToggleTheme}
+      >
+        <span class="theme-track" aria-hidden="true"><span class="theme-thumb"></span></span>
+        Dark
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <input class="rail-toggle" id="rail-toggle" type="checkbox" />
+    <EffortRail />
+
+    <main class="main" data-route={navigation.route.name}>
+      {#if navigation.route.name === "journal"}
+        <Journal />
+      {:else if navigation.route.name === "area"}
+        <Area />
+      {:else if effort}
+        <Home {effort} />
+      {:else if !polling.loading && !polling.error}
+        <p class="empty-note">No efforts in this store.</p>
+      {/if}
+    </main>
+
+    <SideRail />
+    <label class="rail-toggle-label" for="rail-toggle">Efforts</label>
+  </div>
+
+  <footer class="statusbar">
+    {#if polling.pollError}
+      {polling.pollError}
+    {:else if polling.snapshot}
+      Live
+    {/if}
+  </footer>
+</div>
+
+<Overlay {theme} />
+<ConfirmModal />

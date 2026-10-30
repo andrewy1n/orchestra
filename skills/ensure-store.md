@@ -30,6 +30,8 @@ These are named commands, not files inside a checkout:
   files.
 - `orchestra check` and `orchestra close-batch` run acceptance and
   close work.
+- `orchestra analyze <phase-slug>` checks a phase's specification,
+  work-items, and acceptances for consistency. It writes no files.
 - `orchestra review-brief` builds the phase-end reviewer brief.
   `orchestra suite policy`, `orchestra suite start`,
   `orchestra suite poll`, `orchestra suite collect`, and

@@ -1,0 +1,16 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [],
+      "assessments": [],
+      "decisions": [],
+      "id": "R1",
+      "next": "",
+      "phase": "b-one",
+      "status": "unassessed",
+      "tasks": [],
+      "text": ""
+    }
+  },
+  "status": 200
+}

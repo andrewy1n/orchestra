@@ -1,0 +1,37 @@
+---
+{
+  "id": "rec-a57be6eb-e863-411b-98b2-0df05baf55bc",
+  "lifecycle_state": "active",
+  "payload": {
+    "confidence": "high",
+    "effort": "ci",
+    "level": "implementation",
+    "missing": "",
+    "next": "release",
+    "phase": "ci-workflow",
+    "requirement": "R17",
+    "status": "verified"
+  },
+  "record_type": "conductor:assessment",
+  "recorded_at": "2026-10-29T05:57:58+00:00",
+  "relationships": {
+    "supersedes": [
+      "rec-e6bfa2ba-10a6-4843-a2f7-88a49021fd34"
+    ]
+  },
+  "revision": "sha256:051a965f44052cc7d501a54fe76223437c750fec5c7a3683e25f97a3c8ce88dc",
+  "subject": "ci-workflow-R17"
+}
+---
+
+## Evidence
+
+Verification check-run rec-01124fd1-3157-4881-ab91-237c0449b86f passed at 6a58448cca3600bedb4a9aa486e23ae361951a97 (final phase head). Earlier task-level check-runs also passed.
+
+## Missing
+
+none
+
+## Reason
+
+The acceptance command exercises the requirement directly and passed at the final head.

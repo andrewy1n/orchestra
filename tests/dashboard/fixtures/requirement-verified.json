@@ -1,0 +1,65 @@
+{
+  "body": {
+    "detail": {
+      "acceptances": [
+        {
+          "check": {
+            "evidence_kind": "",
+            "id": "<tuner:check-run:unsigned-check>",
+            "method": "manual",
+            "recorded_at": "<timestamp>",
+            "result": "pass",
+            "revision": "abc",
+            "signed_by": ""
+          },
+          "criterion": "the endpoint keeps its shape",
+          "id": "<score:acceptance:task-ready-acc>",
+          "method": "check",
+          "subject": "task-ready-acc",
+          "verify_command": "uv run pytest -q"
+        }
+      ],
+      "assessments": [
+        {
+          "confidence": "high",
+          "id": "<conductor:assessment:p-work-R1>",
+          "level": "implementation",
+          "next": "verify",
+          "status": "verified"
+        }
+      ],
+      "decisions": [
+        {
+          "choice": "keep one reader",
+          "subject": "d-one"
+        }
+      ],
+      "id": "R1",
+      "next": "verify",
+      "phase": "p-work",
+      "status": "verified",
+      "tasks": [
+        {
+          "assignee": "",
+          "attempts": 1,
+          "depends_on": [],
+          "estimate_minutes": 30,
+          "executor": "inline",
+          "id": "<score:work-item:task-ready>",
+          "last_record_at": null,
+          "phase": "p-work",
+          "retry_budget": 2,
+          "running_since": null,
+          "size": "M",
+          "status": "ready",
+          "subject": "task-ready",
+          "title": "title of task-ready",
+          "waits_on": [],
+          "wave": 1
+        }
+      ],
+      "text": ""
+    }
+  },
+  "status": 200
+}

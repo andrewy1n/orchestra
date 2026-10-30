@@ -4,7 +4,7 @@ Parent-only. Run after the closing verification task is `done`, when
 no same-focus `planned`/`in_progress` work-items remain (or the
 incidental task is closed). Order:
 
-last implementation wave → closing verification → reviewer →
+last implementation wave → closing verification → analyze → reviewer →
 integration-report from reviewer `integration` → suite (per
 `phase_gate.suite`) → phase gate → Landing merge.
 
@@ -15,6 +15,17 @@ write an integration-report before verification.
 Skip reviewer / review check-run / integration-report / suite when
 incidental. An empty task list is not proof the phase is done — check
 the gate below before closing.
+
+## Analyze
+
+After the closing verification is `done` and before the reviewer, run:
+
+```bash
+orchestra analyze <phase-slug> --stage close
+```
+
+Refuse to start the reviewer while it exits 1. Fix each error finding
+first, then run it again.
 
 ## Reviewer
 

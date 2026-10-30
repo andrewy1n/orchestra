@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import subprocess
-from pathlib import Path
 
 from conftest import REPO_ROOT
 from orchestra.canon.modules import discover

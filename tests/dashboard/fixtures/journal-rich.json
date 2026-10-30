@@ -1,0 +1,79 @@
+{
+  "body": {
+    "open": [
+      {
+        "id": "<tuner:finding:human-finding>",
+        "open": true,
+        "phase": null,
+        "record_type": "tuner:finding",
+        "recorded_at": "<timestamp>",
+        "subject": "human-finding",
+        "task_id": "",
+        "text": "a human must decide · needs human"
+      },
+      {
+        "id": "<score:continuity-question:alpha:port-choice>",
+        "open": true,
+        "phase": null,
+        "record_type": "score:continuity-question",
+        "recorded_at": "<timestamp>",
+        "subject": "alpha",
+        "task_id": "",
+        "text": "port-choice · open"
+      },
+      {
+        "id": "<score:continuity-question:alpha:which backend>",
+        "open": true,
+        "phase": null,
+        "record_type": "score:continuity-question",
+        "recorded_at": "<timestamp>",
+        "subject": "alpha",
+        "task_id": "",
+        "text": "which backend · open"
+      },
+      {
+        "id": "<tuner:investigation-observation:task-ready-observed>",
+        "open": true,
+        "phase": "p-work",
+        "record_type": "tuner:investigation-observation",
+        "recorded_at": "<timestamp>",
+        "subject": "task-ready-observed",
+        "task_id": "<score:work-item:task-ready>",
+        "text": "the shape drifted"
+      }
+    ],
+    "rest": [
+      {
+        "id": "<tuner:finding:task-ready-claim>",
+        "open": false,
+        "phase": "p-work",
+        "record_type": "tuner:finding",
+        "recorded_at": "<timestamp>",
+        "subject": "task-ready-claim",
+        "task_id": "<score:work-item:task-ready>",
+        "text": "the shape is stable · needs none"
+      },
+      {
+        "id": "<conductor:failed-attempt:task-ready-failed>",
+        "open": false,
+        "phase": "p-work",
+        "record_type": "conductor:failed-attempt",
+        "recorded_at": "<timestamp>",
+        "subject": "task-ready-failed",
+        "task_id": "<score:work-item:task-ready>",
+        "text": "run the slow suite · don't retry · retry when the suite is split"
+      },
+      {
+        "id": "<conductor:assignment-amendment:task-ready-a1-fix>",
+        "open": false,
+        "phase": "p-work",
+        "record_type": "conductor:assignment-amendment",
+        "recorded_at": "<timestamp>",
+        "subject": "task-ready-a1-fix",
+        "task_id": "<score:work-item:task-ready>",
+        "text": "use the new fixture name. · task-ready"
+      }
+    ]
+  },
+  "status": 200
+}

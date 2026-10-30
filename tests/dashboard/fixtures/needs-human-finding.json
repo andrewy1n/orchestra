@@ -1,0 +1,29 @@
+{
+  "body": {
+    "item": {
+      "approval": {
+        "confirm_choices": [
+          {
+            "action": "accept",
+            "label": "Accept risk",
+            "note_required": true
+          }
+        ]
+      },
+      "body": "## Evidence\n\nplaceholder text for Evidence.\n\n## Consequence\n\nplaceholder text for Consequence.\n\n## Follow-up\n\nplaceholder text for Follow-up.\n",
+      "id": "<tuner:finding:human-finding>",
+      "kind": "needs-human",
+      "next": "",
+      "phase": "",
+      "record_type": "tuner:finding",
+      "requirement": "",
+      "result": "",
+      "revision": "<rev:tuner:finding:human-finding>",
+      "status": "",
+      "subject": "human-finding",
+      "task_id": "",
+      "text": "a human must decide"
+    }
+  },
+  "status": 200
+}

@@ -1,0 +1,6 @@
+{
+  "body": {
+    "error": "get --type score:work-item failed: unsafe record id 'rec-missing'"
+  },
+  "status": 404
+}

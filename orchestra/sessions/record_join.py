@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
+from typing import cast
 
 
 def _parse(value):
@@ -27,7 +28,7 @@ def join(sessions, records):
     ]
     unattached = []
     for rec in records:
-        when = _parse(rec["recorded_at"])
+        when = cast(datetime, _parse(rec["recorded_at"]))
         hits = [
             sid for sid, name, win in windows
             if win and name == rec["store"] and win[0] <= when <= win[1]

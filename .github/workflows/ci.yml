@@ -1,0 +1,100 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "phase/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+      - run: python3 scripts/build_skills.py --check
+      - run: python3 scripts/check_orchestra_plugin_names.py
+      - run: uv run canon validate
+      - run: uvx ruff@0.13.1 check .
+
+  test-canon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+      - run: uv run pytest -q -p no:cacheprovider -n auto --confcutdir=tests/canon tests/canon
+
+  test-tuner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+      - run: uv run pytest -q -p no:cacheprovider -n auto --confcutdir=tests/tuner tests/tuner
+
+  test-orchestra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+      - run: uv run pytest -q -p no:cacheprovider -n auto tests --ignore=tests/canon --ignore=tests/tuner
+
+  types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+      - run: uv run basedpyright
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/frontend/package-lock.json
+      - run: npm ci
+        working-directory: dashboard/frontend
+      - run: npm run lint
+        working-directory: dashboard/frontend
+      - run: npm run check
+        working-directory: dashboard/frontend
+      - run: npm test
+        working-directory: dashboard/frontend
+      - run: npm run build
+        working-directory: dashboard/frontend
