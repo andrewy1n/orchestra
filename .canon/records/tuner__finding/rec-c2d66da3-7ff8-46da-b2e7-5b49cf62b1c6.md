@@ -7,12 +7,12 @@
     "claim": "phase/shared-helpers now contains main; R12 to R14 (route table) have no tests",
     "effort": "package-layout",
     "invalidated_when": "The owner of shared-helpers decides the route-table requirements stay and restores them against the FastAPI app, or supersedes R12 to R14",
-    "needs": "human"
+    "needs": "none"
   },
   "record_type": "tuner:finding",
-  "recorded_at": "2026-10-30T00:36:38+00:00",
+  "recorded_at": "2026-10-30T02:14:54+00:00",
   "relationships": {},
-  "revision": "sha256:7f74401482b107524b0854a2bb5942d5d1fe3bdc8da13d42ca80386f6dbf8672",
+  "revision": "sha256:60807247e0965c774a339c18b47956eb7b96c3480147102653fbb03a7465de57",
   "subject": "shared-helpers-merged-main"
 }
 ---
