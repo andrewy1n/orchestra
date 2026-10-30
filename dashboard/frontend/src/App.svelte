@@ -6,6 +6,7 @@
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
+  import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
   import { railItems } from "$lib/state/areas";
@@ -110,6 +111,8 @@
     <main class="main" data-route={navigation.route.name}>
       {#if navigation.route.name === "journal"}
         <Journal />
+      {:else if navigation.route.name === "home"}
+        <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />
       {:else if navigation.route.name === "effort" && !effort}

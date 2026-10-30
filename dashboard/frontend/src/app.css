@@ -317,7 +317,7 @@ button {
 }
 
 .area-screen .ptitle,
-.areas-block .ptitle {
+.unplaced .ptitle {
 	display: flex;
 	align-items: baseline;
 	gap: 8px;
@@ -348,12 +348,60 @@ button {
 	cursor: pointer;
 }
 
-.areas-block {
-	margin: 20px 0 0;
+.product-index {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
 }
 
-.area-row {
-	grid-template-columns: minmax(0, 1fr) auto;
+.area-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 12px;
+}
+
+.area-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--corner);
+	background: var(--panel);
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.area-card:hover {
+	border-color: var(--line-2);
+	background: var(--sunken);
+}
+
+.area-card-title {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.area-card-scope,
+.area-card-counts {
+	margin: 0;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.area-card-counts {
+	display: flex;
+	gap: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.area-card-efforts {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+	color: var(--ink-2);
 }
 
 .journal-bar {

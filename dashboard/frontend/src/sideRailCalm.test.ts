@@ -18,7 +18,7 @@ import { type Component, flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JournalResponse } from "./api-types";
 import { appSource } from "./appSource";
-import { journalHref } from "./detail";
+import { effortHref, journalHref } from "./detail";
 import { parseRoute } from "./router";
 import { filterJournal, orderedJournal } from "./side";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
@@ -65,10 +65,13 @@ function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
 	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
+let homeEffort = "";
+
 function stubFetch(
 	snap: Snapshot,
 	journalByEffort: Record<string, DeepPartial<JournalResponse>> = {},
 ) {
+	homeEffort = snap.efforts[0]?.effort ?? "";
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async (input: RequestInfo | URL) => {
@@ -98,6 +101,7 @@ function stubFetch(
 
 async function tryMountApp(): Promise<boolean> {
 	try {
+		if (!window.location.hash) window.location.hash = effortHref(homeEffort);
 		const module = await import("./App.svelte");
 		mounted = mount(module.default as Component, { target: document.body });
 		await vi.advanceTimersByTimeAsync(0);

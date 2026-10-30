@@ -8,7 +8,7 @@
   } from "$lib/components/ui/collapsible";
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
-  import { openHash, phaseHref } from "../../detail";
+  import { effortHref, openHash, phaseHref } from "../../detail";
   import { renderMarkdown } from "../../markdown";
 
   const area = $derived(areas.current);
@@ -18,7 +18,7 @@
   function showEffort(event: MouseEvent, effort: string) {
     event.preventDefault();
     polling.selectEffort(effort);
-    openHash("");
+    openHash(effortHref(effort));
   }
 </script>
 
@@ -69,7 +69,7 @@
               {:else if idea.effort}
                 <a
                   class="meta"
-                  href="#/"
+                  href={effortHref(idea.effort)}
                   data-idea-link="effort"
                   onclick={(event) => showEffort(event, idea.effort)}
                 >

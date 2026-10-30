@@ -59,6 +59,17 @@ export function groupByArea(
 	};
 }
 
+export function firstSentence(markdown: string): string {
+	const plain = markdown
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+		.replace(/^\s*(#{1,6}|>|[-*+])\s+/gm, "")
+		.replace(/[*_`]/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
+	const end = plain.search(/\.(\s|$)/);
+	return end === -1 ? plain : plain.slice(0, end + 1);
+}
+
 export function areaRollup(efforts: EffortView[], area: AreaView): AreaRollup {
 	const inArea = efforts.filter((view) => view.area === area.subject);
 	return {

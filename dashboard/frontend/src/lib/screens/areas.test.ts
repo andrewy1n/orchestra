@@ -121,23 +121,18 @@ async function mountApp(areas: AreasResponse, hash = "") {
 }
 
 describe("areas", () => {
-	it("R6 home lists each area with its title, open count and link", async () => {
-		await mountApp([billing]);
-		const heading = [...document.querySelectorAll("h2")].find(
-			(h) => h.textContent?.trim() === "Areas",
-		);
-		expect(heading).toBeTruthy();
-		const rows = document.querySelectorAll("[data-areas] [data-area]");
-		expect(rows).toHaveLength(1);
-		expect(rows[0]?.textContent).toContain("Billing");
-		expect(rows[0]?.textContent).toContain("2 open");
-		expect(rows[0]?.getAttribute("href")).toBe("#/area/billing");
-	});
-
-	it("R6 home hides the Areas section when there are no areas", async () => {
-		await mountApp([]);
+	it("R6 effort home no longer lists the areas block", async () => {
+		await mountApp([billing], "#/effort/dashboard");
 		expect(document.querySelector("[data-areas]")).toBeNull();
 		expect(document.querySelector("[data-task-table]")).not.toBeNull();
+	});
+
+	it("R6 home route lists each area as a card link instead", async () => {
+		await mountApp([billing]);
+		const cards = document.querySelectorAll("[data-area-card]");
+		expect(cards).toHaveLength(1);
+		expect(cards[0]?.getAttribute("href")).toBe("#/area/billing");
+		expect(document.querySelector("[data-task-table]")).toBeNull();
 	});
 
 	it("R7 area screen shows the title, rendered scope and open ideas first", async () => {
@@ -175,7 +170,7 @@ describe("areas", () => {
 		expect(effortLink?.textContent?.trim()).toBe("web");
 		(effortLink as HTMLElement).click();
 		await settle();
-		expect(window.location.hash).toBe("");
+		expect(window.location.hash).toBe("#/effort/web");
 		expect(
 			document.querySelector("[data-effort-title]")?.textContent?.trim(),
 		).toBe("web");

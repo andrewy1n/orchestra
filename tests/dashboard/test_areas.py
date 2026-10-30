@@ -158,22 +158,19 @@ def test_r11_a_store_without_areas_returns_an_empty_list(store, cli):
     assert response.json() == []
 
 
-def _home_sources() -> str:
-    home = SCREENS / "Home.svelte"
-    assert home.is_file(), f"missing {home}"
-    text = home.read_text()
-    parts = [text]
-    for name in re.findall(r"""from\s+["']\./([\w.-]+\.svelte)["']""", text):
-        imported = SCREENS / name
-        if imported.is_file():
-            parts.append(imported.read_text())
-    return "\n".join(parts)
+def _product_index_sources() -> str:
+    index = SCREENS / "ProductIndex.svelte"
+    assert index.is_file(), f"missing {index}"
+    card = SCREENS / "AreaCard.svelte"
+    assert card.is_file(), f"missing {card}"
+    return "\n".join([index.read_text(), card.read_text()])
 
 
-def test_r6_home_has_an_areas_section_with_open_counts():
-    sources = _home_sources()
-    assert re.search(r"<h[1-6][^>]*>\s*Areas\b", sources), "Home has no Areas heading"
-    assert "open_count" in sources, "Home does not show the open idea count of an area"
+def test_r6_product_index_shows_area_cards_with_open_idea_counts():
+    sources = _product_index_sources()
+    assert "data-product-index" in sources, "no product index"
+    assert "data-area-card" in sources, "product index has no area cards"
+    assert "openIdeas" in sources, "card does not show the open idea count of an area"
     state = UI_SRC / "lib" / "state" / "areas.svelte.ts"
     assert state.is_file(), f"missing {state}"
     assert "/api/areas" in state.read_text()
