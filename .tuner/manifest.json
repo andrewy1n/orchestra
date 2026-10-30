@@ -8,7 +8,7 @@
       ],
       "oracle_hashes": {
         "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6",
-        "tests/canon/test_db_backend_contention.py": "sha256:110c0037862d10558b995208954772396216279ebac57f1a3fc9a0e96b8813c0"
+        "tests/canon/test_db_backend_contention.py": "sha256:4faa94d442714c8ee2724d38c14ce5996d2876b2a21805019e216738021bb32a"
       },
       "evidence_kind": "integration"
     }
@@ -30,6 +30,24 @@
         "tests/canon/test_db_backend_contention.py": "sha256:110c0037862d10558b995208954772396216279ebac57f1a3fc9a0e96b8813c0"
       },
       "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgVmJ1C6fuCvVpKLJXp3QCYdwlJB\n/4KVX0QM3QMZ1ZTGAAAAAPdHVuZXItYW1lbmRtZW50AAAAAAAAAAZzaGE1MTIAAABTAAAA\nC3NzaC1lZDI1NTE5AAAAQAD55cUtxlmJ6ziQlN8TNOQzXedjS0Ny7TIxAa3LDjg0YY+Fyg\ngG27EUisHCkj1s+6RIZFbjCdXsNioUBGkB6Ag=\n-----END SSH SIGNATURE-----\n"
+    },
+    {
+      "claim": "db-contested-update",
+      "old_tests": [
+        "tests/canon/test_db_backend_contention.py::test_same_revision_has_one_winner_with_normalized_body"
+      ],
+      "new_tests": [
+        "tests/canon/test_db_backend_contention.py::test_same_revision_has_one_winner_with_normalized_body"
+      ],
+      "old_hashes": {
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6",
+        "tests/canon/test_db_backend_contention.py": "sha256:110c0037862d10558b995208954772396216279ebac57f1a3fc9a0e96b8813c0"
+      },
+      "new_hashes": {
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6",
+        "tests/canon/test_db_backend_contention.py": "sha256:4faa94d442714c8ee2724d38c14ce5996d2876b2a21805019e216738021bb32a"
+      },
+      "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgVmJ1C6fuCvVpKLJXp3QCYdwlJB\n/4KVX0QM3QMZ1ZTGAAAAAPdHVuZXItYW1lbmRtZW50AAAAAAAAAAZzaGE1MTIAAABTAAAA\nC3NzaC1lZDI1NTE5AAAAQGytODyZj8q1TAPXxH2cFs7qJgBfoYG3Sn4NMz28eQDxoo7pXH\nKu80pSgSPpxR8XtTz2jFZpYrz2Y7FEYmMHggM=\n-----END SSH SIGNATURE-----\n"
     }
   ],
   "runner": [
