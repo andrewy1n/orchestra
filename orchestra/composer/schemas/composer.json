@@ -1,6 +1,6 @@
 {
   "namespace": "composer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": {
     "area": {
       "purpose": "A named, long-lived product area",
@@ -13,6 +13,15 @@
       "sections": [
         "Scope"
       ]
+    },
+    "placement": {
+      "purpose": "Places one effort in one product area",
+      "lifecycle": "current",
+      "fields": {
+        "area": {
+          "ref": "composer:area"
+        }
+      }
     },
     "idea": {
       "purpose": "A product idea waiting to be triaged or promoted into an effort",
