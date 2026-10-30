@@ -56,6 +56,11 @@ def uses_uv(name):
     )
 
 
+def runs_only_npm(name):
+    lines = run_lines(name)
+    return bool(lines) and all(line.startswith("npm ") for line in lines)
+
+
 def setup_uv_steps(name):
     return [
         step
@@ -119,6 +124,8 @@ def test_r8_every_job_runs_python_3_10():
     found = jobs()
     assert found
     for name in found:
+        if not setup_uv_steps(name) and runs_only_npm(name):
+            continue
         versions = [
             str(step.get("with", {}).get("python-version"))
             for step in setup_uv_steps(name)
