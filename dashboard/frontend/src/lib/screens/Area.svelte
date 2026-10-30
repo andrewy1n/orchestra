@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { areaRollup } from "$lib/state/areas";
+  import { areaRollup, startedIdeas } from "$lib/state/areas";
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
   import { effortHref } from "../../detail";
@@ -9,6 +9,7 @@
 
   const area = $derived(areas.current);
   const open = $derived(area?.ideas.filter((idea) => idea.status === "open") ?? []);
+  const started = $derived(area ? startedIdeas(area) : []);
   const efforts = $derived(
     (polling.snapshot?.efforts ?? []).filter((view) => view.area === area?.subject),
   );
@@ -82,6 +83,22 @@
             <span class="text">{idea.text || idea.subject}</span>
             <span class="meta">{idea.subject}</span>
           </div>
+        {/each}
+      </div>
+    {/if}
+
+    {#if started.length > 0}
+      <div class="area-started" data-area-started>
+        <h2 class="ptitle">Started as efforts <span class="count">{started.length}</span></h2>
+        {#each started as idea (idea.subject)}
+          <a
+            class="lrow clickable"
+            data-started-effort={idea.effort}
+            href={effortHref(idea.effort)}
+          >
+            <span class="text">{idea.text || idea.subject}</span>
+            <span class="meta">{idea.effort}</span>
+          </a>
         {/each}
       </div>
     {/if}

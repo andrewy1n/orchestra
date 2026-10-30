@@ -159,7 +159,10 @@ describe("area page", () => {
 			),
 		).toEqual(["refund-idea"]);
 		expect(screen.querySelector("[data-effort-row] [data-idea]")).toBeNull();
-		expect(screen.textContent).not.toContain("Moved idea");
+		expect(
+			screen.querySelector("[data-area-efforts]")?.textContent,
+		).not.toContain("Moved idea");
+		expect(open?.textContent).not.toContain("Moved idea");
 	});
 
 	it("R15 one Needs-you list merges the items of every effort in the area", async () => {

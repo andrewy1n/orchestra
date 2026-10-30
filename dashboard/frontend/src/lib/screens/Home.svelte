@@ -1,12 +1,16 @@
 <script lang="ts">
+  import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
-  import { openHash, taskHref } from "../../detail";
+  import { areaHref, openHash, taskHref } from "../../detail";
   import { STATUS_TABS } from "../../efforts";
   import type { EffortView } from "../../types";
   import NeedsRows from "./NeedsRows.svelte";
 
   let { effort }: { effort: EffortView } = $props();
   const hasMilestones = $derived(polling.hasMilestones);
+  const owner = $derived(
+    effort.area ? areas.items.find((item) => item.subject === effort.area) : undefined,
+  );
 
   function statusLabel(status: string): string {
     const known: Record<string, string> = {
@@ -27,6 +31,9 @@
 
 <header class="effort-head">
   <h1 class="effort-title" data-effort-title>{effort.effort}</h1>
+  {#if owner}
+    <a class="area-chip" data-area-chip href={areaHref(owner.subject)}>{owner.title}</a>
+  {/if}
   <p class="goal" data-goal>{effort.goal}</p>
 </header>
 

@@ -1,4 +1,4 @@
-import type { AreaView } from "../../api-types";
+import type { AreaIdea, AreaView } from "../../api-types";
 import { areaHref, effortHref } from "../../detail";
 import { areaSubject, type Route } from "../../router";
 import type { EffortView, Snapshot } from "../../types";
@@ -44,6 +44,12 @@ const EFFORT_ROUTES: ReadonlySet<string> = new Set([
 	"milestone",
 	"journal",
 ]);
+
+export function startedIdeas(area: AreaView): AreaIdea[] {
+	return area.ideas.filter(
+		(idea) => idea.status === "promoted" && idea.effort !== "",
+	);
+}
 
 export function groupByArea(
 	efforts: EffortView[],

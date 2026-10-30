@@ -555,6 +555,22 @@ button {
 	line-height: 1.2;
 }
 
+.area-chip {
+	display: inline-block;
+	margin: 0 0 6px;
+	padding: 1px 8px;
+	border: 1px solid var(--line-2);
+	border-radius: var(--corner);
+	background: var(--accent-bg);
+	color: var(--brand);
+	font-size: 12px;
+	text-decoration: none;
+}
+
+.area-chip:hover {
+	background: var(--sunken);
+}
+
 .goal {
 	margin: 0;
 	font-size: 14px;
