@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { railItems } from "$lib/state/areas";
+  import { railItems, routePhase } from "$lib/state/areas";
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
@@ -17,10 +17,16 @@
       (view) => view.effort === rail.items.find((item) => item.current)?.key,
     ),
   );
+  const phaseEffort = $derived(
+    routePhase(navigation.route, polling.snapshot?.efforts ?? [])?.effort.effort,
+  );
+  let showDonePhases = $state(false);
   const heading = $derived(
     rail.level === "area"
       ? "Areas"
-      : (areas.items.find((area) => area.subject === currentView?.area)?.title ??
+      : rail.level === "phase"
+        ? (phaseEffort ?? "Phases")
+        : (areas.items.find((area) => area.subject === currentView?.area)?.title ??
           "Efforts"),
   );
   const kinds = $derived(
@@ -32,7 +38,11 @@
         ? rail.items
             .filter((item) => item.finished && item.needs === 0 && !item.current)
             .map((item) => item.key)
-        : [],
+        : rail.level === "phase" && !showDonePhases
+          ? rail.items
+              .filter((item) => item.finished && !item.current)
+              .map((item) => item.key)
+          : [],
     ),
   );
   const shown = $derived(rail.items.filter((item) => !hiddenKeys.has(item.key)));
@@ -87,6 +97,19 @@
           onclick={() => (polling.showFinished = !polling.showFinished)}
         >
           {polling.showFinished ? "Hide finished" : `${hiddenKeys.size} finished`}
+        </button>
+      {/if}
+      {#if rail.level === "phase" && (hiddenKeys.size > 0 || showDonePhases)}
+        <button
+          type="button"
+          class="show-finished"
+          class:on={showDonePhases}
+          data-act="show-done-phases"
+          aria-pressed={showDonePhases}
+          title="Show done phases"
+          onclick={() => (showDonePhases = !showDonePhases)}
+        >
+          {showDonePhases ? "Hide done" : `${hiddenKeys.size} done`}
         </button>
       {/if}
     {/if}

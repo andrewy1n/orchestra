@@ -119,7 +119,11 @@
     {/if}
     {#if railLevel !== "product"}
       <label class="rail-toggle-label" for="rail-toggle"
-        >{railLevel === "area" ? "Areas" : "Efforts"}</label
+        >{railLevel === "area"
+          ? "Areas"
+          : railLevel === "phase"
+            ? "Phases"
+            : "Efforts"}</label
       >
     {/if}
   </div>

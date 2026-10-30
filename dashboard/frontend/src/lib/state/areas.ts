@@ -1,5 +1,5 @@
 import type { AreaIdea, AreaView } from "../../api-types";
-import { areaHref, effortHref } from "../../detail";
+import { areaHref, effortHref, phaseHref } from "../../detail";
 import { areaSubject, type Route } from "../../router";
 import type { EffortView, Snapshot } from "../../types";
 
@@ -24,7 +24,7 @@ export interface RailItem {
 }
 
 export interface Rail {
-	level: "product" | "area" | "effort";
+	level: "product" | "area" | "effort" | "phase";
 	items: RailItem[];
 }
 
@@ -106,6 +106,21 @@ export function routeEffort(
 	);
 }
 
+export interface RoutePhase {
+	effort: EffortView;
+	phase: EffortView["phases"][number];
+}
+
+export function routePhase(
+	route: Route,
+	efforts: EffortView[],
+): RoutePhase | null {
+	if (route.name !== "phase") return null;
+	const effort = efforts.find((view) => view.effort === route.parts[1]);
+	const phase = effort?.phases.find((row) => row.subject === route.parts[2]);
+	return effort && phase ? { effort, phase } : null;
+}
+
 export function railItems(
 	route: Route,
 	snapshot: Snapshot | null,
@@ -125,6 +140,23 @@ export function railItems(
 				finished: false,
 				needs: areaRollup(efforts, area).needs,
 			})),
+		};
+	}
+	const onPhase = routePhase(route, efforts);
+	if (onPhase) {
+		const { effort, phase } = onPhase;
+		return {
+			level: "phase",
+			items: [...effort.phases]
+				.sort((a, b) => a.ordinal - b.ordinal)
+				.map((row) => ({
+					key: row.subject,
+					label: row.title || row.subject,
+					href: phaseHref(effort.effort, row.subject),
+					current: row.subject === phase.subject,
+					finished: row.state === "done",
+					needs: 0,
+				})),
 		};
 	}
 	const current = routeEffort(route, efforts, selected);
@@ -176,5 +208,8 @@ export function breadcrumbParts(
 	const owner = areas.find((area) => area.subject === current.area);
 	if (owner) parts.push({ label: owner.title, href: areaHref(owner.subject) });
 	parts.push({ label: current.effort, href: effortHref(current.effort) });
+	const onPhase = routePhase(route, snapshot?.efforts ?? []);
+	if (onPhase)
+		parts.push({ label: onPhase.phase.title || onPhase.phase.subject });
 	return finish(parts);
 }
