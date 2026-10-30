@@ -102,7 +102,11 @@
     </div>
   </header>
 
-  <div class="layout" class:no-rail={railLevel === "product"}>
+  <div
+    class="layout"
+    class:no-rail={railLevel === "product"}
+    class:no-side={railLevel !== "effort"}
+  >
     {#if railLevel !== "product"}
       <input class="rail-toggle" id="rail-toggle" type="checkbox" />
       <Rail />
@@ -126,7 +130,9 @@
       {/if}
     </main>
 
-    <SideRail />
+    {#if railLevel === "effort"}
+      <SideRail />
+    {/if}
     {#if railLevel !== "product"}
       <label class="rail-toggle-label" for="rail-toggle"
         >{railLevel === "area" ? "Areas" : "Efforts"}</label

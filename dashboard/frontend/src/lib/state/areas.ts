@@ -85,7 +85,7 @@ export function areaRollup(efforts: EffortView[], area: AreaView): AreaRollup {
 	};
 }
 
-function routeEffort(
+export function routeEffort(
 	route: Route,
 	efforts: EffortView[],
 	selected: string,
