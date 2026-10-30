@@ -20,6 +20,8 @@ const FILES = [
 	"lib/state/areas.svelte.ts",
 	"lib/state/journal.svelte.ts",
 	"lib/state/overlay.svelte.ts",
+	"lib/state/phase.svelte.ts",
+	"lib/state/refs.ts",
 	"lib/state/route.svelte.ts",
 ];
 

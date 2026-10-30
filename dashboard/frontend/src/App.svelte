@@ -14,6 +14,7 @@
   import { bindJournal } from "$lib/state/journal.svelte";
   import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
+  import { bindPhase, phase } from "$lib/state/phase.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
@@ -25,9 +26,10 @@
   bindJournal();
   bindAreas();
   bindOverlay();
+  bindPhase();
 
   const effort = $derived(polling.effort);
-  const target = $derived(overlay.target);
+  const target = $derived(overlay.target ?? phase.target);
   const railLevel = $derived(
     railItems(
       navigation.route,

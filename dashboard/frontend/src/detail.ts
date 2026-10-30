@@ -114,6 +114,12 @@ export function detailTarget(route: Route): DetailTarget | null {
 	return null;
 }
 
+/** Like `detailTarget`, but null for the phase page, which is not a modal. */
+export function leafTarget(route: Route): DetailTarget | null {
+	const target = detailTarget(route);
+	return target?.kind === "phase" ? null : target;
+}
+
 /** Hash href that opens a phase overlay (optional tab). */
 export function phaseHref(effort: string, phase: string, tab?: string): string {
 	const base = `#/phase/${enc(effort)}/${enc(phase)}`;
