@@ -125,6 +125,12 @@ After a local run:
   block merge; no fix-task storm.
 - `gate=deferred` — no local run; Landing human stop.
 
+When the suite fails, re-run each failing test id in a clean `main`
+worktree. Label every id `new` or `pre-existing` in the check-run basis
+or finding. A `pre-existing` label does not change the gate: `required`
+still blocks and `advisory` still does not. Put the pre-existing ids in
+front of the user; do not wait silently.
+
 Orphaned tmux: `tmux attach -t orchestra-suite-<phase-slug>` or
 inspect worktree `.suite/`; re-start if gone. Do not fix-and-rerun
 inside this step.

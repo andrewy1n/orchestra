@@ -167,6 +167,18 @@ def test_expected_revision(ready):
     assert ready.ok("get", "--id", task["id"])["lifecycle_state"] == "planned"
 
 
+def test_every_write_command_reports_the_store_it_wrote_to(ready, project):
+    store = str(project.store_path)
+    task = ready.ok("create", "--type", "alpha:task", "--subject", "t", "--set", 'title="x"')
+    assert task["store"] == store
+    assert ready.ok("update", "--id", task["record"]["id"], "--set", 'owner="ann"')["store"] == store
+    assert ready.ok("supersede", "--type", "task", "--subject", "t")["store"] == store
+    log = ready.ok("create", "--type", "log", "--subject", "t", "--payload", '{"task": "t", "message": "m"}')
+    assert ready.ok("correct", "--id", log["record"]["id"], "--set", 'message="n"')["store"] == store
+    op = json.dumps({"op": "create", "type": "alpha:task", "subject": "a", "payload": {"title": "a"}})
+    assert ready.ok("apply", stdin=op)["store"] == store
+
+
 def test_correct_with_stale_revision(ready, project):
     make_task(project, "t")
     log = ready.ok("create", "--type", "log", "--subject", "t", "--payload", '{"task": "t", "message": "m"}')["record"]

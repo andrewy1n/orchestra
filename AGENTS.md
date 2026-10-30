@@ -35,6 +35,12 @@ their response. They do not call `canon`.
 - Do not add comments that explain a change. Comment only a fact the
   code cannot show.
 - Use Conventional Commits. Keep the subject short and imperative.
+- The Python type gate is basedpyright. Annotate all new code. Do not
+  use or suggest mypy.
+- After `ruff --fix`, a bulk replace, or a rename script, review
+  `git diff --stat` and the removed lines. Grep for the old name inside
+  strings, f-strings, module paths and entry points. Run the affected
+  tests before you go on.
 
 ## Git
 
@@ -43,6 +49,8 @@ their response. They do not call `canon`.
 - Merge with `gh pr merge --squash`. `main` requires linear history.
 - Commit store changes on the same branch as the work they record.
 - Run `canon validate` before you push.
+- Run `canon` from the primary checkout root. A worktree can hold a stale
+  `.canon/` store.
 - Ask the user before you merge, unless an active constraint says otherwise.
 
 ## Testing
