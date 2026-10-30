@@ -154,7 +154,7 @@ def installed_prefix(tmp_path_factory):
 
 def test_module_version(tmp_path: Path):
     _, _, initialized = _init_store_with_composer(tmp_path)
-    assert initialized["schemas"]["composer"] == "1.0.0"
+    assert initialized["schemas"]["composer"] == "1.1.0"
 
 
 def test_area_scope(tmp_path: Path):
@@ -170,6 +170,52 @@ def test_area_needs_scope(tmp_path: Path):
     invalid = _create_area(root, env, "area-no-scope", body="## Notes\nNo scope section")
     assert invalid.returncode != 0
     assert "scope" in _output(invalid).lower()
+
+
+def test_placement_requires_area_ref(tmp_path: Path):
+    root, env, _ = _init_store_with_composer(tmp_path)
+    area = _create_area(root, env, "area-p")
+    assert area.returncode == 0, _output(area)
+    effort = _create_effort(root, env, "effort-p")
+    assert effort.returncode == 0, _output(effort)
+    valid = _run_canon(
+        root,
+        env,
+        "create",
+        "--type",
+        "composer:placement",
+        "--subject",
+        "effort-p",
+        "--payload",
+        json.dumps({"area": "area-p"}),
+    )
+    assert valid.returncode == 0, _output(valid)
+    missing = _run_canon(
+        root,
+        env,
+        "create",
+        "--type",
+        "composer:placement",
+        "--subject",
+        "effort-p-missing",
+        "--payload",
+        json.dumps({}),
+    )
+    assert missing.returncode != 0
+    assert "area" in _output(missing).lower()
+    unknown = _run_canon(
+        root,
+        env,
+        "create",
+        "--type",
+        "composer:placement",
+        "--subject",
+        "effort-p-unknown",
+        "--payload",
+        json.dumps({"area": "area-missing"}),
+    )
+    assert unknown.returncode != 0
+    assert "area" in _output(unknown).lower()
 
 
 def test_idea_status_only(tmp_path: Path):
