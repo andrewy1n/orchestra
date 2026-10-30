@@ -1,9 +1,9 @@
 ---
 {
   "id": "rec-1ff1482e-c861-4ce9-b90d-24bbce0fc2cc",
-  "lifecycle_state": "planned",
+  "lifecycle_state": "done",
   "payload": {
-    "assignee": "",
+    "assignee": "executor-1",
     "decisions": [
       "leaf-views-stay-modals",
       "phase-target-kept"
@@ -20,9 +20,9 @@
     "title": "Split the phase state out of the overlay state"
   },
   "record_type": "score:work-item",
-  "recorded_at": "2026-10-30T19:03:26+00:00",
+  "recorded_at": "2026-10-30T19:21:34+00:00",
   "relationships": {},
-  "revision": "sha256:38df57dea7aafe95a9e27b2448b9541ddd06512a1ae090e974f950e46be7d043",
+  "revision": "sha256:90df2dadca4f82d3da976dfd2c54225e11adc6d4590a237cff0ebc628fa2849a",
   "subject": "split-overlay-state"
 }
 ---
