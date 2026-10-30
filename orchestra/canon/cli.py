@@ -279,7 +279,7 @@ def cmd_create(args: argparse.Namespace) -> int:
         payload=_load_payload_args(args),
         body=body,
     )
-    _emit_json({"ok": True, "op": "create", "record": stored})
+    _emit_json({"ok": True, "op": "create", "record": stored, "store": str(project.store_path)})
     return EXIT_OK
 
 
@@ -295,7 +295,7 @@ def cmd_update(args: argparse.Namespace) -> int:
         body=body if given else None,
         expected_revision=args.expected_revision,
     )
-    _emit_json({"ok": True, "op": "update", "record": stored})
+    _emit_json({"ok": True, "op": "update", "record": stored, "store": str(project.store_path)})
     return EXIT_OK
 
 
@@ -310,7 +310,7 @@ def cmd_supersede(args: argparse.Namespace) -> int:
         body=body if given else None,
         expected_revision=args.expected_revision,
     )
-    _emit_json(result)
+    _emit_json({**result, "store": str(project.store_path)})
     return EXIT_OK
 
 
@@ -326,7 +326,7 @@ def cmd_correct(args: argparse.Namespace) -> int:
         subject=args.subject,
         expected_revision=args.expected_revision,
     )
-    _emit_json(result)
+    _emit_json({**result, "store": str(project.store_path)})
     return EXIT_OK
 
 
@@ -445,7 +445,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
         operations.append(op)
         op_lines.append(line_no)
         slots.append(None)
-    applied = _command_project(args).apply(operations)
+    project = _command_project(args)
+    applied = project.apply(operations)
     applied_results = iter(applied)
     results: list[dict[str, Any]] = []
     op_index = 0
@@ -465,6 +466,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
             "applied": len(results) - failed,
             "failed": failed,
             "results": results,
+            "store": str(project.store_path),
         }
     )
     return EXIT_OK if failed == 0 else EXIT_ERROR
