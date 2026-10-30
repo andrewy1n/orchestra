@@ -69,11 +69,6 @@ export function currentRoute(): Route {
 	return parseRoute(window.location.hash);
 }
 
-/** A short label for the top bar. */
-export function routeLabel(route: Route): string {
-	return route.parts.length ? route.parts.join(" / ") : "home";
-}
-
 /** Subject of an `#/area/<subject>` route, or an empty string. */
 export function areaSubject(route: Route): string {
 	return route.name === "area" ? (route.parts[1] ?? "") : "";

@@ -1,19 +1,21 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Area from "$lib/screens/Area.svelte";
+  import Breadcrumb from "$lib/screens/Breadcrumb.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
-  import EffortRail from "$lib/screens/EffortRail.svelte";
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
+  import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
-  import { bindAreas } from "$lib/state/areas.svelte";
+  import { railItems } from "$lib/state/areas";
+  import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { detailTarget, openHash } from "./detail";
-  import { currentRoute, effortName, routeLabel } from "./router";
+  import { currentRoute, effortName } from "./router";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
   let theme: Theme = $state(DEFAULT_THEME);
@@ -25,6 +27,14 @@
 
   const effort = $derived(polling.effort);
   const target = $derived(overlay.target);
+  const railLevel = $derived(
+    railItems(
+      navigation.route,
+      polling.snapshot,
+      areas.items,
+      polling.selectedEffort,
+    ).level,
+  );
 
   $effect(() => {
     applyTheme(theme);
@@ -74,7 +84,7 @@
 <div class="app" inert={target || overlay.pendingWrite ? true : undefined}>
   <header class="topbar">
     <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
-    <div class="crumbs" aria-live="polite">{routeLabel(navigation.route)}</div>
+    <div class="crumbs" aria-live="polite"><Breadcrumb /></div>
     <div class="top-actions">
       <button
         type="button"
@@ -91,9 +101,11 @@
     </div>
   </header>
 
-  <div class="layout">
-    <input class="rail-toggle" id="rail-toggle" type="checkbox" />
-    <EffortRail />
+  <div class="layout" class:no-rail={railLevel === "product"}>
+    {#if railLevel !== "product"}
+      <input class="rail-toggle" id="rail-toggle" type="checkbox" />
+      <Rail />
+    {/if}
 
     <main class="main" data-route={navigation.route.name}>
       {#if navigation.route.name === "journal"}
@@ -112,7 +124,11 @@
     </main>
 
     <SideRail />
-    <label class="rail-toggle-label" for="rail-toggle">Efforts</label>
+    {#if railLevel !== "product"}
+      <label class="rail-toggle-label" for="rail-toggle"
+        >{railLevel === "area" ? "Areas" : "Efforts"}</label
+      >
+    {/if}
   </div>
 
   <footer class="statusbar">
