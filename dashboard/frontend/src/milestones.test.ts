@@ -149,7 +149,7 @@ describe("initialExpandedMilestones", () => {
 			],
 		});
 
-		const expanded = initialExpandedMilestones(view, "now");
+		const expanded = initialExpandedMilestones(view);
 		expect(expanded.has("finished")).toBe(false);
 		expect(expanded.has("live")).toBe(true);
 	});
@@ -163,33 +163,21 @@ describe("initialExpandedMilestones", () => {
 			],
 			phases: [
 				phase({ subject: "p-a", milestone: "a", milestone_title: "A" }),
-				phase({ subject: "p-b", milestone: "b", milestone_title: "B" }),
+				phase({
+					subject: "p-b",
+					state: "in_progress",
+					milestone: "b",
+					milestone_title: "B",
+				}),
 			],
 		});
 
-		const expanded = initialExpandedMilestones(view, "p-b");
+		const expanded = initialExpandedMilestones(view);
 		expect(expanded.has("b")).toBe(true);
 		expect(expanded.has("a")).toBe(false);
 	});
 
-	it("R8: expands the milestone of the selected phase", () => {
-		const view = effort({
-			effort: "demo",
-			milestones: [
-				milestone({ subject: "a", title: "A", state: "planned" }),
-				milestone({ subject: "b", title: "B", state: "planned" }),
-			],
-			phases: [
-				phase({ subject: "p-a", milestone: "a", milestone_title: "A" }),
-				phase({ subject: "p-b", milestone: "b", milestone_title: "B" }),
-			],
-		});
-
-		const expanded = initialExpandedMilestones(view, "p-b");
-		expect(expanded.has("b")).toBe(true);
-	});
-
-	it("R8: expands the default-phase milestone when following (null)", () => {
+	it("R8: expands the default-phase milestone", () => {
 		const view = effort({
 			effort: "demo",
 			milestones: [
@@ -216,36 +204,8 @@ describe("initialExpandedMilestones", () => {
 			],
 		});
 
-		const expanded = initialExpandedMilestones(view, null);
+		const expanded = initialExpandedMilestones(view);
 		expect(expanded.has("active-ms")).toBe(true);
 		expect(expanded.has("done-ms")).toBe(false);
-	});
-
-	it("R7 R8: done milestone that holds the selected phase still expands", () => {
-		const view = effort({
-			effort: "demo",
-			milestones: [
-				milestone({ subject: "finished", title: "Finished", state: "done" }),
-				milestone({ subject: "other", title: "Other", state: "planned" }),
-			],
-			phases: [
-				phase({
-					subject: "in-done",
-					state: "done",
-					milestone: "finished",
-					milestone_title: "Finished",
-				}),
-				phase({
-					subject: "later",
-					state: "planned",
-					milestone: "other",
-					milestone_title: "Other",
-				}),
-			],
-		});
-
-		const expanded = initialExpandedMilestones(view, "in-done");
-		expect(expanded.has("finished")).toBe(true);
-		expect(expanded.has("other")).toBe(false);
 	});
 });

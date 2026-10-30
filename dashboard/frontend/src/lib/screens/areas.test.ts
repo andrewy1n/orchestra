@@ -124,7 +124,7 @@ describe("areas", () => {
 	it("R6 effort home no longer lists the areas block", async () => {
 		await mountApp([billing], "#/effort/dashboard");
 		expect(document.querySelector("[data-areas]")).toBeNull();
-		expect(document.querySelector("[data-task-table]")).not.toBeNull();
+		expect(document.querySelector("[data-task-table]")).toBeNull();
 	});
 
 	it("R6 home route lists each area as a card link instead", async () => {

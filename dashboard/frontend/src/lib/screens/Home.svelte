@@ -1,9 +1,8 @@
 <script lang="ts">
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
-  import { areaHref, openHash, taskHref } from "../../detail";
-  import { STATUS_TABS } from "../../efforts";
-  import type { EffortView } from "../../types";
+  import { areaHref, phaseHref } from "../../detail";
+  import type { EffortView, PhaseRow } from "../../types";
   import NeedsRows from "./NeedsRows.svelte";
 
   let { effort }: { effort: EffortView } = $props();
@@ -12,15 +11,8 @@
     effort.area ? areas.items.find((item) => item.subject === effort.area) : undefined,
   );
 
-  function statusLabel(status: string): string {
-    const known: Record<string, string> = {
-      done: "Done",
-      running: "Running",
-      ready: "Ready",
-      waiting: "Waiting",
-      withdrawn: "Withdrawn",
-    };
-    return known[status] ?? status.replace(/_/g, " ");
+  function percent(phase: PhaseRow): number {
+    return phase.total > 0 ? Math.round((phase.done / phase.total) * 100) : 0;
   }
 
   function milestoneMeta(state: string, done: number, total: number): string {
@@ -46,9 +38,33 @@
   </section>
 {/if}
 
+{#snippet phaseRow(phase: PhaseRow)}
+  <a
+    class="phase-row"
+    class:done={phase.state === "done"}
+    class:live={phase.state === "in_progress"}
+    data-phase={phase.subject}
+    data-phase-row={phase.subject}
+    href={phaseHref(effort.effort, phase.subject)}
+  >
+    <span class="name">{phase.title || phase.subject}</span>
+    <span class="cnt">{phase.done}/{phase.total}</span>
+    <span
+      class="bar"
+      role="progressbar"
+      aria-label="{phase.title || phase.subject} progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={percent(phase)}
+    >
+      <span class="bar-fill" style="width: {percent(phase)}%"></span>
+    </span>
+  </a>
+{/snippet}
+
 {#if effort.phases.length}
   {#if hasMilestones}
-    <section class="phases-block" data-phase-control data-phases-block>
+    <section class="phases-block" data-phases-block>
       <h2 class="milestones-heading">Milestones</h2>
       {#each polling.milestoneGroups as group (group.key)}
         <div
@@ -86,110 +102,20 @@
           {#if polling.expandedMilestones.has(group.key)}
             <div class="milestone-phases">
               {#each group.phases as phase (phase.subject)}
-                <button
-                  type="button"
-                  class="phase-row"
-                  class:on={polling.phaseSubject === phase.subject}
-                  class:done={phase.state === "done"}
-                  class:live={phase.state === "in_progress"}
-                  data-phase={phase.subject}
-                  aria-current={polling.phaseSubject === phase.subject ? "true" : undefined}
-                  title={polling.phaseSubject === phase.subject
-                    ? "Selected. Press again to open."
-                    : "Show this phase"}
-                  onclick={() => polling.activatePhase(phase.subject)}
-                >
-                  <span class="name"
-                    >{phase.title || phase.subject}</span
-                  >
-                  <span class="cnt">{phase.done}/{phase.total}</span>
-                </button>
+                {@render phaseRow(phase)}
               {/each}
             </div>
           {/if}
         </div>
       {/each}
-      <button
-        type="button"
-        class="seg phases-all"
-        class:on={polling.phaseSubject === null}
-        data-phase="all"
-        onclick={() => polling.selectPhase("all")}
-      >
-        All phases
-      </button>
     </section>
   {:else}
-    <div class="stepper" data-phase-control>
+    <section class="phases-block" data-phases-list>
       {#each effort.phases
         .slice()
         .sort((a, b) => a.ordinal - b.ordinal) as phase (phase.subject)}
-        <button
-          type="button"
-          class="seg"
-          class:on={polling.phaseSubject === phase.subject}
-          class:live={phase.state === "in_progress"}
-          data-phase={phase.subject}
-          aria-current={polling.phaseSubject === phase.subject ? "true" : undefined}
-          title={polling.phaseSubject === phase.subject
-            ? "Selected. Press again to open."
-            : "Show this phase"}
-          onclick={() => polling.activatePhase(phase.subject)}
-        >
-          {phase.title || phase.subject}
-          <span class="cnt">{phase.done}/{phase.total}</span>
-        </button>
+        {@render phaseRow(phase)}
       {/each}
-      <button
-        type="button"
-        class="seg"
-        class:on={polling.phaseSubject === null}
-        data-phase="all"
-        onclick={() => polling.selectPhase("all")}
-      >
-        All phases
-      </button>
-    </div>
+    </section>
   {/if}
 {/if}
-
-<div class="tabs" data-status-tabs>
-  {#each STATUS_TABS as tab}
-    <button
-      type="button"
-      class="tab"
-      class:on={polling.statusTab === tab.name}
-      data-tab={tab.name}
-      aria-current={polling.statusTab === tab.name ? "true" : undefined}
-      onclick={() => polling.chooseTab(tab.name)}
-    >
-      <b>{tab.label}</b>
-      {#if polling.counts}
-        <span class="n">({polling.counts[tab.name]})</span>
-      {/if}
-    </button>
-  {/each}
-</div>
-
-<div class="table" data-task-table style="--cols: 118px 1fr">
-  <div class="trow thead">
-    <span>Status</span>
-    <span>Task</span>
-  </div>
-  {#if polling.tasks.length === 0}
-    <p class="empty-note">No tasks in this tab.</p>
-  {:else}
-    {#each polling.tasks as task (task.id)}
-      <button
-        type="button"
-        class="trow task clickable"
-        data-task={task.id}
-        data-phase-of={task.phase}
-        onclick={() => openHash(taskHref(task.id))}
-      >
-        <span class="st {task.status}">{statusLabel(task.status)}</span>
-        <span class="title">{task.title || task.subject}</span>
-      </button>
-    {/each}
-  {/if}
-</div>
