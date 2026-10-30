@@ -1,0 +1,30 @@
+{
+  "claims": [
+    {
+      "id": "db-contested-update",
+      "text": "Of two processes updating one record from the same revision, exactly one succeeds; canon body normalization remains unchanged.",
+      "tests": [
+        "tests/canon/test_db_backend_contract.py::test_multiprocess_same_revision_has_exactly_one_winner"
+      ],
+      "oracle_hashes": {
+        "tests/canon/test_db_backend_contract.py": "sha256:92caf7ad5722a358ac4e75a4d03fb1cc5ef9cdd9d45e46f8a4294ac8bb5f6df6"
+      },
+      "evidence_kind": "integration"
+    }
+  ],
+  "amendments": [],
+  "runner": [
+    "uv",
+    "run",
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "no:rerunfailures",
+    "--confcutdir=tests/canon",
+    "-o",
+    "junit_family=xunit1",
+    "{tests}",
+    "--junitxml={report}"
+  ]
+}
