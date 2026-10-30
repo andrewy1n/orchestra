@@ -35,8 +35,10 @@ class AreaView:
 
 def _home_area(idea: dict, placed: dict[str, str]) -> str:
     payload = record_payload(idea)
-    if payload.get("status") == "promoted" and payload.get("effort") in placed:
-        return placed[payload["effort"]]
+    if payload.get("status") == "promoted":
+        home = placed.get(payload.get("effort") or "")
+        if home:
+            return home
     return payload.get("area") or ""
 
 

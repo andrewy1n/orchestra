@@ -23,7 +23,7 @@ import { renderMarkdown } from "../../markdown";
 import { buildPhaseChrome } from "../../phaseChrome";
 import { buildWaveGraph } from "../../taskGraph";
 import type { Snapshot } from "../../types";
-import { polling } from "./polling.svelte";
+import { leaveHref, polling } from "./polling.svelte";
 import { navigation } from "./route.svelte";
 
 function escHtml(value: string): string {
@@ -260,7 +260,7 @@ class OverlayState {
 			await postJson<{ ok: boolean }>(path, body);
 			this.cancelConfirm();
 			this.writeError = "";
-			closeDetail();
+			closeDetail(leaveHref());
 			try {
 				const next = await getJson<Snapshot>("snapshot");
 				polling.applySnapshot(next);

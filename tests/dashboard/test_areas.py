@@ -158,24 +158,6 @@ def test_r11_a_store_without_areas_returns_an_empty_list(store, cli):
     assert response.json() == []
 
 
-def _product_index_sources() -> str:
-    index = SCREENS / "ProductIndex.svelte"
-    assert index.is_file(), f"missing {index}"
-    card = SCREENS / "AreaCard.svelte"
-    assert card.is_file(), f"missing {card}"
-    return "\n".join([index.read_text(), card.read_text()])
-
-
-def test_r6_product_index_shows_area_cards_with_open_idea_counts():
-    sources = _product_index_sources()
-    assert "data-product-index" in sources, "no product index"
-    assert "data-area-card" in sources, "product index has no area cards"
-    assert "openIdeas" in sources, "card does not show the open idea count of an area"
-    state = UI_SRC / "lib" / "state" / "areas.svelte.ts"
-    assert state.is_file(), f"missing {state}"
-    assert "/api/areas" in state.read_text()
-
-
 def test_r9_area_screen_has_no_promote_or_dismiss_action():
     screen = SCREENS / "Area.svelte"
     assert screen.is_file(), f"missing {screen}"

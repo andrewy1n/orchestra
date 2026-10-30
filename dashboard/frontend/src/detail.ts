@@ -199,12 +199,12 @@ export function openHash(hash: string): void {
 
 /**
  * Overlay Back / Esc. Step to the previous in-app screen.
- * With no in-app history, return to the dashboard.
+ * With no in-app history, open `fallback`.
  */
-export function closeDetail(): void {
+export function closeDetail(fallback = ""): void {
 	const prev = backStack.pop();
 	rewinding = true;
-	openHash(prev ?? "");
+	openHash(prev ?? fallback);
 	rewinding = false;
 }
 

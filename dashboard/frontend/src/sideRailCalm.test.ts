@@ -445,9 +445,9 @@ describe("side-rail-journal-screen", () => {
 		window.dispatchEvent(new HashChangeEvent("hashchange"));
 		flushSync();
 
-		expect(window.location.hash).toBe("");
+		expect(window.location.hash).toBe("#/effort/alpha");
 		expect(document.querySelector<HTMLElement>("main")?.dataset.route).toBe(
-			"home",
+			"effort",
 		);
 		expect(document.querySelector("[data-journal-screen]")).toBeNull();
 
@@ -466,9 +466,9 @@ describe("side-rail-journal-screen", () => {
 		window.dispatchEvent(new HashChangeEvent("hashchange"));
 		flushSync();
 
-		expect(window.location.hash).toBe("");
+		expect(window.location.hash).toBe("#/effort/alpha");
 		expect(document.querySelector<HTMLElement>("main")?.dataset.route).toBe(
-			"home",
+			"effort",
 		);
 	});
 });

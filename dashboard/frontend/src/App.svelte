@@ -13,7 +13,7 @@
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
-  import { bindPolling, polling } from "$lib/state/polling.svelte";
+  import { bindPolling, leaveHref, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { detailTarget, openHash } from "./detail";
   import { currentRoute, effortName } from "./router";
@@ -67,7 +67,7 @@
       const current = currentRoute();
       if (detailTarget(current)) return;
       if (current.name === "journal") {
-        openHash("");
+        openHash(leaveHref());
       }
     };
     window.addEventListener("keydown", onKey, true);

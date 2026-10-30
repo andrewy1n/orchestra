@@ -1,5 +1,5 @@
 import { untrack } from "svelte";
-import { openHash, phaseHref } from "../../detail";
+import { effortHref, openHash, phaseHref } from "../../detail";
 import {
 	defaultPhase,
 	filteredTasks,
@@ -162,6 +162,10 @@ class Polling {
 }
 
 export const polling = new Polling();
+
+export function leaveHref(): string {
+	return polling.selectedEffort ? effortHref(polling.selectedEffort) : "";
+}
 
 function openPhase(subject: string) {
 	if (!polling.effort) return;
