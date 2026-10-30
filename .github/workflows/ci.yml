@@ -97,11 +97,20 @@ jobs:
 
   wheel:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.10"
           enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/frontend/package-lock.json
+      - run: npm ci
+        working-directory: dashboard/frontend
+      - run: npm run build
+        working-directory: dashboard/frontend
       - run: python3 scripts/wheel_smoke.py

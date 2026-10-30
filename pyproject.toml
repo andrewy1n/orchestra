@@ -48,6 +48,7 @@ orchestra = ["_scripts/*.py"]
 "orchestra.conductor" = ["schemas/*.json"]
 "orchestra.tuner" = ["schemas/*.json"]
 installer = ["providers.json"]
+dashboard = ["frontend/dist/**/*"]
 
 [dependency-groups]
 dev = [

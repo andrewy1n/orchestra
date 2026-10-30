@@ -4,13 +4,20 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_DIST = ROOT / "dashboard" / "frontend" / "dist"
+_READY_TIMEOUT = 60.0
 _WHEEL_NAME = re.compile(
     r"^[A-Za-z0-9_.]+-[A-Za-z0-9_.!+]+-"
     r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+-[A-Za-z0-9_.]+\.whl$"
@@ -32,12 +39,19 @@ _DROPPED_ENV = (
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wheel", type=Path)
+    parser.add_argument("--dist", type=Path, default=DEFAULT_DIST)
     args = parser.parse_args(argv)
+    if args.wheel is None and not (args.dist / "index.html").is_file():
+        sys.stderr.write(
+            f"{args.dist / 'index.html'} is missing; "
+            "run `npm run build` in dashboard/frontend first or pass --dist\n"
+        )
+        return 1
     base = _base_env()
     with tempfile.TemporaryDirectory(prefix="wheel-smoke-") as tmp_name:
         tmp = Path(tmp_name)
         if args.wheel is None:
-            wheel = _build_wheel(tmp / "source", base)
+            wheel = _build_wheel(tmp / "source", base, args.dist)
         else:
             wheel = args.wheel
         venv = tmp / "venv"
@@ -90,7 +104,7 @@ def _outside_checkout(path: Path) -> None:
         raise SystemExit(1)
 
 
-def _build_wheel(source: Path, env: dict[str, str]) -> Path:
+def _build_wheel(source: Path, env: dict[str, str], dist: Path) -> Path:
     source.mkdir()
     _outside_checkout(source)
     archived = subprocess.run(
@@ -116,6 +130,7 @@ def _build_wheel(source: Path, env: dict[str, str]) -> Path:
     if extracted.returncode != 0:
         sys.stderr.write(extracted.stderr.decode(errors="replace"))
         raise SystemExit(1)
+    shutil.copytree(dist, source / "dashboard" / "frontend" / "dist", dirs_exist_ok=True)
     built = subprocess.run(
         ["uv", "build", "--wheel"],
         cwd=source,
@@ -217,7 +232,64 @@ def _checks(tmp: Path, venv: Path, python: Path, env: dict[str, str]) -> int:
             sys.stderr.write(f"{name}: output did not name {needle}\n")
         print(f"{name}: {'pass' if ok else 'fail'}")
         failed = failed or not ok
-    return 1 if failed else 0
+    served = _root_check(work, repo, python, env)
+    print(f"GET /: {'pass' if served else 'fail'}")
+    return 1 if failed or not served else 0
+
+
+def _root_check(work: Path, repo: Path, python: Path, env: dict[str, str]) -> bool:
+    located = _run(
+        [str(python), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
+        cwd=work,
+        env=env,
+    )
+    if located.returncode != 0:
+        return False
+    index = Path(located.stdout.strip()) / "dashboard" / "frontend" / "dist" / "index.html"
+    if not index.is_file():
+        sys.stderr.write(f"{index} is not in the installed wheel\n")
+        return False
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    log = work / "server.log"
+    with log.open("wb") as sink:
+        server = subprocess.Popen(
+            [str(python), "-m", "dashboard.backend.server", "--port", str(port)],
+            cwd=repo,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=sink,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            return _serves_index(server, port, index)
+        finally:
+            server.terminate()
+            try:
+                server.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait()
+
+
+def _serves_index(server: subprocess.Popen[bytes], port: int, index: Path) -> bool:
+    url = f"http://127.0.0.1:{port}/"
+    deadline = time.monotonic() + _READY_TIMEOUT
+    while time.monotonic() < deadline:
+        if server.poll() is not None:
+            sys.stderr.write(f"server exited with {server.returncode}\n")
+            return False
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                return response.status == 200 and response.read() == index.read_bytes()
+        except urllib.error.HTTPError as exc:
+            sys.stderr.write(f"GET / returned {exc.code}\n")
+            return False
+        except (urllib.error.URLError, OSError):
+            time.sleep(0.2)
+    sys.stderr.write("server did not answer in time\n")
+    return False
 
 
 def _run(

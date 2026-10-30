@@ -339,6 +339,14 @@ def _script() -> Path:
     return SCRIPT
 
 
+def _fake_dist() -> Path:
+    dist = Path(tempfile.mkdtemp(prefix="wheel-smoke-dist-")) / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>fake dist</title>")
+    (dist / "assets" / "app.js").write_text("console.log('app');\n")
+    return dist
+
+
 def _run(command: list[str], *, cwd: Path, text: bool = True, input_bytes: bytes | None = None):
     proc = subprocess.run(
         command,
@@ -482,7 +490,11 @@ def _default_outcome() -> dict:
             if isinstance(cached, dict) and cached.get("key") == key and isinstance(cached.get("events"), list):
                 return cached
         before = _porcelain()
-        outcome = _invoke_unlocked([])
+        dist = _fake_dist()
+        try:
+            outcome = _invoke_unlocked(["--dist", str(dist)])
+        finally:
+            shutil.rmtree(dist.parent, ignore_errors=True)
         after = _porcelain()
         outcome["before"] = before
         outcome["after"] = after
@@ -528,6 +540,11 @@ def _built_wheel() -> Path:
                 check=False,
             )
             assert extracted.returncode == 0, extracted.stderr.decode(errors="replace")[-2000:]
+            fake = _fake_dist()
+            try:
+                shutil.copytree(fake, source / "dashboard" / "frontend" / "dist")
+            finally:
+                shutil.rmtree(fake.parent, ignore_errors=True)
             built = subprocess.run(
                 ["uv", "build", "--wheel"],
                 cwd=source,
@@ -817,6 +834,11 @@ def _assert_import(module: str) -> None:
     ]
     assert matches, f"new environment did not import {module}"
     _check_ok(matches[0], created)
+
+
+def test_wheel_smoke_r21_get_root():
+    outcome = _default_outcome()
+    assert "GET /: pass" in outcome["stdout"].splitlines(), _tail(outcome)
 
 
 def test_wheel_smoke_r18_wheel_flag_skips_build():
