@@ -43,7 +43,7 @@ are both non-empty. For oracle-backed `tdd`, verification is
 mechanical — not agent prose:
 
 - Assertion-level red check-run for those frozen tests at a base
-  revision (`tuner.oracle_red.is_assertion_level_red`)
+  revision (`orchestra verify assertion-red <check-run.json>`)
 - Green check-run at head whose `revision` equals or descends from
   that red (same ancestry rules)
 - At green, oracle file contents match frozen `oracle_hashes`, or a

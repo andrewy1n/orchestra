@@ -1,7 +1,7 @@
 ---
 {
   "id": "rec-ef1901ba-46da-4daf-a533-cb14f4552b2a",
-  "lifecycle_state": "asserted",
+  "lifecycle_state": "retracted",
   "payload": {
     "basis": "reviewer judgment finding",
     "claim": "skills still document affidavit.oracle_red Python API while close-batch is CLI-only",
@@ -15,9 +15,9 @@
     ]
   },
   "record_type": "tuner:finding",
-  "recorded_at": "2026-10-21T07:05:34+00:00",
+  "recorded_at": "2026-10-30T07:05:01+00:00",
   "relationships": {},
-  "revision": "sha256:a54d930bf2853907e55cc08661d84c1589e966ef2ac313822e7d6eb576115423",
+  "revision": "sha256:26693b55c06e91aa4e9e0c88c1e94f2900f3882af2a34b1c2c0bc895964a7ea9",
   "subject": "review-skills-oracle-red-docs"
 }
 ---
