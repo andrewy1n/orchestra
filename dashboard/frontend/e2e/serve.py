@@ -17,7 +17,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 EFFORT = "e2e-alpha"
 PHASE = "e2e-phase"
 TASK = "e2e-task"
+AREA = "e2e-area"
 PHASE_SECTIONS = ("Problem", "Approach", "Exit criteria")
+AREA_SECTIONS = ("Scope",)
 
 
 def free_port() -> int:
@@ -53,8 +55,10 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
             command.extend(["--body", body])
         run(command, REPO_ROOT, env)
 
-    run([*canon, "init", "--schemas", "score,conductor,tuner"], REPO_ROOT, env)
+    run([*canon, "init", "--schemas", "score,conductor,tuner,composer"], REPO_ROOT, env)
+    create("composer:area", AREA, {"title": "E2E area"}, AREA_SECTIONS)
     create("score:effort", EFFORT, {"goal": "Exercise the packaged dashboard", "kind": "deliver"})
+    create("composer:placement", EFFORT, {"area": AREA})
     create("score:phase", PHASE, {"title": "E2E phase", "ordinal": 1, "effort": EFFORT}, PHASE_SECTIONS)
     create(
         "score:work-item",
