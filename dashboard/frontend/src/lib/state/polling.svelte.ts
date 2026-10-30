@@ -15,7 +15,7 @@ import { startTokenPoller } from "../../poll";
 import { effortName } from "../../router";
 import { openBacklog } from "../../side";
 import type { EffortView, Snapshot, StatusTab } from "../../types";
-import { routeEffort } from "./areas";
+import { routeEffort, routePhase } from "./areas";
 import { navigation } from "./route.svelte";
 
 const JOURNAL_TEASER_KINDS = new Set(["repair", "evaluate"]);
@@ -165,6 +165,11 @@ class Polling {
 export const polling = new Polling();
 
 export function leaveHref(): string {
+	const route = navigation.route;
+	if (route.name === "task" || route.name === "requirement") {
+		const onPhase = routePhase(route, polling.snapshot?.efforts ?? []);
+		if (onPhase) return phaseHref(onPhase.effort.effort, onPhase.phase.subject);
+	}
 	const name =
 		routeEffort(
 			navigation.route,

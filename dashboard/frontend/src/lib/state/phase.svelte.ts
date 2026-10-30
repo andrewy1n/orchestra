@@ -1,17 +1,13 @@
 import { untrack } from "svelte";
 import { getJson } from "../../api";
-import {
-	type DetailTarget,
-	detailTarget,
-	openHash,
-	phaseHref,
-} from "../../detail";
+import { detailTarget, openHash, phaseHref } from "../../detail";
 import { detailView, evidenceBoard, taskBoard } from "../../detailView";
 import { filteredTasks, tabCounts } from "../../efforts";
 import type { RefContext } from "../../links";
 import { buildPhaseChrome } from "../../phaseChrome";
 import { buildWaveGraph } from "../../taskGraph";
 import type { EffortView, StatusTab } from "../../types";
+import { routePhase } from "./areas";
 import { polling } from "./polling.svelte";
 import { linkContext } from "./refs";
 import { navigation } from "./route.svelte";
@@ -23,34 +19,55 @@ class PhaseState {
 	statusTab: StatusTab = $state("active");
 	tabPinnedFor = $state("");
 
-	target: DetailTarget | null = $derived.by(() => {
-		const target = detailTarget(navigation.route);
-		return target?.kind === "phase" ? target : null;
-	});
+	keptTab: string | undefined = $state(undefined);
+	keptFor = $state("");
 
-	apiPath = $derived(this.target?.apiPath ?? "");
+	page: { effort: string; phase: string; tab?: string } | null = $derived.by(
+		() => {
+			const route = navigation.route;
+			if (route.name === "task") {
+				const onPhase = routePhase(route, polling.snapshot?.efforts ?? []);
+				return onPhase
+					? {
+							effort: onPhase.effort.effort,
+							phase: onPhase.phase.subject,
+							tab: this.keptTab,
+						}
+					: null;
+			}
+			if (route.name !== "phase" && route.name !== "requirement") return null;
+			const target = detailTarget(route);
+			const effort = route.parts[1];
+			const phase = route.parts[2];
+			if (!target || !effort || !phase) return null;
+			return {
+				effort,
+				phase,
+				tab: route.name === "phase" ? target.tab : this.keptTab,
+			};
+		},
+	);
+
+	apiPath = $derived(
+		this.page
+			? `phase?effort=${encodeURIComponent(this.page.effort)}&phase=${encodeURIComponent(this.page.phase)}`
+			: "",
+	);
 
 	linkCtx: RefContext | null = $derived.by(() => {
-		if (!this.target) return null;
-		const route = navigation.route;
-		return linkContext(
-			route.parts[1] ?? polling.effort?.effort ?? null,
-			route.parts[2] ?? polling.phaseSubject,
-			this.payload,
-		);
+		if (!this.page) return null;
+		return linkContext(this.page.effort, this.page.phase, this.payload);
 	});
 
 	routeEffort: EffortView | null = $derived.by(() => {
-		if (!this.target) return null;
-		const name = navigation.route.parts[1];
+		if (!this.page) return null;
+		const name = this.page.effort;
 		return (
 			polling.snapshot?.efforts.find((view) => view.effort === name) ?? null
 		);
 	});
 
-	routePhase: string | null = $derived(
-		this.target ? (navigation.route.parts[2] ?? null) : null,
-	);
+	routePhase: string | null = $derived(this.page?.phase ?? null);
 
 	routeKey = $derived(
 		this.routeEffort && this.routePhase
@@ -69,21 +86,21 @@ class PhaseState {
 	);
 
 	phaseTabs: string[] = $derived.by(() => {
-		if (!this.target) return [];
+		if (!this.page) return [];
 		if (!this.payload || typeof this.payload !== "object") return [];
 		const tabs = (this.payload as { tabs?: unknown }).tabs;
 		return Array.isArray(tabs) ? tabs.map(String) : [];
 	});
 
 	activePhaseTab = $derived.by(() => {
-		const target = this.target;
-		if (!target) return "";
-		if (target.tab && this.phaseTabs.includes(target.tab)) return target.tab;
+		const tab = this.page?.tab;
+		if (!this.page) return "";
+		if (tab && this.phaseTabs.includes(tab)) return tab;
 		return this.phaseTabs[0] ?? "";
 	});
 
 	view = $derived.by(() => {
-		if (!this.target || !this.payload) return null;
+		if (!this.page || !this.payload) return null;
 		return detailView("phase", this.payload, this.activePhaseTab);
 	});
 
@@ -94,28 +111,28 @@ class PhaseState {
 	});
 
 	taskView = $derived.by(() => {
-		if (!this.target || this.activePhaseTab !== "tasks" || !this.payload) {
+		if (!this.page || this.activePhaseTab !== "tasks" || !this.payload) {
 			return null;
 		}
 		return taskBoard(this.payload);
 	});
 
 	evidenceView = $derived.by(() => {
-		if (!this.target || this.activePhaseTab !== "evidence" || !this.payload) {
+		if (!this.page || this.activePhaseTab !== "evidence" || !this.payload) {
 			return null;
 		}
 		return evidenceBoard(this.payload);
 	});
 
 	phaseChrome = $derived.by(() => {
-		if (!this.target || !this.payload) return null;
+		if (!this.page || !this.payload) return null;
 		return buildPhaseChrome(this.payload, {
 			position: polling.effort?.position ?? null,
 		});
 	});
 
 	phaseTaskGraph = $derived.by(() => {
-		if (!this.target || !this.payload) return null;
+		if (!this.page || !this.payload) return null;
 		if (this.activePhaseTab !== "overview") return null;
 		const detail = (this.payload as { detail?: { tasks?: unknown } }).detail;
 		const tasks = Array.isArray(detail?.tasks) ? detail.tasks : [];
@@ -146,6 +163,8 @@ class PhaseState {
 	});
 
 	reset() {
+		this.keptTab = undefined;
+		this.keptFor = "";
 		this.payload = null;
 		this.error = "";
 		this.loading = false;
@@ -159,11 +178,8 @@ class PhaseState {
 	}
 
 	selectPhaseTab(tab: string) {
-		if (!polling.effort || !this.target) return;
-		const effortName = navigation.route.parts[1];
-		const phaseName = navigation.route.parts[2];
-		if (!effortName || !phaseName) return;
-		openHash(phaseHref(effortName, phaseName, tab));
+		if (!this.page) return;
+		openHash(phaseHref(this.page.effort, this.page.phase, tab));
 	}
 }
 
@@ -171,6 +187,20 @@ export const phase = new PhaseState();
 
 export function bindPhase() {
 	phase.reset();
+
+	$effect(() => {
+		const route = navigation.route;
+		const key = phase.routeKey;
+		untrack(() => {
+			if (route.name === "phase") {
+				phase.keptTab = detailTarget(route)?.tab;
+				phase.keptFor = key;
+			} else if (key !== phase.keptFor) {
+				phase.keptTab = undefined;
+				phase.keptFor = key;
+			}
+		});
+	});
 
 	$effect(() => {
 		phase.routeKey;
