@@ -28,8 +28,8 @@ Do not plan, implement, or verify in this skill.
    |---|---|
    | Something broken, a bug, a repro, a crash | `repair` |
    | The job is a campaign, integration suite, bake-off, or metric comparison | `evaluate` |
-   | Already-planned work, “run the phase”, “continue tasks” | keep existing kind; go to step 6 |
-   | “Show this is done”, tests were run | keep existing kind; go to step 6 |
+   | Already-planned work, “run the phase”, “continue tasks” | keep existing kind; go to step 7 |
+   | “Show this is done”, tests were run | keep existing kind; go to step 7 |
    | A small chore, typo, or unrelated change | `incidental` |
    | A specified feature, phase, or known change | `deliver` |
 
@@ -124,7 +124,11 @@ canon list --type composer:idea \
    When this step does not apply, set `idea` to `none` on the routing
    line.
 
-5. Records?
+5. Area. For a **new** effort, ask the user which area it belongs to.
+   Once the effort exists (after `init`), run
+   `orchestra place <effort> <area>`. Skip this step for an existing
+   effort.
+6. Records?
 
    - `incidental` + fits this chat + not interrupting another live
      phase → **no records**. Tell the user to do it in this chat.
@@ -143,7 +147,7 @@ canon list --type composer:idea \
 
    Skip `settle-phase` (go straight to `plan-phase`) when the user
    already fixed the approach in this ask, or for `incidental`.
-6. Show the routing line, then follow that skill with focus and kind
+7. Show the routing line, then follow that skill with focus and kind
    in context:
 
    ```
