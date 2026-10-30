@@ -2,12 +2,10 @@
 /**
  * Milestone-grouped Phases block acceptance cases.
  *
- * R1: milestones present → Phases block groups phases (no flat stepper).
+ * R1: milestones present → Phases block groups phases.
  * R2: milestone headers show title/subject, state, and done/total.
- * R4: no milestones → flat stepper remains.
- * R5: selecting a phase filters the task table.
- * R6: All phases shows tasks across every phase.
- * R9: activating the already-selected phase opens the phase overlay.
+ * R4: no milestones → phases list flat as rows.
+ * R9: a phase row links to the phase page.
  * R10: phase rows show title (else subject) and done/total.
  *
  * Source wiring always asserts. DOM mounts when the Svelte vitest plugin
@@ -23,7 +21,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
 import { appSource } from "./appSource";
 import { effortHref, phaseHref } from "./detail";
-import { filteredTasks, resolvedPhase } from "./efforts";
 import {
 	groupPhasesByMilestone,
 	initialExpandedMilestones,
@@ -177,12 +174,6 @@ function click(selector: string) {
 	flushSync();
 }
 
-function taskIds(): string[] {
-	return Array.from(document.querySelectorAll("[data-task]")).map(
-		(el) => el.getAttribute("data-task") ?? "",
-	);
-}
-
 const milestoneEffort = effort({
 	effort: "dashboard",
 	goal: "Ship milestones",
@@ -290,7 +281,6 @@ describe("milestone-nav Phases block", () => {
 		expect(appSource).toMatch(/data-phases-block/);
 		expect(appSource).toMatch(/hasMilestones/);
 		expect(appSource).toMatch(/\{#if hasMilestones\}/);
-		expect(appSource).toMatch(/class="stepper"/);
 		expect(cssSource).toMatch(/\.milestone-head/);
 		expect(cssSource).toMatch(/\.phase-row/);
 
@@ -305,7 +295,6 @@ describe("milestone-nav Phases block", () => {
 		stubFetch(makeSnapshot([milestoneEffort]));
 		if (await tryMountApp()) {
 			expect(document.querySelector("[data-phases-block]")).toBeTruthy();
-			expect(document.querySelector(".stepper")).toBeNull();
 			expect(document.querySelector('[data-milestone="cutover"]')).toBeTruthy();
 			expect(document.querySelector('[data-milestone="harden"]')).toBeTruthy();
 			expect(document.querySelector('[data-phase="p-hard"]')).toBeTruthy();
@@ -349,101 +338,28 @@ describe("milestone-nav Phases block", () => {
 		}
 	});
 
-	it("R4: When an effort has no milestones, the existing flat phase stepper remains the phase control.", async () => {
+	it("R4: When an effort has no milestones, the phases list flat as rows.", async () => {
 		expect(appSource).toMatch(/\{#if hasMilestones\}/);
 		expect(appSource).toMatch(/\{:else\}/);
-		expect(appSource).toMatch(/class="stepper" data-phase-control/);
 		expect(flatEffort.milestones?.length ?? 0).toBe(0);
 
 		stubFetch(makeSnapshot([flatEffort]));
 		if (await tryMountApp()) {
-			expect(
-				document.querySelector(".stepper[data-phase-control]"),
-			).toBeTruthy();
 			expect(document.querySelector("[data-phases-block]")).toBeNull();
 			expect(document.querySelector('[data-phase="a"]')).toBeTruthy();
 			expect(document.querySelector('[data-phase="b"]')).toBeTruthy();
-			expect(document.querySelector('[data-phase="all"]')).toBeTruthy();
+			expect(document.querySelector('[data-phase="all"]')).toBeNull();
 		}
 	});
 
-	it("R5: Selecting a phase in the Phases block filters the task table to that phase using the same scoping rules as today's stepper.", async () => {
-		expect(appSource).toMatch(/activatePhase/);
-		expect(appSource).toMatch(/selectPhase/);
-		expect(appSource).toMatch(/filteredTasks/);
-		expect(appSource).toMatch(/resolvedPhase/);
-
-		expect(resolvedPhase(milestoneEffort, "p-hard-2")).toBe("p-hard-2");
-		expect(
-			filteredTasks(milestoneEffort, "p-hard-2", "all").map((t) => t.id),
-		).toEqual(["t-hard-2"]);
-
-		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			click('[data-tab="all"]');
-			click('[data-phase="p-hard-2"]');
-			expect(taskIds()).toEqual(["t-hard-2"]);
-			expect(document.querySelector('[data-task="t-hard"]')).toBeNull();
-			expect(document.querySelector('[data-task="t-cut"]')).toBeNull();
-		}
-	});
-
-	it("R6: An All phases control remains available and shows tasks across every phase of the effort.", async () => {
-		expect(appSource).toMatch(/data-phase="all"/);
-		expect(appSource).toMatch(/All phases/);
-		expect(appSource).toMatch(/selectPhase\("all"\)/);
-
-		expect(resolvedPhase(milestoneEffort, "all")).toBeNull();
-		expect(
-			filteredTasks(milestoneEffort, null, "all")
-				.map((t) => t.id)
-				.sort(),
-		).toEqual(["t-cut", "t-hard", "t-hard-2"]);
-
-		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			expect(document.querySelector('[data-phase="all"]')?.textContent).toMatch(
-				/All phases/,
-			);
-			click('[data-tab="all"]');
-			click('[data-phase="all"]');
-			expect(taskIds().sort()).toEqual(["t-cut", "t-hard", "t-hard-2"]);
-		}
-	});
-
-	it("R9: Activating the already-selected phase opens the phase detail overlay for that phase.", async () => {
-		expect(appSource).toMatch(/activatePhase/);
-		expect(appSource).toMatch(
-			/phaseSubject === subject\)\s*openPhase\(subject\)/,
-		);
-		expect(appSource).toMatch(/openPhase/);
+	it("R9: A phase row links to the phase page.", async () => {
 		expect(appSource).toMatch(/phaseHref/);
 		expect(phaseHref("dashboard", "p-hard")).toBe("#/phase/dashboard/p-hard");
 
-		stubFetch(makeSnapshot([milestoneEffort]), {
-			"/api/phase?": {
-				detail: {
-					subject: "p-hard",
-					title: "Harden phase",
-					state: "in_progress",
-					body: "Phase overlay body",
-				},
-				tabs: ["overview", "tasks"],
-				decisions: { groups: [] },
-			},
-		});
+		stubFetch(makeSnapshot([milestoneEffort]));
 		if (await tryMountApp()) {
 			const row = document.querySelector<HTMLElement>('[data-phase="p-hard"]');
-			expect(row).toBeTruthy();
-			expect(row!.classList.contains("on")).toBe(true);
-			row!.click();
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
-			expect(window.location.hash).toBe(phaseHref("dashboard", "p-hard"));
-			expect(document.querySelector('[data-detail="phase"]')).toBeTruthy();
+			expect(row?.getAttribute("href")).toBe(phaseHref("dashboard", "p-hard"));
 		}
 	});
 
@@ -464,7 +380,7 @@ describe("milestone-nav Phases block", () => {
 		expect(`${untitled.done}/${untitled.total}`).toBe("1/3");
 
 		// Done milestones start collapsed; selected/default phase's milestone expands.
-		const expanded = initialExpandedMilestones(milestoneEffort, null);
+		const expanded = initialExpandedMilestones(milestoneEffort);
 		expect(expanded.has("cutover")).toBe(false);
 		expect(expanded.has("harden")).toBe(true);
 

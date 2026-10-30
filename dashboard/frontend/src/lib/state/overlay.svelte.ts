@@ -12,6 +12,7 @@ import { closeDetail, type DetailTarget, leafTarget } from "../../detail";
 import { detailView } from "../../detailView";
 import type { RefContext } from "../../links";
 import type { Snapshot } from "../../types";
+import { routePhase } from "./areas";
 import { leaveHref, polling } from "./polling.svelte";
 import { linkContext } from "./refs";
 import { navigation } from "./route.svelte";
@@ -33,7 +34,8 @@ class OverlayState {
 		const route = navigation.route;
 		const target = this.target;
 		const effort = polling.effort;
-		const phaseSubject = polling.phaseSubject;
+		const phaseSubject =
+			routePhase(route, polling.snapshot?.efforts ?? [])?.phase.subject ?? null;
 		const effortName =
 			target?.kind === "requirement"
 				? (route.parts[1] ?? effort?.effort ?? null)

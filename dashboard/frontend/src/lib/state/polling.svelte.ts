@@ -1,12 +1,6 @@
 import { untrack } from "svelte";
-import { effortHref, openHash, phaseHref } from "../../detail";
-import {
-	defaultPhase,
-	filteredTasks,
-	resolvedPhase,
-	tabCounts,
-	visibleEfforts,
-} from "../../efforts";
+import { effortHref, phaseHref } from "../../detail";
+import { visibleEfforts } from "../../efforts";
 import {
 	groupPhasesByMilestone,
 	initialExpandedMilestones,
@@ -14,7 +8,7 @@ import {
 import { startTokenPoller } from "../../poll";
 import { effortName } from "../../router";
 import { openBacklog } from "../../side";
-import type { EffortView, Snapshot, StatusTab } from "../../types";
+import type { EffortView, Snapshot } from "../../types";
 import { routeEffort, routePhase } from "./areas";
 import { navigation } from "./route.svelte";
 
@@ -27,11 +21,6 @@ class Polling {
 	pollError = $state("");
 
 	selectedEffort = $state("");
-	/** null = follow default; "all" = every phase; else a phase subject. */
-	pinnedPhase: string | null = $state(null);
-	statusTab: StatusTab = $state("active");
-	/** Effort whose status tab the user picked. Empty follows the default. */
-	tabPinnedFor = $state("");
 	showFinished = $state(false);
 	/** Milestone subjects currently expanded in the Phases block. */
 	expandedMilestones: Set<string> = $state(new Set());
@@ -51,24 +40,10 @@ class Polling {
 		return snapshot.efforts.find((view) => view.effort === name) ?? null;
 	});
 
-	phaseSubject: string | null = $derived(
-		this.effort ? resolvedPhase(this.effort, this.pinnedPhase) : null,
-	);
-
-	tasks = $derived(
-		this.effort
-			? filteredTasks(this.effort, this.phaseSubject, this.statusTab)
-			: [],
-	);
-
 	showNeedsInMain = $derived(
 		!!this.effort &&
 			navigation.route.name !== "journal" &&
 			this.effort.needs_you.length > 0,
-	);
-
-	counts = $derived(
-		this.effort ? tabCounts(this.effort, this.phaseSubject) : null,
 	);
 
 	hasMilestones = $derived((this.effort?.milestones?.length ?? 0) > 0);
@@ -91,9 +66,6 @@ class Polling {
 		this.error = "";
 		this.pollError = "";
 		this.selectedEffort = "";
-		this.pinnedPhase = null;
-		this.statusTab = "active";
-		this.tabPinnedFor = "";
 		this.showFinished = false;
 		this.expandedMilestones = new Set();
 		this.expandedForEffort = "";
@@ -112,31 +84,6 @@ class Polling {
 
 	selectEffort(name: string) {
 		this.selectedEffort = name;
-		this.pinnedPhase = null;
-		this.statusTab = "active";
-		this.tabPinnedFor = "";
-	}
-
-	chooseTab(name: StatusTab) {
-		this.statusTab = name;
-		this.tabPinnedFor = this.effort?.effort ?? "";
-	}
-
-	selectPhase(targetPhase: string) {
-		const effort = this.effort;
-		if (!effort) return;
-		if (targetPhase === "all") {
-			this.pinnedPhase = "all";
-			return;
-		}
-		this.pinnedPhase =
-			targetPhase === defaultPhase(effort) ? null : targetPhase;
-	}
-
-	activatePhase(subject: string) {
-		const phaseSubject = this.phaseSubject;
-		if (phaseSubject === subject) openPhase(subject);
-		else this.selectPhase(subject);
 	}
 
 	toggleMilestone(key: string) {
@@ -179,31 +126,9 @@ export function leaveHref(): string {
 	return name ? effortHref(name) : "";
 }
 
-function openPhase(subject: string) {
-	if (!polling.effort) return;
-	openHash(phaseHref(polling.effort.effort, subject));
-}
-
 export function bindPolling() {
 	polling.reset();
 	navigation.reset();
-
-	$effect(() => {
-		const current = polling.effort;
-		if (!current || polling.tabPinnedFor === current.effort) return;
-		const nextCounts = tabCounts(current, polling.phaseSubject);
-		if (
-			current.needs_you.length > 0 &&
-			nextCounts.active === 0 &&
-			polling.statusTab === "active"
-		) {
-			const fallback =
-				(["done", "waiting", "ready", "running", "all"] as StatusTab[]).find(
-					(name) => nextCounts[name] > 0,
-				) ?? "all";
-			polling.statusTab = fallback;
-		}
-	});
 
 	$effect(() => {
 		const current = polling.effort;
@@ -214,10 +139,7 @@ export function bindPolling() {
 		}
 		if (polling.expandedForEffort === current.effort) return;
 		polling.expandedForEffort = current.effort;
-		polling.expandedMilestones = initialExpandedMilestones(
-			current,
-			polling.pinnedPhase,
-		);
+		polling.expandedMilestones = initialExpandedMilestones(current);
 	});
 
 	$effect(() => {
@@ -245,14 +167,6 @@ export function bindPolling() {
 			const next = new Set(polling.expandedMilestones);
 			next.add(milestoneKey);
 			polling.expandedMilestones = next;
-		}
-		const phases = view.phases.filter((row) => row.milestone === milestoneKey);
-		if (
-			phases.length === 1 &&
-			phases[0] &&
-			polling.pinnedPhase !== phases[0].subject
-		) {
-			polling.pinnedPhase = phases[0].subject;
 		}
 	});
 }
