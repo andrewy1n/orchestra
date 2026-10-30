@@ -12,11 +12,11 @@
   import { railItems } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
+  import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
-  import { bindPolling, leaveHref, polling } from "$lib/state/polling.svelte";
+  import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
-  import { detailTarget, openHash } from "./detail";
-  import { currentRoute, effortName } from "./router";
+  import { effortName } from "./router";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
   let theme: Theme = $state(DEFAULT_THEME);
@@ -48,28 +48,7 @@
   onMount(() => {
     const stopRoute = navigation.listen();
 
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "t" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        const el = event.target;
-        if (
-          el instanceof HTMLElement &&
-          el.closest("input, textarea, select, [contenteditable='true']")
-        ) {
-          return;
-        }
-        if (overlay.pendingWrite || detailTarget(currentRoute())) return;
-        event.preventDefault();
-        onToggleTheme();
-        return;
-      }
-      if (event.key !== "Escape") return;
-      if (overlay.pendingWrite) return;
-      const current = currentRoute();
-      if (detailTarget(current)) return;
-      if (current.name === "journal") {
-        openHash(leaveHref());
-      }
-    };
+    const onKey = (event: KeyboardEvent) => handleKey(event, onToggleTheme);
     window.addEventListener("keydown", onKey, true);
 
     const stopPolling = polling.start();
