@@ -169,7 +169,7 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
 def test_execute_phase_invokes_reviewer_after_verification_before_merge():
     text = _skill_text()
     flat = _skill_flat()
-    assert "se-reviewer" in flat or "reviewer" in flat
+    assert "reviewer" in flat
     assert "closing verification" in flat or "verification task" in flat
     # Order markers: verification before reviewer before merge/Landing.
     v_idx = flat.lower().find("closing verification")

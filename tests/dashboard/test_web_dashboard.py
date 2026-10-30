@@ -276,7 +276,7 @@ def test_r23_sign(store, cli, defs, monkeypatch):
 
 
 def test_r24_signer(store, cli, defs, monkeypatch):
-    monkeypatch.setenv("SE_WORKFLOW_SIGNED_BY", "oracle-signer")
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "oracle-signer")
     assert dismiss_module.default_signer() == "oracle-signer"
     _seed(cli, defs)
     check = _model_item(_snapshot(open_store(store)), "unsigned-check")

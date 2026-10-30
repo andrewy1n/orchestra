@@ -183,7 +183,7 @@ def test_confirm_blank_uses_default_and_accepts_no():
 
 
 CANONICAL_AGENT = """---
-name: se-reviewer
+name: reviewer
 description: Fixture reviewer
 ---
 Fixture reviewer body.

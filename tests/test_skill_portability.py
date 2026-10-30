@@ -11,7 +11,8 @@ R3: the generated-copy drift check fails when a copy differs from its source.
 R4: every ``SKILL.md`` has frontmatter whose ``name`` equals its directory and
 whose ``description`` is non-empty.
 R6: no skill body names a checkout path or a ``<plugin>`` root for a runtime
-call; skills call ``orchestra``, ``canon``, and ``aff`` by name.
+call; skills call ``orchestra`` and ``canon`` by name. A checkout path to
+the removed ``aff`` binary is still rejected.
 """
 
 from __future__ import annotations
@@ -178,7 +179,7 @@ def test_paths_planted_bare_agents_reference_is_rejected(tmp_path: Path):
     skill.mkdir(parents=True)
     text = (
         "---\nname: bad\ndescription: bad skill\n---\n\n"
-        "Dispatch `agents/se-reviewer.md`.\n"
+        "Dispatch `agents/reviewer.md`.\n"
     )
     errors = path_errors(skill, text)
     assert any("leaves the skill directory" in error for error in errors), errors
@@ -283,7 +284,7 @@ def test_generated_check_passes_for_the_repository():
 
 def test_execute_phase_carries_the_canonical_reviewer_prompt():
     prompt = ROOT / "agents" / "reviewer.prompt.md"
-    reference = SKILLS / "execute-phase" / "references" / "se-reviewer.md"
+    reference = SKILLS / "execute-phase" / "references" / "reviewer.md"
     assert reference.is_file(), f"{reference} is missing"
     assert reference.read_bytes() == prompt.read_bytes(), (
         f"{reference} drifted from {prompt}"
@@ -316,12 +317,12 @@ def test_generated_reviewer_drift_is_detected(tmp_path: Path):
     built = run_build(tmp_path)
     assert built.returncode == 0, built.stdout + built.stderr
 
-    target = tmp_path / "agents" / "se-reviewer.md"
+    target = tmp_path / "agents" / "reviewer.md"
     target.write_text(target.read_text() + "\nhand edit\n")
     drifted = run_build(tmp_path, "--check")
     assert drifted.returncode != 0
     assert "drift" in (drifted.stdout + drifted.stderr).lower()
-    assert "se-reviewer.md" in (drifted.stdout + drifted.stderr)
+    assert "reviewer.md" in (drifted.stdout + drifted.stderr)
 
 
 @pytest.mark.parametrize("skill_dir", advertised_skills(), ids=lambda path: path.name)

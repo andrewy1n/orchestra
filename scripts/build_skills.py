@@ -8,9 +8,9 @@ Two families of generated file:
   root also keeps generated copies at ``skills/<doc>`` for repo-local links
   such as the README.
 * ``agents/reviewer.prompt.md`` — the one authored reviewer prompt. Its bytes
-  become ``skills/execute-phase/references/se-reviewer.md`` (the prompt a
+  become ``skills/execute-phase/references/reviewer.md`` (the prompt a
   skill hands a host subagent when the install provides no reviewer agent),
-  and it is rendered into ``agents/se-reviewer.md`` with the frontmatter
+  and it is rendered into ``agents/reviewer.md`` with the frontmatter
   Claude Code reads. The rendering uses ``installer.agents`` so the checkout
   copy and every installed agent share one renderer.
 
@@ -32,9 +32,9 @@ SHARED_DIRNAME = "shared"
 REFERENCES_DIRNAME = "references"
 
 REVIEWER_PROMPT = Path("agents") / "reviewer.prompt.md"
-REVIEWER_AGENT = Path("agents") / "se-reviewer.md"
+REVIEWER_AGENT = Path("agents") / "reviewer.md"
 REVIEWER_SKILL = "execute-phase"
-REVIEWER_REFERENCE = Path(REFERENCES_DIRNAME) / "se-reviewer.md"
+REVIEWER_REFERENCE = Path(REFERENCES_DIRNAME) / "reviewer.md"
 
 _CHECKOUT_ROOT = Path(__file__).resolve().parent.parent
 if str(_CHECKOUT_ROOT) not in sys.path:

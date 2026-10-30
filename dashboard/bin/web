@@ -38,7 +38,7 @@ def fail(message: str) -> int:
 
 
 def find_uv() -> str | None:
-    override = os.environ.get("SE_WORKFLOW_UV")
+    override = os.environ.get("ORCHESTRA_UV")
     if override:
         return override
     local = Path.home() / ".local" / "bin" / "uv"
@@ -55,7 +55,7 @@ def main(argv: list[str]) -> int:
         return fail(
             "Cannot find uv, which runs the web dashboard.\n"
             "Install it: https://docs.astral.sh/uv/getting-started/installation/\n"
-            "Or set SE_WORKFLOW_UV to its path."
+            "Or set ORCHESTRA_UV to its path."
         )
     command = [uv, "run", "--script", str(APP), *argv]
     try:

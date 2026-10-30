@@ -79,7 +79,7 @@ def git(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def make_git_repo() -> Path:
-    root = Path(tempfile.mkdtemp(prefix="se-workflow-test-"))
+    root = Path(tempfile.mkdtemp(prefix="orchestra-test-"))
     git(root, "init", "-q")
     git(root, "config", "user.email", "test@example.com")
     git(root, "config", "user.name", "test")
@@ -126,7 +126,7 @@ def build_store(drop: frozenset[str] | set[str] = frozenset()) -> Path:
 
 
 def copy_store(template: Path) -> Path:
-    root = Path(tempfile.mkdtemp(prefix="se-workflow-test-"))
+    root = Path(tempfile.mkdtemp(prefix="orchestra-test-"))
     shutil.copytree(template, root, symlinks=True, dirs_exist_ok=True)
     return root
 

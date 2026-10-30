@@ -105,7 +105,7 @@ host's skills directory: `engage`, `init`, `settle-phase`, `plan-phase`,
 `execute-phase`, `verify-work`, `triage-ideas`, and `analyze-sessions`. Every directory is
 self-contained: its `SKILL.md` and its `references/` folder travel together.
 The generated `references/` copies already contain `kinds-and-focus.md`,
-`ensure-store.md`, and `se-reviewer.md`, so no shared file needs to sit two
+`ensure-store.md`, and `reviewer.md`, so no shared file needs to sit two
 levels above a `SKILL.md`. Install canon with `uv tool install` (above)
 so `canon` is on PATH.
 
@@ -468,11 +468,12 @@ toplevel — local (`<toplevel>/.canon`) or global
 
 Resolution order:
 
-1. `$SE_WORKFLOW_STORE` (`local` or `global`).
-2. `<toplevel>/.canon/store-binding.local.json` (gitignored override).
-3. `<toplevel>/.canon/store-binding.json` (committed default).
-4. Default: local if it has `config.json`, else global if it has
-   `config.json`, else none.
+1. A store path passed by the caller.
+2. `$CANON_STORE` (a store directory).
+3. `<toplevel>/.canon/store-binding.local.json` (gitignored override).
+4. `<toplevel>/.canon/store-binding.json` (committed default).
+5. Default: local if it has `config.json`, else global if it has
+   `config.json`. If neither exists, opening the store fails.
 
 Binding files are JSON: `{"store":"local"}` or `{"store":"global"}`.
 A set binding that points at a path without `config.json` fails; it does
@@ -484,12 +485,12 @@ If a personal shell function wraps `canon` and forces
 calls. Prefer `command canon`, or pass `--store` from the resolved
 target.
 
-Dismissing an unsigned manual check signs it with `$SE_WORKFLOW_SIGNED_BY`,
+Dismissing an unsigned manual check signs it with `$ORCHESTRA_SIGNED_BY`,
 else `$USER` / `$USERNAME`, else `dashboard`.
 
 The launcher finds `uv` in this order:
 
-1. `$SE_WORKFLOW_UV`.
+1. `$ORCHESTRA_UV`.
 2. `uv` on `PATH`.
 3. `~/.local/bin/uv`.
 

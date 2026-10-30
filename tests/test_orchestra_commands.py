@@ -2,7 +2,7 @@
 
 A skill that records a ``tdd`` or ``check`` result runs ``orchestra check``.
 A skill that closes a work-item runs ``orchestra close-batch``.
-A skill that judges a claim in the manifest runs ``aff verdict`` and
+A skill that judges a claim in the manifest runs ``orchestra verify verdict`` and
 treats a non-zero exit as not done.
 """
 

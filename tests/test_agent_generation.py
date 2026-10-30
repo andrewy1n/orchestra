@@ -3,7 +3,7 @@
 ``agents/reviewer.prompt.md`` carries the prompt and the restriction set.
 These tests prove the per-host files keep that body byte-for-byte and only
 change the frontmatter keys their harness understands (R13). The checkout's
-``agents/se-reviewer.md`` is a generated copy of the Claude rendering, not a
+``agents/reviewer.md`` is a generated copy of the Claude rendering, not a
 second authored prompt, and a drift check keeps it that way.
 """
 
@@ -20,7 +20,7 @@ from installer import agents
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKER = ".orchestra-install.json"
 BUILD = REPO_ROOT / "scripts" / "build_skills.py"
-GENERATED_AGENT = REPO_ROOT / "agents" / "se-reviewer.md"
+GENERATED_AGENT = REPO_ROOT / "agents" / "reviewer.md"
 
 
 def split_frontmatter(text: str) -> tuple[str, str]:
@@ -50,7 +50,7 @@ def run_install(
 
 def test_canonical_prompt_declares_one_restriction_set():
     agent = agents.load(REPO_ROOT)
-    assert agent.name == "se-reviewer"
+    assert agent.name == "reviewer"
     assert agent.mode == "subagent"
     assert agent.tools == ("Read", "Grep", "Glob", "Bash")
     assert {"Write", "Edit"} <= set(agent.deny)
@@ -62,7 +62,7 @@ def test_claude_rendering_uses_the_canonical_tools_allowlist():
     header, body = split_frontmatter(
         agents.render("claude", agents.load(REPO_ROOT))
     )
-    assert "name: se-reviewer" in header
+    assert "name: reviewer" in header
     assert "tools: Read, Grep, Glob, Bash" in header
     assert "Write" not in header
     assert "Edit" not in header
@@ -100,7 +100,7 @@ def test_every_host_body_is_the_canonical_body():
 
 
 def test_checkout_agent_file_is_the_claude_rendering():
-    """The tracked ``agents/se-reviewer.md`` is generated, not authored."""
+    """The tracked ``agents/reviewer.md`` is generated, not authored."""
     assert GENERATED_AGENT.is_file(), f"{GENERATED_AGENT} is missing"
     assert GENERATED_AGENT.read_text(encoding="utf-8") == agents.render(
         "claude", agents.load(REPO_ROOT)
@@ -111,7 +111,7 @@ def test_checkout_agent_file_carries_the_canonical_body():
     canonical = agents.load(REPO_ROOT)
     header, body = split_frontmatter(GENERATED_AGENT.read_text(encoding="utf-8"))
     assert body == canonical.body
-    assert "name: se-reviewer" in header
+    assert "name: reviewer" in header
     assert "tools: Read, Grep, Glob, Bash" in header
     assert "mode:" not in header
 
@@ -142,7 +142,7 @@ def test_generated_agent_drift_is_detected(tmp_path):
     )
     assert clean.returncode == 0, clean.stdout + clean.stderr
 
-    target = root / "agents" / "se-reviewer.md"
+    target = root / "agents" / "reviewer.md"
     target.write_text(target.read_text(encoding="utf-8") + "\nhand edit\n")
     drifted = subprocess.run(
         [sys.executable, str(BUILD), "--root", str(root), "--check"],
@@ -151,7 +151,7 @@ def test_generated_agent_drift_is_detected(tmp_path):
     )
     assert drifted.returncode != 0
     assert "drift" in (drifted.stdout + drifted.stderr).lower()
-    assert "se-reviewer.md" in (drifted.stdout + drifted.stderr)
+    assert "reviewer.md" in (drifted.stdout + drifted.stderr)
 
 
 def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
@@ -172,7 +172,7 @@ def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
     built = run_build(root)
     assert built.returncode == 0, built.stdout + built.stderr
     header, _ = split_frontmatter(
-        (root / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
+        (root / "agents" / "reviewer.md").read_text(encoding="utf-8")
     )
     assert "tools: Read, Grep, Glob" in header
     assert "Bash" not in header
@@ -186,7 +186,7 @@ def test_generated_agent_is_installed_for_each_native_host(tmp_path):
             source=REPO_ROOT, home=home,
         )
         assert proc.returncode == 0, proc.stdout + proc.stderr
-        installed = home / f".{provider_id}" / "agents" / "se-reviewer.md"
+        installed = home / f".{provider_id}" / "agents" / "reviewer.md"
         assert installed.is_file(), provider_id
         assert installed.read_text(encoding="utf-8") == agents.render(
             provider_id, agents.load(REPO_ROOT)
@@ -231,5 +231,5 @@ def test_missing_canonical_prompt_still_installs_without_an_agent(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
-    assert not (home / ".claude" / "agents" / "se-reviewer.md").exists()
+    assert not (home / ".claude" / "agents" / "reviewer.md").exists()
     assert "verified: ok" in proc.stdout

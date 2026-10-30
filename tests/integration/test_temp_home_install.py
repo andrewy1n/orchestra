@@ -88,19 +88,19 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
     assert_skills_load(opencode / "skills")
 
     assert not (claude / "contract").exists()
-    assert (claude / "agents" / "se-reviewer.md").is_file()
+    assert (claude / "agents" / "reviewer.md").is_file()
     assert (claude / "hooks" / "hooks.json").is_file()
 
     assert not (opencode / "contract").exists()
-    assert (opencode / "agents" / "se-reviewer.md").is_file()
+    assert (opencode / "agents" / "reviewer.md").is_file()
     assert (opencode / "plugins" / "plugin.js").is_file()
     assert not (opencode / "plugin.js").exists()
     config = json.loads((opencode / "opencode.json").read_text(encoding="utf-8"))
     assert config["skills"] == ["./skills"]
 
-    reviewer = (claude / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
+    reviewer = (claude / "agents" / "reviewer.md").read_text(encoding="utf-8")
     assert "tools: Read, Grep, Glob, Bash" in reviewer
-    opencode_reviewer = (opencode / "agents" / "se-reviewer.md").read_text(
+    opencode_reviewer = (opencode / "agents" / "reviewer.md").read_text(
         encoding="utf-8"
     )
     assert "mode: subagent" in opencode_reviewer

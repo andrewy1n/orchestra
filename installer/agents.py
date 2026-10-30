@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 CANONICAL_PATH = Path("agents") / "reviewer.prompt.md"
-AGENT_FILENAME = "se-reviewer.md"
+AGENT_FILENAME = "reviewer.md"
 
 #: Where each native host discovers a project/global subagent file.
 HOST_DESTINATIONS = {

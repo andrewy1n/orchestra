@@ -355,7 +355,7 @@ def test_launched_process_imports_canon_project(store, tmp_path):
     (probe / "sitecustomize.py").write_text(_IMPORT_PROBE, encoding="utf-8")
     result = tmp_path / "import-result.json"
     env = _env(tmp_path / "home")
-    env.pop("SE_WORKFLOW_UV", None)
+    env.pop("ORCHESTRA_UV", None)
     env.pop("CANON_STORE", None)
     env["PYTHONPATH"] = os.pathsep.join([str(probe), env["PYTHONPATH"]])
     env["DASHBOARD_IMPORT_RESULT"] = str(result)

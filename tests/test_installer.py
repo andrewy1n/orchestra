@@ -67,7 +67,7 @@ HOOKS_PAYLOAD = {
 }
 
 CANONICAL_AGENT = """---
-name: se-reviewer
+name: reviewer
 description: >-
   Fixture phase-end reviewer with one restriction set.
 mode: subagent
@@ -94,7 +94,7 @@ def source(tmp_path: Path) -> Path:
         reference.mkdir()
         (reference / "ensure-store.md").write_text("shared\n", encoding="utf-8")
     (root / "agents").mkdir()
-    (root / "agents" / "se-reviewer.md").write_text("reviewer\n", encoding="utf-8")
+    (root / "agents" / "reviewer.md").write_text("reviewer\n", encoding="utf-8")
     (root / "agents" / "reviewer.prompt.md").write_text(
         CANONICAL_AGENT, encoding="utf-8"
     )
@@ -330,7 +330,7 @@ def test_allowlist_declares_documented_roots():
     assert DENY_ROOTS == (".canon", ".worktrees", "dashboard")
     assert is_allowed("skills/init/SKILL.md", "claude")
     assert not is_allowed("contract", "claude")
-    assert is_allowed("agents/se-reviewer.md", "claude")
+    assert is_allowed("agents/reviewer.md", "claude")
     assert is_allowed("hosts/claude/plugin.json", "claude")
 
 
@@ -353,7 +353,7 @@ def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, proje
         assert parts[0] == ".claude", relative
 
     assert not (home / ".claude" / "contract").exists()
-    assert (home / ".claude" / "agents" / "se-reviewer.md").is_file()
+    assert (home / ".claude" / "agents" / "reviewer.md").is_file()
     assert (home / ".claude" / "hooks" / "hooks.json").is_file()
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
     assert not (home / ".claude" / "hosts").exists()
@@ -508,7 +508,7 @@ def test_native_claude_installs_skills_agent_and_hooks(source, project, home):
     assert (root / "skills" / "init" / "SKILL.md").is_file()
     assert not (root / "contract").exists()
     assert (root / "hooks" / "hooks.json").is_file()
-    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
+    meta, body = frontmatter(root / "agents" / "reviewer.md")
     canonical = load_agent(source)
     assert meta["tools"].split(", ") == list(canonical.tools)
     assert body == canonical.body
@@ -522,7 +522,7 @@ def test_native_cursor_installs_read_only_agent_and_hooks(source, project, home)
     root = home / ".cursor"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
     assert (root / "hooks.json").is_file()
-    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
+    meta, body = frontmatter(root / "agents" / "reviewer.md")
     assert meta["readonly"] == "true"
     assert body == load_agent(source).body
     assert "tools" not in meta
@@ -541,8 +541,8 @@ def test_native_opencode_installs_skills_source_plugin_and_subagent(
     assert config["skills"] == ["./skills"]
     assert (root / "plugins" / "plugin.js").is_file()
     assert not (root / "plugin.js").exists()
-    meta, body = frontmatter(root / "agents" / "se-reviewer.md")
-    text = (root / "agents" / "se-reviewer.md").read_text(encoding="utf-8")
+    meta, body = frontmatter(root / "agents" / "reviewer.md")
+    text = (root / "agents" / "reviewer.md").read_text(encoding="utf-8")
     assert meta["mode"] == "subagent"
     assert "permissions:" in text
     assert "  edit: deny" in text
@@ -586,7 +586,7 @@ def test_native_agent_matches_the_generated_rendering(source, project, home):
         proc = run_install("--only", provider, "--home", str(home), "--copy",
                            project=project, source=source)
         assert proc.returncode == 0, proc.stdout + proc.stderr
-        installed = home / f".{provider}" / "agents" / "se-reviewer.md"
+        installed = home / f".{provider}" / "agents" / "reviewer.md"
         expected = render_agent(provider, load_agent(source))
         assert installed.read_text(encoding="utf-8") == expected, provider
 
@@ -749,7 +749,7 @@ def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".claude"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
-    assert (root / "agents" / "se-reviewer.md").is_file()
+    assert (root / "agents" / "reviewer.md").is_file()
     assert not (root / "hooks").exists()
     assert not (root / "settings.json").exists()
     assert "verified: ok" in proc.stdout

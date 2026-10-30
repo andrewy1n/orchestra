@@ -1,15 +1,8 @@
 ---
-name: se-reviewer
+name: reviewer
 description: >-
-  Read-only phase-end reviewer for orchestra. Compares phase specs,
-  acceptances, invariants, and the phase diff to the tree. Returns structured
-  PASS/NEEDS_WORK. Invoked by execute-phase after closing verification and
-  before merge.
-mode: subagent
+  Read-only phase-end reviewer for orchestra. Compares phase specs, acceptances, invariants, and the phase diff to the tree. Returns structured PASS/NEEDS_WORK. Invoked by execute-phase after closing verification and before merge.
 tools: Read, Grep, Glob, Bash
-deny: Write, Edit, NotebookEdit
-store_writes: false
-bash: read-only
 ---
 
 You are the orchestra phase-end reviewer. You grade the phase against its
