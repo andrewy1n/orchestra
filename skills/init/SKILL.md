@@ -121,6 +121,9 @@ canon create --type score:brief \
    Efforts of kind `repair`, `evaluate`, or `incidental` get no
    `score:brief`.
 
+   When the routing line from `engage` names an area (not `none`),
+   run `orchestra place <effort-slug> <area>`. Skip otherwise.
+
 7. For each milestone in step 5 (skip when none), `create --type
    score:milestone`, `ordinal` starting at 1:
 

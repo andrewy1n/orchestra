@@ -124,10 +124,11 @@ canon list --type composer:idea \
    When this step does not apply, set `idea` to `none` on the routing
    line.
 
-5. Area. For a **new** effort, ask the user which area it belongs to.
-   Once the effort exists (after `init`), run
-   `orchestra place <effort> <area>`. Skip this step for an existing
-   effort.
+5. Area. For a **new** effort, ask the user which area it belongs to
+   and set `area: <slug>` on the routing line. Do not run
+   `orchestra place` here; `init` runs it after it creates the
+   effort. Skip this step for an existing effort and set `area` to
+   `none`.
 6. Records?
 
    - `incidental` + fits this chat + not interrupting another live
@@ -155,6 +156,7 @@ canon list --type composer:idea \
    focus: <effort-slug> (existing | new)
    phase: <phase-slug> | new | none
    idea: <subject> | none
+   area: <slug> | none
    records: yes | no
    next: <skill or "this chat">
    ```
