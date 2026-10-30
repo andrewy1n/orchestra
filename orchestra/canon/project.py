@@ -244,7 +244,10 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
         path, kind = bound
         metadata = root / ".canon"
         if kind == "global" and _has_config(metadata):
-            config = open_backend(metadata, {}).load_config()
+            try:
+                config = open_backend(metadata, {}).load_config()
+            except StoreError:
+                config = {}
             if config.get("backend") == "sqlite":
                 return _open(root, metadata, Binding(kind, str(path)))
         return _open(root, _place(root, kind), Binding(kind, str(path)))

@@ -43,6 +43,7 @@ def test_project_reads_with_a_backend_that_has_no_file_layout(
     assert not project.store_path.exists()
 
 
+@pytest.mark.file_layout
 def test_logical_import_preserves_record_history_and_operation_bytes(
     project: Project, tmp_path: Path
 ) -> None:

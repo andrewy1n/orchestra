@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from orchestra.canon.record_file import dump_record, load_record
 from orchestra.canon.revision import with_revision
 from conftest import git, make_task
@@ -33,6 +35,7 @@ def test_valid_store_text(cli, project):
     assert result.out == "valid: 1 records\n"
 
 
+@pytest.mark.file_layout
 def test_invalid_store_prints_the_error_list(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, payload={"title": "t", "bogus": 1})
@@ -50,18 +53,21 @@ def test_json_is_the_default_format(cli, project):
     assert cli("validate").json["status"] == "valid"
 
 
+@pytest.mark.file_layout
 def test_errors_are_stable_across_runs(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, lifecycle_state="finished")
     assert cli("validate").json["errors"] == cli("validate").json["errors"]
 
 
+@pytest.mark.file_layout
 def test_every_record_is_checked(cli, project):
     for subject in ("a", "b", "c"):
         rewrite(project, make_task(project, subject), payload={"title": 1})
     assert len(cli("validate").json["errors"]) == 3
 
 
+@pytest.mark.file_layout
 def test_legacy_envelope_keys_are_reported(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, base_kind="commitment", identity="x")
@@ -69,12 +75,14 @@ def test_legacy_envelope_keys_are_reported(cli, project):
     assert errors == [f"{task['id']}: unknown envelope keys ['base_kind', 'identity']"]
 
 
+@pytest.mark.file_layout
 def test_missing_envelope_keys_are_reported(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, recorded_at=None)
     assert "missing required fields ['recorded_at']" in cli("validate").json["errors"][0]
 
 
+@pytest.mark.file_layout
 def test_unknown_record_type_is_reported(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, record_type="alpha:ghost")
@@ -82,6 +90,7 @@ def test_unknown_record_type_is_reported(cli, project):
     assert any("unknown record type 'alpha:ghost'" in e for e in errors)
 
 
+@pytest.mark.file_layout
 def test_revision_tamper_is_reported(cli, project):
     task = make_task(project, "t")
     path = project.store_path / "records" / "alpha__task" / f"{task['id']}.md"
@@ -89,6 +98,7 @@ def test_revision_tamper_is_reported(cli, project):
     assert any("revision tamper" in e for e in cli("validate").json["errors"])
 
 
+@pytest.mark.file_layout
 def test_two_active_current_records_for_one_subject_are_reported(cli, project):
     first = project.create(record_type="alpha:config", subject="web", payload={"title": "a", "level": 1})
     project.supersede(first["id"])
@@ -98,6 +108,7 @@ def test_two_active_current_records_for_one_subject_are_reported(cli, project):
     assert any("multiple active alpha:config for subject='web'" in e for e in errors)
 
 
+@pytest.mark.file_layout
 def test_superseded_record_without_a_successor_is_reported(cli, project):
     config = project.create(record_type="alpha:config", subject="web", payload={"title": "a", "level": 1})
     rewrite(project, config, lifecycle_state="superseded")
@@ -105,6 +116,7 @@ def test_superseded_record_without_a_successor_is_reported(cli, project):
     assert any("requires exactly one same-type successor, found 0" in e for e in errors)
 
 
+@pytest.mark.file_layout
 def test_correction_chain_is_checked(cli, project):
     make_task(project, "t")
     log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"})
@@ -115,6 +127,7 @@ def test_correction_chain_is_checked(cli, project):
     assert any("requires exactly one correcting successor, found 2" in e for e in errors)
 
 
+@pytest.mark.file_layout
 def test_relationship_targets_must_exist_and_keys_are_limited(cli, project):
     task = make_task(project, "t")
     rewrite(project, task, relationships={"depends_on": ["rec-x"], "supersedes": ["rec-00000000-0000-0000-0000-000000000000"]})
@@ -123,6 +136,7 @@ def test_relationship_targets_must_exist_and_keys_are_limited(cli, project):
     assert any("unknown relationship target" in e for e in errors)
 
 
+@pytest.mark.file_layout
 def test_history_snapshots_are_checked(cli, project):
     task = make_task(project, "t")
     project.update(task["id"], payload={"owner": "ann"})
@@ -132,6 +146,7 @@ def test_history_snapshots_are_checked(cli, project):
     assert any("history tamper" in e for e in cli("validate").json["errors"])
 
 
+@pytest.mark.file_layout
 def test_event_records_need_their_create_snapshot(cli, project):
     make_task(project, "t")
     project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"})
@@ -140,6 +155,7 @@ def test_event_records_need_their_create_snapshot(cli, project):
     assert any("missing create audit snapshot" in e for e in cli("validate").json["errors"])
 
 
+@pytest.mark.file_layout
 def test_committed_records_cannot_be_edited_in_place(cli, project, repo):
     task = make_task(project, "t")
     git(repo, "add", "-A")
@@ -169,6 +185,7 @@ def test_config_and_snapshots_may_change_after_a_commit(cli, project, repo, site
     assert json.loads((project.store_path / "config.json").read_text())["schemas"]["alpha"] == "0.2.0"
 
 
+@pytest.mark.file_layout
 def test_stray_files_in_the_records_directory_are_reported(cli, project):
     make_task(project, "t")
     (project.store_path / "records" / "alpha__task" / "notes.txt").write_text("x")

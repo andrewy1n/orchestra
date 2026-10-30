@@ -185,6 +185,7 @@ def test_reference_to_a_type_that_is_not_installed_is_refused(project):
     assert review(project, other="")
 
 
+@pytest.mark.file_layout
 def test_validate_reports_a_reference_that_stopped_resolving(project):
     make_task(project, "t")
     entry = log(project)

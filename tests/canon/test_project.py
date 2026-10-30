@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
+from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.store import StaleWriteError, Store, StoreError
+from orchestra.canon.store import StaleWriteError, StoreError
 from conftest import make_task
 
 
-def history_revisions(project, record):
-    directory = project.store_path / "history" / record["record_type"].replace(":", "__") / record["id"]
-    if not directory.is_dir():
-        return set()
-    return {"sha256:" + p.stem.removeprefix("sha256_") for p in directory.glob("*.md")}
+def history_revisions(project: Project, record: dict[str, Any]) -> set[str]:
+    return {
+        snapshot["revision"]
+        for snapshot in open_backend(project.store_path).read_history()
+        if snapshot["id"] == record["id"]
+    }
 
 
 def test_open_store_returns_a_project(project, repo):
@@ -113,8 +117,8 @@ def test_chain_state_matches_the_materialized_record(project):
 
     task = make_task(project, "t")
     project.update(task["id"], payload={"owner": "ann"})
-    store = Store(project.store_path)
-    folded = oplog.fold(oplog.read_ops(store._chain_dir("alpha:task", task["id"])))
+    chains = dict(open_backend(project.store_path).iter_chains())
+    folded = oplog.fold(chains[task["id"]])
     assert folded == project.get(task["id"])
 
 

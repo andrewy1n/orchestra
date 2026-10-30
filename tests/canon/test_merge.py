@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from orchestra.canon.backend import open_backend
 from orchestra.canon.merge import MergeError, merge_store
 from orchestra.canon.oplog import fold, read_ops
 from orchestra.canon.project import open_store
@@ -51,7 +52,7 @@ def read_all(project):
 
 
 def merge(target, source, **kwargs):
-    return merge_store(Store(target.store_path), target.schemas(), source.store_path, **kwargs)
+    return merge_store(open_backend(target.store_path), target.schemas(), source.store_path, **kwargs)
 
 
 def tree(project) -> dict[str, str]:
@@ -63,6 +64,7 @@ def tree(project) -> dict[str, str]:
     }
 
 
+@pytest.mark.file_layout
 def test_plain_merge_copies_records_history_and_logs(project, source):
     summary = merge(project, source)
     assert summary["status"] == "valid"
@@ -161,6 +163,7 @@ class TestSubjectRename:
         for record in project.list("alpha:task"):
             assert record["revision"] == compute_revision(record)
 
+    @pytest.mark.file_layout
     def test_history_and_logs_follow_the_new_subject(self, project, source):
         project.create(record_type="alpha:task", subject="t1", payload={"title": "mine"})
         merge(project, source, subject_renames={("alpha:task", "t1"): "t1-src"})
@@ -186,15 +189,17 @@ class TestSubjectRename:
 
 
 class TestAborts:
+    @pytest.mark.file_layout
     def test_id_collision_writes_nothing(self, project, source):
         record = source.list("alpha:config")[0]
-        Store(project.store_path).create_record({**record, "subject": "other"})
+        open_backend(project.store_path).create_record({**record, "subject": "other"})
         before = tree(project)
         with pytest.raises(MergeError, match=record["id"]) as caught:
             merge(project, source)
         assert caught.value.details["id_conflicts"] == [record["id"]]
         assert tree(project) == before
 
+    @pytest.mark.file_layout
     def test_subject_collision_on_a_non_event_type_writes_nothing(self, project, source):
         project.create(record_type="alpha:task", subject="t1", payload={"title": "mine"})
         before = tree(project)
@@ -238,7 +243,7 @@ class TestAborts:
 
     def test_source_must_be_a_store(self, project, tmp_path):
         with pytest.raises(MergeError, match="not a store"):
-            merge_store(Store(project.store_path), project.schemas(), tmp_path)
+            merge_store(open_backend(project.store_path), project.schemas(), tmp_path)
 
 
 def test_invalid_result_exits_with_validation_status(cli, project, source, monkeypatch):

@@ -239,14 +239,15 @@ def cli(repo, site, monkeypatch):
     return Cli(repo, monkeypatch)
 
 
-_SHARED_BACKEND_MODULES = {
-    "test_query", "test_fields", "test_lifecycles", "test_cli",
-}
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers", "file_layout: inspects or corrupts physical file-backend data"
+    )
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     if "backend_name" in metafunc.fixturenames:
-        selected = ["files", "sqlite"] if metafunc.module.__name__ in _SHARED_BACKEND_MODULES else ["files"]
+        selected = ["files"] if metafunc.definition.get_closest_marker("file_layout") else ["files", "sqlite"]
         metafunc.parametrize("backend_name", selected)
 
 
