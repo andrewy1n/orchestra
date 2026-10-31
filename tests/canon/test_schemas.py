@@ -14,6 +14,34 @@ from orchestra.canon.backend import open_backend
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.schema import SchemaError
+from orchestra.canon.types import JsonValue
+
+
+def test_migration_validation_preserves_input_list() -> None:
+    from orchestra.canon.schema import check_migrations
+
+    migrations: list[JsonValue] = [{"from": "1", "to": "2"}]
+    assert check_migrations(migrations, "module") is migrations
+
+
+def test_reference_targets_preserve_unvalidated_items() -> None:
+    from orchestra.canon.schema import ref_targets
+
+    assert ref_targets({"ref": [1]}) == [1]
+
+
+def test_unhashable_lifecycle_retains_type_error() -> None:
+    from orchestra.canon.schema import validate_module
+
+    with pytest.raises(TypeError):
+        validate_module(
+            {
+                "namespace": "a",
+                "version": "1.0.0",
+                "types": {"t": {"purpose": "x", "lifecycle": [], "fields": {}}},
+            }
+        )
+
 
 GAMMA_V1 = {
     "namespace": "gamma",

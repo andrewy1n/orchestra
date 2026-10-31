@@ -6,12 +6,11 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
 from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
-from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.canon.types import JsonObject, JsonValue, get_list, get_object, get_string
 
 NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
@@ -45,9 +44,7 @@ def major(version: str) -> int:
     return int(version.split(".", 1)[0])
 
 
-def _form_kind(form: Any, where: str) -> str:
-    if not isinstance(form, dict):
-        raise SchemaError(f"{where}: a field must be an object")
+def _form_kind(form: JsonObject, where: str) -> str:
     kinds = [key for key in ("type", "enum", "ref", "list") if key in form]
     if len(kinds) != 1:
         raise SchemaError(f"{where}: a field needs exactly one of type, enum, ref, list")
@@ -55,29 +52,37 @@ def _form_kind(form: Any, where: str) -> str:
 
 
 def check_form(form: JsonValue, where: str, *, top: bool) -> None:
-    kind = _form_kind(form, where)
-    allowed = {kind} | ({"optional"} if top else set()) | ({"pin"} if kind == "ref" else set())
-    unknown = sorted(set(form) - allowed)
+    form_object = get_object({"form": form}, "form")
+    if form_object is None:
+        raise SchemaError(f"{where}: a field must be an object")
+    kind = _form_kind(form_object, where)
+    allowed: set[str] = {kind}
+    if top:
+        allowed.add("optional")
+    if kind == "ref":
+        allowed.add("pin")
+    unknown = sorted(set(form_object) - allowed)
     if unknown:
         raise SchemaError(f"{where}: unknown keys {unknown}")
-    if "optional" in form and not isinstance(form["optional"], bool):
+    if "optional" in form_object and not isinstance(form_object["optional"], bool):
         raise SchemaError(f"{where}: optional must be a boolean")
-    if "pin" in form and not isinstance(form["pin"], bool):
+    if "pin" in form_object and not isinstance(form_object["pin"], bool):
         raise SchemaError(f"{where}: pin must be a boolean")
-    value = form[kind]
+    value = form_object[kind]
     if kind == "type":
         if value not in SCALARS:
             raise SchemaError(f"{where}: type must be one of {list(SCALARS)}")
     elif kind == "enum":
+        enum_values = get_list({"value": value}, "value")
         if (
-            not isinstance(value, list)
-            or not value
-            or not all(isinstance(item, str) and item for item in value)
-            or len(set(value)) != len(value)
+            enum_values is None
+            or not enum_values
+            or not all(isinstance(item, str) and item for item in enum_values)
+            or len(set(enum_values)) != len(enum_values)
         ):
             raise SchemaError(f"{where}: enum must be a non-empty list of distinct strings")
     elif kind == "ref":
-        targets = value if isinstance(value, list) else [value]
+        targets = get_list({"value": value}, "value") or [value]
         if not targets or not all(isinstance(t, str) and QUALIFIED.match(t) for t in targets):
             raise SchemaError(f"{where}: ref must be '<ns>:<type>' or a list of them")
     else:
@@ -85,91 +90,106 @@ def check_form(form: JsonValue, where: str, *, top: bool) -> None:
 
 
 def check_migrations(migrations: JsonValue, where: str) -> list[JsonObject]:
-    if not isinstance(migrations, list):
+    migration_list = get_list({"migrations": migrations}, "migrations")
+    if migration_list is None:
         raise SchemaError(f"{where}: migrations must be a list")
-    for index, step in enumerate(migrations):
+    checked_steps: list[JsonObject] = []
+    for index, raw_step in enumerate(migration_list):
         label = f"{where}[{index}]"
-        if not isinstance(step, dict):
+        step = get_object({"step": raw_step}, "step")
+        if step is None:
             raise SchemaError(f"{label}: a migration must be an object")
         unknown = sorted(set(step) - MIGRATION_KEYS)
         if unknown:
             raise SchemaError(f"{label}: unknown keys {unknown}")
         for key in ("from", "to"):
-            if not isinstance(step.get(key), str) or not step[key].isdigit():
+            version = get_string(step, key)
+            if version is None or not version.isdigit():
                 raise SchemaError(f"{label}: {key} must be a major version string")
-        if int(step["to"]) <= int(step["from"]):
+        from_version = get_string(step, "from")
+        to_version = get_string(step, "to")
+        if from_version is None or to_version is None:
+            raise SchemaError(f"{label}: from and to must be major version strings")
+        if int(to_version) <= int(from_version):
             raise SchemaError(f"{label}: to must be greater than from")
         renames = step.get("rename_type", {})
-        if not isinstance(renames, dict) or not all(
-            isinstance(k, str) and QUALIFIED.match(k) and isinstance(v, str) and QUALIFIED.match(v)
-            for k, v in renames.items()
+        rename_types = get_object({"renames": renames}, "renames")
+        if rename_types is None or not all(
+            QUALIFIED.match(k) and isinstance(v, str) and QUALIFIED.match(v)
+            for k, v in rename_types.items()
         ):
             raise SchemaError(f"{label}: rename_type maps '<ns>:<type>' to '<ns>:<type>'")
         fields = step.get("rename_field", {})
-        if not isinstance(fields, dict) or not all(
-            isinstance(k, str)
-            and QUALIFIED.match(k)
-            and isinstance(v, dict)
-            and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items())
-            for k, v in fields.items()
+        rename_fields = get_object({"fields": fields}, "fields")
+        if rename_fields is None or not all(
+            QUALIFIED.match(k)
+            and (field_map := get_object({"field_map": v}, "field_map")) is not None
+            and all(isinstance(b, str) for b in field_map.values())
+            for k, v in rename_fields.items()
         ):
             raise SchemaError(f"{label}: rename_field maps a type to {{old: new}}")
         enums = step.get("map_enum", {})
-        if not isinstance(enums, dict) or not all(
-            isinstance(k, str)
-            and QUALIFIED.match(k.split(".", 1)[0])
+        enum_maps = get_object({"enums": enums}, "enums")
+        if enum_maps is None or not all(
+            QUALIFIED.match(k.split(".", 1)[0])
             and "." in k
-            and isinstance(v, dict)
-            and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items())
-            for k, v in enums.items()
+            and (enum_map := get_object({"enum_map": v}, "enum_map")) is not None
+            and all(isinstance(b, str) for b in enum_map.values())
+            for k, v in enum_maps.items()
         ):
             raise SchemaError(f"{label}: map_enum maps '<type>.<field>' to {{old: new}}")
-    return migrations
+        checked_steps.append(step)
+    return checked_steps
 
 
 def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
-    if not isinstance(data, dict):
+    module = get_object({"module": data}, "module")
+    if module is None:
         raise SchemaError(f"{source}: a module must be a JSON object")
-    unknown = sorted(set(data) - MODULE_KEYS)
+    unknown = sorted(set(module) - MODULE_KEYS)
     if unknown:
         raise SchemaError(f"{source}: unknown keys {unknown}")
-    namespace = data.get("namespace")
+    namespace = get_string(module, "namespace")
     if not isinstance(namespace, str) or not NAME.match(namespace):
         raise SchemaError(f"{source}: namespace must be a lowercase slug")
-    version = data.get("version")
+    version = get_string(module, "version")
     if not isinstance(version, str) or not SEMVER.match(version):
         raise SchemaError(f"{source}: version must be MAJOR.MINOR.PATCH")
-    types = data.get("types")
-    if not isinstance(types, dict):
+    types = get_object(module, "types")
+    if types is None:
         raise SchemaError(f"{source}: types must be an object")
-    for name, spec in types.items():
+    for name in types:
         where = f"{source}: {namespace}:{name}"
-        if not isinstance(name, str) or not NAME.match(name):
+        if not NAME.match(name):
             raise SchemaError(f"{source}: type name {name!r} must be a lowercase slug")
-        if not isinstance(spec, dict):
+        type_spec = get_object(types, name)
+        if type_spec is None:
             raise SchemaError(f"{where}: a type must be an object")
-        unknown = sorted(set(spec) - TYPE_KEYS)
+        unknown = sorted(set(type_spec) - TYPE_KEYS)
         if unknown:
             raise SchemaError(f"{where}: unknown keys {unknown}")
-        purpose = spec.get("purpose")
-        if not isinstance(purpose, str) or not purpose.strip():
+        purpose = get_string(type_spec, "purpose")
+        if purpose is None or not purpose.strip():
             raise SchemaError(f"{where}: purpose is required")
-        if spec.get("lifecycle") not in LIFECYCLES:
+        lifecycle_name = get_string(type_spec, "lifecycle")
+        if lifecycle_name not in LIFECYCLES:
             raise SchemaError(f"{where}: lifecycle must be one of {sorted(LIFECYCLES)}")
-        fields = spec.get("fields")
-        if not isinstance(fields, dict):
+        fields = get_object(type_spec, "fields")
+        if fields is None:
             raise SchemaError(f"{where}: fields is required and must be an object")
         for field, form in fields.items():
-            if not isinstance(field, str) or not FIELD_NAME.match(field):
+            if not FIELD_NAME.match(field):
                 raise SchemaError(f"{where}: field name {field!r} is invalid")
-            if field == DEPENDS_ON and spec["lifecycle"] == "staged":
+            if field == DEPENDS_ON and lifecycle_name == "staged":
                 raise SchemaError(f"{where}: depends_on is built in for staged types")
             check_form(form, f"{where}.{field}", top=True)
-        sections = spec.get("sections", [])
-        if not isinstance(sections, list) or not all(isinstance(s, str) and s for s in sections):
+        sections = get_list(type_spec, "sections")
+        if "sections" in type_spec and (
+            sections is None or not all(isinstance(s, str) and s for s in sections)
+        ):
             raise SchemaError(f"{where}: sections must be a list of headings")
-    check_migrations(data.get("migrations", []), f"{source}: migrations")
-    return data
+    check_migrations(module.get("migrations", []), f"{source}: migrations")
+    return module
 
 
 def load_module(path: Path) -> JsonObject:
@@ -191,27 +211,52 @@ def parse_module(text: str, source: str) -> JsonObject:
 
 
 def type_defs(module: JsonObject) -> dict[str, TypeDef]:
-    namespace = module["namespace"]
+    namespace = get_string(module, "namespace")
+    if namespace is None:
+        raise SchemaError("module namespace must be a string")
+    module_types = get_object(module, "types")
+    if module_types is None:
+        raise SchemaError("module types must be an object")
     defs: dict[str, TypeDef] = {}
-    for name, spec in module["types"].items():
+    for name in module_types:
+        spec = get_object(module_types, name)
+        if spec is None:
+            raise SchemaError(f"{namespace}:{name}: type must be an object")
         record_type = f"{namespace}:{name}"
-        fields = dict(spec["fields"])
-        lifecycle = LIFECYCLES[spec["lifecycle"]]
+        spec_fields = get_object(spec, "fields")
+        purpose = get_string(spec, "purpose")
+        lifecycle_name = get_string(spec, "lifecycle")
+        if spec_fields is None or purpose is None or lifecycle_name is None:
+            raise SchemaError(f"{record_type}: invalid type definition")
+        fields: dict[str, JsonObject] = {}
+        for field_name in spec_fields:
+            field_form = get_object(spec_fields, field_name)
+            if field_form is None:
+                raise SchemaError(f"{record_type}.{field_name}: field form must be an object")
+            fields[field_name] = field_form
+        lifecycle = LIFECYCLES[lifecycle_name]
         if lifecycle.name == "staged":
             fields[DEPENDS_ON] = {"list": {"ref": record_type}, "optional": True}
         defs[record_type] = TypeDef(
             record_type=record_type,
-            purpose=spec["purpose"],
+            purpose=purpose,
             lifecycle=lifecycle,
             fields=fields,
-            sections=tuple(spec.get("sections") or ()),
+            sections=tuple(
+                section
+                for section in (get_list(spec, "sections") or ())
+                if isinstance(section, str)
+            ),
         )
     return defs
 
 
 def ref_targets(form: JsonObject) -> list[str]:
     value = form["ref"]
-    return list(value) if isinstance(value, list) else [value]
+    targets = get_list(form, "ref")
+    if targets is None:
+        return [value] if isinstance(value, str) else []
+    return [target for target in targets if isinstance(target, str)]
 
 
 class SchemaSet:
@@ -225,13 +270,24 @@ class SchemaSet:
 
     @property
     def versions(self) -> dict[str, str]:
-        return {ns: module["version"] for ns, module in self.modules.items()}
+        versions: dict[str, str] = {}
+        for namespace, module in self.modules.items():
+            version = get_string(module, "version")
+            if version is not None:
+                versions[namespace] = version
+        return versions
 
     @classmethod
     def load(cls, store_root: Path | Backend, config: JsonObject) -> SchemaSet:
         backend = open_backend(store_root, config) if isinstance(store_root, Path) else store_root
-        modules: dict[str, dict[str, Any]] = {}
-        for namespace, version in config["schemas"].items():
+        schemas = get_object(config, "schemas")
+        if schemas is None:
+            raise SchemaError("config.json schemas must be an object")
+        modules: dict[str, JsonObject] = {}
+        for namespace, raw_version in schemas.items():
+            version = raw_version if isinstance(raw_version, str) else None
+            if version is None:
+                raise SchemaError(f"{namespace}: schema version must be a string")
             text = backend.read_snapshot(namespace)
             if text is None:
                 raise SchemaError(
