@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 
 PLACEMENT = "composer:placement"
@@ -24,7 +24,7 @@ def _require(project: Project, record_type: str, subject: str) -> None:
 def place(project: Project, effort: str, area: str) -> Record:
     _require(project, "score:effort", effort)
     _require(project, "composer:area", area)
-    payload = {"area": area}
+    payload: JsonObject = {"area": area}
     try:
         try:
             current = project.resolve(PLACEMENT, effort)

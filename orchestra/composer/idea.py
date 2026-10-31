@@ -7,7 +7,7 @@ import unicodedata
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 
 
@@ -46,7 +46,7 @@ def capture(
     parts = [f"# {title}"]
     if body:
         parts.extend(["", body])
-    payload: dict[str, str] = {"status": "open"}
+    payload: JsonObject = {"status": "open"}
     if area is not None:
         payload["area"] = area
     if effort is not None:

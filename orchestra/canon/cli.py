@@ -6,8 +6,9 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TypeVar
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived
@@ -35,9 +36,17 @@ from orchestra.canon.query import (
     record_matches,
     summarize,
 )
-from orchestra.canon.schema import SchemaError
+from orchestra.canon.schema import SchemaError, TypeDef
 from orchestra.canon.sync import add_namespace, init_store, sync_store
 from orchestra.canon.transfer import export_ops, import_ops
+from orchestra.canon.types import (
+    JsonObject,
+    JsonValue,
+    Record,
+    get_list,
+    get_object,
+    get_string,
+)
 from orchestra.canon.validation import ValidationError
 
 EXIT_OK = 0
@@ -45,6 +54,59 @@ EXIT_ERROR = 1
 EXIT_STALE = 2
 EXIT_TRANSITION = 3
 EXIT_VALIDATION = 4
+
+
+class CanonArgs(argparse.Namespace):
+    body: str | None
+    body_file: str | None
+    body_only: bool
+    command: str
+    desc: bool
+    exact_subject: bool
+    expected_revision: str | None
+    field: str | None
+    fields: str | None
+    file: str | None
+    format: str
+    full: bool
+    func: Callable[[CanonArgs], int] | None
+    grep: str | None
+    has_inbound: list[str]
+    id: str | None
+    input: str | None
+    keep: int
+    limit: int | None
+    namespace: str | None
+    namespace_map: list[str]
+    order_by: str | None
+    out: str | None
+    payload: str | None
+    payload_file: str | None
+    read_only: bool
+    rename_subject: list[str]
+    root: str | Path | None
+    schemas: str | None
+    schemas_command: str | None
+    set_values: list[str]
+    since: str | None
+    source: str | None
+    state: str | None
+    store: str | None
+    subject: str | None
+    transition: str | None
+    type: str | None
+    until: str | None
+    where: list[str]
+
+
+_T = TypeVar("_T")
+
+
+def _required(value: _T | None) -> _T:
+    if value is None:
+        raise ValueError("required command argument is missing")
+    return value
+
 
 _CURRENT_REVISION = "@current"
 MUTATING_COMMANDS = frozenset(
@@ -54,7 +116,7 @@ MUTATING_SCHEMA_COMMANDS = frozenset({"sync", "add"})
 _TRANSITION_CODES = frozenset({"invalid_transition", "use_supersede", "append_only"})
 
 
-def _is_read_only(args: argparse.Namespace) -> bool:
+def _is_read_only(args: CanonArgs) -> bool:
     """--read-only, else $CANON_READONLY=1.
 
     Checked once in main() before any command dispatch, so a refused command
@@ -65,27 +127,27 @@ def _is_read_only(args: argparse.Namespace) -> bool:
     return os.environ.get("CANON_READONLY") == "1"
 
 
-def _refuses_write(args: argparse.Namespace) -> bool:
+def _refuses_write(args: CanonArgs) -> bool:
     if args.command in MUTATING_COMMANDS:
         return True
     return args.command == "schemas" and args.schemas_command in MUTATING_SCHEMA_COMMANDS
 
 
-def _emit_json(data: Any) -> None:
+def _emit_json(data: object) -> None:
     print(json.dumps(data, indent=2))
 
 
-def _load_payload(raw: str | None) -> dict[str, Any]:
+def _load_payload(raw: str | None) -> JsonObject:
     if not raw:
         return {}
-    data = json.loads(raw)
+    data: JsonValue = json.loads(raw)
     if not isinstance(data, dict):
         raise StoreError("payload must be a JSON object")
     return data
 
 
-def _load_payload_args(args: argparse.Namespace) -> dict[str, Any]:
-    payload: dict[str, Any] = {}
+def _load_payload_args(args: CanonArgs) -> JsonObject:
+    payload: JsonObject = {}
     payload_file = getattr(args, "payload_file", None)
     if payload_file:
         try:
@@ -94,7 +156,8 @@ def _load_payload_args(args: argparse.Namespace) -> dict[str, Any]:
             raise StoreError(f"cannot read --payload-file {payload_file!r}: {exc}") from exc
         payload.update(_load_payload(raw))
     payload.update(_load_payload(getattr(args, "payload", None)))
-    for item in getattr(args, "set_values", None) or []:
+    set_values: list[str] = getattr(args, "set_values", None) or []
+    for item in set_values:
         if "=" not in item:
             raise StoreError(f"invalid --set {item!r}; expected key=value")
         key, value = item.split("=", 1)
@@ -111,7 +174,7 @@ class _BodyArgError(Exception):
     pass
 
 
-def _resolve_body(args: argparse.Namespace) -> tuple[bool, str]:
+def _resolve_body(args: CanonArgs) -> tuple[bool, str]:
     """Return (flag_was_given, text). Distinguishes an absent flag from --body ""."""
     body = getattr(args, "body", None)
     body_file = getattr(args, "body_file", None)
@@ -138,18 +201,25 @@ _TABLE_DEFAULT_FIELDS = (
 )
 
 
-def _row_values(record: dict[str, Any], fields: list[str]) -> list[str]:
+def _as_mapping(value: object) -> Mapping[object, object] | None:
+    if isinstance(value, dict):
+        return value  # pyright: ignore[reportUnknownVariableType]  # JSON mappings have arbitrary runtime key and value types
+    return None
+
+
+def _row_values(record: Mapping[str, object], fields: list[str]) -> list[str]:
     values: list[str] = []
     for field in fields:
         if field in record:
-            value: Any = record[field]
+            value: object = record[field]
         else:
             value = record
             for part in field.split("."):
-                if not isinstance(value, dict) or part not in value:
+                nested = _as_mapping(value)
+                if nested is None or part not in nested:
                     value = None
                     break
-                value = value[part]
+                value = nested[part]
         if value is None:
             values.append("")
         elif isinstance(value, (dict, list)):
@@ -159,13 +229,13 @@ def _row_values(record: dict[str, Any], fields: list[str]) -> list[str]:
     return values
 
 
-def _emit_table(records: list[dict[str, Any]], *, fields: str | None) -> None:
+def _emit_table(records: Sequence[Mapping[str, object]], *, fields: str | None) -> None:
     cols: list[str]
     if fields:
         cols = [field.strip() for field in fields.split(",") if field.strip()]
     elif records:
         # Prefer stable compact columns when present; else union of keys.
-        cols = [c for c in _TABLE_DEFAULT_FIELDS if any(c in r for r in records)]
+        cols = [c for c in _TABLE_DEFAULT_FIELDS if any(c in record for record in records)]
         if not cols:
             cols = sorted({key for record in records for key in record})
     else:
@@ -181,12 +251,12 @@ def _emit_table(records: list[dict[str, Any]], *, fields: str | None) -> None:
         print("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
 
 
-def _emit_tsv(records: list[dict[str, Any]], *, fields: str | None) -> None:
+def _emit_tsv(records: Sequence[Mapping[str, object]], *, fields: str | None) -> None:
     cols: list[str]
     if fields:
         cols = [field.strip() for field in fields.split(",") if field.strip()]
     elif records:
-        cols = [c for c in _TABLE_DEFAULT_FIELDS if any(c in r for r in records)]
+        cols = [c for c in _TABLE_DEFAULT_FIELDS if any(c in record for record in records)]
         if not cols:
             cols = sorted({key for record in records for key in record})
     else:
@@ -196,7 +266,7 @@ def _emit_tsv(records: list[dict[str, Any]], *, fields: str | None) -> None:
         print("\t".join(_row_values(record, cols)))
 
 
-def _error_response(exc: Exception) -> tuple[dict[str, Any], int]:
+def _error_response(exc: Exception) -> tuple[JsonObject, int]:
     message = str(exc)
     if isinstance(exc, StaleWriteError):
         return {"error": "stale_write", "message": message}, EXIT_STALE
@@ -236,17 +306,18 @@ def _binding_file_present(root: Path) -> bool:
     ).exists()
 
 
-def _command_project(args: argparse.Namespace) -> Project:
+def _command_project(args: CanonArgs) -> Project:
+    root = _required(args.root)
     if args.store:
-        return open_store(args.root, store=args.store)
-    return open_store(args.root)
+        return open_store(root, store=args.store)
+    return open_store(root)
 
 
 class _MissingTarget(StoreError):
     pass
 
 
-def _target(args: argparse.Namespace, project: Project) -> dict[str, Any]:
+def _target(args: CanonArgs, project: Project) -> Record:
     if args.id:
         return project.get(args.id, args.type)
     if not args.type or not args.subject:
@@ -254,8 +325,8 @@ def _target(args: argparse.Namespace, project: Project) -> dict[str, Any]:
     return project.resolve(args.type, args.subject)
 
 
-def cmd_init(args: argparse.Namespace) -> int:
-    root = Path(args.root)
+def cmd_init(args: CanonArgs) -> int:
+    root = Path(_required(args.root))
     try:
         assert_git_context(root)
     except GitContextError as exc:
@@ -276,12 +347,12 @@ def cmd_init(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_create(args: argparse.Namespace) -> int:
+def cmd_create(args: CanonArgs) -> int:
     project = _command_project(args)
     _, body = _resolve_body(args)
     stored = project.create(
-        record_type=args.type,
-        subject=args.subject,
+        record_type=_required(args.type),
+        subject=_required(args.subject),
         payload=_load_payload_args(args),
         body=body,
     )
@@ -289,7 +360,7 @@ def cmd_create(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_update(args: argparse.Namespace) -> int:
+def cmd_update(args: CanonArgs) -> int:
     project = _command_project(args)
     old = _target(args, project)
     given, body = _resolve_body(args)
@@ -305,7 +376,7 @@ def cmd_update(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_supersede(args: argparse.Namespace) -> int:
+def cmd_supersede(args: CanonArgs) -> int:
     project = _command_project(args)
     old = _target(args, project)
     given, body = _resolve_body(args)
@@ -320,7 +391,7 @@ def cmd_supersede(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_correct(args: argparse.Namespace) -> int:
+def cmd_correct(args: CanonArgs) -> int:
     project = _command_project(args)
     old = _target(args, project)
     given, body = _resolve_body(args)
@@ -336,25 +407,26 @@ def cmd_correct(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_get(args: argparse.Namespace) -> int:
+def cmd_get(args: CanonArgs) -> int:
     project = _command_project(args)
-    record = project.get(args.id, args.type)
+    record = project.get(_required(args.id), args.type)
     if args.body_only:
         print(record.get("body") or "")
     elif args.field:
-        value: Any = record
+        value: object = record
         for part in args.field.split("."):
-            if not isinstance(value, dict) or part not in value:
+            mapping = _as_mapping(value)
+            if mapping is None or part not in mapping:
                 _emit_json({"error": "field_not_found", "field": args.field})
                 return EXIT_ERROR
-            value = value[part]
+            value = mapping[part]
         _emit_json(value)
     else:
         _emit_json(record)
     return EXIT_OK
 
 
-def cmd_list(args: argparse.Namespace) -> int:
+def cmd_list(args: CanonArgs) -> int:
     project = _command_project(args)
     schemas = project.schemas()
     resolved_type = schemas.resolve_type(args.type) if args.type else None
@@ -403,16 +475,17 @@ def cmd_list(args: argparse.Namespace) -> int:
     out_records = matched if args.full else [summarize(record, grep=grep) for record in matched]
     if args.fields:
         fields = [field.strip() for field in args.fields.split(",") if field.strip()]
-        projected = []
+        projected: list[dict[str, object]] = []
         for record in out_records:
-            item = {}
+            item: dict[str, object] = {}
             for field in fields:
-                value: Any = record
+                value: object = record
                 for part in field.split("."):
-                    if not isinstance(value, dict) or part not in value:
+                    mapping = _as_mapping(value)
+                    if mapping is None or part not in mapping:
                         value = None
                         break
-                    value = value[part]
+                    value = mapping[part]
                 item[field] = value
             projected.append(item)
         out_records = projected
@@ -428,7 +501,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_apply(args: argparse.Namespace) -> int:
+def cmd_apply(args: CanonArgs) -> int:
     """Run create, update, supersede, and correct ops from NDJSON.
 
     Failure semantics are continue-and-report: one bad line does not abort
@@ -436,9 +509,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
     """
     input_arg = args.file or args.input or "-"
     text = sys.stdin.read() if input_arg == "-" else Path(input_arg).read_text()
-    operations: list[Any] = []
+    operations: list[JsonValue] = []
     op_lines: list[int] = []
-    slots: list[dict[str, Any] | None] = []
+    slots: list[dict[str, object] | None] = []
     for line_no, raw_line in enumerate(text.splitlines(), start=1):
         line = raw_line.strip()
         if not line:
@@ -454,13 +527,13 @@ def cmd_apply(args: argparse.Namespace) -> int:
     project = _command_project(args)
     applied = project.apply(operations)
     applied_results = iter(applied)
-    results: list[dict[str, Any]] = []
+    results: list[dict[str, object]] = []
     op_index = 0
     for slot in slots:
         if slot is not None:
             results.append(slot)
             continue
-        result = dict(next(applied_results))
+        result: dict[str, object] = dict(next(applied_results))
         result["line"] = op_lines[op_index]
         op_index += 1
         results.append(result)
@@ -478,7 +551,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
     return EXIT_OK if failed == 0 else EXIT_ERROR
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
+def cmd_validate(args: CanonArgs) -> int:
     project = _command_project(args)
     errors = project.validate()
     count = len(project.records()) if not errors else None
@@ -490,14 +563,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print(f"valid: {count} records")
     else:
         status = "invalid" if errors else "valid"
-        payload: dict[str, Any] = {"status": status, "errors": errors}
+        payload: dict[str, object] = {"status": status, "errors": errors}
         if not errors:
             payload["records"] = count
         _emit_json(payload)
     return EXIT_VALIDATION if errors else EXIT_OK
 
 
-def cmd_backup(args: argparse.Namespace) -> int:
+def cmd_backup(args: CanonArgs) -> int:
     project = _command_project(args)
     backend = open_backend(project.store_path)
     path = backend.backup(args.keep)
@@ -505,44 +578,44 @@ def cmd_backup(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_export(args: argparse.Namespace) -> int:
+def cmd_export(args: CanonArgs) -> int:
     backend = open_backend(_command_project(args).store_path)
-    with Path(args.out).open("w", encoding="utf-8", newline="\n") as out:
+    with Path(_required(args.out)).open("w", encoding="utf-8", newline="\n") as out:
         count = export_ops(backend, out)
     _emit_json({"ops": count})
     return EXIT_OK
 
 
-def cmd_import(args: argparse.Namespace) -> int:
+def cmd_import(args: CanonArgs) -> int:
     backend = open_backend(_command_project(args).store_path)
-    with Path(args.source).open(encoding="utf-8") as src:
+    with Path(_required(args.source)).open(encoding="utf-8") as src:
         count = import_ops(backend, src)
     _emit_json({"ops": count})
     return EXIT_OK
 
 
-def cmd_schemas_sync(args: argparse.Namespace) -> int:
+def cmd_schemas_sync(args: CanonArgs) -> int:
     project = _command_project(args)
     result = sync_store(open_backend(project.store_path))
     _emit_json(result)
     return EXIT_VALIDATION if result["errors"] else EXIT_OK
 
 
-def cmd_schemas_add(args: argparse.Namespace) -> int:
+def cmd_schemas_add(args: CanonArgs) -> int:
     project = _command_project(args)
-    result = add_namespace(open_backend(project.store_path), args.namespace)
+    result = add_namespace(open_backend(project.store_path), _required(args.namespace))
     _emit_json(result)
     return EXIT_VALIDATION if result["errors"] else EXIT_OK
 
 
-def cmd_merge(args: argparse.Namespace) -> int:
+def cmd_merge(args: CanonArgs) -> int:
     project = _command_project(args)
     try:
         summary = merge_store(
             open_backend(project.store_path),
             project.schemas(),
-            args.source,
-            namespaces=parse_namespace_map(args.namespace),
+            _required(args.source),
+            namespaces=parse_namespace_map(args.namespace_map),
             subject_renames=parse_subject_renames(args.rename_subject),
         )
     except MergeError as exc:
@@ -552,19 +625,42 @@ def cmd_merge(args: argparse.Namespace) -> int:
         _emit_json(summary)
     else:
         print("\t".join(["type", "records", "history", "log"]))
-        for record_type, row in summary["types"].items():
+        counts = get_object(summary, "types")
+        renamed_subjects = get_list(summary, "renamed_subjects")
+        errors = get_list(summary, "errors")
+        if counts is None:
+            raise KeyError("types")
+        if renamed_subjects is None:
+            raise KeyError("renamed_subjects")
+        if errors is None:
+            raise KeyError("errors")
+        for record_type in counts:
+            row = get_object(counts, record_type)
+            if row is None:
+                raise KeyError(record_type)
             print(
                 "\t".join([record_type, str(row["records"]), str(row["history"]), str(row["log"])])
             )
-        for item in summary["renamed_subjects"]:
-            print(f"renamed {item['record_type']} {item['old']} -> {item['new']}")
+        for raw_item in renamed_subjects:
+            item = raw_item if isinstance(raw_item, dict) else None
+            if item is None:
+                raise TypeError("renamed subject must be an object")
+            record_type = get_string(item, "record_type")
+            old = get_string(item, "old")
+            new = get_string(item, "new")
+            if record_type is None or old is None or new is None:
+                raise KeyError("renamed subject fields")
+            print(f"renamed {record_type} {old} -> {new}")
         print(f"validation: {summary['status']}")
-        for error in summary["errors"]:
+        for error in errors:
             print(error)
-    return EXIT_VALIDATION if summary["errors"] else EXIT_OK
+    errors = get_list(summary, "errors")
+    if errors is None:
+        raise KeyError("errors")
+    return EXIT_VALIDATION if errors else EXIT_OK
 
 
-def _type_summary(type_def: Any) -> dict[str, Any]:
+def _type_summary(type_def: TypeDef) -> object:
     return {
         "record_type": type_def.record_type,
         "purpose": type_def.purpose,
@@ -576,7 +672,7 @@ def _type_summary(type_def: Any) -> dict[str, Any]:
     }
 
 
-def cmd_schemas_show(args: argparse.Namespace) -> int:
+def cmd_schemas_show(args: CanonArgs) -> int:
     schemas = _command_project(args).schemas()
     if args.type:
         _emit_json(_type_summary(schemas.get(schemas.resolve_type(args.type))))
@@ -586,20 +682,23 @@ def cmd_schemas_show(args: argparse.Namespace) -> int:
             raise SchemaError(f"namespace {args.namespace!r} is not in this store")
         _emit_json(schemas.modules[args.namespace])
         return EXIT_OK
-    _emit_json(
-        {
-            "schemas": {
-                ns: {
-                    "version": module["version"],
-                    "types": {
-                        name: {"purpose": spec["purpose"], "lifecycle": spec["lifecycle"]}
-                        for name, spec in module["types"].items()
-                    },
-                }
-                for ns, module in schemas.modules.items()
+    summaries: dict[str, object] = {}
+    for namespace, module in schemas.modules.items():
+        version = module["version"]
+        module_types = get_object(module, "types")
+        if module_types is None:
+            raise KeyError("types")
+        type_summaries: dict[str, object] = {}
+        for name in module_types:
+            spec = get_object(module_types, name)
+            if spec is None:
+                raise KeyError(name)
+            type_summaries[name] = {
+                "purpose": spec["purpose"],
+                "lifecycle": spec["lifecycle"],
             }
-        }
-    )
+        summaries[namespace] = {"version": version, "types": type_summaries}
+    _emit_json({"schemas": summaries})
     return EXIT_OK
 
 
@@ -823,6 +922,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--namespace",
         action="append",
         default=[],
+        dest="namespace_map",
         metavar="OLD=NEW",
         help="Rename a source namespace",
     )
@@ -841,7 +941,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _dispatch(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv, namespace=CanonArgs())
     args.root = Path(args.root).resolve() if args.root else Path.cwd()
     if _refuses_write(args) and _is_read_only(args):
         _emit_json(
@@ -851,6 +951,8 @@ def _dispatch(argv: list[str] | None = None) -> int:
             }
         )
         return EXIT_ERROR
+    if args.func is None:
+        raise RuntimeError("command handler was not configured")
     return args.func(args)
 
 

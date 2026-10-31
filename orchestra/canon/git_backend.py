@@ -4,15 +4,32 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Literal, overload
 
 
 class GitContextError(Exception):
     pass
 
 
-def run_git(cwd: Path | str, *args: str, **kwargs: Any) -> subprocess.CompletedProcess[Any]:
-    return subprocess.run(["git", "-C", str(cwd), *args], **kwargs)
+@overload
+def run_git(
+    cwd: Path | str, *args: str, text: Literal[True], **kwargs: object
+) -> subprocess.CompletedProcess[str]: ...
+
+
+@overload
+def run_git(
+    cwd: Path | str, *args: str, **kwargs: object
+) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]: ...
+
+
+def run_git(
+    cwd: Path | str, *args: str, **kwargs: object
+) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
+    return subprocess.run(  # pyright: ignore[reportCallIssue, reportUnknownVariableType]  # subprocess overloads cannot express unknown kwargs
+        ["git", "-C", str(cwd), *args],
+        **kwargs,  # pyright: ignore[reportArgumentType, reportCallIssue, reportUnknownVariableType]  # subprocess overloads cannot model exact kwargs forwarding
+    )
 
 
 def git_root(start: Path | None = None) -> Path:
