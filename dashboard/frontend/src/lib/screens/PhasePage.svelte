@@ -116,7 +116,7 @@
       >
         <Tabs.List variant="line" class="h-auto flex-wrap" data-status-tabs>
           {#each STATUS_TABS as tab (tab.name)}
-            <Tabs.Trigger value={tab.name} data-tab={tab.name}>
+            <Tabs.Trigger class="pointer-coarse:min-h-11" value={tab.name} data-tab={tab.name}>
               <b class="text-sm font-medium">{tab.label}</b>
               {#if phase.counts}
                 <span class="text-xs tabular-nums">({phase.counts[tab.name]})</span>
@@ -143,7 +143,7 @@
               {#each phase.tasks as task (task.id)}
                 <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
                 <Table.Row
-                  class="cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  class="cursor-pointer focus-visible:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                   role="button"
                   tabindex={0}
                   data-task={task.id}

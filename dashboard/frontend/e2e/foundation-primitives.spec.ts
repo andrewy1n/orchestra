@@ -51,7 +51,7 @@ const BADGE_VARIANTS = [
 ] as const;
 
 for (const { variant, state, utility } of BADGE_VARIANTS) {
-	test(`R2 a shadcn badge of the ${variant} variant keeps its background colour`, async ({
+	test(`R2 a shadcn badge of the ${variant} variant keeps its background colour against unlayered span and anchor rules`, async ({
 		page,
 	}) => {
 		await openPhaseWith(page, (detail) => {
