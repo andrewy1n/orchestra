@@ -141,14 +141,17 @@
               </Table.Row>
             {:else}
               {#each phase.tasks as task (task.id)}
+                <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
                 <Table.Row
                   class="cursor-pointer outline-none focus-visible:bg-muted"
+                  role="button"
                   tabindex={0}
                   data-task={task.id}
                   data-phase-of={task.phase}
                   onclick={() => openHash(taskHref(task.id))}
                   onkeydown={(event) => {
-                    if (event.key === "Enter") openHash(taskHref(task.id));
+                    if (event.key === " ") event.preventDefault();
+                    if (event.key === "Enter" || event.key === " ") openHash(taskHref(task.id));
                   }}
                 >
                   <Table.Cell class={cn("font-semibold", statusTone(task.status))}>

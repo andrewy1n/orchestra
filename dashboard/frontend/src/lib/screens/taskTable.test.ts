@@ -171,4 +171,31 @@ describe("task table", () => {
 			document.querySelector('[role="dialog"][data-detail="task"]'),
 		).not.toBeNull();
 	});
+
+	it("R24 Space on a focused task row opens the task overlay without scrolling", async () => {
+		await mountApp(PAGE);
+		const target = row("b-ready");
+		expect(target).not.toBeNull();
+		const event = new KeyboardEvent("keydown", {
+			key: " ",
+			bubbles: true,
+			cancelable: true,
+		});
+		target?.dispatchEvent(event);
+		await settle();
+		expect(event.defaultPrevented).toBe(true);
+		expect(window.location.hash).toBe("#/task/b-ready");
+		expect(
+			document.querySelector('[role="dialog"][data-detail="task"]'),
+		).not.toBeNull();
+	});
+
+	it("R25 each task row on the phase page exposes the button role", async () => {
+		await mountApp(PAGE);
+		const rows = document.querySelectorAll<HTMLElement>(
+			"main [data-phase-page] [data-task-table] [data-task]",
+		);
+		expect(rows.length).toBeGreaterThan(0);
+		for (const item of rows) expect(item.getAttribute("role")).toBe("button");
+	});
 });
