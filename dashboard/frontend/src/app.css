@@ -7,19 +7,18 @@
    ancestor carries the `dark` class. The app sets it on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Light tokens are the default; dark tokens come from the design spike's
-   `html[data-theme="dark"]` set. The `dark` class and `data-theme` attribute
-   are toggled together by `src/theme.ts`. */
+/* The `dark` class and `data-theme` attribute are toggled together by
+   `src/theme.ts`. */
 :root {
-	--bg: #fbfbfc;
-	--panel: #ffffff;
-	--sunken: #f4f4f6;
-	--line: #e5e5e9;
-	--line-2: #d3d3d9;
-	--ink: #1b1b1f;
-	--ink-2: #2c2c34;
-	--text-muted: #4a4a54;
-	--faint: #5c5c66;
+	--bg: var(--background);
+	--panel: var(--card);
+	--sunken: var(--muted);
+	--line: var(--border);
+	--line-2: var(--border);
+	--ink: var(--foreground);
+	--ink-2: var(--foreground);
+	--text-muted: var(--muted-foreground);
+	--faint: var(--muted-foreground);
 	--brand: #2f56c8;
 	--running: #3d4f9a;
 	--ready: #0e5c68;
@@ -49,7 +48,7 @@
 	--secondary: oklch(0.97 0 0);
 	--secondary-foreground: oklch(0.205 0 0);
 	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
+	--muted-foreground: oklch(0.5 0 0);
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
@@ -74,15 +73,6 @@
 
 html.dark,
 html[data-theme="dark"] {
-	--bg: #131316;
-	--panel: #1b1b20;
-	--sunken: #18181c;
-	--line: #2c2c33;
-	--line-2: #3b3b44;
-	--ink: #f0f0f3;
-	--ink-2: #d4d4dc;
-	--text-muted: #c2c2ca;
-	--faint: #b4b4bc;
 	--brand: #9bb6ff;
 	--running: #b7c4ff;
 	--ready: #8fd0d4;
@@ -94,6 +84,37 @@ html[data-theme="dark"] {
 	--warn-bg: #2a2214;
 	--fail-bg: #2a1817;
 	--accent-bg: #1a2136;
+	--background: oklch(0.145 0 0);
+	--foreground: oklch(0.985 0 0);
+	--card: oklch(0.205 0 0);
+	--card-foreground: oklch(0.985 0 0);
+	--popover: oklch(0.205 0 0);
+	--popover-foreground: oklch(0.985 0 0);
+	--primary: oklch(0.922 0 0);
+	--primary-foreground: oklch(0.205 0 0);
+	--secondary: oklch(0.269 0 0);
+	--secondary-foreground: oklch(0.985 0 0);
+	--muted: oklch(0.269 0 0);
+	--muted-foreground: oklch(0.708 0 0);
+	--accent: oklch(0.269 0 0);
+	--accent-foreground: oklch(0.985 0 0);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 15%);
+	--ring: oklch(0.556 0 0);
+	--chart-1: oklch(0.87 0 0);
+	--chart-2: oklch(0.556 0 0);
+	--chart-3: oklch(0.439 0 0);
+	--chart-4: oklch(0.371 0 0);
+	--chart-5: oklch(0.269 0 0);
+	--sidebar: oklch(0.205 0 0);
+	--sidebar-foreground: oklch(0.985 0 0);
+	--sidebar-primary: oklch(0.488 0.243 264.376);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.269 0 0);
+	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.556 0 0);
 }
 
 * {
@@ -1649,40 +1670,6 @@ a.lrow {
 	}
 }
 
-.dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
-}
-
 @theme inline {
 	--font-sans: "Inter Variable", sans-serif;
 	--color-sidebar-ring: var(--sidebar-ring);
@@ -1755,5 +1742,5 @@ a.lrow {
 .phase-state {
 	font-size: 13px;
 	text-transform: capitalize;
-	color: var(--muted, var(--ink));
+	color: var(--muted-foreground);
 }
