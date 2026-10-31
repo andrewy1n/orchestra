@@ -10,6 +10,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
 from orchestra.canon.modules import InstalledModule, discover
 from orchestra.canon.schema import SchemaError, SchemaSet, major, parse_module
+from orchestra.canon.types import JsonObject
 from orchestra.canon.validation import validate_store
 
 
@@ -27,7 +28,7 @@ def init_store(
     store: Backend,
     namespaces: list[str],
     installed: dict[str, InstalledModule] | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     installed = discover() if installed is None else installed
     modules = [_need(installed, ns) for ns in namespaces]
     with store.transaction():
@@ -45,9 +46,7 @@ def init_store(
     return {"status": "initialized", "store": str(store), "schemas": config["schemas"]}
 
 
-def sync_store(
-    store: Backend, installed: dict[str, InstalledModule] | None = None
-) -> dict[str, Any]:
+def sync_store(store: Backend, installed: dict[str, InstalledModule] | None = None) -> JsonObject:
     installed = discover() if installed is None else installed
     with store.transaction():
         return _sync_locked(store, installed)
@@ -55,7 +54,7 @@ def sync_store(
 
 def add_namespace(
     store: Backend, namespace: str, installed: dict[str, InstalledModule] | None = None
-) -> dict[str, Any]:
+) -> JsonObject:
     installed = discover() if installed is None else installed
     module = _need(installed, namespace)
     with store.transaction():

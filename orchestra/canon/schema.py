@@ -11,6 +11,7 @@ from typing import Any
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
 from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
+from orchestra.canon.types import JsonObject, JsonValue
 
 NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
@@ -32,7 +33,7 @@ class TypeDef:
     record_type: str
     purpose: str
     lifecycle: Lifecycle
-    fields: dict[str, dict[str, Any]]
+    fields: dict[str, JsonObject]
     sections: tuple[str, ...]
 
     @property
@@ -53,7 +54,7 @@ def _form_kind(form: Any, where: str) -> str:
     return kinds[0]
 
 
-def check_form(form: Any, where: str, *, top: bool) -> None:
+def check_form(form: JsonValue, where: str, *, top: bool) -> None:
     kind = _form_kind(form, where)
     allowed = {kind} | ({"optional"} if top else set()) | ({"pin"} if kind == "ref" else set())
     unknown = sorted(set(form) - allowed)
@@ -83,7 +84,7 @@ def check_form(form: Any, where: str, *, top: bool) -> None:
         check_form(value, f"{where}[]", top=False)
 
 
-def check_migrations(migrations: Any, where: str) -> list[dict[str, Any]]:
+def check_migrations(migrations: JsonValue, where: str) -> list[JsonObject]:
     if not isinstance(migrations, list):
         raise SchemaError(f"{where}: migrations must be a list")
     for index, step in enumerate(migrations):
@@ -126,7 +127,7 @@ def check_migrations(migrations: Any, where: str) -> list[dict[str, Any]]:
     return migrations
 
 
-def validate_module(data: Any, source: str = "module") -> dict[str, Any]:
+def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
     if not isinstance(data, dict):
         raise SchemaError(f"{source}: a module must be a JSON object")
     unknown = sorted(set(data) - MODULE_KEYS)
@@ -171,7 +172,7 @@ def validate_module(data: Any, source: str = "module") -> dict[str, Any]:
     return data
 
 
-def load_module(path: Path) -> dict[str, Any]:
+def load_module(path: Path) -> JsonObject:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -181,7 +182,7 @@ def load_module(path: Path) -> dict[str, Any]:
     return validate_module(data, str(path))
 
 
-def parse_module(text: str, source: str) -> dict[str, Any]:
+def parse_module(text: str, source: str) -> JsonObject:
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -189,7 +190,7 @@ def parse_module(text: str, source: str) -> dict[str, Any]:
     return validate_module(data, source)
 
 
-def type_defs(module: dict[str, Any]) -> dict[str, TypeDef]:
+def type_defs(module: JsonObject) -> dict[str, TypeDef]:
     namespace = module["namespace"]
     defs: dict[str, TypeDef] = {}
     for name, spec in module["types"].items():
@@ -208,7 +209,7 @@ def type_defs(module: dict[str, Any]) -> dict[str, TypeDef]:
     return defs
 
 
-def ref_targets(form: dict[str, Any]) -> list[str]:
+def ref_targets(form: JsonObject) -> list[str]:
     value = form["ref"]
     return list(value) if isinstance(value, list) else [value]
 
@@ -216,7 +217,7 @@ def ref_targets(form: dict[str, Any]) -> list[str]:
 class SchemaSet:
     """The types a store accepts, built from its snapshots."""
 
-    def __init__(self, modules: dict[str, dict[str, Any]]):
+    def __init__(self, modules: dict[str, JsonObject]):
         self.modules = modules
         self.types: dict[str, TypeDef] = {}
         for module in modules.values():
@@ -227,7 +228,7 @@ class SchemaSet:
         return {ns: module["version"] for ns, module in self.modules.items()}
 
     @classmethod
-    def load(cls, store_root: Path | Backend, config: dict[str, Any]) -> SchemaSet:
+    def load(cls, store_root: Path | Backend, config: JsonObject) -> SchemaSet:
         backend = open_backend(store_root, config) if isinstance(store_root, Path) else store_root
         modules: dict[str, dict[str, Any]] = {}
         for namespace, version in config["schemas"].items():
@@ -252,7 +253,7 @@ class SchemaSet:
         except KeyError:
             raise StoreError(f"unknown record type: {record_type!r}") from None
 
-    def resolve_type(self, type_arg: Any) -> str:
+    def resolve_type(self, type_arg: object) -> str:
         if not isinstance(type_arg, str) or not type_arg:
             raise StoreError(f"unknown record type: {type_arg!r}")
         if "/" in type_arg or "\\" in type_arg or type_arg in {".", ".."}:

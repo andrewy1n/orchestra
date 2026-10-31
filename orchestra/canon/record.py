@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from orchestra.canon.schema import TypeDef
+from orchestra.canon.types import JsonObject, JsonValue, Record
 
 
 def normalize_body(body: str) -> str:
@@ -22,7 +23,7 @@ def normalize_body(body: str) -> str:
     return "\n".join(lines) + "\n" if lines else ""
 
 
-def prepare_record(record: dict[str, Any]) -> dict[str, Any]:
+def prepare_record(record: Record) -> Record:
     out = dict(record)
     out["body"] = normalize_body(out.get("body", ""))
     return out
@@ -36,15 +37,15 @@ def base_record(
     type_def: TypeDef,
     *,
     subject: str,
-    payload: dict[str, Any],
+    payload: JsonObject,
     record_id: str,
     lifecycle_state: str | None = None,
     relationships: dict[str, list[str]] | None = None,
     body: str = "",
-    time: Any = None,
-    provenance: Any = None,
+    time: JsonValue = None,
+    provenance: JsonValue = None,
     recorded_at: str | None = None,
-) -> dict[str, Any]:
+) -> Record:
     record: dict[str, Any] = {
         "id": record_id,
         "record_type": type_def.record_type,

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from orchestra.canon.types import Record, StoredOp
 
 
-def fold(ops: list[dict[str, Any]]) -> Any | None:
+def fold(ops: list[StoredOp]) -> Record | None:
     current = None
     for op in ops:
         if op.get("outcome") == "accepted":

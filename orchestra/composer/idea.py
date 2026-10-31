@@ -7,6 +7,7 @@ import unicodedata
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
 
 
@@ -33,7 +34,7 @@ def capture(
     effort: str | None = None,
     source: str | None = None,
     body: str | None = None,
-) -> dict:
+) -> Record:
     slug = slugify(title)
     try:
         project.resolve("composer:idea", slug)

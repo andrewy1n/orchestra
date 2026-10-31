@@ -15,6 +15,14 @@ from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
+from orchestra.canon.types import (
+    DerivedValues,
+    JsonObject,
+    JsonValue,
+    MutationResult,
+    OperationResult,
+    Record,
+)
 from orchestra.canon.validation import (
     ValidationError,
     check_transition,
@@ -59,7 +67,7 @@ class Project:
     store_path: Path
     binding: Binding
 
-    def config(self) -> dict[str, Any]:
+    def config(self) -> JsonObject:
         """Return the current store configuration."""
         return open_backend(self.store_path).load_config()
 
@@ -70,22 +78,22 @@ class Project:
     def schemas(self) -> SchemaSet:
         return self._session()[1]
 
-    def get(self, record_id: str, record_type: str | None = None) -> dict[str, Any]:
+    def get(self, record_id: str, record_type: str | None = None) -> Record:
         """Return the stored record. With no type, find the id across record types."""
         store, schemas = self._session()
         return _read_record(store, schemas, record_id, record_type)
 
-    def list(self, record_type: str) -> list[dict[str, Any]]:
+    def list(self, record_type: str) -> list[Record]:
         """Return every stored record of this type."""
         store, schemas = self._session()
         return store.list_records(schemas.resolve_type(record_type))
 
-    def records(self) -> list[dict[str, Any]]:
+    def records(self) -> list[Record]:
         """Return every stored record of every type."""
         store, _ = self._session()
         return list(store.iter_records())
 
-    def derived(self, records: list[dict[str, Any]] | None = None) -> dict[str, dict[str, Any]]:
+    def derived(self, records: list[Record] | None = None) -> dict[str, DerivedValues]:
         """Return read-time values (`ready`, `wave`, `referenced_by`, `corrected`) by record id.
 
         Pass the full record list from `records()` to skip a second read of the store.
@@ -93,7 +101,7 @@ class Project:
         store, schemas = self._session()
         return compute_derived(list(store.iter_records()) if records is None else records, schemas)
 
-    def resolve(self, record_type: str, subject: str) -> dict[str, Any]:
+    def resolve(self, record_type: str, subject: str) -> Record:
         """Return the latest record of the type with the subject."""
         store, schemas = self._session()
         resolved = schemas.resolve_type(record_type)
@@ -112,11 +120,11 @@ class Project:
         *,
         record_type: str,
         subject: str,
-        payload: dict[str, Any],
+        payload: JsonObject,
         body: str | None = None,
-        time: Any = None,
-        provenance: Any = None,
-    ) -> dict[str, Any]:
+        time: JsonValue = None,
+        provenance: JsonValue = None,
+    ) -> Record:
         """Write one record and return the stored record, including id and revision."""
         store, schemas = self._session()
         with store.transaction():
@@ -137,10 +145,10 @@ class Project:
         *,
         record_type: str | None = None,
         transition: str | None = None,
-        payload: dict[str, Any] | None = None,
+        payload: JsonObject | None = None,
         body: str | None = None,
         expected_revision: str | None = _CURRENT_REVISION,
-    ) -> dict[str, Any]:
+    ) -> Record:
         """Move a record to a new state and merge payload and body changes into it."""
         store, schemas = self._session()
         op = {
@@ -159,10 +167,10 @@ class Project:
         record_id: str,
         *,
         record_type: str | None = None,
-        payload: dict[str, Any] | None = None,
+        payload: JsonObject | None = None,
         body: str | None = None,
         expected_revision: str | None = _CURRENT_REVISION,
-    ) -> dict[str, Any]:
+    ) -> MutationResult:
         """Write a successor under a new id. Returns `record` and `predecessor`."""
         store, schemas = self._session()
         op = {
@@ -180,11 +188,11 @@ class Project:
         record_id: str,
         *,
         record_type: str | None = None,
-        payload: dict[str, Any] | None = None,
+        payload: JsonObject | None = None,
         body: str | None = None,
         subject: str | None = None,
         expected_revision: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> MutationResult:
         """Write a correcting successor of an event record. Returns `record` and `predecessor`."""
         store, schemas = self._session()
         op = {
@@ -198,7 +206,7 @@ class Project:
         with store.transaction():
             return _correct_record(store, schemas, op)
 
-    def apply(self, operations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def apply(self, operations: list[JsonObject]) -> list[OperationResult]:
         """Write each operation and return each result.
 
         A bad operation is reported and later operations still run. Earlier

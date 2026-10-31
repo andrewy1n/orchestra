@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.schema import SchemaError, validate_module
+from orchestra.canon.types import JsonObject
 
 GROUP = "canon.schemas"
 PATH_ENV = "CANON_SCHEMA_PATH"
@@ -22,7 +23,7 @@ class InstalledModule:
     version: str
     source: str
     text: str
-    module: dict[str, Any]
+    module: JsonObject
 
 
 def _entry_points() -> list[Any]:

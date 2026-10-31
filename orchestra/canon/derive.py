@@ -26,6 +26,7 @@ from typing import Any, cast
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.lifecycle import terminal_success_state
 from orchestra.canon.schema import DEPENDS_ON, SchemaSet
+from orchestra.canon.types import DerivedValues, Record
 
 
 def eligible_record_types(schemas: SchemaSet) -> set[str]:
@@ -115,7 +116,7 @@ def _compute_waves(
     return wave
 
 
-def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[str]]]:
+def compute_inverse(records: list[Record]) -> dict[str, dict[str, list[str]]]:
     """{target_id: {relationship_type: [source_id, ...]}} over every relationship
     edge in the record set, regardless of record type.
 
@@ -136,7 +137,7 @@ def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[s
     return inverse
 
 
-def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[str, dict[str, Any]]:
+def compute_derived(records: list[Record], schemas: SchemaSet) -> dict[str, DerivedValues]:
     """{record_id: {...}} of read-time-only values, never persisted.
 
     Call with the full record set: a dependency can name a record of any
@@ -177,9 +178,7 @@ def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[s
     return derived
 
 
-def attach_derived(
-    record: dict[str, Any], derived_map: dict[str, dict[str, Any]]
-) -> dict[str, Any]:
+def attach_derived(record: Record, derived_map: dict[str, DerivedValues]) -> Record:
     """A copy of `record` with a top-level `derived` mapping, or `record`
     itself, unmodified, when it has no derived values."""
     values = derived_map.get(cast(str, record.get("id")))
@@ -191,8 +190,8 @@ def attach_derived(
 
 
 def attach_derived_all(
-    records: list[dict[str, Any]], derived_map: dict[str, dict[str, Any]]
-) -> list[dict[str, Any]]:
+    records: list[Record], derived_map: dict[str, DerivedValues]
+) -> list[Record]:
     if not derived_map:
         return records
     return [attach_derived(record, derived_map) for record in records]

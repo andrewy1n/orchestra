@@ -10,6 +10,7 @@ from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.schema import SchemaSet, TypeDef, ref_targets
+from orchestra.canon.types import JsonObject, JsonValue, Record
 
 
 class ValidationError(Exception):
@@ -82,8 +83,8 @@ def _ref_errors(
 def value_errors(
     schemas: SchemaSet,
     index: RecordIndex | None,
-    form: dict[str, Any],
-    value: Any,
+    form: JsonObject,
+    value: JsonValue,
     path: str,
     *,
     optional: bool = False,
@@ -112,7 +113,7 @@ def value_errors(
 
 
 def payload_errors(
-    schemas: SchemaSet, index: RecordIndex | None, type_def: TypeDef, record: dict[str, Any]
+    schemas: SchemaSet, index: RecordIndex | None, type_def: TypeDef, record: Record | JsonObject
 ) -> list[str]:
     payload = record.get("payload")
     label = record["id"]
@@ -143,7 +144,7 @@ def payload_errors(
     return errors
 
 
-def section_errors(type_def: TypeDef, record: dict[str, Any]) -> list[str]:
+def section_errors(type_def: TypeDef, record: Record | JsonObject) -> list[str]:
     if not type_def.sections:
         return []
     errors: list[str] = []
@@ -158,7 +159,7 @@ def section_errors(type_def: TypeDef, record: dict[str, Any]) -> list[str]:
 
 
 def relationship_errors(
-    type_def: TypeDef, index: RecordIndex | None, record: dict[str, Any]
+    type_def: TypeDef, index: RecordIndex | None, record: Record | JsonObject
 ) -> list[str]:
     label = record["id"]
     relationships = record.get("relationships")
@@ -183,7 +184,7 @@ def relationship_errors(
 
 
 def record_errors(
-    schemas: SchemaSet, record: dict[str, Any], index: RecordIndex | None
+    schemas: SchemaSet, record: Record | JsonObject, index: RecordIndex | None
 ) -> list[str]:
     label = record.get("id", "<record>")
     missing = [key for key in ENVELOPE_REQUIRED if key not in record]
@@ -208,7 +209,7 @@ def record_errors(
 
 
 def validate_record(
-    schemas: SchemaSet, record: dict[str, Any], index: RecordIndex | None = None
+    schemas: SchemaSet, record: Record | JsonObject, index: RecordIndex | None = None
 ) -> None:
     errors = record_errors(schemas, record, index)
     if errors:
@@ -298,7 +299,7 @@ def _current_errors(records: list[dict[str, Any]], schemas: SchemaSet, errors: l
 
 
 def validate_append_only_history(
-    backend: Backend, records: list[dict[str, Any]], schemas: SchemaSet, errors: list[str]
+    backend: Backend, records: list[Record], schemas: SchemaSet, errors: list[str]
 ) -> None:
     for record in records:
         type_def = schemas.types.get(record.get("record_type", ""))
@@ -315,7 +316,7 @@ def validate_append_only_history(
 
 def validate_store(
     schemas: SchemaSet,
-    records: list[dict[str, Any]] | None = None,
+    records: list[Record] | None = None,
     *,
     store_root: Path | None = None,
     immutability: bool = True,

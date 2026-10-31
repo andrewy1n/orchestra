@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from orchestra.canon.paths import validate_namespace
+from orchestra.canon.types import JsonObject, JsonValue
 
 FORMAT = "canon/1"
 CONFIG_NAME = "config.json"
@@ -15,11 +15,11 @@ class ConfigError(Exception):
     pass
 
 
-def new_config(schemas: dict[str, str] | None = None) -> dict[str, Any]:
+def new_config(schemas: dict[str, str] | None = None) -> JsonObject:
     return {"format": FORMAT, "schemas": dict(schemas or {}), "settings": {}}
 
 
-def validate_config(data: Any) -> dict[str, Any]:
+def validate_config(data: JsonValue) -> JsonObject:
     if not isinstance(data, dict):
         raise ConfigError("config.json must be a JSON object")
     if data.get("format") != FORMAT:
@@ -40,5 +40,5 @@ def validate_config(data: Any) -> dict[str, Any]:
     return data
 
 
-def dump_config(config: dict[str, Any]) -> str:
+def dump_config(config: JsonObject) -> str:
     return json.dumps(config, indent=2) + "\n"

@@ -11,13 +11,14 @@ from orchestra.canon.paths import PathValidationError, validate_namespace, valid
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaSet, ref_targets
+from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]
 
 
 class MergeError(StoreError):
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: JsonObject | None = None):
         super().__init__(message)
         self.details = details or {}
 
@@ -74,7 +75,7 @@ class _Rewriter:
         namespace, local = validate_record_type(record_type)
         return f"{self.namespaces.get(namespace, namespace)}:{local}"
 
-    def record(self, record: dict[str, Any]) -> dict[str, Any]:
+    def record(self, record: Record) -> Record:
         out = dict(record)
         record_type = self.map_type(out["record_type"])
         out["record_type"] = record_type
@@ -106,7 +107,7 @@ def merge_store(
     *,
     namespaces: dict[str, str] | None = None,
     subject_renames: dict[tuple[str, str], str] | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Copy every record, history snapshot and op log of the source store into the target.
 
     Aborts before writing when an id exists in the target, when a non-event

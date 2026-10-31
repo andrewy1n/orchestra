@@ -19,6 +19,7 @@ from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import compute_revision, with_revision
+from orchestra.canon.types import JsonObject, Record, StoredOp
 
 
 def _decide_create(
@@ -170,13 +171,13 @@ class SqliteBackend:
             self._active = None
             connection.close()
 
-    def load_config(self) -> dict[str, Any]:
+    def load_config(self) -> JsonObject:
         return self._metadata.load_config()
 
     def has_config(self) -> bool:
         return self._metadata.has_config()
 
-    def write_config(self, config: dict[str, Any]) -> None:
+    def write_config(self, config: JsonObject) -> None:
         self._metadata.write_config(config)
 
     def read_snapshot(self, namespace: str) -> str | None:
@@ -188,7 +189,7 @@ class SqliteBackend:
     def is_absent(self) -> bool:
         return self._metadata.is_absent()
 
-    def init(self, config: dict[str, Any], snapshots: dict[str, str] | None = None) -> str:
+    def init(self, config: JsonObject, snapshots: dict[str, str] | None = None) -> str:
         if self.has_config():
             self.load_config()
             return "already_initialized"
@@ -285,16 +286,16 @@ class SqliteBackend:
                 self.archive_history(archive_prior)
             return state
 
-    def create_record(self, record: dict[str, Any]) -> dict[str, Any]:
+    def create_record(self, record: Record) -> Record:
         return self._write(record, create=True)
 
     def write_record(
         self,
-        record: dict[str, Any],
+        record: Record,
         *,
         expected_revision: str | None = None,
-        archive_prior: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        archive_prior: Record | None = None,
+    ) -> Record:
         return self._write(
             record,
             create=False,
@@ -302,7 +303,7 @@ class SqliteBackend:
             archive_prior=archive_prior,
         )
 
-    def read_record(self, record_type: str, record_id: str) -> dict[str, Any]:
+    def read_record(self, record_type: str, record_id: str) -> Record:
         self._validate_key(record_type, record_id)
         with self._reader() as connection:
             row = connection.execute(
@@ -318,7 +319,7 @@ class SqliteBackend:
 
     def iter_records(
         self, record_type: str | None = None, *, errors: list[str] | None = None
-    ) -> Iterator[dict[str, Any]]:
+    ) -> Iterator[Record]:
         with self._reader() as connection:
             rows = connection.execute(
                 "SELECT record_json FROM records"
@@ -340,7 +341,7 @@ class SqliteBackend:
 
     def list_records(
         self, record_type: str | None = None, lifecycle_state: str | None = None
-    ) -> list[dict[str, Any]]:
+    ) -> list[Record]:
         return [
             record
             for record in self.iter_records(record_type)
@@ -361,7 +362,7 @@ class SqliteBackend:
     def new_id(self) -> str:
         return f"rec-{uuid.uuid4()}"
 
-    def archive_history(self, record: dict[str, Any]) -> None:
+    def archive_history(self, record: Record) -> None:
         self._validate_key(record["record_type"], record["id"])
         with self.transaction(), self._reader() as connection:
             row = connection.execute(
@@ -375,7 +376,7 @@ class SqliteBackend:
                 (record["id"], record["revision"], json.dumps(record)),
             )
 
-    def read_history(self) -> Iterator[dict[str, Any]]:
+    def read_history(self) -> Iterator[Record]:
         with self._reader() as connection:
             rows = connection.execute(
                 "SELECT record_json FROM revisions WHERE archived=1 ORDER BY record_id, revision"
@@ -419,7 +420,7 @@ class SqliteBackend:
             connection.execute("DELETE FROM records WHERE record_id=?", (record_id,))
             connection.execute("DELETE FROM revisions WHERE record_id=?", (record_id,))
 
-    def iter_chains(self) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+    def iter_chains(self) -> Iterator[tuple[str, list[StoredOp]]]:
         with self._reader() as connection:
             chains = [
                 (row[0], self._chain(connection, row[0]))
@@ -429,7 +430,7 @@ class SqliteBackend:
             ]
         yield from chains
 
-    def import_op(self, record_type: str, record_id: str, op: dict[str, Any]) -> None:
+    def import_op(self, record_type: str, record_id: str, op: StoredOp) -> None:
         self._validate_key(record_type, record_id)
         with self.transaction(), self._reader() as connection:
             connection.execute(
@@ -441,7 +442,7 @@ class SqliteBackend:
                 ),
             )
 
-    def import_record(self, record: dict[str, Any]) -> None:
+    def import_record(self, record: Record) -> None:
         self._validate_key(record["record_type"], record["id"])
         with self.transaction(), self._reader() as connection:
             if self.record_exists(record["record_type"], record["id"]):

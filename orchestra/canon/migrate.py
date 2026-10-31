@@ -8,9 +8,10 @@ from orchestra.canon.backend import Backend
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
+from orchestra.canon.types import JsonObject, Record
 
 
-def migration_path(module: dict[str, Any], old_major: int, new_major: int) -> list[dict[str, Any]]:
+def migration_path(module: JsonObject, old_major: int, new_major: int) -> list[JsonObject]:
     steps = {int(step["from"]): step for step in module.get("migrations") or []}
     path: list[dict[str, Any]] = []
     current = old_major
@@ -33,7 +34,7 @@ def _map_value(mapping: dict[str, str], value: Any) -> Any:
     return value
 
 
-def transform(record: dict[str, Any], steps: list[dict[str, Any]]) -> dict[str, Any]:
+def transform(record: Record, steps: list[JsonObject]) -> Record:
     out = dict(record)
     payload = dict(out.get("payload") or {})
     for step in steps:
@@ -57,7 +58,7 @@ def _changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
     )
 
 
-def apply_steps(store: Backend, steps: list[dict[str, Any]]) -> int:
+def apply_steps(store: Backend, steps: list[JsonObject]) -> int:
     """Rewrite every record and history snapshot the steps touch. Returns the live record count."""
     for snapshot in list(store.read_history()):
         moved = transform(snapshot, steps)
