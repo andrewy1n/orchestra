@@ -10,6 +10,7 @@
   import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
+  import StatusBar from "$lib/screens/StatusBar.svelte";
   import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
@@ -133,20 +134,7 @@
     {/if}
   </div>
 
-  <footer
-    class="flex min-h-7 items-center gap-2 border-t border-[var(--line)] px-4 py-1.5 text-xs text-muted-foreground"
-  >
-    {#if polling.pollError || polling.snapshot}
-      <span
-        class={[
-          "size-2 shrink-0 rounded-full",
-          polling.pollError ? "bg-[var(--fail)]" : "bg-[var(--done)]",
-        ]}
-        data-status-dot
-      ></span>
-      <span data-status-text>{polling.pollError || "Live"}</span>
-    {/if}
-  </footer>
+  <StatusBar />
 </div>
 
 <Overlay />
