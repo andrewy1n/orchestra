@@ -42,8 +42,33 @@ function effort(
 const snapshot = {
 	token: "tok-1",
 	generated_at: "2026-01-01T00:00:00Z",
-	efforts: [effort({ effort: "invoicing" }), effort({ effort: "web" })],
+	efforts: [
+		effort({ effort: "invoicing", goal: "Ship invoicing" }),
+		effort({ effort: "web" }),
+	],
 } as Snapshot;
+
+const needsPayload = {
+	item: {
+		kind: "needs-human",
+		id: "n1",
+		subject: "r3-unmet",
+		text: "needs-human on send",
+		body: "Check R3.",
+		revision: "sha256:abc",
+		approval: { confirm_choices: [] },
+	},
+};
+
+const backlogPayload = {
+	item: {
+		id: "b1",
+		subject: "park-idea",
+		text: "Park the idea",
+		status: "open",
+		source: "",
+	},
+};
 
 function json(body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -67,6 +92,8 @@ async function mountApp(hash: string) {
 			if (url.includes("/api/token")) return json({ token: snapshot.token });
 			if (url.includes("/api/areas")) return json([]);
 			if (url.includes("/api/journal")) return json({ open: [], rest: [] });
+			if (url.includes("/api/needs?")) return json(needsPayload);
+			if (url.includes("/api/backlog?")) return json(backlogPayload);
 			return json(snapshot);
 		}),
 	);
@@ -116,4 +143,25 @@ describe("retired backlog route", () => {
 			apiPath: "backlog?effort=invoicing&id=b1",
 		});
 	});
+});
+
+describe("overlay deep links", () => {
+	it.each([
+		["R5", "needs", "n1", "r3-unmet"],
+		["R6", "backlog", "b1", "park-idea"],
+	])(
+		"%s deep link #/%s/<effort>/<id> keeps the effort page and the overlay",
+		async (_req, kind, id, who) => {
+			await mountApp(`#/${kind}/invoicing/${id}`);
+			expect(document.querySelector("main")?.getAttribute("data-route")).toBe(
+				"effort",
+			);
+			expect(
+				document.querySelector("main [data-effort-title]")?.textContent,
+			).toBe("invoicing");
+			const overlay = document.querySelector(`[data-detail="${kind}"]`);
+			expect(overlay).not.toBeNull();
+			expect(overlay?.textContent).toContain(who);
+		},
+	);
 });

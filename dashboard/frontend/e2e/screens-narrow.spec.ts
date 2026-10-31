@@ -145,3 +145,38 @@ test("R31 the phase tab list encloses every phase tab at 420px", async ({
 	expect(tabs.rows).toBeGreaterThan(1);
 	expect(tabs.listBottom).toBeGreaterThanOrEqual(tabs.lowestTabBottom);
 });
+
+test("R32 the top bar contains a wrapped breadcrumb label at 700px", async ({
+	page,
+}) => {
+	const title =
+		"A very long phase title that must wrap onto several lines ".repeat(4);
+	await page.setViewportSize({ width: 700, height: 800 });
+	await page.route("**/api/snapshot", async (route) => {
+		const response = await route.fetch();
+		const body = await response.json();
+		for (const effort of body.efforts)
+			for (const phase of effort.phases)
+				if (phase.subject === "e2e-phase") phase.title = title;
+		await route.fulfill({ response, json: body });
+	});
+	await open(page, PHASES[0]);
+	const current = page.locator("[data-breadcrumb] [aria-current='page']");
+	await expect(current).toContainText("A very long phase title");
+	const fit = await page.evaluate(() => {
+		const bar = document.querySelector(".topbar") as HTMLElement;
+		const label = document.querySelector(
+			"[data-breadcrumb] [aria-current='page']",
+		) as HTMLElement;
+		return {
+			scrollHeight: bar.scrollHeight,
+			clientHeight: bar.clientHeight,
+			barBottom: bar.getBoundingClientRect().bottom,
+			labelBottom: label.getBoundingClientRect().bottom,
+			labelHeight: label.getBoundingClientRect().height,
+		};
+	});
+	expect(fit.labelHeight).toBeGreaterThan(46);
+	expect(fit.scrollHeight).toBeLessThanOrEqual(fit.clientHeight);
+	expect(fit.barBottom).toBeGreaterThanOrEqual(fit.labelBottom);
+});

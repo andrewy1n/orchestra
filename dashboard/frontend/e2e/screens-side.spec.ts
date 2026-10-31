@@ -78,7 +78,7 @@ test("R16 the right panel section titles render at 14px", async ({ page }) => {
 test("R17 the right panel record ids render at 12px", async ({ page }) => {
 	await patchSnapshot(page, withBacklogItem);
 	await page.goto(EFFORT_URL);
-	const ids = page.locator(".side [data-record-id]");
+	const ids = page.locator("[data-side-backlog] [data-record-id]");
 	await expect(ids).toHaveCount(1);
 	await expect(ids.first()).toHaveText("side-idea");
 	await expect(ids.first()).toHaveCSS("font-size", "12px");
