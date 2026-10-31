@@ -167,14 +167,12 @@ describe("product index", () => {
 		).not.toContain("ideas");
 	});
 
-	it("R6 an area card lists the names of the efforts in the area", async () => {
+	it("R6 an area card does not list effort names", async () => {
 		await mountApp(placed);
-		const names = [
-			...card("billing").querySelectorAll("[data-card-effort]"),
-		].map((el) => el.textContent?.trim());
-		expect(names).toEqual(["invoicing", "refunds"]);
-		expect(card("billing").textContent).not.toContain("web");
-		expect(card("ops").querySelectorAll("[data-card-effort]")).toHaveLength(0);
+		expect(card("billing").querySelector("[data-card-effort]")).toBeNull();
+		expect(card("billing").textContent).not.toContain("invoicing");
+		expect(card("billing").textContent).not.toContain("refunds");
+		expect(card("ops").querySelector("[data-card-effort]")).toBeNull();
 	});
 
 	it("R7 an area card is one link to the area route", async () => {

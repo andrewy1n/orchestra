@@ -25,29 +25,34 @@ test("R9 the product home has one h1 reading Areas", async ({ page }) => {
 	await expect(headings).toHaveText("Areas");
 });
 
-test("R10 each home area card aligns to the start of its grid cell", async ({
-	page,
-}) => {
+test("R10 home area cards in one row share a height", async ({ page }) => {
 	await page.goto("/");
 	const cards = page.locator("[data-area-card]");
 	await expect(cards.first()).toBeVisible();
-	const count = await cards.count();
-	for (let index = 0; index < count; index += 1) {
-		await expect(cards.nth(index)).toHaveCSS("align-self", "start");
+	const heights = await cards.evaluateAll((els) =>
+		els.map((el) => {
+			const box = el.getBoundingClientRect();
+			return { top: Math.round(box.top), height: Math.round(box.height) };
+		}),
+	);
+	const byRow = new Map<number, number[]>();
+	for (const card of heights) {
+		const row = byRow.get(card.top) ?? [];
+		row.push(card.height);
+		byRow.set(card.top, row);
+	}
+	for (const row of byRow.values()) {
+		expect(new Set(row).size).toBe(1);
 	}
 });
 
-test("R11 each effort name in a home area card differs in colour from the card text", async ({
+test("R11 a home area card shows counts and no effort names", async ({
 	page,
 }) => {
 	await page.goto("/");
 	const card = page.locator('[data-area-card="e2e-area"]');
 	await expect(card).toBeVisible();
-	const efforts = card.locator("[data-card-effort]");
-	await expect(efforts.first()).toBeVisible();
-	const cardColour = await card.evaluate((el) => getComputedStyle(el).color);
-	const count = await efforts.count();
-	for (let index = 0; index < count; index += 1) {
-		await expect(efforts.nth(index)).not.toHaveCSS("color", cardColour);
-	}
+	await expect(card.locator("[data-card-effort]")).toHaveCount(0);
+	await expect(card.locator("[data-card-efforts]")).toContainText("effort");
+	await expect(card.locator("[data-card-scope]")).toBeVisible();
 });
