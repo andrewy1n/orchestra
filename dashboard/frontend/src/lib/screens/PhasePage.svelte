@@ -143,7 +143,7 @@
               {#each phase.tasks as task (task.id)}
                 <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
                 <Table.Row
-                  class="cursor-pointer outline-none focus-visible:bg-muted"
+                  class="cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   role="button"
                   tabindex={0}
                   data-task={task.id}
