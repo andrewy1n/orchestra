@@ -28,6 +28,43 @@ live SQLite store was checked with the per-type count comparison against
 `pre-cutover-counts.json`: 10,197 current records across 28 types, baseline
 9,983 across 28 types, and every baseline type count was met.
 
+## Preservation of record IDs and revisions
+
+The export and the live store were compared by record ID, op, and revision
+hash. Run the check on a read-only copy of the live database:
+
+```text
+mkdir -p /tmp/cutover-live
+python -c "import sqlite3, pathlib as p; s = sqlite3.connect('file:' + str(p.Path.home() / '.canon/orchestra/canon.db') + '?mode=ro', uri=True); s.backup(sqlite3.connect('/tmp/cutover-live/canon.db'))"
+python scripts/verify_preservation.py \
+  ~/.canon/orchestra/backups/pre-cutover.jsonl /tmp/cutover-live
+```
+
+The check fails if any of these is false:
+
+- Every record ID in the export is a current record in the live store.
+- Every export op is in the live op chain, byte-equal.
+- Every revision in the export, including retained history, hashes to its
+  `revision` value and is in the live store unchanged, as a current record or
+  as a history snapshot.
+
+The check passed at phase commit `cfd91ae63` against the export with SHA-256
+`abbb83550c93a4b62aac9288a2b9d5d5f3d680b6ed82f450246d68254f61507a`:
+
+```text
+ops: 11421
+revisions: 20191
+records: 9983
+live records: 10291
+live records not in export: 308
+export final revision still current: 9953
+0 mismatches
+```
+
+The live store gains records after the cutover, so its count is higher than the
+10,197 recorded below. 30 baseline records have a newer revision since the
+cutover. The check finds their baseline revisions in history.
+
 `canon validate` returned:
 
 ```json
