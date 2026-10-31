@@ -40,7 +40,7 @@
       >
         <Tabs.List class="h-auto flex-wrap" data-phase-tabs>
           {#each phase.phaseTabs as tab (tab)}
-            <Tabs.Trigger value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
+            <Tabs.Trigger class="capitalize" value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
           {/each}
         </Tabs.List>
       </Tabs.Root>
