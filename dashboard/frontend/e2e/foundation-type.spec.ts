@@ -17,6 +17,17 @@ interface TextElement {
 	text: string;
 }
 
+type Theme = "light" | "dark";
+
+const THEMES: Theme[] = ["light", "dark"];
+
+const DARK_CLASS = /(^|\s)dark(\s|$)/;
+
+async function switchToDark(page: Page) {
+	await page.locator(".theme-switch").click();
+	await expect(page.locator("html")).toHaveClass(DARK_CLASS);
+}
+
 async function openRoute(page: Page, url: string) {
 	await page.goto(url);
 	await page.waitForLoadState("networkidle");
@@ -71,40 +82,53 @@ function collectTextElements(page: Page): Promise<TextElement[]> {
 	});
 }
 
-test("R8 body text renders in Inter at 14px by default", async ({ page }) => {
-	await openRoute(page, "/");
-	const body = await page.evaluate(() => {
-		const style = getComputedStyle(document.body);
-		return { family: style.fontFamily, size: style.fontSize };
+for (const theme of THEMES) {
+	const label = theme === "dark" ? "R8 dark:" : "R8";
+	test(`${label} body text renders in Inter at 14px by default`, async ({
+		page,
+	}) => {
+		await openRoute(page, "/");
+		if (theme === "dark") await switchToDark(page);
+		const body = await page.evaluate(() => {
+			const style = getComputedStyle(document.body);
+			return { family: style.fontFamily, size: style.fontSize };
+		});
+		expect(body.size).toBe("14px");
+		expect(body.family).toMatch(/^"?Inter/);
+		const loaded = await page.evaluate(() =>
+			document.fonts.ready.then(() =>
+				document.fonts.check('14px "Inter Variable"'),
+			),
+		);
+		expect(loaded).toBe(true);
 	});
-	expect(body.size).toBe("14px");
-	expect(body.family).toMatch(/^"?Inter/);
-	const loaded = await page.evaluate(() =>
-		document.fonts.ready.then(() =>
-			document.fonts.check('14px "Inter Variable"'),
-		),
-	);
-	expect(loaded).toBe(true);
-});
+}
 
-test("R9 every text element on the main screens uses 12, 14, 16 or 20px", async ({
-	page,
-}) => {
-	const offenders: string[] = [];
-	for (const url of ROUTES) {
-		await openRoute(page, url);
-		const elements = await collectTextElements(page);
-		expect(elements.length, `${url} has text`).toBeGreaterThan(0);
-		for (const element of elements) {
-			if (!ALLOWED_SIZES.includes(element.size)) {
-				offenders.push(
-					`${url}  ${element.size}px  ${element.selector}  "${element.text}"`,
-				);
+for (const theme of THEMES) {
+	const label = theme === "dark" ? "R9 dark:" : "R9";
+	test(`${label} every text element on the main screens uses 12, 14, 16 or 20px`, async ({
+		page,
+	}) => {
+		const offenders: string[] = [];
+		for (const [index, url] of ROUTES.entries()) {
+			await openRoute(page, url);
+			if (theme === "dark") {
+				if (index === 0) await switchToDark(page);
+				await expect(page.locator("html")).toHaveClass(DARK_CLASS);
+			}
+			const elements = await collectTextElements(page);
+			expect(elements.length, `${url} has text`).toBeGreaterThan(0);
+			for (const element of elements) {
+				if (!ALLOWED_SIZES.includes(element.size)) {
+					offenders.push(
+						`${url}  ${element.size}px  ${element.selector}  "${element.text}"`,
+					);
+				}
 			}
 		}
-	}
-	expect(
-		offenders,
-		`text outside ${ALLOWED_SIZES.join("/")}px:\n${offenders.join("\n")}`,
-	).toEqual([]);
-});
+		expect(
+			offenders,
+			`text outside ${ALLOWED_SIZES.join("/")}px:\n${offenders.join("\n")}`,
+		).toEqual([]);
+	});
+}
