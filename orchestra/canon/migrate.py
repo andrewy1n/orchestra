@@ -2,31 +2,43 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from orchestra.canon.backend import Backend
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 
 
 def migration_path(module: JsonObject, old_major: int, new_major: int) -> list[JsonObject]:
-    steps = {int(step["from"]): step for step in module.get("migrations") or []}
-    path: list[dict[str, Any]] = []
+    migrations = module.get("migrations") or []
+    steps: dict[int, JsonObject] = {}
+    if isinstance(migrations, list):
+        for step in migrations:
+            if isinstance(step, dict):
+                start = step.get("from")
+                if isinstance(start, str):
+                    steps[int(start)] = step
+    path: list[JsonObject] = []
     current = old_major
     while current < new_major:
         step = steps.get(current)
-        if step is None or int(step["to"]) > new_major:
+        if step is None:
+            raise SchemaError(
+                f"{module['namespace']}: no migration from major {current} toward {new_major}"
+            )
+        target = step.get("to")
+        if not isinstance(target, str):
+            raise TypeError("migration target must be a string")
+        if int(target) > new_major:
             raise SchemaError(
                 f"{module['namespace']}: no migration from major {current} toward {new_major}"
             )
         path.append(step)
-        current = int(step["to"])
+        current = int(target)
     return path
 
 
-def _map_value(mapping: dict[str, str], value: Any) -> Any:
+def _map_value(mapping: dict[str, JsonValue], value: JsonValue) -> JsonValue:
     if isinstance(value, str):
         return mapping.get(value, value)
     if isinstance(value, list):
@@ -35,24 +47,41 @@ def _map_value(mapping: dict[str, str], value: Any) -> Any:
 
 
 def transform(record: Record, steps: list[JsonObject]) -> Record:
-    out = dict(record)
-    payload = dict(out.get("payload") or {})
+    out: Record = record.copy()
+    payload = dict(record["payload"])
     for step in steps:
-        out["record_type"] = (step.get("rename_type") or {}).get(
-            out["record_type"], out["record_type"]
-        )
-        for old, new in ((step.get("rename_field") or {}).get(out["record_type"]) or {}).items():
+        rename_type = step.get("rename_type") or {}
+        if isinstance(rename_type, dict):
+            new_type = rename_type.get(out["record_type"])
+            if isinstance(new_type, str):
+                out["record_type"] = new_type
+        rename_fields = step.get("rename_field") or {}
+        fields: JsonObject | None = None
+        if isinstance(rename_fields, dict):
+            raw_fields = rename_fields.get(out["record_type"])
+            if isinstance(raw_fields, dict):
+                fields = raw_fields
+        if fields is None:
+            fields = {}
+        for old, new in fields.items():
+            if not isinstance(new, str):
+                continue
             if old in payload:
                 payload[new] = payload.pop(old)
-        for key, mapping in (step.get("map_enum") or {}).items():
+        map_enum = step.get("map_enum") or {}
+        if not isinstance(map_enum, dict):
+            continue
+        for key, raw_mapping in map_enum.items():
+            if not isinstance(raw_mapping, dict):
+                continue
             record_type, field = key.rsplit(".", 1)
             if record_type == out["record_type"] and field in payload:
-                payload[field] = _map_value(mapping, payload[field])
+                payload[field] = _map_value(raw_mapping, payload[field])
     out["payload"] = payload
     return out
 
 
-def _changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
+def _changed(before: Record, after: Record) -> bool:
     return before["record_type"] != after["record_type"] or before.get("payload") != after.get(
         "payload"
     )
