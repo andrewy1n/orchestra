@@ -132,7 +132,7 @@ describe("web-dashboard main", () => {
 	});
 
 	it("R6: The effort rail shows each effort's name, kind, and needs-you count.", async () => {
-		expect(appSource).toContain("data-effort=");
+		expect(appSource).toContain("data-rail-item=");
 		expect(appSource).toMatch(/view\.kind/);
 		expect(appSource).toMatch(/needs you/);
 
@@ -174,12 +174,13 @@ describe("web-dashboard main", () => {
 				});
 			}),
 		);
+		window.location.hash = "#/effort/dashboard";
 		if (await tryMountApp()) {
-			const dash = document.querySelector('[data-effort="dashboard"]');
+			const dash = document.querySelector('[data-rail-item="dashboard"]');
 			expect(dash?.textContent).toContain("dashboard");
 			expect(dash?.textContent).toContain("deliver");
 			expect(dash?.textContent).toMatch(/2 needs you/);
-			const repair = document.querySelector('[data-effort="flaky-suite"]');
+			const repair = document.querySelector('[data-rail-item="flaky-suite"]');
 			expect(repair?.textContent).toContain("repair");
 		}
 	});
@@ -232,6 +233,7 @@ describe("web-dashboard main", () => {
 				});
 			}),
 		);
+		window.location.hash = "#/effort/alpha";
 		if (await tryMountApp()) {
 			expect(document.querySelector("[data-effort-title]")?.textContent).toBe(
 				"alpha",
@@ -240,8 +242,10 @@ describe("web-dashboard main", () => {
 				"Alpha goal text",
 			);
 			document
-				.querySelector<HTMLButtonElement>('[data-effort="beta"]')!
+				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
 				.click();
+			await vi.advanceTimersByTimeAsync(0);
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
 			flushSync();
 			expect(document.querySelector("[data-goal]")?.textContent).toBe(
 				"Beta goal text",
@@ -251,7 +255,6 @@ describe("web-dashboard main", () => {
 
 	it("R9: Selecting one phase limits the task rows to that phase.", async () => {
 		expect(appSource).toContain("data-phase=");
-		expect(appSource).toContain("data-phase-control");
 
 		const view = effort({
 			effort: "dashboard",
@@ -414,52 +417,5 @@ describe("web-dashboard main", () => {
 		expect(shown.find((v) => v.effort === "packaging")!.needs_you.length).toBe(
 			1,
 		);
-	});
-
-	it("R33: Selecting all phases shows every task in the effort.", async () => {
-		expect(appSource).toContain('data-phase="all"');
-		expect(appSource).toMatch(/All phases/);
-
-		const view = effort({
-			effort: "dashboard",
-			phases: [
-				{
-					subject: "phase-a",
-					title: "Phase A",
-					ordinal: 1,
-					state: "done",
-					done: 1,
-					total: 1,
-				},
-				{
-					subject: "phase-b",
-					title: "Phase B",
-					ordinal: 2,
-					state: "in_progress",
-					done: 0,
-					total: 1,
-				},
-			],
-			tasks: [
-				{
-					id: "ta",
-					subject: "a",
-					title: "Task A",
-					phase: "phase-a",
-					status: "done",
-				},
-				{
-					id: "tb",
-					subject: "b",
-					title: "Task B",
-					phase: "phase-b",
-					status: "ready",
-				},
-			],
-		});
-
-		expect(resolvedPhase(view, "all")).toBeNull();
-		const all = filteredTasks(view, null, "all");
-		expect(all.map((t) => t.id).sort()).toEqual(["ta", "tb"]);
 	});
 });

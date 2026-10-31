@@ -140,6 +140,7 @@ describe("web-dashboard side", () => {
 			alpha: { open: [], rest: [] },
 			beta: { open: [], rest: [] },
 		});
+		window.location.hash = "#/effort/alpha";
 		if (await tryMountApp()) {
 			const side = document.querySelector("[data-side-needs]");
 			expect(side).toBeTruthy();
@@ -148,8 +149,10 @@ describe("web-dashboard side", () => {
 			expect(document.querySelector('[data-needs="nh1"]')).toBeNull();
 
 			document
-				.querySelector<HTMLButtonElement>('[data-effort="beta"]')!
+				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
 				.click();
+			await vi.advanceTimersByTimeAsync(0);
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
 			flushSync();
 			await vi.advanceTimersByTimeAsync(0);
 			flushSync();
@@ -259,6 +262,7 @@ describe("web-dashboard side", () => {
 			alpha: { open: [], rest: [] },
 			beta: { open: [], rest: [] },
 		});
+		window.location.hash = "#/effort/alpha";
 		if (await tryMountApp()) {
 			expect(document.querySelector('[data-backlog="b1"]')).toBeTruthy();
 			expect(
@@ -268,8 +272,10 @@ describe("web-dashboard side", () => {
 			expect(document.querySelector('[data-backlog="b3"]')).toBeNull();
 
 			document
-				.querySelector<HTMLButtonElement>('[data-effort="beta"]')!
+				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
 				.click();
+			await vi.advanceTimersByTimeAsync(0);
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
 			flushSync();
 			await vi.advanceTimersByTimeAsync(0);
 			flushSync();

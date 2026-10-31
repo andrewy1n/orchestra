@@ -3,19 +3,19 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { overlay } from "$lib/state/overlay.svelte";
+  import { leaveHref } from "$lib/state/polling.svelte";
+  import { md } from "$lib/state/refs";
   import { closeDetail } from "../../detail";
-  import type { Theme } from "../../theme";
   import { chipVariant } from "./chipVariant";
-  import PhaseOverlay from "./PhaseOverlay.svelte";
 
-  let { theme }: { theme: Theme } = $props();
   const target = $derived(overlay.target);
+  const view = $derived(overlay.overlayView);
 </script>
 
 <Dialog.Root
   open={Boolean(target)}
   onOpenChange={(open) => {
-    if (!open) closeDetail();
+    if (!open) closeDetail(leaveHref());
   }}
 >
   {#if target}
@@ -34,16 +34,16 @@
           variant="outline"
           size="sm"
           data-act="close-detail"
-          onclick={closeDetail}
+          onclick={() => closeDetail(leaveHref())}
         >
           Back
         </Button>
         <div class="flex min-w-0 flex-col">
           <Dialog.Title class="truncate text-base font-semibold" id="overlay-who">
-            {overlay.overlayView?.who ?? target.kind}
+            {view?.who ?? target.kind}
           </Dialog.Title>
-          {#if overlay.overlayView?.ctx}
-            <span class="truncate text-xs text-muted-foreground">{overlay.overlayView.ctx}</span>
+          {#if view?.ctx}
+            <span class="truncate text-xs text-muted-foreground">{view.ctx}</span>
           {/if}
         </div>
       </header>
@@ -52,11 +52,10 @@
           <p class="empty-note">Loading…</p>
         {:else if overlay.detailError}
           <p class="error-note">{overlay.detailError}</p>
-        {:else if overlay.detailPayload && overlay.overlayView}
-          <PhaseOverlay kind={target.kind} {theme} />
-          {#if !overlay.phaseChrome && overlay.overlayView.chips.length}
+        {:else if overlay.detailPayload && view}
+          {#if view.chips.length}
             <div class="chips" data-detail-chips>
-              {#each overlay.overlayView.chips as chip (chip.label)}
+              {#each view.chips as chip (chip.label)}
                 <Badge variant={chipVariant(chip.tone)}>{chip.label}</Badge>
               {/each}
             </div>
@@ -64,14 +63,14 @@
           {#if overlay.writeError && !overlay.pendingWrite}
             <p class="write-error" data-write-error>{overlay.writeError}</p>
           {/if}
-          {#each overlay.overlayView.sections as section, index (section.title + index)}
+          {#each view.sections as section, index (section.title + index)}
             {#if section.title}
               <div class="section-title" data-section-card>{section.title}</div>
             {/if}
             <div
               class="md section-card"
               data-detail-section={section.title || "body"}
-            >{@html overlay.md(section.body)}</div>
+            >{@html md(section.body, overlay.linkCtx)}</div>
           {/each}
           {#if overlay.overlayChoices.length}
             <div class="overlay-actions" data-write-actions>
@@ -88,7 +87,7 @@
             </div>
           {/if}
           <!-- Probe text for acceptances; not shown as a JSON dump. -->
-          <pre data-detail-payload class="sr-only">{overlay.overlayView.probe}</pre>
+          <pre data-detail-payload class="sr-only">{view.probe}</pre>
         {/if}
       </div>
       <footer class="border-t px-4 py-2 text-xs text-muted-foreground">

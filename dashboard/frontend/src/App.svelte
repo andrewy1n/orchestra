@@ -1,19 +1,24 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Area from "$lib/screens/Area.svelte";
+  import Breadcrumb from "$lib/screens/Breadcrumb.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
-  import EffortRail from "$lib/screens/EffortRail.svelte";
   import Home from "$lib/screens/Home.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
+  import PhasePage from "$lib/screens/PhasePage.svelte";
+  import ProductIndex from "$lib/screens/ProductIndex.svelte";
+  import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
-  import { bindAreas } from "$lib/state/areas.svelte";
+  import { railItems, routePhase } from "$lib/state/areas";
+  import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
+  import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
+  import { bindPhase } from "$lib/state/phase.svelte";
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
-  import { detailTarget, openHash } from "./detail";
-  import { currentRoute, routeLabel } from "./router";
+  import { effortName } from "./router";
   import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
   let theme: Theme = $state(DEFAULT_THEME);
@@ -22,9 +27,22 @@
   bindJournal();
   bindAreas();
   bindOverlay();
+  bindPhase();
 
   const effort = $derived(polling.effort);
   const target = $derived(overlay.target);
+  const onPhasePage = $derived(
+    navigation.route.name === "phase" ||
+      routePhase(navigation.route, polling.snapshot?.efforts ?? []) !== null,
+  );
+  const railLevel = $derived(
+    railItems(
+      navigation.route,
+      polling.snapshot,
+      areas.items,
+      polling.selectedEffort,
+    ).level,
+  );
 
   $effect(() => {
     applyTheme(theme);
@@ -37,28 +55,7 @@
   onMount(() => {
     const stopRoute = navigation.listen();
 
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "t" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        const el = event.target;
-        if (
-          el instanceof HTMLElement &&
-          el.closest("input, textarea, select, [contenteditable='true']")
-        ) {
-          return;
-        }
-        if (overlay.pendingWrite || detailTarget(currentRoute())) return;
-        event.preventDefault();
-        onToggleTheme();
-        return;
-      }
-      if (event.key !== "Escape") return;
-      if (overlay.pendingWrite) return;
-      const current = currentRoute();
-      if (detailTarget(current)) return;
-      if (current.name === "journal") {
-        openHash("");
-      }
-    };
+    const onKey = (event: KeyboardEvent) => handleKey(event, onToggleTheme);
     window.addEventListener("keydown", onKey, true);
 
     const stopPolling = polling.start();
@@ -74,7 +71,7 @@
 <div class="app" inert={target || overlay.pendingWrite ? true : undefined}>
   <header class="topbar">
     <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
-    <div class="crumbs" aria-live="polite">{routeLabel(navigation.route)}</div>
+    <div class="crumbs" aria-live="polite"><Breadcrumb /></div>
     <div class="top-actions">
       <button
         type="button"
@@ -91,15 +88,29 @@
     </div>
   </header>
 
-  <div class="layout">
-    <input class="rail-toggle" id="rail-toggle" type="checkbox" />
-    <EffortRail />
+  <div
+    class="layout"
+    class:no-rail={railLevel === "product"}
+    class:no-side={railLevel !== "effort"}
+  >
+    {#if railLevel !== "product"}
+      <input class="rail-toggle" id="rail-toggle" type="checkbox" />
+      <Rail />
+    {/if}
 
     <main class="main" data-route={navigation.route.name}>
       {#if navigation.route.name === "journal"}
         <Journal />
+      {:else if navigation.route.name === "home"}
+        <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />
+      {:else if onPhasePage}
+        <PhasePage {theme} />
+      {:else if navigation.route.name === "effort" && !effort}
+        {#if polling.snapshot}
+          <p class="empty-note">No effort named {effortName(navigation.route)}.</p>
+        {/if}
       {:else if effort}
         <Home {effort} />
       {:else if !polling.loading && !polling.error}
@@ -107,8 +118,18 @@
       {/if}
     </main>
 
-    <SideRail />
-    <label class="rail-toggle-label" for="rail-toggle">Efforts</label>
+    {#if railLevel === "effort"}
+      <SideRail />
+    {/if}
+    {#if railLevel !== "product"}
+      <label class="rail-toggle-label" for="rail-toggle"
+        >{railLevel === "area"
+          ? "Areas"
+          : railLevel === "phase"
+            ? "Phases"
+            : "Efforts"}</label
+      >
+    {/if}
   </div>
 
   <footer class="statusbar">
@@ -120,5 +141,5 @@
   </footer>
 </div>
 
-<Overlay {theme} />
+<Overlay />
 <ConfirmModal />
