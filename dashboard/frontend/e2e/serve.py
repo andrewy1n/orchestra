@@ -17,6 +17,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 EFFORT = "e2e-alpha"
 PHASE = "e2e-phase"
 TASK = "e2e-task"
+CHAIN_PHASE = "e2e-chain"
+WIDE_PHASE = "e2e-wide"
+DONE_PHASE = "e2e-done"
 AREA = "e2e-area"
 PHASE_SECTIONS = ("Problem", "Approach", "Exit criteria")
 AREA_SECTIONS = ("Scope",)
@@ -99,25 +102,73 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
         {"phase": PHASE, "effort": EFFORT, "requirements": ["R1", "R2"], "weight": "light"},
         body=SPEC_BODY,
     )
+
+    def create_phase(subject: str, title: str, ordinal: int) -> None:
+        create(
+            "score:phase",
+            subject,
+            {"title": title, "ordinal": ordinal, "effort": EFFORT},
+            PHASE_SECTIONS,
+        )
+
+    def create_task(subject: str, title: str, phase: str, depends_on: tuple[str, ...] = ()) -> None:
+        payload: dict[str, object] = {
+            "title": title,
+            "phase": phase,
+            "kind": "deliver",
+            "assignee": "",
+            "effort": EFFORT,
+            "attempts": 0,
+            "estimate_minutes": 0,
+        }
+        if depends_on:
+            payload["depends_on"] = list(depends_on)
+        create("score:work-item", subject, payload, ("Description",))
+
+    def transition(record_type: str, subject: str, *states: str) -> None:
+        for state in states:
+            run(
+                [
+                    *canon,
+                    "update",
+                    "--type",
+                    record_type,
+                    "--subject",
+                    subject,
+                    "--transition",
+                    state,
+                ],
+                REPO_ROOT,
+                env,
+            )
+
     for subject, title in (
         (TASK, "E2E task"),
         (f"{TASK}-2", "E2E task 2"),
         (f"{TASK}-3", "E2E task 3"),
     ):
-        create(
-            "score:work-item",
+        create_task(subject, title, PHASE)
+
+    create_phase(CHAIN_PHASE, "E2E chain phase", 2)
+    chain = [f"{CHAIN_PHASE}-{index}" for index in range(1, 4)]
+    for index, subject in enumerate(chain):
+        create_task(
             subject,
-            {
-                "title": title,
-                "phase": PHASE,
-                "kind": "deliver",
-                "assignee": "",
-                "effort": EFFORT,
-                "attempts": 0,
-                "estimate_minutes": 0,
-            },
-            ("Description",),
+            f"E2E chain task {index + 1}",
+            CHAIN_PHASE,
+            (chain[index - 1],) if index else (),
         )
+
+    create_phase(WIDE_PHASE, "E2E wide phase", 3)
+    for index in range(1, 6):
+        create_task(f"{WIDE_PHASE}-{index}", f"E2E wide task {index}", WIDE_PHASE)
+
+    create_phase(DONE_PHASE, "E2E done phase", 4)
+    for index in range(1, 3):
+        subject = f"{DONE_PHASE}-{index}"
+        create_task(subject, f"E2E done task {index}", DONE_PHASE)
+        transition("score:work-item", subject, "in_progress", "done")
+    transition("score:phase", DONE_PHASE, "in_progress", "done")
 
 
 def main() -> int:

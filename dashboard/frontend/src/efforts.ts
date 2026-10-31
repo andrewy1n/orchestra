@@ -114,7 +114,6 @@ const DEFAULT_TAB_ORDER: readonly StatusTab[] = [
 	"all",
 ];
 
-/** First tab with tasks, in the order Active, Done, Waiting, Ready, Running, All. */
 export function defaultStatusTab(counts: Record<StatusTab, number>): StatusTab {
 	return DEFAULT_TAB_ORDER.find((name) => counts[name] > 0) ?? "all";
 }
