@@ -22,6 +22,7 @@ import json
 import os
 import time
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any, Iterator
@@ -514,6 +515,9 @@ class Store:
 
     def backup(self, keep: int = 14) -> str:
         raise StoreError("backup requires a SQLite store")
+
+    def backup_due(self, max_age: timedelta) -> bool:
+        return False
 
     def change_token(self) -> str:
         digest = hashlib.sha1()
