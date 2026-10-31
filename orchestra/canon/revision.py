@@ -26,6 +26,6 @@ def compute_revision(record: Record | Mapping[str, object]) -> str:
 
 
 def with_revision(record: Record) -> Record:
-    out = dict(record)
+    out: Record = {**record}
     out["revision"] = compute_revision(out)
     return out

@@ -7,10 +7,9 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.git_backend import run_git
@@ -22,19 +21,17 @@ from orchestra.canon.revision import compute_revision, with_revision
 from orchestra.canon.types import JsonObject, Record, StoredOp
 
 
-def _decide_create(
-    current: dict[str, Any] | None, record: dict[str, Any]
-) -> tuple[str, dict[str, Any], dict[str, Any]]:
+def _decide_create(current: Record | None, record: Record) -> tuple[str, Record, JsonObject]:
     if current is not None:
         return "rejected_exists", current, {"conflict_revision": current.get("revision")}
     return "accepted", with_revision(prepare_record(record)), {}
 
 
 def _decide_write(
-    current: dict[str, Any] | None,
-    record: dict[str, Any],
+    current: Record | None,
+    record: Record,
     expected_revision: object,
-) -> tuple[str, dict[str, Any], dict[str, Any]]:
+) -> tuple[str, Record, JsonObject]:
     if current is not None:
         if expected_revision is None:
             return (
@@ -71,6 +68,11 @@ CREATE TABLE IF NOT EXISTS revisions (
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO meta VALUES ('format', 'canon-sqlite/1');
 """
+
+
+def _decode_op(text: str, seq: int) -> StoredOp:
+    op: StoredOp = json.loads(text)
+    return {**op, "seq": seq}
 
 
 class SqliteBackend:
@@ -129,7 +131,7 @@ class SqliteBackend:
         return connection
 
     @contextlib.contextmanager
-    def _reader(self) -> Iterator[sqlite3.Connection]:
+    def _reader(self) -> Generator[sqlite3.Connection, None, None]:
         if self._active is not None:
             yield self._active
         else:
@@ -140,7 +142,7 @@ class SqliteBackend:
                 connection.close()
 
     @contextlib.contextmanager
-    def transaction(self) -> Iterator[None]:
+    def transaction(self) -> Generator[None, None, None]:
         if self._active is not None:
             name = "nested_" + uuid.uuid4().hex
             connection = self._active
@@ -208,16 +210,16 @@ class SqliteBackend:
         except ValueError as exc:
             raise StoreError(str(exc)) from exc
 
-    def _chain(self, connection: sqlite3.Connection, record_id: str) -> list[dict[str, Any]]:
+    def _chain(self, connection: sqlite3.Connection, record_id: str) -> list[StoredOp]:
         return [
-            {**json.loads(row[1]), "seq": row[0]}
+            _decode_op(row[1], row[0])
             for row in connection.execute(
                 "SELECT seq, op_json FROM ops WHERE record_id=? ORDER BY seq",
                 (record_id,),
             )
         ]
 
-    def _materialize(self, connection: sqlite3.Connection, record: dict[str, Any]) -> None:
+    def _materialize(self, connection: sqlite3.Connection, record: Record) -> None:
         connection.execute(
             "INSERT INTO records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(record_id) DO UPDATE SET "
@@ -246,12 +248,12 @@ class SqliteBackend:
 
     def _write(
         self,
-        record: dict[str, Any],
+        record: Record,
         *,
         create: bool,
         expected_revision: object = None,
-        archive_prior: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        archive_prior: Record | None = None,
+    ) -> Record:
         record_id = record["id"]
         self._validate_key(record["record_type"], record_id)
         with self.transaction(), self._reader() as connection:
@@ -462,7 +464,7 @@ class SqliteBackend:
                 if row[0] != "ok":
                     errors.append(f"SQLite integrity: {row[0]}")
             rows = connection.execute("SELECT * FROM records").fetchall()
-            records: dict[str, dict[str, Any]] = {}
+            records: dict[str, Record] = {}
             for row in rows:
                 try:
                     record = json.loads(row[9])
