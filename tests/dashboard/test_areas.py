@@ -231,14 +231,17 @@ def _get(proc: subprocess.Popen, port: int, path: str, err: Path) -> tuple[int, 
     assert False, f"GET {path} failed (exit {proc.poll()}): {last}\n{err.read_text()}"
 
 
-def test_web_entry_lists_the_repo_areas(tmp_path):
+def test_web_entry_lists_the_repo_areas(tmp_path, store, cli):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     assert (REPO_ROOT / ".canon").is_dir(), "the checkout has no .canon store"
+    _area(cli, "dashboard", "Dashboard", "The web dashboard.")
+    _area(cli, "architecture", "Architecture", "System structure.")
+    _area(cli, "agent-slop-standards", "Agent Slop Standards", "Code quality standards.")
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
     env.setdefault("UV_CACHE_DIR", UV_CACHE_DIR)
     env.pop("UV_PYTHON", None)
-    env.pop("CANON_STORE", None)
+    env["CANON_STORE"] = str(store / ".canon")
     port = _free_port()
     err = tmp_path / "err"
     with (tmp_path / "out").open("w") as out, err.open("w") as errfile:
