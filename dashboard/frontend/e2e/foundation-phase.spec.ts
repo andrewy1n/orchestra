@@ -46,10 +46,18 @@ test("R19 the task table is a shadcn table as wide as its container", async ({
 	await expect(table.locator("[data-task]")).toHaveCount(1);
 	expect(await table.evaluate((el) => el.tagName)).toBe("TABLE");
 	expect(await table.getAttribute("data-slot")).toBe("table");
-	const widths = await table.evaluate((el) => ({
-		table: el.getBoundingClientRect().width,
-		parent: el.parentElement?.getBoundingClientRect().width ?? 0,
-	}));
-	expect(widths.parent).toBeGreaterThan(0);
-	expect(widths.table).toBe(widths.parent);
+	const widths = await table.evaluate((el) => {
+		const container = el.closest("div.overflow-hidden.rounded-md.border");
+		if (!container) return { table: 0, container: 0 };
+		const style = getComputedStyle(container);
+		return {
+			table: el.getBoundingClientRect().width,
+			container:
+				container.getBoundingClientRect().width -
+				Number.parseFloat(style.borderLeftWidth) -
+				Number.parseFloat(style.borderRightWidth),
+		};
+	});
+	expect(widths.container).toBeGreaterThan(0);
+	expect(widths.table).toBeCloseTo(widths.container, 1);
 });
