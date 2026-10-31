@@ -38,7 +38,7 @@ class Backend(Protocol):
         self,
         record: Record,
         *,
-        expected_revision: str | None = None,
+        expected_revision: object = None,
         archive_prior: Record | None = None,
     ) -> Record: ...
     def delete_record(self, record_type: str, record_id: str) -> None: ...

@@ -33,7 +33,7 @@ def _decide_create(
 def _decide_write(
     current: dict[str, Any] | None,
     record: dict[str, Any],
-    expected_revision: str | None,
+    expected_revision: object,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     if current is not None:
         if expected_revision is None:
@@ -249,7 +249,7 @@ class SqliteBackend:
         record: dict[str, Any],
         *,
         create: bool,
-        expected_revision: str | None = None,
+        expected_revision: object = None,
         archive_prior: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         record_id = record["id"]
@@ -293,7 +293,7 @@ class SqliteBackend:
         self,
         record: Record,
         *,
-        expected_revision: str | None = None,
+        expected_revision: object = None,
         archive_prior: Record | None = None,
     ) -> Record:
         return self._write(

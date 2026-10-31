@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Literal
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
@@ -151,7 +152,7 @@ class Project:
     ) -> Record:
         """Move a record to a new state and merge payload and body changes into it."""
         store, schemas = self._session()
-        op = {
+        op: JsonObject = {
             "id": record_id,
             "type": record_type,
             "transition": transition,
@@ -173,7 +174,7 @@ class Project:
     ) -> MutationResult:
         """Write a successor under a new id. Returns `record` and `predecessor`."""
         store, schemas = self._session()
-        op = {
+        op: JsonObject = {
             "id": record_id,
             "type": record_type,
             "payload": payload,
@@ -195,7 +196,7 @@ class Project:
     ) -> MutationResult:
         """Write a correcting successor of an event record. Returns `record` and `predecessor`."""
         store, schemas = self._session()
-        op = {
+        op: JsonObject = {
             "id": record_id,
             "type": record_type,
             "payload": payload,
@@ -206,15 +207,16 @@ class Project:
         with store.transaction():
             return _correct_record(store, schemas, op)
 
-    def apply(self, operations: list[JsonObject]) -> list[OperationResult]:
+    def apply(self, operations: Iterable[JsonValue]) -> list[OperationResult]:
         """Write each operation and return each result.
 
         A bad operation is reported and later operations still run. Earlier
         writes are left in place.
         """
         store, schemas = self._session()
-        results: list[dict[str, Any]] = []
+        results: list[OperationResult] = []
         for index, op in enumerate(operations, start=1):
+            result: OperationResult
             try:
                 with store.transaction():
                     result = _apply_operation(store, schemas, op)
@@ -326,7 +328,7 @@ def _binding_file(root: Path) -> tuple[Path, Location] | None:
 def _read_binding(path: Path) -> Location:
     source = str(path)
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise StoreBindingError(f"Cannot read store binding {source}: {exc}") from exc
     except json.JSONDecodeError as exc:
@@ -340,7 +342,7 @@ def _read_binding(path: Path) -> Location:
         raise StoreBindingError(
             f'Invalid store binding from {source}: expected "local" or "global", got {value!r}'
         )
-    return value  # type: ignore[return-value]
+    return "local" if value == "local" else "global"
 
 
 def _open(root: Path, store: Path, binding: Binding) -> Project:
@@ -357,7 +359,7 @@ _OP_KEYS = {
 }
 
 
-def _find_record_by_id(store: Backend, schemas: SchemaSet, record_id: str) -> dict[str, Any] | None:
+def _find_record_by_id(store: Backend, schemas: SchemaSet, record_id: str) -> Record | None:
     for record_type in schemas.types:
         if store.record_exists(record_type, record_id):
             return store.read_record(record_type, record_id)
@@ -365,8 +367,8 @@ def _find_record_by_id(store: Backend, schemas: SchemaSet, record_id: str) -> di
 
 
 def _read_record(
-    store: Backend, schemas: SchemaSet, record_id: str, type_arg: str | None
-) -> dict[str, Any]:
+    store: Backend, schemas: SchemaSet, record_id: str, type_arg: object | None
+) -> Record:
     if type_arg is None:
         found = _find_record_by_id(store, schemas, record_id)
         if found is None:
@@ -386,7 +388,7 @@ def _read_record(
         raise StoreError(f"unknown record: {record_id}") from exc
 
 
-def _payload_object(payload: dict[str, Any] | None) -> dict[str, Any]:
+def _payload_object(payload: JsonValue | None) -> JsonObject:
     if payload is None:
         return {}
     if not isinstance(payload, dict):
@@ -394,7 +396,7 @@ def _payload_object(payload: dict[str, Any] | None) -> dict[str, Any]:
     return dict(payload)
 
 
-def _body_text(body: str | None) -> str:
+def _body_text(body: JsonValue | None) -> str:
     if body is None:
         return ""
     if not isinstance(body, str):
@@ -402,7 +404,7 @@ def _body_text(body: str | None) -> str:
     return body
 
 
-def _persist_new(store: Backend, type_def: TypeDef, record: dict[str, Any]) -> dict[str, Any]:
+def _persist_new(store: Backend, type_def: TypeDef, record: Record) -> Record:
     stored = store.create_record(record)
     if type_def.lifecycle.appends_only:
         try:
@@ -414,7 +416,7 @@ def _persist_new(store: Backend, type_def: TypeDef, record: dict[str, Any]) -> d
 
 
 def _require_one_active(
-    type_def: TypeDef, index: RecordIndex, record: dict[str, Any], ignore: str | None = None
+    type_def: TypeDef, index: RecordIndex, record: Record, ignore: str | None = None
 ) -> None:
     if type_def.lifecycle.name != "current":
         return
@@ -430,13 +432,13 @@ def _create_record(
     store: Backend,
     schemas: SchemaSet,
     *,
-    record_type: str,
-    subject: str | None,
-    payload: dict[str, Any] | None,
-    body: str | None = None,
-    time: Any = None,
-    provenance: Any = None,
-) -> dict[str, Any]:
+    record_type: object,
+    subject: JsonValue | None,
+    payload: JsonValue | None,
+    body: JsonValue | None = None,
+    time: JsonValue = None,
+    provenance: JsonValue = None,
+) -> Record:
     resolved = schemas.resolve_type(record_type)
     type_def = schemas.types[resolved]
     if not isinstance(subject, str) or not subject:
@@ -456,23 +458,21 @@ def _create_record(
     return _persist_new(store, type_def, record)
 
 
-def _read_for_update(
-    store: Backend, schemas: SchemaSet, op: dict[str, Any], *, verb: str
-) -> dict[str, Any]:
+def _read_for_update(store: Backend, schemas: SchemaSet, op: JsonObject, *, verb: str) -> Record:
     record_id = op.get("id")
     if not isinstance(record_id, str) or not record_id:
         raise StoreError(f"{verb} requires id")
     return _read_record(store, schemas, record_id, op.get("type") or None)
 
 
-def _expected_revision(op: dict[str, Any], old: dict[str, Any]) -> str | None:
+def _expected_revision(op: JsonObject, old: Record) -> JsonValue | None:
     raw = op.get("expected_revision", _CURRENT_REVISION)
     if raw == _CURRENT_REVISION:
         return old["revision"]
     return raw
 
 
-def _update_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _update_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Record:
     old = _read_for_update(store, schemas, op, verb="update")
     type_def = schemas.types[old["record_type"]]
     src = old["lifecycle_state"]
@@ -482,33 +482,32 @@ def _update_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> di
     if transition:
         reject_supersede_via_update(type_def, dest)
         check_transition(type_def, src, dest)
-    record = dict(old)
+    assert isinstance(dest, str)
+    record = Record(**old)
     record["lifecycle_state"] = dest
     record["recorded_at"] = now()
     if op.get("body") is not None:
         record["body"] = _body_text(op.get("body"))
     payload_updates = op.get("payload") or {}
     if payload_updates:
-        if not isinstance(payload_updates, dict):
-            raise StoreError("payload must be a JSON object")
-        record["payload"] = {**(record.get("payload") or {}), **payload_updates}
+        record["payload"] = {**(record.get("payload") or {}), **_payload_object(payload_updates)}
     validate_record(schemas, record, RecordIndex(store.iter_records()))
     return store.write_record(
         record, expected_revision=_expected_revision(op, old), archive_prior=old
     )
 
 
-def _carried_body(op: dict[str, Any], old: dict[str, Any]) -> str:
+def _carried_body(op: JsonObject, old: Record) -> str:
     if op.get("body") is None:
         return old.get("body") or ""
     return _body_text(op.get("body"))
 
 
-def _successor_payload(op: dict[str, Any], old: dict[str, Any]) -> dict[str, Any]:
+def _successor_payload(op: JsonObject, old: Record) -> JsonObject:
     return {**(old.get("payload") or {}), **_payload_object(op.get("payload"))}
 
 
-def _supersede_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _supersede_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> MutationResult:
     old = _read_for_update(store, schemas, op, verb="supersede")
     type_def = schemas.types[old["record_type"]]
     reject_event_mutation(type_def)
@@ -528,7 +527,7 @@ def _supersede_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) ->
     index = RecordIndex(store.iter_records())
     _require_one_active(type_def, index, successor, ignore=old["id"])
     validate_record(schemas, successor, index)
-    old_updated = dict(old)
+    old_updated = Record(**old)
     old_updated["lifecycle_state"] = SUPERSEDED
     old_updated["recorded_at"] = stamp
     predecessor = store.write_record(
@@ -538,7 +537,7 @@ def _supersede_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) ->
     return {"ok": True, "op": "supersede", "record": stored, "predecessor": predecessor}
 
 
-def _correct_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _correct_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> MutationResult:
     old = _read_for_update(store, schemas, op, verb="correct")
     if "expected_revision" in op and op["expected_revision"] is not None:
         expected = _expected_revision(op, old)
@@ -554,7 +553,8 @@ def _correct_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> d
         raise ValidationError(f"{old['id']} is already corrected; correct the latest record")
     successor = base_record(
         type_def,
-        subject=op.get("subject") or old["subject"],
+        # Envelope validation aggregates malformed subjects with other record errors.
+        subject=op.get("subject") or old["subject"],  # pyright: ignore[reportArgumentType]
         payload=_successor_payload(op, old),
         record_id=store.new_id(),
         relationships={"corrects": [old["id"]]},
@@ -567,7 +567,7 @@ def _correct_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> d
     return {"ok": True, "op": "correct", "record": stored, "predecessor": old}
 
 
-def _apply_operation(store: Backend, schemas: SchemaSet, op: Any) -> dict[str, Any]:
+def _apply_operation(store: Backend, schemas: SchemaSet, op: JsonValue) -> OperationResult:
     if not isinstance(op, dict):
         raise StoreError("operation must be an object")
     verb = op.get("op")
@@ -580,7 +580,7 @@ def _apply_operation(store: Backend, schemas: SchemaSet, op: Any) -> dict[str, A
         stored = _create_record(
             store,
             schemas,
-            record_type=cast(str, op.get("type")),
+            record_type=op.get("type"),
             subject=op.get("subject"),
             payload=op.get("payload"),
             body=op.get("body"),

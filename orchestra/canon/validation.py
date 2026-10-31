@@ -340,12 +340,12 @@ def validate_store(
     return errors
 
 
-def check_transition(type_def: TypeDef, src: str, dest: str) -> None:
+def check_transition(type_def: TypeDef, src: str, dest: object) -> None:
     if not type_def.lifecycle.allows(src, dest):
         raise TransitionError(f"invalid transition {src!r} -> {dest!r}")
 
 
-def reject_supersede_via_update(type_def: TypeDef, dest: str) -> None:
+def reject_supersede_via_update(type_def: TypeDef, dest: object) -> None:
     if dest == SUPERSEDED:
         raise TransitionError(
             "transition to superseded requires the supersede operation", "use_supersede"
