@@ -26,13 +26,14 @@ class RecordIndex:
     def subject_exists(self, record_type: str, subject: str) -> bool:
         return bool(self.by_subject.get((record_type, subject)))
 
-    def resolve_subject(self, record_type: str, subject: str) -> Record | None:
+    def resolve_subject(self, record_type: str, subject: object) -> Record | None:
         """The latest record of the type with the subject, by recorded_at.
 
         Superseded and corrected records give way to their successors, which
         can share a timestamp with them.
         """
-        candidates = self.by_subject.get((record_type, subject)) or []
+        # Hashable malformed subjects miss; unhashable ones retain the lookup TypeError.
+        candidates = self.by_subject.get((record_type, subject)) or []  # pyright: ignore[reportArgumentType]
         if not candidates:
             return None
         live = [
