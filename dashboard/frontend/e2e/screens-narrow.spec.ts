@@ -180,3 +180,28 @@ test("R32 the top bar contains a wrapped breadcrumb label at 700px", async ({
 	expect(fit.scrollHeight).toBeLessThanOrEqual(fit.clientHeight);
 	expect(fit.barBottom).toBeGreaterThanOrEqual(fit.labelBottom);
 });
+
+test.describe("coarse pointer", () => {
+	test.use({
+		viewport: { width: 700, height: 800 },
+		hasTouch: true,
+		isMobile: false,
+	});
+
+	test("R33 the top bar stays 46px tall on a coarse pointer with a one-line breadcrumb at 700px", async ({
+		page,
+	}) => {
+		await open(page, EFFORT);
+		const coarse = await page.evaluate(
+			() => matchMedia("(pointer: coarse)").matches,
+		);
+		expect(coarse).toBe(true);
+		const height = await page.evaluate(
+			() =>
+				(
+					document.querySelector(".topbar") as HTMLElement
+				).getBoundingClientRect().height,
+		);
+		expect(height).toBe(46);
+	});
+});

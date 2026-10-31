@@ -162,7 +162,7 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	padding: 6px 16px;
+	padding: 0 16px;
 	min-height: 46px;
 	border-bottom: 1px solid var(--line);
 }
@@ -205,6 +205,7 @@ body {
 .breadcrumb [aria-current="page"] {
 	flex: none;
 	max-width: 100%;
+	padding-block: 6px;
 	color: var(--ink);
 	white-space: normal;
 	overflow-wrap: anywhere;
