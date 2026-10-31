@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
@@ -11,7 +10,7 @@ from orchestra.canon.paths import PathValidationError, validate_namespace, valid
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaSet, ref_targets
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import JsonObject, JsonValue, Record, StoredOp
 from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]
@@ -52,10 +51,14 @@ def parse_subject_renames(specs: list[str]) -> dict[tuple[str, str], str]:
     return renames
 
 
-def _rewrite_refs(form: dict[str, Any], value: Any, renames: Renames) -> Any:
+def _rewrite_refs(form: JsonObject, value: JsonValue, renames: Renames) -> JsonValue:
     if "list" in form:
         if isinstance(value, list):
-            return [_rewrite_refs(form["list"], item, renames) for item in value]
+            item_form = form["list"]
+            return [
+                _rewrite_refs(item_form, item, renames)  # pyright: ignore[reportArgumentType] # Preserve recursion behavior for malformed nested forms.
+                for item in value
+            ]
         return value
     if "ref" in form and not form.get("pin") and isinstance(value, str):
         for target in ref_targets(form):
@@ -69,21 +72,21 @@ class _Rewriter:
         self.schemas = schemas
         self.namespaces = namespaces
         self.renames = renames
-        self.revisions: dict[str, str] = {}
+        self.revisions: dict[object, str] = {}
 
     def map_type(self, record_type: str) -> str:
         namespace, local = validate_record_type(record_type)
         return f"{self.namespaces.get(namespace, namespace)}:{local}"
 
     def record(self, record: Record) -> Record:
-        out = dict(record)
+        out: Record = {**record}
         record_type = self.map_type(out["record_type"])
         out["record_type"] = record_type
         subject = (record_type, out["subject"])
         if subject in self.renames:
             out["subject"] = self.renames[subject]
         type_def = self.schemas.types.get(record_type)
-        if type_def is not None and isinstance(out.get("payload"), dict):
+        if type_def is not None and isinstance(out.get("payload"), dict):  # pyright: ignore[reportUnnecessaryIsInstance] # Preserve runtime handling of malformed record payloads.
             out["payload"] = {
                 field: _rewrite_refs(type_def.fields[field], value, self.renames)
                 if field in type_def.fields
@@ -141,7 +144,7 @@ def merge_store(
     if unknown:
         raise MergeError(
             f"source types not declared by the target schemas: {unknown}",
-            {"unknown_types": unknown},
+            {"unknown_types": [*unknown]},
         )
 
     existing = list(target.iter_records())
@@ -149,7 +152,7 @@ def merge_store(
     clashes = sorted(record["id"] for record in records if record["id"] in taken)
     if clashes:
         raise MergeError(
-            f"record ids already exist in the target: {clashes}", {"id_conflicts": clashes}
+            f"record ids already exist in the target: {clashes}", {"id_conflicts": [*clashes]}
         )
     occupied = {(record["record_type"], record["subject"]) for record in existing}
     subjects = sorted(
@@ -161,7 +164,10 @@ def merge_store(
         }
     )
     if subjects:
-        conflicts = [{"record_type": t, "subject": s} for t, s in subjects]
+        conflicts: list[JsonValue] = []
+        for record_type, subject in subjects:
+            conflict: JsonObject = {"record_type": record_type, "subject": subject}
+            conflicts.append(conflict)
         raise MergeError(
             "subjects already exist in the target (use --rename-subject): "
             + ", ".join(f"{t} {s!r}" for t, s in subjects),
@@ -177,14 +183,12 @@ def merge_store(
             _count(counts, moved["record_type"], "history")
         for record_id, ops in chains:
             for op in ops:
-                content = {key: value for key, value in op.items() if key != "seq"}
-                moved = rewriter.record(op["record"])
-                content["record"] = moved
-                if "conflict_revision" in content:
-                    content["conflict_revision"] = rewriter.revisions.get(
-                        content["conflict_revision"], content["conflict_revision"]
-                    )
-                target.import_op(moved["record_type"], record_id, {**content, "seq": op["seq"]})
+                moved = rewriter.record(op["record"])  # pyright: ignore[reportArgumentType] # Preserve the runtime failure for malformed null operation records.
+                moved_op: StoredOp = {**op, "record": moved}
+                if "conflict_revision" in moved_op:
+                    revision = moved_op["conflict_revision"]
+                    moved_op["conflict_revision"] = rewriter.revisions.get(revision, revision)
+                target.import_op(moved["record_type"], record_id, moved_op)
                 _count(counts, moved["record_type"], "log")
         for record in records:
             moved = rewriter.record(record)
@@ -195,16 +199,26 @@ def merge_store(
                 renamed[key] = renamed.get(key, 0) + 1
 
     errors = validate_store(schemas, backend=target)
+    type_counts: JsonObject = {}
+    for record_type, row in sorted(counts.items()):
+        type_counts[record_type] = {field: count for field, count in row.items()}
+    totals: JsonObject = {
+        field: sum(row[field] for row in counts.values()) for field in ("records", "history", "log")
+    }
+    renamed_subjects: list[JsonValue] = []
+    for (record_type, old, new), count in sorted(renamed.items()):
+        renamed_subject: JsonObject = {
+            "record_type": record_type,
+            "old": old,
+            "new": new,
+            "records": count,
+        }
+        renamed_subjects.append(renamed_subject)
+    error_values: list[JsonValue] = [*errors]
     return {
-        "types": dict(sorted(counts.items())),
-        "totals": {
-            field: sum(row[field] for row in counts.values())
-            for field in ("records", "history", "log")
-        },
-        "renamed_subjects": [
-            {"record_type": t, "old": old, "new": new, "records": n}
-            for (t, old, new), n in sorted(renamed.items())
-        ],
+        "types": type_counts,
+        "totals": totals,
+        "renamed_subjects": renamed_subjects,
         "status": "invalid" if errors else "valid",
-        "errors": errors,
+        "errors": error_values,
     }
