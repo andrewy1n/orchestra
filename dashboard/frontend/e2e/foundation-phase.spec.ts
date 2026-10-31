@@ -35,3 +35,21 @@ test("R21 a status tab label renders at a font size of 14px", async ({
 	await expect(label).toHaveCount(1);
 	expect(await fontSize(label)).toBe("14px");
 });
+
+test("R19 the task table is a shadcn table as wide as its container", async ({
+	page,
+}) => {
+	await openStatusTabs(page);
+	await page.locator('[data-status-tabs] [data-tab="all"]').click();
+	const table = page.locator("[data-task-table]");
+	await expect(table).toHaveCount(1);
+	await expect(table.locator("[data-task]")).toHaveCount(1);
+	expect(await table.evaluate((el) => el.tagName)).toBe("TABLE");
+	expect(await table.getAttribute("data-slot")).toBe("table");
+	const widths = await table.evaluate((el) => ({
+		table: el.getBoundingClientRect().width,
+		parent: el.parentElement?.getBoundingClientRect().width ?? 0,
+	}));
+	expect(widths.parent).toBeGreaterThan(0);
+	expect(widths.table).toBe(widths.parent);
+});

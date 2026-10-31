@@ -755,66 +755,6 @@ body {
 	background: var(--brand);
 }
 
-.table {
-	border: 1px solid var(--line);
-	border-radius: var(--corner);
-	overflow: hidden;
-}
-
-.table .empty-note {
-	padding: 8px 10px;
-}
-
-.trow {
-	display: grid;
-	grid-template-columns: var(--cols, 120px 1fr);
-	align-items: center;
-}
-
-.trow > * {
-	padding: 6px 10px;
-	min-width: 0;
-}
-
-.thead {
-	background: var(--sunken);
-	color: var(--text-muted);
-	font-size: 14px;
-	font-weight: 600;
-	border-bottom: 1px solid var(--line);
-}
-
-.task {
-	border-top: 1px solid var(--line);
-}
-
-.task .st {
-	font-size: 14px;
-	font-weight: 600;
-	white-space: nowrap;
-}
-
-.task .st.running {
-	color: var(--running);
-}
-
-.task .st.ready {
-	color: var(--ready);
-}
-
-.task .st.waiting {
-	color: var(--waiting);
-}
-
-.task .st.done {
-	color: var(--done);
-}
-
-.task .title {
-	white-space: normal;
-	text-wrap: pretty;
-}
-
 .empty-note {
 	padding: 14px 0;
 	color: var(--text-muted);
@@ -934,15 +874,6 @@ a.lrow {
 }
 
 .lrow.clickable:hover {
-	background: var(--sunken);
-}
-
-.trow.task.clickable {
-	cursor: pointer;
-	background: transparent;
-}
-
-.trow.task.clickable:hover {
 	background: var(--sunken);
 }
 

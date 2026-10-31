@@ -1,9 +1,11 @@
 <script lang="ts">
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { phase } from "$lib/state/phase.svelte";
   import { md, openGraphTask, openRequirement } from "$lib/state/refs";
+  import { cn } from "$lib/utils.js";
   import { openHash, taskHref } from "../../detail";
   import { STATUS_TABS } from "../../efforts";
   import TaskGraphBoard from "../../TaskGraphBoard.svelte";
@@ -21,6 +23,16 @@
       return "border-[color-mix(in_srgb,var(--fail)_50%,var(--border))] dark:border-[color-mix(in_srgb,var(--fail)_50%,var(--border))]";
     }
     return "";
+  }
+
+  function statusTone(status: string): string {
+    const tones: Record<string, string> = {
+      running: "text-[var(--running)]",
+      ready: "text-[var(--ready)]",
+      waiting: "text-[var(--waiting)]",
+      done: "text-[var(--done)]",
+    };
+    return tones[status] ?? "";
   }
 
   function statusLabel(status: string): string {
@@ -114,27 +126,40 @@
         </Tabs.List>
       </Tabs.Root>
 
-      <div class="table" data-task-table style="--cols: 118px 1fr">
-        <div class="trow thead">
-          <span>Status</span>
-          <span>Task</span>
-        </div>
-        {#if phase.tasks.length === 0}
-          <p class="empty-note">No tasks in this tab.</p>
-        {:else}
-          {#each phase.tasks as task (task.id)}
-            <button
-              type="button"
-              class="trow task clickable"
-              data-task={task.id}
-              data-phase-of={task.phase}
-              onclick={() => openHash(taskHref(task.id))}
-            >
-              <span class="st {task.status}">{statusLabel(task.status)}</span>
-              <span class="title">{task.title || task.subject}</span>
-            </button>
-          {/each}
-        {/if}
+      <div class="overflow-hidden rounded-md border">
+        <Table.Root data-task-table>
+          <Table.Header>
+            <Table.Row class="bg-muted hover:bg-muted">
+              <Table.Head class="w-[118px] text-muted-foreground">Status</Table.Head>
+              <Table.Head class="text-muted-foreground">Task</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {#if phase.tasks.length === 0}
+              <Table.Row class="hover:bg-transparent">
+                <Table.Cell colspan={2} class="text-muted-foreground">No tasks in this tab.</Table.Cell>
+              </Table.Row>
+            {:else}
+              {#each phase.tasks as task (task.id)}
+                <Table.Row
+                  class="cursor-pointer outline-none focus-visible:bg-muted"
+                  tabindex={0}
+                  data-task={task.id}
+                  data-phase-of={task.phase}
+                  onclick={() => openHash(taskHref(task.id))}
+                  onkeydown={(event) => {
+                    if (event.key === "Enter") openHash(taskHref(task.id));
+                  }}
+                >
+                  <Table.Cell class={cn("font-semibold", statusTone(task.status))}>
+                    {statusLabel(task.status)}
+                  </Table.Cell>
+                  <Table.Cell class="whitespace-normal text-pretty">{task.title || task.subject}</Table.Cell>
+                </Table.Row>
+              {/each}
+            {/if}
+          </Table.Body>
+        </Table.Root>
       </div>
     {/if}
     {#if phase.taskView}
