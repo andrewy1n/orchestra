@@ -43,7 +43,7 @@ test("R19 the task table is a shadcn table as wide as its container", async ({
 	await page.locator('[data-status-tabs] [data-tab="all"]').click();
 	const table = page.locator("[data-task-table]");
 	await expect(table).toHaveCount(1);
-	await expect(table.locator("[data-task]")).toHaveCount(1);
+	await expect(table.locator("[data-task]")).toHaveCount(3);
 	expect(await table.evaluate((el) => el.tagName)).toBe("TABLE");
 	expect(await table.getAttribute("data-slot")).toBe("table");
 	const widths = await table.evaluate((el) => {

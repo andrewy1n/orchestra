@@ -53,7 +53,7 @@
   }
 </script>
 
-<div class="phase-page" data-phase-page data-detail="phase">
+<div class="phase-page flex flex-col gap-4" data-phase-page data-detail="phase">
   {#if phase.loading}
     <p class="empty-note">Loading…</p>
   {:else if phase.error}
@@ -116,7 +116,6 @@
     {/if}
     {#if phase.activePhaseTab === "overview" && phase.routeEffort}
       <Tabs.Root
-        class="mt-3 mb-2.5"
         value={phase.statusTab}
         onValueChange={(tab) => phase.chooseTab(tab as StatusTab)}
       >
@@ -199,7 +198,7 @@
     {#if phase.evidenceView}
       <div class="evidence-board" data-evidence-board>
         {#if phase.evidenceView.facts.length}
-          <div class="chips" data-evidence-facts>
+          <div class="flex flex-wrap gap-x-2 gap-y-1" data-evidence-facts>
             {#each phase.evidenceView.facts as fact (fact.label)}
               <Badge variant="outline">
                 <span class="fact-k">{fact.label}</span>

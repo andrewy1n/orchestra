@@ -823,10 +823,6 @@ a.lrow {
 	margin-bottom: 12px;
 }
 
-.task-board {
-	margin-bottom: 10px;
-}
-
 .task-rows {
 	display: flex;
 	flex-direction: column;
@@ -888,21 +884,12 @@ a.lrow {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	margin-bottom: 10px;
-}
-
-.evidence-board .chips {
-	margin-bottom: 0;
 }
 
 .fact-k {
 	margin-right: 4px;
 	color: var(--text-muted);
 	font-weight: 600;
-}
-
-.task-graph {
-	margin-bottom: 16px;
 }
 
 .task-graph-head {
@@ -1355,7 +1342,6 @@ a.lrow {
 	align-items: baseline;
 	flex-wrap: wrap;
 	gap: 4px 12px;
-	margin-bottom: 12px;
 }
 
 .phase-title {

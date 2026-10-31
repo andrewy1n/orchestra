@@ -99,20 +99,25 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
         {"phase": PHASE, "effort": EFFORT, "requirements": ["R1", "R2"], "weight": "light"},
         body=SPEC_BODY,
     )
-    create(
-        "score:work-item",
-        TASK,
-        {
-            "title": "E2E task",
-            "phase": PHASE,
-            "kind": "deliver",
-            "assignee": "",
-            "effort": EFFORT,
-            "attempts": 0,
-            "estimate_minutes": 0,
-        },
-        ("Description",),
-    )
+    for subject, title in (
+        (TASK, "E2E task"),
+        (f"{TASK}-2", "E2E task 2"),
+        (f"{TASK}-3", "E2E task 3"),
+    ):
+        create(
+            "score:work-item",
+            subject,
+            {
+                "title": title,
+                "phase": PHASE,
+                "kind": "deliver",
+                "assignee": "",
+                "effort": EFFORT,
+                "attempts": 0,
+                "estimate_minutes": 0,
+            },
+            ("Description",),
+        )
 
 
 def main() -> int:
