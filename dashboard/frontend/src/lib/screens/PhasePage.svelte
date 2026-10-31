@@ -1,15 +1,39 @@
 <script lang="ts">
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { phase } from "$lib/state/phase.svelte";
   import { md, openGraphTask, openRequirement } from "$lib/state/refs";
+  import { cn } from "$lib/utils.js";
   import { openHash, taskHref } from "../../detail";
   import { STATUS_TABS } from "../../efforts";
   import TaskGraphBoard from "../../TaskGraphBoard.svelte";
   import type { Theme } from "../../theme";
+  import type { StatusTab } from "../../types";
   import { chipVariant } from "./chipVariant";
 
   let { theme }: { theme: Theme } = $props();
+
+  function reqTone(status: string): string {
+    if (status === "pass" || status === "verified") {
+      return "border-[color-mix(in_srgb,var(--done)_50%,var(--border))] dark:border-[color-mix(in_srgb,var(--done)_50%,var(--border))]";
+    }
+    if (status === "fail") {
+      return "border-[color-mix(in_srgb,var(--fail)_50%,var(--border))] dark:border-[color-mix(in_srgb,var(--fail)_50%,var(--border))]";
+    }
+    return "";
+  }
+
+  function statusTone(status: string): string {
+    const tones: Record<string, string> = {
+      running: "text-[var(--running)]",
+      ready: "text-[var(--ready)]",
+      waiting: "text-[var(--waiting)]",
+      done: "text-[var(--done)]",
+    };
+    return tones[status] ?? "";
+  }
 
   function statusLabel(status: string): string {
     const known: Record<string, string> = {
@@ -40,7 +64,7 @@
       >
         <Tabs.List class="h-auto flex-wrap" data-phase-tabs>
           {#each phase.phaseTabs as tab (tab)}
-            <Tabs.Trigger value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
+            <Tabs.Trigger class="capitalize" value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
           {/each}
         </Tabs.List>
       </Tabs.Root>
@@ -59,18 +83,17 @@
         {#if phase.phaseChrome.requirements.length}
           <div class="phase-reqs" data-phase-reqs>
             {#each phase.phaseChrome.requirements as req (req.id)}
-              <button
-                type="button"
-                class="phase-req"
-                class:ok={req.status === "pass" || req.status === "verified"}
-                class:warn={req.status === "fail"}
+              <Button
+                variant="outline"
+                size="sm"
+                class={reqTone(req.status)}
                 data-phase-req={req.id}
                 title={req.text || req.id}
                 onclick={() => openRequirement(req.id)}
               >
-                <span class="req-id">{req.id}</span>
-                <span class="req-meta">{req.status}</span>
-              </button>
+                <span class="font-semibold">{req.id}</span>
+                <span class="font-normal text-muted-foreground">{req.status}</span>
+              </Button>
             {/each}
           </div>
         {:else}
@@ -86,45 +109,60 @@
       />
     {/if}
     {#if phase.activePhaseTab === "overview" && phase.routeEffort}
-      <div class="tabs" data-status-tabs>
-        {#each STATUS_TABS as tab}
-          <button
-            type="button"
-            class="tab"
-            class:on={phase.statusTab === tab.name}
-            data-tab={tab.name}
-            aria-current={phase.statusTab === tab.name ? "true" : undefined}
-            onclick={() => phase.chooseTab(tab.name)}
-          >
-            <b>{tab.label}</b>
-            {#if phase.counts}
-              <span class="n">({phase.counts[tab.name]})</span>
-            {/if}
-          </button>
-        {/each}
-      </div>
-
-      <div class="table" data-task-table style="--cols: 118px 1fr">
-        <div class="trow thead">
-          <span>Status</span>
-          <span>Task</span>
-        </div>
-        {#if phase.tasks.length === 0}
-          <p class="empty-note">No tasks in this tab.</p>
-        {:else}
-          {#each phase.tasks as task (task.id)}
-            <button
-              type="button"
-              class="trow task clickable"
-              data-task={task.id}
-              data-phase-of={task.phase}
-              onclick={() => openHash(taskHref(task.id))}
-            >
-              <span class="st {task.status}">{statusLabel(task.status)}</span>
-              <span class="title">{task.title || task.subject}</span>
-            </button>
+      <Tabs.Root
+        class="mt-3 mb-2.5"
+        value={phase.statusTab}
+        onValueChange={(tab) => phase.chooseTab(tab as StatusTab)}
+      >
+        <Tabs.List variant="line" class="h-auto flex-wrap" data-status-tabs>
+          {#each STATUS_TABS as tab (tab.name)}
+            <Tabs.Trigger class="pointer-coarse:min-h-11" value={tab.name} data-tab={tab.name}>
+              <b class="text-sm font-medium">{tab.label}</b>
+              {#if phase.counts}
+                <span class="text-xs tabular-nums">({phase.counts[tab.name]})</span>
+              {/if}
+            </Tabs.Trigger>
           {/each}
-        {/if}
+        </Tabs.List>
+      </Tabs.Root>
+
+      <div class="overflow-hidden rounded-md border">
+        <Table.Root data-task-table>
+          <Table.Header>
+            <Table.Row class="bg-muted hover:bg-muted">
+              <Table.Head class="w-[118px] text-muted-foreground">Status</Table.Head>
+              <Table.Head class="text-muted-foreground">Task</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {#if phase.tasks.length === 0}
+              <Table.Row class="hover:bg-transparent">
+                <Table.Cell colspan={2} class="text-muted-foreground">No tasks in this tab.</Table.Cell>
+              </Table.Row>
+            {:else}
+              {#each phase.tasks as task (task.id)}
+                <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
+                <Table.Row
+                  class="cursor-pointer focus-visible:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  role="button"
+                  tabindex={0}
+                  data-task={task.id}
+                  data-phase-of={task.phase}
+                  onclick={() => openHash(taskHref(task.id))}
+                  onkeydown={(event) => {
+                    if (event.key === " ") event.preventDefault();
+                    if (event.key === "Enter" || event.key === " ") openHash(taskHref(task.id));
+                  }}
+                >
+                  <Table.Cell class={cn("font-semibold", statusTone(task.status))}>
+                    {statusLabel(task.status)}
+                  </Table.Cell>
+                  <Table.Cell class="whitespace-normal text-pretty">{task.title || task.subject}</Table.Cell>
+                </Table.Row>
+              {/each}
+            {/if}
+          </Table.Body>
+        </Table.Root>
       </div>
     {/if}
     {#if phase.taskView}

@@ -115,7 +115,7 @@ def test_r8_overlay_tabs_and_dialogs_import_shadcn_components():
 def test_r9_global_css_defines_the_shadcn_theme_variables():
     css = require_file(SRC / "app.css")
     root = re.search(r":root\s*\{(.*?)\n\}", css, re.DOTALL)
-    dark = re.search(r"\.dark\s*\{(.*?)\n\}", css, re.DOTALL)
+    dark = re.search(r"^html\.dark[^{]*\{(.*?)\n\}", css, re.DOTALL | re.MULTILINE)
     assert root, "app.css has no :root block"
     assert dark, "app.css has no .dark block"
     for variable in ("--background", "--foreground", "--primary", "--border", "--radius"):
