@@ -16,6 +16,7 @@ class DerivedValues(TypedDict, total=False):
 
 
 class _OptionalRecord(TypedDict, total=False):
+    body: str
     time: JsonValue
     provenance: JsonValue
     derived: DerivedValues
@@ -29,7 +30,6 @@ class Record(_OptionalRecord):
     lifecycle_state: str
     relationships: dict[str, list[str]]
     revision: str
-    body: str
     recorded_at: str
 
 
