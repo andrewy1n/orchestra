@@ -12,7 +12,7 @@ resolve a checkout path or a plugin root to run them.
 ## Which store
 
 Dashboard and `orchestra store` resolve one SQLite database for this
-repository: `~/.canon/<repo-name>/canon.db`. The tracked
+repository under `~/.canon/<repo-name>/`. The tracked
 `.canon/store-binding.json` selects `{"store":"global"}`, so every
 worktree uses the same records. `.canon/config.json` selects the SQLite
 backend, and `.canon/schemas/` keeps the schema snapshots used for
@@ -22,8 +22,8 @@ Run `canon` from any worktree in this repository. Do not pass a checkout
 path or a plugin path to select the database. Use `orchestra store path`
 to inspect the resolved location.
 
-Run `canon backup` to create a retained backup under
-`~/.canon/<repo-name>/backups/` before maintenance. SessionStart checks
+Run `canon backup` to create a retained backup in the repository's
+`~/.canon/<repo-name>/backups/` directory before maintenance. SessionStart checks
 the newest backup and creates one when it is older than 24 hours.
 
 ## Runtime commands

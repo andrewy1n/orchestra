@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,14 +21,33 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 os.environ["CANON_SCHEMA_PATH"] = SCHEMA_PATH
 
-from orchestra.canon.project import open_store  # noqa: E402
-from orchestra.canon.store import Store  # noqa: E402
-from orchestra.canon.sync import init_store  # noqa: E402
+from orchestra.canon.project import Project, open_store  # noqa: E402
 
 
-def make_project(root: Path):
+def make_project(root: Path) -> Project:
     root.mkdir(parents=True, exist_ok=True)
-    init_store(Store(root / ".canon"), ["score", "conductor", "tuner", "composer"])
+    git_init = subprocess.run(
+        ["git", "-C", str(root), "init", "-q"], capture_output=True, text=True
+    )
+    if git_init.returncode:
+        raise RuntimeError(git_init.stdout + git_init.stderr)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "orchestra.canon",
+            "--root",
+            str(root),
+            "init",
+            "--schemas",
+            "score,conductor,tuner,composer",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stdout + result.stderr)
     return open_store(root)
 
 
@@ -54,14 +74,3 @@ def seed_effort(project, effort: str = "alpha", phase: str = "p1") -> None:
         phase,
         {"title": "Phase one", "ordinal": 1, "effort": effort},
     )
-
-
-def point_effort_at(project, record_type: str, effort: str) -> None:
-    from orchestra.canon.record_file import dump_record, load_record
-    from orchestra.canon.revision import with_revision
-
-    namespace, _, name = record_type.partition(":")
-    path = next((project.store_path / "records" / f"{namespace}__{name}").glob("*.md"))
-    record = load_record(path.read_text(), path)
-    record["payload"]["effort"] = effort
-    path.write_text(dump_record(with_revision(record)))

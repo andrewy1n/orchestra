@@ -5,7 +5,7 @@ import pytest
 
 from canon_support import make_project
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.conductor.suite import load_suite_policy
 
 

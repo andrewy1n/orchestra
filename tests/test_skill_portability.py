@@ -42,7 +42,7 @@ _BARE_OUTSIDE_PATH = re.compile(
 )
 
 _CHECKOUT_PATH = re.compile(
-    r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|canon)\b"
+    r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|canon)(?=\s|$|[;&|])"
 )
 _CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/orchestra\b")
 _PLUGIN_ROOT = re.compile(r"<plugin>")

@@ -5,18 +5,15 @@ from __future__ import annotations
 import pytest
 
 from canon_support import create, seed_effort
-from orchestra.canon.project import open_store
-from orchestra.canon.store import Store
-from orchestra.canon.sync import init_store
 from orchestra import views
 
 
 @pytest.fixture
 def project(tmp_path):
     root = tmp_path / "repo"
-    root.mkdir(parents=True, exist_ok=True)
-    init_store(Store(root / ".canon"), ["score", "conductor", "tuner", "composer"])
-    project = open_store(root)
+    from canon_support import make_project
+
+    project = make_project(root)
     seed_effort(project, "alpha")
     return project
 

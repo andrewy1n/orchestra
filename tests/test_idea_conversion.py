@@ -5,12 +5,30 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-from conftest import CANON_CMD, REPO_ROOT, SCHEMAS, git, make_git_repo
+from orchestra.canon.backend import open_backend
 from orchestra.canon.migrate import apply_steps
-from orchestra.canon.store import Store
+from orchestra.canon.project import open_store
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CANON_CMD = [sys.executable, "-m", "orchestra.canon"]
+SCHEMAS = "score,conductor,tuner,composer"
+
+
+def git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+
+
+def make_git_repo() -> Path:
+    root = Path(tempfile.mkdtemp(prefix="orchestra-test-"))
+    git(root, "init", "-q")
+    git(root, "config", "user.email", "test@example.com")
+    git(root, "config", "user.name", "test")
+    git(root, "commit", "--allow-empty", "-qm", "init")
+    return root
 
 _SCORE = "score"
 _COMPOSER = "composer"
@@ -124,11 +142,11 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
     assert promoted.returncode == 0, promoted.stdout + promoted.stderr
     successor = json.loads(promoted.stdout)["record"]
 
-    canon = root / ".canon"
-    store = Store(canon)
+    project = open_store(root)
+    store = open_backend(project.store_path)
     before = {
         record["id"]: record
-        for record in store.iter_records()
+        for record in project.records()
         if record["record_type"] == _LEGACY_TYPE
     }
     assert set(before) == {open_record["id"], successor["id"], second["id"]}
@@ -137,12 +155,9 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
     rewritten = apply_steps(store, [step])
     assert rewritten == 3
 
-    git(root, "add", "-A")
-    commit = git(root, "commit", "-m", "rename backlog records to ideas")
-    assert commit.returncode == 0, commit.stdout + commit.stderr
-
-    store = Store(canon)
-    ideas = {record["id"]: record for record in store.iter_records() if record["record_type"] == _IDEA_TYPE}
+    project = open_store(root)
+    store = open_backend(project.store_path)
+    ideas = {record["id"]: record for record in project.records() if record["record_type"] == _IDEA_TYPE}
     assert set(ideas) == set(before)
     for record_id, old in before.items():
         new = ideas[record_id]
@@ -154,7 +169,7 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
     assert ideas[second["id"]]["payload"]["status"] == "open"
     assert ideas[open_record["id"]]["lifecycle_state"] == "superseded"
 
-    for _path, snapshot in store.iter_history():
+    for snapshot in store.read_history():
         if snapshot["id"] not in ideas:
             continue
         assert snapshot["record_type"] == _IDEA_TYPE

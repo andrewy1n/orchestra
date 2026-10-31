@@ -34,7 +34,7 @@ UPDATE = os.environ.get("UPDATE_FIXTURES") == "1"
 RECORD_ID = re.compile(r"rec-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 REVISION = re.compile(r"sha256:[0-9a-f]{64}")
 TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?")
-CHANGE_TOKEN = re.compile(r"^[0-9a-f]{40}$")
+CHANGE_TOKEN = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 LISTED_TYPES = (
     "score:effort", "score:position", "score:milestone", "score:phase", "score:work-item",
     "score:acceptance", "score:decision", "score:constraint", "score:continuity-question",

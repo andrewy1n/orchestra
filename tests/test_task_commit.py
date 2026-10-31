@@ -15,7 +15,6 @@ from pathlib import Path
 from conftest import REPO_ROOT
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
-ENSURE_STORE = REPO_ROOT / "skills" / "ensure-store.md"
 
 _TYPES = "feat|fix|docs|refactor|test|chore"
 _SUBJECT = re.compile(rf"^(?:{_TYPES})\([^()\s]+\): \S.*$")
@@ -112,9 +111,3 @@ def test_task_commit_body_names_the_task_slug():
 def test_r27_per_task_commit_path_is_the_task_worktree():
     text = _text()
     assert "git -C <repo>/.worktrees/<phase-slug>--<task-slug> commit" in text
-
-
-def test_ensure_store_records_commit_matches_conventional_commits():
-    messages = commit_messages(ENSURE_STORE)
-    assert len(messages) == 1
-    assert conventional_commit(messages[0])

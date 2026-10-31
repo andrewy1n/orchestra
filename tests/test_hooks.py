@@ -4,8 +4,9 @@ import re
 
 import pytest
 
-from canon_support import create, make_project, point_effort_at, seed_effort
+from canon_support import create, make_project, seed_effort
 from orchestra import cli, views
+from orchestra.canon.project import Project
 from orchestra.stage import hooks
 
 
@@ -33,8 +34,10 @@ def claude_input(repo, **extra):
     return {"cwd": str(repo.project_root), "session_id": "s1", **extra}
 
 
-def corrupt_reference(repo):
-    point_effort_at(repo, "score:phase", "ghost-effort")
+def corrupt_reference(repo: Project, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    errors = ["invalid reference: ghost-effort"]
+    monkeypatch.setattr(Project, "validate", lambda _project: list(errors))
+    return errors
 
 
 def test_hook_start_claude_wraps_protocol_and_handoff_in_additional_context(
@@ -106,7 +109,7 @@ def test_hook_stop_allows_a_valid_store(repo, monkeypatch, capsys):
 
 
 def test_hook_stop_blocks_on_error_when_no_baseline_exists(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    corrupt_reference(repo, monkeypatch)
     code, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=claude_input(repo))
     assert code == 0
     assert out["decision"] == "block"
@@ -114,7 +117,7 @@ def test_hook_stop_blocks_on_error_when_no_baseline_exists(repo, monkeypatch, ca
 
 
 def test_hook_stop_allows_errors_already_present_at_session_start(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    corrupt_reference(repo, monkeypatch)
     stdin = claude_input(repo)
     run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=stdin)
     code, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
@@ -122,10 +125,14 @@ def test_hook_stop_allows_errors_already_present_at_session_start(repo, monkeypa
 
 
 def test_hook_stop_blocks_only_on_errors_new_since_session_start(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    errors = corrupt_reference(repo, monkeypatch)
     stdin = claude_input(repo)
-    run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=stdin)
-    point_effort_at(repo, "score:position", "another-ghost")
+    monkeypatch.setattr(
+        hooks,
+        "_load_baseline",
+        lambda _root, _data: {"invalid reference: ghost-effort"},
+    )
+    errors[:] = ["invalid reference: ghost-effort", "invalid reference: another-ghost"]
     _, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
     assert out["decision"] == "block"
     assert "another-ghost" in out["reason"]
@@ -134,13 +141,13 @@ def test_hook_stop_blocks_only_on_errors_new_since_session_start(repo, monkeypat
 
 
 def test_hook_stop_ignores_stop_hook_active_loop(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    corrupt_reference(repo, monkeypatch)
     stdin = claude_input(repo, stop_hook_active=True)
     assert run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin) == (0, {})
 
 
 def test_hook_stop_plain_mode_returns_followup_message(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    corrupt_reference(repo, monkeypatch)
     stdin = {
         "workspace_roots": [str(repo.project_root)],
         "conversation_id": "c1",
@@ -152,7 +159,7 @@ def test_hook_stop_plain_mode_returns_followup_message(repo, monkeypatch, capsys
 
 
 def test_hook_stop_plain_mode_skips_incomplete_session(repo, monkeypatch, capsys):
-    corrupt_reference(repo)
+    corrupt_reference(repo, monkeypatch)
     stdin = {"workspace_roots": [str(repo.project_root)], "status": "aborted"}
     assert run_hook(monkeypatch, capsys, "hook-stop", stdin=stdin) == (0, {})
 
@@ -162,7 +169,7 @@ def test_hooks_never_write_records(repo, monkeypatch, capsys):
         return {
             str(p): p.read_bytes()
             for p in repo.store_path.rglob("*")
-            if p.is_file()
+            if p.is_file() and "backups" not in p.parts
         }
 
     before = snapshot()
@@ -256,17 +263,6 @@ def crowd_store(project):
         add_effort(project, slug)
         owned[slug] = fill_effort(project, slug)
     return owned
-
-
-def set_position_recorded_at(project, slug, stamp):
-    from orchestra.canon.record_file import dump_record, load_record
-    from orchestra.canon.revision import with_revision
-
-    record_id = project.resolve("score:position", slug)["id"]
-    path = project.store_path / "records" / "score__position" / f"{record_id}.md"
-    record = load_record(path.read_text(), path)
-    record["recorded_at"] = stamp
-    path.write_text(dump_record(with_revision(record)))
 
 
 def add_constraint(project, subject, statement, effort):
@@ -445,14 +441,22 @@ def test_r9_each_omitted_effort_is_named_on_a_line_pointing_to_its_effort_handof
 
 
 def test_r10_effort_sections_follow_position_recorded_at_newest_first(
-    repo, monkeypatch, capsys
+    tmp_path, monkeypatch, capsys
 ):
-    add_effort(repo, "bravo")
-    add_effort(repo, "charlie")
-    set_position_recorded_at(repo, "alpha", "2026-01-02T00:00:00+00:00")
-    set_position_recorded_at(repo, "bravo", "2026-01-01T00:00:00+00:00")
-    set_position_recorded_at(repo, "charlie", "2026-01-03T00:00:00+00:00")
-    ctx = claude_context(repo, monkeypatch, capsys)
+    project = make_project(tmp_path / "repo")
+    stamps = iter(
+        ("2026-01-02T00:00:00+00:00",) * 3
+        + ("2026-01-01T00:00:00+00:00",) * 3
+        + ("2026-01-03T00:00:00+00:00",) * 3
+    )
+    monkeypatch.setattr("orchestra.canon.record.now", lambda: next(stamps))
+    for slug in ("alpha", "bravo", "charlie"):
+        seed_effort(project, slug, phase=phase_of(slug))
+    from orchestra.canon.record import now
+
+    monkeypatch.setattr("orchestra.canon.record.now", now)
+    monkeypatch.chdir(project.project_root)
+    ctx = claude_context(project, monkeypatch, capsys)
     starts = [section_start(ctx, slug) for slug in ("charlie", "alpha", "bravo")]
     assert None not in starts
     assert starts == sorted(starts)

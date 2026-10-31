@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 import helpers as h
-from conftest import REPO_ROOT, run_cli
+from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 from orchestra.canon.project import open_store  # noqa: E402
@@ -234,24 +234,19 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     defs = h.record_defs_by_id(resolved_contract)
     home = tmp_path / "home"
-    home_store = home / ".canon" / store.name
-    shutil.copytree(store / ".canon", home_store)
     h.create_generic_record(
         cli, defs, "score:effort", subject="local-effort",
         extra_payload={"goal": "local goal", "kind": "deliver"},
     )
-
-    def home_cli(*args):
-        return run_cli("--store", str(home_store), *args, root=store)
-
-    h.create_generic_record(
-        home_cli, defs, "score:effort", subject="global-effort",
-        extra_payload={"goal": "global goal", "kind": "deliver"},
-    )
     (store / ".canon" / "store-binding.json").write_text(json.dumps({"store": "global"}))
     monkeypatch.setenv("HOME", str(home))
     target = open_store(store)
-    assert target.store_path.resolve() == home_store.resolve()
+    target.create(
+        record_type="score:effort",
+        subject="global-effort",
+        payload={"goal": "global goal", "kind": "deliver"},
+    )
+    assert target.store_path.resolve() == (store / ".canon").resolve()
     snap = _snapshot(target)
     assert [view.effort for view in snap.efforts] == ["global-effort"]
 
