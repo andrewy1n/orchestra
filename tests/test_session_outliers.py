@@ -9,7 +9,13 @@ def row(sid, errors=0, retries=0, cost=0.0, efforts=None, **extra):
         "branch": "main",
         "cost_usd": cost,
         "tools": {"tools": {}, "totals": {"calls": 9, "errors": errors, "retries": retries}},
-        "records": {"total": 1, "by_type": {}, "efforts": efforts or [], "tasks": 0, "ambiguous": 0},
+        "records": {
+            "total": 1,
+            "by_type": {},
+            "efforts": efforts or [],
+            "tasks": 0,
+            "ambiguous": 0,
+        },
     }
     r.update(extra)
     return r
@@ -30,8 +36,14 @@ def test_ranks_each_metric_descending_with_ties_by_session_id():
 def test_entry_holds_references_and_value_only():
     out = outliers([row("a", errors=1, efforts=["x", "y"], branch="feat")])
     assert out["errors"] == [
-        {"session_id": "a", "file": "a.jsonl", "project": "p", "branch": "feat",
-         "efforts": ["x", "y"], "value": 1}
+        {
+            "session_id": "a",
+            "file": "a.jsonl",
+            "project": "p",
+            "branch": "feat",
+            "efforts": ["x", "y"],
+            "value": 1,
+        }
     ]
 
 

@@ -60,7 +60,8 @@ _VALUE_OPTIONS = {
     "-e",
 }
 
-_RUNNER = r"""
+_RUNNER = (
+    r"""
 import json
 import os
 import subprocess
@@ -76,7 +77,9 @@ real_call = subprocess.call
 real_chdir = os.chdir
 real_system = os.system
 
-VALUE_OPTIONS = set(""" + repr(sorted(_VALUE_OPTIONS)) + r""")
+VALUE_OPTIONS = set("""
+    + repr(sorted(_VALUE_OPTIONS))
+    + r""")
 
 
 def clip(data, limit=65536):
@@ -332,6 +335,7 @@ finally:
     Path(trace_path).write_text(json.dumps({"events": events}))
 raise SystemExit(code)
 """
+)
 
 
 def _script() -> Path:
@@ -454,14 +458,14 @@ def _invoke_unlocked(args: list[str]) -> dict:
                 check=False,
                 timeout=900,
             )
-        except subprocess.TimeoutExpired:
-            assert False, "scripts/wheel_smoke.py timed out"
+        except subprocess.TimeoutExpired as exc:
+            raise AssertionError("scripts/wheel_smoke.py timed out") from exc
         detail = (proc.stderr or proc.stdout or "no trace")[-2000:]
         assert trace.is_file(), detail
         try:
             payload = json.loads(trace.read_text())
         except json.JSONDecodeError as exc:
-            assert False, str(exc)
+            raise AssertionError(str(exc)) from exc
         assert isinstance(payload.get("events"), list), "trace has no events"
         payload["returncode"] = proc.returncode
         payload["stdout"] = proc.stdout
@@ -487,7 +491,11 @@ def _default_outcome() -> dict:
                 cached = json.loads(path.read_text())
             except json.JSONDecodeError:
                 cached = None
-            if isinstance(cached, dict) and cached.get("key") == key and isinstance(cached.get("events"), list):
+            if (
+                isinstance(cached, dict)
+                and cached.get("key") == key
+                and isinstance(cached.get("events"), list)
+            ):
                 return cached
         before = _porcelain()
         dist = _fake_dist()
@@ -709,9 +717,7 @@ def test_wheel_smoke_r6_installs_into_new_venv():
     assert created, "no new virtual environment was created"
     for path in created:
         assert _outside(Path(path)), path
-    installs = [
-        event for event in events if _is_wheel_install(event) and event["returncode"] == 0
-    ]
+    installs = [event for event in events if _is_wheel_install(event) and event["returncode"] == 0]
     assert installs, "wheel was not installed"
     assert any(_from_new_venv(event, created) for event in installs), installs[0].get("argv")
 
@@ -846,7 +852,9 @@ def test_wheel_smoke_r18_wheel_flag_skips_build():
     outcome = _invoke(["--wheel", str(wheel)])
     assert outcome["returncode"] == 0, _tail(outcome)
     assert not any(_is_build(event) for event in outcome["events"]), "wheel build ran"
-    assert any(_installs_wheel(event, wheel) for event in outcome["events"]), "wheel was not installed"
+    assert any(_installs_wheel(event, wheel) for event in outcome["events"]), (
+        "wheel was not installed"
+    )
 
 
 def test_wheel_smoke_r19_missing_providers_json():

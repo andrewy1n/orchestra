@@ -37,7 +37,10 @@ def test_write_size_and_estimate_minutes_on_every_work_item():
         assert type(minutes) is int
         assert 0 <= minutes < 25
     assert "Every new work-item includes `size` and `estimate_minutes`." in text
-    assert "`size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded)" in text
+    assert (
+        "`size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded)"
+        in text
+    )
     assert "Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40." in text
 
 

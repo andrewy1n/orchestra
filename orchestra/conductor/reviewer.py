@@ -8,9 +8,10 @@ these helpers are for the parent session only.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 
@@ -405,9 +406,7 @@ _UI_LABELS = (
     "Needs you",
     "All",
 )
-_UI_LABEL_RE = re.compile(
-    r"\b(" + "|".join(re.escape(label) for label in _UI_LABELS) + r")\b"
-)
+_UI_LABEL_RE = re.compile(r"\b(" + "|".join(re.escape(label) for label in _UI_LABELS) + r")\b")
 
 
 def _ui_labels_in(text: str) -> list[str]:
@@ -458,9 +457,7 @@ def grade_reviewer_inputs(
     for item in work_items:
         subject = str(item.get("subject") or item.get("title") or "phase")
         description = " ".join(
-            str(part)
-            for part in (item.get("body"), item.get("text"), item.get("title"))
-            if part
+            str(part) for part in (item.get("body"), item.get("text"), item.get("title")) if part
         )
         promised = _ui_labels_in(description)
         if not promised:
@@ -474,11 +471,7 @@ def grade_reviewer_inputs(
             {
                 "task": subject,
                 "kind": "spec-gap",
-                "expected": (
-                    "Description lists "
-                    + ", ".join(promised)
-                    + " tabs/UI"
-                ),
+                "expected": ("Description lists " + ", ".join(promised) + " tabs/UI"),
                 "observed": (
                     "Acceptance and diff only cover "
                     + (", ".join(label for label in promised if label in covered) or "(none)")
@@ -496,9 +489,7 @@ def grade_reviewer_inputs(
                 "interfaces": "spec-gap detected between description and acceptance/diff",
                 "assumptions": "UI labels extracted from work-item description text",
                 "invariants": "builder self-grades excluded from grading inputs",
-                "conflicts": "; ".join(
-                    f"{f['task']}: {f['observed']}" for f in findings
-                ),
+                "conflicts": "; ".join(f"{f['task']}: {f['observed']}" for f in findings),
             },
         }
     return {

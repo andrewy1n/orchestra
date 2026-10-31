@@ -32,10 +32,9 @@ def run(args: argparse.Namespace) -> int:
         from orchestra.stage import hooks
 
         return hooks.run(args.command, hooks.CLAUDE if args.claude else hooks.CURSOR)
-    from orchestra.canon.project import StoreBindingError, open_store
-    from orchestra.canon.errors import StoreError
-
     from orchestra import views
+    from orchestra.canon.errors import StoreError
+    from orchestra.canon.project import StoreBindingError, open_store
 
     try:
         records = views.load_records(open_store(Path.cwd()))
@@ -49,4 +48,3 @@ def run(args: argparse.Namespace) -> int:
         return 1
     print(text)
     return 0
-

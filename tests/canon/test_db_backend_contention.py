@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import multiprocessing
-import pytest
 
+import pytest
 from test_db_backend_contract import (
     DbStore,
     _contested_worker,
     _join,
     _record,
+)
+from test_db_backend_contract import (
     db_store as db_store,
 )
 

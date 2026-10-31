@@ -16,7 +16,6 @@ import importlib
 import json
 from pathlib import Path
 
-
 from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -121,9 +120,7 @@ def _build(request: dict, *, cwd: Path | None = None, load_check_run=None, **kwa
     loader = load_check_run
     if loader is None and request.get("transition") == "done":
         loader = _matching_loader(request)
-    return close_batch.build_batch(
-        request, cwd=cwd, load_check_run=loader, **kwargs
-    )
+    return close_batch.build_batch(request, cwd=cwd, load_check_run=loader, **kwargs)
 
 
 def _acceptance(*, claim=None, include_claim: bool = True, subject: str = CLAIM_ID) -> dict:
@@ -168,21 +165,16 @@ def test_claim_id_read_only_from_payload_claim(tmp_path, monkeypatch):
         lambda: _build(
             _request(),
             cwd=repo,
-            load_acceptance=lambda _aid: _acceptance(
-                include_claim=False, subject=CLAIM_ID
-            ),
+            load_acceptance=lambda _aid: _acceptance(include_claim=False, subject=CLAIM_ID),
         )
     )
     assert refused is None, (
-        "a claim id read only from the acceptance subject must not gate: "
-        f"{refused}"
+        f"a claim id read only from the acceptance subject must not gate: {refused}"
     )
     ops = _build(
         _request(),
         cwd=repo,
-        load_acceptance=lambda _aid: _acceptance(
-            include_claim=False, subject=CLAIM_ID
-        ),
+        load_acceptance=lambda _aid: _acceptance(include_claim=False, subject=CLAIM_ID),
     )
     assert ops[-1]["transition"] == "done"
     assert verdict_calls == [], "verdict must not run without payload.claim"
@@ -212,14 +204,10 @@ def test_empty_claim_is_not_gated(tmp_path, monkeypatch):
         lambda: _build(
             _request(),
             cwd=repo,
-            load_acceptance=lambda _aid: _acceptance(
-                claim="", subject=CLAIM_ID
-            ),
+            load_acceptance=lambda _aid: _acceptance(claim="", subject=CLAIM_ID),
         )
     )
-    assert refused is None, (
-        f"an empty payload.claim must not gate the close: {refused}"
-    )
+    assert refused is None, f"an empty payload.claim must not gate the close: {refused}"
     ops = _build(
         _request(),
         cwd=repo,
@@ -401,12 +389,8 @@ def test_missing_acceptance_refuses(tmp_path, monkeypatch):
     def missing(_acceptance_id: str) -> dict:
         raise LookupError(_acceptance_id)
 
-    refused = _refusal(
-        lambda: _build(_request(), cwd=repo, load_acceptance=missing)
-    )
-    assert refused is not None, (
-        "a close whose acceptance cannot be loaded must refuse"
-    )
+    refused = _refusal(lambda: _build(_request(), cwd=repo, load_acceptance=missing))
+    assert refused is not None, "a close whose acceptance cannot be loaded must refuse"
 
 
 def test_unknown_claim_refuses(tmp_path, monkeypatch):
@@ -434,6 +418,4 @@ def test_unknown_claim_refuses(tmp_path, monkeypatch):
             load_acceptance=lambda _aid: _acceptance(claim=UNKNOWN_CLAIM_ID),
         )
     )
-    assert refused is not None, (
-        f"claim {UNKNOWN_CLAIM_ID!r} is not in the manifest and must refuse"
-    )
+    assert refused is not None, f"claim {UNKNOWN_CLAIM_ID!r} is not in the manifest and must refuse"

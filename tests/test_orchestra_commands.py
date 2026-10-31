@@ -41,9 +41,7 @@ def scan_skills(skills_root: Path) -> list[str]:
     violations: list[str] = []
     for path in sorted(skills_root.rglob("*.md")):
         for item in command_violations(path.read_text()):
-            violations.append(
-                f"{path.relative_to(skills_root)}: tells the agent to run {item}"
-            )
+            violations.append(f"{path.relative_to(skills_root)}: tells the agent to run {item}")
     return violations
 
 
@@ -74,7 +72,10 @@ def test_skills_run_orchestra_check_and_close_batch():
 
 
 def test_execute_phase_and_verify_work_run_verify_verdict_for_a_manifest_claim():
-    for path, not_done in ((EXECUTE, _NOT_DONE), (VERIFY, "run `orchestra verify verdict`; non-zero → not done.")):
+    for path, not_done in (
+        (EXECUTE, _NOT_DONE),
+        (VERIFY, "run `orchestra verify verdict`; non-zero → not done."),
+    ):
         text = path.read_text()
         assert "orchestra verify verdict" in text, path
         assert ".tuner/manifest.json" in text, path

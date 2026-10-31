@@ -22,8 +22,7 @@ SUITE_MODULE = REPO_ROOT / "orchestra" / "conductor" / "suite.py"
 
 _RUNNER_METHODS = {"tdd", "check"}
 _AMENDMENT_SENTENCE = (
-    "An oracle hash or test-id change is a signed amendment in "
-    "`.tuner/manifest.json`."
+    "An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`."
 )
 _NOT_DONE = "A non-zero exit means the acceptance is not done."
 
@@ -164,13 +163,17 @@ def test_migrated_skills_pass_the_scanner():
     violations = scan_skills(SKILLS)
     assert not violations, "\n".join(violations)
     assert _AMENDMENT_SENTENCE in EXECUTE.read_text()
-    assert "a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts" in " ".join(
-        VERIFY.read_text().split()
+    assert (
+        "a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts"
+        in " ".join(VERIFY.read_text().split())
     )
 
 
 def test_execute_phase_and_verify_work_run_tuner_verdict():
-    for path, not_done in ((EXECUTE, _NOT_DONE), (VERIFY, "run `orchestra verify verdict`; non-zero → not done.")):
+    for path, not_done in (
+        (EXECUTE, _NOT_DONE),
+        (VERIFY, "run `orchestra verify verdict`; non-zero → not done."),
+    ):
         text = path.read_text()
         assert "orchestra verify verdict" in text, path
         assert ".tuner/manifest.json" in text, path

@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 
 from conftest import REPO_ROOT
+
 from orchestra.canon.modules import discover
 
 _SCORE = "score"

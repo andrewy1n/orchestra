@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+
 for p in [Path(".claude-plugin/plugin.json"), Path(".cursor-plugin/plugin.json")]:
     d = json.loads(p.read_text())
     assert d["name"] == "orchestra", p

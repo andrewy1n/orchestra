@@ -119,9 +119,7 @@ def missing_record_versus_bind(text: str) -> list[str]:
         re.compile(r"(?:evidence-)?observations?", re.I),
     ]
     if not _window_has(text, record_terms):
-        missing.append(
-            "when techniques or audit record an unbound evidence-observation"
-        )
+        missing.append("when techniques or audit record an unbound evidence-observation")
     bind_terms = [
         _AFF_BIND,
         re.compile(r"observations?|claim", re.I),
@@ -144,9 +142,7 @@ def missing_earned_rule(text: str) -> list[str]:
     if not _window_has(text, [_AFF_BIND, earned], span=400) and not _window_has(
         text, [_AFF_RECHECK, earned], span=400
     ):
-        missing.append(
-            "bind or recheck required before treating a manifest claim as earned"
-        )
+        missing.append("bind or recheck required before treating a manifest claim as earned")
     return missing
 
 

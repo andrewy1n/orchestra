@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
-from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
 from orchestra.canon.errors import StoreError
+from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
 
 NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
@@ -227,7 +227,7 @@ class SchemaSet:
         return {ns: module["version"] for ns, module in self.modules.items()}
 
     @classmethod
-    def load(cls, store_root: Path | Backend, config: dict[str, Any]) -> "SchemaSet":
+    def load(cls, store_root: Path | Backend, config: dict[str, Any]) -> SchemaSet:
         backend = open_backend(store_root, config) if isinstance(store_root, Path) else store_root
         modules: dict[str, dict[str, Any]] = {}
         for namespace, version in config["schemas"].items():

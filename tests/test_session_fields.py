@@ -5,22 +5,52 @@ from orchestra.sessions.session_metrics import read_events
 
 
 def base(type_, ts, **extra):
-    return {"type": type_, "timestamp": ts, "sessionId": "s-1", "cwd": "/w", "gitBranch": "feat/x", **extra}
+    return {
+        "type": type_,
+        "timestamp": ts,
+        "sessionId": "s-1",
+        "cwd": "/w",
+        "gitBranch": "feat/x",
+        **extra,
+    }
 
 
 def tool_use(name, **inp):
-    return {"message": {"role": "assistant", "content": [{"type": "tool_use", "name": name, "input": inp}]}}
+    return {
+        "message": {
+            "role": "assistant",
+            "content": [{"type": "tool_use", "name": name, "input": inp}],
+        }
+    }
 
 
 EVENTS = [
     {"type": "mode", "mode": "normal"},
     base("user", "2026-09-22T06:00:00.000Z", message={"role": "user", "content": "do it"}),
     base("assistant", "2026-09-22T06:00:05.000Z", **tool_use("Skill", skill="orchestra:init")),
-    base("user", "2026-09-22T06:00:06.000Z", message={"role": "user", "content": [{"type": "tool_result", "content": "ok"}]}),
-    base("user", "2026-09-22T06:00:07.000Z", isMeta=True, message={"role": "user", "content": "caveat"}),
+    base(
+        "user",
+        "2026-09-22T06:00:06.000Z",
+        message={"role": "user", "content": [{"type": "tool_result", "content": "ok"}]},
+    ),
+    base(
+        "user",
+        "2026-09-22T06:00:07.000Z",
+        isMeta=True,
+        message={"role": "user", "content": "caveat"},
+    ),
     base("assistant", "2026-09-22T06:00:10.000Z", **tool_use("Skill", skill="orchestra:init")),
-    base("user", "2026-09-22T06:01:00.000Z", message={"role": "user", "content": [{"type": "text", "text": "again"}]}),
-    base("assistant", "2026-09-22T06:01:30.000Z", **tool_use("Skill", skill="simplify"), attributionSkill="simplify"),
+    base(
+        "user",
+        "2026-09-22T06:01:00.000Z",
+        message={"role": "user", "content": [{"type": "text", "text": "again"}]},
+    ),
+    base(
+        "assistant",
+        "2026-09-22T06:01:30.000Z",
+        **tool_use("Skill", skill="simplify"),
+        attributionSkill="simplify",
+    ),
     base("assistant", "2026-09-22T06:01:31.000Z", **tool_use("Bash", command="ls")),
     {"type": "cost-state", "sessionId": "s-1", "totalCostUSD": 0.25},
     {"type": "cost-state", "sessionId": "s-1", "totalCostUSD": 0.75},

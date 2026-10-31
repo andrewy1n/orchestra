@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from test_boundaries import boundary_violations
 from test_cli_packaging import cli_env, install_cli
 
@@ -99,7 +98,9 @@ def _create_area(
     )
 
 
-def _create_effort(root: Path, env: dict[str, str], subject: str = "effort-1") -> subprocess.CompletedProcess[str]:
+def _create_effort(
+    root: Path, env: dict[str, str], subject: str = "effort-1"
+) -> subprocess.CompletedProcess[str]:
     return _run_canon(
         root,
         env,

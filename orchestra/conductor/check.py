@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.policy import (
     dirty_pass_decision,
@@ -83,9 +83,13 @@ def run_verify_command(
         duration = time.monotonic() - started
         out = ""
         if exc.stdout:
-            out += exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode("utf-8", "replace")
+            out += (
+                exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode("utf-8", "replace")
+            )
         if exc.stderr:
-            out += exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode("utf-8", "replace")
+            out += (
+                exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode("utf-8", "replace")
+            )
         out += f"\n[orchestra check] timed out after {timeout}s\n"
         return None, duration, out, True, False
     except FileNotFoundError:
@@ -184,7 +188,9 @@ def run_check(
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     exit_code, duration_s, output, timed_out, missing = run_verify_command(
-        verify_command, cwd=work, timeout=timeout,
+        verify_command,
+        cwd=work,
+        timeout=timeout,
     )
     # shell=True: a missing binary often yields exit 127 rather than FileNotFoundError
     if exit_code == 127:
@@ -212,9 +218,7 @@ def run_check(
         "duration_s": round(duration_s, 6),
         "output_sha256": _output_sha256(output),
     }
-    if exit_code is not None and not timed_out and not missing:
-        check_payload["exit_code"] = exit_code
-    elif exit_code is not None:
+    if exit_code is not None:
         check_payload["exit_code"] = exit_code
     if decision.diff_sha256:
         check_payload["diff_sha256"] = decision.diff_sha256

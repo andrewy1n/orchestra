@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from orchestra.canon.schema import SchemaError, validate_module
 
@@ -34,7 +35,9 @@ def _read_source(entry: Any) -> tuple[str, str]:
         raise SchemaError(f"entry point {entry.name} = {package!r} must name a package")
     source = f"{package}/{entry.name}.json"
     try:
-        return source, resources.files(package).joinpath(f"{entry.name}.json").read_text(encoding="utf-8")
+        return source, resources.files(package).joinpath(f"{entry.name}.json").read_text(
+            encoding="utf-8"
+        )
     except (OSError, ModuleNotFoundError, TypeError) as exc:
         raise SchemaError(f"cannot read schema module {source!r}: {exc}") from exc
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib
 
 import pytest
-
 from conftest import REPO_ROOT
 
 _ABSENT_DIRS = ("skills", "dashboard", "scripts", "agents")
@@ -36,4 +35,3 @@ def test_store_modules_absent() -> None:
     tuner = REPO_ROOT / "orchestra" / "tuner"
     missing = [name for name in _DELETED_MODULES if not (tuner / name).exists()]
     assert missing == list(_DELETED_MODULES)
-

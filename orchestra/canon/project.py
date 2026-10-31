@@ -10,11 +10,11 @@ from typing import Any, Literal, cast
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
+from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
-from orchestra.canon.errors import StoreError, StaleWriteError
 from orchestra.canon.validation import (
     ValidationError,
     check_transition,
@@ -330,16 +330,14 @@ def _read_binding(path: Path) -> Location:
     value = data.get("store")
     if not isinstance(value, str) or value not in _BINDING_VALUES:
         raise StoreBindingError(
-            f"Invalid store binding from {source}: expected \"local\" or \"global\", got {value!r}"
+            f'Invalid store binding from {source}: expected "local" or "global", got {value!r}'
         )
     return value  # type: ignore[return-value]
 
 
 def _open(root: Path, store: Path, binding: Binding) -> Project:
     if not _has_config(store):
-        raise StoreBindingError(
-            f"Store selected by {binding.source} at {store} has no config.json"
-        )
+        raise StoreBindingError(f"Store selected by {binding.source} at {store} has no config.json")
     return Project(project_root=root, store_path=store.resolve(), binding=binding)
 
 
@@ -351,9 +349,7 @@ _OP_KEYS = {
 }
 
 
-def _find_record_by_id(
-    store: Backend, schemas: SchemaSet, record_id: str
-) -> dict[str, Any] | None:
+def _find_record_by_id(store: Backend, schemas: SchemaSet, record_id: str) -> dict[str, Any] | None:
     for record_type in schemas.types:
         if store.record_exists(record_type, record_id):
             return store.read_record(record_type, record_id)
@@ -409,7 +405,9 @@ def _persist_new(store: Backend, type_def: TypeDef, record: dict[str, Any]) -> d
     return stored
 
 
-def _require_one_active(type_def: TypeDef, index: RecordIndex, record: dict[str, Any], ignore: str | None = None) -> None:
+def _require_one_active(
+    type_def: TypeDef, index: RecordIndex, record: dict[str, Any], ignore: str | None = None
+) -> None:
     if type_def.lifecycle.name != "current":
         return
     for other in index.by_subject.get((record["record_type"], record["subject"]), []):
@@ -460,7 +458,7 @@ def _read_for_update(
 
 
 def _expected_revision(op: dict[str, Any], old: dict[str, Any]) -> str | None:
-    raw = op["expected_revision"] if "expected_revision" in op else _CURRENT_REVISION
+    raw = op.get("expected_revision", _CURRENT_REVISION)
     if raw == _CURRENT_REVISION:
         return old["revision"]
     return raw

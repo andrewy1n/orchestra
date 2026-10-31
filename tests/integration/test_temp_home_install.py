@@ -26,9 +26,9 @@ exit 0
 
 def install(source: Path, home: Path, *args: str) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     env["HOME"] = str(home)
     env["ORCHESTRA_NPX"] = str(home.parent / "fake-bin" / "npx")
@@ -75,8 +75,14 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
     home = tmp_path / "home"
 
     proc = install(
-        REPO_ROOT, home, "--only", "claude", "--only", "opencode",
-        "--global", "--copy",
+        REPO_ROOT,
+        home,
+        "--only",
+        "claude",
+        "--only",
+        "opencode",
+        "--global",
+        "--copy",
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "verified: ok" in proc.stdout
@@ -100,17 +106,21 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
 
     reviewer = (claude / "agents" / "reviewer.md").read_text(encoding="utf-8")
     assert "tools: Read, Grep, Glob, Bash" in reviewer
-    opencode_reviewer = (opencode / "agents" / "reviewer.md").read_text(
-        encoding="utf-8"
-    )
+    opencode_reviewer = (opencode / "agents" / "reviewer.md").read_text(encoding="utf-8")
     assert "mode: subagent" in opencode_reviewer
     assert "  edit: deny" in opencode_reviewer
     assert "write:" not in opencode_reviewer
 
     before = {path: snapshot(path) for path in (claude, opencode)}
     again = install(
-        REPO_ROOT, home, "--only", "claude", "--only", "opencode",
-        "--global", "--copy",
+        REPO_ROOT,
+        home,
+        "--only",
+        "claude",
+        "--only",
+        "opencode",
+        "--global",
+        "--copy",
     )
     assert again.returncode == 0, again.stdout + again.stderr
     assert {path: snapshot(path) for path in (claude, opencode)} == before
@@ -118,8 +128,14 @@ def test_temp_home_install_claude_and_opencode(tmp_path):
     assert (opencode / MARKER).is_file()
 
     removed = install(
-        REPO_ROOT, home, "--only", "claude", "--only", "opencode",
-        "--global", "--uninstall",
+        REPO_ROOT,
+        home,
+        "--only",
+        "claude",
+        "--only",
+        "opencode",
+        "--global",
+        "--uninstall",
     )
     assert removed.returncode == 0, removed.stdout + removed.stderr
     assert not claude.exists()
@@ -133,7 +149,5 @@ def test_temp_home_install_uses_skills_cli_for_a_generic_host(tmp_path):
     assert "profile: codex" in proc.stdout
     log = (home.parent / "npx.log").read_text(encoding="utf-8")
     assert "skills add -a codex" in log
-    payload = json.loads(
-        (home / ".codex" / MARKER).read_text(encoding="utf-8")
-    )
+    payload = json.loads((home / ".codex" / MARKER).read_text(encoding="utf-8"))
     assert payload["profile"] == "codex"

@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 from conftest import REPO_ROOT
+
 from installer.matrix import load_matrix
 
 HEADING = "## Install with the CLI"
@@ -78,9 +79,7 @@ def _agent_skills_section() -> str:
 
 def _generated_skills() -> list[str]:
     return sorted(
-        child.name
-        for child in (REPO_ROOT / "skills").iterdir()
-        if (child / "SKILL.md").is_file()
+        child.name for child in (REPO_ROOT / "skills").iterdir() if (child / "SKILL.md").is_file()
     )
 
 
@@ -113,10 +112,7 @@ def _host_matrix(section: str) -> tuple[list[str], list[list[str]]]:
 
 def test_cli_install_is_documented():
     section = _section()
-    assert (
-        'uv tool install "git+https://github.com/andrewy1n/orchestra.git@<ref>"'
-        in section
-    )
+    assert 'uv tool install "git+https://github.com/andrewy1n/orchestra.git@<ref>"' in section
     assert "./bin/orchestra install" in section
 
 
@@ -130,7 +126,7 @@ def test_host_matrix_matches_provider_matrix():
         provider.id for provider in providers
     ]
 
-    for provider, row in zip(providers, rows):
+    for provider, row in zip(providers, rows, strict=False):
         assert _plain(row[column["Host"]]) == provider.name, provider.id
         assert _plain(row[column["Provider id"]]) == provider.id
         assert _plain(row[column["Kind"]]) == provider.kind, provider.id
@@ -146,13 +142,9 @@ def test_host_matrix_matches_provider_matrix():
 def test_every_provider_has_a_documented_install_command():
     section = _section()
     for provider in load_matrix():
-        assert (
-            f"\n./bin/orchestra install --only {provider.id}\n" in section
-        ), provider.id
+        assert f"\n./bin/orchestra install --only {provider.id}\n" in section, provider.id
         if provider.profile:
-            assert (
-                f"\nnpx skills add -a {provider.profile}\n" in section
-            ), provider.profile
+            assert f"\nnpx skills add -a {provider.profile}\n" in section, provider.profile
 
 
 def test_dry_run_is_documented_first():

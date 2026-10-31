@@ -11,7 +11,7 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra.conductor.suite import (  # noqa: E402
+from orchestra.conductor.suite import (
     EVIDENCE_KIND,
     METHOD,
     SuitePolicy,
@@ -128,10 +128,7 @@ def test_runner_records_suite_check_run_payload_fields():
     suite = SuiteResult(
         exit_code=1,
         duration_s=12.5,
-        output=(
-            "FAILED tests/test_foo.py::test_a\n"
-            "FAILED tests/test_bar.py::test_b\n"
-        ),
+        output=("FAILED tests/test_foo.py::test_a\nFAILED tests/test_bar.py::test_b\n"),
         output_sha256="deadbeef" * 8,
         failing_node_ids=[
             "tests/test_foo.py::test_a",
@@ -260,7 +257,9 @@ FAILED tests/test_b.py::TestCls::test_two
         revision=HEAD,
     )
     payload = build_suite_check_run_payload(
-        phase_slug=PHASE, effort="workflow-loop", suite=suite,
+        phase_slug=PHASE,
+        effort="workflow-loop",
+        suite=suite,
     )
     assert "failing_node_ids" in payload
     assert payload["evidence_kind"] == "integration"
@@ -377,12 +376,16 @@ def test_advisory_gate_does_not_block_merge_on_suite_fail():
         revision=HEAD,
     )
     finding = advisory_finding_payload(
-        phase_slug=PHASE, effort="workflow-loop", suite=suite,
+        phase_slug=PHASE,
+        effort="workflow-loop",
+        suite=suite,
     )
     assert "advisory" in finding["claim"]
     assert finding["needs"] == "none"
     routed = route_suite_failures(
-        suite.failing_node_ids, fix_budget_remaining=3, policy=policy,
+        suite.failing_node_ids,
+        fix_budget_remaining=3,
+        policy=policy,
     )
     assert sum(routed.create_fix_flags) == 0
     flat = _skill_flat()
@@ -475,14 +478,18 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
     assert set(clusters) == {"tests/test_foo.py", "tests/test_bar.py"}
     assert module_fix_subject("tests/test_foo.py") == "fix-test_foo"
     routed = route_suite_failures(
-        nodes, fix_budget_remaining=1, policy=policy,
+        nodes,
+        fix_budget_remaining=1,
+        policy=policy,
     )
     assert routed.reopen_done is False
     assert routed.inline_fix_and_rerun is False
     assert sum(routed.create_fix_flags) == 1
     assert routed.escalate is True
     routed2 = route_suite_failures(
-        nodes, fix_budget_remaining=3, policy=policy,
+        nodes,
+        fix_budget_remaining=3,
+        policy=policy,
     )
     assert sum(routed2.create_fix_flags) == 2
     assert all(s.startswith("fix-") for s in routed2.fix_subjects)
@@ -490,9 +497,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
     assert not should_rerun_suite(fix_tasks_created=0)
     flat = _skill_flat()
     assert "cluster" in flat or "failing test file" in flat or "module" in flat
-    assert "inline" in flat and (
-        "fix-and-rerun" in flat or "fix and rerun" in flat
-    )
+    assert "inline" in flat and ("fix-and-rerun" in flat or "fix and rerun" in flat)
     assert "never reopen" in flat or ("never" in flat and "`done`" in flat)
     assert "retry" in flat and "budget" in flat
 
@@ -501,11 +506,18 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     text = _skill_text()
     flat = _skill_flat()
     assert "Do not waive `phase_gate.suite`" in flat
-    assert "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)" in flat
-    assert "closing verification → analyze → reviewer → integration-report → suite → phase gate" in flat
+    assert (
+        "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
+        in flat
+    )
+    assert (
+        "closing verification → analyze → reviewer → integration-report → suite → phase gate"
+        in flat
+    )
     assert "orchestra suite record" in text
-    assert "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat
-
+    assert (
+        "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat
+    )
 
 
 def test_execute_phase_documents_no_agent_waiver_of_suite_policy():
@@ -538,7 +550,9 @@ def test_evidence_kind_integration_not_regression():
         revision=HEAD,
     )
     payload = build_suite_check_run_payload(
-        phase_slug=PHASE, effort="workflow-loop", suite=suite,
+        phase_slug=PHASE,
+        effort="workflow-loop",
+        suite=suite,
     )
     assert payload["evidence_kind"] == "integration"
     assert payload["evidence_kind"] != "regression"

@@ -3,15 +3,26 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Any, Callable
+from typing import Any
 
 from dashboard.backend import approval, areas, backlog, dismiss, journal, store
 from dashboard.backend.phase import (
-    PhaseRow, load_decision_log, load_phase_detail, load_requirement_detail, tabs_for,
+    PhaseRow,
+    load_decision_log,
+    load_phase_detail,
+    load_requirement_detail,
+    tabs_for,
 )
 from dashboard.backend.server import schemas
-from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot, load_snapshot
+from dashboard.backend.snapshot import (
+    BacklogItem,
+    EffortView,
+    NeedsYouItem,
+    Snapshot,
+    load_snapshot,
+)
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
 
@@ -67,7 +78,9 @@ def effort_summary(view: EffortView) -> schemas.EffortSummary:
 
 
 def needs_payload(item: NeedsYouItem) -> schemas.NeedsYouItem:
-    choices = [schemas.ConfirmChoice.model_validate(choice) for choice in approval.confirm_choices(item)]
+    choices = [
+        schemas.ConfirmChoice.model_validate(choice) for choice in approval.confirm_choices(item)
+    ]
     return schemas.NeedsYouItem.model_validate(
         {**vars(item), "approval": schemas.Approval(confirm_choices=choices)}
     )
@@ -157,7 +170,9 @@ class Reader:
     def areas(self) -> schemas.AreasResponse:
         return self.cache.remember(
             ("areas",),
-            lambda: schemas.AreasResponse([schemas.AreaView.model_validate(view) for view in areas.load_areas(self.target)]),
+            lambda: schemas.AreasResponse(
+                [schemas.AreaView.model_validate(view) for view in areas.load_areas(self.target)]
+            ),
         )
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
@@ -175,7 +190,9 @@ class Reader:
     def task(self, task_id: str) -> schemas.TaskResponse:
         return self.cache.remember(
             ("task", task_id),
-            lambda: schemas.TaskResponse(detail=schemas.TaskDetail.model_validate(load_task_detail(self.target, task_id))),
+            lambda: schemas.TaskResponse(
+                detail=schemas.TaskDetail.model_validate(load_task_detail(self.target, task_id))
+            ),
         )
 
     def journal(self, effort: str) -> schemas.JournalResponse:
@@ -191,7 +208,11 @@ class Reader:
     def record(self, record_id: str) -> schemas.RecordResponse:
         return self.cache.remember(
             ("record", record_id),
-            lambda: schemas.RecordResponse(record=schemas.StoredRecord.model_validate(journal.load_record(self.target, record_id))),
+            lambda: schemas.RecordResponse(
+                record=schemas.StoredRecord.model_validate(
+                    journal.load_record(self.target, record_id)
+                )
+            ),
         )
 
     def requirement(self, effort: str, phase: str, requirement: str) -> schemas.RequirementResponse:

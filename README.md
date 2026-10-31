@@ -498,6 +498,15 @@ If the launcher finds no store or no `uv`, it prints the reason and exits.
 
 ## Testing
 
+Run the pinned Ruff lint and formatting checks locally:
+
+```bash
+uvx ruff@0.13.1 check .
+uvx ruff@0.13.1 format --check .
+```
+
+Use `uvx ruff@0.13.1 format .` to format Python files.
+
 Run the full suite as three pytest processes:
 
 ```bash

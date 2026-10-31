@@ -55,9 +55,7 @@ def create(project, record_type: str, subject: str, payload: dict, body: str | N
     if body is None:
         sections = project.schemas().types[record_type].sections
         body = "\n\n".join(f"## {name}\n\nText." for name in sections)
-    return project.create(
-        record_type=record_type, subject=subject, payload=payload, body=body
-    )
+    return project.create(record_type=record_type, subject=subject, payload=payload, body=body)
 
 
 def seed_effort(project, effort: str = "alpha", phase: str = "p1") -> None:

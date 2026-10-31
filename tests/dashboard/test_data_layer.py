@@ -84,9 +84,7 @@ def test_r1_only_store_py_calls_project_list_or_get():
 
 def test_r2_no_backend_module_contains_run_call():
     offenders = [
-        relative(path)
-        for path in sorted(BACKEND.rglob("*.py"))
-        if "_run(" in path.read_text()
+        relative(path) for path in sorted(BACKEND.rglob("*.py")) if "_run(" in path.read_text()
     ]
     assert not offenders, f"backend modules still contain `_run(`: {offenders}"
 
@@ -122,7 +120,9 @@ def test_r5_each_loader_lives_in_its_own_module():
     assert "load_snapshot" in functions["snapshot"], "snapshot.py defines no load_snapshot"
     assert "load_journal" in functions["journal"], "journal.py defines no load_journal"
     for name in ("task", "phase"):
-        assert any(fn.startswith("load_") for fn in functions[name]), f"{name}.py defines no load_* function"
+        assert any(fn.startswith("load_") for fn in functions[name]), (
+            f"{name}.py defines no load_* function"
+        )
 
     owners: dict[str, list[str]] = {}
     for name, found in functions.items():
@@ -136,8 +136,8 @@ def test_r5_each_loader_lives_in_its_own_module():
 def test_r6_every_api_response_has_a_pydantic_model(store):
     pytest.importorskip("fastapi")
     sys.path.insert(0, str(REPO_ROOT))
-    from orchestra.canon.project import open_store
     from dashboard.backend.server.app import create_app
+    from orchestra.canon.project import open_store
 
     document = create_app(open_store(store)).openapi()
     known = set(document.get("components", {}).get("schemas", {}))
@@ -160,7 +160,11 @@ def test_r6_every_api_response_has_a_pydantic_model(store):
             if method not in {"get", "post", "put", "patch", "delete"}:
                 continue
             checked += 1
-            successes = {code: r for code, r in operation.get("responses", {}).items() if code.startswith("2")}
+            successes = {
+                code: r
+                for code, r in operation.get("responses", {}).items()
+                if code.startswith("2")
+            }
             if not successes:
                 untyped.append(f"{method.upper()} {path}: no 2xx response")
                 continue
@@ -178,7 +182,9 @@ def test_r7_api_types_are_generated_from_the_committed_schema():
     dev = json.loads((UI / "package.json").read_text()).get("devDependencies", {})
     version = dev.get("openapi-typescript")
     assert version is not None, "package.json devDependencies lacks openapi-typescript"
-    assert EXACT_VERSION.match(version), f"openapi-typescript must be pinned to an exact x.y.z, got {version!r}"
+    assert EXACT_VERSION.match(version), (
+        f"openapi-typescript must be pinned to an exact x.y.z, got {version!r}"
+    )
     names = schema_names()
     assert names, "openapi.json has no components.schemas"
     generated = API_TYPES.read_text()
@@ -190,7 +196,9 @@ def test_r8_sync_check_passes_clean_and_fails_when_stale(tmp_path):
     assert API_SCHEMA_SCRIPT.is_file(), "missing scripts/api_schema.py"
     clean = subprocess.run(
         [sys.executable, "scripts/api_schema.py", "--check"],
-        cwd=REPO_ROOT, capture_output=True, text=True,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     assert clean.returncode == 0, f"--check failed on the clean tree:\n{clean.stdout}{clean.stderr}"
 
@@ -200,10 +208,14 @@ def test_r8_sync_check_passes_clean_and_fails_when_stale(tmp_path):
     stale.write_text(json.dumps(document, indent=2) + "\n")
     result = subprocess.run(
         [sys.executable, "scripts/api_schema.py", "--check", "--schema", str(stale)],
-        cwd=REPO_ROOT, capture_output=True, text=True,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 1, f"--check exit code {result.returncode} on a stale schema"
-    assert "api_schema.py" in result.stdout + result.stderr, "--check output does not name api_schema.py"
+    assert "api_schema.py" in result.stdout + result.stderr, (
+        "--check output does not name api_schema.py"
+    )
 
 
 def test_r9_ui_imports_api_types_and_types_ts_holds_no_api_shape():
@@ -222,7 +234,10 @@ def test_r9_ui_imports_api_types_and_types_ts_holds_no_api_shape():
     duplicated = [
         name
         for name in names
-        if re.search(rf"\b(?:interface\s+{re.escape(name)}\b|type\s+{re.escape(name)}\s*(?:<[^>]*>)?\s*=)", text)
+        if re.search(
+            rf"\b(?:interface\s+{re.escape(name)}\b|type\s+{re.escape(name)}\s*(?:<[^>]*>)?\s*=)",
+            text,
+        )
     ]
     assert not duplicated, f"types.ts still declares API shapes: {duplicated}"
 

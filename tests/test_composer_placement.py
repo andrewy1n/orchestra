@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
 from dashboard.backend.server.app import create_app
 from orchestra.canon.project import open_store
 
@@ -37,17 +37,28 @@ def _output(result: subprocess.CompletedProcess[str]) -> str:
 
 def _create_effort(cli, subject: str) -> None:
     result = cli(
-        "create", "--type", "score:effort", "--subject", subject,
-        "--payload", json.dumps({"goal": f"Goal of {subject}", "kind": "deliver"}),
+        "create",
+        "--type",
+        "score:effort",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps({"goal": f"Goal of {subject}", "kind": "deliver"}),
     )
     assert result.returncode == 0, _output(result)
 
 
 def _create_area(cli, subject: str) -> None:
     result = cli(
-        "create", "--type", "composer:area", "--subject", subject,
-        "--payload", json.dumps({"title": f"Area {subject}"}),
-        "--body", "## Scope\n\nScope for testing.",
+        "create",
+        "--type",
+        "composer:area",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps({"title": f"Area {subject}"}),
+        "--body",
+        "## Scope\n\nScope for testing.",
     )
     assert result.returncode == 0, _output(result)
 

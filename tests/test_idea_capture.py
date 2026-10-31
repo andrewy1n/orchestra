@@ -10,7 +10,6 @@ from pathlib import Path
 
 import helpers as h
 import pytest
-
 from conftest import REPO_ROOT
 
 ORCHESTRA_CMD = [sys.executable, "-m", "orchestra.cli"]

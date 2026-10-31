@@ -60,36 +60,43 @@ def test_criterion_optional_in_contract():
 
 def test_execute_phase_requires_original_text_briefs():
     flat = _flat(h.skill_text("execute-phase"))
-    assert "quotes (verbatim, by id) work-item Description/Approach, linked requirement text" in flat
+    assert (
+        "quotes (verbatim, by id) work-item Description/Approach, linked requirement text" in flat
+    )
     assert "Do not paraphrase claims or treat empty/legacy `criterion` as the lead claim." in flat
     assert "Do not restate `criterion`" in flat
 
 
 def test_skill_requires_atomic_ids_and_thin_acceptances():
     flat = _flat(_text())
-    assert "atomic requirement ids in `requirements` (JSON array of atomic ids; never compound)" in flat
-    assert "New acceptances are **thin**: omit `criterion` or `\"\"`." in flat
+    assert (
+        "atomic requirement ids in `requirements` (JSON array of atomic ids; never compound)"
+        in flat
+    )
+    assert 'New acceptances are **thin**: omit `criterion` or `""`.' in flat
     assert "else id'd list in `## Description`" in flat
     assert "`incidental` may omit" in flat
 
 
 def test_create_examples_match_atomic_thin_shape():
     text = _text()
-    creates = [inv for inv in extract_invocations(text) if inv["subcommand"] == "create" and inv["payload"]]
+    creates = [
+        inv for inv in extract_invocations(text) if inv["subcommand"] == "create" and inv["payload"]
+    ]
     work_items = [inv["payload"] for inv in creates if inv["type"] == "score:work-item"]
     acceptances = [inv for inv in creates if inv["type"] == "score:acceptance"]
     assert work_items and acceptances
 
     covered: set[str] = set()
     for payload in work_items:
-        assert REQUIRED_WORK_ITEM <= set(payload)
+        assert set(payload) >= REQUIRED_WORK_ITEM
         assert payload["requirements"]
         covered.update(payload["requirements"])
         assert "ready" not in payload and "wave" not in payload
 
     for inv in acceptances:
         payload = inv["payload"]
-        assert REQUIRED_ACCEPTANCE <= set(payload)
+        assert set(payload) >= REQUIRED_ACCEPTANCE
         assert payload["requirement"] in covered
         assert "," not in payload["requirement"]
         assert payload.get("criterion", "") == ""
@@ -224,7 +231,9 @@ def test_thin_deliver_cli_capture(store, cli, resolved_contract):
     )
     captured = cli("apply", str(batch))
     assert captured.returncode == 0, captured.stdout + captured.stderr
-    listed = cli("list", "--type", "score:acceptance", "--subject", "thin-deliver-capture", "--full")
+    listed = cli(
+        "list", "--type", "score:acceptance", "--subject", "thin-deliver-capture", "--full"
+    )
     assert listed.returncode == 0, listed.stdout + listed.stderr
     accs = json.loads(listed.stdout)["records"]
     assert len(accs) == 1

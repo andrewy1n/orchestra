@@ -10,9 +10,10 @@ import hashlib
 import json
 import re
 import subprocess
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 
@@ -160,9 +161,7 @@ def _parse_runner(parsed: Mapping[str, Any]) -> tuple[str, ...]:
         or sum(item == "{tests}" for item in raw) != 1
         or not any("{report}" in item for item in raw)
     ):
-        raise ManifestError(
-            "runner must be a non-empty argv list with {tests} and {report}"
-        )
+        raise ManifestError("runner must be a non-empty argv list with {tests} and {report}")
     return tuple(raw)
 
 
@@ -193,9 +192,7 @@ def _parse_claim(raw: Any, index: int) -> Claim:
 
     kind = raw.get("evidence_kind", DEFAULT_KIND)
     if kind not in KINDS:
-        raise ManifestError(
-            f"claims[{index}].evidence_kind must be one of {', '.join(KINDS)}"
-        )
+        raise ManifestError(f"claims[{index}].evidence_kind must be one of {', '.join(KINDS)}")
     witness = raw.get("witness", "tests")
     if witness not in ("tests", "human"):
         raise ManifestError(f"claims[{index}].witness must be 'tests' or 'human'")
@@ -225,9 +222,7 @@ def _parse_hashes(hashes: Mapping[str, Any], index: int) -> dict[str, str]:
         if not isinstance(relpath, str) or not relpath:
             raise ManifestError(f"claims[{index}].oracle_hashes has an empty path")
         if not isinstance(digest, str) or _HASH_RE.fullmatch(digest) is None:
-            raise ManifestError(
-                f"claims[{index}].oracle_hashes[{relpath!r}] must be sha256:<hex>"
-            )
+            raise ManifestError(f"claims[{index}].oracle_hashes[{relpath!r}] must be sha256:<hex>")
         parsed[relpath] = digest
     return parsed
 

@@ -17,12 +17,15 @@ from orchestra.canon.project import Project
 
 DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 MISSING_BUILD = (
-    "No web build at dashboard/frontend/dist. "
-    "Run `npm run build` in dashboard/frontend."
+    "No web build at dashboard/frontend/dist. Run `npm run build` in dashboard/frontend."
 )
 
 
-ERRORS: dict[int | str, dict] = {400: {"model": schemas.ErrorBody}, 404: {"model": schemas.ErrorBody}, 409: {"model": schemas.ErrorBody}}
+ERRORS: dict[int | str, dict] = {
+    400: {"model": schemas.ErrorBody},
+    404: {"model": schemas.ErrorBody},
+    409: {"model": schemas.ErrorBody},
+}
 
 
 def create_app(target: Project):
@@ -67,7 +70,9 @@ def create_app(target: Project):
         return reader.record(id)
 
     @app.get("/api/requirement", response_model=schemas.RequirementResponse, responses=ERRORS)
-    def requirement(effort: str = Query(...), phase: str = Query(...), id: str = Query(...)) -> schemas.RequirementResponse:
+    def requirement(
+        effort: str = Query(...), phase: str = Query(...), id: str = Query(...)
+    ) -> schemas.RequirementResponse:
         return reader.requirement(effort, phase, id)
 
     @app.get("/api/needs", response_model=schemas.NeedsResponse, responses=ERRORS)
@@ -95,6 +100,7 @@ def create_app(target: Project):
     if DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(DIST), html=True), name="ui")
     else:
+
         @app.get("/", include_in_schema=False)
         def index() -> HTMLResponse:
             return HTMLResponse(MISSING_BUILD)

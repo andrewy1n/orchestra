@@ -25,9 +25,7 @@ HUMAN_TEXT = "the reviewer accepts the widget copy"
 
 def _env() -> dict[str, str]:
     env = os.environ.copy()
-    env["PATH"] = os.pathsep.join(
-        [str(Path(sys.executable).parent), "/usr/bin", "/bin"]
-    )
+    env["PATH"] = os.pathsep.join([str(Path(sys.executable).parent), "/usr/bin", "/bin"])
     return env
 
 
@@ -138,9 +136,7 @@ def _human_repo(root: Path, allowlist: bytes, claim_extra: dict) -> tuple[str, s
 
 
 def _human_verdict(root: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
-    return _tuner(
-        "verdict", "--cwd", str(root), "--base", base, "--at", head, HUMAN_ID
-    )
+    return _tuner("verdict", "--cwd", str(root), "--base", base, "--at", head, HUMAN_ID)
 
 
 def _payload(proc: subprocess.CompletedProcess[str]) -> dict:
@@ -159,9 +155,18 @@ def test_r1_claim_add_writes_manifest_entry_standalone(tmp_path):
     fresh = tmp_path / "fresh"
     fresh.mkdir()
     proc = _tuner(
-        "claim", "add", "--cwd", str(fresh),
-        "--id", "claim-a", "--text", "value is one",
-        "--test", NODE, "--test", f"{ORACLE_REL}::test_other",
+        "claim",
+        "add",
+        "--cwd",
+        str(fresh),
+        "--id",
+        "claim-a",
+        "--text",
+        "value is one",
+        "--test",
+        NODE,
+        "--test",
+        f"{ORACLE_REL}::test_other",
     )
     assert proc.returncode == 0, proc.stderr
     document = _read_manifest(fresh)
@@ -193,8 +198,16 @@ def test_r1_claim_add_writes_manifest_entry_standalone(tmp_path):
         },
     )
     proc = _tuner(
-        "claim", "add", "--cwd", str(existing),
-        "--id", "claim-new", "--text", "new claim", "--test", NODE,
+        "claim",
+        "add",
+        "--cwd",
+        str(existing),
+        "--id",
+        "claim-new",
+        "--text",
+        "new claim",
+        "--test",
+        NODE,
     )
     assert proc.returncode == 0, proc.stderr
     document = _read_manifest(existing)
@@ -207,8 +220,16 @@ def test_r1_claim_add_writes_manifest_entry_standalone(tmp_path):
 
     before = _manifest_path(existing).read_bytes()
     proc = _tuner(
-        "claim", "add", "--cwd", str(existing),
-        "--id", "claim-new", "--text", "different", "--test", NODE,
+        "claim",
+        "add",
+        "--cwd",
+        str(existing),
+        "--id",
+        "claim-new",
+        "--text",
+        "different",
+        "--test",
+        NODE,
     )
     assert proc.returncode != 0
     assert _manifest_path(existing).read_bytes() == before
@@ -268,8 +289,16 @@ def test_r2_standalone_add_freeze_verdict_passes(tmp_path):
     (root / ".tuner" / "allowed_signers").write_bytes(ALLOW)
 
     added = _tuner(
-        "claim", "add", "--cwd", str(root),
-        "--id", "claim-widget", "--text", "value is one", "--test", NODE,
+        "claim",
+        "add",
+        "--cwd",
+        str(root),
+        "--id",
+        "claim-widget",
+        "--text",
+        "value is one",
+        "--test",
+        NODE,
     )
     assert added.returncode == 0, added.stderr
     frozen = _tuner("freeze", "--cwd", str(root))
@@ -279,9 +308,7 @@ def test_r2_standalone_add_freeze_verdict_passes(tmp_path):
     (root / "app.py").write_bytes(APP_GREEN)
     head = _commit(root, "green")
 
-    proc = _tuner(
-        "verdict", "--cwd", str(root), "--base", base, "--at", head, "claim-widget"
-    )
+    proc = _tuner("verdict", "--cwd", str(root), "--base", base, "--at", head, "claim-widget")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert _payload(proc)["result"] == "pass"
 

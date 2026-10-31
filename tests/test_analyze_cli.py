@@ -96,7 +96,9 @@ def test_r5_explicit_plan_stage_matches_the_default(store, cli, resolved_contrac
     assert explicit[1]["stage"] == "plan"
 
 
-def test_r6_close_stage_on_consistent_store_with_passing_check_runs_exits_zero(store, cli, resolved_contract):
+def test_r6_close_stage_on_consistent_store_with_passing_check_runs_exits_zero(
+    store, cli, resolved_contract
+):
     seeded = seed_phase(cli, resolved_contract)
     for acceptance in seeded["acceptances"].values():
         add_check_run(store, cli, acceptance, "pass")

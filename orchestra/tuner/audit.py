@@ -7,9 +7,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import (
@@ -77,9 +78,7 @@ def run_audit(
     try:
         worktree = checked[1]
         head_pass = _passing_tests(worktree, claim_tests, runner)
-        blocks = [
-            _label_block(worktree, hunk, head_pass, runner) for hunk in hunks
-        ]
+        blocks = [_label_block(worktree, hunk, head_pass, runner) for hunk in hunks]
         mutants, survivors = _plant_mutants(
             worktree,
             blocks,
@@ -162,9 +161,7 @@ def _audit_replay(base: str, head: str) -> str:
     )
 
 
-def _probe_replay(
-    base: str, head: str, probe: dict[str, Any], probe_id: str
-) -> str:
+def _probe_replay(base: str, head: str, probe: dict[str, Any], probe_id: str) -> str:
     hint: dict[str, Any] = {
         "technique": _TECHNIQUE_PROBES,
         "base": base,
@@ -411,14 +408,10 @@ def _is_source_path(path: str) -> bool:
         return False
     if name.startswith("test_") and name.endswith(".py"):
         return False
-    if name.endswith("_test.py") or name == "conftest.py":
-        return False
-    return True
+    return not (name.endswith("_test.py") or name == "conftest.py")
 
 
-def _passing_tests(
-    worktree: Path, tests: Sequence[str], runner: Sequence[str]
-) -> list[str]:
+def _passing_tests(worktree: Path, tests: Sequence[str], runner: Sequence[str]) -> list[str]:
     if not tests:
         return []
     outcomes = run_tests(worktree, tests, runner)

@@ -17,13 +17,12 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
-
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 UI_SRC = REPO_ROOT / "dashboard" / "frontend" / "src"
@@ -36,16 +35,27 @@ def _create(cli, record_type: str, subject: str, payload: dict, body: str | None
     if body is not None:
         args.extend(["--body", body])
     result = cli(*args)
-    assert result.returncode == 0, f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
 def _supersede(cli, record: dict, payload: dict) -> dict:
     result = cli(
-        "supersede", "--type", record["record_type"], "--id", record["id"],
-        "--expected-revision", "@current", "--payload", json.dumps(payload),
+        "supersede",
+        "--type",
+        record["record_type"],
+        "--id",
+        record["id"],
+        "--expected-revision",
+        "@current",
+        "--payload",
+        json.dumps(payload),
     )
-    assert result.returncode == 0, f"supersede {record['subject']}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"supersede {record['subject']}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
@@ -59,7 +69,11 @@ def _area(cli, subject: str, title: str, scope: str) -> dict:
 
 def _idea(cli, subject: str, status: str = "open", text: str | None = None, **refs: str) -> dict:
     return _create(
-        cli, "composer:idea", subject, {"status": status, **refs}, f"{text or 'text of ' + subject}\n",
+        cli,
+        "composer:idea",
+        subject,
+        {"status": status, **refs},
+        f"{text or 'text of ' + subject}\n",
     )
 
 
@@ -98,7 +112,10 @@ def test_r2_each_area_lists_the_ideas_that_point_at_it(store, cli):
     _idea(cli, "typo-tolerance", area="search")
     _idea(cli, "unfiled")
     areas = _by_subject(_areas(store))
-    assert sorted(idea["subject"] for idea in areas["billing"]["ideas"]) == ["invoice-pdf", "refund-flow"]
+    assert sorted(idea["subject"] for idea in areas["billing"]["ideas"]) == [
+        "invoice-pdf",
+        "refund-flow",
+    ]
     assert [idea["subject"] for idea in areas["search"]["ideas"]] == ["typo-tolerance"]
 
 
@@ -207,7 +224,7 @@ def _get(proc: subprocess.Popen, port: int, path: str, err: Path) -> tuple[int, 
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             last = exc
             time.sleep(0.1)
-    assert False, f"GET {path} failed (exit {proc.poll()}): {last}\n{err.read_text()}"
+    raise AssertionError(f"GET {path} failed (exit {proc.poll()}): {last}\n{err.read_text()}")
 
 
 def test_web_entry_lists_the_repo_areas(tmp_path, store, cli):
@@ -225,8 +242,13 @@ def test_web_entry_lists_the_repo_areas(tmp_path, store, cli):
     err = tmp_path / "err"
     with (tmp_path / "out").open("w") as out, err.open("w") as errfile:
         proc = subprocess.Popen(
-            [str(SCRIPT), "--port", str(port)], cwd=str(REPO_ROOT), env=env,
-            stdout=out, stderr=errfile, text=True, start_new_session=True,
+            [str(SCRIPT), "--port", str(port)],
+            cwd=str(REPO_ROOT),
+            env=env,
+            stdout=out,
+            stderr=errfile,
+            text=True,
+            start_new_session=True,
         )
         try:
             status, body = _get(proc, port, "/api/areas", err)

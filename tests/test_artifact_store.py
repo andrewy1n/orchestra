@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 
 import pytest
+from conftest import make_git_repo, write_config
 
 from orchestra.canon.project import StoreBindingError, open_store
-from conftest import make_git_repo, write_config
 
 
 def _meta(store: Path) -> None:
@@ -81,7 +81,7 @@ def test_explicit_store_argument_beats_binding(home, repo):
 def test_bound_missing_store_raises_without_fallthrough(home, repo):
     _meta(home / ".canon" / repo.name)
     _binding(repo / ".canon" / "store-binding.json", "local")
-    with pytest.raises(StoreBindingError, match="no config.json"):
+    with pytest.raises(StoreBindingError, match=r"no config\.json"):
         open_store(repo)
 
 

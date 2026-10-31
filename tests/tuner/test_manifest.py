@@ -249,7 +249,7 @@ def test_manifest_runner_absent_is_pytest_template(repo: dict[str, Path | str]) 
         "{tests}",
         "--junitxml={report}",
     )
-    assert DEFAULT_RUNNER == shipped
+    assert shipped == DEFAULT_RUNNER
     assert loaded.runner == DEFAULT_RUNNER
 
     explicit = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]

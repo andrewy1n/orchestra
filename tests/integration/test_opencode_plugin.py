@@ -22,9 +22,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENCODE = shutil.which("opencode")
 
-pytestmark = pytest.mark.skipif(
-    OPENCODE is None, reason="opencode is not installed"
-)
+pytestmark = pytest.mark.skipif(OPENCODE is None, reason="opencode is not installed")
 
 FAKE_HOOK = """#!/bin/sh
 printf '%s %s\\n' "$1" "$PWD" >> "$ORCHESTRA_HOOK_LOG"
@@ -34,9 +32,9 @@ exit 0
 
 def run_install(home: Path, project: Path) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     return subprocess.run(
         [
             sys.executable,
@@ -66,9 +64,7 @@ def wait_for(path: Path, needles: tuple[str, ...], timeout: float = 15.0) -> str
             if all(needle in text for needle in needles):
                 return text
         time.sleep(0.1)
-    raise AssertionError(
-        f"timed out waiting for {needles!r} in {path}:\n{text[-4000:]}"
-    )
+    raise AssertionError(f"timed out waiting for {needles!r} in {path}:\n{text[-4000:]}")
 
 
 def api(
@@ -89,9 +85,7 @@ def api(
 
 
 def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
-    version = subprocess.run(
-        [OPENCODE, "--version"], capture_output=True, text=True
-    )
+    version = subprocess.run([OPENCODE, "--version"], capture_output=True, text=True)
     match = re.search(r"(?:^|\s)v?(\d+)\.\d+\.\d+", version.stdout)
     if not match or match.group(1) != "2":
         pytest.skip("this test requires OpenCode V2")

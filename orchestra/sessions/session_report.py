@@ -9,7 +9,7 @@ import threading
 from pathlib import Path
 
 from orchestra.sessions.record_join import join
-from orchestra.sessions.record_reader import subprocess_runner, read_records
+from orchestra.sessions.record_reader import read_records, subprocess_runner
 from orchestra.sessions.session_fields import session_fields
 from orchestra.sessions.session_metrics import ReadStats, read_events
 from orchestra.sessions.session_tools import tool_metrics
@@ -83,10 +83,13 @@ def _record_summary(ids, by_id, ambiguous):
         "total": len(matched),
         "by_type": by_type,
         "efforts": sorted({r["effort"] for r in matched if r["effort"]}),
-        "tasks": sorted({
-            r["subject"] for r in matched
-            if r["record_type"] == "score:work-item" and r["subject"]
-        }),
+        "tasks": sorted(
+            {
+                r["subject"]
+                for r in matched
+                if r["record_type"] == "score:work-item" and r["subject"]
+            }
+        ),
         "ambiguous": len(ambiguous),
     }
 

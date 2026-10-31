@@ -24,15 +24,15 @@ def test_init_documents_idea_routing_and_skip():
 def test_init_promotes_idea_after_effort_and_position():
     invs = extract_invocations((SKILLS / "init" / "SKILL.md").read_text())
     idea_lists = [
-        inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
     assert len(idea_lists) == 1
     raw = idea_lists[0]["raw"]
     assert "--exact-subject" in raw
     assert "--full" in raw
     promotes = [
-        inv for inv in invs
+        inv
+        for inv in invs
         if inv["subcommand"] == "supersede"
         and inv["type"] == "composer:idea"
         and (inv.get("payload") or {}).get("status") == "promoted"

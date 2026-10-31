@@ -64,17 +64,11 @@ def detect_hosts(
 
 def detected_ids(statuses: tuple[HostStatus, ...]) -> tuple[str, ...]:
     """Provider ids detected at either scope, in matrix order."""
-    return tuple(
-        status.provider.id
-        for status in statuses
-        if status.project or status.global_
-    )
+    return tuple(status.provider.id for status in statuses if status.project or status.global_)
 
 
 def installed_ids(statuses: tuple[HostStatus, ...]) -> tuple[str, ...]:
     """Provider ids with an orchestra registration at either scope."""
     return tuple(
-        status.provider.id
-        for status in statuses
-        if status.marker_project or status.marker_global
+        status.provider.id for status in statuses if status.marker_project or status.marker_global
     )

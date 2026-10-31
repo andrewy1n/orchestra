@@ -18,7 +18,10 @@ def test_settle_and_plan_require_proof_section():
     assert "## Proof" in settle
     assert "demo" in settle and "claims" in settle and "audit-triage" in settle
     assert "## Proof" in plan
-    assert "`## Proof`: `kind` (`demo`|`commands`|`claims`|`audit-triage`|`mixed`) + one sentence on look intent" in " ".join(plan.split())
+    assert (
+        "`## Proof`: `kind` (`demo`|`commands`|`claims`|`audit-triage`|`mixed`) + one sentence on look intent"
+        in " ".join(plan.split())
+    )
 
 
 def test_execute_assembles_proof_packet():

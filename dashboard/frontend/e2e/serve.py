@@ -48,8 +48,19 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
         check(run_git(store_root, *args, env=env, capture_output=True, text=True))
     canon = [sys.executable, "-m", "orchestra.canon", "--root", str(store_root)]
 
-    def create(record_type: str, subject: str, payload: dict[str, object], sections: tuple[str, ...] = ()) -> None:
-        command = [*canon, "create", "--type", record_type, "--subject", subject, "--payload", json.dumps(payload)]
+    def create(
+        record_type: str, subject: str, payload: dict[str, object], sections: tuple[str, ...] = ()
+    ) -> None:
+        command = [
+            *canon,
+            "create",
+            "--type",
+            record_type,
+            "--subject",
+            subject,
+            "--payload",
+            json.dumps(payload),
+        ]
         if sections:
             body = "\n\n".join(f"## {name}\n\nE2E {name}." for name in sections)
             command.extend(["--body", body])
@@ -59,7 +70,9 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
     create("composer:area", AREA, {"title": "E2E area"}, AREA_SECTIONS)
     create("score:effort", EFFORT, {"goal": "Exercise the packaged dashboard", "kind": "deliver"})
     create("composer:placement", EFFORT, {"area": AREA})
-    create("score:phase", PHASE, {"title": "E2E phase", "ordinal": 1, "effort": EFFORT}, PHASE_SECTIONS)
+    create(
+        "score:phase", PHASE, {"title": "E2E phase", "ordinal": 1, "effort": EFFORT}, PHASE_SECTIONS
+    )
     create(
         "score:work-item",
         TASK,
@@ -82,7 +95,12 @@ def main() -> int:
     args = parser.parse_args()
     port = args.port or free_port()
 
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [str(REPO_ROOT), os.environ.get("PYTHONPATH", "")]))}
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(
+            filter(None, [str(REPO_ROOT), os.environ.get("PYTHONPATH", "")])
+        ),
+    }
     store_root = Path(tempfile.mkdtemp(prefix="dashboard-e2e-"))
     server: subprocess.Popen[bytes] | None = None
 

@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from test_audit import _no_store_env
 
 REPO = Path(__file__).resolve().parents[2]

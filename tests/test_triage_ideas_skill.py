@@ -26,8 +26,7 @@ def test_triage_ideas_lists_open_ideas_without_area():
     assert "no `area`" in lower or "no area" in lower
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
     idea_lists = [
-        inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
     assert len(idea_lists) == 1
     assert "payload.status=open" in idea_lists[0]["raw"]
@@ -37,8 +36,7 @@ def test_triage_ideas_lists_open_ideas_without_area():
 def test_triage_ideas_lists_areas():
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
     area_lists = [
-        inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "composer:area"
+        inv for inv in invs if inv["subcommand"] == "list" and inv["type"] == "composer:area"
     ]
     assert len(area_lists) == 1
     assert "--full" in area_lists[0]["raw"]
@@ -46,15 +44,10 @@ def test_triage_ideas_lists_areas():
 
 def test_triage_ideas_writes_area_and_idea_supersedes():
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
-    written = {
-        inv["type"]
-        for inv in invs
-        if inv["subcommand"] in WRITES
-    }
+    written = {inv["type"] for inv in invs if inv["subcommand"] in WRITES}
     assert written == {"composer:area", "composer:idea"}
     creates = [
-        inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "composer:area"
+        inv for inv in invs if inv["subcommand"] == "create" and inv["type"] == "composer:area"
     ]
     assert len(creates) == 1
     assert creates[0]["payload"]["title"]
@@ -65,7 +58,8 @@ def test_triage_ideas_writes_area_and_idea_supersedes():
 def test_triage_ideas_assigns_area_via_supersede():
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
     area_supersedes = [
-        inv for inv in invs
+        inv
+        for inv in invs
         if inv["subcommand"] == "supersede"
         and inv["type"] == "composer:idea"
         and inv.get("payload", {}).get("area")
@@ -77,7 +71,8 @@ def test_triage_ideas_assigns_area_via_supersede():
 def test_triage_ideas_dismisses_via_supersede():
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
     dismiss = [
-        inv for inv in invs
+        inv
+        for inv in invs
         if inv["subcommand"] == "supersede"
         and inv["type"] == "composer:idea"
         and inv.get("payload", {}).get("status") == "dismissed"
@@ -90,8 +85,7 @@ def test_triage_ideas_names_engage_and_never_promotes():
     assert "`engage`" in text
     invs = extract_invocations((SKILLS / "triage-ideas" / "SKILL.md").read_text())
     idea_supersedes = [
-        inv for inv in invs
-        if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
     ]
     for inv in idea_supersedes:
         payload = inv.get("payload") or {}

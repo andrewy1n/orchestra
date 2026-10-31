@@ -11,8 +11,20 @@ from typing import Any
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived
+from orchestra.canon.errors import (
+    PartialStoreError,
+    StaleWriteError,
+    StoreError,
+    StoreLockError,
+    StoreNotInitializedError,
+)
 from orchestra.canon.git_backend import GitContextError, assert_git_context
-from orchestra.canon.merge import MergeError, merge_store, parse_namespace_map, parse_subject_renames
+from orchestra.canon.merge import (
+    MergeError,
+    merge_store,
+    parse_namespace_map,
+    parse_subject_renames,
+)
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.query import (
     QueryError,
@@ -24,13 +36,6 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.errors import (
-    PartialStoreError,
-    StaleWriteError,
-    StoreError,
-    StoreLockError,
-    StoreNotInitializedError,
-)
 from orchestra.canon.sync import add_namespace, init_store, sync_store
 from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.validation import ValidationError
@@ -548,7 +553,9 @@ def cmd_merge(args: argparse.Namespace) -> int:
     else:
         print("\t".join(["type", "records", "history", "log"]))
         for record_type, row in summary["types"].items():
-            print("\t".join([record_type, str(row["records"]), str(row["history"]), str(row["log"])]))
+            print(
+                "\t".join([record_type, str(row["records"]), str(row["history"]), str(row["log"])])
+            )
         for item in summary["renamed_subjects"]:
             print(f"renamed {item['record_type']} {item['old']} -> {item['new']}")
         print(f"validation: {summary['status']}")
@@ -618,7 +625,9 @@ def _add_body_args(p: argparse.ArgumentParser, help_text: str) -> None:
 def _add_target_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--type", help="Qualified or short record type")
     p.add_argument("--id", help="Record id")
-    p.add_argument("--subject", help="With --type and no --id, target the latest record with this subject")
+    p.add_argument(
+        "--subject", help="With --type and no --id, target the latest record with this subject"
+    )
 
 
 def _add_revision_arg(p: argparse.ArgumentParser, default: str | None) -> None:
@@ -726,7 +735,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--exact-subject", action="store_true", help="Make --subject an exact-only match"
     )
     p_list.add_argument(
-        "--grep", help="Case-insensitive regex match against the record body (not frontmatter fields)"
+        "--grep",
+        help="Case-insensitive regex match against the record body (not frontmatter fields)",
     )
     p_list.add_argument(
         "--full",
@@ -800,16 +810,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_add = schemas_sub.add_parser("add", help="Add an installed module to the store and sync it")
     p_add.add_argument("namespace")
     p_add.set_defaults(func=cmd_schemas_add)
-    p_show = schemas_sub.add_parser("show", help="Show the module snapshots a store validates against")
+    p_show = schemas_sub.add_parser(
+        "show", help="Show the module snapshots a store validates against"
+    )
     p_show.add_argument("namespace", nargs="?", help="Print this namespace's full module")
     p_show.add_argument("--type", help="Print one type: purpose, lifecycle, transitions, fields")
     p_show.set_defaults(func=cmd_schemas_show)
 
-
     p_merge = sub.add_parser("merge", help="Merge every record of another store into this one")
     p_merge.add_argument("source", help="Source store directory (a .canon-style directory)")
     p_merge.add_argument(
-        "--namespace", action="append", default=[], metavar="OLD=NEW", help="Rename a source namespace"
+        "--namespace",
+        action="append",
+        default=[],
+        metavar="OLD=NEW",
+        help="Rename a source namespace",
     )
     p_merge.add_argument(
         "--rename-subject",

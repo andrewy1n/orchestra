@@ -11,7 +11,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from conftest import CANON_CMD, REPO_ROOT, git, make_git_repo
 
 SCORE_MODULE = REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json"
@@ -27,7 +26,10 @@ def _canon(root: Path, schema_path: Path, *args: str) -> subprocess.CompletedPro
     env = {**os.environ, "CANON_SCHEMA_PATH": str(schema_path)}
     return subprocess.run(
         [*CANON_CMD, "--root", str(root), *args],
-        capture_output=True, text=True, cwd=str(REPO_ROOT), env=env,
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        env=env,
     )
 
 
@@ -39,10 +41,21 @@ def _body(sections=SECTIONS) -> str:
     return "\n\n".join(f"## {name}\n\nText for {name}." for name in sections)
 
 
-def _create_brief(root: Path, subject: str, body: str, effort: str = "alpha") -> subprocess.CompletedProcess:
+def _create_brief(
+    root: Path, subject: str, body: str, effort: str = "alpha"
+) -> subprocess.CompletedProcess:
     return _canon(
-        root, SCORE_MODULE, "create", "--type", "score:brief", "--subject", subject,
-        "--payload", json.dumps({"effort": effort}), "--body", body,
+        root,
+        SCORE_MODULE,
+        "create",
+        "--type",
+        "score:brief",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps({"effort": effort}),
+        "--body",
+        body,
     )
 
 
@@ -58,7 +71,15 @@ def _store_at(version_1_0_0: bool) -> Path:
     result = _canon(root, schema, "init", "--schemas", "score")
     assert result.returncode == 0, _output(result)
     created = _canon(
-        root, schema, "create", "--type", "score:effort", "--subject", "alpha", "--payload", EFFORT_PAYLOAD,
+        root,
+        schema,
+        "create",
+        "--type",
+        "score:effort",
+        "--subject",
+        "alpha",
+        "--payload",
+        EFFORT_PAYLOAD,
     )
     assert created.returncode == 0, _output(created)
     git(root, "add", "-A")

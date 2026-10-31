@@ -12,13 +12,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.git_backend import run_git
+from orchestra.canon.metadata import MetadataFiles
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import compute_revision, with_revision
-from orchestra.canon.git_backend import run_git
-from orchestra.canon.errors import StoreError, StaleWriteError
-from orchestra.canon.metadata import MetadataFiles
 
 
 def _decide_create(
@@ -36,10 +36,15 @@ def _decide_write(
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     if current is not None:
         if expected_revision is None:
-            return "rejected_missing_expected", current, {"conflict_revision": current.get("revision")}
+            return (
+                "rejected_missing_expected",
+                current,
+                {"conflict_revision": current.get("revision")},
+            )
         if expected_revision != current.get("revision"):
             return "rejected_stale", current, {"conflict_revision": current.get("revision")}
     return "accepted", with_revision(prepare_record(record)), {}
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ops (
@@ -183,9 +188,7 @@ class SqliteBackend:
     def is_absent(self) -> bool:
         return self._metadata.is_absent()
 
-    def init(
-        self, config: dict[str, Any], snapshots: dict[str, str] | None = None
-    ) -> str:
+    def init(self, config: dict[str, Any], snapshots: dict[str, str] | None = None) -> str:
         if self.has_config():
             self.load_config()
             return "already_initialized"
@@ -204,9 +207,7 @@ class SqliteBackend:
         except ValueError as exc:
             raise StoreError(str(exc)) from exc
 
-    def _chain(
-        self, connection: sqlite3.Connection, record_id: str
-    ) -> list[dict[str, Any]]:
+    def _chain(self, connection: sqlite3.Connection, record_id: str) -> list[dict[str, Any]]:
         return [
             {**json.loads(row[1]), "seq": row[0]}
             for row in connection.execute(
@@ -215,9 +216,7 @@ class SqliteBackend:
             )
         ]
 
-    def _materialize(
-        self, connection: sqlite3.Connection, record: dict[str, Any]
-    ) -> None:
+    def _materialize(self, connection: sqlite3.Connection, record: dict[str, Any]) -> None:
         connection.execute(
             "INSERT INTO records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(record_id) DO UPDATE SET "
@@ -265,9 +264,7 @@ class SqliteBackend:
             if outcome == "rejected_exists":
                 raise StoreError(f"record already exists: {record_id}")
             if outcome == "rejected_missing_expected":
-                raise StoreError(
-                    f"record {record_id} exists; expected revision required"
-                )
+                raise StoreError(f"record {record_id} exists; expected revision required")
             if outcome == "rejected_stale":
                 assert current is not None
                 raise StaleWriteError(
@@ -347,8 +344,7 @@ class SqliteBackend:
         return [
             record
             for record in self.iter_records(record_type)
-            if lifecycle_state is None
-            or record.get("lifecycle_state") == lifecycle_state
+            if lifecycle_state is None or record.get("lifecycle_state") == lifecycle_state
         ]
 
     def record_exists(self, record_type: str, record_id: str) -> bool:
@@ -396,9 +392,7 @@ class SqliteBackend:
             ).fetchone()
         return row is not None and json.loads(row[0])["record_type"] == record_type
 
-    def delete_history_snapshot(
-        self, record_type: str, record_id: str, revision: str
-    ) -> None:
+    def delete_history_snapshot(self, record_type: str, record_id: str, revision: str) -> None:
         self._validate_key(record_type, record_id)
         with self.transaction(), self._reader() as connection:
             connection.execute(
@@ -443,9 +437,7 @@ class SqliteBackend:
                 (
                     record_id,
                     op["seq"],
-                    json.dumps(
-                        {key: value for key, value in op.items() if key != "seq"}
-                    ),
+                    json.dumps({key: value for key, value in op.items() if key != "seq"}),
                 ),
             )
 
@@ -485,19 +477,13 @@ class SqliteBackend:
                         record.get("body", ""),
                         json.dumps(record.get("relationships", {})),
                     )
-                    if row[:9] != columns or record["revision"] != compute_revision(
-                        record
-                    ):
-                        errors.append(
-                            f"{row[0]}: materialized record differs from stored content"
-                        )
+                    if row[:9] != columns or record["revision"] != compute_revision(record):
+                        errors.append(f"{row[0]}: materialized record differs from stored content")
                 except (ValueError, KeyError, TypeError) as exc:
                     errors.append(f"{row[0]}: malformed materialized record: {exc}")
             for record_id, ops in self.iter_chains():
                 if fold(ops) != records.pop(record_id, None):
-                    errors.append(
-                        f"{record_id}: materialized record differs from op fold"
-                    )
+                    errors.append(f"{record_id}: materialized record differs from op fold")
             for record_id in records:
                 errors.append(f"{record_id}: materialized record has no op chain")
             for record_id, revision, text, archived in connection.execute(
@@ -511,12 +497,8 @@ class SqliteBackend:
                         or compute_revision(snapshot) != revision
                     ):
                         errors.append(f"{record_id}: history tamper detected")
-                    if archived and not self.record_exists(
-                        snapshot["record_type"], record_id
-                    ):
-                        errors.append(
-                            f"{record_id}: history snapshot has no live record"
-                        )
+                    if archived and not self.record_exists(snapshot["record_type"], record_id):
+                        errors.append(f"{record_id}: history snapshot has no live record")
                 except (ValueError, KeyError, TypeError) as exc:
                     errors.append(f"{record_id}: malformed history snapshot: {exc}")
 
@@ -525,8 +507,7 @@ class SqliteBackend:
 
     def same_store(self, other: object) -> bool:
         return (
-            isinstance(other, SqliteBackend)
-            and self.db_path.resolve() == other.db_path.resolve()
+            isinstance(other, SqliteBackend) and self.db_path.resolve() == other.db_path.resolve()
         )
 
     def change_token(self) -> str:
@@ -565,9 +546,7 @@ class SqliteBackend:
     def backup_due(self, max_age: timedelta) -> bool:
         directory = self.data_root / "backups"
         backups = (
-            [path for path in directory.iterdir() if path.is_file()]
-            if directory.is_dir()
-            else []
+            [path for path in directory.iterdir() if path.is_file()] if directory.is_dir() else []
         )
         if not backups:
             return True

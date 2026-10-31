@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
-from orchestra.tuner.sign import sign, verify as verify_signed
+from orchestra.tuner.sign import sign
+from orchestra.tuner.sign import verify as verify_signed
 
 NAMESPACE = "tuner-verdict"
 

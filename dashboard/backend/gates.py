@@ -34,7 +34,7 @@ def plan_review_slug(item: NeedsYouItem) -> str | None:
         return None
     if not item.text.startswith(PLAN_REVIEW_PREFIX):
         return None
-    return item.text[len(PLAN_REVIEW_PREFIX):]
+    return item.text[len(PLAN_REVIEW_PREFIX) :]
 
 
 # Compat alias for older call sites / tests.
@@ -80,10 +80,7 @@ def prompt(item: NeedsYouItem, view: EffortView) -> str:
     effort = view.effort
     slug = _plan_review_slug(item)
     if slug is not None:
-        return (
-            f"Walk me through the plan for phase {slug} (effort {effort}) "
-            f"so I can review it."
-        )
+        return f"Walk me through the plan for phase {slug} (effort {effort}) so I can review it."
     if item.kind == "unsigned-check":
         return f"Sign off the manual check for {item.subject} (effort {effort})."
     if item.kind == "blocking-question":
@@ -119,7 +116,9 @@ def _has_decisions(phase: PhaseRow) -> bool:
     return any(choice.choice for choice in evidence.decisions)
 
 
-def _unmerged_done_slug(view: EffortView, landing: dict[str, Landing | _LandingState]) -> str | None:
+def _unmerged_done_slug(
+    view: EffortView, landing: dict[str, Landing | _LandingState]
+) -> str | None:
     for phase in sorted(view.phases, key=lambda row: row.ordinal):
         if phase.state != "done":
             continue
@@ -206,7 +205,8 @@ def landing_summary(state: Landing) -> str:
 
 
 def merge_landing_needs(
-    view: EffortView, landing: dict[str, Landing | _LandingState],
+    view: EffortView,
+    landing: dict[str, Landing | _LandingState],
 ) -> EffortView:
     """Append merge-branch Needs you items for unmerged done phases (R6); re-sort by NEEDS_ORDER."""
     extras: list[NeedsYouItem] = []
@@ -216,14 +216,16 @@ def merge_landing_needs(
         state = landing.get(phase.subject)
         if state is None or not state.exists or state.merged:
             continue
-        extras.append(NeedsYouItem(
-            kind="merge-branch",
-            id=f"merge:{phase.subject}",
-            subject=phase.subject,
-            text=state.branch,
-            body=f"{state.ahead} ahead",
-            phase=phase.subject,
-        ))
+        extras.append(
+            NeedsYouItem(
+                kind="merge-branch",
+                id=f"merge:{phase.subject}",
+                subject=phase.subject,
+                text=state.branch,
+                body=f"{state.ahead} ahead",
+                phase=phase.subject,
+            )
+        )
     items = [item for item in view.needs_you if item.kind != "merge-branch"] + extras
     items.sort(key=lambda entry: NEEDS_ORDER.index(entry.kind))
     fields = {
@@ -281,12 +283,12 @@ def landing_cache_token(root: Path, snapshot: Snapshot) -> str | None:
 
 
 def apply_landing_needs(
-    snapshot: Snapshot, landings: dict[str, dict[str, Landing]],
+    snapshot: Snapshot,
+    landings: dict[str, dict[str, Landing]],
 ) -> Snapshot:
     """Return a snapshot whose Needs you lists include Merge branch items (shared with status)."""
     efforts = [
-        merge_landing_needs(view, landings.get(view.effort, {}))
-        for view in snapshot.efforts
+        merge_landing_needs(view, landings.get(view.effort, {})) for view in snapshot.efforts
     ]
     return Snapshot(efforts, snapshot.token, snapshot.generated_at)
 

@@ -10,6 +10,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 
+
 def _run(
     cmd: list[str],
     *,

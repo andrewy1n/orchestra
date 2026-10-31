@@ -36,9 +36,7 @@ def run_lines(name):
     lines = []
     for step in job(name).get("steps", []):
         if "run" in step:
-            lines.extend(
-                line.strip() for line in step["run"].splitlines() if line.strip()
-            )
+            lines.extend(line.strip() for line in step["run"].splitlines() if line.strip())
     return lines
 
 
@@ -48,8 +46,7 @@ def all_run_lines():
 
 def uses_uv(name):
     return any(
-        "uv" in line.split() or line.startswith(("uv ", "uvx "))
-        for line in run_lines(name)
+        "uv" in line.split() or line.startswith(("uv ", "uvx ")) for line in run_lines(name)
     ) or any(
         str(step.get("uses", "")).startswith("astral-sh/setup-uv")
         for step in job(name).get("steps", [])
@@ -127,23 +124,18 @@ def test_r8_every_job_runs_python_3_10():
         if not setup_uv_steps(name) and runs_only_npm(name):
             continue
         versions = [
-            str(step.get("with", {}).get("python-version"))
-            for step in setup_uv_steps(name)
+            str(step.get("with", {}).get("python-version")) for step in setup_uv_steps(name)
         ]
         assert versions, f"{name} has no setup-uv step"
         assert all(v == "3.10" for v in versions), f"{name} python-version {versions}"
 
 
 def test_r9_checks_runs_build_skills_check():
-    assert any(
-        "scripts/build_skills.py --check" in line for line in run_lines("checks")
-    )
+    assert any("scripts/build_skills.py --check" in line for line in run_lines("checks"))
 
 
 def test_r10_checks_runs_plugin_name_check():
-    assert any(
-        "scripts/check_orchestra_plugin_names.py" in line for line in run_lines("checks")
-    )
+    assert any("scripts/check_orchestra_plugin_names.py" in line for line in run_lines("checks"))
 
 
 def test_r11_ci_does_not_read_or_validate_the_live_store():
@@ -156,6 +148,31 @@ def test_r12_checks_runs_ruff_check_with_pinned_version():
         or re.search(r"\bcheck\b.*ruff(==|@)\d+\.\d+\.\d+", line)
         for line in run_lines("checks")
     )
+
+
+def test_checks_runs_ruff_lint_and_format_with_same_pinned_version() -> None:
+    lines = run_lines("checks")
+    lint = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+ check(?:\s|$)", line)]
+    formatting = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+.*format --check", line)]
+    assert len(lint) == 1
+    assert len(formatting) == 1
+    assert (
+        re.search(r"ruff@\d+\.\d+\.\d+", lint[0]).group()
+        == re.search(r"ruff@\d+\.\d+\.\d+", formatting[0]).group()
+    )
+
+
+def test_ruff_checks_are_blocking_steps() -> None:
+    steps = job("checks")["steps"]
+    commands = [
+        step
+        for step in steps
+        if isinstance(step, dict)
+        and isinstance(step.get("run"), str)
+        and "uvx ruff@0.13.1" in step["run"]
+    ]
+    assert len(commands) == 2
+    assert all(step.get("continue-on-error") is not True for step in commands)
 
 
 def test_r15_runs_canon_tests():

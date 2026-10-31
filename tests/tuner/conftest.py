@@ -22,6 +22,7 @@ SCHEMA_FILES = (
     REPO_ROOT / "orchestra" / "composer" / "schemas" / "composer.json",
 )
 
+
 def pytest_configure(config):
     root = str(REPO_ROOT)
     paths = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
@@ -32,7 +33,9 @@ def pytest_configure(config):
     os.environ.setdefault("CANON_SCHEMA_PATH", os.pathsep.join(str(f) for f in SCHEMA_FILES))
 
 
-def run_cli(*args: str, root: Path | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
+def run_cli(
+    *args: str, root: Path | None = None, cwd: Path | None = None
+) -> subprocess.CompletedProcess:
     cmd = [sys.executable, "-m", "orchestra.canon"]
     if root is not None:
         cmd.extend(["--root", str(root)])

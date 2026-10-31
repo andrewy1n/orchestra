@@ -36,21 +36,18 @@ def is_allowed(relative: Path | str, provider_id: str) -> bool:
     """True when ``relative`` is inside one of :func:`allowed_roots`."""
     relative_path = PurePosixPath(str(relative).replace("\\", "/"))
     parts = relative_path.parts
-    if not parts or relative_path.is_absolute():
-        return False
-    if any(part == ".." for part in parts):
-        return False
-    if parts[0] in DENY_ROOTS:
-        return False
-    if parts[0] in COPY_ALLOWLIST:
-        return True
-    if len(parts) >= 2 and parts[0] == "hosts" and parts[1] == provider_id:
-        return True
-    return False
+    return bool(
+        parts
+        and not relative_path.is_absolute()
+        and not any(part == ".." for part in parts)
+        and parts[0] not in DENY_ROOTS
+        and (
+            parts[0] in COPY_ALLOWLIST
+            or (len(parts) >= 2 and parts[0] == "hosts" and parts[1] == provider_id)
+        )
+    )
 
 
 def assert_allowed(relative: Path | str, provider_id: str) -> None:
     if not is_allowed(relative, provider_id):
-        raise ValueError(
-            f"installer allowlist rejects {relative!s} for provider {provider_id!r}"
-        )
+        raise ValueError(f"installer allowlist rejects {relative!s} for provider {provider_id!r}")

@@ -7,11 +7,11 @@ from collections import defaultdict
 from typing import Any, TextIO
 
 from orchestra.canon.backend import Backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.revision import compute_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
-from orchestra.canon.errors import StoreError
 
 
 def export_ops(backend: Backend, out: TextIO) -> int:
@@ -21,11 +21,7 @@ def export_ops(backend: Backend, out: TextIO) -> int:
     chains: list[tuple[str, str, list[dict[str, Any]]]] = []
     for record_id, ops in backend.iter_chains():
         record_type = next(
-            (
-                op["record"]["record_type"]
-                for op in ops
-                if isinstance(op.get("record"), dict)
-            ),
+            (op["record"]["record_type"] for op in ops if isinstance(op.get("record"), dict)),
             None,
         )
         if record_type is None:
@@ -42,9 +38,7 @@ def export_ops(backend: Backend, out: TextIO) -> int:
                 "op": op,
             }
             if index == 0:
-                envelope["history"] = sorted(
-                    snapshots, key=lambda record: record["revision"]
-                )
+                envelope["history"] = sorted(snapshots, key=lambda record: record["revision"])
             out.write(
                 json.dumps(
                     envelope,
@@ -143,9 +137,7 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                     if key is not None:
                         _restore(backend, *key, ops, history)
                         if next_key <= key:
-                            raise StoreError(
-                                f"{record_id}: chain order or duplicate chain"
-                            )
+                            raise StoreError(f"{record_id}: chain order or duplicate chain")
                     if record_id in seen_ids:
                         raise StoreError(f"{record_id}: duplicate record identity")
                     seen_ids.add(record_id)
@@ -163,9 +155,7 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                 if ops and seq != ops[-1]["seq"] + 1:
                     raise StoreError(f"{record_id}: sequence gap or duplicate at {seq}")
                 if not ops and seq != 1 and op.get("kind") != "checkpoint":
-                    raise StoreError(
-                        f"{record_id}: sequence must start at 1 or a checkpoint"
-                    )
+                    raise StoreError(f"{record_id}: sequence must start at 1 or a checkpoint")
                 if (
                     not isinstance(op.get("op_id"), str)
                     or not isinstance(op.get("kind"), str)
@@ -181,19 +171,14 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                             f"{record_id}: history metadata belongs on the first envelope"
                         )
                     history = [
-                        _snapshot(value, record_type, record_id)
-                        for value in envelope["history"]
+                        _snapshot(value, record_type, record_id) for value in envelope["history"]
                     ]
                     if len({record["revision"] for record in history}) != len(history):
                         raise StoreError(f"{record_id}: duplicate history revision")
                 ops.append(op)
                 count += 1
             except (ValueError, KeyError, TypeError) as exc:
-                identity = (
-                    f" {envelope.get('record_id', '')}"
-                    if isinstance(envelope, dict)
-                    else ""
-                )
+                identity = f" {envelope.get('record_id', '')}" if isinstance(envelope, dict) else ""
                 raise StoreError(f"import line {line_no}{identity}: {exc}") from exc
         if key is not None:
             _restore(backend, *key, ops, history)

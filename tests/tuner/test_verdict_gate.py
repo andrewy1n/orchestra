@@ -8,18 +8,18 @@ import os
 import subprocess
 from pathlib import Path
 
-from orchestra.tuner.cli import main
-from orchestra.tuner.oracle_red import is_assertion_level_red
-from orchestra.tuner.verdict import run_verdict
 from test_oracle_red import (
     ASSERTION_FAIL_TAIL,
     IMPORT_FAIL_TAIL,
     NODE_ASSERT,
     NODE_IMPORT_COLLECT,
 )
-from test_verdict import VERIFY, APP_GREEN, APP_RED, CLAIM, _repo
+from test_verdict import APP_GREEN, APP_RED, CLAIM, VERIFY, _repo
 
 import orchestra.tuner.cli as cli_mod
+from orchestra.tuner.cli import main
+from orchestra.tuner.oracle_red import is_assertion_level_red
+from orchestra.tuner.verdict import run_verdict
 
 
 def _tuner_assertion_red(record: dict) -> subprocess.CompletedProcess[str]:
@@ -116,9 +116,7 @@ def test_verdict_gate_command_calls_run_verdict(tmp_path: Path, monkeypatch, cap
         return result
 
     monkeypatch.setattr(cli_mod, "run_verdict", wrapped)
-    code = main(
-        ["verdict", "--cwd", str(root), "--base", base, "--at", head, CLAIM]
-    )
+    code = main(["verdict", "--cwd", str(root), "--base", base, "--at", head, CLAIM])
     captured = capsys.readouterr()
     assert seen.get("result"), "orchestra verify verdict calls run_verdict"
     assert seen["before"] == []
