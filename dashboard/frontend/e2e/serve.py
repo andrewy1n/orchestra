@@ -170,6 +170,12 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
         transition("score:work-item", subject, "in_progress", "done")
     transition("score:phase", DONE_PHASE, "in_progress", "done")
 
+    create(
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": False, "scope": "effort-wide"},
+    )
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Serve the dashboard on a seeded temporary store")

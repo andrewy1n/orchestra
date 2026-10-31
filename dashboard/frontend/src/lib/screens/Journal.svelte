@@ -1,26 +1,28 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
   import { journal } from "$lib/state/journal.svelte";
   import { leaveHref } from "$lib/state/polling.svelte";
   import { openHash, recordHref } from "../../detail";
 </script>
 
 <section class="journal-screen" data-journal-screen>
-  <header class="journal-bar">
-    <button
-      type="button"
-      class="back"
+  <header class="flex items-center gap-2.5">
+    <Button
+      variant="ghost"
+      size="sm"
       data-act="close-journal"
       onclick={() => openHash(leaveHref())}
     >
       Back
-    </button>
-    <span class="journal-title">
+    </Button>
+    <h1 class="text-xl font-semibold text-foreground">
       Journal{#if journal.effortName}
         {" "}· {journal.effortName}{/if}
-    </span>
+    </h1>
   </header>
-  <input
-    class="field"
+  <Input
+    class="max-w-sm"
     type="search"
     data-journal-filter
     aria-label="Filter journal"

@@ -336,7 +336,6 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	max-width: 48rem;
 }
 
 .area-screen {
@@ -437,41 +436,6 @@ body {
 	padding: 0;
 	list-style: none;
 	font-size: var(--text-xs);
-}
-
-.journal-bar {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-}
-
-.journal-bar .back {
-	border: 0;
-	background: transparent;
-	color: var(--ink-2);
-	cursor: pointer;
-	font-size: var(--text-base);
-	padding: 2px 6px;
-}
-
-.journal-bar .back:hover {
-	color: var(--ink);
-}
-
-.journal-title {
-	font-weight: 600;
-	color: var(--ink);
-}
-
-.journal-screen .field {
-	width: 100%;
-	box-sizing: border-box;
-	border: 1px solid var(--line);
-	background: var(--sunken);
-	color: var(--ink);
-	border-radius: 4px;
-	padding: 8px 10px;
-	font: inherit;
 }
 
 .journal-list {
@@ -1199,10 +1163,6 @@ a.lrow {
 	color: var(--fail);
 	margin: 0 0 12px;
 	font-size: var(--text-xs);
-}
-
-.field::placeholder {
-	color: var(--text-muted);
 }
 
 @media (pointer: coarse) {
