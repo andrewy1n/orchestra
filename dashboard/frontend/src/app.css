@@ -443,14 +443,6 @@ body {
 	flex-direction: column;
 }
 
-.statusbar {
-	border-top: 1px solid var(--line);
-	padding: 6px 16px;
-	color: var(--text-muted);
-	font-size: var(--text-xs);
-	min-height: 28px;
-}
-
 /* ---- effort rail ---- */
 .rail-heading {
 	margin: 4px 8px 8px;
@@ -646,39 +638,6 @@ body {
 .error-note {
 	padding: 14px 0;
 	color: var(--fail);
-}
-
-/* ---- side panels ---- */
-.panel {
-	border: 1px solid var(--line);
-	border-radius: var(--corner);
-	padding: 10px 12px 8px;
-	margin-bottom: 12px;
-	background: var(--panel);
-}
-
-.panel > .ptitle {
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
-	margin: 0 0 6px;
-	font-size: var(--text-xs);
-	font-weight: 600;
-	color: var(--ink);
-}
-
-.panel > .ptitle .count {
-	color: var(--text-muted);
-	font-variant-numeric: tabular-nums;
-	font-weight: 500;
-}
-
-.panel.warn {
-	border-color: var(--warn);
-}
-
-.panel.warn > .ptitle {
-	color: var(--warn);
 }
 
 .needs-block {

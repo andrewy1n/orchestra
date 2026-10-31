@@ -27,7 +27,7 @@
     }}
   >
     <span class="kind">{scan.kind}</span>
-    {#if scan.place}<span class="where">{scan.place}</span>{/if}
+    {#if scan.place}<span class="where text-xs" data-record-id>{scan.place}</span>{/if}
     <span class="text">{@html linkify(scan.claim, overlay.linkCtx)}</span>
   </button>
 {/each}
