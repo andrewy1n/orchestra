@@ -159,10 +159,9 @@ describe("breadcrumb and rail", () => {
 			"#/area/billing",
 			"#/area/ops",
 		]);
-		expect(items.map((el) => el.classList.contains("on"))).toEqual([
-			true,
-			false,
-		]);
+		expect(
+			items.map((el) => el.getAttribute("aria-current") === "page"),
+		).toEqual([true, false]);
 	});
 
 	it("R25 the effort page rail lists the efforts of the same area", async () => {
