@@ -163,7 +163,7 @@ describe("phase page tasks", () => {
 			tabs.map((el) => el.querySelector("b")?.textContent?.trim()),
 		).toEqual(["Active", "Running", "Ready", "Waiting", "Done", "All"]);
 		expect(
-			tabs.filter((el) => el.getAttribute("aria-current") === "true"),
+			tabs.filter((el) => el.getAttribute("aria-selected") === "true"),
 		).toHaveLength(1);
 	});
 
