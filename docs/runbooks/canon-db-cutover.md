@@ -78,12 +78,12 @@ cutover. The check finds their baseline revisions in history.
 ## Pushed-branch CI
 
 The full CI workflow passed for `phase/cutover` at commit
-`02c3b89cd734e6a935b4fcd528a1add39ab8ba8a`. All jobs passed, including
+`8ca55b34f5e8848333155731785f8553ce962482`. All jobs passed, including
 `test-canon`, `test-tuner`, `test-orchestra`, `types`, `checks`, `wheel`,
 `e2e`, and `web`.
 
-[GitHub Actions run 41163301107](https://github.com/andrewy1n/orchestra/actions/runs/41163301107)
+[GitHub Actions run 41186899241](https://github.com/andrewy1n/orchestra/actions/runs/41186899241)
 
 The tuner-verdict workflow also passed at that commit:
 
-[GitHub Actions run 41163301113](https://github.com/andrewy1n/orchestra/actions/runs/41163301113)
+[GitHub Actions run 41186899238](https://github.com/andrewy1n/orchestra/actions/runs/41186899238)
