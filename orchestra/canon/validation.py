@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
@@ -39,7 +38,7 @@ RELATIONSHIP_KEYS = ("supersedes", "corrects")
 SUBJECT = re.compile(r"^\S+$")
 
 
-def _scalar_ok(kind: str, value: Any) -> bool:
+def _scalar_ok(kind: JsonValue, value: JsonValue) -> bool:
     if kind == "string":
         return isinstance(value, str)
     if kind == "integer":
@@ -49,20 +48,18 @@ def _scalar_ok(kind: str, value: Any) -> bool:
     return isinstance(value, bool)
 
 
-def _describe(form: dict[str, Any]) -> str:
+def _describe(form: JsonObject) -> str:
     if "type" in form:
-        return form["type"]
+        return form["type"]  # pyright: ignore[reportReturnType]  # Schema forms are validated before value checks.
     if "enum" in form:
         return f"one of {form['enum']}"
     if "ref" in form:
         kind = "id" if form.get("pin") else "subject"
         return f"{kind} of {' or '.join(ref_targets(form))}"
-    return f"list of {_describe(form['list'])}"
+    return f"list of {_describe(form['list'])}"  # pyright: ignore[reportArgumentType]  # Schema forms are validated before value checks.
 
 
-def _ref_errors(
-    schemas: SchemaSet, index: RecordIndex, form: dict[str, Any], value: str
-) -> str | None:
+def _ref_errors(schemas: SchemaSet, index: RecordIndex, form: JsonObject, value: str) -> str | None:
     targets = ref_targets(form)
     installed = [t for t in targets if t in schemas.types]
     if form.get("pin"):
@@ -93,7 +90,7 @@ def value_errors(
         if _scalar_ok(form["type"], value):
             return []
     elif "enum" in form:
-        if isinstance(value, str) and (value in form["enum"] or (value == "" and optional)):
+        if isinstance(value, str) and (value in form["enum"] or (value == "" and optional)):  # pyright: ignore[reportOperatorIssue]  # Schema forms are validated before value checks.
             return []
     elif "ref" in form:
         if isinstance(value, str):
@@ -106,7 +103,7 @@ def value_errors(
             errors: list[str] = []
             for position, item in enumerate(value):
                 errors.extend(
-                    value_errors(schemas, index, form["list"], item, f"{path}[{position}]")
+                    value_errors(schemas, index, form["list"], item, f"{path}[{position}]")  # pyright: ignore[reportArgumentType]  # Schema forms are validated before value checks.
                 )
             return errors
     return [f"{path}: expected {_describe(form)}, got {value!r}"]
@@ -148,7 +145,7 @@ def section_errors(type_def: TypeDef, record: Record | JsonObject) -> list[str]:
     if not type_def.sections:
         return []
     errors: list[str] = []
-    sections = _body_sections(record.get("body") or "")
+    sections = _body_sections(record.get("body") or "")  # pyright: ignore[reportArgumentType]  # Raw JSON envelopes are checked at ingress.
     for name in type_def.sections:
         content = sections.get(name)
         if content is None:
@@ -194,13 +191,13 @@ def record_errors(
     if unknown:
         return [f"{label}: unknown envelope keys {unknown}"]
     record_type = record["record_type"]
-    if record_type not in schemas.types:
+    if record_type not in schemas.types:  # pyright: ignore[reportArgumentType]  # Preserve native errors for malformed unhashable record types.
         return [f"{label}: unknown record type {record_type!r}"]
-    type_def = schemas.types[record_type]
+    type_def = schemas.types[record_type]  # pyright: ignore[reportArgumentType]  # The membership check above establishes the schema key.
     errors: list[str] = []
     if not isinstance(record["subject"], str) or not SUBJECT.match(record["subject"]):
         errors.append(f"{label}: subject must be a non-empty slug")
-    if record["lifecycle_state"] not in type_def.lifecycle.states:
+    if record["lifecycle_state"] not in type_def.lifecycle.states:  # pyright: ignore[reportArgumentType]  # Preserve native membership errors for malformed JSON values.
         errors.append(f"{label}: invalid lifecycle state {record['lifecycle_state']!r}")
     errors.extend(payload_errors(schemas, index, type_def, record))
     errors.extend(relationship_errors(type_def, index, record))
@@ -235,9 +232,9 @@ def _body_sections(body: str) -> dict[str, str]:
 
 
 def _supersede_errors(
-    records: list[dict[str, Any]], schemas: SchemaSet, index: RecordIndex, errors: list[str]
+    records: list[Record], schemas: SchemaSet, index: RecordIndex, errors: list[str]
 ) -> None:
-    successors: dict[str, list[dict[str, Any]]] = {}
+    successors: dict[str, list[Record]] = {}
     for record in records:
         for target_id in (record.get("relationships") or {}).get("supersedes") or []:
             successors.setdefault(target_id, []).append(record)
@@ -263,7 +260,7 @@ def _supersede_errors(
             )
 
 
-def _correct_errors(records: list[dict[str, Any]], index: RecordIndex, errors: list[str]) -> None:
+def _correct_errors(records: list[Record], index: RecordIndex, errors: list[str]) -> None:
     correctors: dict[str, list[str]] = {}
     for record in records:
         for target_id in (record.get("relationships") or {}).get("corrects") or []:
@@ -281,7 +278,7 @@ def _correct_errors(records: list[dict[str, Any]], index: RecordIndex, errors: l
             )
 
 
-def _current_errors(records: list[dict[str, Any]], schemas: SchemaSet, errors: list[str]) -> None:
+def _current_errors(records: list[Record], schemas: SchemaSet, errors: list[str]) -> None:
     active: dict[tuple[str, str], str] = {}
     for record in records:
         type_def = schemas.types.get(record.get("record_type", ""))

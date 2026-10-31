@@ -10,7 +10,6 @@ import json
 import re
 from collections.abc import Iterable
 from re import Pattern
-from typing import Any
 
 from orchestra.canon.types import JsonObject, JsonValue, Record
 
@@ -29,7 +28,7 @@ class QueryError(Exception):
 _MISSING = object()
 
 
-def _coerce_value(raw: str) -> Any:
+def _coerce_value(raw: str) -> JsonValue:
     """Best-effort JSON-decode a --where value so `true`/`42`/`"x"` compare
     against their typed payload counterparts; anything else is a literal
     string."""
@@ -57,7 +56,7 @@ def _split_where_item(item: str) -> tuple[str, str, str]:
     return item[:eq_at], "eq", item[eq_at + 1 :]
 
 
-def _parse_where_value(raw: str, op: str) -> tuple[str, Any]:
+def _parse_where_value(raw: str, op: str) -> tuple[str, JsonValue]:
     """Map raw value + base op into (op, coerced_value).
 
     ``any_of:a,b,c`` on an equals clause becomes op ``any_of`` with a list.
@@ -74,7 +73,7 @@ def parse_where(raw: Iterable[str] | None) -> list[tuple[str, str, str, JsonValu
     ``field`` may be dotted (``meta.tier``) for nested payload/derived walks.
     ``op`` is ``eq``, ``ne``, or ``any_of``.
     """
-    filters: list[tuple[str, str, str, Any]] = []
+    filters: list[tuple[str, str, str, JsonValue]] = []
     for item in raw or []:
         field, base_op, raw_value = _split_where_item(item)
         op, value = _parse_where_value(raw_value, base_op)
@@ -95,12 +94,12 @@ def parse_where(raw: Iterable[str] | None) -> list[tuple[str, str, str, JsonValu
 
 def resolve_path(bucket: object, field_path: str) -> object:
     """Walk dotted ``field_path`` through nested dicts; ``_MISSING`` if absent."""
-    cur: Any = bucket
+    cur: object = bucket
     for part in field_path.split("."):
         if not isinstance(cur, dict) or part not in cur:
             return _MISSING
-        cur = cur[part]
-    return cur
+        cur = cur[part]  # pyright: ignore[reportUnknownVariableType]  # Preserve arbitrary values while traversing runtime dictionaries.
+    return cur  # pyright: ignore[reportUnknownVariableType]  # Preserve arbitrary values while traversing runtime dictionaries.
 
 
 def compile_grep(pattern: str | None) -> Pattern[str] | None:
@@ -113,7 +112,7 @@ def compile_grep(pattern: str | None) -> Pattern[str] | None:
         raise QueryError(f"invalid --grep pattern {pattern!r}: {exc}") from exc
 
 
-def _same(actual: Any, expected: Any) -> bool:
+def _same(actual: object, expected: object) -> bool:
     # bool is an int subclass, so plain == makes 1 match True. Keep them distinct.
     if isinstance(actual, bool) != isinstance(expected, bool):
         return False
@@ -137,7 +136,7 @@ def where_matches(record: Record, filters: list[tuple[str, str, str, JsonValue]]
             if _same(actual, value):
                 return False
         elif op == "any_of":
-            if not any(_same(actual, candidate) for candidate in value):
+            if not any(_same(actual, candidate) for candidate in value):  # pyright: ignore[reportOptionalIterable, reportGeneralTypeIssues, reportUnknownArgumentType, reportUnknownVariableType]  # Preserve native iteration behavior for direct callers.
                 return False
         else:
             raise QueryError(f"unknown where op {op!r}")
@@ -208,7 +207,8 @@ def order_by_path(records: list[Record], path: str, *, reverse: bool = False) ->
 
     missing = [r for r in records if lookup(r) is _MISSING]
     present = [r for r in records if lookup(r) is not _MISSING]
-    present.sort(key=lambda r: lookup(r), reverse=reverse)
+    # JSON arrays and objects retain Python's native comparison errors here.
+    present.sort(key=lambda r: lookup(r), reverse=reverse)  # pyright: ignore[reportArgumentType]
     return missing + present
 
 
@@ -275,7 +275,7 @@ def summarize(record: Record, *, grep: Pattern[str] | None = None) -> JsonObject
     excerpt = matching_line(record, grep) if grep is not None else None
     if excerpt is None:
         excerpt = _first_nonblank_line(body)
-    summary: dict[str, Any] = {
+    summary: JsonObject = {
         "id": record.get("id"),
         "record_type": record.get("record_type"),
         "subject": record.get("subject"),
@@ -285,7 +285,7 @@ def summarize(record: Record, *, grep: Pattern[str] | None = None) -> JsonObject
         "recorded_at": record.get("recorded_at"),
     }
     if "derived" in record:
-        summary["derived"] = record["derived"]
+        summary["derived"] = record["derived"]  # pyright: ignore[reportArgumentType]  # Every declared derived field is JSON-compatible.
     if excerpt:
         summary["body_excerpt"] = truncate(excerpt)
     return summary
