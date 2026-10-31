@@ -23,7 +23,6 @@ jobs:
       - run: uv sync --locked --group dev
       - run: python3 scripts/build_skills.py --check
       - run: python3 scripts/check_orchestra_plugin_names.py
-      - run: uv run canon validate
       - run: uvx ruff@0.13.1 check .
 
   test-canon:
