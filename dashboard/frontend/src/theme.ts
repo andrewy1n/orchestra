@@ -4,13 +4,44 @@
  * Dark mode is expressed as the `dark` class on `<html>` so Tailwind's
  * class-based variant (declared in `app.css`) can switch the whole page.
  * The same element also carries `data-theme`, which selects the token set
- * borrowed from the design spike (`html[data-theme="dark"]`). A fresh load
- * starts light: nothing is persisted, and the OS preference is ignored.
+ * borrowed from the design spike (`html[data-theme="dark"]`). The chosen theme
+ * is kept in `localStorage`; with none stored, a load starts light and the OS
+ * preference is ignored.
  */
 
 export type Theme = "light" | "dark";
 
 export const DEFAULT_THEME: Theme = "light";
+
+const STORAGE_KEY = "theme";
+
+function defaultStorage(): Storage | null {
+	try {
+		return window.localStorage;
+	} catch {
+		return null;
+	}
+}
+
+/** The stored theme, or the default when none is stored, it is unknown, or storage fails. */
+export function loadTheme(storage: Storage | null = defaultStorage()): Theme {
+	try {
+		const stored = storage?.getItem(STORAGE_KEY);
+		return stored === "light" || stored === "dark" ? stored : DEFAULT_THEME;
+	} catch {
+		return DEFAULT_THEME;
+	}
+}
+
+/** Store `theme`; a failing storage is ignored. */
+export function saveTheme(
+	theme: Theme,
+	storage: Storage | null = defaultStorage(),
+): void {
+	try {
+		storage?.setItem(STORAGE_KEY, theme);
+	} catch {}
+}
 
 /** The opposite theme. */
 export function toggle(theme: Theme): Theme {
