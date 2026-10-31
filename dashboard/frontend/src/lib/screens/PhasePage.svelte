@@ -25,6 +25,12 @@
     return "";
   }
 
+  function evidenceAccent(tone: string): string {
+    if (tone === "ok") return "border-l-[var(--done)]";
+    if (tone === "warn") return "border-l-[var(--warn)]";
+    return "border-l-transparent";
+  }
+
   function statusTone(status: string): string {
     const tones: Record<string, string> = {
       running: "text-[var(--running)]",
@@ -203,27 +209,47 @@
           </div>
         {/if}
         {#if phase.evidenceView.rows.length}
-          <div class="evidence-reqs" data-evidence-reqs>
-            {#each phase.evidenceView.rows as row (row.id)}
-              <button
-                type="button"
-                class="evidence-req"
-                class:ok={row.tone === "ok"}
-                class:warn={row.tone === "warn"}
-                data-evidence-req={row.id}
-                onclick={() => openRequirement(row.id)}
-              >
-                <span class="evidence-id">{row.id}</span>
-                <span class="evidence-status">{row.status}</span>
-                <span class="evidence-tasks">{row.tasks}</span>
-                <span class="evidence-copy">
-                  <span class="evidence-text">{row.text}</span>
-                  {#if row.next}
-                    <span class="evidence-next">next {row.next}</span>
-                  {/if}
-                </span>
-              </button>
-            {/each}
+          <div class="overflow-hidden rounded-md border">
+            <Table.Root data-evidence-reqs>
+              <Table.Header>
+                <Table.Row class="bg-muted hover:bg-muted">
+                  <Table.Head class="w-16 text-muted-foreground">Req</Table.Head>
+                  <Table.Head class="w-28 text-muted-foreground">Status</Table.Head>
+                  <Table.Head class="w-16 text-muted-foreground">Tasks</Table.Head>
+                  <Table.Head class="text-muted-foreground">Summary</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {#each phase.evidenceView.rows as row (row.id)}
+                  <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
+                  <Table.Row
+                    class="cursor-pointer focus-visible:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                    role="button"
+                    tabindex={0}
+                    data-evidence-req={row.id}
+                    onclick={() => openRequirement(row.id)}
+                    onkeydown={(event) => {
+                      if (event.key === " ") event.preventDefault();
+                      if (event.key === "Enter" || event.key === " ") openRequirement(row.id);
+                    }}
+                  >
+                    <Table.Cell class={cn("border-l-2 font-semibold", evidenceAccent(row.tone))}>
+                      {row.id}
+                    </Table.Cell>
+                    <Table.Cell class="text-xs text-muted-foreground">{row.status}</Table.Cell>
+                    <Table.Cell class="text-xs text-muted-foreground tabular-nums">{row.tasks}</Table.Cell>
+                    <Table.Cell class="whitespace-normal">
+                      <div class="flex flex-col gap-0.5">
+                        <span class="text-pretty">{row.text}</span>
+                        {#if row.next}
+                          <span class="text-xs text-muted-foreground">next {row.next}</span>
+                        {/if}
+                      </div>
+                    </Table.Cell>
+                  </Table.Row>
+                {/each}
+              </Table.Body>
+            </Table.Root>
           </div>
         {:else if !phase.evidenceView.facts.length}
           <p class="empty-note">No evidence summary.</p>
