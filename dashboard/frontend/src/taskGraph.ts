@@ -42,6 +42,9 @@ export const NODE_W = 232;
 export const NODE_H = 84;
 const COL_GAP = 80;
 const ROW_GAP = 24;
+const GRAPH_PAD = 48;
+const GRAPH_MIN_H = 168;
+const GRAPH_MAX_H = 480;
 
 function waveKey(wave: number | null | undefined): string {
 	if (wave == null || wave === ("" as unknown as number)) return "—";
@@ -221,4 +224,13 @@ export function toFlow(graph: WaveGraph): {
 		width: laneCount * NODE_W + Math.max(0, laneCount - 1) * COL_GAP + 24,
 		height: bottom + 20,
 	};
+}
+
+export function widestWave(graph: WaveGraph): number {
+	return Math.max(1, ...graph.lanes.map((lane) => lane.nodes.length));
+}
+
+export function graphHeight(rows: number): number {
+	const height = rows * (NODE_H + ROW_GAP) + GRAPH_PAD;
+	return Math.min(GRAPH_MAX_H, Math.max(GRAPH_MIN_H, height));
 }
