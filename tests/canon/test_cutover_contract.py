@@ -277,6 +277,31 @@ def test_transfer_import_retains_bodyless_snapshot_fields_and_unknown_op_keys(
     assert exported_envelope["op"] == operation
 
 
+def test_transfer_export_skips_truthy_nonobject_operation_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backend = SqliteBackend(tmp_path / "metadata", tmp_path / "data")
+    malformed_op = {
+        "seq": 1,
+        "op_id": "malformed-op",
+        "kind": "create",
+        "outcome": "accepted",
+        "record": "legacy malformed value",
+    }
+    monkeypatch.setattr(
+        backend,
+        "iter_chains",
+        lambda: iter([(EFFORT_ID, [malformed_op])]),
+    )
+    monkeypatch.setattr(backend, "read_history", lambda: iter([]))
+
+    with pytest.raises(
+        StoreError,
+        match=rf"^{EFFORT_ID}: cannot determine chain record type$",
+    ):
+        export_ops(backend, io.StringIO())
+
+
 def test_migration_path_retains_numeric_version_coercion() -> None:
     step = {"from": 1.5, "to": 3.9}
     module = {"namespace": "alpha", "migrations": [step]}
