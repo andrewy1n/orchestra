@@ -25,6 +25,12 @@
     return "";
   }
 
+  function evidenceAccent(tone: string): string {
+    if (tone === "ok") return "border-l-[var(--done)]";
+    if (tone === "warn") return "border-l-[var(--warn)]";
+    return "border-l-transparent";
+  }
+
   function statusTone(status: string): string {
     const tones: Record<string, string> = {
       running: "text-[var(--running)]",
@@ -47,7 +53,7 @@
   }
 </script>
 
-<div class="phase-page" data-phase-page data-detail="phase">
+<div class="phase-page flex flex-col gap-4" data-phase-page data-detail="phase">
   {#if phase.loading}
     <p class="empty-note">Loading…</p>
   {:else if phase.error}
@@ -70,23 +76,23 @@
       </Tabs.Root>
     {/if}
     {#if phase.phaseChrome}
-      <div class="phase-chrome" data-phase-chrome>
-        <div class="chips" data-detail-chips data-phase-chips>
+      <div class="flex flex-col gap-2 rounded-md border bg-muted p-3" data-phase-chrome>
+        <div class="flex flex-wrap gap-x-2 gap-y-1" data-detail-chips data-phase-chips>
           {#each phase.phaseChrome.chips as chip (chip.label)}
-            <Badge variant={chipVariant(chip.tone)}>{chip.label}</Badge>
+            <Badge class="h-6" variant={chipVariant(chip.tone)}>{chip.label}</Badge>
           {/each}
         </div>
-        <p class="phase-next" data-phase-next title={phase.phaseChrome.nextAction}>
-          <span class="phase-next-label">Next</span>
+        <p class="truncate text-sm" data-phase-next title={phase.phaseChrome.nextAction}>
+          <span class="mr-1.5 font-semibold">Next</span>
           {phase.phaseChrome.nextAction}
         </p>
         {#if phase.phaseChrome.requirements.length}
-          <div class="phase-reqs" data-phase-reqs>
+          <div class="flex flex-wrap gap-1.5" data-phase-reqs>
             {#each phase.phaseChrome.requirements as req (req.id)}
               <Button
                 variant="outline"
                 size="sm"
-                class={reqTone(req.status)}
+                class={cn("h-6", reqTone(req.status))}
                 data-phase-req={req.id}
                 title={req.text || req.id}
                 onclick={() => openRequirement(req.id)}
@@ -97,7 +103,7 @@
             {/each}
           </div>
         {:else}
-          <p class="phase-reqs-empty" data-phase-reqs-empty>No requirements yet</p>
+          <p class="text-xs text-muted-foreground" data-phase-reqs-empty>No requirements yet</p>
         {/if}
       </div>
     {/if}
@@ -110,7 +116,6 @@
     {/if}
     {#if phase.activePhaseTab === "overview" && phase.routeEffort}
       <Tabs.Root
-        class="mt-3 mb-2.5"
         value={phase.statusTab}
         onValueChange={(tab) => phase.chooseTab(tab as StatusTab)}
       >
@@ -193,7 +198,7 @@
     {#if phase.evidenceView}
       <div class="evidence-board" data-evidence-board>
         {#if phase.evidenceView.facts.length}
-          <div class="chips" data-evidence-facts>
+          <div class="flex flex-wrap gap-x-2 gap-y-1" data-evidence-facts>
             {#each phase.evidenceView.facts as fact (fact.label)}
               <Badge variant="outline">
                 <span class="fact-k">{fact.label}</span>
@@ -203,27 +208,47 @@
           </div>
         {/if}
         {#if phase.evidenceView.rows.length}
-          <div class="evidence-reqs" data-evidence-reqs>
-            {#each phase.evidenceView.rows as row (row.id)}
-              <button
-                type="button"
-                class="evidence-req"
-                class:ok={row.tone === "ok"}
-                class:warn={row.tone === "warn"}
-                data-evidence-req={row.id}
-                onclick={() => openRequirement(row.id)}
-              >
-                <span class="evidence-id">{row.id}</span>
-                <span class="evidence-status">{row.status}</span>
-                <span class="evidence-tasks">{row.tasks}</span>
-                <span class="evidence-copy">
-                  <span class="evidence-text">{row.text}</span>
-                  {#if row.next}
-                    <span class="evidence-next">next {row.next}</span>
-                  {/if}
-                </span>
-              </button>
-            {/each}
+          <div class="overflow-hidden rounded-md border">
+            <Table.Root data-evidence-reqs>
+              <Table.Header>
+                <Table.Row class="bg-muted hover:bg-muted">
+                  <Table.Head class="w-16 text-muted-foreground">Req</Table.Head>
+                  <Table.Head class="w-28 text-muted-foreground">Status</Table.Head>
+                  <Table.Head class="w-16 text-muted-foreground">Tasks</Table.Head>
+                  <Table.Head class="text-muted-foreground">Summary</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {#each phase.evidenceView.rows as row (row.id)}
+                  <!-- biome-ignore lint/a11y/useSemanticElements: a button element cannot be a table row -->
+                  <Table.Row
+                    class="cursor-pointer focus-visible:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                    role="button"
+                    tabindex={0}
+                    data-evidence-req={row.id}
+                    onclick={() => openRequirement(row.id)}
+                    onkeydown={(event) => {
+                      if (event.key === " ") event.preventDefault();
+                      if (event.key === "Enter" || event.key === " ") openRequirement(row.id);
+                    }}
+                  >
+                    <Table.Cell class={cn("border-l-2 font-semibold", evidenceAccent(row.tone))}>
+                      {row.id}
+                    </Table.Cell>
+                    <Table.Cell class="text-xs text-muted-foreground">{row.status}</Table.Cell>
+                    <Table.Cell class="text-xs text-muted-foreground tabular-nums">{row.tasks}</Table.Cell>
+                    <Table.Cell class="whitespace-normal">
+                      <div class="flex flex-col gap-0.5">
+                        <span class="text-pretty">{row.text}</span>
+                        {#if row.next}
+                          <span class="text-xs text-muted-foreground">next {row.next}</span>
+                        {/if}
+                      </div>
+                    </Table.Cell>
+                  </Table.Row>
+                {/each}
+              </Table.Body>
+            </Table.Root>
           </div>
         {:else if !phase.evidenceView.facts.length}
           <p class="empty-note">No evidence summary.</p>
@@ -231,13 +256,15 @@
       </div>
     {/if}
     {#each phase.view.sections as section, index (section.title + index)}
-      {#if section.title}
-        <div class="section-title" data-section-card>{section.title}</div>
-      {/if}
-      <div
-        class="md section-card"
-        data-detail-section={section.title || "body"}
-      >{@html md(section.body, phase.linkCtx)}</div>
+      <section class="flex max-w-[72ch] flex-col gap-2 text-sm">
+        {#if section.title}
+          <div class="font-semibold text-foreground" data-section-card>{section.title}</div>
+        {/if}
+        <div
+          class="md rounded-md border bg-card px-3 py-2.5"
+          data-detail-section={section.title || "body"}
+        >{@html md(section.body, phase.linkCtx)}</div>
+      </section>
     {/each}
     <pre data-detail-payload class="sr-only">{phase.view.probe}</pre>
   {/if}

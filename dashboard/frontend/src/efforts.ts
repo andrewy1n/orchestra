@@ -104,3 +104,16 @@ export function tabCounts(
 	}
 	return out;
 }
+
+const DEFAULT_TAB_ORDER: readonly StatusTab[] = [
+	"active",
+	"done",
+	"waiting",
+	"ready",
+	"running",
+	"all",
+];
+
+export function defaultStatusTab(counts: Record<StatusTab, number>): StatusTab {
+	return DEFAULT_TAB_ORDER.find((name) => counts[name] > 0) ?? "all";
+}

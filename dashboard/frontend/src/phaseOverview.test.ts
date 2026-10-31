@@ -193,10 +193,9 @@ describe("buildPhaseChrome", () => {
 		expect(buildPhaseChrome(phasePayload).nextAction).toBe(
 			"Ship shared chrome",
 		);
-		expect(
-			buildPhaseChrome(emptyPhasePayload, { position: "From snapshot" })
-				.nextAction,
-		).toBe("From snapshot");
+		expect(buildPhaseChrome(emptyPhasePayload).nextAction).toBe(
+			"No tasks planned yet",
+		);
 	});
 
 	it("R4: requirements strip when evidence present", () => {

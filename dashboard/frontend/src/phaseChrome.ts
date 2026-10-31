@@ -37,19 +37,11 @@ function str(value: unknown): string {
 	return value == null ? "" : String(value);
 }
 
-export interface PhaseChromeContext {
-	/** Ambient effort position / next-step cue from the snapshot. */
-	position?: string | null;
-}
-
 /**
  * Build chrome from GET /api/phase payload. Safe for phases with no
  * specification or evidence — missing blocks become empty arrays / fallbacks.
  */
-export function buildPhaseChrome(
-	payload: unknown,
-	ctx: PhaseChromeContext = {},
-): PhaseChromeModel {
+export function buildPhaseChrome(payload: unknown): PhaseChromeModel {
 	const root = obj(payload);
 	const detail = obj(root.detail);
 	const state = str(detail.state);
@@ -76,7 +68,6 @@ export function buildPhaseChrome(
 		str(detail.next_action) || str(detail.position) || str(detail.next_step);
 	const nextAction =
 		fromDetail ||
-		(ctx.position || "").trim() ||
 		(state === "done"
 			? "Phase complete"
 			: total === 0

@@ -9,7 +9,14 @@
   } from "@xyflow/svelte";
   import "@xyflow/svelte/dist/style.css";
   import TaskFlowNode from "./TaskFlowNode.svelte";
-  import { NODE_H, NODE_W, toFlow, type WaveGraph } from "./taskGraph";
+  import {
+    graphHeight,
+    NODE_H,
+    NODE_W,
+    toFlow,
+    type WaveGraph,
+    widestWave,
+  } from "./taskGraph";
 
   if (typeof window !== "undefined" && typeof window.ResizeObserver !== "function") {
     window.ResizeObserver = class {
@@ -97,7 +104,7 @@
     return rows;
   });
   const flowHeight = $derived.by(() => {
-    if (!stacked) return 480;
+    if (!stacked) return graphHeight(widestWave(graph));
     const last = placed[placed.length - 1];
     return last ? last.position.y + NODE_H + 16 : 120;
   });

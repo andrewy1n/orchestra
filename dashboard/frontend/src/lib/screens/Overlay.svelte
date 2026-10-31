@@ -64,13 +64,15 @@
             <p class="write-error" data-write-error>{overlay.writeError}</p>
           {/if}
           {#each view.sections as section, index (section.title + index)}
-            {#if section.title}
-              <div class="section-title" data-section-card>{section.title}</div>
-            {/if}
-            <div
-              class="md section-card"
-              data-detail-section={section.title || "body"}
-            >{@html md(section.body, overlay.linkCtx)}</div>
+            <section class="mb-4 flex flex-col gap-2 text-sm">
+              {#if section.title}
+                <div class="font-semibold text-foreground" data-section-card>{section.title}</div>
+              {/if}
+              <div
+                class="md rounded-md border bg-card px-3 py-2.5"
+                data-detail-section={section.title || "body"}
+              >{@html md(section.body, overlay.linkCtx)}</div>
+            </section>
           {/each}
           {#if overlay.overlayChoices.length}
             <div class="overlay-actions" data-write-actions>
