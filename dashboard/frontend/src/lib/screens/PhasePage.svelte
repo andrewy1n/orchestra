@@ -7,6 +7,7 @@
   import { STATUS_TABS } from "../../efforts";
   import TaskGraphBoard from "../../TaskGraphBoard.svelte";
   import type { Theme } from "../../theme";
+  import type { StatusTab } from "../../types";
   import { chipVariant } from "./chipVariant";
 
   let { theme }: { theme: Theme } = $props();
@@ -86,23 +87,22 @@
       />
     {/if}
     {#if phase.activePhaseTab === "overview" && phase.routeEffort}
-      <div class="tabs" data-status-tabs>
-        {#each STATUS_TABS as tab}
-          <button
-            type="button"
-            class="tab"
-            class:on={phase.statusTab === tab.name}
-            data-tab={tab.name}
-            aria-current={phase.statusTab === tab.name ? "true" : undefined}
-            onclick={() => phase.chooseTab(tab.name)}
-          >
-            <b>{tab.label}</b>
-            {#if phase.counts}
-              <span class="n">({phase.counts[tab.name]})</span>
-            {/if}
-          </button>
-        {/each}
-      </div>
+      <Tabs.Root
+        class="mt-3 mb-2.5"
+        value={phase.statusTab}
+        onValueChange={(tab) => phase.chooseTab(tab as StatusTab)}
+      >
+        <Tabs.List variant="line" class="h-auto flex-wrap" data-status-tabs>
+          {#each STATUS_TABS as tab (tab.name)}
+            <Tabs.Trigger value={tab.name} data-tab={tab.name}>
+              <b class="text-sm font-medium">{tab.label}</b>
+              {#if phase.counts}
+                <span class="text-xs tabular-nums">({phase.counts[tab.name]})</span>
+              {/if}
+            </Tabs.Trigger>
+          {/each}
+        </Tabs.List>
+      </Tabs.Root>
 
       <div class="table" data-task-table style="--cols: 118px 1fr">
         <div class="trow thead">
