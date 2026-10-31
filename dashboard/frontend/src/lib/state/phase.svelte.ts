@@ -2,7 +2,7 @@ import { untrack } from "svelte";
 import { getJson } from "../../api";
 import { detailTarget, openHash, phaseHref } from "../../detail";
 import { detailView, evidenceBoard, taskBoard } from "../../detailView";
-import { filteredTasks, tabCounts } from "../../efforts";
+import { defaultStatusTab, filteredTasks, tabCounts } from "../../efforts";
 import type { RefContext } from "../../links";
 import { buildPhaseChrome } from "../../phaseChrome";
 import { buildWaveGraph } from "../../taskGraph";
@@ -18,6 +18,7 @@ class PhaseState {
 	loading = $state(false);
 	statusTab: StatusTab = $state("active");
 	tabPinnedFor = $state("");
+	tabDefaultedFor = $state("");
 
 	keptTab: string | undefined = $state(undefined);
 	keptFor = $state("");
@@ -126,9 +127,7 @@ class PhaseState {
 
 	phaseChrome = $derived.by(() => {
 		if (!this.page || !this.payload) return null;
-		return buildPhaseChrome(this.payload, {
-			position: polling.effort?.position ?? null,
-		});
+		return buildPhaseChrome(this.payload);
 	});
 
 	phaseTaskGraph = $derived.by(() => {
@@ -170,6 +169,7 @@ class PhaseState {
 		this.loading = false;
 		this.statusTab = "active";
 		this.tabPinnedFor = "";
+		this.tabDefaultedFor = "";
 	}
 
 	chooseTab(name: StatusTab) {
@@ -207,24 +207,19 @@ export function bindPhase() {
 		untrack(() => {
 			phase.statusTab = "active";
 			phase.tabPinnedFor = "";
+			phase.tabDefaultedFor = "";
 		});
 	});
 
 	$effect(() => {
 		const current = phase.routeEffort;
-		if (!current || phase.tabPinnedFor === phase.routeKey) return;
-		const nextCounts = tabCounts(current, phase.routePhase);
-		if (
-			current.needs_you.length > 0 &&
-			nextCounts.active === 0 &&
-			phase.statusTab === "active"
-		) {
-			const fallback =
-				(["done", "waiting", "ready", "running", "all"] as StatusTab[]).find(
-					(name) => nextCounts[name] > 0,
-				) ?? "all";
-			phase.statusTab = fallback;
-		}
+		const key = phase.routeKey;
+		if (!current || phase.tabPinnedFor === key) return;
+		untrack(() => {
+			if (phase.tabDefaultedFor === key) return;
+			phase.tabDefaultedFor = key;
+			phase.statusTab = defaultStatusTab(tabCounts(current, phase.routePhase));
+		});
 	});
 
 	$effect(() => {
