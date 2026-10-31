@@ -8,8 +8,8 @@ from datetime import datetime
 from dashboard.backend import records, store
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import PlanningPayload
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",

@@ -20,8 +20,8 @@ from dashboard.backend.records import (
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import PlanningPayload
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2

@@ -15,7 +15,7 @@ from typing import Any, TextIO
 from orchestra import views
 from orchestra.canon.backend import open_backend
 from orchestra.canon.types import Record
-from orchestra.model_types import PlanningPayload
+from orchestra.conductor.model_types import PlanningPayload
 
 PROTOCOL = (
     "This project keeps its state as canon records. Views are derived: edit "

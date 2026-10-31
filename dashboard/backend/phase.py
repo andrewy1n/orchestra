@@ -33,7 +33,7 @@ from dashboard.backend.task import (
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")

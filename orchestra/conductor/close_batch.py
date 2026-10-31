@@ -51,8 +51,8 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
-from orchestra.model_types import PlanningPayload
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"

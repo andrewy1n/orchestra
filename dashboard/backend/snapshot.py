@@ -34,7 +34,7 @@ from dashboard.backend.store import change_token
 from dashboard.backend.task import TaskRow, _task_rows
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (

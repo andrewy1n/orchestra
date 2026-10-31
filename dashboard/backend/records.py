@@ -10,7 +10,7 @@ from dashboard.backend.store import ModelError
 from orchestra.canon import record_payload as json_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 SOFT_TYPES = frozenset(

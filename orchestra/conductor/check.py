@@ -15,12 +15,12 @@ from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
+from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.policy import (
     dirty_pass_decision,
     manual_refuse_message,
     map_process_outcome,
 )
-from orchestra.model_types import PlanningPayload
 
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0

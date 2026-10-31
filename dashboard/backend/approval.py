@@ -21,7 +21,7 @@ from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 

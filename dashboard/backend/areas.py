@@ -8,7 +8,7 @@ from dashboard.backend.records import _list, _live, _recorded_at, _section
 from dashboard.backend.snapshot import PLACEMENT_TYPE, _backlog_text
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.model_types import planning_payload as record_payload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 AREA_TYPE = "composer:area"
 IDEA_TYPE = "composer:idea"
