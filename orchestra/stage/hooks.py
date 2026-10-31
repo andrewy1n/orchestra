@@ -62,11 +62,7 @@ def baseline_path(root: Path, data: dict[str, Any]) -> Path | None:
     if not session:
         return None
     directory = os.environ.get("ORCHESTRA_BASELINE_DIR")
-    base = (
-        Path(directory)
-        if directory
-        else Path(tempfile.gettempdir()) / "orchestra-baselines"
-    )
+    base = Path(directory) if directory else Path(tempfile.gettempdir()) / "orchestra-baselines"
     key = hashlib.sha256(f"{root}\0{session}".encode()).hexdigest()[:24]
     return base / f"{key}.json"
 
@@ -108,9 +104,7 @@ def _constraint_lines(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def _assemble_start(
-    constraint_lines: list[str], sections: list[tuple[str, str]]
-) -> str:
+def _assemble_start(constraint_lines: list[str], sections: list[tuple[str, str]]) -> str:
     def build(shown: list[str], omitted: list[str]) -> str:
         parts = [
             PROTOCOL,
@@ -122,8 +116,7 @@ def _assemble_start(
             parts.extend(
                 [
                     "",
-                    f"Not shown: {', '.join(omitted)}. "
-                    "Run `orchestra handoff --effort <slug>`.",
+                    f"Not shown: {', '.join(omitted)}. Run `orchestra handoff --effort <slug>`.",
                 ]
             )
         parts.extend(["", "Other views: `orchestra view plan|status|verification`."])
@@ -163,9 +156,7 @@ def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
             subprocess.run(["canon", "backup"], cwd=root, check=True)
         records = views.load_records(project)
         _save_baseline(project, root, data)
-        ctx = _assemble_start(
-            _constraint_lines(records), views.hook_handoff_sections(records)
-        )
+        ctx = _assemble_start(_constraint_lines(records), views.hook_handoff_sections(records))
     except Exception as exc:
         ctx = f"orchestra session-start failed: {exc}\n"
     return _wrap_start(fmt, ctx)
@@ -201,8 +192,7 @@ def cmd_stop(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
     message = "Session-end store check failed:\n\n" + "\n".join(errors)
     if earlier:
         message += (
-            f"\n\n({earlier} error(s) already present when this session "
-            "started are not shown.)"
+            f"\n\n({earlier} error(s) already present when this session started are not shown.)"
         )
     return _block(fmt, message)
 

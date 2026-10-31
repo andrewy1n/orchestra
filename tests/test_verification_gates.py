@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 
 import pytest
-
 from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations
@@ -54,7 +53,9 @@ def test_plan_phase_example_gives_the_verification_task_an_integration_acceptanc
         and inv["type"] == "score:acceptance"
         and "verify-<phase-slug>" in inv["raw"]
     ]
-    assert any("integration" in (inv["payload"] or {}).get("verify_command", "") for inv in acceptances)
+    assert any(
+        "integration" in (inv["payload"] or {}).get("verify_command", "") for inv in acceptances
+    )
 
 
 @pytest.mark.parametrize(
@@ -85,5 +86,7 @@ def test_execute_phase_gates_phase_close(phrase):
 def test_execute_phase_queries_check_runs_by_criterion_before_closing():
     text = _skill("execute-phase")
     gate_query = text.index("--where payload.criterion_id=<acceptance-id>")
-    phase_close = text.index("canon update --type score:phase --id <phase-id> \\\n  --transition done")
+    phase_close = text.index(
+        "canon update --type score:phase --id <phase-id> \\\n  --transition done"
+    )
     assert gate_query < phase_close

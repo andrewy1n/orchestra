@@ -17,8 +17,14 @@ def _text(name: str) -> str:
 
 def test_missing_executor_means_subagent_and_disagreement_stops():
     text = _text("execute-phase")
-    assert "Read `payload.executor` on each ready task (`inline` | `subagent`; missing/empty → `subagent`)" in text
-    assert "If the wave disagrees, or any value is other than those two, stop and name the tasks — do not spawn or transition." in text
+    assert (
+        "Read `payload.executor` on each ready task (`inline` | `subagent`; missing/empty → `subagent`)"
+        in text
+    )
+    assert (
+        "If the wave disagrees, or any value is other than those two, stop and name the tasks — do not spawn or transition."
+        in text
+    )
 
 
 def test_subagent_wave_is_one_worker_per_task():

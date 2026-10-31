@@ -48,9 +48,7 @@ class NativeAdapter(BaseAdapter):
                 if child.name in IGNORE_NAMES or child.name.endswith(IGNORE_SUFFIXES):
                     continue
                 relative = child.relative_to(payload).as_posix()
-                if is_allowed(
-                    f"hosts/{self.provider.id}/{relative}", self.provider.id
-                ):
+                if is_allowed(f"hosts/{self.provider.id}/{relative}", self.provider.id):
                     entries[relative] = child
 
         for entry in self.generated_entries():
@@ -175,9 +173,7 @@ class ClaudeAdapter(NativeAdapter):
             Action(
                 kind="merge",
                 destination=self._settings_path(),
-                unchanged=self._settings_have_fragment(
-                    self._read_settings(), fragment
-                ),
+                unchanged=self._settings_have_fragment(self._read_settings(), fragment),
                 content=json.dumps(fragment),
             )
         )
@@ -188,9 +184,7 @@ class ClaudeAdapter(NativeAdapter):
         merges = [action for action in plan.actions if action.kind == "merge"]
         rest = replace(
             plan,
-            actions=tuple(
-                action for action in plan.actions if action.kind != "merge"
-            ),
+            actions=tuple(action for action in plan.actions if action.kind != "merge"),
         )
         result = super().apply(rest)
         applied = list(result.applied)
@@ -216,9 +210,7 @@ class ClaudeAdapter(NativeAdapter):
         result = super().verify()
         fragment = self._fragment()
         problems = list(result.problems)
-        if fragment and not self._settings_have_fragment(
-            self._read_settings(), fragment
-        ):
+        if fragment and not self._settings_have_fragment(self._read_settings(), fragment):
             problems.append("hooks missing from settings.json")
         return VerifyResult(
             provider=result.provider,

@@ -174,9 +174,7 @@ def test_store_client_list_observations(tmp_path: Path, monkeypatch) -> None:
     )
     assert error is None
     assert isinstance(result, list)
-    assert any(
-        isinstance(item, dict) and item.get("id") == "rec-obs-marker" for item in result
-    )
+    assert any(isinstance(item, dict) and item.get("id") == "rec-obs-marker" for item in result)
 
 
 def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
@@ -204,9 +202,7 @@ def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
         for record in creates
         if record.get("record_type") == BIND_TYPE and _payload_matches(record, expected)
     ]
-    assert matched, (
-        "orchestra.tuner.binding creates an evidence-binding by calling Project.create"
-    )
+    assert matched, "orchestra.tuner.binding creates an evidence-binding by calling Project.create"
     assert error is None
     assert isinstance(result, dict)
     assert _payload_matches(result, expected)
@@ -223,9 +219,7 @@ def test_store_client_list_bindings(tmp_path: Path, monkeypatch) -> None:
     )
     assert error is None
     assert isinstance(result, list)
-    assert any(
-        isinstance(item, dict) and item.get("id") == "rec-bind-marker" for item in result
-    )
+    assert any(isinstance(item, dict) and item.get("id") == "rec-bind-marker" for item in result)
 
 
 def _folded_string(node: ast.AST) -> str | None:
@@ -301,14 +295,10 @@ def _modules_that_spawn_cli() -> list[str]:
 
 
 def _is_canon_command(argv: list[str]) -> bool:
-    if any(Path(part).name == _CLI_NAME for part in argv):
-        return True
-    if "-m" in argv and any(
-        part == "orchestra.canon" or part.startswith("orchestra.canon.")
-        for part in argv
-    ):
-        return True
-    return False
+    return any(Path(part).name == _CLI_NAME for part in argv) or (
+        "-m" in argv
+        and any(part == "orchestra.canon" or part.startswith("orchestra.canon.") for part in argv)
+    )
 
 
 def _note_argv(spawned: list[list[str]], argv) -> None:

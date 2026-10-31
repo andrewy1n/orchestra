@@ -20,7 +20,9 @@ def _env() -> dict[str, str]:
     return os.environ.copy()
 
 
-def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+def _run(
+    cmd: list[str], cwd: Path, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=env)
 
 
@@ -61,16 +63,30 @@ def _init_store(repo: Path, env: dict[str, str]) -> None:
     initialized = _run(["canon", "init", "--schemas", "score,conductor,tuner"], repo, env)
     if initialized.returncode != 0:
         raise RuntimeError(initialized.stdout + initialized.stderr)
-    _create(repo, env, "score:effort", "library-boundary", {"goal": "library boundary", "kind": "deliver"})
     _create(
-        repo, env, "score:phase", "library-e2e",
+        repo,
+        env,
+        "score:effort",
+        "library-boundary",
+        {"goal": "library boundary", "kind": "deliver"},
+    )
+    _create(
+        repo,
+        env,
+        "score:phase",
+        "library-e2e",
         {"title": "Library e2e", "ordinal": 1, "effort": "library-boundary"},
         "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n",
     )
 
 
 def _create(
-    repo: Path, env: dict[str, str], record_type: str, subject: str, payload: dict, body: str | None = None
+    repo: Path,
+    env: dict[str, str],
+    record_type: str,
+    subject: str,
+    payload: dict,
+    body: str | None = None,
 ) -> dict:
     result = _run(
         [
@@ -208,7 +224,17 @@ def _close_command(repo: Path, request: dict) -> tuple[int, str]:
     path.write_text(json.dumps(request), encoding="utf-8")
     out = repo / "close-batch.ndjson"
     result = _run(
-        [sys.executable, command, "close-batch", "--input", str(path), "--out", str(out), "--cwd", str(repo)],
+        [
+            sys.executable,
+            command,
+            "close-batch",
+            "--input",
+            str(path),
+            "--out",
+            str(out),
+            "--cwd",
+            str(repo),
+        ],
         repo,
         _env(),
     )
@@ -250,9 +276,7 @@ def _close_in_process(repo: Path, request: dict, monkeypatch) -> int:
 
     monkeypatch.chdir(repo)
     monkeypatch.setattr(subprocess, "run", spy)
-    code = close_batch.main(
-        ["--input", str(path), "--out", str(out), "--cwd", str(repo)]
-    )
+    code = close_batch.main(["--input", str(path), "--out", str(out), "--cwd", str(repo)])
     assert spawned == [], f"in-process close started {spawned}"
     return code
 

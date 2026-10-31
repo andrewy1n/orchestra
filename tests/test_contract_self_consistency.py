@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import make_git_repo, run_cli
 
 _DEFS = h.schema_defs()
@@ -35,7 +34,12 @@ def _ref_cases():
 
 
 def test_namespaces_cover_score_conductor_tuner_composer():
-    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"score", "conductor", "tuner", "composer"}
+    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {
+        "score",
+        "conductor",
+        "tuner",
+        "composer",
+    }
 
 
 @pytest.mark.parametrize("record_id", _RECORD_IDS)
@@ -71,10 +75,7 @@ def test_lifecycle_transition_is_exercisable(cli, record_id, src, dest):
 @pytest.mark.parametrize("record_id,field", _ref_cases(), ids=lambda v: str(v))
 def test_reference_to_a_missing_record_is_refused(cli, record_id, field):
     form = _DEFS[record_id]["required"][field]
-    if "list" in form:
-        missing = ["does-not-exist-anywhere"]
-    else:
-        missing = "does-not-exist-anywhere"
+    missing = ["does-not-exist-anywhere"] if "list" in form else "does-not-exist-anywhere"
     payload = {}
     cache: dict = {}
     for name, other in _DEFS[record_id]["required"].items():
@@ -149,7 +150,9 @@ def test_phase_gate_reads_store_config():
     config_path = repo / ".canon" / "config.json"
     config = json.loads(config_path.read_text())
     config["settings"] = {
-        "conductor": {"phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}}
+        "conductor": {
+            "phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}
+        }
     }
     config_path.write_text(json.dumps(config))
     policy = suite.load_suite_policy(repo)

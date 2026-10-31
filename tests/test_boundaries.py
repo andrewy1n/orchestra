@@ -35,7 +35,11 @@ def _imports(path: Path) -> list[tuple[int, str]]:
             elif node.module.startswith("orchestra."):
                 found.append((node.lineno, node.module))
         elif isinstance(node, ast.Import):
-            found.extend((node.lineno, alias.name) for alias in node.names if alias.name.startswith("orchestra."))
+            found.extend(
+                (node.lineno, alias.name)
+                for alias in node.names
+                if alias.name.startswith("orchestra.")
+            )
     return found
 
 

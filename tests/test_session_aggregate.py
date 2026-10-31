@@ -14,7 +14,13 @@ def row(efforts, total, ambiguous):
         "turns": 5,
         "cost_usd": 1.0,
         "tools": {"tools": {}, "totals": {"calls": 2, "errors": 0, "retries": 0}},
-        "records": {"total": total, "by_type": {}, "efforts": efforts, "tasks": [], "ambiguous": ambiguous},
+        "records": {
+            "total": total,
+            "by_type": {},
+            "efforts": efforts,
+            "tasks": [],
+            "ambiguous": ambiguous,
+        },
     }
 
 

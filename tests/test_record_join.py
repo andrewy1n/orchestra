@@ -8,13 +8,26 @@ def at(h, m=0):
 
 
 def session(sid, cwd, start, end):
-    return {"session_id": sid, "cwd": cwd, "start": start, "end": end,
-            "file": f"{sid}.jsonl", "project": "x"}
+    return {
+        "session_id": sid,
+        "cwd": cwd,
+        "start": start,
+        "end": end,
+        "file": f"{sid}.jsonl",
+        "project": "x",
+    }
 
 
 def record(rid, store, when):
-    return {"id": rid, "record_type": "t", "subject": "s", "effort": None,
-            "recorded_at": when, "lifecycle_state": "open", "store": store}
+    return {
+        "id": rid,
+        "record_type": "t",
+        "subject": "s",
+        "effort": None,
+        "recorded_at": when,
+        "lifecycle_state": "open",
+        "store": store,
+    }
 
 
 S1 = session("s1", "/w/proj", "2026-01-01T01:00:00Z", "2026-01-01T03:00:00Z")
@@ -50,8 +63,13 @@ def test_session_without_window_gets_nothing_but_stays_listed():
 
 
 def test_recorded_at_accepts_iso_string():
-    out = join([S1], [record("a", "proj", "2026-01-01T02:00:00Z"),
-                      record("b", "proj", "2026-01-01T02:00:00+00:00")])
+    out = join(
+        [S1],
+        [
+            record("a", "proj", "2026-01-01T02:00:00Z"),
+            record("b", "proj", "2026-01-01T02:00:00+00:00"),
+        ],
+    )
     assert out["by_session"]["s1"]["records"] == ["a", "b"]
 
 

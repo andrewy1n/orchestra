@@ -35,7 +35,9 @@ def test_r10_init_creates_no_brief_for_repair_evaluate_or_incidental():
     assert CREATE_BRIEF.search(text)
     for window in _windows(text, r"score:brief", 400, 400):
         lower = window.lower()
-        if all(kind in lower for kind in ("repair", "evaluate", "incidental")) and NEGATION.search(window):
+        if all(kind in lower for kind in ("repair", "evaluate", "incidental")) and NEGATION.search(
+            window
+        ):
             return
     raise AssertionError("init never excludes repair, evaluate, and incidental from the brief")
 
@@ -54,7 +56,8 @@ def test_r12_settle_phase_context_step_lists_the_brief_for_the_focus_effort():
     start = text.index("Read context")
     step = text[start : text.index("\n3.", start)]
     assert re.search(
-        r"canon list --type score:brief\b[^\n]*(?:payload\.effort=<focus>|--subject <focus>)", step,
+        r"canon list --type score:brief\b[^\n]*(?:payload\.effort=<focus>|--subject <focus>)",
+        step,
     )
 
 

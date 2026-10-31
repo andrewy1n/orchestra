@@ -9,13 +9,12 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
-
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 
 def _create(cli, record_type: str, subject: str, payload: dict, body: str | None = None) -> dict:
@@ -23,7 +22,9 @@ def _create(cli, record_type: str, subject: str, payload: dict, body: str | None
     if body is not None:
         args.extend(["--body", body])
     result = cli(*args)
-    assert result.returncode == 0, f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
@@ -41,7 +42,11 @@ def _place(cli, effort: str, area: str) -> dict:
 
 def _idea(cli, subject: str, status: str = "open", text: str | None = None, **refs: str) -> dict:
     return _create(
-        cli, "composer:idea", subject, {"status": status, **refs}, f"{text or 'text of ' + subject}\n",
+        cli,
+        "composer:idea",
+        subject,
+        {"status": status, **refs},
+        f"{text or 'text of ' + subject}\n",
     )
 
 

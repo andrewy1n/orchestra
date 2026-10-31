@@ -11,12 +11,15 @@ def write_lines(tmp_path, lines):
 
 
 def test_parse_keeps_valid_events_and_counts_one_malformed_line(tmp_path):
-    path = write_lines(tmp_path, [
-        json.dumps({"type": "user", "sessionId": "s1"}),
-        '{"type": "assistant", broken',
-        json.dumps({"type": "never-seen-before", "extra": [1, 2]}),
-        json.dumps({"type": "assistant", "future_field": True}),
-    ])
+    path = write_lines(
+        tmp_path,
+        [
+            json.dumps({"type": "user", "sessionId": "s1"}),
+            '{"type": "assistant", broken',
+            json.dumps({"type": "never-seen-before", "extra": [1, 2]}),
+            json.dumps({"type": "assistant", "future_field": True}),
+        ],
+    )
     stats = ReadStats()
     events = list(read_events(path, stats))
     assert [e["type"] for e in events] == ["user", "never-seen-before", "assistant"]

@@ -170,9 +170,7 @@ def _assert_replay(row: dict, base: str, head: str, *needles: str) -> None:
     assert payload.get("head_rev") == head, payload
     assert "result" in payload, payload
     text = _replay_text(row)
-    assert text.strip(), (
-        f"{row.get('id')} missing replay metadata (payload.replay or body)"
-    )
+    assert text.strip(), f"{row.get('id')} missing replay metadata (payload.replay or body)"
     assert base in text and head in text, (
         "replay metadata must name the same revisions so the technique "
         f"can be re-invoked; got {text[:500]}"
@@ -225,9 +223,7 @@ def test_r2_probe_outcomes_covered_by_probe_observations(store: Path) -> None:
     proc = _audit(store, base, head)
     payload = _advisory(proc)
     reported = [
-        diff["probe"]
-        for diff in payload["diffs"]
-        if isinstance(diff, dict) and diff.get("probe")
+        diff["probe"] for diff in payload["diffs"] if isinstance(diff, dict) and diff.get("probe")
     ]
     assert PROBE_ID in reported, payload["diffs"]
 
@@ -239,8 +235,7 @@ def test_r2_probe_outcomes_covered_by_probe_observations(store: Path) -> None:
     )
     for probe_id in reported:
         assert any(_covers_probe(row, probe_id) for row in probe_rows), (
-            f"probe {probe_id!r} outcome is not covered by a "
-            f"{PROBES_TECHNIQUE!r} observation"
+            f"probe {probe_id!r} outcome is not covered by a {PROBES_TECHNIQUE!r} observation"
         )
 
 
@@ -320,9 +315,7 @@ def test_r6_audit_without_store_matches_prephase(tmp_path: Path) -> None:
     assert isinstance(payload["diffs"], list)
     assert any(diff.get("probe") == PROBE_ID for diff in payload["diffs"])
     assert payload["survivors"] == []
-    assert not (
-        root / ".canon" / "records" / "tuner__evidence-observation"
-    ).exists()
+    assert not (root / ".canon" / "records" / "tuner__evidence-observation").exists()
 
 
 def test_r7_fixture_trail_visible_unbound_observations(store: Path) -> None:

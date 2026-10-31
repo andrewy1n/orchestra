@@ -23,14 +23,14 @@ def _window(session):
 def join(sessions, records):
     by_session = {s["session_id"]: {"records": [], "ambiguous": []} for s in sessions}
     windows = [
-        (s["session_id"], PurePosixPath(s.get("cwd") or "").name, _window(s))
-        for s in sessions
+        (s["session_id"], PurePosixPath(s.get("cwd") or "").name, _window(s)) for s in sessions
     ]
     unattached = []
     for rec in records:
         when = cast(datetime, _parse(rec["recorded_at"]))
         hits = [
-            sid for sid, name, win in windows
+            sid
+            for sid, name, win in windows
             if win and name == rec["store"] and win[0] <= when <= win[1]
         ]
         for sid in hits:

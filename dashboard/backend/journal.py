@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import records, store
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -42,7 +42,9 @@ class JournalItem:
     task_id: str = ""
 
 
-def _soft_list(target: Project, record_type: str, *, payload: dict[str, str] | None = None) -> list[dict[str, Any]]:
+def _soft_list(
+    target: Project, record_type: str, *, payload: dict[str, str] | None = None
+) -> list[dict[str, Any]]:
     try:
         return records._list(target, record_type, payload=payload)
     except store.ModelError:
@@ -51,7 +53,8 @@ def _soft_list(target: Project, record_type: str, *, payload: dict[str, str] | N
 
 def _phase_for_task(subject: str, tasks: list[dict[str, Any]]) -> tuple[str | None, str]:
     matches = [
-        task for task in tasks
+        task
+        for task in tasks
         if subject == task["subject"] or subject.startswith(task["subject"] + "-")
     ]
     if not matches:
@@ -63,7 +66,7 @@ def _phase_for_task(subject: str, tasks: list[dict[str, Any]]) -> tuple[str | No
 def _plan_review_slug(scope: str) -> str | None:
     if not scope.startswith(PLAN_REVIEW_PREFIX):
         return None
-    return scope[len(PLAN_REVIEW_PREFIX):]
+    return scope[len(PLAN_REVIEW_PREFIX) :]
 
 
 def _question_scope_text(scope: str, phase_titles: dict[str, str]) -> str:
@@ -124,7 +127,11 @@ def _amendment_text(record: dict[str, Any], task_subject: str) -> str:
 
 
 def _belongs_to_effort(
-    record: dict[str, Any], effort: str, *, sole_goal: bool, by_subject: bool = False,
+    record: dict[str, Any],
+    effort: str,
+    *,
+    sole_goal: bool,
+    by_subject: bool = False,
 ) -> bool:
     if by_subject:
         return record.get("subject") == effort
@@ -149,7 +156,7 @@ def _assignment_task(
     task = tasks_by_id.get(work_ref) or tasks_by_subject.get(work_ref)
     if task is None:
         phase, task_id = _phase_for_task(assignment["subject"], list(tasks_by_subject.values()))
-        return phase, task_id, assignment["subject"] if task_id else assignment["subject"]
+        return phase, task_id, assignment["subject"]
     return record_payload(task).get("phase") or None, task["id"], task["subject"]
 
 
@@ -157,7 +164,8 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
     aliases = records._merge_aliases(records._list(target, "score:effort"))
     goals = [
-        record for record in records._list(target, "score:effort")
+        record
+        for record in records._list(target, "score:effort")
         if record.get("lifecycle_state") == "active"
         and record_payload(record).get("status") != "closed"
     ]
@@ -169,7 +177,8 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     )
     if not tasks:
         tasks = [
-            record for record in records._remapped(_soft_list(target, "score:work-item"), aliases)
+            record
+            for record in records._remapped(_soft_list(target, "score:work-item"), aliases)
             if record_payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
@@ -195,7 +204,8 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         raw = records._remapped(_soft_list(target, record_type), aliases)
         by_subject = record_type == "score:continuity-question"
         listed[record_type] = [
-            record for record in raw
+            record
+            for record in raw
             if record.get("lifecycle_state") not in records.INACTIVE_STATES
             and _belongs_to_effort(record, effort, sole_goal=sole_goal, by_subject=by_subject)
         ]
@@ -205,48 +215,86 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
 
     for record in listed["conductor:failed-attempt"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
-        items.append(JournalItem(
-            record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _attempt_text(record_payload(record)), False, task_id,
-        ))
+        items.append(
+            JournalItem(
+                record["id"],
+                record["record_type"],
+                record["subject"],
+                phase,
+                records._recorded_at(record),
+                _attempt_text(record_payload(record)),
+                False,
+                task_id,
+            )
+        )
 
     for record in listed["tuner:investigation-observation"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
         open_item = record["subject"] not in finding_subjects
-        items.append(JournalItem(
-            record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record),
-            record_payload(record).get("what_was_observed") or "",
-            open_item, task_id,
-        ))
+        items.append(
+            JournalItem(
+                record["id"],
+                record["record_type"],
+                record["subject"],
+                phase,
+                records._recorded_at(record),
+                record_payload(record).get("what_was_observed") or "",
+                open_item,
+                task_id,
+            )
+        )
 
     for record in listed["tuner:finding"]:
         phase, task_id = _phase_for_task(record["subject"], tasks)
-        items.append(JournalItem(
-            record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _finding_text(record_payload(record)),
-            _finding_open(record), task_id,
-        ))
+        items.append(
+            JournalItem(
+                record["id"],
+                record["record_type"],
+                record["subject"],
+                phase,
+                records._recorded_at(record),
+                _finding_text(record_payload(record)),
+                _finding_open(record),
+                task_id,
+            )
+        )
 
     for record in listed["score:continuity-question"]:
         scope = record_payload(record).get("scope") or ""
         slug = _plan_review_slug(scope)
         phase = slug if slug is not None else None
-        items.append(JournalItem(
-            record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _question_text(record, phase_titles),
-            _question_open(record), "",
-        ))
+        items.append(
+            JournalItem(
+                record["id"],
+                record["record_type"],
+                record["subject"],
+                phase,
+                records._recorded_at(record),
+                _question_text(record, phase_titles),
+                _question_open(record),
+                "",
+            )
+        )
 
     for record in listed["conductor:assignment-amendment"]:
         phase, task_id, task_subject = _assignment_task(
-            record, assignments, tasks_by_id, tasks_by_subject,
+            record,
+            assignments,
+            tasks_by_id,
+            tasks_by_subject,
         )
-        items.append(JournalItem(
-            record["id"], record["record_type"], record["subject"], phase,
-            records._recorded_at(record), _amendment_text(record, task_subject),
-            False, task_id,
-        ))
+        items.append(
+            JournalItem(
+                record["id"],
+                record["record_type"],
+                record["subject"],
+                phase,
+                records._recorded_at(record),
+                _amendment_text(record, task_subject),
+                False,
+                task_id,
+            )
+        )
 
     return items
 
@@ -257,17 +305,21 @@ def journal_scope(items: list[JournalItem], phase: str | None) -> list[JournalIt
         return list(items)
     scoped: list[JournalItem] = []
     for item in items:
-        if item.phase == phase:
-            scoped.append(item)
-        elif item.phase is None and item.open and item.record_type == "score:continuity-question":
+        if item.phase == phase or (
+            item.phase is None and item.open and item.record_type == "score:continuity-question"
+        ):
             scoped.append(item)
     return scoped
 
 
 def ordered(items: list[JournalItem]) -> tuple[list[JournalItem], list[JournalItem]]:
     """Open items newest first, then every other item newest first (R4)."""
-    open_items = sorted((item for item in items if item.open), key=lambda item: item.recorded_at, reverse=True)
-    rest = sorted((item for item in items if not item.open), key=lambda item: item.recorded_at, reverse=True)
+    open_items = sorted(
+        (item for item in items if item.open), key=lambda item: item.recorded_at, reverse=True
+    )
+    rest = sorted(
+        (item for item in items if not item.open), key=lambda item: item.recorded_at, reverse=True
+    )
     return open_items, rest
 
 
@@ -276,10 +328,7 @@ def filter_items(items: list[JournalItem], needle: str) -> list[JournalItem]:
     needle = needle.strip().lower()
     if not needle:
         return list(items)
-    return [
-        item for item in items
-        if needle in item.subject.lower() or needle in item.text.lower()
-    ]
+    return [item for item in items if needle in item.subject.lower() or needle in item.text.lower()]
 
 
 def load_record(target: Project, record_id: str) -> dict[str, Any]:

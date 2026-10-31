@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from conftest import make_task
 
 from orchestra.canon.backend import open_backend
-from orchestra.canon.project import Project, open_store
 from orchestra.canon.errors import StaleWriteError, StoreError
-from conftest import make_task
+from orchestra.canon.project import Project, open_store
+from orchestra.canon.validation import ValidationError
 
 
 def history_revisions(project: Project, record: dict[str, Any]) -> set[str]:
@@ -65,7 +66,9 @@ def test_supersede_archives_the_predecessor(project):
 
 def test_events_are_archived_when_created(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"}
+    )
     assert history_revisions(project, log) == {log["revision"]}
 
 
@@ -82,7 +85,9 @@ def test_current_revision_is_the_default(project):
     first = project.update(task["id"], payload={"owner": "ann"})
     second = project.update(task["id"], payload={"owner": "bob"})
     assert second["revision"] != first["revision"]
-    assert project.update(task["id"], payload={"owner": "ann"}, expected_revision=second["revision"])
+    assert project.update(
+        task["id"], payload={"owner": "ann"}, expected_revision=second["revision"]
+    )
 
 
 def test_update_with_no_revision_check_uses_none(project):
@@ -107,7 +112,7 @@ def test_apply_numbers_results_by_operation(project):
 
 def test_supersede_failure_leaves_the_original_untouched(project):
     task = make_task(project, "t")
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         project.supersede(task["id"], payload={"depends_on": ["ghost"]})
     assert project.get(task["id"]) == task
 

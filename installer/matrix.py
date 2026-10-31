@@ -36,9 +36,7 @@ def load_matrix(path: Path | None = None) -> tuple[Provider, ...]:
         if not isinstance(row, dict):
             raise MatrixError(f"provider row {index} is not an object")
         missing = [
-            key
-            for key in ("id", "name", "kind", "project_root", "global_root")
-            if not row.get(key)
+            key for key in ("id", "name", "kind", "project_root", "global_root") if not row.get(key)
         ]
         if missing:
             raise MatrixError(f"provider row {index} is missing {', '.join(missing)}")
@@ -47,9 +45,7 @@ def load_matrix(path: Path | None = None) -> tuple[Provider, ...]:
             raise MatrixError(f"provider matrix lists {provider_id!r} twice")
         seen.add(provider_id)
         if row["kind"] not in ("native", "skills"):
-            raise MatrixError(
-                f"provider {provider_id!r} has unknown kind {row['kind']!r}"
-            )
+            raise MatrixError(f"provider {provider_id!r} has unknown kind {row['kind']!r}")
         detect = row.get("detect", [])
         if not isinstance(detect, list):
             raise MatrixError(f"provider {provider_id!r} detect must be a list")

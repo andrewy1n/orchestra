@@ -70,7 +70,10 @@ def test_every_task_in_a_wave_uses_the_same_executor():
 
 def test_phase_body_records_size_stops_and_collision_notes():
     text = _flat(_text("plan-phase"))
-    assert "Phase body records session shape (`one sitting` | `more than one`), human stops, collision notes" in text
+    assert (
+        "Phase body records session shape (`one sitting` | `more than one`), human stops, collision notes"
+        in text
+    )
 
 
 def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():

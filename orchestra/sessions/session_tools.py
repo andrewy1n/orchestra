@@ -1,6 +1,7 @@
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, cast
+from typing import cast
 
 from orchestra.sessions.session_metrics import read_events
 

@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.validation import ValidationError
 
 __all__ = [
     "StoreBindingError",
+    "create_record",
     "find_store_root",
     "get_record",
-    "create_record",
 ]
 
 

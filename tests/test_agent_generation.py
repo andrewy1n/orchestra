@@ -30,13 +30,11 @@ def split_frontmatter(text: str) -> tuple[str, str]:
     return header, body.lstrip("\n")
 
 
-def run_install(
-    *args: str, source: Path, home: Path
-) -> subprocess.CompletedProcess:
+def run_install(*args: str, source: Path, home: Path) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     env["HOME"] = str(home)
     return subprocess.run(
@@ -59,9 +57,7 @@ def test_canonical_prompt_declares_one_restriction_set():
 
 
 def test_claude_rendering_uses_the_canonical_tools_allowlist():
-    header, body = split_frontmatter(
-        agents.render("claude", agents.load(REPO_ROOT))
-    )
+    header, body = split_frontmatter(agents.render("claude", agents.load(REPO_ROOT)))
     assert "name: reviewer" in header
     assert "tools: Read, Grep, Glob, Bash" in header
     assert "Write" not in header
@@ -70,9 +66,7 @@ def test_claude_rendering_uses_the_canonical_tools_allowlist():
 
 
 def test_opencode_rendering_is_a_subagent_with_denied_writes():
-    header, body = split_frontmatter(
-        agents.render("opencode", agents.load(REPO_ROOT))
-    )
+    header, body = split_frontmatter(agents.render("opencode", agents.load(REPO_ROOT)))
     assert "mode: subagent" in header
     assert "permissions:" in header
     assert "  read: allow" in header
@@ -83,9 +77,7 @@ def test_opencode_rendering_is_a_subagent_with_denied_writes():
 
 
 def test_cursor_rendering_is_read_only():
-    header, body = split_frontmatter(
-        agents.render("cursor", agents.load(REPO_ROOT))
-    )
+    header, body = split_frontmatter(agents.render("cursor", agents.load(REPO_ROOT)))
     assert "readonly: true" in header
     assert body == agents.load(REPO_ROOT).body
 
@@ -171,9 +163,7 @@ def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
     assert stale.returncode != 0
     built = run_build(root)
     assert built.returncode == 0, built.stdout + built.stderr
-    header, _ = split_frontmatter(
-        (root / "agents" / "reviewer.md").read_text(encoding="utf-8")
-    )
+    header, _ = split_frontmatter((root / "agents" / "reviewer.md").read_text(encoding="utf-8"))
     assert "tools: Read, Grep, Glob" in header
     assert "Bash" not in header
 
@@ -182,8 +172,13 @@ def test_generated_agent_is_installed_for_each_native_host(tmp_path):
     home = tmp_path / "home"
     for provider_id in ("claude", "cursor", "opencode"):
         proc = run_install(
-            "--only", provider_id, "--home", str(home), "--copy",
-            source=REPO_ROOT, home=home,
+            "--only",
+            provider_id,
+            "--home",
+            str(home),
+            "--copy",
+            source=REPO_ROOT,
+            home=home,
         )
         assert proc.returncode == 0, proc.stdout + proc.stderr
         installed = home / f".{provider_id}" / "agents" / "reviewer.md"
@@ -201,13 +196,9 @@ def test_extending_the_canonical_tools_changes_every_host(tmp_path):
     (source / "skills" / "init" / "SKILL.md").write_text(
         "---\nname: init\ndescription: fixture\n---\n", encoding="utf-8"
     )
-    canonical = (REPO_ROOT / "agents" / "reviewer.prompt.md").read_text(
-        encoding="utf-8"
-    )
+    canonical = (REPO_ROOT / "agents" / "reviewer.prompt.md").read_text(encoding="utf-8")
     (source / "agents" / "reviewer.prompt.md").write_text(
-        canonical.replace(
-            "tools: Read, Grep, Glob, Bash", "tools: Read, Grep, Glob"
-        ),
+        canonical.replace("tools: Read, Grep, Glob, Bash", "tools: Read, Grep, Glob"),
         encoding="utf-8",
     )
     for provider_id in ("claude", "opencode"):
@@ -226,8 +217,13 @@ def test_missing_canonical_prompt_still_installs_without_an_agent(tmp_path):
     )
     home = tmp_path / "home"
     proc = run_install(
-        "--only", "claude", "--home", str(home), "--copy",
-        source=source, home=home,
+        "--only",
+        "claude",
+        "--home",
+        str(home),
+        "--copy",
+        source=source,
+        home=home,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()

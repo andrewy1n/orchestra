@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from orchestra.canon.project import StoreBindingError, open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import StoreBindingError, open_store
 
 HOST = "127.0.0.1"
 

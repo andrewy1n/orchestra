@@ -8,7 +8,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 CLAIM = "claim-widget"
 NODE = "tests/test_widget.py::test_widget"
 ORACLE_REL = "tests/test_widget.py"
@@ -71,9 +70,7 @@ def _manifest(oracle: bytes) -> dict:
 def _write_tree(root: Path, *, oracle: bytes, app: bytes) -> None:
     tuner = root / ".tuner"
     tuner.mkdir(exist_ok=True)
-    (tuner / "manifest.json").write_text(
-        json.dumps(_manifest(oracle), indent=2) + "\n"
-    )
+    (tuner / "manifest.json").write_text(json.dumps(_manifest(oracle), indent=2) + "\n")
     (tuner / "allowed_signers").write_bytes(ALLOW)
     (root / "pytest.ini").write_text("[pytest]\n")
     oracle_path = root / ORACLE_REL

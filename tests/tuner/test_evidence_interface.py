@@ -9,16 +9,16 @@ from pathlib import Path
 
 from conftest import run_cli
 from test_verdict import (
-    VERIFY,
+    ALLOW,
     APP_GREEN,
     APP_RED,
     CLAIM,
     ORACLE,
+    VERIFY,
     _commit,
     _manifest,
     _payload,
     _write_tree,
-    ALLOW,
 )
 
 RECORD_TYPE = "tuner:evidence-observation"
@@ -60,9 +60,7 @@ def _seed_verdict_subject(root: Path) -> tuple[str, str]:
     return base, head
 
 
-def _verdict(
-    root: Path, base: str, head: str
-) -> subprocess.CompletedProcess[str]:
+def _verdict(root: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
     return _tuner(
         "verdict",
         "--cwd",
@@ -140,8 +138,7 @@ def test_r2_verdict_records_one_evidence_observation(store: Path) -> None:
 
     after = _list_evidence_observations(store)
     assert len(after) == len(before) + 1, (
-        f"expected one new {RECORD_TYPE} after verdict; "
-        f"before={len(before)} after={len(after)}"
+        f"expected one new {RECORD_TYPE} after verdict; before={len(before)} after={len(after)}"
     )
     created = [row for row in after if row["id"] not in {r["id"] for r in before}]
     assert len(created) == 1
@@ -211,9 +208,7 @@ def test_r3_tuner_trail_lists_observations_as_json(store: Path) -> None:
 
     other = _tuner("trail", "--cwd", str(store), "--claim", "claim-does-not-exist")
     assert other.returncode == 0, other.stdout + other.stderr
-    assert seeded["id"] not in {
-        _observation_id(item) for item in json.loads(other.stdout)
-    }
+    assert seeded["id"] not in {_observation_id(item) for item in json.loads(other.stdout)}
 
 
 def test_r4_verdict_trail_and_subsequent_verdict_pass(store: Path) -> None:
@@ -238,8 +233,7 @@ def test_r4_verdict_trail_and_subsequent_verdict_pass(store: Path) -> None:
     assert isinstance(items, list)
     assert any(_observation_id(item) == obs["id"] for item in items)
     assert any(
-        _observation_id(item) == obs["id"] and _technique(item) == "verdict"
-        for item in items
+        _observation_id(item) == obs["id"] and _technique(item) == "verdict" for item in items
     )
 
     second = _verdict(store, base, head)

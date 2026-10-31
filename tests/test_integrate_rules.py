@@ -43,7 +43,10 @@ def test_integration_report_create_matches_the_contract(resolved_contract):
 
 def test_a_git_merge_is_not_a_pass():
     text = _text()
-    assert "`pass` only when verdict is `PASS` and those sections hold — a clean git merge is not enough." in text
+    assert (
+        "`pass` only when verdict is `PASS` and those sections hold — a clean git merge is not enough."
+        in text
+    )
     assert "Write integration-report `pass` from a clean git merge alone" in text
 
 

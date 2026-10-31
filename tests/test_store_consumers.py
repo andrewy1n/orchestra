@@ -2,16 +2,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from canon_support import make_project
-from orchestra.canon.project import Project
+
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 from orchestra.conductor.suite import load_suite_policy
 
 
-def test_suite_policy_reads_project_config(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_suite_policy_reads_project_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project = make_project(tmp_path / "repo")
     calls: list[Project] = []
 
@@ -33,9 +31,7 @@ def test_suite_policy_reads_project_config(
 
     monkeypatch.setattr(Project, "config", config)
     policy = load_suite_policy(project.project_root)
-    assert (policy.mode, policy.command, policy.gate) == (
-        "full", "pytest -q", "advisory"
-    )
+    assert (policy.mode, policy.command, policy.gate) == ("full", "pytest -q", "advisory")
     assert calls == [project]
     assert policy.source_path == str(project.store_path)
 

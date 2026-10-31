@@ -12,16 +12,16 @@
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 23,
-                    "endColumn": 29,
+                    "startColumn": 27,
+                    "endColumn": 33,
                     "lineCount": 1
                 }
             },
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 26,
-                    "endColumn": 31,
+                    "startColumn": 30,
+                    "endColumn": 35,
                     "lineCount": 1
                 }
             },
@@ -64,8 +64,8 @@
             {
                 "code": "reportArgumentType",
                 "range": {
-                    "startColumn": 68,
-                    "endColumn": 100,
+                    "startColumn": 18,
+                    "endColumn": 50,
                     "lineCount": 1
                 }
             }

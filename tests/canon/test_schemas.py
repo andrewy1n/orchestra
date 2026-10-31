@@ -7,13 +7,13 @@ import subprocess
 import sys
 
 import pytest
+from conftest import ALPHA, BETA
 
 from orchestra.canon import modules
+from orchestra.canon.backend import open_backend
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.backend import open_backend
-from conftest import ALPHA, BETA
 
 GAMMA_V1 = {
     "namespace": "gamma",
@@ -22,7 +22,10 @@ GAMMA_V1 = {
         "report": {
             "purpose": "Outcome of one run",
             "lifecycle": "event",
-            "fields": {"status": {"enum": ["ok", "bad"]}, "labels": {"list": {"type": "string"}, "optional": True}},
+            "fields": {
+                "status": {"enum": ["ok", "bad"]},
+                "labels": {"list": {"type": "string"}, "optional": True},
+            },
         },
         "note": {
             "purpose": "A current note",
@@ -40,7 +43,10 @@ GAMMA_V2 = {
         "execution-report": {
             "purpose": "Outcome of one run",
             "lifecycle": "event",
-            "fields": {"result": {"enum": ["done", "bad"]}, "labels": {"list": {"type": "string"}, "optional": True}},
+            "fields": {
+                "result": {"enum": ["done", "bad"]},
+                "labels": {"list": {"type": "string"}, "optional": True},
+            },
         },
         "note": {
             "purpose": "A current note",
@@ -99,7 +105,9 @@ def test_discovery_reads_module_files_named_in_canon_schema_path(monkeypatch, si
     assert found["gamma"].source == str(gamma)
 
 
-def test_canon_schema_path_overrides_an_installed_module_of_the_same_namespace(monkeypatch, site, tmp_path):
+def test_canon_schema_path_overrides_an_installed_module_of_the_same_namespace(
+    monkeypatch, site, tmp_path
+):
     trimmed = copy.deepcopy(ALPHA)
     del trimmed["types"]["log"]
     path = tmp_path / "alpha.json"
@@ -143,12 +151,15 @@ def test_discovery_refuses_an_invalid_module(site):
 
 def test_discovery_in_a_fresh_interpreter(site, repo):
     env = site.env()
-    run = lambda *args: subprocess.run(
-        [sys.executable, "-m", "orchestra.canon", "--root", str(repo), *args],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+
+    def run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "orchestra.canon", "--root", str(repo), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
     result = run("init", "--schemas", "alpha,beta")
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["schemas"] == {"alpha": "0.1.0", "beta": "0.1.0"}
@@ -255,7 +266,17 @@ def test_sync_minor_bump_updates_the_snapshot_and_keeps_records_valid(cli, site,
     assert config["schemas"]["alpha"] == "0.2.0"
     snapshot = json.loads((repo / ".canon" / "schemas" / "alpha.json").read_text())
     assert snapshot["version"] == "0.2.0"
-    cli.ok("create", "--type", "alpha:task", "--subject", "t2", "--set", "title=y", "--set", "estimate=3")
+    cli.ok(
+        "create",
+        "--type",
+        "alpha:task",
+        "--subject",
+        "t2",
+        "--set",
+        "title=y",
+        "--set",
+        "estimate=3",
+    )
     assert cli.ok("validate")["status"] == "valid"
 
 
@@ -327,7 +348,10 @@ class TestMigration:
         cli.ok("schemas", "sync")
         history = list(open_backend(repo / ".canon").read_history())
         assert not any(record["record_type"] == "gamma:report" for record in history)
-        assert len([record for record in history if record["record_type"] == "gamma:execution-report"]) == 2
+        assert (
+            len([record for record in history if record["record_type"] == "gamma:execution-report"])
+            == 2
+        )
         note_snapshots = [record for record in history if record["record_type"] == "gamma:note"]
         assert note_snapshots
         assert all("body_text" in record["payload"] for record in note_snapshots)
@@ -350,12 +374,16 @@ class TestMigration:
         assert config["schemas"]["gamma"] == "1.0.0"
 
     def test_migration_chains_across_several_majors(self, cli, site, repo, migrating):
-        project, report, *_ = migrating
+        _, report, *_ = migrating
         v3 = copy.deepcopy(GAMMA_V2)
         v3["version"] = "3.0.0"
         v3["types"]["execution-report"]["fields"]["result"] = {"enum": ["finished", "bad"]}
         v3["migrations"].append(
-            {"from": "2", "to": "3", "map_enum": {"gamma:execution-report.result": {"done": "finished"}}}
+            {
+                "from": "2",
+                "to": "3",
+                "map_enum": {"gamma:execution-report.result": {"done": "finished"}},
+            }
         )
         site.publish(v3)
         result = cli.ok("schemas", "sync")
@@ -389,7 +417,10 @@ def test_schemas_show(cli):
     cli.ok("init", "--schemas", "alpha,beta")
     overview = cli.ok("schemas", "show")["schemas"]
     assert overview["alpha"]["version"] == "0.1.0"
-    assert overview["alpha"]["types"]["task"] == {"purpose": "A unit of work", "lifecycle": "staged"}
+    assert overview["alpha"]["types"]["task"] == {
+        "purpose": "A unit of work",
+        "lifecycle": "staged",
+    }
     assert cli.ok("schemas", "show", "beta") == BETA
     one = cli.ok("schemas", "show", "--type", "review")
     assert one["record_type"] == "beta:review"

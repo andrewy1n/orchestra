@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-
-from orchestra.canon.lifecycle import LIFECYCLES, terminal_success_state
-from orchestra.canon.errors import StoreError
-from orchestra.canon.validation import ValidationError
 from conftest import make_task
+
+from orchestra.canon.errors import StoreError
+from orchestra.canon.lifecycle import LIFECYCLES, terminal_success_state
+from orchestra.canon.validation import ValidationError
 
 PATHS = {
     "current": ("alpha:config", {"title": "c", "level": 1}),
@@ -115,9 +115,9 @@ def _route(name, state):
             if dest == "superseded" or dest in seen:
                 continue
             if dest == state:
-                return path + [dest]
+                return [*path, dest]
             seen.add(dest)
-            queue.append((dest, path + [dest]))
+            queue.append((dest, [*path, dest]))
     raise AssertionError(f"{state} unreachable")
 
 
@@ -135,10 +135,16 @@ def test_update_never_transitions_to_superseded(project):
 
 
 def test_current_allows_one_active_record_per_subject(project):
-    first = project.create(record_type="alpha:config", subject="web", payload={"title": "a", "level": 1})
+    first = project.create(
+        record_type="alpha:config", subject="web", payload={"title": "a", "level": 1}
+    )
     with pytest.raises(ValidationError, match="supersede"):
-        project.create(record_type="alpha:config", subject="web", payload={"title": "b", "level": 2})
-    other = project.create(record_type="alpha:config", subject="api", payload={"title": "b", "level": 2})
+        project.create(
+            record_type="alpha:config", subject="web", payload={"title": "b", "level": 2}
+        )
+    other = project.create(
+        record_type="alpha:config", subject="api", payload={"title": "b", "level": 2}
+    )
     assert other["lifecycle_state"] == "active"
     result = project.supersede(first["id"], payload={"level": 3})
     assert result["predecessor"]["lifecycle_state"] == "superseded"
@@ -146,12 +152,16 @@ def test_current_allows_one_active_record_per_subject(project):
     assert result["record"]["id"] != first["id"]
     assert result["record"]["payload"] == {"title": "a", "level": 3}
     assert result["record"]["relationships"] == {"supersedes": [first["id"]]}
-    again = project.create(record_type="alpha:config", subject="web2", payload={"title": "b", "level": 2})
+    again = project.create(
+        record_type="alpha:config", subject="web2", payload={"title": "b", "level": 2}
+    )
     assert again["subject"] == "web2"
 
 
 def test_current_cannot_supersede_a_superseded_record(project):
-    first = project.create(record_type="alpha:config", subject="web", payload={"title": "a", "level": 1})
+    first = project.create(
+        record_type="alpha:config", subject="web", payload={"title": "a", "level": 1}
+    )
     project.supersede(first["id"])
     with pytest.raises(ValidationError, match="invalid transition"):
         project.supersede(first["id"])
@@ -181,7 +191,9 @@ def test_question_and_claim_have_no_supersede(project, name):
 
 def test_event_is_append_only(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"}
+    )
     with pytest.raises(ValidationError, match="cannot be mutated"):
         project.update(log["id"], payload={"message": "other"})
     with pytest.raises(ValidationError, match="cannot be mutated"):
@@ -193,13 +205,17 @@ def test_event_is_append_only(project):
 def test_events_may_share_a_subject(project):
     make_task(project, "t")
     for message in ("one", "two", "three"):
-        project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": message})
+        project.create(
+            record_type="alpha:log", subject="t", payload={"task": "t", "message": message}
+        )
     assert len(project.list("alpha:log")) == 3
 
 
 def test_event_correct_writes_a_successor_and_marks_the_original(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "wrong"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "wrong"}
+    )
     result = project.correct(log["id"], payload={"message": "right"})
     assert result["record"]["relationships"] == {"corrects": [log["id"]]}
     assert result["record"]["payload"]["message"] == "right"
@@ -211,7 +227,9 @@ def test_event_correct_writes_a_successor_and_marks_the_original(project):
 
 def test_event_cannot_be_corrected_twice(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"}
+    )
     second = project.correct(log["id"], payload={"message": "b"})["record"]
     with pytest.raises(ValidationError, match="already corrected"):
         project.correct(log["id"], payload={"message": "c"})

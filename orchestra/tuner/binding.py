@@ -6,15 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.project import Project, open_store
-
 from orchestra.tuner.manifest import ManifestError
 from orchestra.tuner.observation import store_usable
 from orchestra.tuner.verdict import run_verdict
 
 _BIND_TYPE = "tuner:evidence-binding"
-_INACTIVE = frozenset(
-    {"retired", "superseded", "inactive", "unbound", "withdrawn"}
-)
+_INACTIVE = frozenset({"retired", "superseded", "inactive", "unbound", "withdrawn"})
 
 
 class BindingError(Exception):
@@ -44,11 +41,9 @@ def is_active(row: dict[str, Any]) -> bool:
         return False
     payload = row.get("payload") or {}
     status = str(payload.get("status") or "").strip().lower()
-    if status in _INACTIVE or payload.get("retired") is True:
-        return False
-    if payload.get("active") is False:
-        return False
-    return True
+    return not (
+        status in _INACTIVE or payload.get("retired") is True or payload.get("active") is False
+    )
 
 
 def list_bindings(cwd: Path | str) -> list[dict[str, Any]]:

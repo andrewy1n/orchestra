@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from installer import wizard as wizard_module
-from installer.detect import detected_ids, detect_hosts, installed_ids
+from installer.detect import detect_hosts, detected_ids, installed_ids
 from installer.matrix import load_matrix
 from installer.model import InstallRequest
 from installer.wizard import (
@@ -217,9 +217,9 @@ def _run_install(
     stdin: str | None = None,
 ) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     env["HOME"] = str(home)
     return subprocess.run(
@@ -409,9 +409,7 @@ def test_no_detection_no_tty(tmp_path):
     assert "no host footprints" in proc.stderr
     assert not (project / ".claude").exists()
 
-    yes = _run_install(
-        "--yes", project=project, source=source, home=home
-    )
+    yes = _run_install("--yes", project=project, source=source, home=home)
     assert yes.returncode == 2
     assert "no host footprints" in yes.stderr
     assert not (project / ".claude").exists()
@@ -526,5 +524,3 @@ def test_uninstall_never_prompts(tmp_path):
     assert "Select hosts" not in removed.stdout
     assert "uninstalled claude" in removed.stdout
     assert _markers(home) == []
-
-

@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from test_verdict import VERIFY, APP_GREEN, APP_RED, CLAIM, _repo
+from test_verdict import APP_GREEN, APP_RED, CLAIM, VERIFY, _repo
 
 
 def _path_without_runtime(shim_dir: Path) -> str:

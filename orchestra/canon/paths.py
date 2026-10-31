@@ -7,9 +7,7 @@ import re
 RECORD_SUFFIX = ".md"
 
 SAFE_SEGMENT = re.compile(r"^[a-z][a-z0-9-]*$")
-RECORD_ID = re.compile(
-    r"^rec-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+RECORD_ID = re.compile(r"^rec-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 class PathValidationError(ValueError):

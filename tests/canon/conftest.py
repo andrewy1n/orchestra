@@ -267,7 +267,9 @@ def payload_of(task: str = "do it") -> dict[str, Any]:
 
 
 def make_task(project, subject: str, **extra) -> dict[str, Any]:
-    return project.create(record_type="alpha:task", subject=subject, payload={"title": subject, **extra})
+    return project.create(
+        record_type="alpha:task", subject=subject, payload={"title": subject, **extra}
+    )
 
 
 def advance(project, record: dict[str, Any], *states: str) -> dict[str, Any]:
@@ -297,4 +299,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         retired = set(amendment["old_tests"]) - set(replacement)
         for item in items:
             if item.nodeid in retired:
-                item.add_marker(pytest.mark.skip(reason="Superseded by signed oracle amendment " + amendment["claim"]))
+                item.add_marker(
+                    pytest.mark.skip(
+                        reason="Superseded by signed oracle amendment " + amendment["claim"]
+                    )
+                )

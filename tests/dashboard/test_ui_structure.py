@@ -43,11 +43,7 @@ def parse_jsonc(text: str) -> dict:
 
 def svelte_sources_outside_ui_components() -> list[Path]:
     ui_components = LIB / "components" / "ui"
-    return [
-        path
-        for path in sorted(SRC.rglob("*.svelte"))
-        if ui_components not in path.parents
-    ]
+    return [path for path in sorted(SRC.rglob("*.svelte")) if ui_components not in path.parents]
 
 
 def test_r1_ui_lives_in_dashboard_frontend_and_dashboard_web_is_gone():
@@ -123,9 +119,7 @@ def test_r9_global_css_defines_the_shadcn_theme_variables():
     assert root, "app.css has no :root block"
     assert dark, "app.css has no .dark block"
     for variable in ("--background", "--foreground", "--primary", "--border", "--radius"):
-        assert re.search(rf"{re.escape(variable)}\s*:", root.group(1)), (
-            f":root lacks {variable}"
-        )
+        assert re.search(rf"{re.escape(variable)}\s*:", root.group(1)), f":root lacks {variable}"
     assert re.search(r"--background\s*:", dark.group(1)), ".dark lacks --background"
 
 

@@ -19,10 +19,10 @@ import pytest
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.cli import main
 from orchestra.canon.config import new_config
+from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.oplog import fold
 from orchestra.canon.project import Binding, Project, open_store
 from orchestra.canon.revision import compute_revision
-from orchestra.canon.errors import StaleWriteError, StoreError
 
 SCHEMA: dict[str, Any] = {
     "namespace": "contract",
@@ -39,9 +39,7 @@ SCHEMA: dict[str, Any] = {
 
 def _open(root: Path, selected: str = "sqlite") -> Backend:
     try:
-        backend = open_backend(
-            root, {**new_config({"contract": "0.1.0"}), "backend": selected}
-        )
+        backend = open_backend(root, {**new_config({"contract": "0.1.0"}), "backend": selected})
     except StoreError as exc:
         raise AssertionError(f"{selected} backend must be selectable: {exc}") from exc
     if selected == "sqlite":
@@ -83,18 +81,14 @@ class DbStore:
 
     @property
     def project(self) -> Project:
-        self.backend
-        return Project(
-            self.project_root, self.root, Binding("global", "store-binding.json")
-        )
+        _ = self.backend
+        return Project(self.project_root, self.root, Binding("global", "store-binding.json"))
 
     @property
     def db(self) -> Path:
-        self.backend
+        _ = self.backend
         path = self.data_root / "canon.db"
-        assert path.is_file(), (
-            "SQLite store must persist canon.db at the bound global path"
-        )
+        assert path.is_file(), "SQLite store must persist canon.db at the bound global path"
         return path
 
     @property
@@ -151,7 +145,7 @@ def test_config_selects_sqlite_backend(tmp_path: Path) -> None:
 
 
 def test_global_binding_places_database_under_temporary_home(db_store: DbStore) -> None:
-    db_store.backend
+    _ = db_store.backend
     try:
         selected = open_store(db_store.project_root)
     except Exception as exc:
@@ -171,9 +165,7 @@ def test_database_contains_required_tables(db_store: DbStore) -> None:
     with sqlite3.connect(db_store.db) as connection:
         tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     assert {"ops", "records", "revisions", "meta"} <= tables
 
@@ -195,9 +187,7 @@ def test_op_triggers_reject_mutation(db_store: DbStore, verb: str) -> None:
 
 
 @pytest.mark.parametrize("table", ["ops", "records", "revisions"])
-def test_write_rolls_back_all_tables_on_sql_failure(
-    db_store: DbStore, table: str
-) -> None:
+def test_write_rolls_back_all_tables_on_sql_failure(db_store: DbStore, table: str) -> None:
     db_store.backend.create_record(_record("existing"))
     with sqlite3.connect(db_store.db) as connection:
         connection.execute(
@@ -208,9 +198,7 @@ def test_write_rolls_back_all_tables_on_sql_failure(
     with pytest.raises((StoreError, sqlite3.DatabaseError)):
         db_store.backend.create_record(_record("must-roll-back"))
     assert _snapshot(db_store.db) == before
-    assert not db_store.backend.record_exists(
-        "contract:setting", _record_id("must-roll-back")
-    )
+    assert not db_store.backend.record_exists("contract:setting", _record_id("must-roll-back"))
 
 
 def test_writes_begin_immediate_and_use_ten_second_busy_timeout(
@@ -266,9 +254,7 @@ def test_stale_write_raises_stale_write_error(db_store: DbStore) -> None:
 
 
 @pytest.mark.parametrize("rejection", ["duplicate", "stale", "missing_expected"])
-def test_rejected_write_leaves_database_unchanged(
-    db_store: DbStore, rejection: str
-) -> None:
+def test_rejected_write_leaves_database_unchanged(db_store: DbStore, rejection: str) -> None:
     backend = db_store.backend
     first = backend.create_record(_record("rejected"))
     current = backend.write_record(
@@ -312,9 +298,7 @@ def test_failed_supersede_rolls_back_predecessor_and_successor(
     assert db_store.project.records() == [old]
 
 
-def _write_worker(
-    root: str, worker: int, count: int, barrier: Any, results: Any
-) -> None:
+def _write_worker(root: str, worker: int, count: int, barrier: Any, results: Any) -> None:
     try:
         real_connect = sqlite3.connect
         begins: list[str] = []
@@ -334,9 +318,7 @@ def _write_worker(
         barrier.wait(timeout=20)
         for index in range(count):
             backend.create_record(_record(f"worker-{worker}-record-{index}"))
-        assert begins and all(statement == "BEGIN IMMEDIATE" for statement in begins), (
-            begins
-        )
+        assert begins and all(statement == "BEGIN IMMEDIATE" for statement in begins), begins
         results.put(("ok", worker))
     except Exception as exc:
         results.put(("error", repr(exc)))
@@ -378,7 +360,7 @@ def _join(workers: list[Any]) -> None:
 def test_multiprocess_distinct_writes_preserve_records_and_single_ops(
     db_store: DbStore,
 ) -> None:
-    db_store.backend
+    _ = db_store.backend
     context = multiprocessing.get_context("spawn")
     count, per_worker = 4, 12
     barrier, results = context.Barrier(count), context.Queue()
@@ -407,17 +389,12 @@ def test_multiprocess_distinct_writes_preserve_records_and_single_ops(
     assert all(len(ops) == 1 for ops in chains.values())
     assert all(fold(chains[record["id"]]) == record for record in records)
     with sqlite3.connect(db_store.db) as connection:
+        assert connection.execute("SELECT count(*) FROM ops").fetchone()[0] == count * per_worker
         assert (
-            connection.execute("SELECT count(*) FROM ops").fetchone()[0]
-            == count * per_worker
+            connection.execute("SELECT count(*) FROM records").fetchone()[0] == count * per_worker
         )
         assert (
-            connection.execute("SELECT count(*) FROM records").fetchone()[0]
-            == count * per_worker
-        )
-        assert (
-            connection.execute("SELECT count(*) FROM revisions").fetchone()[0]
-            == count * per_worker
+            connection.execute("SELECT count(*) FROM revisions").fetchone()[0] == count * per_worker
         )
 
 
@@ -441,16 +418,14 @@ def test_cli_validate_detects_materialized_row_tampering(db_store: DbStore) -> N
         columns = connection.execute("PRAGMA table_info(records)").fetchall()
         row = connection.execute("SELECT * FROM records").fetchone()
         changed = False
-        for column, value in zip(columns, row):
+        for column, value in zip(columns, row, strict=False):
             if not isinstance(value, str):
                 continue
             try:
                 decoded = json.loads(value)
             except ValueError:
                 continue
-            if isinstance(decoded, dict) and decoded.get("id") == _record_id(
-                "tampered"
-            ):
+            if isinstance(decoded, dict) and decoded.get("id") == _record_id("tampered"):
                 decoded["payload"] = {"title": "raw SQL corruption"}
                 connection.execute(
                     f"UPDATE records SET {_sql_name(column[1])}=?",
@@ -500,9 +475,7 @@ def test_cli_backup_copies_consistent_database_during_writes(
     restored_data = Path.home() / ".canon" / restored_repo.name
     restored_data.mkdir(parents=True)
     shutil.copy2(backups[0], restored_data / "canon.db")
-    restored = Project(
-        restored_repo, restored_metadata, Binding("global", "store-binding.json")
-    )
+    restored = Project(restored_repo, restored_metadata, Binding("global", "store-binding.json"))
     assert restored.validate() == []
     assert len(restored.records()) == counts[0]
 
@@ -518,9 +491,7 @@ def test_cli_backup_keeps_fourteen_newest_distinct_copies(db_store: DbStore) -> 
     counts: list[int] = []
     for path in backups:
         with sqlite3.connect(path) as connection:
-            counts.append(
-                connection.execute("SELECT count(*) FROM records").fetchone()[0]
-            )
+            counts.append(connection.execute("SELECT count(*) FROM records").fetchone()[0])
     assert sorted(counts) == list(range(4, 18))
 
 
@@ -538,15 +509,11 @@ def test_operation_sequence_has_stable_revisions(tmp_path: Path) -> None:
         assert current["revision"] == compute_revision(current)
         revisions.append(current["revision"])
     assert len(set(revisions)) == len(revisions)
-    assert sorted(record["revision"] for record in backend.read_history()) == sorted(
-        revisions[:-1]
-    )
+    assert sorted(record["revision"] for record in backend.read_history()) == sorted(revisions[:-1])
 
 
 @pytest.fixture(params=["sqlite"], ids=["sqlite"])
-def contract_backend(
-    request: pytest.FixtureRequest, tmp_path: Path
-) -> Callable[[], Backend]:
+def contract_backend(request: pytest.FixtureRequest, tmp_path: Path) -> Callable[[], Backend]:
     return lambda: _initialize(tmp_path / str(request.param), str(request.param))
 
 
@@ -564,9 +531,7 @@ def test_shared_backend_contract_reads_updates_history_and_chains(
     assert contract_backend.read_record("contract:setting", first["id"]) == updated
     assert contract_backend.list_records("contract:setting", "active") == [updated]
     assert list(contract_backend.iter_records("contract:setting")) == [updated]
-    assert contract_backend.history_exists(
-        "contract:setting", first["id"], first["revision"]
-    )
+    assert contract_backend.history_exists("contract:setting", first["id"], first["revision"])
     assert first in list(contract_backend.read_history())
     assert fold(dict(contract_backend.iter_chains())[first["id"]]) == updated
     errors: list[str] = []

@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.paths import PathValidationError, validate_namespace, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaSet, ref_targets
-from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]
@@ -139,14 +139,17 @@ def merge_store(
     )
     if unknown:
         raise MergeError(
-            f"source types not declared by the target schemas: {unknown}", {"unknown_types": unknown}
+            f"source types not declared by the target schemas: {unknown}",
+            {"unknown_types": unknown},
         )
 
     existing = list(target.iter_records())
     taken = {record["id"] for record in existing}
     clashes = sorted(record["id"] for record in records if record["id"] in taken)
     if clashes:
-        raise MergeError(f"record ids already exist in the target: {clashes}", {"id_conflicts": clashes})
+        raise MergeError(
+            f"record ids already exist in the target: {clashes}", {"id_conflicts": clashes}
+        )
     occupied = {(record["record_type"], record["subject"]) for record in existing}
     subjects = sorted(
         {
@@ -194,7 +197,8 @@ def merge_store(
     return {
         "types": dict(sorted(counts.items())),
         "totals": {
-            field: sum(row[field] for row in counts.values()) for field in ("records", "history", "log")
+            field: sum(row[field] for row in counts.values())
+            for field in ("records", "history", "log")
         },
         "renamed_subjects": [
             {"record_type": t, "old": old, "new": new, "records": n}

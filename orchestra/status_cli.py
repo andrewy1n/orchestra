@@ -9,17 +9,20 @@ from pathlib import Path
 
 def add_parser(sub) -> None:
     status = sub.add_parser("status", help="Print running, ready, and needs-you counts per effort")
-    status.add_argument("directory", nargs="?", default=None, help="Project directory (default: current directory)")
-    status.add_argument("--count", action="store_true", help="Print only the merged needs-you count")
+    status.add_argument(
+        "directory", nargs="?", default=None, help="Project directory (default: current directory)"
+    )
+    status.add_argument(
+        "--count", action="store_true", help="Print only the merged needs-you count"
+    )
 
 
 def run(args: argparse.Namespace) -> int:
-    from orchestra.canon.project import StoreBindingError, open_store
-    from orchestra.canon.errors import StoreError
-
     from dashboard.backend.gates import apply_landing_needs, landings_for_snapshot
     from dashboard.backend.snapshot import load_snapshot
     from dashboard.backend.store import ModelError
+    from orchestra.canon.errors import StoreError
+    from orchestra.canon.project import StoreBindingError, open_store
 
     try:
         target = open_store(Path(args.directory) if args.directory else Path.cwd())

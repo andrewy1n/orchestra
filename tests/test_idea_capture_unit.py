@@ -1,6 +1,6 @@
 import pytest
-
 from canon_support import create, make_project
+
 from orchestra.composer.idea import IdeaError, capture
 
 

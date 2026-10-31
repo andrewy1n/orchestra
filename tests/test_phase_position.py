@@ -4,22 +4,33 @@ from __future__ import annotations
 
 import json
 
-from orchestra.canon.project import open_store
-
 import helpers as h
+
 from orchestra import views
+from orchestra.canon.project import open_store
 
 EFFORT = "area"
 
 
 def _phase_position(cli, defs, phase: str) -> dict:
     h.create_generic_record(
-        cli, defs, "score:phase", subject=phase,
+        cli,
+        defs,
+        "score:phase",
+        subject=phase,
         extra_payload={"title": f"title of {phase}", "ordinal": 1, "effort": EFFORT},
     )
     return h.create_generic_record(
-        cli, defs, "score:position", subject=phase,
-        extra_payload={"position": f"working on {phase}", "scope": "phase", "effort": EFFORT, "phase": phase},
+        cli,
+        defs,
+        "score:position",
+        subject=phase,
+        extra_payload={
+            "position": f"working on {phase}",
+            "scope": "phase",
+            "effort": EFFORT,
+            "phase": phase,
+        },
     )
 
 
@@ -33,10 +44,15 @@ def _effort_section(handoff: str) -> str:
     return handoff[start:] if end == -1 else handoff[start:end]
 
 
-def test_two_phases_of_one_effort_keep_separate_positions_under_the_effort(store, cli, resolved_contract):
+def test_two_phases_of_one_effort_keep_separate_positions_under_the_effort(
+    store, cli, resolved_contract
+):
     defs = h.record_defs_by_id(resolved_contract)
     h.create_generic_record(
-        cli, defs, "score:effort", subject=EFFORT,
+        cli,
+        defs,
+        "score:effort",
+        subject=EFFORT,
         extra_payload={"goal": "ship the area", "kind": "deliver"},
     )
     _phase_position(cli, defs, "area-one")
@@ -54,8 +70,15 @@ def test_closing_a_phase_position_hides_only_that_phase(store, cli, resolved_con
     first = _phase_position(cli, defs, "area-one")
     _phase_position(cli, defs, "area-two")
     result = cli(
-        "supersede", "--type", "score:position", "--id", first["id"],
-        "--expected-revision", first["revision"], "--payload", json.dumps({"status": "closed"}),
+        "supersede",
+        "--type",
+        "score:position",
+        "--id",
+        first["id"],
+        "--expected-revision",
+        first["revision"],
+        "--payload",
+        json.dumps({"status": "closed"}),
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -66,12 +89,23 @@ def test_closing_a_phase_position_hides_only_that_phase(store, cli, resolved_con
 def test_work_item_renders_under_its_effort_not_its_task_slug(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = h.create_generic_record(
-        cli, defs, "score:phase", subject="area-one",
+        cli,
+        defs,
+        "score:phase",
+        subject="area-one",
         extra_payload={"title": "first", "ordinal": 1, "effort": EFFORT},
     )
     task = h.create_generic_record(
-        cli, defs, "score:work-item", subject="some-task",
-        extra_payload={"title": "a task", "phase": phase["subject"], "effort": EFFORT, "kind": "deliver"},
+        cli,
+        defs,
+        "score:work-item",
+        subject="some-task",
+        extra_payload={
+            "title": "a task",
+            "phase": phase["subject"],
+            "effort": EFFORT,
+            "kind": "deliver",
+        },
     )
     h.transition(cli, "score:work-item", task, "in_progress")
 

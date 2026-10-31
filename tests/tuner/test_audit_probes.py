@@ -57,15 +57,13 @@ def _commit(root: Path, message: str) -> str:
         check=True,
         capture_output=True,
     )
-    return (
-        subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=root,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-    )
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
 
 
 def _audit(cwd: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:

@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from datetime import datetime, timezone
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import store
 from dashboard.backend.store import ModelError
-
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
-SOFT_TYPES = frozenset({
-    "score:specification", "score:design", "conductor:assessment", "conductor:integration-report",
-    "conductor:proof-packet", "conductor:release", "score:position", "composer:idea",
-    "score:milestone", "composer:area",
-})
+SOFT_TYPES = frozenset(
+    {
+        "score:specification",
+        "score:design",
+        "conductor:assessment",
+        "conductor:integration-report",
+        "conductor:proof-packet",
+        "conductor:release",
+        "score:position",
+        "composer:idea",
+        "score:milestone",
+        "composer:area",
+    }
+)
 INACTIVE_STATES = ("superseded", "retracted")
 
 
@@ -39,13 +47,24 @@ def _list(
 
 
 def _merge_aliases(goals: list[dict[str, Any]]) -> dict[str, str]:
-    return {old: goal["subject"] for goal in goals for old in record_payload(goal).get("merged_from") or []}
+    return {
+        old: goal["subject"]
+        for goal in goals
+        for old in record_payload(goal).get("merged_from") or []
+    }
 
 
 def _remapped(records: list[dict[str, Any]], aliases: dict[str, str]) -> list[dict[str, Any]]:
     return [
-        {**record, "payload": {**record_payload(record), "effort": aliases[record_payload(record)["effort"]]}}
-        if record_payload(record).get("effort") in aliases else record
+        {
+            **record,
+            "payload": {
+                **record_payload(record),
+                "effort": aliases[record_payload(record)["effort"]],
+            },
+        }
+        if record_payload(record).get("effort") in aliases
+        else record
         for record in records
     ]
 
@@ -88,7 +107,9 @@ def _newest(records: list[dict[str, Any]]) -> dict[str, Any] | None:
     return max(records, key=_recorded_at) if records else None
 
 
-def _by_effort(records: list[dict[str, Any]], key: str = "effort") -> dict[str, list[dict[str, Any]]]:
+def _by_effort(
+    records: list[dict[str, Any]], key: str = "effort"
+) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for record in records:
         effort = record["subject"] if key == "subject" else record_payload(record).get(key)

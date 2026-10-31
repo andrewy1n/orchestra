@@ -8,7 +8,6 @@ import re
 from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT
 
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -89,7 +88,11 @@ def test_r5_ci_has_no_tmux_job_and_pytest_has_no_tmux_marker():
     yaml = pytest.importorskip("yaml")
     workflow = yaml.safe_load(CI.read_text())
     jobs = workflow["jobs"]
-    tmux_jobs = [name for name, spec in jobs.items() if "tmux" in name.lower() or "tmux" in str(spec.get("name", "")).lower()]
+    tmux_jobs = [
+        name
+        for name, spec in jobs.items()
+        if "tmux" in name.lower() or "tmux" in str(spec.get("name", "")).lower()
+    ]
     assert tmux_jobs == []
     tmux_steps = [
         step["run"]
@@ -107,7 +110,18 @@ def test_r6_no_module_sits_directly_under_dashboard():
 
 
 def test_r7_survivors_live_under_backend_and_server_under_backend_server():
-    expected = ("records", "task", "phase", "snapshot", "journal", "gates", "landing", "approval", "backlog", "dismiss")
+    expected = (
+        "records",
+        "task",
+        "phase",
+        "snapshot",
+        "journal",
+        "gates",
+        "landing",
+        "approval",
+        "backlog",
+        "dismiss",
+    )
     missing = [name for name in expected if not (BACKEND / f"{name}.py").is_file()]
     assert missing == []
     server = BACKEND / "server"

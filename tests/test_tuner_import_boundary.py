@@ -87,9 +87,7 @@ def test_close_batch_tuner_import_is_function_local():
         for item in _imported_modules(path)
         if item[1] == "orchestra.tuner" or item[1].startswith("orchestra.tuner.")
     ]
-    module_level = [
-        f"{lineno}: {module}" for lineno, module, local in tuner if not local
-    ]
+    module_level = [f"{lineno}: {module}" for lineno, module, local in tuner if not local]
     assert module_level == [], "module-level tuner import: " + "; ".join(module_level)
     local_modules = {module for _, module, local in tuner if local}
     assert local_modules >= CLOSE_LIBRARY_MODULES
@@ -112,6 +110,4 @@ def test_import_scan_rejects_module_level_and_allows_function_local(tmp_path):
     function_local = [module for _, module, local in imports if local]
     assert "orchestra.tuner.verdict" in module_level
     assert set(function_local) >= CLOSE_LIBRARY_MODULES
-    assert not any(
-        _allowed_close_import(sample, module, False) for module in module_level
-    )
+    assert not any(_allowed_close_import(sample, module, False) for module in module_level)

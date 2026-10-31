@@ -19,8 +19,16 @@ _PAYLOAD_RE = re.compile(r"--payload\s+'(\{.*?\})'", re.DOTALL)
 _KV_RE = re.compile(r"(?:-p|--payload-kv)\s+([A-Za-z_][\w]*)=")
 
 CANON_SUBCOMMANDS = {
-    "init", "create", "update", "supersede", "correct", "apply", "get", "list",
-    "validate", "schemas",
+    "init",
+    "create",
+    "update",
+    "supersede",
+    "correct",
+    "apply",
+    "get",
+    "list",
+    "validate",
+    "schemas",
 }
 _TYPE_BEARING = {"create", "update", "supersede", "get", "list", "correct"}
 
@@ -96,10 +104,14 @@ def check_invocation(inv: dict, defs: dict[str, dict]) -> list[str]:
         elif dest not in states:
             violations.append(f"update --type {rtype} --transition {dest!r}: not a lifecycle state")
         elif dest not in reachable:
-            violations.append(f"update --type {rtype} --transition {dest!r}: no transition reaches it")
+            violations.append(
+                f"update --type {rtype} --transition {dest!r}: no transition reaches it"
+            )
 
     if sub == "supersede" and "supersedes" not in record_def["relationships"]:
-        violations.append(f"supersede --type {rtype}: the lifecycle {lifecycle['name']!r} is not supersedable")
+        violations.append(
+            f"supersede --type {rtype}: the lifecycle {lifecycle['name']!r} is not supersedable"
+        )
     if sub == "correct" and lifecycle["name"] != "event":
         violations.append(f"correct --type {rtype}: only event types take corrections")
 
@@ -111,7 +123,9 @@ def check_invocation(inv: dict, defs: dict[str, dict]) -> list[str]:
         if sub == "create":
             missing = sorted(set(record_def["required"]) - set(payload))
             if missing:
-                violations.append(f"--type {rtype} --payload is missing required field(s) {missing}")
+                violations.append(
+                    f"--type {rtype} --payload is missing required field(s) {missing}"
+                )
     return violations
 
 

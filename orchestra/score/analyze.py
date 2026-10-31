@@ -52,7 +52,8 @@ def _has_marker(body: str) -> bool:
 def analyze_phase(records: list[dict[str, Any]], phase: str, stage: str = "plan") -> Report:
     def of_type(record_type: str, *states: str) -> list[dict[str, Any]]:
         return [
-            r for r in records
+            r
+            for r in records
             if r.get("record_type") == record_type
             and (r.get("payload") or {}).get("phase") == phase
             and r.get("lifecycle_state") in states
@@ -78,49 +79,100 @@ def analyze_phase(records: list[dict[str, Any]], phase: str, stage: str = "plan"
 
     for rid in listed:
         if rid not in body_ids:
-            add("error", "spec-id-not-in-body", spec_subject, f"{rid} is listed in the specification but absent from ## Requirements")
+            add(
+                "error",
+                "spec-id-not-in-body",
+                spec_subject,
+                f"{rid} is listed in the specification but absent from ## Requirements",
+            )
     for rid in dict.fromkeys(body_ids):
         if rid not in listed:
-            add("error", "body-id-not-in-spec", spec_subject, f"{rid} is in ## Requirements but absent from the specification requirements")
+            add(
+                "error",
+                "body-id-not-in-spec",
+                spec_subject,
+                f"{rid} is in ## Requirements but absent from the specification requirements",
+            )
 
     carried = {rid for item in items for rid in item["payload"].get("requirements") or []}
     named = {a["payload"].get("requirement") for a in acceptances}
     for rid in listed:
         if rid not in carried:
-            add("error", "requirement-no-work-item", spec_subject, f"{rid} is carried by no work-item")
+            add(
+                "error",
+                "requirement-no-work-item",
+                spec_subject,
+                f"{rid} is carried by no work-item",
+            )
         if rid not in named:
-            add("error", "requirement-no-acceptance", spec_subject, f"{rid} is named by no active acceptance")
+            add(
+                "error",
+                "requirement-no-acceptance",
+                spec_subject,
+                f"{rid} is named by no active acceptance",
+            )
 
     for item in items:
         for rid in item["payload"].get("requirements") or []:
             if rid not in listed:
-                add("error", "work-item-unknown-requirement", item["subject"], f"work-item names {rid}, which the specification does not list")
+                add(
+                    "error",
+                    "work-item-unknown-requirement",
+                    item["subject"],
+                    f"work-item names {rid}, which the specification does not list",
+                )
     for acceptance in acceptances:
         rid = acceptance["payload"].get("requirement")
         if rid and rid not in listed:
-            add("error", "acceptance-unknown-requirement", acceptance["subject"], f"acceptance names {rid}, which the specification does not list")
+            add(
+                "error",
+                "acceptance-unknown-requirement",
+                acceptance["subject"],
+                f"acceptance names {rid}, which the specification does not list",
+            )
 
     for record in (spec, *designs):
         if _has_marker(record.get("body") or ""):
-            add("error", "clarification-marker", record["subject"], f"{MARKER}] marker outside a code span")
+            add(
+                "error",
+                "clarification-marker",
+                record["subject"],
+                f"{MARKER}] marker outside a code span",
+            )
 
     for rid, text in body_lines:
         if _COMPOUND.search(_CODE_SPAN.sub("", text)):
-            add("warning", "compound-requirement", spec_subject, f"{rid} joins clauses with 'and' or ';'")
+            add(
+                "warning",
+                "compound-requirement",
+                spec_subject,
+                f"{rid} joins clauses with 'and' or ';'",
+            )
 
     if stage == "close":
         for acceptance in acceptances:
             runs = [
-                r for r in records
+                r
+                for r in records
                 if r.get("record_type") == "tuner:check-run"
                 and (r.get("payload") or {}).get("criterion_id") == acceptance["id"]
             ]
             if not runs:
-                add("error", "acceptance-no-check-run", acceptance["subject"], f"acceptance {acceptance['id']} has no check-run")
+                add(
+                    "error",
+                    "acceptance-no-check-run",
+                    acceptance["subject"],
+                    f"acceptance {acceptance['id']} has no check-run",
+                )
                 continue
             latest = max(runs, key=lambda r: r.get("recorded_at") or "")
             result = latest["payload"].get("result")
             if result != "pass":
-                add("error", "acceptance-not-passing", acceptance["subject"], f"acceptance {acceptance['id']} latest check-run result is {result!r}, not 'pass'")
+                add(
+                    "error",
+                    "acceptance-not-passing",
+                    acceptance["subject"],
+                    f"acceptance {acceptance['id']} latest check-run result is {result!r}, not 'pass'",
+                )
 
     return report

@@ -13,14 +13,19 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from orchestra.canon.project import Project
-from orchestra.canon.errors import StoreError
 from dashboard.backend import store
 from dashboard.backend.snapshot import NeedsYouItem
+from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 
-HUMAN_DISMISSIBLE = frozenset({
-    "blocking-question", "open-question", "needs-human", "unsigned-check",
-})
+HUMAN_DISMISSIBLE = frozenset(
+    {
+        "blocking-question",
+        "open-question",
+        "needs-human",
+        "unsigned-check",
+    }
+)
 
 DEFAULT_SIGNER_ENV = "ORCHESTRA_SIGNED_BY"
 
@@ -126,23 +131,30 @@ def default_action(kind: str) -> str:
 
 def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
     resolved = (action or default_action(item.kind)).strip().lower()
-    if item.kind in ("blocking-question", "open-question"):
-        if resolved not in (ACTION_APPROVE, ACTION_REJECT):
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
-    elif item.kind == "needs-human":
-        if resolved != ACTION_ACCEPT:
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
-    elif item.kind == "unsigned-check":
-        if resolved != ACTION_SIGN:
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
+    if (
+        (
+            item.kind in ("blocking-question", "open-question")
+            and resolved not in (ACTION_APPROVE, ACTION_REJECT)
+        )
+        or (item.kind == "needs-human" and resolved != ACTION_ACCEPT)
+        or (item.kind == "unsigned-check" and resolved != ACTION_SIGN)
+    ):
+        raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
     return resolved
 
 
 def _question_approve_args(item: NeedsYouItem, note: str | None) -> list[str]:
     record_type = item.record_type or "score:continuity-question"
     args = [
-        "update", "--type", record_type, "--id", item.id,
-        "--transition", "answered", "--expected-revision", _displayed_revision(item),
+        "update",
+        "--type",
+        record_type,
+        "--id",
+        item.id,
+        "--transition",
+        "answered",
+        "--expected-revision",
+        _displayed_revision(item),
     ]
     if note:
         args.extend(["--payload", json.dumps({"answer": note})])
@@ -172,8 +184,15 @@ def _question_reject_args(item: NeedsYouItem, note: str | None) -> list[str]:
     )
     subject = f"plan-rejected:{scope}"[:120]
     return [
-        "create", "--type", "tuner:finding", "--subject", subject,
-        "--payload", json.dumps(payload), "--body", body,
+        "create",
+        "--type",
+        "tuner:finding",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps(payload),
+        "--body",
+        body,
     ]
 
 
@@ -183,9 +202,15 @@ def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
     if note:
         payload["resolution_note"] = note
     return [
-        "update", "--type", record_type, "--id", item.id,
-        "--expected-revision", _displayed_revision(item),
-        "--payload", json.dumps(payload),
+        "update",
+        "--type",
+        record_type,
+        "--id",
+        item.id,
+        "--expected-revision",
+        _displayed_revision(item),
+        "--payload",
+        json.dumps(payload),
     ]
 
 
@@ -197,8 +222,13 @@ def _check_sign_args(item: NeedsYouItem, signer: str, note: str | None) -> list[
     if note:
         payload["signed_note"] = note
     return [
-        "correct", "--type", record_type, "--id", item.id,
-        "--payload", json.dumps(payload),
+        "correct",
+        "--type",
+        record_type,
+        "--id",
+        item.id,
+        "--payload",
+        json.dumps(payload),
     ]
 
 

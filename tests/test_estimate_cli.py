@@ -12,7 +12,10 @@ PHASE = "run-facts"
 
 def _phase(cli, defs) -> dict:
     return h.create_generic_record(
-        cli, defs, "score:phase", subject=PHASE,
+        cli,
+        defs,
+        "score:phase",
+        subject=PHASE,
         extra_payload={"title": "Run facts", "ordinal": 1, "effort": EFFORT},
     )
 
@@ -27,9 +30,15 @@ def _work_item(cli, defs, subject: str, phase: str, **fields):
     }
     payload.update(fields)
     return cli(
-        "create", "--type", "score:work-item", "--subject", subject,
-        "--payload", json.dumps(payload),
-        "--body", h.generic_body(defs["score:work-item"]),
+        "create",
+        "--type",
+        "score:work-item",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps(payload),
+        "--body",
+        h.generic_body(defs["score:work-item"]),
     )
 
 
@@ -54,9 +63,16 @@ def _assert_valid(cli) -> None:
 def test_work_item_stores_size_l_and_estimate_minutes(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = _phase(cli, defs)
-    item = _created(_work_item(
-        cli, defs, "sized-task", phase["subject"], size="L", estimate_minutes=25,
-    ))
+    item = _created(
+        _work_item(
+            cli,
+            defs,
+            "sized-task",
+            phase["subject"],
+            size="L",
+            estimate_minutes=25,
+        )
+    )
     _assert_valid(cli)
     stored = _get(cli, "score:work-item", item["id"])
     assert stored["payload"]["size"] == "L"
@@ -70,9 +86,15 @@ def test_work_item_stores_size_l_and_estimate_minutes(store, cli, resolved_contr
 def test_estimate_minutes_zero_is_stored(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = _phase(cli, defs)
-    item = _created(_work_item(
-        cli, defs, "zero-task", phase["subject"], estimate_minutes=0,
-    ))
+    item = _created(
+        _work_item(
+            cli,
+            defs,
+            "zero-task",
+            phase["subject"],
+            estimate_minutes=0,
+        )
+    )
     _assert_valid(cli)
     stored = _get(cli, "score:work-item", item["id"])
     assert stored["payload"]["estimate_minutes"] == 0
@@ -93,7 +115,12 @@ def test_size_xxl_is_rejected(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = _phase(cli, defs)
     result = _work_item(
-        cli, defs, "too-big", phase["subject"], size="XXL", estimate_minutes=25,
+        cli,
+        defs,
+        "too-big",
+        phase["subject"],
+        size="XXL",
+        estimate_minutes=25,
     )
     assert result.returncode != 0
     assert "XXL" in result.stdout + result.stderr

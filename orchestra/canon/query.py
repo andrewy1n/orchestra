@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Iterable, Pattern
+from collections.abc import Iterable
+from re import Pattern
+from typing import Any
 
 # derived is read-time only (see derive.py) but a --where clause treats it
 # like any other namespaced field -- an agent asking "what's ready" shouldn't
@@ -116,9 +118,7 @@ def _same(actual: Any, expected: Any) -> bool:
     return actual == expected
 
 
-def where_matches(
-    record: dict[str, Any], filters: list[tuple[str, str, str, Any]]
-) -> bool:
+def where_matches(record: dict[str, Any], filters: list[tuple[str, str, str, Any]]) -> bool:
     for namespace, field, op, value in filters:
         if namespace == "record":
             actual = record.get(field, _MISSING)
@@ -142,9 +142,7 @@ def where_matches(
     return True
 
 
-def subject_matches(
-    record: dict[str, Any], subject: str | None, *, exact: bool = False
-) -> bool:
+def subject_matches(record: dict[str, Any], subject: str | None, *, exact: bool = False) -> bool:
     if subject is None:
         return True
     actual = record.get("subject") or ""
@@ -176,9 +174,7 @@ def within_time_range(record: dict[str, Any], since: str | None, until: str | No
         return False
     if since is not None and recorded_at < since:
         return False
-    if until is not None and recorded_at > until:
-        return False
-    return True
+    return not (until is not None and recorded_at > until)
 
 
 def order_by_recorded_at(
@@ -194,7 +190,6 @@ def order_by_recorded_at(
     return missing + present
 
 
-
 def order_by_path(
     records: list[dict[str, Any]], path: str, *, reverse: bool = False
 ) -> list[dict[str, Any]]:
@@ -202,6 +197,7 @@ def order_by_path(
 
     Missing values sort first (stable with recorded_at missing behavior).
     """
+
     def lookup(record: dict[str, Any]) -> Any:
         if path in ("subject", "lifecycle_state", "recorded_at"):
             return record.get(path, _MISSING)
@@ -216,6 +212,7 @@ def order_by_path(
     present = [r for r in records if lookup(r) is not _MISSING]
     present.sort(key=lambda r: lookup(r), reverse=reverse)
     return missing + present
+
 
 def record_matches(
     record: dict[str, Any],
@@ -245,9 +242,7 @@ def record_matches(
     for rel_type in has_inbound_types or []:
         if not has_inbound(record, rel_type):
             return False
-    if not body_matches(record, grep):
-        return False
-    return True
+    return body_matches(record, grep)
 
 
 def _first_nonblank_line(text: str) -> str:

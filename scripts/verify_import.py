@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
-from orchestra.canon.revision import compute_revision
 from orchestra.canon.errors import StoreError
+from orchestra.canon.revision import compute_revision
 from orchestra.canon.transfer import export_ops, import_ops
 
 
@@ -43,8 +43,7 @@ def verify(source: Backend) -> tuple[int, int]:
         imported_records = list(target.iter_records())
         source_keys = {(record["record_type"], record["id"]) for record in records}
         mismatches += sum(
-            (record["record_type"], record["id"]) not in source_keys
-            for record in imported_records
+            (record["record_type"], record["id"]) not in source_keys for record in imported_records
         )
         imported_history: dict[tuple[str, str, str], dict[str, Any]] = {
             (record["record_type"], record["id"], record["revision"]): record

@@ -15,13 +15,12 @@ import time
 from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT, git, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra import cli  # noqa: E402
-from orchestra.conductor import suite  # noqa: E402
+from orchestra import cli
+from orchestra.conductor import suite
 
 # Every runtime call a skill makes must be one of these named commands.
 HELP_PATHS = [
@@ -62,9 +61,7 @@ def make_design(path: Path, suite_policy: dict | None = None) -> Path:
 def finished_suite(work: Path, phase: str = "p1", exit_code: str = "0") -> None:
     directory = work / ".suite"
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"orchestra-suite-{phase}.log").write_text(
-        "1 passed in 0.01s\n"
-    )
+    (directory / f"orchestra-suite-{phase}.log").write_text("1 passed in 0.01s\n")
     (directory / f"orchestra-suite-{phase}.exit").write_text(f"{exit_code}\n")
 
 
@@ -172,9 +169,7 @@ def test_suite_start_smoke(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
         "orchestra.conductor.suite.start_suite_background", lambda **kwargs: started
     )
-    code, out, err = run(
-        ["suite", "start", "--cwd", str(work), "--phase", "p1"], capsys
-    )
+    code, out, err = run(["suite", "start", "--cwd", str(work), "--phase", "p1"], capsys)
     assert code == 0, err
     handle = json.loads(out)
     assert handle["state"] == "started"
@@ -192,17 +187,13 @@ def _git_worktree() -> Path:
 
 def test_suite_poll_running_then_finished(capsys):
     repo = _git_worktree()
-    code, out, err = run(
-        ["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys
-    )
+    code, out, err = run(["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys)
     assert code == 3
     assert json.loads(out)["state"] == "running"
 
     head = git(repo, "rev-parse", "HEAD").stdout.strip()
     finished_suite(repo)
-    code, out, err = run(
-        ["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys
-    )
+    code, out, err = run(["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys)
     assert code == 0, err
     result = json.loads(out)
     assert result["result"] == "pass"
@@ -216,9 +207,7 @@ def test_suite_collect_reports_failures(capsys):
     (repo / ".suite" / "orchestra-suite-p1.log").write_text(
         "FAILED tests/test_foo.py::test_bar - AssertionError\n"
     )
-    code, out, err = run(
-        ["suite", "collect", "--cwd", str(repo), "--phase", "p1"], capsys
-    )
+    code, out, _ = run(["suite", "collect", "--cwd", str(repo), "--phase", "p1"], capsys)
     assert code == 1
     result = json.loads(out)
     assert result["result"] == "fail"

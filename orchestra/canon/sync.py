@@ -6,10 +6,10 @@ from typing import Any
 
 from orchestra.canon.backend import Backend
 from orchestra.canon.config import new_config
+from orchestra.canon.errors import StoreError
 from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
 from orchestra.canon.modules import InstalledModule, discover
 from orchestra.canon.schema import SchemaError, SchemaSet, major, parse_module
-from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 
@@ -72,7 +72,9 @@ def _sync_locked(store: Backend, installed: dict[str, InstalledModule]) -> dict[
     for namespace in config["schemas"]:
         module = _need(installed, namespace)
         text = store.read_snapshot(namespace)
-        snapshot = parse_module(text, f"schema snapshot {namespace!r}") if text is not None else None
+        snapshot = (
+            parse_module(text, f"schema snapshot {namespace!r}") if text is not None else None
+        )
         steps: list[dict[str, Any]] = []
         if snapshot is not None:
             if version_tuple(module.version) < version_tuple(snapshot["version"]):

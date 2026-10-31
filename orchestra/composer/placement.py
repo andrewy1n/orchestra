@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from orchestra.canon.project import Project
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 from orchestra.canon.validation import ValidationError
 
 PLACEMENT = "composer:placement"

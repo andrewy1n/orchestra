@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-import textwrap
 import sys
+import textwrap
 from pathlib import Path
 
 from orchestra.tuner.amendment import canonical_payload
@@ -16,7 +16,9 @@ CLAIM = "claim-widget"
 NODE = "tests/test_widget.py::test_widget"
 ORACLE_REL = "tests/test_widget.py"
 ORACLE = b"def test_widget():\n    from app import value\n    assert value == 1\n"
-ORACLE_AMENDED = b"def test_widget():\n    # amended\n    from app import value\n    assert value == 1\n"
+ORACLE_AMENDED = (
+    b"def test_widget():\n    # amended\n    from app import value\n    assert value == 1\n"
+)
 APP_RED = b"value = 0\n"
 APP_STILL_RED = b"value = 2\n"
 APP_GREEN = b"value = 1\n"
@@ -264,7 +266,9 @@ def _forged_check_run(root: Path, result: str) -> None:
             "revision": "deadbeef",
         },
     }
-    (dest / "rec-forged.md").write_text("---\n" + json.dumps(record, indent=2) + "\n---\n\nforged\n")
+    (dest / "rec-forged.md").write_text(
+        "---\n" + json.dumps(record, indent=2) + "\n---\n\nforged\n"
+    )
 
 
 def test_verdict_pass_when_hashes_match_and_red_then_green(tmp_path: Path) -> None:
@@ -653,7 +657,9 @@ def _fixture_repo(
 
 
 def test_verdict_ignores_pytest_stdout() -> None:
-    source = (Path(__file__).resolve().parents[2] / "orchestra" / "tuner" / "verdict.py").read_text()
+    source = (
+        Path(__file__).resolve().parents[2] / "orchestra" / "tuner" / "verdict.py"
+    ).read_text()
     assert "_FAILED_RE" not in source
     assert "is_assertion_level_failure" not in source
 
@@ -754,7 +760,5 @@ def test_verdict_skips_confirmation_on_failed_claim(tmp_path: Path) -> None:
     assert payload["claims"] == [{"id": CLAIM, "result": "fail", "reason": "not assertion"}]
     rows = [row for row in _read_log(log_path) if NODE in row["ids"]]
     base_rows = [row for row in rows if row["behavior"] == "error"]
-    assert base_rows == [
-        {"n": 1, "behavior": "error", "ids": [NODE], "wrote": "error"}
-    ]
+    assert base_rows == [{"n": 1, "behavior": "error", "ids": [NODE], "wrote": "error"}]
     assert all(row["n"] == 1 for row in rows)
