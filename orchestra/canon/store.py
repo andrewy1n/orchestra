@@ -178,6 +178,13 @@ class Store:
             return False
         return not self._has_partial_content()
 
+    def is_empty(self) -> bool:
+        return (
+            next(self.iter_records(), None) is None
+            and next(self.iter_chains(), None) is None
+            and next(self.read_history(), None) is None
+        )
+
     def _has_partial_content(self) -> bool:
         if self.config_path().exists() and not self.config_path().is_file():
             return True
