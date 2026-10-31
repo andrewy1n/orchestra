@@ -122,14 +122,16 @@ body {
 	outline-offset: 2px;
 }
 
-button {
-	font: inherit;
-	color: inherit;
-	background: none;
-	border: 0;
-	padding: 0;
-	cursor: pointer;
-	text-align: left;
+@layer base {
+	button {
+		font: inherit;
+		color: inherit;
+		background: none;
+		border: 0;
+		padding: 0;
+		cursor: pointer;
+		text-align: left;
+	}
 }
 
 .app {
@@ -487,6 +489,7 @@ button {
 	padding: 7px 8px;
 	border-radius: var(--corner);
 	border: 1px solid transparent;
+	background: transparent;
 }
 
 .rail-item:hover {
@@ -740,6 +743,8 @@ button {
 
 .tab {
 	padding: 3px 8px;
+	border: 0;
+	background: transparent;
 	border-radius: var(--corner);
 	color: var(--text-muted);
 	font-size: 12.5px;
@@ -954,6 +959,7 @@ a.lrow {
 
 .trow.task.clickable {
 	cursor: pointer;
+	background: transparent;
 }
 
 .trow.task.clickable:hover {
