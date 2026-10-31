@@ -8,13 +8,14 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.revision import compute_revision
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.store import (
     Store,
     StoreError,
@@ -50,6 +51,28 @@ INSERT OR IGNORE INTO meta VALUES ('format', 'canon-sqlite/1');
 
 
 class SqliteBackend:
+    @staticmethod
+    def global_data_root(config_root: Path) -> Path:
+        repository_root = config_root.parent
+        try:
+            result = run_git(
+                repository_root,
+                "rev-parse",
+                "--git-common-dir",
+                capture_output=True,
+                text=True,
+            )
+        except OSError:
+            result = None
+        if result is not None and result.returncode == 0 and result.stdout.strip():
+            common_dir = Path(result.stdout.strip())
+            if not common_dir.is_absolute():
+                common_dir = repository_root / common_dir
+            repository_name = common_dir.resolve().parent.name
+        else:
+            repository_name = repository_root.name
+        return Path.home().joinpath(".canon", repository_name)
+
     def __init__(self, config_root: Path, data_root: Path):
         self.config_root = config_root
         self.data_root = data_root
@@ -506,3 +529,15 @@ class SqliteBackend:
         for expired in sorted(directory.glob("*.db"), reverse=True)[keep:]:
             expired.unlink(missing_ok=True)
         return str(destination)
+
+    def backup_due(self, max_age: timedelta) -> bool:
+        directory = self.data_root / "backups"
+        backups = (
+            [path for path in directory.iterdir() if path.is_file()]
+            if directory.is_dir()
+            else []
+        )
+        if not backups:
+            return True
+        newest = max(path.stat().st_mtime for path in backups)
+        return datetime.now(timezone.utc).timestamp() - newest > max_age.total_seconds()

@@ -6,6 +6,7 @@ import json
 
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -63,6 +64,7 @@ class Backend(Protocol):
     def same_store(self, other: object) -> bool: ...
     def change_token(self) -> str: ...
     def backup(self, keep: int = 14) -> str: ...
+    def backup_due(self, max_age: timedelta) -> bool: ...
 
 
 def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Backend:
@@ -85,7 +87,7 @@ def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Back
                         f"invalid store binding at {binding}: {exc}"
                     ) from exc
                 if value == "global":
-                    data_root = Path.home() / ".canon" / store_root.parent.name
+                    data_root = SqliteBackend.global_data_root(store_root)
                 elif value != "local":
                     raise StoreError(f"invalid store binding at {binding}: {value!r}")
                 break

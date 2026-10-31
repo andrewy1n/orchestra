@@ -5,12 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, TextIO
 
 from orchestra import views
+from orchestra.canon.backend import open_backend
 
 PROTOCOL = (
     "This project keeps its state as canon records. Views are derived: edit "
@@ -156,6 +159,8 @@ def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
         project = _open_project(root)
         if project is None:
             return None
+        if open_backend(project.store_path).backup_due(timedelta(hours=24)):
+            subprocess.run(["canon", "backup"], cwd=root, check=True)
         records = views.load_records(project)
         _save_baseline(project, root, data)
         ctx = _assemble_start(
