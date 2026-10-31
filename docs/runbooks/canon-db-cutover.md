@@ -48,7 +48,7 @@ The check fails if any of these is false:
   `revision` value and is in the live store unchanged, as a current record or
   as a history snapshot.
 
-The check passed at phase commit `cfd91ae63` against the export with SHA-256
+The check passed with `scripts/verify_preservation.py` as committed in `b26dfd07a`, against the export with SHA-256
 `abbb83550c93a4b62aac9288a2b9d5d5f3d680b6ed82f450246d68254f61507a`:
 
 ```text
