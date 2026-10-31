@@ -11,8 +11,6 @@ export type RouteName =
 	| "task"
 	| "phase"
 	| "requirement"
-	| "needs"
-	| "backlog"
 	| "record"
 	| "picker"
 	| "journal"
@@ -34,8 +32,6 @@ const NAMES: ReadonlySet<string> = new Set<RouteName>([
 	"task",
 	"phase",
 	"requirement",
-	"needs",
-	"backlog",
 	"record",
 	"picker",
 	"journal",
@@ -43,6 +39,8 @@ const NAMES: ReadonlySet<string> = new Set<RouteName>([
 	"area",
 	"effort",
 ]);
+
+const EFFORT_OVERLAYS: ReadonlySet<string> = new Set(["needs", "backlog"]);
 
 /** Parse a `location.hash` value into a route. */
 export function parseRoute(hash: string): Route {
@@ -58,7 +56,10 @@ export function parseRoute(hash: string): Route {
 			}
 		});
 	const first = parts[0] ?? "home";
-	const name = (NAMES.has(first) ? first : "home") as RouteName;
+	const overlay = EFFORT_OVERLAYS.has(first) && parts.length >= 3;
+	const name = (
+		overlay ? "effort" : NAMES.has(first) ? first : "home"
+	) as RouteName;
 	return { name, parts, raw };
 }
 

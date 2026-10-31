@@ -5,7 +5,7 @@
  * `tabs` list from `dashboard.model.tabs_for`.
  */
 
-import { parseRoute, type Route, type RouteName } from "./router";
+import { parseRoute, type Route } from "./router";
 
 export type DetailKind =
 	| "phase"
@@ -36,9 +36,15 @@ function enc(value: string): string {
 	return encodeURIComponent(value);
 }
 
+function detailKind(route: Route): DetailKind | null {
+	const first = route.parts[0] ?? "";
+	const kind = route.name === "effort" ? first : route.name;
+	return DETAIL_KINDS.has(kind) ? (kind as DetailKind) : null;
+}
+
 /** True when the route names a detail overlay. */
 export function isDetailRoute(route: Route): boolean {
-	return DETAIL_KINDS.has(route.name);
+	return detailKind(route) !== null;
 }
 
 /**
@@ -46,8 +52,8 @@ export function isDetailRoute(route: Route): boolean {
  * Returns null when the route is home/picker or missing required parts.
  */
 export function detailTarget(route: Route): DetailTarget | null {
-	const kind = route.name as DetailKind;
-	if (!DETAIL_KINDS.has(kind)) return null;
+	const kind = detailKind(route);
+	if (!kind) return null;
 	const parts = route.parts;
 
 	if (kind === "phase") {
@@ -214,6 +220,6 @@ export function closeDetail(fallback = ""): void {
 	rewinding = false;
 }
 
-export function isDetailKind(name: RouteName): name is DetailKind {
+export function isDetailKind(name: string): name is DetailKind {
 	return DETAIL_KINDS.has(name);
 }
