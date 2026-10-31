@@ -93,7 +93,6 @@ def check_migrations(migrations: JsonValue, where: str) -> list[JsonObject]:
     migration_list = get_list({"migrations": migrations}, "migrations")
     if migration_list is None:
         raise SchemaError(f"{where}: migrations must be a list")
-    checked_steps: list[JsonObject] = []
     for index, raw_step in enumerate(migration_list):
         label = f"{where}[{index}]"
         step = get_object({"step": raw_step}, "step")
@@ -115,31 +114,43 @@ def check_migrations(migrations: JsonValue, where: str) -> list[JsonObject]:
         renames = step.get("rename_type", {})
         rename_types = get_object({"renames": renames}, "renames")
         if rename_types is None or not all(
-            QUALIFIED.match(k) and isinstance(v, str) and QUALIFIED.match(v)
+            isinstance(k, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+            and QUALIFIED.match(k)
+            and isinstance(v, str)
+            and QUALIFIED.match(v)
             for k, v in rename_types.items()
         ):
             raise SchemaError(f"{label}: rename_type maps '<ns>:<type>' to '<ns>:<type>'")
         fields = step.get("rename_field", {})
         rename_fields = get_object({"fields": fields}, "fields")
         if rename_fields is None or not all(
-            QUALIFIED.match(k)
+            isinstance(k, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+            and QUALIFIED.match(k)
             and (field_map := get_object({"field_map": v}, "field_map")) is not None
-            and all(isinstance(b, str) for b in field_map.values())
+            and all(
+                isinstance(a, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+                and isinstance(b, str)
+                for a, b in field_map.items()
+            )
             for k, v in rename_fields.items()
         ):
             raise SchemaError(f"{label}: rename_field maps a type to {{old: new}}")
         enums = step.get("map_enum", {})
         enum_maps = get_object({"enums": enums}, "enums")
         if enum_maps is None or not all(
-            QUALIFIED.match(k.split(".", 1)[0])
+            isinstance(k, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+            and QUALIFIED.match(k.split(".", 1)[0])
             and "." in k
             and (enum_map := get_object({"enum_map": v}, "enum_map")) is not None
-            and all(isinstance(b, str) for b in enum_map.values())
+            and all(
+                isinstance(a, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+                and isinstance(b, str)
+                for a, b in enum_map.items()
+            )
             for k, v in enum_maps.items()
         ):
             raise SchemaError(f"{label}: map_enum maps '<type>.<field>' to {{old: new}}")
-        checked_steps.append(step)
-    return checked_steps
+    return migration_list  # pyright: ignore[reportReturnType]  # Each migration was validated above.
 
 
 def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
@@ -160,7 +171,7 @@ def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
         raise SchemaError(f"{source}: types must be an object")
     for name in types:
         where = f"{source}: {namespace}:{name}"
-        if not NAME.match(name):
+        if not isinstance(name, str) or not NAME.match(name):  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
             raise SchemaError(f"{source}: type name {name!r} must be a lowercase slug")
         type_spec = get_object(types, name)
         if type_spec is None:
@@ -171,14 +182,17 @@ def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
         purpose = get_string(type_spec, "purpose")
         if purpose is None or not purpose.strip():
             raise SchemaError(f"{where}: purpose is required")
+        lifecycle_value = type_spec.get("lifecycle")
+        if lifecycle_value not in LIFECYCLES:  # pyright: ignore[reportArgumentType]  # Preserve TypeError for unhashable malformed lifecycle values.
+            raise SchemaError(f"{where}: lifecycle must be one of {sorted(LIFECYCLES)}")
         lifecycle_name = get_string(type_spec, "lifecycle")
-        if lifecycle_name not in LIFECYCLES:
+        if lifecycle_name is None:
             raise SchemaError(f"{where}: lifecycle must be one of {sorted(LIFECYCLES)}")
         fields = get_object(type_spec, "fields")
         if fields is None:
             raise SchemaError(f"{where}: fields is required and must be an object")
         for field, form in fields.items():
-            if not FIELD_NAME.match(field):
+            if not isinstance(field, str) or not FIELD_NAME.match(field):  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
                 raise SchemaError(f"{where}: field name {field!r} is invalid")
             if field == DEPENDS_ON and lifecycle_name == "staged":
                 raise SchemaError(f"{where}: depends_on is built in for staged types")
@@ -253,10 +267,9 @@ def type_defs(module: JsonObject) -> dict[str, TypeDef]:
 
 def ref_targets(form: JsonObject) -> list[str]:
     value = form["ref"]
-    targets = get_list(form, "ref")
-    if targets is None:
-        return [value] if isinstance(value, str) else []
-    return [target for target in targets if isinstance(target, str)]
+    if isinstance(value, list):
+        return list(value)  # pyright: ignore[reportReturnType]  # Preserve unvalidated reference items.
+    return [value]  # pyright: ignore[reportReturnType]  # Preserve unvalidated reference values.
 
 
 class SchemaSet:
