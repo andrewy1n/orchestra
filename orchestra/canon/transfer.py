@@ -178,8 +178,7 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                 ops.append(op)
                 count += 1
             except (ValueError, KeyError, TypeError) as exc:
-                identity_value = envelope.get("record_id", "") if isinstance(envelope, dict) else ""
-                identity = f" {identity_value}"
+                identity = f" {envelope.get('record_id', '')}" if isinstance(envelope, dict) else ""
                 raise StoreError(f"import line {line_no}{identity}: {exc}") from exc
         if key is not None:
             _restore(backend, *key, ops, history)

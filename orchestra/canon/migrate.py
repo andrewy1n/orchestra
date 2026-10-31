@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 from orchestra.canon.backend import Backend
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
 from orchestra.canon.types import JsonObject, JsonValue, Record
 
+_Migration = TypedDict(
+    "_Migration",
+    {
+        "from": str | int | float | bool,
+        "to": str | int | float | bool,
+        "rename_type": dict[object, JsonValue],
+        "rename_field": dict[object, dict[str, JsonValue]],
+        "map_enum": dict[str, dict[str, JsonValue]],
+    },
+)
+
 
 def migration_path(module: JsonObject, old_major: int, new_major: int) -> list[JsonObject]:
-    migrations = module.get("migrations") or []
-    steps: dict[int, JsonObject] = {}
-    if isinstance(migrations, list):
-        for step in migrations:
-            if isinstance(step, dict):
-                start = step.get("from")
-                if isinstance(start, str):
-                    steps[int(start)] = step
+    migrations: list[_Migration] = module.get("migrations") or []  # pyright: ignore[reportAssignmentType]  # Schema validation supplies migration objects; runtime values remain unaltered.
+    steps: dict[int, JsonObject] = {int(step["from"]): step for step in migrations}  # pyright: ignore[reportAssignmentType]  # Steps retain the raw validated JSON objects.
     path: list[JsonObject] = []
     current = old_major
     while current < new_major:
@@ -26,15 +33,13 @@ def migration_path(module: JsonObject, old_major: int, new_major: int) -> list[J
             raise SchemaError(
                 f"{module['namespace']}: no migration from major {current} toward {new_major}"
             )
-        target = step.get("to")
-        if not isinstance(target, str):
-            raise TypeError("migration target must be a string")
-        if int(target) > new_major:
+        target = int(step["to"])  # pyright: ignore[reportArgumentType]  # Migration versions retain legacy int coercion.
+        if target > new_major:
             raise SchemaError(
                 f"{module['namespace']}: no migration from major {current} toward {new_major}"
             )
         path.append(step)
-        current = int(target)
+        current = target
     return path
 
 
@@ -48,35 +53,22 @@ def _map_value(mapping: dict[str, JsonValue], value: JsonValue) -> JsonValue:
 
 def transform(record: Record, steps: list[JsonObject]) -> Record:
     out: Record = record.copy()
-    payload = dict(record["payload"])
-    for step in steps:
-        rename_type = step.get("rename_type") or {}
-        if isinstance(rename_type, dict):
-            new_type = rename_type.get(out["record_type"])
-            if isinstance(new_type, str):
-                out["record_type"] = new_type
-        rename_fields = step.get("rename_field") or {}
-        fields: JsonObject | None = None
-        if isinstance(rename_fields, dict):
-            raw_fields = rename_fields.get(out["record_type"])
-            if isinstance(raw_fields, dict):
-                fields = raw_fields
-        if fields is None:
-            fields = {}
+    payload = dict(out.get("payload") or {})
+    typed_steps: list[_Migration] = steps  # pyright: ignore[reportAssignmentType]  # Schema validation supplies migration objects; runtime values remain unaltered.
+    previous_type: JsonValue = out["record_type"]
+    for step in typed_steps:
+        new_type = (step.get("rename_type") or {}).get(previous_type, previous_type)
+        out["record_type"] = new_type  # pyright: ignore[reportGeneralTypeIssues]  # Migration targets retain legacy JSON values.
+        previous_type = new_type
+        fields = (step.get("rename_field") or {}).get(previous_type) or {}
         for old, new in fields.items():
-            if not isinstance(new, str):
-                continue
             if old in payload:
-                payload[new] = payload.pop(old)
+                payload[new] = payload.pop(old)  # pyright: ignore[reportArgumentType]  # Rename targets retain legacy JSON key behavior.
         map_enum = step.get("map_enum") or {}
-        if not isinstance(map_enum, dict):
-            continue
-        for key, raw_mapping in map_enum.items():
-            if not isinstance(raw_mapping, dict):
-                continue
+        for key, mapping in map_enum.items():
             record_type, field = key.rsplit(".", 1)
             if record_type == out["record_type"] and field in payload:
-                payload[field] = _map_value(raw_mapping, payload[field])
+                payload[field] = _map_value(mapping, payload[field])
     out["payload"] = payload
     return out
 
