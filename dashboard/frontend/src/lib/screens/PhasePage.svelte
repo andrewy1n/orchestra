@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { phase } from "$lib/state/phase.svelte";
   import { md, openGraphTask, openRequirement } from "$lib/state/refs";
@@ -11,6 +12,16 @@
   import { chipVariant } from "./chipVariant";
 
   let { theme }: { theme: Theme } = $props();
+
+  function reqTone(status: string): string {
+    if (status === "pass" || status === "verified") {
+      return "border-[color-mix(in_srgb,var(--done)_50%,var(--border))] dark:border-[color-mix(in_srgb,var(--done)_50%,var(--border))]";
+    }
+    if (status === "fail") {
+      return "border-[color-mix(in_srgb,var(--fail)_50%,var(--border))] dark:border-[color-mix(in_srgb,var(--fail)_50%,var(--border))]";
+    }
+    return "";
+  }
 
   function statusLabel(status: string): string {
     const known: Record<string, string> = {
@@ -60,18 +71,17 @@
         {#if phase.phaseChrome.requirements.length}
           <div class="phase-reqs" data-phase-reqs>
             {#each phase.phaseChrome.requirements as req (req.id)}
-              <button
-                type="button"
-                class="phase-req"
-                class:ok={req.status === "pass" || req.status === "verified"}
-                class:warn={req.status === "fail"}
+              <Button
+                variant="outline"
+                size="sm"
+                class={reqTone(req.status)}
                 data-phase-req={req.id}
                 title={req.text || req.id}
                 onclick={() => openRequirement(req.id)}
               >
-                <span class="req-id">{req.id}</span>
-                <span class="req-meta">{req.status}</span>
-              </button>
+                <span class="font-semibold">{req.id}</span>
+                <span class="font-normal text-muted-foreground">{req.status}</span>
+              </Button>
             {/each}
           </div>
         {:else}

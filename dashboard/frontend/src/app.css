@@ -1016,41 +1016,6 @@ a.lrow {
 	color: var(--text-muted);
 }
 
-.phase-req {
-	display: inline-flex;
-	align-items: baseline;
-	gap: 6px;
-	padding: 3px 8px;
-	border: 1px solid var(--line);
-	border-radius: var(--corner);
-	background: var(--panel);
-	color: var(--ink);
-	cursor: pointer;
-	font-size: 13px;
-	white-space: nowrap;
-}
-
-.phase-req:hover {
-	border-color: var(--line-2);
-}
-
-.phase-req.ok {
-	border-color: color-mix(in srgb, var(--done) 50%, var(--line));
-}
-
-.phase-req.warn {
-	border-color: color-mix(in srgb, var(--warn) 50%, var(--line));
-}
-
-.phase-req .req-id {
-	font-weight: 600;
-}
-
-.phase-req .req-meta {
-	color: var(--text-muted);
-	font-size: 13px;
-}
-
 .phase-waves {
 	display: flex;
 	flex-wrap: wrap;
