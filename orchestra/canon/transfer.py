@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Any, TextIO
+from typing import TextIO
 
 from orchestra.canon.backend import Backend
 from orchestra.canon.errors import StoreError
@@ -12,18 +12,16 @@ from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.revision import compute_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
+from orchestra.canon.types import JsonValue, Record, StoredOp
 
 
 def export_ops(backend: Backend, out: TextIO) -> int:
-    history: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    history: dict[tuple[str, str], list[Record]] = defaultdict(list)
     for snapshot in backend.read_history():
         history[snapshot["record_type"], snapshot["id"]].append(snapshot)
-    chains: list[tuple[str, str, list[dict[str, Any]]]] = []
+    chains: list[tuple[str, str, list[StoredOp]]] = []
     for record_id, ops in backend.iter_chains():
-        record_type = next(
-            (op["record"]["record_type"] for op in ops if isinstance(op.get("record"), dict)),
-            None,
-        )
+        record_type = next((op["record"]["record_type"] for op in ops if op["record"]), None)
         if record_type is None:
             raise StoreError(f"{record_id}: cannot determine chain record type")
         chains.append((record_type, record_id, ops))
@@ -31,7 +29,7 @@ def export_ops(backend: Backend, out: TextIO) -> int:
     for record_type, record_id, ops in sorted(chains):
         snapshots = history.pop((record_type, record_id), [])
         for index, op in enumerate(sorted(ops, key=lambda op: op["seq"])):
-            envelope = {
+            envelope: dict[str, object] = {
                 "record_type": record_type,
                 "record_id": record_id,
                 "seq": op["seq"],
@@ -56,7 +54,7 @@ def export_ops(backend: Backend, out: TextIO) -> int:
     return count
 
 
-def _snapshot(value: Any, record_type: str, record_id: str) -> dict[str, Any]:
+def _snapshot(value: JsonValue, record_type: str, record_id: str) -> Record:
     if not isinstance(value, dict):
         raise StoreError(f"{record_id}: snapshot must be an object")
     if value.get("id") != record_id or value.get("record_type") != record_type:
@@ -66,17 +64,17 @@ def _snapshot(value: Any, record_type: str, record_id: str) -> dict[str, Any]:
     for key in ("subject", "lifecycle_state", "recorded_at"):
         if not isinstance(value.get(key), str):
             raise StoreError(f"{record_id}: snapshot {key} must be a string")
-    return value
+    return value  # pyright: ignore[reportReturnType]  # Replay retains legacy envelope fields for later store validation.
 
 
 def _restore(
     backend: Backend,
     record_type: str,
     record_id: str,
-    ops: list[dict[str, Any]],
-    history: list[dict[str, Any]],
+    ops: list[StoredOp],
+    history: list[Record],
 ) -> None:
-    revisions: dict[str, dict[str, Any]] = {}
+    revisions: dict[str, Record] = {}
     for op in ops:
         backend.import_op(record_type, record_id, op)
         if op["outcome"] == "accepted" and op["record"] is not None:
@@ -91,12 +89,12 @@ def _restore(
         backend.archive_history(record)
 
 
-def _invalid_constant(value: str) -> Any:
+def _invalid_constant(value: str) -> object:
     raise ValueError(f"invalid JSON constant: {value}")
 
 
-def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
     for key, value in pairs:
         if key in result:
             raise ValueError(f"duplicate JSON key: {key}")
@@ -110,13 +108,13 @@ def import_ops(backend: Backend, src: TextIO) -> int:
     count = 0
     key: tuple[str, str] | None = None
     seen_ids: set[str] = set()
-    ops: list[dict[str, Any]] = []
-    history: list[dict[str, Any]] = []
+    ops: list[StoredOp] = []
+    history: list[Record] = []
     with backend.transaction():
         if not backend.is_empty():
             raise StoreError("import requires an empty store")
         for line_no, line in enumerate(src, start=1):
-            envelope: Any = None
+            envelope: JsonValue = None
             try:
                 envelope = json.loads(
                     line,
@@ -127,7 +125,8 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                     raise ValueError("envelope must be an object")
                 if set(envelope) - {"record_type", "record_id", "seq", "op", "history"}:
                     raise ValueError("unknown envelope metadata")
-                record_type, record_id = envelope["record_type"], envelope["record_id"]
+                raw_type, raw_id = envelope["record_type"], envelope["record_id"]
+                record_type, record_id = raw_type, raw_id
                 if not isinstance(record_type, str) or not isinstance(record_id, str):
                     raise ValueError("record identity must contain strings")
                 validate_record_type(record_type)
@@ -142,37 +141,38 @@ def import_ops(backend: Backend, src: TextIO) -> int:
                         raise StoreError(f"{record_id}: duplicate record identity")
                     seen_ids.add(record_id)
                     key, ops, history = next_key, [], []
-                op = envelope["op"]
+                raw_op = envelope["op"]
                 seq = envelope["seq"]
                 if (
-                    not isinstance(op, dict)
+                    not isinstance(raw_op, dict)
                     or type(seq) is not int
                     or seq < 1
-                    or type(op.get("seq")) is not int
-                    or op.get("seq") != seq
+                    or type(raw_op.get("seq")) is not int
+                    or raw_op.get("seq") != seq
                 ):
                     raise StoreError(f"{record_id}: invalid op or seq")
+                op_value = raw_op
                 if ops and seq != ops[-1]["seq"] + 1:
                     raise StoreError(f"{record_id}: sequence gap or duplicate at {seq}")
-                if not ops and seq != 1 and op.get("kind") != "checkpoint":
+                if not ops and seq != 1 and op_value.get("kind") != "checkpoint":
                     raise StoreError(f"{record_id}: sequence must start at 1 or a checkpoint")
                 if (
-                    not isinstance(op.get("op_id"), str)
-                    or not isinstance(op.get("kind"), str)
-                    or not isinstance(op.get("outcome"), str)
-                    or "record" not in op
+                    not isinstance(op_value.get("op_id"), str)
+                    or not isinstance(op_value.get("kind"), str)
+                    or not isinstance(op_value.get("outcome"), str)
+                    or "record" not in op_value
                 ):
                     raise StoreError(f"{record_id}: malformed op")
-                if op["record"] is not None:
-                    _snapshot(op["record"], record_type, record_id)
+                if op_value["record"] is not None:
+                    _snapshot(op_value["record"], record_type, record_id)
+                op: StoredOp = op_value  # pyright: ignore[reportAssignmentType]  # Replay retains legacy operation fields for later store validation.
                 if "history" in envelope:
-                    if ops or not isinstance(envelope["history"], list):
+                    raw_history = envelope["history"]
+                    if ops or not isinstance(raw_history, list):
                         raise StoreError(
                             f"{record_id}: history metadata belongs on the first envelope"
                         )
-                    history = [
-                        _snapshot(value, record_type, record_id) for value in envelope["history"]
-                    ]
+                    history = [_snapshot(value, record_type, record_id) for value in raw_history]
                     if len({record["revision"] for record in history}) != len(history):
                         raise StoreError(f"{record_id}: duplicate history revision")
                 ops.append(op)
