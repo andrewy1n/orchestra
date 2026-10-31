@@ -437,7 +437,6 @@ body {
 	padding: 0;
 	list-style: none;
 	font-size: var(--text-xs);
-	color: var(--ink-2);
 }
 
 .journal-bar {
