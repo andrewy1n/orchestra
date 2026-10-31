@@ -24,6 +24,7 @@ jobs:
       - run: python3 scripts/build_skills.py --check
       - run: python3 scripts/check_orchestra_plugin_names.py
       - run: uvx ruff@0.13.1 check .
+      - run: uvx ruff@0.13.1 format --check .
 
   test-canon:
     runs-on: ubuntu-latest

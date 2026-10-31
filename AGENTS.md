@@ -37,6 +37,9 @@ their response. They do not call `canon`.
 - Use Conventional Commits. Keep the subject short and imperative.
 - The Python type gate is basedpyright. Annotate all new code. Do not
   use or suggest mypy.
+- Before closing a task, run `ruff check` with `uvx ruff@0.13.1 check .`
+  and `ruff format --check` with `uvx ruff@0.13.1 format --check .`.
+  Use `uvx ruff@0.13.1 format .` to apply formatting when needed.
 - After `ruff --fix`, a bulk replace, or a rename script, review
   `git diff --stat` and the removed lines. Grep for the old name inside
   strings, f-strings, module paths and entry points. Run the affected

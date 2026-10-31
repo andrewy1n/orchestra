@@ -150,6 +150,31 @@ def test_r12_checks_runs_ruff_check_with_pinned_version():
     )
 
 
+def test_checks_runs_ruff_lint_and_format_with_same_pinned_version() -> None:
+    lines = run_lines("checks")
+    lint = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+ check(?:\s|$)", line)]
+    formatting = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+.*format --check", line)]
+    assert len(lint) == 1
+    assert len(formatting) == 1
+    assert (
+        re.search(r"ruff@\d+\.\d+\.\d+", lint[0]).group()
+        == re.search(r"ruff@\d+\.\d+\.\d+", formatting[0]).group()
+    )
+
+
+def test_ruff_checks_are_blocking_steps() -> None:
+    steps = job("checks")["steps"]
+    commands = [
+        step
+        for step in steps
+        if isinstance(step, dict)
+        and isinstance(step.get("run"), str)
+        and "uvx ruff@0.13.1" in step["run"]
+    ]
+    assert len(commands) == 2
+    assert all(step.get("continue-on-error") is not True for step in commands)
+
+
 def test_r15_runs_canon_tests():
     assert any(
         "pytest" in line
