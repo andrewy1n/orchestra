@@ -19,9 +19,9 @@
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
-  import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
+  import { applyTheme, loadTheme, saveTheme, type Theme, toggle } from "./theme";
 
-  let theme: Theme = $state(DEFAULT_THEME);
+  let theme: Theme = $state(loadTheme());
 
   bindPolling();
   bindJournal();
@@ -50,6 +50,7 @@
 
   function onToggleTheme() {
     theme = toggle(theme);
+    saveTheme(theme);
   }
 
   onMount(() => {
