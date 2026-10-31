@@ -6,7 +6,7 @@ from orchestra.canon.types import Record, StoredOp
 
 
 def fold(ops: list[StoredOp]) -> Record | None:
-    current = None
+    current: Record | None = None
     for op in ops:
         if op.get("outcome") == "accepted":
             current = op["record"]

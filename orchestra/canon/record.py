@@ -6,7 +6,6 @@ Command code and Project both import this module. It does not import the CLI.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
 
 from orchestra.canon.schema import TypeDef
 from orchestra.canon.types import JsonObject, JsonValue, Record
@@ -24,7 +23,7 @@ def normalize_body(body: str) -> str:
 
 
 def prepare_record(record: Record) -> Record:
-    out = dict(record)
+    out: Record = {**record}
     out["body"] = normalize_body(out.get("body", ""))
     return out
 
@@ -46,7 +45,7 @@ def base_record(
     provenance: JsonValue = None,
     recorded_at: str | None = None,
 ) -> Record:
-    record: dict[str, Any] = {
+    record: Record = {
         "id": record_id,
         "record_type": type_def.record_type,
         "subject": subject,
