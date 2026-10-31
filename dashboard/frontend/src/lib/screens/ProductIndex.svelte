@@ -11,6 +11,7 @@
 </script>
 
 <section class="product-index" data-product-index>
+  <h1 class="text-xl font-semibold">Areas</h1>
   <div class="area-grid">
     {#each grouped.groups as group (group.area.subject)}
       <AreaCard area={group.area} efforts={group.efforts} />

@@ -10,6 +10,7 @@
   import ProductIndex from "$lib/screens/ProductIndex.svelte";
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
+  import StatusBar from "$lib/screens/StatusBar.svelte";
   import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
@@ -19,9 +20,9 @@
   import { bindPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
-  import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
+  import { applyTheme, loadTheme, saveTheme, type Theme, toggle } from "./theme";
 
-  let theme: Theme = $state(DEFAULT_THEME);
+  let theme: Theme = $state(loadTheme());
 
   bindPolling();
   bindJournal();
@@ -50,6 +51,7 @@
 
   function onToggleTheme() {
     theme = toggle(theme);
+    saveTheme(theme);
   }
 
   onMount(() => {
@@ -132,13 +134,7 @@
     {/if}
   </div>
 
-  <footer class="statusbar">
-    {#if polling.pollError}
-      {polling.pollError}
-    {:else if polling.snapshot}
-      Live
-    {/if}
-  </footer>
+  <StatusBar />
 </div>
 
 <Overlay />

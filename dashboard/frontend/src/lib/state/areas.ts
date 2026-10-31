@@ -38,8 +38,6 @@ const EFFORT_ROUTES: ReadonlySet<string> = new Set([
 	"task",
 	"phase",
 	"requirement",
-	"needs",
-	"backlog",
 	"record",
 	"milestone",
 	"journal",

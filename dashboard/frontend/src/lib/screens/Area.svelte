@@ -29,6 +29,7 @@
   {:else if !area}
     <p class="empty-note">No area named {areas.subject}.</p>
   {:else}
+    <h1 class="text-xl font-semibold" data-area-title>{area.title || area.subject}</h1>
     <div class="md" data-area-scope>{@html renderMarkdown(area.scope)}</div>
 
     {#if rollup}
