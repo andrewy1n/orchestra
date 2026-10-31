@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button";
   import { railItems, routePhase } from "$lib/state/areas";
   import { areas } from "$lib/state/areas.svelte";
   import { polling } from "$lib/state/polling.svelte";
@@ -58,59 +59,73 @@
     {:else}
       {#each shown as item (item.key)}
         <a
-          class="rail-item"
-          class:on={item.current}
-          class:finished={item.finished}
+          class={[
+            "grid w-full grid-cols-[14px_1fr] items-baseline gap-2 rounded-md border border-transparent px-2 py-[7px] text-sm no-underline hover:bg-muted pointer-coarse:min-h-11",
+            item.current &&
+              "border-border bg-muted shadow-[inset_2px_0_0_var(--brand)]",
+            item.finished && "text-muted-foreground",
+          ]}
           data-rail-item={item.key}
           href={item.href}
           aria-current={item.current ? "page" : undefined}
         >
           <span
-            class="dot"
-            style:background={item.needs
-              ? "var(--warn)"
-              : item.finished
-                ? "var(--faint)"
-                : "var(--brand)"}
+            class={[
+              "mt-1 size-2 rounded-full",
+              item.needs
+                ? "bg-[var(--warn)]"
+                : item.finished
+                  ? "bg-[var(--faint)]"
+                  : "bg-[var(--brand)]",
+            ]}
           ></span>
           <span>
-            <span class="name">{item.label}</span>
+            <span class={["name block text-sm", item.current ? "font-semibold" : "font-medium"]}>
+              {item.label}
+            </span>
             {#if rail.level === "effort"}
-              <span class="sub" class:warn={item.needs > 0}>
+              <span
+                class={[
+                  "block text-xs leading-snug",
+                  item.needs > 0 ? "text-[var(--warn)]" : "text-muted-foreground",
+                ]}
+              >
                 {kinds.get(item.key)}{#if item.finished} · finished{/if}{#if item.needs}
                   · {item.needs} needs you{/if}
               </span>
             {:else if item.needs > 0}
-              <span class="sub warn">{item.needs} needs you</span>
+              <span class="block text-xs leading-snug text-[var(--warn)]">
+                {item.needs} needs you
+              </span>
             {/if}
           </span>
         </a>
       {/each}
       {#if rail.level === "effort" && (hiddenKeys.size > 0 || polling.showFinished)}
-        <button
-          type="button"
-          class="show-finished"
-          class:on={polling.showFinished}
+        <Button
+          variant="outline"
+          size="xs"
+          class="mt-2.5 w-full justify-start aria-pressed:bg-muted pointer-coarse:min-h-11"
           data-act="show-finished"
           aria-pressed={polling.showFinished}
           title="Show finished efforts"
           onclick={() => (polling.showFinished = !polling.showFinished)}
         >
           {polling.showFinished ? "Hide finished" : `${hiddenKeys.size} finished`}
-        </button>
+        </Button>
       {/if}
       {#if rail.level === "phase" && (hiddenKeys.size > 0 || showDonePhases)}
-        <button
-          type="button"
-          class="show-finished"
-          class:on={showDonePhases}
+        <Button
+          variant="outline"
+          size="xs"
+          class="mt-2.5 w-full justify-start aria-pressed:bg-muted pointer-coarse:min-h-11"
           data-act="show-done-phases"
           aria-pressed={showDonePhases}
           title="Show done phases"
           onclick={() => (showDonePhases = !showDonePhases)}
         >
-          {showDonePhases ? "Hide done" : `${hiddenKeys.size} done`}
-        </button>
+          {showDonePhases ? "Hide done" : `Show ${hiddenKeys.size} done`}
+        </Button>
       {/if}
     {/if}
   </nav>
