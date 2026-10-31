@@ -123,3 +123,25 @@ test("R30 a click on the rail toggle label makes the rail visible at 420px", asy
 	await page.locator("label.rail-toggle-label").click();
 	await expect(page.locator(".rail")).toBeVisible();
 });
+
+test("R31 the phase tab list encloses every phase tab at 420px", async ({
+	page,
+}) => {
+	await open(page, PHASES[0]);
+	const tabs = await page.evaluate(() => {
+		const list = document.querySelector("[data-phase-tabs]") as HTMLElement;
+		const listBox = list.getBoundingClientRect();
+		const boxes = [...document.querySelectorAll("[data-phase-tab]")].map(
+			(tab) => tab.getBoundingClientRect(),
+		);
+		return {
+			count: boxes.length,
+			rows: new Set(boxes.map((box) => Math.round(box.top))).size,
+			listBottom: listBox.bottom,
+			lowestTabBottom: Math.max(...boxes.map((box) => box.bottom)),
+		};
+	});
+	expect(tabs.count).toBeGreaterThan(1);
+	expect(tabs.rows).toBeGreaterThan(1);
+	expect(tabs.listBottom).toBeGreaterThanOrEqual(tabs.lowestTabBottom);
+});

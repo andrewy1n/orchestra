@@ -68,7 +68,7 @@
         value={phase.activePhaseTab}
         onValueChange={(tab) => phase.selectPhaseTab(tab)}
       >
-        <Tabs.List class="h-auto flex-wrap" data-phase-tabs>
+        <Tabs.List class="flex-wrap" data-phase-tabs>
           {#each phase.phaseTabs as tab (tab)}
             <Tabs.Trigger class="capitalize" value={tab} data-phase-tab={tab}>{tab}</Tabs.Trigger>
           {/each}
@@ -119,7 +119,7 @@
         value={phase.statusTab}
         onValueChange={(tab) => phase.chooseTab(tab as StatusTab)}
       >
-        <Tabs.List variant="line" class="h-auto flex-wrap" data-status-tabs>
+        <Tabs.List variant="line" class="flex-wrap" data-status-tabs>
           {#each STATUS_TABS as tab (tab.name)}
             <Tabs.Trigger class="pointer-coarse:min-h-11" value={tab.name} data-tab={tab.name}>
               <b class="text-sm font-medium">{tab.label}</b>
