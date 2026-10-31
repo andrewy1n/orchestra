@@ -295,13 +295,10 @@ def _modules_that_spawn_cli() -> list[str]:
 
 
 def _is_canon_command(argv: list[str]) -> bool:
-    if any(Path(part).name == _CLI_NAME for part in argv):
-        return True
-    if "-m" in argv and any(
-        part == "orchestra.canon" or part.startswith("orchestra.canon.") for part in argv
-    ):
-        return True
-    return False
+    return any(Path(part).name == _CLI_NAME for part in argv) or (
+        "-m" in argv
+        and any(part == "orchestra.canon" or part.startswith("orchestra.canon.") for part in argv)
+    )
 
 
 def _note_argv(spawned: list[list[str]], argv) -> None:

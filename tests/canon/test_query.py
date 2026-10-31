@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from conftest import make_task
 
 from orchestra.canon.query import QueryError, parse_where, resolve_path
-from conftest import make_task
 
 
 @pytest.fixture

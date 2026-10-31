@@ -8,19 +8,15 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra.conductor import reviewer
 from orchestra import status_cli, view_cli
-
+from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.errors import StoreError
-from orchestra.conductor import suite
+from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
-
-from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.score.analyze import analyze_phase
+from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
-
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
 

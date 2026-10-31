@@ -17,13 +17,12 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
-
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 UI_SRC = REPO_ROOT / "dashboard" / "frontend" / "src"
@@ -225,7 +224,7 @@ def _get(proc: subprocess.Popen, port: int, path: str, err: Path) -> tuple[int, 
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             last = exc
             time.sleep(0.1)
-    assert False, f"GET {path} failed (exit {proc.poll()}): {last}\n{err.read_text()}"
+    raise AssertionError(f"GET {path} failed (exit {proc.poll()}): {last}\n{err.read_text()}")
 
 
 def test_web_entry_lists_the_repo_areas(tmp_path, store, cli):

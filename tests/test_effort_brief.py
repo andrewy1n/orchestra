@@ -11,7 +11,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from conftest import CANON_CMD, REPO_ROOT, git, make_git_repo
 
 SCORE_MODULE = REPO_ROOT / "orchestra" / "score" / "schemas" / "score.json"

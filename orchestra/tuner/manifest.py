@@ -10,9 +10,10 @@ import hashlib
 import json
 import re
 import subprocess
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 

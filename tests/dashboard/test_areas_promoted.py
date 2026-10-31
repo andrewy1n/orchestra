@@ -9,13 +9,12 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
-
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 
 def _create(cli, record_type: str, subject: str, payload: dict, body: str | None = None) -> dict:

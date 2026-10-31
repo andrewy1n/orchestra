@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from orchestra.canon.schema import SchemaError, validate_module
 

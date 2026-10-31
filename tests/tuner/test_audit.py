@@ -9,7 +9,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[2]
 VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Any, Callable
+from typing import Any
 
 from dashboard.backend import approval, areas, backlog, dismiss, journal, store
 from dashboard.backend.phase import (

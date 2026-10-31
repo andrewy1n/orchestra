@@ -7,11 +7,11 @@ from collections import defaultdict
 from typing import Any, TextIO
 
 from orchestra.canon.backend import Backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.revision import compute_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
-from orchestra.canon.errors import StoreError
 
 
 def export_ops(backend: Backend, out: TextIO) -> int:

@@ -7,9 +7,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import (
@@ -407,9 +408,7 @@ def _is_source_path(path: str) -> bool:
         return False
     if name.startswith("test_") and name.endswith(".py"):
         return False
-    if name.endswith("_test.py") or name == "conftest.py":
-        return False
-    return True
+    return not (name.endswith("_test.py") or name == "conftest.py")
 
 
 def _passing_tests(worktree: Path, tests: Sequence[str], runner: Sequence[str]) -> list[str]:

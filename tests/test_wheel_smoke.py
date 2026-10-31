@@ -458,14 +458,14 @@ def _invoke_unlocked(args: list[str]) -> dict:
                 check=False,
                 timeout=900,
             )
-        except subprocess.TimeoutExpired:
-            assert False, "scripts/wheel_smoke.py timed out"
+        except subprocess.TimeoutExpired as exc:
+            raise AssertionError("scripts/wheel_smoke.py timed out") from exc
         detail = (proc.stderr or proc.stdout or "no trace")[-2000:]
         assert trace.is_file(), detail
         try:
             payload = json.loads(trace.read_text())
         except json.JSONDecodeError as exc:
-            assert False, str(exc)
+            raise AssertionError(str(exc)) from exc
         assert isinstance(payload.get("events"), list), "trace has no events"
         payload["returncode"] = proc.returncode
         payload["stdout"] = proc.stdout

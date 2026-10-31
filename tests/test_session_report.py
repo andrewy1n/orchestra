@@ -186,7 +186,7 @@ def run_records(tmp_path, capsys, calls):
 
 
 def parse(out):
-    return {json.loads(l)["file"]: json.loads(l) for l in out.splitlines()}
+    return {json.loads(line)["file"]: json.loads(line) for line in out.splitlines()}
 
 
 def test_records_flag_adds_per_session_counts_by_type(tmp_path, capsys):
@@ -241,4 +241,4 @@ def test_without_flag_output_is_unchanged_and_reader_is_not_called(tmp_path, cap
     session_report.main([str(tmp_path)], run=boom)
     out = capsys.readouterr().out
     assert out == run(tmp_path).stdout
-    assert all("records" not in json.loads(l) for l in out.splitlines())
+    assert all("records" not in json.loads(line) for line in out.splitlines())

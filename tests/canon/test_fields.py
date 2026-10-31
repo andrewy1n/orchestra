@@ -3,10 +3,10 @@ from __future__ import annotations
 import copy
 
 import pytest
+from conftest import ALPHA, BETA, PLAN_BODY, make_task
 
 from orchestra.canon.schema import SchemaError, SchemaSet, validate_module
 from orchestra.canon.validation import ValidationError
-from conftest import ALPHA, BETA, PLAN_BODY, make_task
 
 
 def config(project, **payload):

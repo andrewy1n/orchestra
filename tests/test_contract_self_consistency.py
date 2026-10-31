@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import make_git_repo, run_cli
 
 _DEFS = h.schema_defs()
@@ -76,10 +75,7 @@ def test_lifecycle_transition_is_exercisable(cli, record_id, src, dest):
 @pytest.mark.parametrize("record_id,field", _ref_cases(), ids=lambda v: str(v))
 def test_reference_to_a_missing_record_is_refused(cli, record_id, field):
     form = _DEFS[record_id]["required"][field]
-    if "list" in form:
-        missing = ["does-not-exist-anywhere"]
-    else:
-        missing = "does-not-exist-anywhere"
+    missing = ["does-not-exist-anywhere"] if "list" in form else "does-not-exist-anywhere"
     payload = {}
     cache: dict = {}
     for name, other in _DEFS[record_id]["required"].items():

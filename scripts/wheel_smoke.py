@@ -50,10 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     base = _base_env()
     with tempfile.TemporaryDirectory(prefix="wheel-smoke-") as tmp_name:
         tmp = Path(tmp_name)
-        if args.wheel is None:
-            wheel = _build_wheel(tmp / "source", base, args.dist)
-        else:
-            wheel = args.wheel
+        wheel = _build_wheel(tmp / "source", base, args.dist) if args.wheel is None else args.wheel
         venv = tmp / "venv"
         created = _run(["uv", "venv", str(venv)], cwd=tmp, env=base)
         if created.returncode != 0:
@@ -111,8 +108,7 @@ def _build_wheel(source: Path, env: dict[str, str], dist: Path) -> Path:
         ["git", "-C", str(ROOT), "archive", "HEAD"],
         cwd=source,
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if archived.returncode != 0:
@@ -123,8 +119,7 @@ def _build_wheel(source: Path, env: dict[str, str], dist: Path) -> Path:
         input=archived.stdout,
         cwd=source,
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if extracted.returncode != 0:
@@ -135,8 +130,7 @@ def _build_wheel(source: Path, env: dict[str, str], dist: Path) -> Path:
         ["uv", "build", "--wheel"],
         cwd=source,
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if built.returncode != 0:

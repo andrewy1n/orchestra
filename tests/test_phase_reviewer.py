@@ -12,7 +12,7 @@ from skill_extraction import extract_invocations
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra.conductor.reviewer import (  # noqa: E402
+from orchestra.conductor.reviewer import (
     build_finding_payload,
     build_review_check_run_payload,
     build_reviewer_brief,
@@ -236,7 +236,7 @@ def test_parent_write_review_check_run_and_findings():
         reviewer_rerun_used=False,
     )
     payloads = []
-    for finding, create_fix in zip(findings, routed.create_fix_flags):
+    for finding, create_fix in zip(findings, routed.create_fix_flags, strict=False):
         payloads.append(
             build_finding_payload(
                 finding,
@@ -285,7 +285,7 @@ def test_rerun_reviewer_once_after_fixes():
     assert should_rerun_reviewer(fix_tasks_created=1, reviewer_rerun_used=True) is False
     assert should_rerun_reviewer(fix_tasks_created=0, reviewer_rerun_used=False) is False
     flat = _skill_flat()
-    assert "re-run" in flat or "rerun" in flat or "once" in flat and "reviewer" in flat
+    assert "re-run" in flat or "rerun" in flat or ("once" in flat and "reviewer" in flat)
 
 
 def test_budget_exhaustion_escalates_without_reopening_done():

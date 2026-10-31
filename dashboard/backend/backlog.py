@@ -6,8 +6,8 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend.snapshot import BacklogItem
+from orchestra.canon.project import Project
 
 BACKLOG_TYPE = "composer:idea"
 

@@ -7,13 +7,13 @@ import subprocess
 import sys
 
 import pytest
+from conftest import ALPHA, BETA
 
 from orchestra.canon import modules
+from orchestra.canon.backend import open_backend
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.backend import open_backend
-from conftest import ALPHA, BETA
 
 GAMMA_V1 = {
     "namespace": "gamma",
@@ -151,12 +151,15 @@ def test_discovery_refuses_an_invalid_module(site):
 
 def test_discovery_in_a_fresh_interpreter(site, repo):
     env = site.env()
-    run = lambda *args: subprocess.run(
-        [sys.executable, "-m", "orchestra.canon", "--root", str(repo), *args],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+
+    def run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "orchestra.canon", "--root", str(repo), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
     result = run("init", "--schemas", "alpha,beta")
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["schemas"] == {"alpha": "0.1.0", "beta": "0.1.0"}
@@ -371,7 +374,7 @@ class TestMigration:
         assert config["schemas"]["gamma"] == "1.0.0"
 
     def test_migration_chains_across_several_majors(self, cli, site, repo, migrating):
-        project, report, *_ = migrating
+        _, report, *_ = migrating
         v3 = copy.deepcopy(GAMMA_V2)
         v3["version"] = "3.0.0"
         v3["types"]["execution-report"]["fields"]["result"] = {"enum": ["finished", "bad"]}

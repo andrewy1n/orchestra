@@ -17,12 +17,12 @@ from pathlib import Path
 
 from conftest import run_cli
 from test_verdict import (
-    VERIFY,
     ALLOW,
     APP_GREEN,
     APP_RED,
     CLAIM,
     ORACLE,
+    VERIFY,
     _commit,
     _git,
     _manifest,
@@ -200,9 +200,7 @@ def _is_active(row: dict) -> bool:
     status = str(payload.get("status") or "").strip().lower()
     if status in _INACTIVE or payload.get("retired") is True:
         return False
-    if payload.get("active") is False:
-        return False
-    return True
+    return payload.get("active") is not False
 
 
 def _binding_for(root: Path, observation_id: str, claim_id: str = CLAIM) -> dict:

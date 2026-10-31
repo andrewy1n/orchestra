@@ -9,16 +9,16 @@ from pathlib import Path
 
 from conftest import run_cli
 from test_verdict import (
-    VERIFY,
+    ALLOW,
     APP_GREEN,
     APP_RED,
     CLAIM,
     ORACLE,
+    VERIFY,
     _commit,
     _manifest,
     _payload,
     _write_tree,
-    ALLOW,
 )
 
 RECORD_TYPE = "tuner:evidence-observation"

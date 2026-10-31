@@ -19,10 +19,10 @@ import pytest
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.cli import main
 from orchestra.canon.config import new_config
+from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.oplog import fold
 from orchestra.canon.project import Binding, Project, open_store
 from orchestra.canon.revision import compute_revision
-from orchestra.canon.errors import StaleWriteError, StoreError
 
 SCHEMA: dict[str, Any] = {
     "namespace": "contract",
@@ -81,12 +81,12 @@ class DbStore:
 
     @property
     def project(self) -> Project:
-        self.backend
+        _ = self.backend
         return Project(self.project_root, self.root, Binding("global", "store-binding.json"))
 
     @property
     def db(self) -> Path:
-        self.backend
+        _ = self.backend
         path = self.data_root / "canon.db"
         assert path.is_file(), "SQLite store must persist canon.db at the bound global path"
         return path
@@ -145,7 +145,7 @@ def test_config_selects_sqlite_backend(tmp_path: Path) -> None:
 
 
 def test_global_binding_places_database_under_temporary_home(db_store: DbStore) -> None:
-    db_store.backend
+    _ = db_store.backend
     try:
         selected = open_store(db_store.project_root)
     except Exception as exc:
@@ -360,7 +360,7 @@ def _join(workers: list[Any]) -> None:
 def test_multiprocess_distinct_writes_preserve_records_and_single_ops(
     db_store: DbStore,
 ) -> None:
-    db_store.backend
+    _ = db_store.backend
     context = multiprocessing.get_context("spawn")
     count, per_worker = 4, 12
     barrier, results = context.Barrier(count), context.Queue()
@@ -418,7 +418,7 @@ def test_cli_validate_detects_materialized_row_tampering(db_store: DbStore) -> N
         columns = connection.execute("PRAGMA table_info(records)").fetchall()
         row = connection.execute("SELECT * FROM records").fetchone()
         changed = False
-        for column, value in zip(columns, row):
+        for column, value in zip(columns, row, strict=False):
             if not isinstance(value, str):
                 continue
             try:

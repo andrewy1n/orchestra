@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 import pytest
+from conftest import PLAN_BODY, make_task
 
 from orchestra.canon import cli as canon_cli
-from conftest import PLAN_BODY, make_task
 
 
 @pytest.fixture
@@ -430,7 +430,7 @@ def test_the_declared_mutating_commands_cover_every_writing_subcommand():
         "import",
         "export",
     }
-    assert canon_cli.MUTATING_COMMANDS == {
+    assert {
         "init",
         "create",
         "update",
@@ -439,7 +439,7 @@ def test_the_declared_mutating_commands_cover_every_writing_subcommand():
         "apply",
         "merge",
         "import",
-    }
+    } == canon_cli.MUTATING_COMMANDS
 
 
 def test_commands_report_a_missing_store(cli, repo):

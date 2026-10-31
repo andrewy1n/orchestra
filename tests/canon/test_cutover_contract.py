@@ -125,6 +125,7 @@ def test_cutover_r11_dashboard_api_returns_efforts_from_the_database(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from fastapi.routing import APIRoute
+
     from dashboard.backend.server.app import create_app
 
     root = _global_sqlite_repo(tmp_path / "repo", tmp_path / "home", monkeypatch)

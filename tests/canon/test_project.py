@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from conftest import make_task
 
 from orchestra.canon.backend import open_backend
-from orchestra.canon.project import Project, open_store
 from orchestra.canon.errors import StaleWriteError, StoreError
-from conftest import make_task
+from orchestra.canon.project import Project, open_store
+from orchestra.canon.validation import ValidationError
 
 
 def history_revisions(project: Project, record: dict[str, Any]) -> set[str]:
@@ -111,7 +112,7 @@ def test_apply_numbers_results_by_operation(project):
 
 def test_supersede_failure_leaves_the_original_untouched(project):
     task = make_task(project, "t")
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         project.supersede(task["id"], payload={"depends_on": ["ghost"]})
     assert project.get(task["id"]) == task
 

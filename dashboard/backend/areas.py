@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from dataclasses import dataclass, field
 
-from orchestra.canon.project import Project
 from dashboard.backend.records import _list, _live, _recorded_at, _section
 from dashboard.backend.snapshot import PLACEMENT_TYPE, _backlog_text
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 AREA_TYPE = "composer:area"
 IDEA_TYPE = "composer:idea"

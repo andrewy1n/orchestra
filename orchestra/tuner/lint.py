@@ -7,8 +7,8 @@ import json
 import re
 import shutil
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import MANIFEST_PATH, load_manifest, resolve_commit
@@ -103,9 +103,12 @@ def _no_assert_in_file(path: Path) -> list[str]:
                 findings.append(node.name)
         elif isinstance(node, ast.ClassDef):
             for item in node.body:
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if item.name.startswith("test") and not _has_outcome_signal(item):
-                        findings.append(f"{node.name}::{item.name}")
+                if (
+                    isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and item.name.startswith("test")
+                    and not _has_outcome_signal(item)
+                ):
+                    findings.append(f"{node.name}::{item.name}")
     if not findings and not any(
         isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
     ):
@@ -128,11 +131,9 @@ def _has_outcome_signal(fn: ast.AST) -> bool:
 
 
 def _is_raises_call(func: ast.AST) -> bool:
-    if isinstance(func, ast.Name) and func.id == "raises":
-        return True
-    if isinstance(func, ast.Attribute) and func.attr == "raises":
-        return True
-    return False
+    return (isinstance(func, ast.Name) and func.id == "raises") or (
+        isinstance(func, ast.Attribute) and func.attr == "raises"
+    )
 
 
 def _checkout(cwd: Path, commit: str) -> tuple[Path, Path] | None:

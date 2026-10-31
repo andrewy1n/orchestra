@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.schema import SchemaSet, TypeDef, ref_targets
-from orchestra.canon.errors import StoreError
 
 
 class ValidationError(Exception):

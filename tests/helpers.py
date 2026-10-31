@@ -143,7 +143,7 @@ def record_def(name: str) -> dict:
 
 
 def _ref_targets(form: dict) -> list[str]:
-    inner = form["list"] if "list" in form else form
+    inner = form.get("list", form)
     if "ref" not in inner:
         return []
     value = inner["ref"]
@@ -222,7 +222,7 @@ def ensure_refs(cli, defs, record_def: dict, given: dict) -> None:
         form = record_def["fields"].get(field)
         if not form or form.get("pin") or not value:
             continue
-        inner = form["list"] if "list" in form else form
+        inner = form.get("list", form)
         if "ref" not in inner or inner.get("pin"):
             continue
         target_type = _ref_targets(inner)[0]
@@ -301,7 +301,7 @@ def shortest_path(record_def: dict, target_state: str) -> list[str]:
         for nxt in graph.get(node, []):
             if nxt in seen:
                 continue
-            new_path = path + [nxt]
+            new_path = [*path, nxt]
             if nxt == target_state:
                 return new_path
             seen.add(nxt)

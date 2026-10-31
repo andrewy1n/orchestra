@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 import sys
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
-from test_dashboard_model import _effort, _goal, _target  # noqa: E402
+from test_dashboard_model import _effort, _goal, _target
+
+from dashboard.backend import snapshot as snapshot_mod
 
 
 @pytest.fixture()

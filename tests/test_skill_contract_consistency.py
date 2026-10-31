@@ -6,9 +6,8 @@ Guards against a skill instructing an operation the schemas reject.
 
 from __future__ import annotations
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT
 from skill_extraction import (
     check_invocation,

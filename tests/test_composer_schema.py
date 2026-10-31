@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from test_boundaries import boundary_violations
 from test_cli_packaging import cli_env, install_cli
 

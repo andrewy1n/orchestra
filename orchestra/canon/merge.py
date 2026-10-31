@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.paths import PathValidationError, validate_namespace, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaSet, ref_targets
-from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 Renames = dict[tuple[str, str], str]

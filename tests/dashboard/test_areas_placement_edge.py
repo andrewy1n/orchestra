@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from dashboard.backend.areas import _home_area
 
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from canon_support import make_project, seed_effort
+
 from orchestra import views
 
 

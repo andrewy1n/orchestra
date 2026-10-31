@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from orchestra.canon.project import StoreBindingError
+
 _PATH_ATTRS = ("store_path", "store", "store_root", "path", "root")
 
 
@@ -273,7 +275,7 @@ def test_r9_store_argument_missing_config(tmp_path, monkeypatch):
     write_binding(repo, "store-binding.json", "global")
     before_home = file_set(home)
     before_local = file_set(local_store(repo))
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(repo, store=explicit)
     assert file_set(home) == before_home
     assert file_set(local_store(repo)) == before_local
@@ -292,7 +294,7 @@ def test_r10_env_missing_config(tmp_path, monkeypatch):
     before_local = file_set(local_store(repo))
     before_global = file_set(global_store(home, repo))
     monkeypatch.setenv("CANON_STORE", str(chosen))
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(repo)
     assert file_set(local_store(repo)) == before_local
     assert file_set(global_store(home, repo)) == before_global
@@ -307,7 +309,7 @@ def test_r11_binding_missing_config(tmp_path, monkeypatch):
     global_store(home, global_repo).mkdir(parents=True)
     write_binding(global_repo, "store-binding.local.json", "global")
     before_local = file_set(local_store(global_repo))
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(global_repo)
     assert file_set(local_store(global_repo)) == before_local
 
@@ -316,7 +318,7 @@ def test_r11_binding_missing_config(tmp_path, monkeypatch):
     write_config(global_store(home, local_repo))
     write_binding(local_repo, "store-binding.json", "local")
     before_global = file_set(global_store(home, local_repo))
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(local_repo)
     assert file_set(global_store(home, local_repo)) == before_global
 
@@ -329,14 +331,14 @@ def test_r12_binding_value(tmp_path, monkeypatch):
     write_config(local_store(local_repo))
     write_config(global_store(home, local_repo))
     write_binding(local_repo, "store-binding.local.json", "both")
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(local_repo)
 
     committed_repo = git_repo(tmp_path / "committed-repo")
     write_config(local_store(committed_repo))
     write_config(global_store(home, committed_repo))
     write_binding(committed_repo, "store-binding.json", "sideways")
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(committed_repo)
 
 
@@ -344,7 +346,7 @@ def test_r13_no_store(tmp_path, monkeypatch):
     open_store = load_open_store()
     prepared_home(tmp_path, monkeypatch)
     repo = git_repo(tmp_path / "repo")
-    with pytest.raises(Exception):
+    with pytest.raises(StoreBindingError):
         open_store(repo)
 
 
@@ -354,5 +356,5 @@ def test_legacy_meta_json_is_not_a_store(tmp_path, monkeypatch):
     repo = git_repo(tmp_path / "repo")
     (local_store(repo)).mkdir()
     (local_store(repo) / "meta.json").write_text("{}\n", encoding="utf-8")
-    with pytest.raises(Exception, match="config.json"):
+    with pytest.raises(StoreBindingError, match=r"config\.json"):
         open_store(repo)

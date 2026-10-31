@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-import textwrap
 import sys
+import textwrap
 from pathlib import Path
 
 from orchestra.tuner.amendment import canonical_payload

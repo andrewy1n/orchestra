@@ -11,6 +11,13 @@ from typing import Any
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived
+from orchestra.canon.errors import (
+    PartialStoreError,
+    StaleWriteError,
+    StoreError,
+    StoreLockError,
+    StoreNotInitializedError,
+)
 from orchestra.canon.git_backend import GitContextError, assert_git_context
 from orchestra.canon.merge import (
     MergeError,
@@ -29,13 +36,6 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.errors import (
-    PartialStoreError,
-    StaleWriteError,
-    StoreError,
-    StoreLockError,
-    StoreNotInitializedError,
-)
 from orchestra.canon.sync import add_namespace, init_store, sync_store
 from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.validation import ValidationError

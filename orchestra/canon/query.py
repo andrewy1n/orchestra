@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Iterable, Pattern
+from collections.abc import Iterable
+from re import Pattern
+from typing import Any
 
 # derived is read-time only (see derive.py) but a --where clause treats it
 # like any other namespaced field -- an agent asking "what's ready" shouldn't
@@ -172,9 +174,7 @@ def within_time_range(record: dict[str, Any], since: str | None, until: str | No
         return False
     if since is not None and recorded_at < since:
         return False
-    if until is not None and recorded_at > until:
-        return False
-    return True
+    return not (until is not None and recorded_at > until)
 
 
 def order_by_recorded_at(
@@ -242,9 +242,7 @@ def record_matches(
     for rel_type in has_inbound_types or []:
         if not has_inbound(record, rel_type):
             return False
-    if not body_matches(record, grep):
-        return False
-    return True
+    return body_matches(record, grep)
 
 
 def _first_nonblank_line(text: str) -> str:

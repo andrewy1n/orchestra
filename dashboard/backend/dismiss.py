@@ -13,10 +13,10 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from orchestra.canon.project import Project
-from orchestra.canon.errors import StoreError
 from dashboard.backend import store
 from dashboard.backend.snapshot import NeedsYouItem
+from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 
 HUMAN_DISMISSIBLE = frozenset(
     {
@@ -131,15 +131,15 @@ def default_action(kind: str) -> str:
 
 def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
     resolved = (action or default_action(item.kind)).strip().lower()
-    if item.kind in ("blocking-question", "open-question"):
-        if resolved not in (ACTION_APPROVE, ACTION_REJECT):
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
-    elif item.kind == "needs-human":
-        if resolved != ACTION_ACCEPT:
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
-    elif item.kind == "unsigned-check":
-        if resolved != ACTION_SIGN:
-            raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
+    if (
+        (
+            item.kind in ("blocking-question", "open-question")
+            and resolved not in (ACTION_APPROVE, ACTION_REJECT)
+        )
+        or (item.kind == "needs-human" and resolved != ACTION_ACCEPT)
+        or (item.kind == "unsigned-check" and resolved != ACTION_SIGN)
+    ):
+        raise DismissError(f"unsupported action {resolved!r} for {item.kind}")
     return resolved
 
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 
 import pytest
-
 from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations

@@ -10,11 +10,11 @@ from typing import Any, Literal, cast
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
+from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
-from orchestra.canon.errors import StoreError, StaleWriteError
 from orchestra.canon.validation import (
     ValidationError,
     check_transition,
@@ -458,7 +458,7 @@ def _read_for_update(
 
 
 def _expected_revision(op: dict[str, Any], old: dict[str, Any]) -> str | None:
-    raw = op["expected_revision"] if "expected_revision" in op else _CURRENT_REVISION
+    raw = op.get("expected_revision", _CURRENT_REVISION)
     if raw == _CURRENT_REVISION:
         return old["revision"]
     return raw

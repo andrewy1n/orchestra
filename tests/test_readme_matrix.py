@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 from conftest import REPO_ROOT
+
 from installer.matrix import load_matrix
 
 HEADING = "## Install with the CLI"
@@ -125,7 +126,7 @@ def test_host_matrix_matches_provider_matrix():
         provider.id for provider in providers
     ]
 
-    for provider, row in zip(providers, rows):
+    for provider, row in zip(providers, rows, strict=False):
         assert _plain(row[column["Host"]]) == provider.name, provider.id
         assert _plain(row[column["Provider id"]]) == provider.id
         assert _plain(row[column["Kind"]]) == provider.kind, provider.id

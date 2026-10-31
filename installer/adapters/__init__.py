@@ -81,7 +81,6 @@ from installer.adapters.native import (  # noqa: E402
     OpenCodeAdapter,
 )
 
-
 __all__ = [
     "Adapter",
     "BaseAdapter",

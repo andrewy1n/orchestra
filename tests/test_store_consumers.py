@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from canon_support import make_project
-from orchestra.canon.project import Project
+
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 from orchestra.conductor.suite import load_suite_policy
 
 

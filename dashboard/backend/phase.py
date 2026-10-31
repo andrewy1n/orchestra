@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import store
 from dashboard.backend.records import (
     INACTIVE_STATES,
@@ -33,7 +31,8 @@ from dashboard.backend.task import (
     _latest_checks,
     _task_rows,
 )
-
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
@@ -50,7 +49,7 @@ class PhaseRow:
     total: int
     id: str = ""
     awaiting_signoff: bool = False
-    evidence: "PhaseEvidence | None" = None
+    evidence: PhaseEvidence | None = None
     sitting: str = ""
     body: str = ""
     elapsed_minutes: int | None = None
@@ -149,7 +148,7 @@ def _traced_records(
     ]
 
 
-def _choices(subjects: list[str], decisions: list[dict[str, Any]]) -> tuple["DecisionChoice", ...]:
+def _choices(subjects: list[str], decisions: list[dict[str, Any]]) -> tuple[DecisionChoice, ...]:
     by_subject: dict[str, dict[str, Any]] = {}
     for record in sorted(_live(decisions), key=_recorded_at):
         by_subject[record["subject"]] = record
@@ -167,7 +166,7 @@ def _latest_requirement_check(
     phase: str,
     acceptances: list[dict[str, Any]],
     checks: list[dict[str, Any]],
-) -> "CheckRun | None":
+) -> CheckRun | None:
     acceptance_ids = {
         record["id"]
         for record in acceptances
@@ -289,7 +288,7 @@ def _awaits_signoff(
     task: dict[str, Any],
     others: list[str],
     acceptances: list[dict[str, Any]],
-    latest: dict[str, "CheckRun"],
+    latest: dict[str, CheckRun],
 ) -> bool:
     effort = record_payload(task).get("effort", "")
     mine = [
@@ -309,7 +308,7 @@ def _phase_rows(
     tasks: list[dict[str, Any]],
     acceptances: list[dict[str, Any]] | None = None,
     checks: list[dict[str, Any]] | None = None,
-    evidence_by_phase: dict[str, "PhaseEvidence"] | None = None,
+    evidence_by_phase: dict[str, PhaseEvidence] | None = None,
 ) -> list[PhaseRow]:
     latest = _latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
@@ -435,7 +434,7 @@ class RequirementRow:
     text: str
     status: str
     next: str
-    latest_check: "CheckRun | None"
+    latest_check: CheckRun | None
     tasks: int
     tasks_done: int = 0
     confidence: str = ""
@@ -473,8 +472,8 @@ class RequirementDetail:
     status: str
     next: str
     decisions: tuple[DecisionChoice, ...]
-    tasks: tuple["TaskRow", ...]
-    acceptances: tuple["AcceptanceRow", ...]
+    tasks: tuple[TaskRow, ...]
+    acceptances: tuple[AcceptanceRow, ...]
     assessments: tuple[AssessmentView, ...]
 
 
@@ -657,7 +656,7 @@ class DecisionEntry:
     alternatives: str
     rationale: str
     counter: str
-    superseded: tuple["DecisionEntry", ...] = ()
+    superseded: tuple[DecisionEntry, ...] = ()
 
 
 @dataclass(frozen=True)

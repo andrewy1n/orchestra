@@ -96,19 +96,16 @@ def test_canonical_payload_orders_hashes_and_omits_signature():
         {"a.py": "sha256:cc"},
     )
     amendment["signature"] = "not-part-of-the-payload"
-    assert (
-        canonical_payload(amendment)
-        == (
-            "tuner-amendment v1\n"
-            "claim: R1\n"
-            "old_tests: tests/test_mod.py::test_a,tests/test_mod.py::test_b\n"
-            "new_tests: tests/test_mod.py::test_b\n"
-            "old_hashes:\n"
-            "a.py sha256:aa\n"
-            "b.py sha256:bb\n"
-            "new_hashes:\n"
-            "a.py sha256:cc\n"
-        ).encode()
+    assert canonical_payload(amendment) == (
+        b"tuner-amendment v1\n"
+        b"claim: R1\n"
+        b"old_tests: tests/test_mod.py::test_a,tests/test_mod.py::test_b\n"
+        b"new_tests: tests/test_mod.py::test_b\n"
+        b"old_hashes:\n"
+        b"a.py sha256:aa\n"
+        b"b.py sha256:bb\n"
+        b"new_hashes:\n"
+        b"a.py sha256:cc\n"
     )
 
 
@@ -279,23 +276,20 @@ def test_canonical_payload_includes_support_and_runner_when_present():
     amendment["old_runner_digest"] = "sha256:old"
     amendment["new_runner_digest"] = "sha256:new"
     amendment["signature"] = "not-part-of-the-payload"
-    assert (
-        canonical_payload(amendment)
-        == (
-            "tuner-amendment v1\n"
-            "claim: R1\n"
-            "old_tests: tests/test_mod.py::test_a\n"
-            "new_tests: tests/test_mod.py::test_a\n"
-            "old_hashes:\n"
-            "a.py sha256:aa\n"
-            "new_hashes:\n"
-            "a.py sha256:aa\n"
-            "old_support_hashes:\n"
-            "a.py sha256:00\n"
-            "b.py sha256:11\n"
-            "new_support_hashes:\n"
-            "a.py sha256:22\n"
-            "old_runner_digest: sha256:old\n"
-            "new_runner_digest: sha256:new\n"
-        ).encode()
+    assert canonical_payload(amendment) == (
+        b"tuner-amendment v1\n"
+        b"claim: R1\n"
+        b"old_tests: tests/test_mod.py::test_a\n"
+        b"new_tests: tests/test_mod.py::test_a\n"
+        b"old_hashes:\n"
+        b"a.py sha256:aa\n"
+        b"new_hashes:\n"
+        b"a.py sha256:aa\n"
+        b"old_support_hashes:\n"
+        b"a.py sha256:00\n"
+        b"b.py sha256:11\n"
+        b"new_support_hashes:\n"
+        b"a.py sha256:22\n"
+        b"old_runner_digest: sha256:old\n"
+        b"new_runner_digest: sha256:new\n"
     )

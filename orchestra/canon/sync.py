@@ -6,10 +6,10 @@ from typing import Any
 
 from orchestra.canon.backend import Backend
 from orchestra.canon.config import new_config
+from orchestra.canon.errors import StoreError
 from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
 from orchestra.canon.modules import InstalledModule, discover
 from orchestra.canon.schema import SchemaError, SchemaSet, major, parse_module
-from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 

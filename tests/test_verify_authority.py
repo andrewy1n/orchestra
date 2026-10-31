@@ -11,10 +11,10 @@ import re
 from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations
+
 from orchestra.conductor import close_batch
 
 SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"

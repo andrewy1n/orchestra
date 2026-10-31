@@ -9,7 +9,7 @@ NAMESPACE = "tuner-claim"
 
 def canonical_payload(claim_id: str, text: str) -> bytes:
     """UTF-8 bytes a human signs for one claim."""
-    return f"tuner-claim v1\nclaim: {claim_id}\ntext: {text}\n".encode("utf-8")
+    return f"tuner-claim v1\nclaim: {claim_id}\ntext: {text}\n".encode()
 
 
 def verify_claim_signature(

@@ -5,17 +5,18 @@ from __future__ import annotations
 import json
 import sys
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend import journal  # noqa: E402
-from dashboard.backend import store as backend_store  # noqa: E402
-from dashboard.backend import records  # noqa: E402
-from dashboard.backend import task as task_mod  # noqa: E402
+from dashboard.backend import (
+    journal,
+    records,
+)
+from dashboard.backend import store as backend_store
+from dashboard.backend import task as task_mod
+from orchestra.canon.project import open_store
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:

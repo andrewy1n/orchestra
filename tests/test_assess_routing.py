@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT
 from skill_extraction import check_skill_text, extract_invocations
 
@@ -265,7 +264,7 @@ def test_verify_work_documents_enforced_red_first_close():
 
 @pytest.mark.parametrize("skill_name", ["verify-work", "engage"])
 def test_documented_invocations_are_contract_legal(contract_indexes, skill_name):
-    defs, bundles_by_id = contract_indexes
+    defs, _ = contract_indexes
     violations = check_skill_text(_text(skill_name), defs)
     assert not violations, "\n".join(violations)
 

@@ -8,7 +8,6 @@ import re
 from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT
 
 PYPROJECT = REPO_ROOT / "pyproject.toml"

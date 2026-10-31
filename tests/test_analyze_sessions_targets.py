@@ -60,7 +60,7 @@ def test_one_section_per_target():
 def test_each_section_has_pattern_with_real_fields():
     valid = valid_paths()
     for name, body in sections().items():
-        bullets = [l for l in body.splitlines() if l.startswith("- ") and "->" in l]
+        bullets = [line for line in body.splitlines() if line.startswith("- ") and "->" in line]
         assert bullets, name
         for line in bullets:
             fields = re.findall(r"`([^`]+)`", line)

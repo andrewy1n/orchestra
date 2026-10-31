@@ -16,7 +16,6 @@ import importlib
 import json
 from pathlib import Path
 
-
 from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"

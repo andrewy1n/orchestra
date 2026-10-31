@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-
 from test_cli_packaging import (
     REPO_ROOT,
     _git_repo,

@@ -6,9 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from orchestra.canon import record_payload
-from orchestra.canon.project import Project
-from orchestra.canon.errors import StoreError
+from dashboard.backend import store
 from dashboard.backend.dismiss import (
     ACTION_ACCEPT,
     ACTION_APPROVE,
@@ -19,9 +17,10 @@ from dashboard.backend.dismiss import (
 )
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
-from dashboard.backend import store
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
-
+from orchestra.canon import record_payload
+from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 

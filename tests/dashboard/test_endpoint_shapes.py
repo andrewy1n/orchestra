@@ -7,26 +7,26 @@ fixture under ``tests/dashboard/fixtures``. Run with ``UPDATE_FIXTURES=1`` to re
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
-import itertools
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient
-
 import helpers as h
 from conftest import REPO_ROOT, stamped_store
+from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 UPDATE = os.environ.get("UPDATE_FIXTURES") == "1"

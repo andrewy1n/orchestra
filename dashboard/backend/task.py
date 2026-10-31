@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import store
 from dashboard.backend.records import (
     CHECK_RESULT,
@@ -21,7 +19,8 @@ from dashboard.backend.records import (
     _section,
 )
 from dashboard.backend.store import ModelError
-
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -176,7 +175,7 @@ def _without_section(body: str, heading: str) -> str:
     return "\n".join(kept).strip()
 
 
-def _check_from(record: dict[str, Any]) -> "CheckRun":
+def _check_from(record: dict[str, Any]) -> CheckRun:
     payload = record_payload(record)
     return CheckRun(
         record["id"],

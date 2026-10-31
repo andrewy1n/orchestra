@@ -3,8 +3,8 @@ import json
 import re
 
 import pytest
-
 from canon_support import create, make_project, seed_effort
+
 from orchestra import cli, views
 from orchestra.canon.project import Project
 from orchestra.stage import hooks
@@ -270,7 +270,7 @@ def fill_effort(project, slug, tasks=4):
         },
     )
     create(project, "composer:idea", f"{slug}-later-idea", {"effort": slug, "status": "open"})
-    return subjects + [f"{slug}-needs-human", f"{slug}-manual-check"]
+    return [*subjects, f"{slug}-needs-human", f"{slug}-manual-check"]
 
 
 def crowd_store(project):

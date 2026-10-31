@@ -21,14 +21,13 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
+from dashboard.backend import snapshot as snapshot_mod
+from orchestra.canon.project import open_store
 
 SCRIPT = REPO_ROOT / "dashboard" / "bin" / "web"
 DIST_INDEX = REPO_ROOT / "dashboard" / "frontend" / "dist" / "index.html"
@@ -182,7 +181,7 @@ def _await_listen(proc: subprocess.Popen, err: Path, timeout: float = 20) -> lis
             return addresses
         time.sleep(0.05)
     detail = err.read_text() if err.is_file() else ""
-    assert False, f"web launcher did not listen (exit {proc.poll()}): {detail}"
+    raise AssertionError(f"web launcher did not listen (exit {proc.poll()}): {detail}")
 
 
 def _get(port: int, path: str) -> tuple[int, str, bytes]:
@@ -198,7 +197,7 @@ def _get(port: int, path: str) -> tuple[int, str, bytes]:
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             last = exc
             time.sleep(0.1)
-    assert False, f"GET {path} on 127.0.0.1:{port} failed: {last}"
+    raise AssertionError(f"GET {path} on 127.0.0.1:{port} failed: {last}")
 
 
 def test_r1_loopback(store, tmp_path, monkeypatch):
@@ -395,8 +394,8 @@ def test_launched_process_imports_canon_project(store, tmp_path):
             text=True,
             timeout=120,
         )
-    except subprocess.TimeoutExpired:
-        assert False, "web launcher did not exit after starting the server process"
+    except subprocess.TimeoutExpired as exc:
+        raise AssertionError("web launcher did not exit after starting the server process") from exc
     assert result.is_file(), (
         f"web launcher did not start the server process "
         f"(exit {completed.returncode}): {completed.stdout} {completed.stderr}"

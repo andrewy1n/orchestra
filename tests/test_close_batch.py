@@ -19,10 +19,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT, build_store
+
 from orchestra.conductor import close_batch
 
 CLI = REPO_ROOT / "bin" / "orchestra"

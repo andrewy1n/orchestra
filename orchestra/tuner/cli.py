@@ -295,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
         work = Path(args.cwd) if args.cwd else Path.cwd()
         try:
             items = list_observations(work, claim=args.claim, technique=args.technique)
-        except Exception as exc:  # noqa: BLE001 — surface store errors cleanly
+        except Exception as exc:
             print(exc, file=sys.stderr)
             return 2
         print(json.dumps(items, separators=(",", ":")))

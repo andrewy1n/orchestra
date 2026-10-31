@@ -9,9 +9,10 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 from orchestra.tuner.amendment import authorize

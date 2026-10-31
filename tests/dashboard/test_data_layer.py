@@ -136,8 +136,8 @@ def test_r5_each_loader_lives_in_its_own_module():
 def test_r6_every_api_response_has_a_pydantic_model(store):
     pytest.importorskip("fastapi")
     sys.path.insert(0, str(REPO_ROOT))
-    from orchestra.canon.project import open_store
     from dashboard.backend.server.app import create_app
+    from orchestra.canon.project import open_store
 
     document = create_app(open_store(store)).openapi()
     known = set(document.get("components", {}).get("schemas", {}))

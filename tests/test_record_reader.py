@@ -67,7 +67,7 @@ def test_command_is_read_only_list_per_type_with_root():
     run = _stub({})
     read_records("/tmp/p", types=["project:a", "project:b"], run=run)
     assert len(run.calls) == 2
-    for argv, t in zip(run.calls, ["project:a", "project:b"]):
+    for argv, t in zip(run.calls, ["project:a", "project:b"], strict=False):
         assert "--read-only" in argv
         assert argv[argv.index("--root") + 1] == "/tmp/p"
         assert argv.index("--read-only") < argv.index("list")

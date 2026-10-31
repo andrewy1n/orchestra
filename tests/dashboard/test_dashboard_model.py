@@ -9,18 +9,17 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 import helpers as h
+import pytest
 from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import Project, open_store  # noqa: E402
-from dashboard.backend import phase as phase_mod  # noqa: E402
-from dashboard.backend import records  # noqa: E402
-from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
-from dashboard.backend import task as task_mod  # noqa: E402
-from dashboard.backend import store as backend_store  # noqa: E402
+from dashboard.backend import phase as phase_mod
+from dashboard.backend import records
+from dashboard.backend import snapshot as snapshot_mod
+from dashboard.backend import store as backend_store
+from dashboard.backend import task as task_mod
+from orchestra.canon.project import Project, open_store
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:

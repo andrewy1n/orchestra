@@ -50,7 +50,7 @@ def test_redispatch_records_assignment_amendment_with_failure_evidence():
     assert "assignment-amendment" in text
     assert "## Correction" in text
     assert "check-run" in flat
-    assert "## Reason" in text or "assessment" in flat and "Reason" in text
+    assert "## Reason" in text or ("assessment" in flat and "Reason" in text)
     amendments = [
         inv
         for inv in extract_invocations(text)
@@ -84,7 +84,7 @@ def test_fix_task_depends_on_and_no_reopen_done():
     flat = _flat("execute-phase")
     assert "fix" in flat and "work-item" in flat
     assert "depends_on" in flat
-    assert "never reopen" in flat or "never transition" in flat and "`done`" in flat
+    assert "never reopen" in flat or ("never transition" in flat and "`done`" in flat)
     assert (
         "done` work-items are never" in flat
         or "never reopen `done`" in flat
@@ -108,7 +108,7 @@ def test_budget_defaults_overrides_and_exhaustion():
     flat = _flat("execute-phase")
     assert "2 re-dispatch" in flat or "2 redispatches" in flat or "default: 2" in flat
     assert "2×" in text or "2x" in flat or "2 ×" in flat or "time multiplier" in flat
-    assert "3 fix" in flat or "fix tasks" in flat and "3" in flat
+    assert "3 fix" in flat or ("fix tasks" in flat and "3" in flat)
     assert "run fact" in flat or "run-fact" in flat or "## Run facts" in text
     assert "retry_max_redispatches" in text
     assert "retry_time_multiplier" in text

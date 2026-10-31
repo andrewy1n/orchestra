@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
 from dashboard.backend.server.app import create_app
 from orchestra.canon.project import open_store
 

@@ -10,14 +10,13 @@ import sys
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient
-
 import helpers as h
 from conftest import REPO_ROOT
+from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 
 @pytest.fixture()

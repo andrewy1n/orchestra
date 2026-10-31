@@ -6,8 +6,8 @@ import os
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
-from typing import Sequence
 from xml.etree.ElementTree import Element
 
 

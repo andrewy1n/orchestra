@@ -8,9 +8,10 @@ these helpers are for the parent session only.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from orchestra.canon.git_backend import run_git
 

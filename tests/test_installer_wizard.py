@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from installer import wizard as wizard_module
-from installer.detect import detected_ids, detect_hosts, installed_ids
+from installer.detect import detect_hosts, detected_ids, installed_ids
 from installer.matrix import load_matrix
 from installer.model import InstallRequest
 from installer.wizard import (

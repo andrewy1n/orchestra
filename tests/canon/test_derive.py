@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from conftest import advance, make_task
+
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived, compute_inverse
-from conftest import advance, make_task
 
 
 def derived_of(project, record):

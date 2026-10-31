@@ -10,7 +10,7 @@ from pathlib import Path
 from conftest import REPO_ROOT, git, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend.landing import Landing, phase_landing  # noqa: E402
+from dashboard.backend.landing import Landing, phase_landing
 
 LANDING_BODY = """\
 ## Approach

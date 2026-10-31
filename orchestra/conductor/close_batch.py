@@ -38,16 +38,18 @@ is refused outright rather than silently written without one. Pass-only
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from orchestra.canon import record_payload
+from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
-from orchestra.canon.errors import StoreError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -143,10 +145,8 @@ def default_list_oracle_amendments(
     except StoreError:
         return []
     refs = {str(acceptance_id)}
-    try:
+    with contextlib.suppress(StoreError):
         refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
-    except StoreError:
-        pass
     matched: list[dict[str, Any]] = []
     for record in records:
         if not isinstance(record, dict):
@@ -885,7 +885,7 @@ def build_batch(
 def _read(path: str) -> str:
     if path == "-":
         return sys.stdin.read()
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         return fh.read()
 
 

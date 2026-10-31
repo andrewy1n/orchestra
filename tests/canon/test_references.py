@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 import pytest
+from conftest import make_task
 
 from orchestra.canon.validation import ValidationError
-from conftest import make_task
 
 
 def log(project, task="t", message="m", **extra):

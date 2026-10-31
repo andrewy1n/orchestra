@@ -5,7 +5,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from test_ci_workflow import ROOT, WEB_DIR, job, run_lines
 
 UI = ROOT / WEB_DIR

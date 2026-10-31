@@ -8,7 +8,7 @@ import pytest
 
 
 def test_reviewer_and_suite_import():
-    import orchestra.conductor.reviewer  # noqa: F401
+    import orchestra.conductor.reviewer
     import orchestra.conductor.suite  # noqa: F401
 
 

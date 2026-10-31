@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 import pytest
-
-from orchestra.canon.project import StoreBindingError, open_store
 from conftest import make_git_repo, write_config
+
 from orchestra import store
+from orchestra.canon.project import StoreBindingError, open_store
 
 
 def _meta(store: Path) -> Path:

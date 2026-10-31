@@ -12,13 +12,12 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
-from conftest import REPO_ROOT
-
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server import app as app_module  # noqa: E402
+from dashboard.backend.server import app as app_module
+from orchestra.canon.project import open_store
 
 ROOT = Path(__file__).resolve().parents[2]
 CI = ROOT / ".github" / "workflows" / "ci.yml"

@@ -44,7 +44,7 @@ def modules():
 
 
 def test_own_modules_exist(modules):
-    assert OWN <= set(modules)
+    assert set(modules) >= OWN
 
 
 def test_module_shape(modules):
@@ -98,7 +98,7 @@ def test_ref_targets_are_known_types(modules):
         for tname, t in mod["types"].items():
             for fname, field in t["fields"].items():
                 for target in _targets(field):
-                    ns, _, typ = target.partition(":")
+                    ns, _, _ = target.partition(":")
                     assert ns in NAMESPACES, f"{tname}.{fname} -> {target}"
                     if ns in modules:
                         assert target in known, f"{tname}.{fname} -> {target}"

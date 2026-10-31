@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import records, store
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -156,7 +156,7 @@ def _assignment_task(
     task = tasks_by_id.get(work_ref) or tasks_by_subject.get(work_ref)
     if task is None:
         phase, task_id = _phase_for_task(assignment["subject"], list(tasks_by_subject.values()))
-        return phase, task_id, assignment["subject"] if task_id else assignment["subject"]
+        return phase, task_id, assignment["subject"]
     return record_payload(task).get("phase") or None, task["id"], task["subject"]
 
 
@@ -305,9 +305,9 @@ def journal_scope(items: list[JournalItem], phase: str | None) -> list[JournalIt
         return list(items)
     scoped: list[JournalItem] = []
     for item in items:
-        if item.phase == phase:
-            scoped.append(item)
-        elif item.phase is None and item.open and item.record_type == "score:continuity-question":
+        if item.phase == phase or (
+            item.phase is None and item.open and item.record_type == "score:continuity-question"
+        ):
             scoped.append(item)
     return scoped
 

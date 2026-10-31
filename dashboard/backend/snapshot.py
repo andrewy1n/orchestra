@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import store
-from dashboard.backend.journal import load_journal, ordered as journal_ordered
+from dashboard.backend.journal import load_journal
+from dashboard.backend.journal import ordered as journal_ordered
 from dashboard.backend.phase import (
     MilestoneRow,
     PhaseRow,
@@ -34,7 +33,8 @@ from dashboard.backend.records import (
 )
 from dashboard.backend.store import change_token
 from dashboard.backend.task import TaskRow, _task_rows
-
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -165,7 +165,7 @@ def _list_all(
             return _list(target, record_type)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        return dict(zip(record_types, pool.map(load, record_types)))
+        return dict(zip(record_types, pool.map(load, record_types), strict=False))
 
 
 def _structured_phases(specs: list[dict[str, Any]]) -> set[tuple[str, str]]:

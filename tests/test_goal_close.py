@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 
-from orchestra.canon.project import open_store
-
 import helpers as h
+
 from orchestra import views
+from orchestra.canon.project import open_store
 
 
 def _effort(cli, defs, effort: str) -> tuple[dict, dict]:

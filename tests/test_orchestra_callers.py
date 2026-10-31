@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import importlib
 import json
 import os
@@ -421,7 +422,7 @@ def test_r5(tmp_path, monkeypatch):
     _spy(monkeypatch, "orchestra.tuner.oracle_red", "is_assertion_level_red", calls)
     _patch_tuner(monkeypatch, started)
     request, acceptance = _oracle_request()
-    try:
+    with contextlib.suppress(close_batch.CloseRefused):
         close_batch.build_batch(
             request,
             cwd=tmp_path,
@@ -429,8 +430,6 @@ def test_r5(tmp_path, monkeypatch):
             load_acceptance=lambda _acceptance_id: acceptance,
             list_oracle_amendments=lambda _acceptance_id: [],
         )
-    except Exception:
-        pass
     tuner_red = [cmd for cmd in started if "assertion-red" in cmd]
     assert calls, f"close_batch did not call is_assertion_level_red; aff starts={started!r}"
     assert not tuner_red, f"close_batch started aff for assertion-level red: {tuner_red!r}"

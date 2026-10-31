@@ -8,8 +8,8 @@ from collections.abc import Iterator, Mapping
 from typing import Any
 
 from orchestra.canon.derive import attach_derived_all
-from orchestra.canon.project import Project
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 
 Record = dict[str, Any]
 

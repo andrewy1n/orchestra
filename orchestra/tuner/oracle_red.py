@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 # Short-test-summary / inline failure reasons that are not assertion-level.
 _NON_ASSERTION_RE = re.compile(
@@ -28,12 +29,8 @@ def _normalize_nodes(failing_node_ids: Sequence[str] | None) -> list[str]:
 
 def _node_matches(reported: str, wanted: str) -> bool:
     """Match full node ids or collection ERROR paths (file without ``::``)."""
-    if reported == wanted:
-        return True
     # Collection errors report the module path; accept prefix of a node id.
-    if "::" not in reported and wanted.startswith(reported):
-        return True
-    return False
+    return reported == wanted or ("::" not in reported and wanted.startswith(reported))
 
 
 def _section_for_node(output: str, node: str) -> str:

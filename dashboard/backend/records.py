@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from datetime import datetime, timezone
 from typing import Any
 
-from orchestra.canon.project import Project
 from dashboard.backend import store
 from dashboard.backend.store import ModelError
-
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 SOFT_TYPES = frozenset(

@@ -14,17 +14,16 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient
-
 import helpers as h
 from conftest import REPO_ROOT
+from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from dashboard.backend.server.app import create_app  # noqa: E402
-from dashboard.backend import backlog as backlog_module  # noqa: E402
-from dashboard.backend import dismiss as dismiss_module  # noqa: E402
-from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
+from dashboard.backend import backlog as backlog_module
+from dashboard.backend import dismiss as dismiss_module
+from dashboard.backend import snapshot as snapshot_mod
+from dashboard.backend.server.app import create_app
+from orchestra.canon.project import open_store
 
 
 def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str) -> dict:
@@ -204,7 +203,7 @@ def _page_needs(payload: dict, kind: str) -> dict:
 
 def _assert_same_snapshot(payload: dict, snap: snapshot_mod.Snapshot) -> None:
     assert [view["effort"] for view in payload["efforts"]] == [view.effort for view in snap.efforts]
-    for raw, view in zip(payload["efforts"], snap.efforts):
+    for raw, view in zip(payload["efforts"], snap.efforts, strict=False):
         assert raw["goal"] == view.goal
         assert [(row["id"], row["subject"]) for row in raw["phases"]] == [
             (row.id, row.subject) for row in view.phases

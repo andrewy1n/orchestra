@@ -8,7 +8,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 CLAIM = "claim-widget"
 NODE = "tests/test_widget.py::test_widget"
 ORACLE_REL = "tests/test_widget.py"

@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from orchestra.canon.project import Project
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import Project
 from orchestra.canon.validation import ValidationError
 
 

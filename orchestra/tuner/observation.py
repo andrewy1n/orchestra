@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from orchestra.canon.project import Project, open_store
-
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
@@ -100,7 +100,7 @@ def maybe_record_observation(
             replay=replay,
             subject=subject,
         )
-    except Exception as exc:  # noqa: BLE001 — must not flip the technique exit
+    except Exception as exc:
         print(f"observation record skipped: {exc}", file=sys.stderr)
 
 
@@ -146,7 +146,7 @@ def maybe_record_verdict_observation(
     """Best-effort record; failures go to stderr and never raise."""
     try:
         record_verdict_observation(cwd, at=at, base=base, claim_ids=claim_ids, result=result)
-    except Exception as exc:  # noqa: BLE001 — must not flip judge exit
+    except Exception as exc:
         print(f"observation record skipped: {exc}", file=sys.stderr)
 
 

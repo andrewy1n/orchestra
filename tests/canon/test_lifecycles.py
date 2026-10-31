@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-
-from orchestra.canon.lifecycle import LIFECYCLES, terminal_success_state
-from orchestra.canon.errors import StoreError
-from orchestra.canon.validation import ValidationError
 from conftest import make_task
+
+from orchestra.canon.errors import StoreError
+from orchestra.canon.lifecycle import LIFECYCLES, terminal_success_state
+from orchestra.canon.validation import ValidationError
 
 PATHS = {
     "current": ("alpha:config", {"title": "c", "level": 1}),
@@ -115,9 +115,9 @@ def _route(name, state):
             if dest == "superseded" or dest in seen:
                 continue
             if dest == state:
-                return path + [dest]
+                return [*path, dest]
             seen.add(dest)
-            queue.append((dest, path + [dest]))
+            queue.append((dest, [*path, dest]))
     raise AssertionError(f"{state} unreachable")
 
 

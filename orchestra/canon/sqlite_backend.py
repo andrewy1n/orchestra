@@ -12,13 +12,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.git_backend import run_git
+from orchestra.canon.metadata import MetadataFiles
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import compute_revision, with_revision
-from orchestra.canon.git_backend import run_git
-from orchestra.canon.errors import StoreError, StaleWriteError
-from orchestra.canon.metadata import MetadataFiles
 
 
 def _decide_create(

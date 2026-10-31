@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from test_cli_packaging import cli_env, install_cli  # noqa: E402
+from test_cli_packaging import cli_env, install_cli
 
 
 def test_check_help_through_installed_entry_point(tmp_path):

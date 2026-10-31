@@ -9,7 +9,7 @@ import threading
 from pathlib import Path
 
 from orchestra.sessions.record_join import join
-from orchestra.sessions.record_reader import subprocess_runner, read_records
+from orchestra.sessions.record_reader import read_records, subprocess_runner
 from orchestra.sessions.session_fields import session_fields
 from orchestra.sessions.session_metrics import ReadStats, read_events
 from orchestra.sessions.session_tools import tool_metrics

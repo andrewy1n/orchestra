@@ -89,14 +89,14 @@ def test_create_examples_match_atomic_thin_shape():
 
     covered: set[str] = set()
     for payload in work_items:
-        assert REQUIRED_WORK_ITEM <= set(payload)
+        assert set(payload) >= REQUIRED_WORK_ITEM
         assert payload["requirements"]
         covered.update(payload["requirements"])
         assert "ready" not in payload and "wave" not in payload
 
     for inv in acceptances:
         payload = inv["payload"]
-        assert REQUIRED_ACCEPTANCE <= set(payload)
+        assert set(payload) >= REQUIRED_ACCEPTANCE
         assert payload["requirement"] in covered
         assert "," not in payload["requirement"]
         assert payload.get("criterion", "") == ""

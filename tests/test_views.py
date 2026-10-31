@@ -1,6 +1,6 @@
 import pytest
-
 from canon_support import create, make_project, seed_effort
+
 from orchestra import views
 
 

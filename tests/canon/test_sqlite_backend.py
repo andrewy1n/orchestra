@@ -9,9 +9,9 @@ from typing import Any
 import pytest
 
 from orchestra.canon.backend import open_backend
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.sqlite_backend import SqliteBackend
-from orchestra.canon.errors import StoreError
 
 
 @pytest.fixture

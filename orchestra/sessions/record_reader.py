@@ -8,8 +8,8 @@ import subprocess
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 
-from orchestra.canon.project import open_store
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import open_store
 
 DEFAULT_TYPES = (
     "score:acceptance",
