@@ -21,7 +21,12 @@ def export_ops(backend: Backend, out: TextIO) -> int:
         history[snapshot["record_type"], snapshot["id"]].append(snapshot)
     chains: list[tuple[str, str, list[StoredOp]]] = []
     for record_id, ops in backend.iter_chains():
-        record_type = next((op["record"]["record_type"] for op in ops if op["record"]), None)
+        record_type: str | None = None
+        for op in ops:
+            record = op.get("record")
+            if isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Legacy stores may contain truthy non-object record values.
+                record_type = record["record_type"]
+                break
         if record_type is None:
             raise StoreError(f"{record_id}: cannot determine chain record type")
         chains.append((record_type, record_id, ops))
