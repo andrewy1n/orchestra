@@ -76,23 +76,23 @@
       </Tabs.Root>
     {/if}
     {#if phase.phaseChrome}
-      <div class="phase-chrome" data-phase-chrome>
-        <div class="chips" data-detail-chips data-phase-chips>
+      <div class="flex flex-col gap-2 rounded-md border bg-muted p-3" data-phase-chrome>
+        <div class="flex flex-wrap gap-x-2 gap-y-1" data-detail-chips data-phase-chips>
           {#each phase.phaseChrome.chips as chip (chip.label)}
-            <Badge variant={chipVariant(chip.tone)}>{chip.label}</Badge>
+            <Badge class="h-6" variant={chipVariant(chip.tone)}>{chip.label}</Badge>
           {/each}
         </div>
-        <p class="phase-next" data-phase-next title={phase.phaseChrome.nextAction}>
-          <span class="phase-next-label">Next</span>
+        <p class="truncate text-sm" data-phase-next title={phase.phaseChrome.nextAction}>
+          <span class="mr-1.5 font-semibold">Next</span>
           {phase.phaseChrome.nextAction}
         </p>
         {#if phase.phaseChrome.requirements.length}
-          <div class="phase-reqs" data-phase-reqs>
+          <div class="flex flex-wrap gap-1.5" data-phase-reqs>
             {#each phase.phaseChrome.requirements as req (req.id)}
               <Button
                 variant="outline"
                 size="sm"
-                class={reqTone(req.status)}
+                class={cn("h-6", reqTone(req.status))}
                 data-phase-req={req.id}
                 title={req.text || req.id}
                 onclick={() => openRequirement(req.id)}
@@ -103,7 +103,7 @@
             {/each}
           </div>
         {:else}
-          <p class="phase-reqs-empty" data-phase-reqs-empty>No requirements yet</p>
+          <p class="text-xs text-muted-foreground" data-phase-reqs-empty>No requirements yet</p>
         {/if}
       </div>
     {/if}
@@ -257,13 +257,15 @@
       </div>
     {/if}
     {#each phase.view.sections as section, index (section.title + index)}
-      {#if section.title}
-        <div class="section-title" data-section-card>{section.title}</div>
-      {/if}
-      <div
-        class="md section-card"
-        data-detail-section={section.title || "body"}
-      >{@html md(section.body, phase.linkCtx)}</div>
+      <section class="flex max-w-[72ch] flex-col gap-2 text-sm">
+        {#if section.title}
+          <div class="font-semibold text-foreground" data-section-card>{section.title}</div>
+        {/if}
+        <div
+          class="md rounded-md border bg-card px-3 py-2.5"
+          data-detail-section={section.title || "body"}
+        >{@html md(section.body, phase.linkCtx)}</div>
+      </section>
     {/each}
     <pre data-detail-payload class="sr-only">{phase.view.probe}</pre>
   {/if}

@@ -95,6 +95,13 @@ export function renderMarkdown(src: string, ctx?: RefContext | null): string {
 			parts.push(`<${tag}>${esc(heading[2])}</${tag}>`);
 			continue;
 		}
+		if (/^R\d+:/.test(line)) {
+			flushParagraph();
+			openList("ul");
+			closeItem();
+			item.push(line.trim());
+			continue;
+		}
 		const bullet = /^[-*]\s+(.+)$/.exec(line);
 		if (bullet) {
 			flushParagraph();

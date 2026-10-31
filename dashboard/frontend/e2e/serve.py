@@ -20,6 +20,21 @@ TASK = "e2e-task"
 AREA = "e2e-area"
 PHASE_SECTIONS = ("Problem", "Approach", "Exit criteria")
 AREA_SECTIONS = ("Scope",)
+SPEC_BODY = "\n\n".join(
+    [
+        "## Requirements\n\nR1: E2E first requirement\nR2: E2E second requirement",
+        *(
+            f"## {name}\n\nE2E {name}."
+            for name in (
+                "Acceptance criteria",
+                "Constraints",
+                "Non-goals",
+                "Invariants",
+                "Assumptions",
+            )
+        ),
+    ]
+)
 
 
 def free_port() -> int:
@@ -49,7 +64,11 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
     canon = [sys.executable, "-m", "orchestra.canon", "--root", str(store_root)]
 
     def create(
-        record_type: str, subject: str, payload: dict[str, object], sections: tuple[str, ...] = ()
+        record_type: str,
+        subject: str,
+        payload: dict[str, object],
+        sections: tuple[str, ...] = (),
+        body: str = "",
     ) -> None:
         command = [
             *canon,
@@ -63,6 +82,7 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
         ]
         if sections:
             body = "\n\n".join(f"## {name}\n\nE2E {name}." for name in sections)
+        if body:
             command.extend(["--body", body])
         run(command, REPO_ROOT, env)
 
@@ -72,6 +92,12 @@ def seed(store_root: Path, env: dict[str, str]) -> None:
     create("composer:placement", EFFORT, {"area": AREA})
     create(
         "score:phase", PHASE, {"title": "E2E phase", "ordinal": 1, "effort": EFFORT}, PHASE_SECTIONS
+    )
+    create(
+        "score:specification",
+        PHASE,
+        {"phase": PHASE, "effort": EFFORT, "requirements": ["R1", "R2"], "weight": "light"},
+        body=SPEC_BODY,
     )
     create(
         "score:work-item",
