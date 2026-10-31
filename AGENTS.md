@@ -47,10 +47,14 @@ their response. They do not call `canon`.
 - `main` is protected. Never push to it. Push a branch and open a PR.
 - A PR merges only when all CI checks pass. Admins follow the same rule.
 - Merge with `gh pr merge --squash`. `main` requires linear history.
-- Commit store changes on the same branch as the work they record.
+- Canon records live in the shared SQLite database at
+  `~/.canon/<repo-name>/canon.db`. Do not stage or commit database changes.
+- Commit changes to versioned store metadata such as `.canon/config.json`,
+  `.canon/store-binding.json`, and `.canon/schemas/` with the code they affect.
 - Run `canon validate` before you push.
-- Run `canon` from the primary checkout root. A worktree can hold a stale
-  `.canon/` store.
+- Run `canon` from any worktree in this repository. The global binding points
+  each worktree to the same database.
+- Run `canon backup` to create a retained database backup before maintenance.
 - Ask the user before you merge, unless an active constraint says otherwise.
 
 ## Testing
