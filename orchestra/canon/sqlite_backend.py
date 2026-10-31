@@ -401,6 +401,13 @@ class SqliteBackend:
                 raise StoreError(f"record already exists: {record['id']}")
             self._materialize(connection, record)
 
+    def is_empty(self) -> bool:
+        with self._reader() as connection:
+            return not any(
+                connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+                for table in ("ops", "records", "revisions")
+            )
+
     def check_integrity(self, errors: list[str], *, immutability: bool = True) -> None:
         with self._reader() as connection:
             for row in connection.execute("PRAGMA integrity_check"):

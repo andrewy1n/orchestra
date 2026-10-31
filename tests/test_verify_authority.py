@@ -8,6 +8,7 @@ assessments, not invented pass/fail.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -195,7 +196,8 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
 
-def test_close_batch_still_creates_manual_check_runs():
+def test_close_batch_still_creates_manual_check_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
     ops = close_batch.build_batch(
         {
             "subject": "task-1",
