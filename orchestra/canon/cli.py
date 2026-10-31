@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived
 from orchestra.canon.git_backend import GitContextError, assert_git_context
 from orchestra.canon.merge import MergeError, merge_store, parse_namespace_map, parse_subject_renames
@@ -23,15 +24,15 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.store import (
+from orchestra.canon.errors import (
     PartialStoreError,
     StaleWriteError,
-    Store,
     StoreError,
     StoreLockError,
     StoreNotInitializedError,
 )
 from orchestra.canon.sync import add_namespace, init_store, sync_store
+from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.validation import ValidationError
 
 EXIT_OK = 0
@@ -42,7 +43,7 @@ EXIT_VALIDATION = 4
 
 _CURRENT_REVISION = "@current"
 MUTATING_COMMANDS = frozenset(
-    {"create", "update", "supersede", "correct", "apply", "init", "merge"}
+    {"create", "update", "supersede", "correct", "apply", "init", "merge", "import"}
 )
 MUTATING_SCHEMA_COMMANDS = frozenset({"sync", "add"})
 _TRANSITION_CODES = frozenset({"invalid_transition", "use_supersede", "append_only"})
@@ -265,7 +266,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 raise
             store_path = root / ".canon"
     namespaces = [ns.strip() for ns in (args.schemas or "").split(",") if ns.strip()]
-    result = init_store(Store(store_path), namespaces)
+    result = init_store(open_backend(store_path), namespaces)
     _emit_json(result)
     return EXIT_OK
 
@@ -491,16 +492,40 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return EXIT_VALIDATION if errors else EXIT_OK
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    project = _command_project(args)
+    backend = open_backend(project.store_path)
+    path = backend.backup(args.keep)
+    _emit_json({"backup": str(path)})
+    return EXIT_OK
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    backend = open_backend(_command_project(args).store_path)
+    with Path(args.out).open("w", encoding="utf-8", newline="\n") as out:
+        count = export_ops(backend, out)
+    _emit_json({"ops": count})
+    return EXIT_OK
+
+
+def cmd_import(args: argparse.Namespace) -> int:
+    backend = open_backend(_command_project(args).store_path)
+    with Path(args.source).open(encoding="utf-8") as src:
+        count = import_ops(backend, src)
+    _emit_json({"ops": count})
+    return EXIT_OK
+
+
 def cmd_schemas_sync(args: argparse.Namespace) -> int:
     project = _command_project(args)
-    result = sync_store(Store(project.store_path))
+    result = sync_store(open_backend(project.store_path))
     _emit_json(result)
     return EXIT_VALIDATION if result["errors"] else EXIT_OK
 
 
 def cmd_schemas_add(args: argparse.Namespace) -> int:
     project = _command_project(args)
-    result = add_namespace(Store(project.store_path), args.namespace)
+    result = add_namespace(open_backend(project.store_path), args.namespace)
     _emit_json(result)
     return EXIT_VALIDATION if result["errors"] else EXIT_OK
 
@@ -509,7 +534,7 @@ def cmd_merge(args: argparse.Namespace) -> int:
     project = _command_project(args)
     try:
         summary = merge_store(
-            Store(project.store_path),
+            open_backend(project.store_path),
             project.schemas(),
             args.source,
             namespaces=parse_namespace_map(args.namespace),
@@ -751,6 +776,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="json prints {status, errors}; text prints one error per line",
     )
     p_validate.set_defaults(func=cmd_validate)
+
+    p_backup = sub.add_parser("backup", help="Back up a SQLite store")
+    p_backup.add_argument("--keep", type=int, default=14)
+    p_backup.set_defaults(func=cmd_backup)
+
+    p_export = sub.add_parser("export", help="Export deterministic operation JSONL")
+    p_export.add_argument("--out", required=True, help="Destination JSONL file")
+    p_export.add_argument("--store", default=argparse.SUPPRESS, help="Store root path")
+    p_export.set_defaults(func=cmd_export)
+
+    p_import = sub.add_parser("import", help="Import operation JSONL into an empty SQLite store")
+    p_import.add_argument("source", help="Source JSONL file")
+    p_import.add_argument("--store", default=argparse.SUPPRESS, help="Store root path")
+    p_import.set_defaults(func=cmd_import)
 
     p_schemas = sub.add_parser("schemas", help="Manage the schema modules of a store")
     schemas_sub = p_schemas.add_subparsers(dest="schemas_command", required=True)

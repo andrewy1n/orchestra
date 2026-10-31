@@ -253,6 +253,7 @@ def test_mutating_commands_are_refused_in_read_only_mode(cli, repo, project, mon
         ("schemas", "sync"),
         ("schemas", "add", "alpha"),
         ("merge", "somewhere"),
+        ("import", "somewhere"),
     ]
     for command in commands:
         flagged = cli("--read-only", *command, stdin="")
@@ -271,8 +272,8 @@ def test_the_declared_mutating_commands_cover_every_writing_subcommand():
     parser = canon_cli.build_parser()
     sub = next(a for a in parser._actions if a.dest == "command")
     commands = set(sub.choices)
-    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "merge"}
-    assert canon_cli.MUTATING_COMMANDS == {"init", "create", "update", "supersede", "correct", "apply", "merge"}
+    assert commands == {"init", "create", "update", "supersede", "correct", "apply", "get", "list", "validate", "schemas", "merge", "backup", "import", "export"}
+    assert canon_cli.MUTATING_COMMANDS == {"init", "create", "update", "supersede", "correct", "apply", "merge", "import"}
 
 
 def test_commands_report_a_missing_store(cli, repo):
@@ -282,8 +283,10 @@ def test_commands_report_a_missing_store(cli, repo):
 
 
 def test_store_flag_selects_a_store(cli, repo, tmp_path):
+    from orchestra.canon.backend import open_backend
+
     other = tmp_path / "elsewhere"
     assert cli("--store", str(other), "init", "--schemas", "alpha").code == 0
     created = cli("--store", str(other), "create", "--type", "alpha:task", "--subject", "t", "--set", 'title="x"')
     assert created.code == 0
-    assert (other / "records" / "alpha__task").is_dir()
+    assert [record["subject"] for record in open_backend(other).list_records("alpha:task")] == ["t"]

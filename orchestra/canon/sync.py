@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from orchestra.canon.backend import Backend
 from orchestra.canon.config import new_config
 from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
 from orchestra.canon.modules import InstalledModule, discover
-from orchestra.canon.schema import SchemaError, SchemaSet, load_module, major
-from orchestra.canon.store import Store, StoreError
+from orchestra.canon.schema import SchemaError, SchemaSet, major, parse_module
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 
@@ -23,40 +24,41 @@ def _need(installed: dict[str, InstalledModule], namespace: str) -> InstalledMod
 
 
 def init_store(
-    store: Store,
+    store: Backend,
     namespaces: list[str],
     installed: dict[str, InstalledModule] | None = None,
 ) -> dict[str, Any]:
     installed = discover() if installed is None else installed
     modules = [_need(installed, ns) for ns in namespaces]
-    with store.write_lock():
-        if store.config_path().is_file():
+    with store.transaction():
+        if store.has_config():
             config = store.load_config()
             missing = [ns for ns in namespaces if ns not in config["schemas"]]
             if missing:
                 raise StoreError(
                     f"store already initialized without {missing}; run `canon schemas add`"
                 )
-            return {"status": "already_initialized", "store": str(store.root)}
+            return {"status": "already_initialized", "store": str(store)}
         config = new_config({m.namespace: m.version for m in modules})
+        config["backend"] = "sqlite"
         store.init(config, {m.namespace: m.text for m in modules})
-    return {"status": "initialized", "store": str(store.root), "schemas": config["schemas"]}
+    return {"status": "initialized", "store": str(store), "schemas": config["schemas"]}
 
 
 def sync_store(
-    store: Store, installed: dict[str, InstalledModule] | None = None
+    store: Backend, installed: dict[str, InstalledModule] | None = None
 ) -> dict[str, Any]:
     installed = discover() if installed is None else installed
-    with store.write_lock():
+    with store.transaction():
         return _sync_locked(store, installed)
 
 
 def add_namespace(
-    store: Store, namespace: str, installed: dict[str, InstalledModule] | None = None
+    store: Backend, namespace: str, installed: dict[str, InstalledModule] | None = None
 ) -> dict[str, Any]:
     installed = discover() if installed is None else installed
     module = _need(installed, namespace)
-    with store.write_lock():
+    with store.transaction():
         config = store.load_config()
         if namespace not in config["schemas"]:
             config["schemas"][namespace] = module.version
@@ -64,16 +66,13 @@ def add_namespace(
         return _sync_locked(store, installed)
 
 
-def _sync_locked(store: Store, installed: dict[str, InstalledModule]) -> dict[str, Any]:
+def _sync_locked(store: Backend, installed: dict[str, InstalledModule]) -> dict[str, Any]:
     config = store.load_config()
     plan: list[tuple[str, InstalledModule, dict[str, Any] | None, list[dict[str, Any]]]] = []
     for namespace in config["schemas"]:
         module = _need(installed, namespace)
-        snapshot = (
-            load_module(store.snapshot_path(namespace))
-            if store.snapshot_path(namespace).is_file()
-            else None
-        )
+        text = store.read_snapshot(namespace)
+        snapshot = parse_module(text, f"schema snapshot {namespace!r}") if text is not None else None
         steps: list[dict[str, Any]] = []
         if snapshot is not None:
             if version_tuple(module.version) < version_tuple(snapshot["version"]):
@@ -91,9 +90,7 @@ def _sync_locked(store: Store, installed: dict[str, InstalledModule]) -> dict[st
     for namespace, module, snapshot, steps in plan:
         if steps:
             migrated += apply_steps(store, steps)
-        old_text = (
-            store.snapshot_path(namespace).read_text(encoding="utf-8") if snapshot else None
-        )
+        old_text = store.read_snapshot(namespace) if snapshot else None
         if old_text != module.text:
             store.write_snapshot(namespace, module.text)
         if snapshot is None:
@@ -111,8 +108,8 @@ def _sync_locked(store: Store, installed: dict[str, InstalledModule]) -> dict[st
         }
         config["schemas"][namespace] = module.version
     store.write_config(config)
-    schemas = SchemaSet.load(store.root, config)
-    errors = validate_store(schemas, store_root=store.root, immutability=not migrated)
+    schemas = SchemaSet.load(store, config)
+    errors = validate_store(schemas, backend=store, immutability=not migrated)
     return {
         "status": "synced" if not errors else "invalid",
         "schemas": report,

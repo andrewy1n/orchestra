@@ -13,7 +13,7 @@ from orchestra import status_cli, view_cli
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.conductor import suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 
@@ -790,7 +790,7 @@ def _cmd_place(args: argparse.Namespace) -> int:
 
 
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
-    from orchestra.canon.store import Store
+    from orchestra.canon.backend import open_backend
     from orchestra.canon.sync import init_store
 
     root = _git_root(_cwd(args))
@@ -804,8 +804,7 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
         return 2
     if project is None:
         try:
-            artifacts.mkdir(parents=True, exist_ok=True)
-            init_store(Store(artifacts), list(STORE_SCHEMAS))
+            init_store(open_backend(artifacts), list(STORE_SCHEMAS))
             project = open_store(root)
         except (OSError, StoreError, StoreBindingError) as exc:
             print(f"orchestra store ensure: {exc}", file=sys.stderr)
@@ -814,7 +813,7 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
         "root": str(root),
         "artifacts": str(artifacts),
         "store": str(project.store_path),
-        "store_ready": (project.store_path / "config.json").is_file(),
+        "store_ready": True,
     }
     if args.json:
         _print_json(payload)

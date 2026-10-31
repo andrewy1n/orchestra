@@ -1,0 +1,18 @@
+{
+  "claims": [],
+  "amendments": [],
+  "runner": [
+    "uv",
+    "run",
+    "python",
+    "-m",
+    "pytest",
+    "-p",
+    "no:rerunfailures",
+    "--confcutdir=tests/canon",
+    "-o",
+    "junit_family=xunit1",
+    "{tests}",
+    "--junitxml={report}"
+  ]
+}

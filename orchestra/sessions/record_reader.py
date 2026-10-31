@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 
 from orchestra.canon.project import open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 DEFAULT_TYPES = (
     "score:acceptance",

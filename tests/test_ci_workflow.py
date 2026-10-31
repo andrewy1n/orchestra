@@ -146,8 +146,8 @@ def test_r10_checks_runs_plugin_name_check():
     )
 
 
-def test_r11_checks_runs_canon_validate():
-    assert any("canon validate" in line for line in run_lines("checks"))
+def test_r11_ci_does_not_read_or_validate_the_live_store():
+    assert not any("canon validate" in line for line in all_run_lines())
 
 
 def test_r12_checks_runs_ruff_check_with_pinned_version():

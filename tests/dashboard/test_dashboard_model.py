@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -13,8 +15,7 @@ import helpers as h
 from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
-from orchestra.canon.project import open_store  # noqa: E402
-from orchestra.canon.store import Store  # noqa: E402
+from orchestra.canon.project import Project, open_store  # noqa: E402
 from dashboard.backend import phase as phase_mod  # noqa: E402
 from dashboard.backend import records  # noqa: E402
 from dashboard.backend import snapshot as snapshot_mod  # noqa: E402
@@ -365,16 +366,19 @@ def test_load_snapshot_walks_the_store_once(store, cli, defs, monkeypatch):
     assert len(walks) == 1
 
 
-def test_change_token_stats_type_directories_not_records(store, cli, defs, monkeypatch):
-    _goal(cli, defs, "alpha")
-    for index in range(5):
-        _work_item(cli, defs, "alpha", f"a-task-{index}", "a-phase")
+def test_change_token_delegates_to_project(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     target = _target(store)
-    stats = []
-    real = os.stat
-    monkeypatch.setattr(os, "stat", lambda *a, **k: stats.append(a) or real(*a, **k))
-    snapshot_mod.change_token(target)
-    assert len(stats) <= len(list((target.store_path / "records").iterdir()))
+    calls: list[Project] = []
+
+    def token(project: Project) -> str:
+        calls.append(project)
+        return "opaque-backend-token"
+
+    monkeypatch.setattr(Project, "change_token", token)
+    assert snapshot_mod.change_token(target) == "opaque-backend-token"
+    assert calls == [target]
 
 
 def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
@@ -382,10 +386,38 @@ def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
     _work_item(cli, defs, "alpha", "a-task", "a-phase")
     backend_store._catalog_cache.clear()
     reads = []
-    real = Store.iter_records
-    monkeypatch.setattr(Store, "iter_records", lambda self, *a: reads.append(a) or real(self, *a))
+    real = Project.records
+    monkeypatch.setattr(Project, "records", lambda self: reads.append(self) or real(self))
     backend_store._catalog(_target(store))
     assert len(reads) == 1
+
+
+def test_catalog_reuses_rows_until_token_changes(
+    store: Path,
+    cli: Callable[..., Any],
+    defs: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _goal(cli, defs, "alpha")
+    item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
+    target = _target(store)
+    backend_store._catalog_cache.clear()
+    reads: list[Project] = []
+    real = Project.records
+
+    def records(project: Project) -> list[dict[str, Any]]:
+        reads.append(project)
+        return real(project)
+
+    monkeypatch.setattr(Project, "records", records)
+    before = backend_store._catalog(target)
+    assert backend_store._catalog(target) is before
+    assert reads == [target]
+    h.transition(cli, "score:work-item", item, "in_progress")
+    after = backend_store._catalog(target)
+    assert next(row for row in after if row["id"] == item["id"])["lifecycle_state"] == "in_progress"
+    assert next(row for row in before if row["id"] == item["id"])["lifecycle_state"] == "planned"
+    assert reads == [target, target]
 
 
 def test_update_to_an_existing_record_changes_the_token(store, cli, defs):

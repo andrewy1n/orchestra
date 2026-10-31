@@ -8,12 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
+from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
-from orchestra.canon.store import Store, StoreError, StaleWriteError
+from orchestra.canon.errors import StoreError, StaleWriteError
 from orchestra.canon.validation import (
     ValidationError,
     check_transition,
@@ -58,6 +59,14 @@ class Project:
     store_path: Path
     binding: Binding
 
+    def config(self) -> dict[str, Any]:
+        """Return the current store configuration."""
+        return open_backend(self.store_path).load_config()
+
+    def change_token(self) -> str:
+        """Return an opaque token that changes when stored records change."""
+        return open_backend(self.store_path).change_token()
+
     def schemas(self) -> SchemaSet:
         return self._session()[1]
 
@@ -96,7 +105,7 @@ class Project:
     def validate(self) -> list[str]:
         """Return every validation error in the store."""
         store, schemas = self._session()
-        return validate_store(schemas, store_root=store.root)
+        return validate_store(schemas, backend=store)
 
     def create(
         self,
@@ -110,16 +119,17 @@ class Project:
     ) -> dict[str, Any]:
         """Write one record and return the stored record, including id and revision."""
         store, schemas = self._session()
-        return _create_record(
-            store,
-            schemas,
-            record_type=record_type,
-            subject=subject,
-            payload=payload,
-            body=body,
-            time=time,
-            provenance=provenance,
-        )
+        with store.transaction():
+            return _create_record(
+                store,
+                schemas,
+                record_type=record_type,
+                subject=subject,
+                payload=payload,
+                body=body,
+                time=time,
+                provenance=provenance,
+            )
 
     def update(
         self,
@@ -141,7 +151,8 @@ class Project:
             "body": body,
             "expected_revision": expected_revision,
         }
-        return _update_record(store, schemas, op)
+        with store.transaction():
+            return _update_record(store, schemas, op)
 
     def supersede(
         self,
@@ -161,7 +172,8 @@ class Project:
             "body": body,
             "expected_revision": expected_revision,
         }
-        return _supersede_record(store, schemas, op)
+        with store.transaction():
+            return _supersede_record(store, schemas, op)
 
     def correct(
         self,
@@ -183,7 +195,8 @@ class Project:
             "subject": subject,
             "expected_revision": expected_revision,
         }
-        return _correct_record(store, schemas, op)
+        with store.transaction():
+            return _correct_record(store, schemas, op)
 
     def apply(self, operations: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Write each operation and return each result.
@@ -195,7 +208,8 @@ class Project:
         results: list[dict[str, Any]] = []
         for index, op in enumerate(operations, start=1):
             try:
-                result = _apply_operation(store, schemas, op)
+                with store.transaction():
+                    result = _apply_operation(store, schemas, op)
             except (StoreError, ValidationError) as exc:
                 verb = op.get("op") if isinstance(op, dict) else None
                 result = {
@@ -208,10 +222,10 @@ class Project:
             results.append(result)
         return results
 
-    def _session(self) -> tuple[Store, SchemaSet]:
-        store = Store(self.store_path)
+    def _session(self) -> tuple[Backend, SchemaSet]:
+        store = open_backend(self.store_path)
         config = store.load_config()
-        return store, SchemaSet.load(store.root, config)
+        return store, SchemaSet.load(store, config)
 
 
 def open_store(directory: str | Path, *, store: str | Path | None = None) -> Project:
@@ -228,6 +242,14 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
     bound = _binding_file(root)
     if bound is not None:
         path, kind = bound
+        metadata = root / ".canon"
+        if kind == "global" and _has_config(metadata):
+            try:
+                config = open_backend(metadata, {}).load_config()
+            except StoreError:
+                config = {}
+            if config.get("backend") == "sqlite":
+                return _open(root, metadata, Binding(kind, str(path)))
         return _open(root, _place(root, kind), Binding(kind, str(path)))
 
     local = root / ".canon"
@@ -239,7 +261,7 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
         return _open(root, home, Binding("global", "default"))
 
     raise StoreBindingError(
-        f"No artifact store for {root}: neither {local / 'config.json'} nor {home / 'config.json'} exists"
+        f"No artifact store for {root}: neither {local} nor {home} has config.json"
     )
 
 
@@ -280,7 +302,7 @@ def _location(root: Path, store: Path) -> Location | None:
 
 
 def _has_config(store: Path) -> bool:
-    return (store / "config.json").is_file()
+    return open_backend(store, {}).has_config()
 
 
 def _binding_file(root: Path) -> tuple[Path, Location] | None:
@@ -330,7 +352,7 @@ _OP_KEYS = {
 
 
 def _find_record_by_id(
-    store: Store, schemas: SchemaSet, record_id: str
+    store: Backend, schemas: SchemaSet, record_id: str
 ) -> dict[str, Any] | None:
     for record_type in schemas.types:
         if store.record_exists(record_type, record_id):
@@ -339,7 +361,7 @@ def _find_record_by_id(
 
 
 def _read_record(
-    store: Store, schemas: SchemaSet, record_id: str, type_arg: str | None
+    store: Backend, schemas: SchemaSet, record_id: str, type_arg: str | None
 ) -> dict[str, Any]:
     if type_arg is None:
         found = _find_record_by_id(store, schemas, record_id)
@@ -376,13 +398,13 @@ def _body_text(body: str | None) -> str:
     return body
 
 
-def _persist_new(store: Store, type_def: TypeDef, record: dict[str, Any]) -> dict[str, Any]:
+def _persist_new(store: Backend, type_def: TypeDef, record: dict[str, Any]) -> dict[str, Any]:
     stored = store.create_record(record)
     if type_def.lifecycle.appends_only:
         try:
             store.archive_history(stored)
         except Exception:
-            store.delete_record_file(stored["record_type"], stored["id"])
+            store.delete_record(stored["record_type"], stored["id"])
             raise
     return stored
 
@@ -399,7 +421,7 @@ def _require_one_active(type_def: TypeDef, index: RecordIndex, record: dict[str,
 
 
 def _create_record(
-    store: Store,
+    store: Backend,
     schemas: SchemaSet,
     *,
     record_type: str,
@@ -429,7 +451,7 @@ def _create_record(
 
 
 def _read_for_update(
-    store: Store, schemas: SchemaSet, op: dict[str, Any], *, verb: str
+    store: Backend, schemas: SchemaSet, op: dict[str, Any], *, verb: str
 ) -> dict[str, Any]:
     record_id = op.get("id")
     if not isinstance(record_id, str) or not record_id:
@@ -444,7 +466,7 @@ def _expected_revision(op: dict[str, Any], old: dict[str, Any]) -> str | None:
     return raw
 
 
-def _update_record(store: Store, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _update_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
     old = _read_for_update(store, schemas, op, verb="update")
     type_def = schemas.types[old["record_type"]]
     src = old["lifecycle_state"]
@@ -480,7 +502,7 @@ def _successor_payload(op: dict[str, Any], old: dict[str, Any]) -> dict[str, Any
     return {**(old.get("payload") or {}), **_payload_object(op.get("payload"))}
 
 
-def _supersede_record(store: Store, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _supersede_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
     old = _read_for_update(store, schemas, op, verb="supersede")
     type_def = schemas.types[old["record_type"]]
     reject_event_mutation(type_def)
@@ -510,7 +532,7 @@ def _supersede_record(store: Store, schemas: SchemaSet, op: dict[str, Any]) -> d
     return {"ok": True, "op": "supersede", "record": stored, "predecessor": predecessor}
 
 
-def _correct_record(store: Store, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
+def _correct_record(store: Backend, schemas: SchemaSet, op: dict[str, Any]) -> dict[str, Any]:
     old = _read_for_update(store, schemas, op, verb="correct")
     if "expected_revision" in op and op["expected_revision"] is not None:
         expected = _expected_revision(op, old)
@@ -539,7 +561,7 @@ def _correct_record(store: Store, schemas: SchemaSet, op: dict[str, Any]) -> dic
     return {"ok": True, "op": "correct", "record": stored, "predecessor": old}
 
 
-def _apply_operation(store: Store, schemas: SchemaSet, op: Any) -> dict[str, Any]:
+def _apply_operation(store: Backend, schemas: SchemaSet, op: Any) -> dict[str, Any]:
     if not isinstance(op, dict):
         raise StoreError("operation must be an object")
     verb = op.get("op")

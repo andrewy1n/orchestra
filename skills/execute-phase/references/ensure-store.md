@@ -1,24 +1,30 @@
 # Ensure the current project has an orchestra store
 
 This plugin is installed once. Do **not** copy skills, rules, or this
-repo into the work project. The store is created in the **current
-working tree** the first time `init`, `plan-phase`, or `engage` needs
-records.
+repo into the work project. Store selection comes from the versioned
+`.canon/config.json` and `.canon/store-binding.json`. In this repository,
+records live in the shared SQLite database outside the worktree. Planning
+commands opened from any worktree use that same database.
 
 Requires `canon` and `orchestra` on PATH. Call both by name. Never
 resolve a checkout path or a plugin root to run them.
 
 ## Which store
 
-Dashboard and `orchestra store` resolve **one** store: `local`
-(`<repo>/.canon`) or `global` (`~/.canon/<repo-name>`). See
-the README (store binding). Skills that shell out to `canon` should
-use the resolved store — pass `--store` explicitly, or call through
-`orchestra store run -- <args>` — so a personal shell function that
-forces `--store ~/.canon/$proj` cannot redirect writes. For a new
-work repo, `init` creates the **local** store under
-`<repo>/.canon`; pin it with `.canon/store-binding.json`
-`{"store":"local"}` when you want that choice shared across clones.
+Dashboard and `orchestra store` resolve one SQLite database for this
+repository under `~/.canon/<repo-name>/`. The tracked
+`.canon/store-binding.json` selects `{"store":"global"}`, so every
+worktree uses the same records. `.canon/config.json` selects the SQLite
+backend, and `.canon/schemas/` keeps the schema snapshots used for
+validation.
+
+Run `canon` from any worktree in this repository. Do not pass a checkout
+path or a plugin path to select the database. Use `orchestra store path`
+to inspect the resolved location.
+
+Run `canon backup` to create a retained backup in the repository's
+`~/.canon/<repo-name>/backups/` directory before maintenance. SessionStart checks
+the newest backup and creates one when it is older than 24 hours.
 
 ## Runtime commands
 
@@ -100,27 +106,12 @@ The phase suite policy lives in `.canon/config.json` under
 Read it with `orchestra suite policy`. Do not waive it. A human
 changes it in `config.json`.
 
-## Committing store writes
+## Store records and commits
 
-`validate` accepts an uncommitted record rewrite when the record matches
-its own op log, so an `update`, `supersede`, or `close` batch does not
-have to be committed before validating or before the Stop hook runs.
-
-Still commit store writes as part of the work they belong to — the
-record diff is what shows a reader what changed and why. The subject
-is `type(scope): summary`, where type is `feat`, `fix`, `docs`,
-`refactor`, `test`, or `chore`, and the body is one or two sentences
-on why:
-
-```bash
-git add .canon && git commit -m "$(cat <<'EOF'
-chore(records): <what changed>
-
-Commit the store write so a reader can see what changed and why.
-
-EOF
-)"
-```
+Records are stored in the SQLite database outside the Git worktree.
+Database writes are not Git changes and must not be staged or committed.
+The config, binding, and schema snapshots under `.canon/` are versioned
+metadata and should be committed with code changes when they change.
 
 A record edited by hand, outside the runtime, fails validation:
 

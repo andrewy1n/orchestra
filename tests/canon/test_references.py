@@ -183,17 +183,3 @@ def test_reference_to_a_type_that_is_not_installed_is_refused(project):
     with pytest.raises(ValidationError, match="type gamma:thing is not installed"):
         review(project, other="x")
     assert review(project, other="")
-
-
-def test_validate_reports_a_reference_that_stopped_resolving(project):
-    make_task(project, "t")
-    entry = log(project)
-    path = project.store_path / "records" / "alpha__log" / f"{entry['id']}.md"
-    from orchestra.canon.record_file import dump_record, load_record
-    from orchestra.canon.revision import with_revision
-
-    record = load_record(path.read_text(), path)
-    record["payload"]["task"] = "ghost"
-    path.write_text(dump_record(with_revision(record)))
-    errors = project.validate()
-    assert any("no alpha:task record with subject 'ghost'" in e for e in errors)

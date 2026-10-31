@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestra.canon.record_file import prepare_record
+from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.store import Store
+from orchestra.canon.backend import Backend
 
 
 def migration_path(module: dict[str, Any], old_major: int, new_major: int) -> list[dict[str, Any]]:
@@ -57,36 +57,24 @@ def _changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
     )
 
 
-def apply_steps(store: Store, steps: list[dict[str, Any]]) -> int:
+def apply_steps(store: Backend, steps: list[dict[str, Any]]) -> int:
     """Rewrite every record and history snapshot the steps touch. Returns the live record count."""
-    for path, snapshot in list(store.iter_history()):
+    for snapshot in list(store.read_history()):
         moved = transform(snapshot, steps)
         if not _changed(snapshot, moved):
             continue
         moved = with_revision(prepare_record(moved))
         store.archive_history(moved)
-        path.unlink()
-        _prune_empty(path.parent, store.history_dir)
+        store.delete_history_snapshot(snapshot["record_type"], snapshot["id"], snapshot["revision"])
     rewritten = 0
     for record in list(store.iter_records()):
         moved = transform(record, steps)
         if not _changed(record, moved):
             continue
         moved = with_revision(prepare_record(moved))
-        if moved["record_type"] == record["record_type"]:
-            store.write_record(moved, expected_revision=record["revision"])
-        else:
-            if not store.record_exists(moved["record_type"], moved["id"]):
-                store.create_record(moved)
-            store.delete_record_file(record["record_type"], record["id"])
+        store.write_record(moved, expected_revision=record["revision"])
         rewritten += 1
     return rewritten
-
-
-def _prune_empty(directory: Any, stop: Any) -> None:
-    while directory != stop and directory.is_dir() and not any(directory.iterdir()):
-        directory.rmdir()
-        directory = directory.parent
 
 
 def version_tuple(version: str) -> tuple[int, ...]:

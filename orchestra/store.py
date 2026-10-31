@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import ValidationError
 
 __all__ = [

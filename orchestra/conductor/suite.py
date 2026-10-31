@@ -9,7 +9,6 @@ fix-and-rerun inline. Suite is never red-first.
 
 from __future__ import annotations
 
-import json
 import re
 import shlex
 import subprocess
@@ -19,7 +18,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
@@ -130,7 +129,7 @@ def normalize_suite_policy(
 
 
 def load_suite_policy(start: Path | None = None) -> SuitePolicy:
-    """Load ``phase_gate.suite`` from ``config.json`` under ``settings.conductor``.
+    """Load ``phase_gate.suite`` from store config under ``settings.conductor``.
 
     A missing store, key, or malformed value yields the consumer default
     (mode=none, skip). Agents must not waive or override this policy; change
@@ -138,9 +137,9 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     """
     root = start or Path.cwd()
     try:
-        config_path = open_store(root).store_path / "config.json"
-        data = json.loads(config_path.read_text(encoding="utf-8"))
-    except (StoreBindingError, OSError, ValueError, TypeError):
+        project = open_store(root)
+        data = project.config()
+    except (StoreBindingError, StoreError, OSError, ValueError, TypeError):
         return normalize_suite_policy(None)
     settings = data.get("settings") if isinstance(data, dict) else None
     conductor = settings.get("conductor") if isinstance(settings, dict) else None
@@ -148,7 +147,7 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
     if not isinstance(suite_raw, dict):
         return normalize_suite_policy(None)
-    return normalize_suite_policy(suite_raw, source_path=str(config_path))
+    return normalize_suite_policy(suite_raw, source_path=str(project.store_path))
 
 
 def suite_subject(phase_slug: str) -> str:

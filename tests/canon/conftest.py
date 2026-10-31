@@ -239,11 +239,26 @@ def cli(repo, site, monkeypatch):
     return Cli(repo, monkeypatch)
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers", "file_layout: inspects or corrupts physical file-backend data"
+    )
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    if "backend_name" in metafunc.fixturenames:
+        metafunc.parametrize("backend_name", ["sqlite"])
+
+
 @pytest.fixture
-def project(cli, repo):
+def project(cli: Cli, repo: Path, backend_name: str) -> Any:
+    from orchestra.canon.backend import open_backend
     from orchestra.canon.project import open_store
 
     cli.ok("init", "--schemas", "alpha,beta")
+    if backend_name == "sqlite":
+        backend = open_backend(repo / ".canon")
+        backend.write_config({**backend.load_config(), "backend": "sqlite"})
     return open_store(repo)
 
 
@@ -259,3 +274,27 @@ def advance(project, record: dict[str, Any], *states: str) -> dict[str, Any]:
     for state in states:
         record = project.update(record["id"], transition=state)
     return record
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    from orchestra.tuner.amendment import canonical_payload, verify_signature
+
+    manifest_path = SRC / ".tuner" / "manifest.json"
+    if not manifest_path.is_file():
+        return
+    manifest = json.loads(manifest_path.read_text())
+    amendments = manifest.get("amendments", [])
+    if not amendments:
+        return
+    allowlist = (SRC / ".tuner" / "allowed_signers").read_bytes()
+    claims = {claim["id"]: claim for claim in manifest["claims"]}
+    for amendment in amendments:
+        if not verify_signature(canonical_payload(amendment), amendment["signature"], allowlist):
+            raise pytest.UsageError("Invalid oracle replacement signature")
+        replacement = claims[amendment["claim"]]["tests"]
+        if replacement != amendment["new_tests"]:
+            continue
+        retired = set(amendment["old_tests"]) - set(replacement)
+        for item in items:
+            if item.nodeid in retired:
+                item.add_marker(pytest.mark.skip(reason="Superseded by signed oracle amendment " + amendment["claim"]))

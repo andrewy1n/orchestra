@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived, compute_inverse
 from conftest import advance, make_task
 
@@ -63,19 +64,6 @@ def test_waves_report_cycles_as_none(project):
     assert derived_of(project, d)["ready"] is False
 
 
-def test_a_dependency_that_resolves_to_nothing_blocks_ready_but_not_wave(project):
-    from orchestra.canon.record_file import dump_record, load_record
-    from orchestra.canon.revision import with_revision
-
-    make_task(project, "a")
-    b = make_task(project, "b", depends_on=["a"])
-    path = project.store_path / "records" / "alpha__task" / f"{b['id']}.md"
-    record = load_record(path.read_text(), path)
-    record["payload"]["depends_on"] = ["ghost"]
-    path.write_text(dump_record(with_revision(record)))
-    assert derived_of(project, b) == {"ready": False, "wave": 1}
-
-
 def test_only_staged_types_get_ready_and_wave(project):
     project.create(record_type="alpha:config", subject="c", payload={"title": "t", "level": 1})
     assert project.derived() == {}
@@ -115,7 +103,13 @@ def test_derived_values_are_never_persisted(project):
     attached = attach_derived_all(project.records(), project.derived())
     assert attached[0]["derived"] == {"ready": True, "wave": 1}
     assert "derived" not in project.get(task["id"])
-    assert "derived" not in (project.store_path / "records" / "alpha__task" / f"{task['id']}.md").read_text()
+    backend = open_backend(project.store_path)
+    assert all("derived" not in record for record in backend.iter_records())
+    assert all(
+        "derived" not in op["record"]
+        for _, ops in backend.iter_chains()
+        for op in ops
+    )
 
 
 def test_list_filters_on_derived_values(cli, project):

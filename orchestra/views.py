@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import posixpath
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from orchestra.canon import record_payload
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
-STORE_ROOT = ".canon"
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
 
 Record = dict[str, Any]
@@ -254,13 +252,6 @@ def _title(value: str) -> str:
     return " ".join(part.replace("-", " ").title() for part in value.split(":"))
 
 
-def record_path(record: Record, store_root: str = STORE_ROOT) -> str:
-    namespace, _, name = record["record_type"].partition(":")
-    return posixpath.join(
-        store_root, "records", f"{namespace}__{name}", f"{record['id']}.md"
-    )
-
-
 def _display(value: Any) -> str:
     if isinstance(value, list):
         return ", ".join(str(item) for item in value)
@@ -369,7 +360,7 @@ def _record_line(
             return f"- **{record['subject']}**: {summary}{note}"
         return f"- {record['subject']}{note}"
     extra = f"owner: {owner}, " if owner else ""
-    ref = f"[{record['id']}]({record_path(record)})"
+    ref = record["id"]
     if summary:
         return f"- **{record['subject']}**: {summary} _({extra}id: {ref})_"
     if owner:

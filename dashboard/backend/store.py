@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
-import os
 import threading
 from collections.abc import Iterator, Mapping
 from typing import Any
 
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 Record = dict[str, Any]
 
@@ -26,19 +24,8 @@ _pin = threading.local()
 
 
 def change_token(target: Project) -> str:
-    """Hash of the mtime of each record type directory.
-
-    The store writes a record by renaming a temp file into its type directory, so any create, update, or supersede moves that directory's mtime.
-    """
-    digest = hashlib.sha1()
-    try:
-        with os.scandir(target.store_path / "records") as entries:
-            for entry in sorted(entries, key=lambda e: e.name):
-                if entry.is_dir():
-                    digest.update(f"{entry.name}\0{entry.stat().st_mtime_ns}\n".encode())
-    except OSError:
-        pass
-    return digest.hexdigest()
+    """Return the store's opaque record-change token."""
+    return target.change_token()
 
 
 @contextlib.contextmanager

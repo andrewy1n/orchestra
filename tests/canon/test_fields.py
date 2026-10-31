@@ -89,14 +89,14 @@ def test_optional_fields_may_be_absent(project):
 
 
 def test_payload_must_be_an_object(project):
-    from orchestra.canon.store import StoreError
+    from orchestra.canon.errors import StoreError
 
     with pytest.raises(StoreError, match="JSON object"):
         project.create(record_type="alpha:config", subject="c", payload=["x"])
 
 
 def test_subject_is_required_and_has_no_whitespace(project):
-    from orchestra.canon.store import StoreError
+    from orchestra.canon.errors import StoreError
 
     with pytest.raises(StoreError, match="missing subject"):
         project.create(record_type="alpha:config", subject="", payload={"title": "t", "level": 1})

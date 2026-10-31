@@ -47,7 +47,7 @@ from typing import Any, Callable
 from orchestra.canon import record_payload
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
