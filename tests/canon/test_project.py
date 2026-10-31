@@ -6,7 +6,7 @@ import pytest
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.store import StaleWriteError, StoreError
+from orchestra.canon.errors import StaleWriteError, StoreError
 from conftest import make_task
 
 

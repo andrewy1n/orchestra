@@ -247,8 +247,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     if "backend_name" in metafunc.fixturenames:
-        selected = ["files"] if metafunc.definition.get_closest_marker("file_layout") else ["files", "sqlite"]
-        metafunc.parametrize("backend_name", selected)
+        metafunc.parametrize("backend_name", ["sqlite"])
 
 
 @pytest.fixture

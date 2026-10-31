@@ -283,8 +283,10 @@ def test_commands_report_a_missing_store(cli, repo):
 
 
 def test_store_flag_selects_a_store(cli, repo, tmp_path):
+    from orchestra.canon.backend import open_backend
+
     other = tmp_path / "elsewhere"
     assert cli("--store", str(other), "init", "--schemas", "alpha").code == 0
     created = cli("--store", str(other), "create", "--type", "alpha:task", "--subject", "t", "--set", 'title="x"')
     assert created.code == 0
-    assert (other / "records" / "alpha__task").is_dir()
+    assert [record["subject"] for record in open_backend(other).list_records("alpha:task")] == ["t"]

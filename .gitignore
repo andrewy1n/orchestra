@@ -4,6 +4,9 @@ __pycache__/
 
 # Operational store state, never record data.
 .write.lock
+/.canon/log/
+/.canon/records/
+/.canon/history/
 
 # Machine-local store binding override (committed default is store-binding.json).
 .canon/store-binding.local.json

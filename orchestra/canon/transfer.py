@@ -11,7 +11,7 @@ from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.revision import compute_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 
 def export_ops(backend: Backend, out: TextIO) -> int:

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived, compute_inverse
 from conftest import advance, make_task
@@ -64,20 +62,6 @@ def test_waves_report_cycles_as_none(project):
     assert derived_of(project, c)["wave"] is None
     assert derived_of(project, d)["wave"] is None
     assert derived_of(project, d)["ready"] is False
-
-
-@pytest.mark.file_layout
-def test_a_dependency_that_resolves_to_nothing_blocks_ready_but_not_wave(project):
-    from orchestra.canon.record_file import dump_record, load_record
-    from orchestra.canon.revision import with_revision
-
-    make_task(project, "a")
-    b = make_task(project, "b", depends_on=["a"])
-    path = project.store_path / "records" / "alpha__task" / f"{b['id']}.md"
-    record = load_record(path.read_text(), path)
-    record["payload"]["depends_on"] = ["ghost"]
-    path.write_text(dump_record(with_revision(record)))
-    assert derived_of(project, b) == {"ready": False, "wave": 1}
 
 
 def test_only_staged_types_get_ready_and_wave(project):

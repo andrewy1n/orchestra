@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_append_only_history
 
 

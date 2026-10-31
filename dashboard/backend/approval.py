@@ -8,7 +8,7 @@ from typing import Any
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from dashboard.backend.dismiss import (
     ACTION_ACCEPT,
     ACTION_APPROVE,

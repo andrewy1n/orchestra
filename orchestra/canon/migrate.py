@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestra.canon.record_file import prepare_record
+from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
 from orchestra.canon.backend import Backend
@@ -72,12 +72,7 @@ def apply_steps(store: Backend, steps: list[dict[str, Any]]) -> int:
         if not _changed(record, moved):
             continue
         moved = with_revision(prepare_record(moved))
-        if moved["record_type"] == record["record_type"]:
-            store.write_record(moved, expected_revision=record["revision"])
-        else:
-            if not store.record_exists(moved["record_type"], moved["id"]):
-                store.create_record(moved)
-            store.delete_record(record["record_type"], record["id"])
+        store.write_record(moved, expected_revision=record["revision"])
         rewritten += 1
     return rewritten
 

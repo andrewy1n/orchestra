@@ -9,7 +9,7 @@ from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.revision import compute_revision
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.transfer import export_ops, import_ops
 
 

@@ -9,7 +9,7 @@ from orchestra.canon.config import new_config
 from orchestra.canon.migrate import apply_steps, migration_path, version_tuple
 from orchestra.canon.modules import InstalledModule, discover
 from orchestra.canon.schema import SchemaError, SchemaSet, major, parse_module
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import validate_store
 
 
@@ -40,6 +40,7 @@ def init_store(
                 )
             return {"status": "already_initialized", "store": str(store)}
         config = new_config({m.namespace: m.version for m in modules})
+        config["backend"] = "sqlite"
         store.init(config, {m.namespace: m.text for m in modules})
     return {"status": "initialized", "store": str(store), "schemas": config["schemas"]}
 

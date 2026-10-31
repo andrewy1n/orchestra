@@ -13,7 +13,7 @@ from orchestra import status_cli, view_cli
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.conductor import suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 

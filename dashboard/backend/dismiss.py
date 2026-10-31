@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from dashboard.backend import store
 from dashboard.backend.snapshot import NeedsYouItem
 

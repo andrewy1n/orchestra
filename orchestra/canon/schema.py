@@ -10,7 +10,7 @@ from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.lifecycle import LIFECYCLES, Lifecycle
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")

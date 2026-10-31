@@ -33,7 +33,7 @@ def run(args: argparse.Namespace) -> int:
 
         return hooks.run(args.command, hooks.CLAUDE if args.claude else hooks.CURSOR)
     from orchestra.canon.project import StoreBindingError, open_store
-    from orchestra.canon.store import StoreError
+    from orchestra.canon.errors import StoreError
 
     from orchestra import views
 

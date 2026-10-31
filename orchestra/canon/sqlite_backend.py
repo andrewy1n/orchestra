@@ -14,15 +14,32 @@ from typing import Any
 
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
-from orchestra.canon.revision import compute_revision
+from orchestra.canon.record import prepare_record
+from orchestra.canon.revision import compute_revision, with_revision
 from orchestra.canon.git_backend import run_git
-from orchestra.canon.store import (
-    Store,
-    StoreError,
-    StaleWriteError,
-    _decide_create,
-    _decide_write,
-)
+from orchestra.canon.errors import StoreError, StaleWriteError
+from orchestra.canon.metadata import MetadataFiles
+
+
+def _decide_create(
+    current: dict[str, Any] | None, record: dict[str, Any]
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    if current is not None:
+        return "rejected_exists", current, {"conflict_revision": current.get("revision")}
+    return "accepted", with_revision(prepare_record(record)), {}
+
+
+def _decide_write(
+    current: dict[str, Any] | None,
+    record: dict[str, Any],
+    expected_revision: str | None,
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    if current is not None:
+        if expected_revision is None:
+            return "rejected_missing_expected", current, {"conflict_revision": current.get("revision")}
+        if expected_revision != current.get("revision"):
+            return "rejected_stale", current, {"conflict_revision": current.get("revision")}
+    return "accepted", with_revision(prepare_record(record)), {}
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ops (
@@ -77,13 +94,24 @@ class SqliteBackend:
         self.config_root = config_root
         self.data_root = data_root
         self.db_path = data_root / "canon.db"
-        self._metadata = Store(config_root)
+        self._metadata = MetadataFiles(config_root)
         self._active: sqlite3.Connection | None = None
+        if self._metadata.has_config():
+            self._initialize_database()
+
+    def _initialize_database(self) -> None:
         self.data_root.mkdir(parents=True, exist_ok=True)
-        with self._reader() as connection:
+        connection = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
+        try:
+            connection.execute("PRAGMA busy_timeout=10000")
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA synchronous=NORMAL")
             connection.executescript(_SCHEMA)
+        finally:
+            connection.close()
 
     def _connect(self) -> sqlite3.Connection:
+        self.data_root.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
         try:
             connection.execute("PRAGMA busy_timeout=10000")
@@ -119,6 +147,8 @@ class SqliteBackend:
             finally:
                 connection.execute(f"RELEASE {name}")
             return
+        if not self.db_path.is_file():
+            self._initialize_database()
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -162,6 +192,8 @@ class SqliteBackend:
         for namespace, text in (snapshots or {}).items():
             self.write_snapshot(namespace, text)
         self.write_config(config)
+        if not self.db_path.is_file():
+            self._initialize_database()
         return "initialized"
 
     @staticmethod
@@ -331,7 +363,7 @@ class SqliteBackend:
             )
 
     def new_id(self) -> str:
-        return self._metadata.new_id()
+        return f"rec-{uuid.uuid4()}"
 
     def archive_history(self, record: dict[str, Any]) -> None:
         self._validate_key(record["record_type"], record["id"])

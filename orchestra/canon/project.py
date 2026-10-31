@@ -14,7 +14,7 @@ from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
-from orchestra.canon.store import StoreError, StaleWriteError
+from orchestra.canon.errors import StoreError, StaleWriteError
 from orchestra.canon.validation import (
     ValidationError,
     check_transition,

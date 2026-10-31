@@ -24,7 +24,7 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.store import (
+from orchestra.canon.errors import (
     PartialStoreError,
     StaleWriteError,
     StoreError,

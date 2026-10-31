@@ -9,7 +9,7 @@ from typing import Any
 
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.project import Project
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 
 Record = dict[str, Any]
 

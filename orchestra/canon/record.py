@@ -11,6 +11,23 @@ from typing import Any
 from orchestra.canon.schema import TypeDef
 
 
+def normalize_body(body: str) -> str:
+    if not body:
+        return ""
+    lines = [line.rstrip() for line in body.split("\n")]
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines) + "\n" if lines else ""
+
+
+def prepare_record(record: dict[str, Any]) -> dict[str, Any]:
+    out = dict(record)
+    out["body"] = normalize_body(out.get("body", ""))
+    return out
+
+
 def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 

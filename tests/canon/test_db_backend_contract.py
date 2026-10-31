@@ -22,7 +22,7 @@ from orchestra.canon.config import new_config
 from orchestra.canon.oplog import fold
 from orchestra.canon.project import Binding, Project, open_store
 from orchestra.canon.revision import compute_revision
-from orchestra.canon.store import StaleWriteError, StoreError
+from orchestra.canon.errors import StaleWriteError, StoreError
 
 SCHEMA: dict[str, Any] = {
     "namespace": "contract",
@@ -548,31 +548,26 @@ def test_cli_backup_keeps_fourteen_newest_distinct_copies(db_store: DbStore) -> 
     assert sorted(counts) == list(range(4, 18))
 
 
-def test_same_operation_sequence_has_identical_revisions(tmp_path: Path) -> None:
-    backends = [
-        _initialize(tmp_path / selected, selected) for selected in ("files", "sqlite")
-    ]
-    histories: list[list[str]] = []
-    for backend in backends:
-        current = backend.create_record(_record("same-record"))
-        revisions = [current["revision"]]
-        for title in ("second", "third"):
-            prior = current
-            current = backend.write_record(
-                {**prior, "payload": {"title": title}},
-                expected_revision=prior["revision"],
-                archive_prior=prior,
-            )
-            assert current["revision"] == compute_revision(current)
-            revisions.append(current["revision"])
-        histories.append(revisions)
-    assert histories[0] == histories[1]
-    assert sorted(
-        record["revision"] for record in backends[0].read_history()
-    ) == sorted(record["revision"] for record in backends[1].read_history())
+def test_operation_sequence_has_stable_revisions(tmp_path: Path) -> None:
+    backend = _initialize(tmp_path / "sqlite", "sqlite")
+    current = backend.create_record(_record("same-record"))
+    revisions = [current["revision"]]
+    for title in ("second", "third"):
+        prior = current
+        current = backend.write_record(
+            {**prior, "payload": {"title": title}},
+            expected_revision=prior["revision"],
+            archive_prior=prior,
+        )
+        assert current["revision"] == compute_revision(current)
+        revisions.append(current["revision"])
+    assert len(set(revisions)) == len(revisions)
+    assert sorted(record["revision"] for record in backend.read_history()) == sorted(
+        revisions[:-1]
+    )
 
 
-@pytest.fixture(params=["files", "sqlite"], ids=["files", "sqlite"])
+@pytest.fixture(params=["sqlite"], ids=["sqlite"])
 def contract_backend(
     request: pytest.FixtureRequest, tmp_path: Path
 ) -> Callable[[], Backend]:

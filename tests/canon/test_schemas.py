@@ -12,7 +12,7 @@ from orchestra.canon import modules
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.store import Store
+from orchestra.canon.backend import open_backend
 from conftest import ALPHA, BETA
 
 GAMMA_V1 = {
@@ -166,6 +166,7 @@ def test_init_creates_config_and_snapshots(cli, repo):
         "format": "canon/1",
         "schemas": {"alpha": "0.1.0", "beta": "0.1.0"},
         "settings": {},
+        "backend": "sqlite",
     }
     assert json.loads((store / "schemas" / "alpha.json").read_text()) == ALPHA
     assert json.loads((store / "schemas" / "beta.json").read_text()) == BETA
@@ -318,23 +319,18 @@ class TestMigration:
         assert project.get(note["id"])["payload"] == {"body_text": "second"}
         assert [r["id"] for r in project.list("gamma:execution-report")].count(report["id"]) == 1
         assert project.list("gamma:execution-report").__len__() == 2
-        store = Store(project.store_path)
-        assert not store.record_exists("gamma:report", report["id"])
-        assert not (store.root / "records" / "gamma__report").exists() or not any(
-            (store.root / "records" / "gamma__report").iterdir()
-        )
+        assert not open_backend(project.store_path).record_exists("gamma:report", report["id"])
         assert project.validate() == []
 
     def test_migration_rewrites_history_snapshots(self, cli, site, repo, migrating):
         site.publish(copy.deepcopy(GAMMA_V2))
         cli.ok("schemas", "sync")
-        history = repo / ".canon" / "history"
-        assert not (history / "gamma__report").exists()
-        snapshots = list((history / "gamma__execution-report").rglob("*.md"))
-        assert len(snapshots) == 2
-        note_snapshots = list((history / "gamma__note").rglob("*.md"))
+        history = list(open_backend(repo / ".canon").read_history())
+        assert not any(record["record_type"] == "gamma:report" for record in history)
+        assert len([record for record in history if record["record_type"] == "gamma:execution-report"]) == 2
+        note_snapshots = [record for record in history if record["record_type"] == "gamma:note"]
         assert note_snapshots
-        assert all('"body_text"' in p.read_text() for p in note_snapshots)
+        assert all("body_text" in record["payload"] for record in note_snapshots)
 
     def test_migration_is_idempotent(self, cli, site, migrating):
         site.publish(copy.deepcopy(GAMMA_V2))

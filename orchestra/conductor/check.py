@@ -12,7 +12,7 @@ from typing import Any
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.store import StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.policy import (
     dirty_pass_decision,

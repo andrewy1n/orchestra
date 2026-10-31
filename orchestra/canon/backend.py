@@ -10,7 +10,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-from orchestra.canon.store import Store, StoreError
+from orchestra.canon.errors import StoreError
+from orchestra.canon.metadata import MetadataFiles
 
 
 @runtime_checkable
@@ -68,11 +69,11 @@ class Backend(Protocol):
 
 
 def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Backend:
-    """Open the configured backend; stores without a selection use files."""
-    store = Store(store_root)
+    """Open the configured SQLite backend."""
+    store = MetadataFiles(store_root)
     if config is None:
         config = store.load_config() if store.has_config() else {}
-    selected = config.get("backend", "files")
+    selected = config.get("backend", "sqlite")
     if selected == "sqlite":
         from orchestra.canon.sqlite_backend import SqliteBackend
 
@@ -92,6 +93,4 @@ def open_backend(store_root: Path, config: dict[str, Any] | None = None) -> Back
                     raise StoreError(f"invalid store binding at {binding}: {value!r}")
                 break
         return SqliteBackend(store_root, data_root)
-    if selected != "files":
-        raise StoreError(f"unsupported store backend: {selected!r}")
-    return store
+    raise StoreError(f"unsupported store backend: {selected!r}")
