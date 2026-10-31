@@ -60,6 +60,15 @@ def pytest_unconfigure(config):
         shutil.rmtree(directory, ignore_errors=True)
 
 
+@pytest.fixture(autouse=True)
+def _disable_ci_for_partial_type_probes(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Partial temporary projects omit baseline entries present in the full repo."""
+    if request.node.path.name == "test_strict_canon.py":
+        monkeypatch.delenv("CI", raising=False)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _preimport_tuner_binding():
     """Let binding capture the real run_verdict before any test patches it."""
