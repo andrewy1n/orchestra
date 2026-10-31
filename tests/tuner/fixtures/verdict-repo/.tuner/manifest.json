@@ -7,7 +7,7 @@
         "tests/test_widget.py::test_widget"
       ],
       "oracle_hashes": {
-        "tests/test_widget.py": "sha256:b710591f831d69ea3259952abc27f4ecdaf6f5bf60509d92805d7995df23026c"
+        "tests/test_widget.py": "sha256:728b867fa40b4e68c164813311e46f5f717c6c766e7750d516988ddd66e55fa0"
       }
     }
   ],

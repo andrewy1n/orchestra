@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
+import json
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -222,3 +226,43 @@ def test_ci_workflow_runs_verdict_and_attest() -> None:
     )
     manifest = (fixture_root / ".tuner" / "manifest.json").read_text()
     assert "claim-widget" in manifest, "fixture manifest must declare claim-widget"
+
+
+def test_sample_verdict_fixture_hash_matches_and_builds(tmp_path: Path) -> None:
+    """The tracked fixture's frozen oracle hash matches its bytes and passes the CLI."""
+    fixture_source = REPO_ROOT / "tests" / "tuner" / "fixtures" / "verdict-repo"
+    oracle = (fixture_source / "tests" / "test_widget.py").read_bytes()
+    manifest = json.loads((fixture_source / ".tuner" / "manifest.json").read_text())
+    assert manifest["claims"][0]["oracle_hashes"]["tests/test_widget.py"] == (
+        "sha256:" + hashlib.sha256(oracle).hexdigest()
+    )
+
+    fixture_root = tmp_path / "tests" / "tuner" / "fixtures" / "verdict-repo"
+    shutil.copytree(fixture_source, fixture_root)
+    builder = fixture_root.parent / "build_verdict_repo.sh"
+    shutil.copy2(fixture_source.parent / "build_verdict_repo.sh", builder)
+    subprocess.run(["bash", str(builder)], check=True, capture_output=True, text=True)
+    revisions = subprocess.check_output(
+        ["git", "-C", str(fixture_root), "rev-list", "--reverse", "HEAD"], text=True
+    ).splitlines()
+    assert len(revisions) == 2
+    cli = REPO_ROOT / "bin" / "orchestra"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(cli),
+            "verify",
+            "verdict",
+            "--cwd",
+            str(fixture_root),
+            "--base",
+            revisions[0],
+            "--at",
+            revisions[1],
+            "claim-widget",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["result"] == "pass"
