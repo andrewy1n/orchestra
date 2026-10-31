@@ -20,6 +20,7 @@ from typing import Any
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
@@ -669,7 +670,7 @@ def record_suite_check_run(
     effort: str,
     suite: SuiteResult,
     criterion_id: str | None = None,
-) -> dict[str, Any]:
+) -> Record:
     """Create the suite check-run via canon (parent session only)."""
     if suite.refuse:
         raise RuntimeError(suite.refuse_message or "refusing suite check-run")

@@ -41,23 +41,26 @@ import argparse
 import contextlib
 import hashlib
 import json
+import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
+from orchestra.canon.types import Record
+from orchestra.model_types import PlanningPayload
+from orchestra.model_types import planning_payload as record_payload
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
 _HASH_SEP = ":sha256:"
 
-CheckRunLoader = Callable[[str], dict[str, Any]]
-AcceptanceLoader = Callable[[str], dict[str, Any]]
-AmendmentLister = Callable[[str], list[dict[str, Any]]]
+CheckRunLoader = Callable[[str], Record]
+AcceptanceLoader = Callable[[str], Record]
+AmendmentLister = Callable[[str], list[Record]]
 
 
 class CloseRequestError(Exception):
@@ -113,7 +116,7 @@ def default_load_check_run(
     check_run_id: str,
     *,
     store_root: Path | None = None,
-) -> dict[str, Any]:
+) -> Record:
     """Load a check-run from the store opened for the primary cwd."""
     try:
         return _open_project(store_root).get(check_run_id, "tuner:check-run")
@@ -125,7 +128,7 @@ def default_load_acceptance(
     acceptance_id: str,
     *,
     store_root: Path | None = None,
-) -> dict[str, Any]:
+) -> Record:
     """Load an acceptance from the store opened for the primary cwd."""
     try:
         return _open_project(store_root).get(acceptance_id, "score:acceptance")
@@ -137,7 +140,7 @@ def default_list_oracle_amendments(
     acceptance_id: str,
     *,
     store_root: Path | None = None,
-) -> list[dict[str, Any]]:
+) -> list[Record]:
     """Active oracle-amendment records whose payload.acceptance is the id or the subject."""
     try:
         project = _open_project(store_root)
@@ -147,7 +150,7 @@ def default_list_oracle_amendments(
     refs = {str(acceptance_id)}
     with contextlib.suppress(StoreError):
         refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
-    matched: list[dict[str, Any]] = []
+    matched: list[Record] = []
     for record in records:
         if not isinstance(record, dict):
             continue
@@ -178,7 +181,7 @@ def parse_oracle_hashes(raw: list[str] | str | None) -> dict[str, str]:
     return out
 
 
-def is_oracle_backed(acceptance_payload: dict[str, Any]) -> bool:
+def is_oracle_backed(acceptance_payload: Mapping[str, Any]) -> bool:
     """True when acceptance has freeze fields: non-empty test_ids and parseable hashes.
 
     ``oracle_hashes`` must parse to at least one ``relpath:sha256:<hex>`` entry.
@@ -200,7 +203,9 @@ def hash_file_at_revision(cwd: Path, revision: str, relpath: str) -> str:
         if not path.is_file():
             raise FileNotFoundError(relpath)
         return _sha256_digest(path.read_bytes())
-    result = run_git(cwd, "show", f"{revision}:{relpath}", capture_output=True)
+    result: subprocess.CompletedProcess[bytes] = run_git(
+        cwd, "show", f"{revision}:{relpath}", capture_output=True
+    )  # pyright: ignore[reportAssignmentType]  # No text or encoding options are passed.
     if result.returncode != 0:
         raise FileNotFoundError(relpath)
     return _sha256_digest(result.stdout)
@@ -224,7 +229,7 @@ def _load_check_run(
     criterion_id: Any,
     label: str,
     loader: CheckRunLoader,
-) -> dict[str, Any]:
+) -> Record:
     try:
         return loader(check_run_id)
     except LookupError as exc:
@@ -253,7 +258,7 @@ def _resolve_green_check_run(
     entry: dict[str, Any],
     *,
     loader: CheckRunLoader,
-) -> dict[str, Any]:
+) -> PlanningPayload:
     """Load and match the green/primary check-run; return its payload."""
     criterion_id = entry.get("criterion_id")
     check_run_id = entry["check_run_id"]
@@ -311,7 +316,7 @@ def _resolve_red_check_run(
     entry: dict[str, Any],
     *,
     loader: CheckRunLoader,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[Record, PlanningPayload]:
     """Load and match the red check-run; return (full record, payload)."""
     criterion_id = entry.get("criterion_id")
     red_id = entry.get("red_check_run_id")
@@ -377,8 +382,8 @@ def _resolve_red_check_run(
 def _enforce_red_first_from_store(
     entry: dict[str, Any],
     *,
-    green_payload: dict[str, Any],
-    red_payload: dict[str, Any],
+    green_payload: Mapping[str, Any],
+    red_payload: Mapping[str, Any],
     cwd: Path,
 ) -> None:
     """Refuse tdd done closes whose store red does not precede store green."""
@@ -434,7 +439,7 @@ def _enforce_red_first_from_store(
         )
 
 
-def _assertion_level_red(record: dict[str, Any]) -> bool:
+def _assertion_level_red(record: Mapping[str, Any]) -> bool:
     """Ask tuner whether red failed at assertion level.
 
     The import stays inside this function so ``orchestra --help`` does not
@@ -451,7 +456,7 @@ def _assertion_level_red(record: dict[str, Any]) -> bool:
 
 
 def _approved_amendment_covers_tree(
-    amendments: list[dict[str, Any]],
+    amendments: list[Record],
     tree_hashes: dict[str, str],
 ) -> bool:
     """True when an active approved amendment's new_hashes equal tree hashes."""
@@ -530,7 +535,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
 def _enforce_claim_gates(
     criteria: list[dict[str, Any]],
     *,
-    green_by_criterion: dict[Any, dict[str, Any]],
+    green_by_criterion: dict[Any, Mapping[str, Any]],
     cwd: Path,
     load_acceptance: AcceptanceLoader,
 ) -> None:
@@ -580,8 +585,8 @@ def _enforce_claim_gates(
 def _enforce_oracle_gates(
     entry: dict[str, Any],
     *,
-    green_payload: dict[str, Any],
-    red_record: dict[str, Any],
+    green_payload: Mapping[str, Any],
+    red_record: Mapping[str, Any],
     cwd: Path,
     load_acceptance: AcceptanceLoader,
     list_oracle_amendments: AmendmentLister,
@@ -674,7 +679,7 @@ def build_batch(
         loader = load_check_run
     else:
 
-        def _store_check_run(check_run_id: str) -> dict[str, Any]:
+        def _store_check_run(check_run_id: str) -> Record:
             return default_load_check_run(check_run_id, store_root=resolved_store)
 
         loader = _store_check_run
@@ -686,13 +691,13 @@ def build_batch(
         acceptance_loader = load_acceptance
     elif load_check_run is None:
 
-        def _store_acceptance(acceptance_id: str) -> dict[str, Any]:
+        def _store_acceptance(acceptance_id: str) -> Record:
             return default_load_acceptance(acceptance_id, store_root=resolved_store)
 
         acceptance_loader = _store_acceptance
     else:
 
-        def _unavailable_acceptance(_acceptance_id: str) -> dict[str, Any]:
+        def _unavailable_acceptance(_acceptance_id: str) -> Record:
             raise AcceptanceStoreUnavailable("acceptance store not available in unit test hook")
 
         acceptance_loader = _unavailable_acceptance
@@ -702,13 +707,13 @@ def build_batch(
         amendment_lister = list_oracle_amendments
     elif load_check_run is None:
 
-        def _store_amendments(acceptance_id: str) -> list[dict[str, Any]]:
+        def _store_amendments(acceptance_id: str) -> list[Record]:
             return default_list_oracle_amendments(acceptance_id, store_root=resolved_store)
 
         amendment_lister = _store_amendments
     else:
 
-        def _no_amendments(_acceptance_id: str) -> list[dict[str, Any]]:
+        def _no_amendments(_acceptance_id: str) -> list[Record]:
             return []
 
         amendment_lister = _no_amendments
@@ -769,7 +774,7 @@ def build_batch(
             )
 
     # Store authority for done closes: resolve every runner check-run id.
-    green_by_criterion: dict[Any, dict[str, Any]] = {}
+    green_by_criterion: dict[Any, Mapping[str, Any]] = {}
     if transition == "done":
         for entry in criteria:
             if entry.get("method") not in RUNNER_METHODS:

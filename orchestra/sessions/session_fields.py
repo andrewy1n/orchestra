@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 from datetime import datetime
-from typing import cast
 
 
-def _parse(ts: str) -> datetime | None:
+def _parse(ts: str | None) -> datetime | None:
+    if ts is None:
+        return None
     try:
         return datetime.fromisoformat(ts.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
@@ -57,7 +58,7 @@ def session_fields(events: Iterable[dict]) -> dict:
             if isinstance(value, (int, float)):
                 cost = float(value)
             continue
-        stamp = _parse(cast(str, event.get("timestamp")))
+        stamp = _parse(event.get("timestamp"))
         if stamp is not None:
             raw = event["timestamp"]
             if first is None or stamp < first[0]:

@@ -1,9 +1,17 @@
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
-from typing import cast
+from typing import overload
 
 
-def _parse(value):
+@overload
+def _parse(value: datetime | str) -> datetime: ...
+
+
+@overload
+def _parse(value: None) -> None: ...
+
+
+def _parse(value: datetime | str | None) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, str):
@@ -27,7 +35,7 @@ def join(sessions, records):
     ]
     unattached = []
     for rec in records:
-        when = cast(datetime, _parse(rec["recorded_at"]))
+        when = _parse(rec["recorded_at"])
         hits = [
             sid
             for sid, name, win in windows

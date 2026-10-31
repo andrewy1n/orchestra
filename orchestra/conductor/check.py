@@ -13,12 +13,14 @@ from typing import Any
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.policy import (
     dirty_pass_decision,
     manual_refuse_message,
     map_process_outcome,
 )
+from orchestra.model_types import PlanningPayload
 
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
@@ -30,7 +32,7 @@ class CheckOutcome:
     exit_code: int
     stdout: str
     message: str = ""
-    record: dict[str, Any] | None = None
+    record: Record | None = None
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -157,7 +159,7 @@ def run_check(
     except StoreError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
-    payload = acceptance.get("payload") or {}
+    payload: PlanningPayload = acceptance.get("payload") or {}  # pyright: ignore[reportAssignmentType]  # Acceptance schemas validate these payload fields.
     method = payload.get("method") or ""
     if method == "manual":
         return CheckOutcome(
@@ -223,9 +225,9 @@ def run_check(
     if decision.diff_sha256:
         check_payload["diff_sha256"] = decision.diff_sha256
     if payload.get("requirement"):
-        check_payload["requirement"] = payload["requirement"]
+        check_payload["requirement"] = payload["requirement"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
     if payload.get("evidence_kind"):
-        check_payload["evidence_kind"] = payload["evidence_kind"]
+        check_payload["evidence_kind"] = payload["evidence_kind"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
     if result == "fail":
         failing_nodes = parse_failing_node_ids(output)
         if failing_nodes:

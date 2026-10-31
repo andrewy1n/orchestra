@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from orchestra.canon.project import Project, open_store
+from orchestra.canon.types import JsonObject, OperationResult, Record
 from orchestra.tuner.manifest import ManifestError
 from orchestra.tuner.observation import store_usable
 from orchestra.tuner.verdict import run_verdict
@@ -34,7 +35,7 @@ def _require_store(cwd: Path | str) -> Path:
     return root
 
 
-def is_active(row: dict[str, Any]) -> bool:
+def is_active(row: Record) -> bool:
     """True when a binding still earns its claim."""
     state = str(row.get("lifecycle_state") or "").strip().lower()
     if state in _INACTIVE:
@@ -46,7 +47,7 @@ def is_active(row: dict[str, Any]) -> bool:
     )
 
 
-def list_bindings(cwd: Path | str) -> list[dict[str, Any]]:
+def list_bindings(cwd: Path | str) -> list[Record]:
     """List evidence-binding records from the subject store."""
     root = Path(cwd)
     if not store_usable(root):
@@ -59,9 +60,9 @@ def list_bindings(cwd: Path | str) -> list[dict[str, Any]]:
         raise BindingError(str(exc)) from exc
 
 
-def active_for_claim(cwd: Path | str, claim: str) -> list[dict[str, Any]]:
+def active_for_claim(cwd: Path | str, claim: str) -> list[Record]:
     """Active bindings whose payload claim id is ``claim``."""
-    matched: list[dict[str, Any]] = []
+    matched: list[Record] = []
     for row in list_bindings(cwd):
         payload = row.get("payload") or {}
         if payload.get("claim_id") != claim:
@@ -78,10 +79,10 @@ def bind_observation(
     claim_id: str,
     base_rev: str,
     head_rev: str,
-) -> dict[str, Any]:
+) -> Record:
     """Create one evidence-binding from an existing observation under pins."""
     root = _require_store(cwd)
-    payload = {
+    payload: JsonObject = {
         "observation_id": observation_id,
         "claim_id": claim_id,
         "base_rev": base_rev,
@@ -103,7 +104,7 @@ def bind_observation(
     return record
 
 
-def unbind(cwd: Path | str, binding_id: str) -> dict[str, Any]:
+def unbind(cwd: Path | str, binding_id: str) -> OperationResult:
     """Retire a binding.
 
     current-status records move to superseded only through supersede. The
@@ -111,7 +112,7 @@ def unbind(cwd: Path | str, binding_id: str) -> dict[str, Any]:
     the claim.
     """
     root = _require_store(cwd)
-    retired = {"retired": True}
+    retired: JsonObject = {"retired": True}
     try:
         results = _project(root).apply(
             [

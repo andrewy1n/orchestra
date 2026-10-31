@@ -6,12 +6,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any
 
-from orchestra.canon import record_payload
+from orchestra.canon.types import Record
+from orchestra.model_types import planning_payload as record_payload
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
 
-Record = dict[str, Any]
 Predicate = Callable[[Record], bool]
 
 

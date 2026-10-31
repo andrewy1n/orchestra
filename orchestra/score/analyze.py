@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -49,8 +50,8 @@ def _has_marker(body: str) -> bool:
     return MARKER in _CODE_SPAN.sub("", body)
 
 
-def analyze_phase(records: list[dict[str, Any]], phase: str, stage: str = "plan") -> Report:
-    def of_type(record_type: str, *states: str) -> list[dict[str, Any]]:
+def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str = "plan") -> Report:
+    def of_type(record_type: str, *states: str) -> list[Mapping[str, Any]]:
         return [
             r
             for r in records

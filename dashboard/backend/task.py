@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from dashboard.backend import store
 from dashboard.backend.records import (
@@ -19,8 +18,10 @@ from dashboard.backend.records import (
     _section,
 )
 from dashboard.backend.store import ModelError
-from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
+from orchestra.model_types import PlanningPayload
+from orchestra.model_types import planning_payload as record_payload
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -175,7 +176,7 @@ def _without_section(body: str, heading: str) -> str:
     return "\n".join(kept).strip()
 
 
-def _check_from(record: dict[str, Any]) -> CheckRun:
+def _check_from(record: Record) -> CheckRun:
     payload = record_payload(record)
     return CheckRun(
         record["id"],
@@ -202,12 +203,12 @@ def retry_max_redispatches(body: str) -> int:
     return DEFAULT_RETRY_MAX_REDISPATCHES
 
 
-def _size(payload: dict[str, Any]) -> str:
+def _size(payload: PlanningPayload) -> str:
     size = payload.get("size")
     return size if isinstance(size, str) and size else ""
 
 
-def _estimate_minutes(payload: dict[str, Any]) -> int | None:
+def _estimate_minutes(payload: PlanningPayload) -> int | None:
     if "estimate_minutes" not in payload:
         return None
     value = payload["estimate_minutes"]
@@ -216,12 +217,12 @@ def _estimate_minutes(payload: dict[str, Any]) -> int | None:
     return value
 
 
-def _executor(payload: dict[str, Any]) -> str:
+def _executor(payload: PlanningPayload) -> str:
     executor = payload.get("executor")
     return executor if executor else "subagent"
 
 
-def _attempts(payload: dict[str, Any]) -> int:
+def _attempts(payload: PlanningPayload) -> int:
     if "attempts" not in payload:
         return 0
     value = payload["attempts"]
@@ -230,32 +231,30 @@ def _attempts(payload: dict[str, Any]) -> int:
     return int(value)
 
 
-def _task_status(record: dict[str, Any]) -> str | None:
+def _task_status(record: Record) -> str | None:
     state = record["lifecycle_state"]
     if state == "planned":
         return "ready" if _derived(record).get("ready") else "waiting"
     return {"in_progress": "running", "done": "done", "withdrawn": "withdrawn"}.get(state)
 
 
-def _assigned_at(assignments: list[dict[str, Any]], record: dict[str, Any]) -> datetime | None:
+def _assigned_at(assignments: list[Record], record: Record) -> datetime | None:
     names = {record["id"], record["subject"]}
     stamps = [_recorded_at(a) for a in assignments if record_payload(a).get("work_item") in names]
     return max(stamps, default=None)
 
 
-def _task_assignments(
-    assignments: list[dict[str, Any]], record: dict[str, Any]
-) -> list[dict[str, Any]]:
+def _task_assignments(assignments: list[Record], record: Record) -> list[Record]:
     names = {record["id"], record["subject"]}
     return [a for a in assignments if record_payload(a).get("work_item") in names]
 
 
 def _last_record_at(
-    record: dict[str, Any],
-    assignments: list[dict[str, Any]],
-    amendments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
+    record: Record,
+    assignments: list[Record],
+    amendments: list[Record],
+    reports: list[Record],
+    checks: list[Record],
     others: list[str],
 ) -> datetime | None:
     """Latest assignment / amendment / execution-report / check-run stamp for a running task."""
@@ -274,17 +273,17 @@ def _last_record_at(
     return max(stamps, default=None)
 
 
-def _depends(record: dict[str, Any]) -> list[str]:
+def _depends(record: Record) -> list[str]:
     return record_payload(record).get("depends_on") or []
 
 
 def _task_rows(
-    records: list[dict[str, Any]],
-    assignments: list[dict[str, Any]] | None = None,
-    amendments: list[dict[str, Any]] | None = None,
-    reports: list[dict[str, Any]] | None = None,
-    checks: list[dict[str, Any]] | None = None,
-    phases: list[dict[str, Any]] | None = None,
+    records: list[Record],
+    assignments: list[Record] | None = None,
+    amendments: list[Record] | None = None,
+    reports: list[Record] | None = None,
+    checks: list[Record] | None = None,
+    phases: list[Record] | None = None,
 ) -> list[TaskRow]:
     by_subject = {record["subject"]: record for record in sorted(records, key=_recorded_at)}
     assignments = assignments or []
@@ -349,7 +348,7 @@ def _linked(ids: list[str], rows: dict[str, TaskRow]) -> list[LinkedTask]:
     ]
 
 
-def _belongs(record: dict[str, Any], slug: str, effort: str, others: list[str]) -> bool:
+def _belongs(record: Record, slug: str, effort: str, others: list[str]) -> bool:
     subject = record["subject"]
     if subject != slug and not subject.startswith(slug + "-"):
         return False
@@ -358,11 +357,11 @@ def _belongs(record: dict[str, Any], slug: str, effort: str, others: list[str]) 
     return record_payload(record).get("effort", effort) == effort
 
 
-def _refers_to(record: dict[str, Any], key: str, names: set[str]) -> bool:
+def _refers_to(record: Record, key: str, names: set[str]) -> bool:
     return record_payload(record).get(key) in names
 
 
-def _latest_checks(checks: list[dict[str, Any]]) -> dict[str, CheckRun]:
+def _latest_checks(checks: list[Record]) -> dict[str, CheckRun]:
     latest: dict[str, CheckRun] = {}
     for record in sorted(checks, key=_recorded_at):
         if record["lifecycle_state"] in INACTIVE_STATES:
@@ -373,10 +372,10 @@ def _latest_checks(checks: list[dict[str, Any]]) -> dict[str, CheckRun]:
 
 
 def _timeline(
-    assignments: list[dict[str, Any]],
-    amendments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
+    assignments: list[Record],
+    amendments: list[Record],
+    reports: list[Record],
+    checks: list[Record],
 ) -> list[TimelineEvent]:
     events = []
     for record in assignments:
@@ -410,9 +409,9 @@ def _timeline(
 
 
 def _amendments_for(
-    assignment: dict[str, Any],
-    amendments: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    assignment: Record,
+    amendments: list[Record],
+) -> list[Record]:
     keys = {assignment["id"], assignment["subject"]}
     matched = [record for record in amendments if record_payload(record).get("assignment") in keys]
     matched.sort(key=_recorded_at)
@@ -420,18 +419,18 @@ def _amendments_for(
 
 
 def _report_for(
-    assignment: dict[str, Any],
-    reports: list[dict[str, Any]],
-) -> dict[str, Any] | None:
+    assignment: Record,
+    reports: list[Record],
+) -> Record | None:
     keys = {assignment["id"], assignment["subject"]}
     matched = [record for record in reports if record_payload(record).get("assignment") in keys]
     return max(matched, key=_recorded_at) if matched else None
 
 
 def _agent_work(
-    assignments: list[dict[str, Any]],
-    amendments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
+    assignments: list[Record],
+    amendments: list[Record],
+    reports: list[Record],
 ) -> tuple[AgentWork, ...]:
     """Group assignment bodies, amendments by payload.assignment, and reports; newest first."""
     works: list[AgentWork] = []
@@ -492,7 +491,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         if r["record_type"] == "score:work-item" and r["id"] != work_item_id
     ]
     names = {work_item_id, slug}
-    of_type: dict[str, list[dict[str, Any]]] = {}
+    of_type: dict[str, list[Record]] = {}
     for record in records:
         if record["id"] != work_item_id and _belongs(record, slug, effort, others):
             of_type.setdefault(record["record_type"], []).append(record)

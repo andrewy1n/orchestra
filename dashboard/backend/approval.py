@@ -18,9 +18,10 @@ from dashboard.backend.dismiss import (
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
-from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
+from orchestra.model_types import planning_payload as record_payload
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 
@@ -77,7 +78,7 @@ def _section(body: str, heading: str) -> str:
     return "\n".join(collected).strip()
 
 
-def _cli_json(target: Project, *args: str) -> dict[str, Any]:
+def _cli_json(target: Project, *args: str) -> Record | dict[str, Any]:
     record_id = None
     record_type = None
     items = list(args)
@@ -120,7 +121,7 @@ def _revisions_match(checked: str, head: str) -> bool:
     return head.startswith(checked) or checked.startswith(head[: max(len(checked), 7)])
 
 
-def _finding_evidence(item: NeedsYouItem, record: dict[str, Any]) -> list[tuple[str, str]]:
+def _finding_evidence(item: NeedsYouItem, record: Record | dict[str, Any]) -> list[tuple[str, str]]:
     payload = record_payload(record) if record else {}
     claim = (payload.get("claim") or item.text or "").strip()
     basis = (payload.get("basis") or "").strip()
@@ -141,7 +142,7 @@ def _check_evidence(
     target: Project,
     item: NeedsYouItem,
     root: Path,
-    record: dict[str, Any],
+    record: Record | dict[str, Any],
 ) -> list[tuple[str, str]]:
     payload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()

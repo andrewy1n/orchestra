@@ -5,7 +5,6 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 from dashboard.backend import store
 from dashboard.backend.journal import load_journal
@@ -33,8 +32,9 @@ from dashboard.backend.records import (
 )
 from dashboard.backend.store import change_token
 from dashboard.backend.task import TaskRow, _task_rows
-from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
+from orchestra.model_types import planning_payload as record_payload
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -159,8 +159,8 @@ _SNAPSHOT_TYPES = (
 
 def _list_all(
     target: Project, record_types: tuple[str, ...], token: str
-) -> dict[str, list[dict[str, Any]]]:
-    def load(record_type: str) -> list[dict[str, Any]]:
+) -> dict[str, list[Record]]:
+    def load(record_type: str) -> list[Record]:
         with store.pinned_token(token):
             return _list(target, record_type)
 
@@ -168,7 +168,7 @@ def _list_all(
         return dict(zip(record_types, pool.map(load, record_types), strict=False))
 
 
-def _structured_phases(specs: list[dict[str, Any]]) -> set[tuple[str, str]]:
+def _structured_phases(specs: list[Record]) -> set[tuple[str, str]]:
     found = set()
     for record in _live(specs):
         payload = record_payload(record)
@@ -178,7 +178,7 @@ def _structured_phases(specs: list[dict[str, Any]]) -> set[tuple[str, str]]:
     return found
 
 
-def _needs_route(record: dict[str, Any]) -> bool:
+def _needs_route(record: Record) -> bool:
     payload = record_payload(record)
     status, nxt, confidence = (
         payload.get("status", ""),
@@ -192,9 +192,7 @@ def _needs_route(record: dict[str, Any]) -> bool:
     return nxt in UPSTREAM_NEXT or status == "blocked" or confidence == "low"
 
 
-def _assessment_summary(
-    record: dict[str, Any], by_id: dict[str, dict[str, Any]]
-) -> tuple[str, bool]:
+def _assessment_summary(record: Record, by_id: dict[str, Record]) -> tuple[str, bool]:
     payload = record_payload(record)
     summary = (
         f"{payload.get('requirement', '')} {payload.get('status', '')} {payload.get('next', '')}"
@@ -210,7 +208,7 @@ def _assessment_summary(
     return summary, payload.get("status") in ("failed", "blocked")
 
 
-def _task_for(subject: str, tasks: list[dict[str, Any]]) -> str:
+def _task_for(subject: str, tasks: list[Record]) -> str:
     matches = [
         task
         for task in tasks
@@ -219,7 +217,7 @@ def _task_for(subject: str, tasks: list[dict[str, Any]]) -> str:
     return max(matches, key=lambda task: len(task["subject"]))["id"] if matches else ""
 
 
-def _backlog_text(record: dict[str, Any]) -> str:
+def _backlog_text(record: Record) -> str:
     for line in (record.get("body") or "").splitlines():
         stripped = line.strip()
         if stripped and not stripped.startswith("#"):
@@ -227,7 +225,7 @@ def _backlog_text(record: dict[str, Any]) -> str:
     return record.get("subject") or ""
 
 
-def _backlog_items(records: list[dict[str, Any]]) -> list[BacklogItem]:
+def _backlog_items(records: list[Record]) -> list[BacklogItem]:
     items = []
     for record in records:
         if record.get("lifecycle_state") in INACTIVE_STATES:
@@ -253,19 +251,19 @@ def _backlog_items(records: list[dict[str, Any]]) -> list[BacklogItem]:
 
 
 def _needs_you(
-    questions: list[dict[str, Any]],
-    findings: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
-    acceptances: dict[str, dict[str, Any]] | None = None,
-    tasks: list[dict[str, Any]] | None = None,
-    assessments: list[dict[str, Any]] | None = None,
-    integrations: list[dict[str, Any]] | None = None,
+    questions: list[Record],
+    findings: list[Record],
+    checks: list[Record],
+    acceptances: dict[str, Record] | None = None,
+    tasks: list[Record] | None = None,
+    assessments: list[Record] | None = None,
+    integrations: list[Record] | None = None,
     spec_phases: set[str] | None = None,
 ) -> list[NeedsYouItem]:
     acceptances = acceptances or {}
     tasks = tasks or []
 
-    def item(kind: str, record: dict[str, Any], subject: str, text: str) -> NeedsYouItem:
+    def item(kind: str, record: Record, subject: str, text: str) -> NeedsYouItem:
         return NeedsYouItem(
             kind,
             record["id"],
@@ -335,7 +333,7 @@ def _needs_you(
                 revision=record.get("revision") or "",
             )
         )
-    reports_by_phase: dict[str, list[dict[str, Any]]] = {}
+    reports_by_phase: dict[str, list[Record]] = {}
     for record in _live(integrations or []):
         phase = record_payload(record).get("phase", "")
         if phase in spec_phases:
@@ -364,20 +362,20 @@ def _needs_you(
 
 
 def _activity(
-    assignments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
+    assignments: list[Record],
+    reports: list[Record],
+    checks: list[Record],
     efforts_by_work_item: dict[str, tuple[str, str]],
     since: datetime,
-    assessments: list[dict[str, Any]] | None = None,
-    integrations: list[dict[str, Any]] | None = None,
-    releases: list[dict[str, Any]] | None = None,
+    assessments: list[Record] | None = None,
+    integrations: list[Record] | None = None,
+    releases: list[Record] | None = None,
     structured: set[tuple[str, str]] | None = None,
 ) -> dict[str, list[ActivityItem]]:
     by_effort: dict[str, list[ActivityItem]] = {}
 
     def add(
-        effort: str | None, kind: str, record: dict[str, Any], summary: str, failed: bool = False
+        effort: str | None, kind: str, record: Record, summary: str, failed: bool = False
     ) -> None:
         if effort is not None and _recorded_at(record) >= since:
             by_effort.setdefault(effort, []).append(
@@ -386,7 +384,7 @@ def _activity(
                 )
             )
 
-    def work_item(record: dict[str, Any]) -> tuple[str | None, str]:
+    def work_item(record: Record) -> tuple[str | None, str]:
         ref = record_payload(record).get("work_item", "")
         effort, subject = efforts_by_work_item.get(ref, (None, ref))
         return effort, subject

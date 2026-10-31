@@ -12,6 +12,7 @@ from orchestra import status_cli, view_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.types import Record
 from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.score.analyze import analyze_phase
@@ -471,10 +472,10 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
 
 def _load_review_records(
     work: Path,
-) -> tuple[list[dict[str, object]], list[str]]:
+) -> tuple[list[Record], list[str]]:
     """Read the reviewer-allowed kinds from the opened store."""
     project = open_store(work)
-    records: list[dict[str, object]] = []
+    records: list[Record] = []
     failures: list[str] = []
     for kind in sorted(reviewer.ALLOWED_KINDS):
         record_type = f"score:{kind}"

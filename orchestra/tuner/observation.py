@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from orchestra.canon.project import Project, open_store
+from orchestra.canon.types import Record
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
@@ -39,7 +40,7 @@ def record_observation(
     claim_ids: Sequence[str] = (),
     replay: str | None = None,
     subject: str | None = None,
-) -> dict[str, Any] | None:
+) -> Record | None:
     """Create one unbound evidence-observation for a finished technique run.
 
     ``replay`` is optional re-invoke metadata (a JSON string is enough).
@@ -111,7 +112,7 @@ def record_verdict_observation(
     base: str | None,
     claim_ids: Sequence[str],
     result: str,
-) -> dict[str, Any] | None:
+) -> Record | None:
     """Create one evidence-observation for a finished verdict run.
 
     Returns the created record dict, or None when no usable store is present.
@@ -150,7 +151,7 @@ def maybe_record_verdict_observation(
         print(f"observation record skipped: {exc}", file=sys.stderr)
 
 
-def _claim_ids_of(item: dict[str, Any]) -> list[str]:
+def _claim_ids_of(item: Mapping[str, Any]) -> list[str]:
     if "claim_ids" in item:
         raw = item.get("claim_ids")
     else:
@@ -160,14 +161,14 @@ def _claim_ids_of(item: dict[str, Any]) -> list[str]:
     return []
 
 
-def _technique_of(item: dict[str, Any]) -> str | None:
+def _technique_of(item: Mapping[str, Any]) -> str | None:
     if "technique" in item:
         return item.get("technique")
     payload = item.get("payload") or {}
     return payload.get("technique")
 
 
-def _matches_claim(item: dict[str, Any], claim: str) -> bool:
+def _matches_claim(item: Mapping[str, Any], claim: str) -> bool:
     return claim in _claim_ids_of(item)
 
 
@@ -176,7 +177,7 @@ def list_observations(
     *,
     claim: str | None = None,
     technique: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[Record]:
     """List evidence-observations from the subject store as plain dicts."""
     root = Path(cwd)
     if not store_usable(root):
