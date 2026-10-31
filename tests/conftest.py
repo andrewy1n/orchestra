@@ -67,6 +67,7 @@ def _disable_ci_for_partial_type_probes(
     """Partial temporary projects omit baseline entries present in the full repo."""
     if request.node.path.name == "test_strict_canon.py":
         monkeypatch.delenv("CI", raising=False)
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
 
 @pytest.fixture(scope="session", autouse=True)
