@@ -136,9 +136,7 @@ def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[s
     return inverse
 
 
-def compute_derived(
-    records: list[dict[str, Any]], schemas: SchemaSet
-) -> dict[str, dict[str, Any]]:
+def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[str, dict[str, Any]]:
     """{record_id: {...}} of read-time-only values, never persisted.
 
     Call with the full record set: a dependency can name a record of any

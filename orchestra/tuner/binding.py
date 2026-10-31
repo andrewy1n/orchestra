@@ -12,9 +12,7 @@ from orchestra.tuner.observation import store_usable
 from orchestra.tuner.verdict import run_verdict
 
 _BIND_TYPE = "tuner:evidence-binding"
-_INACTIVE = frozenset(
-    {"retired", "superseded", "inactive", "unbound", "withdrawn"}
-)
+_INACTIVE = frozenset({"retired", "superseded", "inactive", "unbound", "withdrawn"})
 
 
 class BindingError(Exception):

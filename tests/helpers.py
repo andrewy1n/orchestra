@@ -68,13 +68,17 @@ def schema_defs() -> dict[str, dict]:
                 "fields": fields,
                 "required": required,
                 "payload": [n for n in fields if n != "depends_on"],
-                "optional_payload": [n for n, f in fields.items() if f.get("optional") and n != "depends_on"],
+                "optional_payload": [
+                    n for n, f in fields.items() if f.get("optional") and n != "depends_on"
+                ],
                 "payload_enum": {n: f["enum"] for n, f in fields.items() if "enum" in f},
                 "payload_references": {
                     n: _ref_targets(f)[0] for n, f in fields.items() if _ref_targets(f)
                 },
                 "required_sections": list(type_def.sections),
-                "relationships": ["supersedes"] if lifecycle.supersedable or lifecycle.name == "current" else [],
+                "relationships": ["supersedes"]
+                if lifecycle.supersedable or lifecycle.name == "current"
+                else [],
                 "lifecycle": {
                     "name": lifecycle.name,
                     "initial": lifecycle.initial,
@@ -99,9 +103,15 @@ def closed_effort(cli, defs, subject: str) -> dict:
     """An effort the dashboard treats as no longer live."""
     effort = create_generic_record(cli, defs, "score:effort", subject=subject)
     result = cli(
-        "supersede", "--type", "score:effort", "--id", effort["id"],
-        "--expected-revision", effort["revision"],
-        "--payload", json.dumps({**effort["payload"], "status": "closed"}),
+        "supersede",
+        "--type",
+        "score:effort",
+        "--id",
+        effort["id"],
+        "--expected-revision",
+        effort["revision"],
+        "--payload",
+        json.dumps({**effort["payload"], "status": "closed"}),
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return json.loads(result.stdout)["record"]
@@ -143,8 +153,15 @@ def _ref_targets(form: dict) -> list[str]:
 def transition(cli, record_type: str, record: dict, *states: str) -> dict:
     for state in states:
         result = cli(
-            "update", "--type", record_type, "--id", record["id"],
-            "--transition", state, "--expected-revision", record["revision"],
+            "update",
+            "--type",
+            record_type,
+            "--id",
+            record["id"],
+            "--transition",
+            state,
+            "--expected-revision",
+            record["revision"],
         )
         assert result.returncode == 0, result.stdout + result.stderr
         record = json.loads(result.stdout)["record"]
@@ -184,7 +201,9 @@ def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, di
         if target_type == "score:effort":
             return generic_effort(cli, defs)
         if target_type not in target_cache:
-            target_cache[target_type] = create_generic_record(cli, defs, target_type, target_cache=target_cache)
+            target_cache[target_type] = create_generic_record(
+                cli, defs, target_type, target_cache=target_cache
+            )
         target = target_cache[target_type]
         return target["id"] if form.get("pin") else target["subject"]
     if "enum" in form:
@@ -211,9 +230,15 @@ def ensure_refs(cli, defs, record_def: dict, given: dict) -> None:
             found = cli("list", "--type", target_type, "--subject", subject)
             if found.returncode == 0 and json.loads(found.stdout).get("records"):
                 continue
-            assert target_type != "score:decision", f"create decision {subject!r} before the record that cites it"
-            context = {k: given[k] for k in ("effort",) if k in given and k in defs[target_type]["fields"]}
-            create_generic_record(cli, defs, target_type, subject=subject, extra_payload=context or None)
+            assert target_type != "score:decision", (
+                f"create decision {subject!r} before the record that cites it"
+            )
+            context = {
+                k: given[k] for k in ("effort",) if k in given and k in defs[target_type]["fields"]
+            }
+            create_generic_record(
+                cli, defs, target_type, subject=subject, extra_payload=context or None
+            )
 
 
 def create_generic_record(
@@ -310,10 +335,14 @@ def _apply_transition(cli, record_def: dict, record_type: str, record: dict, des
     if dest == "superseded" and advertises_supersedes(record_def):
         result = cli(
             "supersede",
-            "--type", record_type,
-            "--id", record["id"],
-            "--expected-revision", record["revision"],
-            "--payload", json.dumps(record["payload"]),
+            "--type",
+            record_type,
+            "--id",
+            record["id"],
+            "--expected-revision",
+            record["revision"],
+            "--payload",
+            json.dumps(record["payload"]),
         )
         assert result.returncode == 0, (
             f"supersede {record_type} -> {dest} failed (exit {result.returncode}): "
@@ -324,10 +353,14 @@ def _apply_transition(cli, record_def: dict, record_type: str, record: dict, des
         return json.loads(readback.stdout)
     result = cli(
         "update",
-        "--type", record_type,
-        "--id", record["id"],
-        "--transition", dest,
-        "--expected-revision", record["revision"],
+        "--type",
+        record_type,
+        "--id",
+        record["id"],
+        "--transition",
+        dest,
+        "--expected-revision",
+        record["revision"],
     )
     assert result.returncode == 0, (
         f"transition {record_type} -> {dest} failed (exit {result.returncode}): "

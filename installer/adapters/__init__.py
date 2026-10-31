@@ -57,9 +57,7 @@ def build_adapter(
     """
     factory = _REGISTRY.get(provider.id)
     if factory is None:
-        factory = (
-            SkillsCliAdapter if provider.kind == "skills" else GenericSkillsAdapter
-        )
+        factory = SkillsCliAdapter if provider.kind == "skills" else GenericSkillsAdapter
     return factory(
         provider,
         base=base,

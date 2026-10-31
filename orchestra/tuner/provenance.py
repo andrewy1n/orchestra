@@ -49,7 +49,9 @@ def check_provenance(
     return None
 
 
-def _git(cwd: Path | str, *args: str, config: tuple[str, ...] = ()) -> subprocess.CompletedProcess[str]:
+def _git(
+    cwd: Path | str, *args: str, config: tuple[str, ...] = ()
+) -> subprocess.CompletedProcess[str]:
     prefix: list[str] = []
     for item in config:
         prefix.extend(["-c", item])
@@ -89,9 +91,7 @@ def _is_ancestor(cwd: Path | str, ancestor: str, descendant: str) -> bool:
 
 
 def _changed_paths(cwd: Path | str, commit: str) -> list[str]:
-    result = _git(
-        cwd, "diff-tree", "--root", "-r", "--name-only", "--no-commit-id", "-z", commit
-    )
+    result = _git(cwd, "diff-tree", "--root", "-r", "--name-only", "--no-commit-id", "-z", commit)
     return [item for item in result.stdout.split("\0") if item]
 
 

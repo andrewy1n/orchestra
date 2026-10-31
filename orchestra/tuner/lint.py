@@ -64,8 +64,7 @@ def find_new_skips(
     return [
         test_id
         for test_id in test_ids
-        if head_outcomes.get(test_id) == "not_run"
-        and base_outcomes.get(test_id) != "not_run"
+        if head_outcomes.get(test_id) == "not_run" and base_outcomes.get(test_id) != "not_run"
     ]
 
 
@@ -108,8 +107,7 @@ def _no_assert_in_file(path: Path) -> list[str]:
                     if item.name.startswith("test") and not _has_outcome_signal(item):
                         findings.append(f"{node.name}::{item.name}")
     if not findings and not any(
-        isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-        for n in tree.body
+        isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
     ):
         return [str(path)]
     return findings

@@ -39,9 +39,7 @@ def _record(
     )
 
 
-def _global_sqlite_repo(
-    root: Path, home: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
+def _global_sqlite_repo(root: Path, home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root.mkdir(parents=True)
     metadata = root / ".canon"
     metadata.mkdir()
@@ -83,9 +81,7 @@ def test_cutover_r9_worktree_reads_primary_global_database(
         check=True,
         capture_output=True,
     )
-    subprocess.run(
-        ["git", "-C", str(primary), "add", ".canon"], check=True, capture_output=True
-    )
+    subprocess.run(["git", "-C", str(primary), "add", ".canon"], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", str(primary), "commit", "-m", "seed"],
         check=True,
@@ -231,11 +227,7 @@ def test_cutover_r20_ci_does_not_read_the_live_store() -> None:
     yaml = pytest.importorskip("yaml")
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
     jobs = workflow["jobs"]
-    commands = [
-        str(step.get("run", ""))
-        for job in jobs.values()
-        for step in job.get("steps", [])
-    ]
+    commands = [str(step.get("run", "")) for job in jobs.values() for step in job.get("steps", [])]
     assert not any("canon validate" in command for command in commands)
 
 
@@ -257,10 +249,7 @@ def test_cutover_r3_tracked_canon_contents_are_metadata_only() -> None:
         text=True,
         check=True,
     )
-    tracked = [
-        Path(line).relative_to(".canon").as_posix()
-        for line in result.stdout.splitlines()
-    ]
+    tracked = [Path(line).relative_to(".canon").as_posix() for line in result.stdout.splitlines()]
     assert tracked
     assert all(
         path in {"config.json", "store-binding.json"} or path.startswith("schemas/")
@@ -299,11 +288,7 @@ def test_cutover_r21_production_code_has_no_file_backend_imports() -> None:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ImportFrom):
                     imported = {alias.name for alias in node.names}
-                    if (
-                        node.module
-                        and node.module.endswith(".store")
-                        and "Store" in imported
-                    ):
+                    if node.module and node.module.endswith(".store") and "Store" in imported:
                         violations.append(f"{path}: imports Store")
                     if node.module and node.module.endswith(".record_file"):
                         violations.append(f"{path}: imports record_file")

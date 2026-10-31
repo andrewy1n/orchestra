@@ -160,7 +160,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Record oracle file hashes from the working tree into the manifest",
     )
     freeze_cmd.add_argument("--cwd", default=None, help="Repository root (default: process cwd)")
-    freeze_cmd.add_argument("claim_ids", nargs="*", metavar="CLAIM", help="Claim ids (default: all)")
+    freeze_cmd.add_argument(
+        "claim_ids", nargs="*", metavar="CLAIM", help="Claim ids (default: all)"
+    )
 
     audit = sub.add_parser(
         "audit",
@@ -292,9 +294,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
         try:
-            items = list_observations(
-                work, claim=args.claim, technique=args.technique
-            )
+            items = list_observations(work, claim=args.claim, technique=args.technique)
         except Exception as exc:  # noqa: BLE001 — surface store errors cleanly
             print(exc, file=sys.stderr)
             return 2
@@ -407,9 +407,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if findings else 0
         if args.lint_command == "new-skips":
             work = Path(args.cwd) if args.cwd else Path.cwd()
-            findings = find_new_skips(
-                work, args.base, args.head, claim_id=args.claim_id
-            )
+            findings = find_new_skips(work, args.base, args.head, claim_id=args.claim_id)
             for item in findings:
                 print(item)
             return 1 if findings else 0

@@ -23,7 +23,9 @@ def _create(cli, record_type: str, subject: str, payload: dict, body: str | None
     if body is not None:
         args.extend(["--body", body])
     result = cli(*args)
-    assert result.returncode == 0, f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
@@ -41,7 +43,11 @@ def _place(cli, effort: str, area: str) -> dict:
 
 def _idea(cli, subject: str, status: str = "open", text: str | None = None, **refs: str) -> dict:
     return _create(
-        cli, "composer:idea", subject, {"status": status, **refs}, f"{text or 'text of ' + subject}\n",
+        cli,
+        "composer:idea",
+        subject,
+        {"status": status, **refs},
+        f"{text or 'text of ' + subject}\n",
     )
 
 

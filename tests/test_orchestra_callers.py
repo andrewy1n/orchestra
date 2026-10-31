@@ -108,7 +108,11 @@ def _calls_open_store(tree: ast.AST) -> bool:
         func = node.func
         if isinstance(func, ast.Name) and func.id in aliases:
             return True
-        if isinstance(func, ast.Attribute) and func.attr == "open_store" and _dotted(func.value) in modules:
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr == "open_store"
+            and _dotted(func.value) in modules
+        ):
             return True
     return False
 
@@ -118,7 +122,9 @@ def _other_store_open(tree: ast.AST) -> list[tuple[int, str]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name in _OLD_MODULES or any(alias.name.startswith(f"{mod}.") for mod in _OLD_MODULES):
+                if alias.name in _OLD_MODULES or any(
+                    alias.name.startswith(f"{mod}.") for mod in _OLD_MODULES
+                ):
                     found.append((node.lineno, f"import {alias.name}"))
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
@@ -426,10 +432,7 @@ def test_r5(tmp_path, monkeypatch):
     except Exception:
         pass
     tuner_red = [cmd for cmd in started if "assertion-red" in cmd]
-    assert calls, (
-        "close_batch did not call is_assertion_level_red; "
-        f"aff starts={started!r}"
-    )
+    assert calls, f"close_batch did not call is_assertion_level_red; aff starts={started!r}"
     assert not tuner_red, f"close_batch started aff for assertion-level red: {tuner_red!r}"
 
 

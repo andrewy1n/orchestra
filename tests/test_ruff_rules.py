@@ -44,9 +44,7 @@ def test_r6_pinned_lint() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
     checks_job = re.search(r"(?ms)^  checks:\n(.*?)(?=^  [\w-]+:|\Z)", workflow)
     assert checks_job is not None
-    assert re.search(
-        r"(?m)^\s*- run: uvx ruff@0\.13\.1 check \.\s*$", checks_job.group(1)
-    )
+    assert re.search(r"(?m)^\s*- run: uvx ruff@0\.13\.1 check \.\s*$", checks_job.group(1))
 
 
 def test_r7_pinned_format() -> None:
@@ -78,9 +76,7 @@ def _ruff_rejects(source: str, command: str, expected: str) -> bool:
             check=False,
         )
     output = result.stdout + result.stderr
-    return (
-        result.returncode != 0 and expected in output and "error:" not in output.lower()
-    )
+    return result.returncode != 0 and expected in output and "error:" not in output.lower()
 
 
 def test_r8_unsorted_imports_fail() -> None:

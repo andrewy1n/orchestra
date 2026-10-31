@@ -189,8 +189,18 @@ LIVE_ROLES = {
     "Unsigned Manual Check",
 }
 CROWD = (
-    "alpha", "bravo", "charlie", "delta", "echo", "foxtrot",
-    "golf", "hotel", "india", "juliet", "kilo", "lima",
+    "alpha",
+    "bravo",
+    "charlie",
+    "delta",
+    "echo",
+    "foxtrot",
+    "golf",
+    "hotel",
+    "india",
+    "juliet",
+    "kilo",
+    "lima",
 )
 ID_LINK = re.compile(r"\(id: \[|\.canon/records/|rec-[0-9a-f]{8}-[0-9a-f]{4}-")
 
@@ -251,7 +261,13 @@ def fill_effort(project, slug, tasks=4):
         project,
         "conductor:proof-packet",
         f"{slug}-proof",
-        {"phase": phase_of(slug), "effort": slug, "revision": "abc123", "base": "main", "kind": "demo"},
+        {
+            "phase": phase_of(slug),
+            "effort": slug,
+            "revision": "abc123",
+            "base": "main",
+            "kind": "demo",
+        },
     )
     create(project, "composer:idea", f"{slug}-later-idea", {"effort": slug, "status": "open"})
     return subjects + [f"{slug}-needs-human", f"{slug}-manual-check"]
@@ -317,7 +333,7 @@ def section_start(ctx, slug):
 
 def constraints_block(ctx):
     assert "Active constraints:" in ctx
-    rest = ctx[ctx.index("Active constraints:"):]
+    rest = ctx[ctx.index("Active constraints:") :]
     match = re.search(r"^## ", rest, re.M)
     return rest[: match.start()] if match else rest
 
@@ -345,9 +361,7 @@ def test_r3_constraints_block_precedes_first_effort_section(repo, monkeypatch, c
     assert ctx.index("Active constraints:") < min(starts)
 
 
-def test_r4_constraints_block_lists_constraints_from_every_live_effort(
-    repo, monkeypatch, capsys
-):
+def test_r4_constraints_block_lists_constraints_from_every_live_effort(repo, monkeypatch, capsys):
     add_effort(repo, "bravo")
     add_effort(repo, "charlie")
     add_constraint(repo, "alpha-rule", "Alpha stays small", "alpha")
@@ -400,9 +414,7 @@ def test_r7_start_context_has_no_record_id_links(repo, monkeypatch, capsys):
     assert ID_LINK.search(ctx) is None
 
 
-def test_r8_over_budget_start_context_omits_whole_effort_sections_only(
-    repo, monkeypatch, capsys
-):
+def test_r8_over_budget_start_context_omits_whole_effort_sections_only(repo, monkeypatch, capsys):
     owned = crowd_store(repo)
     ctx = claude_context(repo, monkeypatch, capsys)
     shown = effort_sections(ctx)

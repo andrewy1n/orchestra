@@ -16,14 +16,8 @@ from orchestra.canon.revision import compute_revision
 def verify(export: Path, store_root: Path) -> tuple[Counter[str], Counter[str]]:
     store = open_backend(store_root)
     current = {(r["record_type"], r["id"]): r for r in store.iter_records()}
-    history = {
-        (r["record_type"], r["id"], r["revision"]): r for r in store.read_history()
-    }
-    ops = {
-        (record_id, op["seq"]): op
-        for record_id, chain in store.iter_chains()
-        for op in chain
-    }
+    history = {(r["record_type"], r["id"], r["revision"]): r for r in store.read_history()}
+    ops = {(record_id, op["seq"]): op for record_id, chain in store.iter_chains() for op in chain}
     seen: Counter[str] = Counter()
     failures: Counter[str] = Counter()
     keys: set[tuple[str, str]] = set()
@@ -54,9 +48,7 @@ def verify(export: Path, store_root: Path) -> tuple[Counter[str], Counter[str]]:
     seen["live records"] = len(current)
     seen["live records not in export"] = len(set(current) - keys)
     seen["export final revision still current"] = sum(
-        1
-        for key, (_, rev) in final.items()
-        if key in current and current[key]["revision"] == rev
+        1 for key, (_, rev) in final.items() if key in current and current[key]["revision"] == rev
     )
     failures["record id missing"] = sum(key not in current for key in keys)
     return seen, +failures

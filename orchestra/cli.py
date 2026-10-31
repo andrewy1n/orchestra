@@ -98,10 +98,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         metavar="HOST",
         default=[],
-        help=(
-            "Install only this provider id; repeat for more "
-            "(default: detected hosts)"
-        ),
+        help=("Install only this provider id; repeat for more (default: detected hosts)"),
     )
     install.add_argument(
         "--all",
@@ -500,9 +497,7 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
         records, failures = _load_review_records(work)
-        phase_diff = reviewer.git_phase_diff(
-            work, base=args.base, phase_head=args.phase_head
-        )
+        phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
             phase_diff=phase_diff,
@@ -531,8 +526,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
     if not any(
-        r.get("record_type") == "score:phase" and r.get("subject") == args.phase
-        for r in records
+        r.get("record_type") == "score:phase" and r.get("subject") == args.phase for r in records
     ):
         print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
         return 2
@@ -639,8 +633,7 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
         result = suite.poll_suite(job, allow_dirty=args.allow_dirty)
         if result is None:
             print(
-                "orchestra suite record: suite is still running; "
-                "poll it until it finishes",
+                "orchestra suite record: suite is still running; poll it until it finishes",
                 file=sys.stderr,
             )
             return 3

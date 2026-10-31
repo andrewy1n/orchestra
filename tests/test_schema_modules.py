@@ -92,9 +92,7 @@ def test_staged_types_do_not_declare_depends_on(modules):
 
 def test_ref_targets_are_known_types(modules):
     known = {
-        f"{ns}:{name}": mod["types"][name]
-        for ns, mod in modules.items()
-        for name in mod["types"]
+        f"{ns}:{name}": mod["types"][name] for ns, mod in modules.items() for name in mod["types"]
     }
     for mod in modules.values():
         for tname, t in mod["types"].items():
@@ -104,4 +102,3 @@ def test_ref_targets_are_known_types(modules):
                     assert ns in NAMESPACES, f"{tname}.{fname} -> {target}"
                     if ns in modules:
                         assert target in known, f"{tname}.{fname} -> {target}"
-

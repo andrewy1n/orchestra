@@ -10,7 +10,12 @@ import pytest
 
 import helpers as h
 from conftest import REPO_ROOT
-from skill_extraction import check_invocation, check_skill_text, extract_invocations, skill_markdown_files
+from skill_extraction import (
+    check_invocation,
+    check_skill_text,
+    extract_invocations,
+    skill_markdown_files,
+)
 
 SKILLS_ROOT = REPO_ROOT / "skills"
 DEFS = h.schema_defs()
@@ -20,7 +25,9 @@ def _skill_files():
     return skill_markdown_files(SKILLS_ROOT)
 
 
-@pytest.mark.parametrize("skill_file", _skill_files(), ids=lambda p: str(p.relative_to(SKILLS_ROOT)))
+@pytest.mark.parametrize(
+    "skill_file", _skill_files(), ids=lambda p: str(p.relative_to(SKILLS_ROOT))
+)
 def test_skill_invocations_are_permitted_by_schemas(skill_file):
     violations = check_skill_text(skill_file.read_text(), DEFS)
     assert not violations, (
@@ -40,7 +47,9 @@ def test_extractor_finds_canon_invocations():
 
 def test_extractor_accepts_a_valid_create():
     payload = '{"title": "t", "ordinal": 1, "effort": "e"}'
-    assert _violations(f"canon create --type score:milestone --subject m --payload '{payload}'") == []
+    assert (
+        _violations(f"canon create --type score:milestone --subject m --payload '{payload}'") == []
+    )
 
 
 def test_extractor_rejects_unknown_type():
@@ -67,10 +76,24 @@ def test_extractor_rejects_undeclared_payload_key():
 
 
 def test_extractor_rejects_missing_required_key():
-    assert _violations("canon create --type score:milestone --subject m --payload '{\"title\": \"t\"}'")
+    assert _violations(
+        'canon create --type score:milestone --subject m --payload \'{"title": "t"}\''
+    )
 
 
 def test_extractor_rejects_correct_on_current_type():
     assert _violations("canon correct --type score:decision --id x")
-    assert check_invocation({"subcommand": "correct", "type": "tuner:check-run", "transition": None,
-                             "rels": [], "payload": None, "raw": ""}, DEFS) == []
+    assert (
+        check_invocation(
+            {
+                "subcommand": "correct",
+                "type": "tuner:check-run",
+                "transition": None,
+                "rels": [],
+                "payload": None,
+                "raw": "",
+            },
+            DEFS,
+        )
+        == []
+    )

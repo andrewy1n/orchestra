@@ -201,8 +201,14 @@ def test_status_shows_state_ready_wave_and_check_tally(project):
             },
         )
     text = render(project, "status")
-    assert "**first**: Title of first; p1; deliver; alpha; state: done; ready: True; wave: 1; criteria: 1 pass / 1 fail" in text
-    assert "**second**: Title of second; p1; deliver; alpha; state: planned; ready: True; wave: 2; criteria: 0 pass / 0 fail" in text
+    assert (
+        "**first**: Title of first; p1; deliver; alpha; state: done; ready: True; wave: 1; criteria: 1 pass / 1 fail"
+        in text
+    )
+    assert (
+        "**second**: Title of second; p1; deliver; alpha; state: planned; ready: True; wave: 2; criteria: 0 pass / 0 fail"
+        in text
+    )
 
 
 def test_status_marks_blocked_work_not_ready(project):
@@ -216,7 +222,13 @@ def test_verification_groups_by_subject_with_checks_and_findings(project):
         project,
         "score:acceptance",
         "ac-1",
-        {"method": "check", "phase": "p1", "effort": "alpha", "verify_command": "true", "requirement": "R1"},
+        {
+            "method": "check",
+            "phase": "p1",
+            "effort": "alpha",
+            "verify_command": "true",
+            "requirement": "R1",
+        },
     )
     create(
         project,
@@ -250,7 +262,13 @@ def test_brief_collects_work_item_acceptance_constraints_and_position(project):
         project,
         "score:acceptance",
         "build-it-ac1",
-        {"method": "tdd", "phase": "p1", "effort": "alpha", "verify_command": "pytest", "criterion": "It works"},
+        {
+            "method": "tdd",
+            "phase": "p1",
+            "effort": "alpha",
+            "verify_command": "pytest",
+            "criterion": "It works",
+        },
         body="Verbatim criterion text.",
     )
     create(
@@ -329,7 +347,10 @@ def test_roadmap_heads_each_group_with_its_area_and_collects_arealess_ideas(proj
 def test_group_key_keeps_empty_values_when_a_view_has_no_group_default():
     record = {"subject": "incidental-task", "payload": {"phase": ""}}
     assert views._group_key(record, views.PLAN, views.PLAN.roles[0]) == ""
-    assert views._group_key({"subject": "x", "payload": {}}, views.ROADMAP, views.ROADMAP.roles[1]) == "untriaged"
+    assert (
+        views._group_key({"subject": "x", "payload": {}}, views.ROADMAP, views.ROADMAP.roles[1])
+        == "untriaged"
+    )
 
 
 def test_cli_brief_unknown_subject_fails_on_stderr(project, monkeypatch, capsys):

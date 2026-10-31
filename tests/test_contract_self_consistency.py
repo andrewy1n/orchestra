@@ -35,7 +35,12 @@ def _ref_cases():
 
 
 def test_namespaces_cover_score_conductor_tuner_composer():
-    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {"score", "conductor", "tuner", "composer"}
+    assert {rid.split(":", 1)[0] for rid in _RECORD_IDS} == {
+        "score",
+        "conductor",
+        "tuner",
+        "composer",
+    }
 
 
 @pytest.mark.parametrize("record_id", _RECORD_IDS)
@@ -149,7 +154,9 @@ def test_phase_gate_reads_store_config():
     config_path = repo / ".canon" / "config.json"
     config = json.loads(config_path.read_text())
     config["settings"] = {
-        "conductor": {"phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}}
+        "conductor": {
+            "phase_gate": {"suite": {"mode": "full", "command": "pytest -q", "gate": "advisory"}}
+        }
     }
     config_path.write_text(json.dumps(config))
     policy = suite.load_suite_policy(repo)

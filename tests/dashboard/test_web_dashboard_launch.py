@@ -44,8 +44,16 @@ def _primed_script_environment():
     with lock_path.open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         subprocess.run(
-            [uv, "run", "--script", str(REPO_ROOT / "dashboard" / "backend" / "server" / "__main__.py"), "--help"],
-            env=_env(), capture_output=True, timeout=300,
+            [
+                uv,
+                "run",
+                "--script",
+                str(REPO_ROOT / "dashboard" / "backend" / "server" / "__main__.py"),
+                "--help",
+            ],
+            env=_env(),
+            capture_output=True,
+            timeout=300,
         )
 
 
@@ -65,14 +73,21 @@ def _env(home: Path | None = None) -> dict[str, str]:
     return env
 
 
-def _spawn(cwd: Path, args: list[str], env: dict[str, str], out: Path, err: Path) -> subprocess.Popen:
+def _spawn(
+    cwd: Path, args: list[str], env: dict[str, str], out: Path, err: Path
+) -> subprocess.Popen:
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     stdout = out.open("w")
     stderr = err.open("w")
     try:
         return subprocess.Popen(
-            [str(SCRIPT), *args], cwd=str(cwd), env=env,
-            stdout=stdout, stderr=stderr, text=True, start_new_session=True,
+            [str(SCRIPT), *args],
+            cwd=str(cwd),
+            env=env,
+            stdout=stdout,
+            stderr=stderr,
+            text=True,
+            start_new_session=True,
         )
     except FileNotFoundError:
         proc = None
@@ -96,7 +111,7 @@ def _ppid(pid: int) -> int | None:
         stat = Path(f"/proc/{pid}/stat").read_text()
     except OSError:
         return None
-    fields = stat[stat.rfind(")") + 2:].split()
+    fields = stat[stat.rfind(")") + 2 :].split()
     return int(fields[1]) if len(fields) > 1 else None
 
 
@@ -136,7 +151,7 @@ def _listen_addresses(pid: int) -> list[str]:
             except OSError:
                 continue
             if target.startswith("socket:[") and target.endswith("]"):
-                inodes.add(target[len("socket:["):-1])
+                inodes.add(target[len("socket:[") : -1])
     addresses = []
     for name, family in (("/proc/net/tcp", socket.AF_INET), ("/proc/net/tcp6", socket.AF_INET6)):
         try:
@@ -152,7 +167,7 @@ def _listen_addresses(pid: int) -> list[str]:
             if family is socket.AF_INET:
                 addresses.append(socket.inet_ntoa(raw[::-1]))
             else:
-                words = [raw[index:index + 4][::-1] for index in range(0, 16, 4)]
+                words = [raw[index : index + 4][::-1] for index in range(0, 16, 4)]
                 addresses.append(socket.inet_ntop(socket.AF_INET6, b"".join(words)))
     return addresses
 
@@ -190,7 +205,9 @@ def test_r1_loopback(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     port = _free_port()
-    proc = _spawn(store, ["--port", str(port)], _env(tmp_path / "home"), tmp_path / "out", tmp_path / "err")
+    proc = _spawn(
+        store, ["--port", str(port)], _env(tmp_path / "home"), tmp_path / "out", tmp_path / "err"
+    )
     try:
         addresses = _await_listen(proc, tmp_path / "err")
         assert addresses == ["127.0.0.1"] or set(addresses) == {"127.0.0.1"}
@@ -201,8 +218,11 @@ def test_r1_loopback(store, tmp_path, monkeypatch):
 
     other = _free_port()
     proc = _spawn(
-        store, ["--port", str(other), "--host", "0.0.0.0"],
-        _env(tmp_path / "home"), tmp_path / "out-wide", tmp_path / "err-wide",
+        store,
+        ["--port", str(other), "--host", "0.0.0.0"],
+        _env(tmp_path / "home"),
+        tmp_path / "out-wide",
+        tmp_path / "err-wide",
     )
     try:
         deadline = time.time() + 5
@@ -235,7 +255,10 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
     defs = h.record_defs_by_id(resolved_contract)
     home = tmp_path / "home"
     h.create_generic_record(
-        cli, defs, "score:effort", subject="local-effort",
+        cli,
+        defs,
+        "score:effort",
+        subject="local-effort",
         extra_payload={"goal": "local goal", "kind": "deliver"},
     )
     (store / ".canon" / "store-binding.json").write_text(json.dumps({"store": "global"}))
@@ -256,7 +279,9 @@ def test_r2_same_store(store, cli, resolved_contract, tmp_path, monkeypatch):
         status, _content_type, body = _get(port, "/api/snapshot")
         assert 200 <= status < 300, body
         payload = json.loads(body)
-        assert [view["effort"] for view in payload["efforts"]] == [view.effort for view in snap.efforts]
+        assert [view["effort"] for view in payload["efforts"]] == [
+            view.effort for view in snap.efforts
+        ]
         token_status, _token_type, token_body = _get(port, "/api/token")
         assert 200 <= token_status < 300, token_body
         assert json.loads(token_body)["token"] == snapshot_mod.change_token(target)
@@ -268,15 +293,15 @@ def test_r30_serves_build(store, tmp_path, monkeypatch):
     assert SCRIPT.is_file(), f"web launcher missing: {SCRIPT}"
     page = (
         "<!doctype html>\n"
-        "<html lang=\"en\">\n"
+        '<html lang="en">\n'
         "  <head>\n"
-        "    <meta charset=\"UTF-8\" />\n"
+        '    <meta charset="UTF-8" />\n'
         "    <title>Orchestra</title>\n"
-        "    <script type=\"module\" crossorigin src=\"/assets/index-webdash.js\"></script>\n"
-        "    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-webdash.css\">\n"
+        '    <script type="module" crossorigin src="/assets/index-webdash.js"></script>\n'
+        '    <link rel="stylesheet" crossorigin href="/assets/index-webdash.css">\n'
         "  </head>\n"
         "  <body>\n"
-        "    <div id=\"app\"></div>\n"
+        '    <div id="app"></div>\n'
         "  </body>\n"
         "</html>\n"
     )
@@ -291,7 +316,13 @@ def test_r30_serves_build(store, tmp_path, monkeypatch):
     port = _free_port()
     proc = None
     try:
-        proc = _spawn(store, ["--port", str(port)], _env(tmp_path / "home"), tmp_path / "out", tmp_path / "err")
+        proc = _spawn(
+            store,
+            ["--port", str(port)],
+            _env(tmp_path / "home"),
+            tmp_path / "out",
+            tmp_path / "err",
+        )
         try:
             status, content_type, body = _get(port, "/")
         except AssertionError as exc:
@@ -356,8 +387,13 @@ def test_launched_process_imports_canon_project(store, tmp_path):
     env["DASHBOARD_IMPORT_RESULT"] = str(result)
     try:
         completed = subprocess.run(
-            [str(SCRIPT)], cwd=store, env=env, stdin=subprocess.DEVNULL,
-            capture_output=True, text=True, timeout=120,
+            [str(SCRIPT)],
+            cwd=store,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         assert False, "web launcher did not exit after starting the server process"

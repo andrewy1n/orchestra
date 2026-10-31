@@ -99,7 +99,9 @@ def _create_area(
     )
 
 
-def _create_effort(root: Path, env: dict[str, str], subject: str = "effort-1") -> subprocess.CompletedProcess[str]:
+def _create_effort(
+    root: Path, env: dict[str, str], subject: str = "effort-1"
+) -> subprocess.CompletedProcess[str]:
     return _run_canon(
         root,
         env,

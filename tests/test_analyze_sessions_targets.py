@@ -19,7 +19,10 @@ ROW = {
     "file": "f",
     "project": "p",
     "branch": "b",
-    "tools": {"tools": {"Bash": {"calls": 2, "errors": 1, "retries": 1}}, "totals": {"calls": 2, "errors": 1, "retries": 1}},
+    "tools": {
+        "tools": {"Bash": {"calls": 2, "errors": 1, "retries": 1}},
+        "totals": {"calls": 2, "errors": 1, "retries": 1},
+    },
     "skills": {"engage": 1},
     "records": {"total": 4, "by_type": {}, "efforts": ["a"], "tasks": [], "ambiguous": 1},
 }
@@ -38,7 +41,10 @@ def paths(obj, prefix=""):
 
 
 def valid_paths():
-    result = {re.sub(r"^efforts\.a\b", "efforts.*", p) for p in paths(aggregate([__import__("json").dumps(ROW)]))}
+    result = {
+        re.sub(r"^efforts\.a\b", "efforts.*", p)
+        for p in paths(aggregate([__import__("json").dumps(ROW)]))
+    }
     return result
 
 

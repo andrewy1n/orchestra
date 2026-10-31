@@ -65,7 +65,9 @@ def test_supersede_archives_the_predecessor(project):
 
 def test_events_are_archived_when_created(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "m"}
+    )
     assert history_revisions(project, log) == {log["revision"]}
 
 
@@ -82,7 +84,9 @@ def test_current_revision_is_the_default(project):
     first = project.update(task["id"], payload={"owner": "ann"})
     second = project.update(task["id"], payload={"owner": "bob"})
     assert second["revision"] != first["revision"]
-    assert project.update(task["id"], payload={"owner": "ann"}, expected_revision=second["revision"])
+    assert project.update(
+        task["id"], payload={"owner": "ann"}, expected_revision=second["revision"]
+    )
 
 
 def test_update_with_no_revision_check_uses_none(project):

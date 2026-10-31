@@ -20,16 +20,30 @@ def defs(resolved_contract):
     return h.record_defs_by_id(resolved_contract)
 
 
-def _idea(cli, defs, subject: str, effort: str, *, status: str = "open", source: str = "",
-          phase: str = "", body: str = "") -> dict:
+def _idea(
+    cli,
+    defs,
+    subject: str,
+    effort: str,
+    *,
+    status: str = "open",
+    source: str = "",
+    phase: str = "",
+    body: str = "",
+) -> dict:
     payload = {"effort": effort, "status": status}
     if source:
         payload["source"] = source
     if phase:
         payload["phase"] = phase
     args = [
-        "create", "--type", "composer:idea", "--subject", subject,
-        "--payload", json.dumps(payload),
+        "create",
+        "--type",
+        "composer:idea",
+        "--subject",
+        subject,
+        "--payload",
+        json.dumps(payload),
     ]
     if body:
         args.extend(["--body", body])
@@ -45,15 +59,27 @@ def test_r9_dashboard_backlog_panel_lists_open_ideas_grouped_by_effort(store, cl
     _idea(cli, defs, "park-b", "beta", body="## Note\n\ndo beta later")
     promoted = _idea(cli, defs, "park-promoted", "alpha")
     cli(
-        "supersede", "--type", "composer:idea", "--id", promoted["id"],
-        "--expected-revision", "@current",
-        "--payload", json.dumps({"effort": "alpha", "status": "promoted"}),
+        "supersede",
+        "--type",
+        "composer:idea",
+        "--id",
+        promoted["id"],
+        "--expected-revision",
+        "@current",
+        "--payload",
+        json.dumps({"effort": "alpha", "status": "promoted"}),
     )
     dismissed = _idea(cli, defs, "park-dismissed", "alpha")
     cli(
-        "supersede", "--type", "composer:idea", "--id", dismissed["id"],
-        "--expected-revision", "@current",
-        "--payload", json.dumps({"effort": "alpha", "status": "dismissed"}),
+        "supersede",
+        "--type",
+        "composer:idea",
+        "--id",
+        dismissed["id"],
+        "--expected-revision",
+        "@current",
+        "--payload",
+        json.dumps({"effort": "alpha", "status": "dismissed"}),
     )
 
     snapshot = snapshot_mod.load_snapshot(_target(store))

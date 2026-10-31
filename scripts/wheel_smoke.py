@@ -207,7 +207,12 @@ def _checks(tmp: Path, venv: Path, python: Path, env: dict[str, str]) -> int:
         ("canon validate", [str(canon), "validate"], repo, None),
         ("orchestra install --list", [str(orchestra), "install", "--list"], work, "claude"),
         ("import dashboard", [str(python), "-c", "import dashboard"], work, None),
-        ("import dashboard.backend.server", [str(python), "-c", "import dashboard.backend.server"], work, None),
+        (
+            "import dashboard.backend.server",
+            [str(python), "-c", "import dashboard.backend.server"],
+            work,
+            None,
+        ),
         ("import installer", [str(python), "-c", "import installer"], work, None),
         (
             "import installer.adapters",
@@ -292,9 +297,7 @@ def _serves_index(server: subprocess.Popen[bytes], port: int, index: Path) -> bo
     return False
 
 
-def _run(
-    command: list[str], *, cwd: Path, env: dict[str, str]
-) -> subprocess.CompletedProcess[str]:
+def _run(command: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         command,
         cwd=cwd,

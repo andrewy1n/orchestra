@@ -63,7 +63,9 @@ def test_multi_type_reference_accepts_either_type(project):
     project.create(record_type="alpha:config", subject="web", payload={"title": "a", "level": 1})
     for target in ("t", "web"):
         stored = project.create(
-            record_type="alpha:finding", subject=f"f-{target}", payload={"statement": "s", "about": target}
+            record_type="alpha:finding",
+            subject=f"f-{target}",
+            payload={"statement": "s", "about": target},
         )
         assert stored["payload"]["about"] == target
     with pytest.raises(ValidationError, match="alpha:task or alpha:config"):
@@ -145,15 +147,26 @@ def test_reference_is_checked_on_each_apply_operation(project):
     old = project.create(
         record_type="alpha:issue", subject="q", payload={"summary": "s", "task": "t"}
     )
-    cfg = project.create(
-        record_type="alpha:finding", subject="f", payload={"statement": "s"}
-    )
+    cfg = project.create(record_type="alpha:finding", subject="f", payload={"statement": "s"})
     ops = [
-        {"op": "create", "type": "alpha:log", "subject": "t", "payload": {"task": "ghost", "message": "m"}},
+        {
+            "op": "create",
+            "type": "alpha:log",
+            "subject": "t",
+            "payload": {"task": "ghost", "message": "m"},
+        },
         {"op": "update", "id": old["id"], "payload": {"task": "ghost"}},
-        {"op": "supersede", "id": make_task(project, "u")["id"], "payload": {"depends_on": ["ghost"]}},
+        {
+            "op": "supersede",
+            "id": make_task(project, "u")["id"],
+            "payload": {"depends_on": ["ghost"]},
+        },
         {"op": "correct", "id": entry["id"], "payload": {"task": "ghost"}},
-        {"op": "update", "id": cfg["id"], "payload": {"evidence": ["rec-00000000-0000-0000-0000-000000000000"]}},
+        {
+            "op": "update",
+            "id": cfg["id"],
+            "payload": {"evidence": ["rec-00000000-0000-0000-0000-000000000000"]},
+        },
     ]
     results = project.apply(ops)
     assert [r["ok"] for r in results] == [False] * 5
@@ -165,8 +178,18 @@ def test_apply_sees_records_created_earlier_in_the_batch(project):
     results = project.apply(
         [
             {"op": "create", "type": "alpha:task", "subject": "t", "payload": {"title": "t"}},
-            {"op": "create", "type": "alpha:log", "subject": "t", "payload": {"task": "t", "message": "m"}},
-            {"op": "create", "type": "beta:review", "subject": "t", "payload": {"task": "t", "verdict": "pass"}},
+            {
+                "op": "create",
+                "type": "alpha:log",
+                "subject": "t",
+                "payload": {"task": "t", "message": "m"},
+            },
+            {
+                "op": "create",
+                "type": "beta:review",
+                "subject": "t",
+                "payload": {"task": "t", "verdict": "pass"},
+            },
         ]
     )
     assert [r["ok"] for r in results] == [True, True, True]

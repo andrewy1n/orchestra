@@ -36,9 +36,7 @@ def run_lines(name):
     lines = []
     for step in job(name).get("steps", []):
         if "run" in step:
-            lines.extend(
-                line.strip() for line in step["run"].splitlines() if line.strip()
-            )
+            lines.extend(line.strip() for line in step["run"].splitlines() if line.strip())
     return lines
 
 
@@ -48,8 +46,7 @@ def all_run_lines():
 
 def uses_uv(name):
     return any(
-        "uv" in line.split() or line.startswith(("uv ", "uvx "))
-        for line in run_lines(name)
+        "uv" in line.split() or line.startswith(("uv ", "uvx ")) for line in run_lines(name)
     ) or any(
         str(step.get("uses", "")).startswith("astral-sh/setup-uv")
         for step in job(name).get("steps", [])
@@ -127,23 +124,18 @@ def test_r8_every_job_runs_python_3_10():
         if not setup_uv_steps(name) and runs_only_npm(name):
             continue
         versions = [
-            str(step.get("with", {}).get("python-version"))
-            for step in setup_uv_steps(name)
+            str(step.get("with", {}).get("python-version")) for step in setup_uv_steps(name)
         ]
         assert versions, f"{name} has no setup-uv step"
         assert all(v == "3.10" for v in versions), f"{name} python-version {versions}"
 
 
 def test_r9_checks_runs_build_skills_check():
-    assert any(
-        "scripts/build_skills.py --check" in line for line in run_lines("checks")
-    )
+    assert any("scripts/build_skills.py --check" in line for line in run_lines("checks"))
 
 
 def test_r10_checks_runs_plugin_name_check():
-    assert any(
-        "scripts/check_orchestra_plugin_names.py" in line for line in run_lines("checks")
-    )
+    assert any("scripts/check_orchestra_plugin_names.py" in line for line in run_lines("checks"))
 
 
 def test_r11_ci_does_not_read_or_validate_the_live_store():

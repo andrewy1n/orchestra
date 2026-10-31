@@ -47,11 +47,7 @@ class Adapter(Protocol):
 
 
 def _ignore(directory: str, names: list[str]) -> set[str]:
-    return {
-        name
-        for name in names
-        if name in IGNORE_NAMES or name.endswith(IGNORE_SUFFIXES)
-    }
+    return {name for name in names if name in IGNORE_NAMES or name.endswith(IGNORE_SUFFIXES)}
 
 
 def _same_tree(left: Path, right: Path) -> bool:
@@ -65,8 +61,12 @@ def _same_tree(left: Path, right: Path) -> bool:
             return False
     if not (left.is_dir() and right.is_dir()):
         return False
-    left_names = {n for n in os.listdir(left) if n not in IGNORE_NAMES and not n.endswith(IGNORE_SUFFIXES)}
-    right_names = {n for n in os.listdir(right) if n not in IGNORE_NAMES and not n.endswith(IGNORE_SUFFIXES)}
+    left_names = {
+        n for n in os.listdir(left) if n not in IGNORE_NAMES and not n.endswith(IGNORE_SUFFIXES)
+    }
+    right_names = {
+        n for n in os.listdir(right) if n not in IGNORE_NAMES and not n.endswith(IGNORE_SUFFIXES)
+    }
     if left_names != right_names:
         return False
     return all(_same_tree(left / name, right / name) for name in left_names)
@@ -123,9 +123,7 @@ class BaseAdapter:
                 Action(kind="remove", destination=self.root / entry)
                 for entry in previous["entries"]
             )
-            actions += (
-                Action(kind="remove", destination=self.marker),
-            )
+            actions += (Action(kind="remove", destination=self.marker),)
             return Plan(
                 provider=self.provider,
                 scope=self.scope,
@@ -141,8 +139,7 @@ class BaseAdapter:
         overlap = set(desired) & set(generated)
         if overlap:
             raise ValueError(
-                "generated entries collide with source entries: "
-                + ", ".join(sorted(overlap))
+                "generated entries collide with source entries: " + ", ".join(sorted(overlap))
             )
         actions: list[Action] = []
         for entry, source in desired.items():
@@ -205,8 +202,10 @@ class BaseAdapter:
                 self._write_text(action.destination, text)
                 applied.append(entry)
                 continue
-            if action.unchanged and action.source is not None and self._matches(
-                action.destination, action.source
+            if (
+                action.unchanged
+                and action.source is not None
+                and self._matches(action.destination, action.source)
             ):
                 unchanged.append(entry)
                 continue
@@ -240,13 +239,9 @@ class BaseAdapter:
                 f"registration names {marker['provider']!r}, expected {self.provider.id!r}"
             )
         if marker["scope"] != self.scope:
-            problems.append(
-                f"registration scope is {marker['scope']!r}, expected {self.scope!r}"
-            )
+            problems.append(f"registration scope is {marker['scope']!r}, expected {self.scope!r}")
         if marker["mode"] != self.mode:
-            problems.append(
-                f"registration mode is {marker['mode']!r}, expected {self.mode!r}"
-            )
+            problems.append(f"registration mode is {marker['mode']!r}, expected {self.mode!r}")
 
         desired = self.desired_entries()
         generated = self.generated_entries()
@@ -280,9 +275,7 @@ class BaseAdapter:
     def remove(self) -> RemoveResult:
         marker = self._read_marker()
         if marker is None:
-            return RemoveResult(
-                provider=self.provider, root=self.root, skipped=True
-            )
+            return RemoveResult(provider=self.provider, root=self.root, skipped=True)
         removed: list[str] = []
         parents = {
             (self.root / entry).parent
@@ -391,9 +384,7 @@ class BaseAdapter:
         if marker.get("schema") != SCHEMA_VERSION:
             return None
         entries = marker.get("entries")
-        if not isinstance(entries, list) or not all(
-            isinstance(entry, str) for entry in entries
-        ):
+        if not isinstance(entries, list) or not all(isinstance(entry, str) for entry in entries):
             return None
         marker["entries"] = sorted(set(entries))
         return marker

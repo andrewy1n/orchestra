@@ -12,7 +12,9 @@ from conftest import ALPHA, BETA, PLAN_BODY, make_task
 def config(project, **payload):
     base = {"title": "t", "level": 1}
     base.update(payload)
-    return project.create(record_type="alpha:config", subject=f"c{len(project.records())}", payload=base)
+    return project.create(
+        record_type="alpha:config", subject=f"c{len(project.records())}", payload=base
+    )
 
 
 def test_scalars_accept_their_type(project):
@@ -84,7 +86,9 @@ def test_missing_required_field_is_refused(project):
 
 
 def test_optional_fields_may_be_absent(project):
-    record = project.create(record_type="alpha:config", subject="c", payload={"title": "t", "level": 1})
+    record = project.create(
+        record_type="alpha:config", subject="c", payload={"title": "t", "level": 1}
+    )
     assert "ratio" not in record["payload"]
 
 
@@ -101,7 +105,9 @@ def test_subject_is_required_and_has_no_whitespace(project):
     with pytest.raises(StoreError, match="missing subject"):
         project.create(record_type="alpha:config", subject="", payload={"title": "t", "level": 1})
     with pytest.raises(ValidationError, match="slug"):
-        project.create(record_type="alpha:config", subject="two words", payload={"title": "t", "level": 1})
+        project.create(
+            record_type="alpha:config", subject="two words", payload={"title": "t", "level": 1}
+        )
 
 
 def test_short_type_names_resolve_when_unique(project):
@@ -113,8 +119,12 @@ def test_required_sections_must_be_present_and_filled(project):
     with pytest.raises(ValidationError, match="missing required section 'Orientation'"):
         project.create(record_type="beta:plan", subject="p", payload={"goal": "g"})
     with pytest.raises(ValidationError, match="'Orientation' is empty"):
-        project.create(record_type="beta:plan", subject="p", payload={"goal": "g"}, body="## Orientation\n")
-    stored = project.create(record_type="beta:plan", subject="p", payload={"goal": "g"}, body=PLAN_BODY)
+        project.create(
+            record_type="beta:plan", subject="p", payload={"goal": "g"}, body="## Orientation\n"
+        )
+    stored = project.create(
+        record_type="beta:plan", subject="p", payload={"goal": "g"}, body=PLAN_BODY
+    )
     assert stored["body"] == PLAN_BODY
 
 
@@ -178,19 +188,54 @@ class TestModuleValidation:
             (lambda m: m["types"]["task"].update(lifecycle="cyclic"), "lifecycle"),
             (lambda m: m["types"]["task"].pop("fields"), "fields"),
             (lambda m: m["types"]["task"].update(sections="Orientation"), "sections"),
-            (lambda m: m["types"]["task"]["fields"].update(depends_on={"list": {"type": "string"}}), "built in"),
-            (lambda m: m["types"]["task"]["fields"].update(x={"type": "date"}), "type must be one of"),
+            (
+                lambda m: m["types"]["task"]["fields"].update(
+                    depends_on={"list": {"type": "string"}}
+                ),
+                "built in",
+            ),
+            (
+                lambda m: m["types"]["task"]["fields"].update(x={"type": "date"}),
+                "type must be one of",
+            ),
             (lambda m: m["types"]["task"]["fields"].update(x={"enum": []}), "enum"),
             (lambda m: m["types"]["task"]["fields"].update(x={"enum": ["a", "a"]}), "enum"),
             (lambda m: m["types"]["task"]["fields"].update(x={"ref": "task"}), "ref must be"),
-            (lambda m: m["types"]["task"]["fields"].update(x={"type": "string", "enum": ["a"]}), "exactly one"),
-            (lambda m: m["types"]["task"]["fields"].update(x={"type": "string", "pin": True}), "unknown keys"),
-            (lambda m: m["types"]["task"]["fields"].update(x={"list": {"type": "string", "optional": True}}), "unknown keys"),
-            (lambda m: m["types"]["task"]["fields"].update(x={"type": "string", "optional": "yes"}), "optional"),
-            (lambda m: m["types"]["task"]["fields"].update({"Bad Name": {"type": "string"}}), "field name"),
+            (
+                lambda m: m["types"]["task"]["fields"].update(x={"type": "string", "enum": ["a"]}),
+                "exactly one",
+            ),
+            (
+                lambda m: m["types"]["task"]["fields"].update(x={"type": "string", "pin": True}),
+                "unknown keys",
+            ),
+            (
+                lambda m: m["types"]["task"]["fields"].update(
+                    x={"list": {"type": "string", "optional": True}}
+                ),
+                "unknown keys",
+            ),
+            (
+                lambda m: m["types"]["task"]["fields"].update(
+                    x={"type": "string", "optional": "yes"}
+                ),
+                "optional",
+            ),
+            (
+                lambda m: m["types"]["task"]["fields"].update({"Bad Name": {"type": "string"}}),
+                "field name",
+            ),
             (lambda m: m.update(migrations=[{"from": "1", "to": "1"}]), "greater"),
-            (lambda m: m.update(migrations=[{"from": "1", "to": "2", "mystery": {}}]), "unknown keys"),
-            (lambda m: m.update(migrations=[{"from": "1", "to": "2", "rename_type": {"a": "b"}}]), "rename_type"),
+            (
+                lambda m: m.update(migrations=[{"from": "1", "to": "2", "mystery": {}}]),
+                "unknown keys",
+            ),
+            (
+                lambda m: m.update(
+                    migrations=[{"from": "1", "to": "2", "rename_type": {"a": "b"}}]
+                ),
+                "rename_type",
+            ),
         ],
     )
     def test_invalid_module_is_refused(self, mutate, message):

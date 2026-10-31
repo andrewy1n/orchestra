@@ -30,5 +30,8 @@ def test_both_skills_treat_a_missing_executor_as_subagent():
 
 def test_execute_stops_when_a_wave_disagrees():
     text = _text("execute-phase")
-    assert "If the wave disagrees, or any value is other than those two, stop and name the tasks" in text
+    assert (
+        "If the wave disagrees, or any value is other than those two, stop and name the tasks"
+        in text
+    )
     assert "Spawn a subagent for `inline`, or spawn when the wave disagrees on executor" in text

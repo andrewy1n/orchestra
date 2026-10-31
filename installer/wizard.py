@@ -51,9 +51,7 @@ def _provider_ids(statuses: tuple[HostStatus, ...]) -> tuple[str, ...]:
     return tuple(status.provider.id for status in statuses)
 
 
-def parse_host_selection(
-    text: str, statuses: tuple[HostStatus, ...]
-) -> tuple[str, ...]:
+def parse_host_selection(text: str, statuses: tuple[HostStatus, ...]) -> tuple[str, ...]:
     """Resolve numbers, ids, ranges, ``a``/``all``, and ``q``/``quit``."""
     value = text.strip()
     if not value:
@@ -119,18 +117,13 @@ def prompt_hosts(
             file=output,
         )
     default_text = ",".join(default_ids) if default_ids else "none"
-    prompt = (
-        "Select hosts [numbers, ids, ranges, a=all, q=quit]"
-        f" (default: {default_text}): "
-    )
+    prompt = f"Select hosts [numbers, ids, ranges, a=all, q=quit] (default: {default_text}): "
     while True:
         answer = _ask(prompt, input_fn)
         if not answer.strip():
             if default_ids:
                 return tuple(default_ids)
-            raise WizardSelectionError(
-                "no hosts detected; select a host explicitly or use --all"
-            )
+            raise WizardSelectionError("no hosts detected; select a host explicitly or use --all")
         try:
             return parse_host_selection(answer, statuses)
         except WizardSelectionError as exc:

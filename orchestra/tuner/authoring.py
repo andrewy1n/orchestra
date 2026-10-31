@@ -48,7 +48,9 @@ def freeze(cwd: Path | str, claim_ids: Sequence[str] = ()) -> None:
     if not isinstance(claims, list):
         raise AuthoringError("manifest claims must be a list")
     by_id = {c.get("id"): c for c in claims if isinstance(c, dict)}
-    selected = list(claim_ids) if claim_ids else [c.get("id") for c in claims if isinstance(c, dict)]
+    selected = (
+        list(claim_ids) if claim_ids else [c.get("id") for c in claims if isinstance(c, dict)]
+    )
     for claim_id in selected:
         if claim_id not in by_id:
             raise AuthoringError(f"unknown claim id {claim_id!r}")

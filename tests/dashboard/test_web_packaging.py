@@ -138,7 +138,8 @@ def test_r2_wheel_job_builds_the_frontend_before_the_smoke_script():
     smoke = [i for i, (_, line) in enumerate(located) if line == SMOKE_LINE]
     assert smoke, "wheel job does not run the smoke script"
     builds = [
-        i for i, (directory, line) in enumerate(located)
+        i
+        for i, (directory, line) in enumerate(located)
         if line == "npm run build" and directory == FRONTEND_REL
     ]
     assert builds, f"wheel job has no `npm run build` in {FRONTEND_REL}"
@@ -189,7 +190,9 @@ def test_r5_wheel_job_sets_up_node_and_the_script_checks_the_root():
 def test_r6_playwright_test_starts_the_server_and_loads_the_page():
     package = json.loads((FRONTEND / "package.json").read_text())
     version = package.get("devDependencies", {}).get("@playwright/test", "")
-    assert re.fullmatch(r"\d+\.\d+\.\d+", version), f"@playwright/test version {version!r} is not exact"
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version), (
+        f"@playwright/test version {version!r} is not exact"
+    )
     assert "playwright test" in package.get("scripts", {}).get("e2e", "")
     config = FRONTEND / "playwright.config.ts"
     assert config.is_file(), "missing playwright.config.ts"

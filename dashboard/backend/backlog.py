@@ -88,9 +88,15 @@ def _supersede_args(item: BacklogItem, status: str, *, phase: str | None = None)
     if not is_backlog(item):
         raise BacklogRefused(f"cannot act on {item.record_type or 'non-backlog'}")
     return [
-        "supersede", "--type", BACKLOG_TYPE, "--id", item.id,
-        "--expected-revision", "@current",
-        "--payload", json.dumps(_successor_payload(item, status, phase=phase)),
+        "supersede",
+        "--type",
+        BACKLOG_TYPE,
+        "--id",
+        item.id,
+        "--expected-revision",
+        "@current",
+        "--payload",
+        json.dumps(_successor_payload(item, status, phase=phase)),
     ]
 
 

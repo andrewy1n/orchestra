@@ -84,9 +84,7 @@ def _start(
     worktree.mkdir()
     script = tmp_path / f"{name}-write_junit.py"
     script.write_text(
-        _WRITER.replace("__MODE__", repr("drop" if drop else "write")).replace(
-            "__XML__", repr(xml)
-        )
+        _WRITER.replace("__MODE__", repr("drop" if drop else "write")).replace("__XML__", repr(xml))
     )
     probe = tmp_path / f"{name}-probe.json"
     runner = [
@@ -100,9 +98,7 @@ def _start(
     return worktree, runner, probe
 
 
-def test_run_tests_returns_id_outcomes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_tests_returns_id_outcomes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PYTHONPATH", "/leak-pythonpath")
     monkeypatch.setenv("PYTEST_ADDOPTS", "--leak")
     monkeypatch.setenv("AFF_SENTINEL", "kept")
@@ -174,9 +170,7 @@ def test_run_tests_maps_failure_error_skipped(tmp_path: Path) -> None:
         "case_pass": "passed",
     }
 
-    missing_tree, missing_runner, _missing_probe = _start(
-        tmp_path, "", name="absent", drop=True
-    )
+    missing_tree, missing_runner, _missing_probe = _start(tmp_path, "", name="absent", drop=True)
     assert run_tests(missing_tree, ["gone"], missing_runner) == {"gone": "not_run"}
 
 

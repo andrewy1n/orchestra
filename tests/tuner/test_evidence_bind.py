@@ -33,9 +33,7 @@ from test_verdict import (
 OBS_TYPE = "tuner:evidence-observation"
 BINDING_TYPE = "tuner:evidence-binding"
 REQUIRED_PAYLOAD = ("observation_id", "claim_id", "base_rev", "head_rev")
-_INACTIVE = frozenset(
-    {"retired", "superseded", "inactive", "unbound", "withdrawn"}
-)
+_INACTIVE = frozenset({"retired", "superseded", "inactive", "unbound", "withdrawn"})
 _SEQ = itertools.count(1)
 
 
@@ -75,9 +73,7 @@ def _seed_verdict_subject(root: Path) -> tuple[str, str]:
     return base, head
 
 
-def _verdict(
-    root: Path, base: str, head: str
-) -> subprocess.CompletedProcess[str]:
+def _verdict(root: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
     return _tuner(
         "verdict",
         "--cwd",
@@ -138,9 +134,7 @@ def _get_record(root: Path, record_type: str, record_id: str) -> dict:
     return _record_from(result.stdout)
 
 
-def _create_observation(
-    root: Path, *, base: str, head: str, result: str = "pass"
-) -> dict:
+def _create_observation(root: Path, *, base: str, head: str, result: str = "pass") -> dict:
     create = run_cli(
         "create",
         "--type",
@@ -195,10 +189,7 @@ def _recheck(root: Path, claim: str = CLAIM) -> subprocess.CompletedProcess[str]
 
 def _links(row: dict, observation_id: str, claim_id: str) -> bool:
     payload = row.get("payload") or {}
-    return (
-        payload.get("observation_id") == observation_id
-        and payload.get("claim_id") == claim_id
-    )
+    return payload.get("observation_id") == observation_id and payload.get("claim_id") == claim_id
 
 
 def _is_active(row: dict) -> bool:
@@ -324,9 +315,7 @@ def test_r3_tuner_unbind_retires_evidence_binding(store: Path) -> None:
         f"payload={got.get('payload')}"
     )
     active = [
-        row
-        for row in _list_bindings(store)
-        if _links(row, obs["id"], CLAIM) and _is_active(row)
+        row for row in _list_bindings(store) if _links(row, obs["id"], CLAIM) and _is_active(row)
     ]
     assert active == []
     recheck = _recheck(store, CLAIM)

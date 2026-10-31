@@ -72,7 +72,9 @@ def _sync_locked(store: Backend, installed: dict[str, InstalledModule]) -> dict[
     for namespace in config["schemas"]:
         module = _need(installed, namespace)
         text = store.read_snapshot(namespace)
-        snapshot = parse_module(text, f"schema snapshot {namespace!r}") if text is not None else None
+        snapshot = (
+            parse_module(text, f"schema snapshot {namespace!r}") if text is not None else None
+        )
         steps: list[dict[str, Any]] = []
         if snapshot is not None:
             if version_tuple(module.version) < version_tuple(snapshot["version"]):

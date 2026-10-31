@@ -252,7 +252,9 @@ def _fails_git(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_r1_check_defines_parser() -> None:
     """R1: orchestra.conductor.check defines parse_failing_node_ids."""
-    assert _defines_function(ROOT / "orchestra" / "conductor" / "check.py", "parse_failing_node_ids")
+    assert _defines_function(
+        ROOT / "orchestra" / "conductor" / "check.py", "parse_failing_node_ids"
+    )
 
 
 def test_r2_suite_omits_parser() -> None:
@@ -308,9 +310,12 @@ def test_r9_claim_signature(tmp_path: Path) -> None:
     claim_id = "claim-widget"
     text = "the widget is blue"
     signature = _sign(key, canonical_payload(claim_id, text), "tuner-claim")
-    assert verify_claim_signature(
-        claim_id, text, signature, _allowlist("reviewer", "tuner-claim", blob)
-    ) is True
+    assert (
+        verify_claim_signature(
+            claim_id, text, signature, _allowlist("reviewer", "tuner-claim", blob)
+        )
+        is True
+    )
 
 
 def test_r10_amendment_signature(tmp_path: Path) -> None:
@@ -326,11 +331,14 @@ def test_r10_amendment_signature(tmp_path: Path) -> None:
         "new_hashes": {"tests/test_mod.py": "sha256:22"},
     }
     signature = _sign(key, canonical_payload(amendment), "tuner-amendment")
-    assert verify_signature(
-        canonical_payload(amendment),
-        signature,
-        _allowlist("owner", "tuner-amendment", blob),
-    ) is True
+    assert (
+        verify_signature(
+            canonical_payload(amendment),
+            signature,
+            _allowlist("owner", "tuner-amendment", blob),
+        )
+        is True
+    )
 
 
 def test_r11_attestation_signature(tmp_path: Path) -> None:
@@ -353,9 +361,6 @@ def test_r11_attestation_signature(tmp_path: Path) -> None:
     )
     ok = result[0] if isinstance(result, tuple) else result
     assert ok is True
-
-
-
 
 
 def test_r15_views_omits_getter() -> None:

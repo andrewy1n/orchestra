@@ -15,23 +15,35 @@ from conftest import REPO_ROOT
 def _orchestra(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-m", "orchestra.cli", *args],
-        capture_output=True, text=True, cwd=str(REPO_ROOT), timeout=60,
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        timeout=60,
     )
 
 
 def _goal(cli, defs, effort: str) -> None:
     h.create_generic_record(
-        cli, defs, "score:effort", subject=effort,
+        cli,
+        defs,
+        "score:effort",
+        subject=effort,
         extra_payload={"goal": f"ship {effort}", "kind": "deliver"},
     )
 
 
 def _work_item(cli, defs, effort: str, subject: str) -> dict:
     return h.create_generic_record(
-        cli, defs, "score:work-item", subject=subject,
+        cli,
+        defs,
+        "score:work-item",
+        subject=subject,
         extra_payload={
-            "title": f"title of {subject}", "phase": f"{effort}-phase", "kind": "deliver",
-            "assignee": "", "effort": effort,
+            "title": f"title of {subject}",
+            "phase": f"{effort}-phase",
+            "kind": "deliver",
+            "assignee": "",
+            "effort": effort,
         },
     )
 
@@ -45,7 +57,10 @@ def seeded(store: Path, cli, resolved_contract) -> Path:
     h.transition(cli, "score:work-item", running, "in_progress")
     _work_item(cli, defs, "busy", "busy-ready")
     h.create_generic_record(
-        cli, defs, "score:continuity-question", subject="busy",
+        cli,
+        defs,
+        "score:continuity-question",
+        subject="busy",
         extra_payload={"blocking": True, "scope": "busy-scope"},
     )
     return store

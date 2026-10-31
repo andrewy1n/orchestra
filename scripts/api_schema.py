@@ -34,8 +34,14 @@ def render() -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail when the schema file differs from the live schema")
-    parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA, help="schema file to write or check")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="fail when the schema file differs from the live schema",
+    )
+    parser.add_argument(
+        "--schema", type=Path, default=DEFAULT_SCHEMA, help="schema file to write or check"
+    )
     args = parser.parse_args(argv)
 
     live = render()

@@ -87,9 +87,15 @@ def read_records(
     rows: list[dict] = []
     for record_type in types if types is not None else DEFAULT_TYPES:
         argv = [
-            "record-list", "--root", root, "--store", store_path,
+            "record-list",
+            "--root",
+            root,
+            "--store",
+            store_path,
             "--read-only",
-            "list", "--type", record_type,
+            "list",
+            "--type",
+            record_type,
         ]
         try:
             records = json.loads(run(argv))["records"]

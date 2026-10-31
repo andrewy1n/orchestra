@@ -34,7 +34,10 @@ def test_phase_body_names_landing_branch_worktree_base_and_close():
     text = _flat(_text("plan-phase"))
     for phrase in LANDING_PHRASES[:3]:
         assert phrase in text
-    assert "close actions (commit phase branch → merge `main` → store commit); push only as a human stop" in text
+    assert (
+        "close actions (commit phase branch → merge `main` → store commit); push only as a human stop"
+        in text
+    )
     assert "No Landing → not ready for plan review. Incidental has no Landing." in text
 
 

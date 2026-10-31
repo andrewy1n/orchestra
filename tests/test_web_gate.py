@@ -27,9 +27,7 @@ def _ui_copy(tmp_path: Path, link_modules: bool = True) -> Path:
 
 
 def _npm(cwd: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["npm", *args], cwd=cwd, capture_output=True, text=True, check=False
-    )
+    return subprocess.run(["npm", *args], cwd=cwd, capture_output=True, text=True, check=False)
 
 
 def _output(result: subprocess.CompletedProcess) -> str:
@@ -95,9 +93,7 @@ def test_r6_biome_json_enables_full_svelte_support():
 
 
 def test_r8_agents_md_has_a_ts_svelte_section():
-    assert _ts_svelte_section() is not None, (
-        "AGENTS.md has no TypeScript and Svelte heading"
-    )
+    assert _ts_svelte_section() is not None, "AGENTS.md has no TypeScript and Svelte heading"
 
 
 def test_r9_agents_md_section_names_the_three_commands():

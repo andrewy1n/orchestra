@@ -34,7 +34,9 @@ def _read_source(entry: Any) -> tuple[str, str]:
         raise SchemaError(f"entry point {entry.name} = {package!r} must name a package")
     source = f"{package}/{entry.name}.json"
     try:
-        return source, resources.files(package).joinpath(f"{entry.name}.json").read_text(encoding="utf-8")
+        return source, resources.files(package).joinpath(f"{entry.name}.json").read_text(
+            encoding="utf-8"
+        )
     except (OSError, ModuleNotFoundError, TypeError) as exc:
         raise SchemaError(f"cannot read schema module {source!r}: {exc}") from exc
 

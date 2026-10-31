@@ -95,14 +95,10 @@ def source(tmp_path: Path) -> Path:
         (reference / "ensure-store.md").write_text("shared\n", encoding="utf-8")
     (root / "agents").mkdir()
     (root / "agents" / "reviewer.md").write_text("reviewer\n", encoding="utf-8")
-    (root / "agents" / "reviewer.prompt.md").write_text(
-        CANONICAL_AGENT, encoding="utf-8"
-    )
+    (root / "agents" / "reviewer.prompt.md").write_text(CANONICAL_AGENT, encoding="utf-8")
     hooks = root / "hosts" / "claude" / "hooks"
     hooks.mkdir(parents=True)
-    (hooks / "hooks.json").write_text(
-        json.dumps(HOOKS_PAYLOAD) + "\n", encoding="utf-8"
-    )
+    (hooks / "hooks.json").write_text(json.dumps(HOOKS_PAYLOAD) + "\n", encoding="utf-8")
     cursor = root / "hosts" / "cursor"
     cursor.mkdir(parents=True)
     (cursor / "hooks.json").write_text(
@@ -159,9 +155,9 @@ def run_install(
     npx_exit: int = 0,
 ) -> subprocess.CompletedProcess:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     stub, log = npx_paths(project)
     env["ORCHESTRA_NPX"] = str(stub)
@@ -204,8 +200,9 @@ def snapshot(root: Path) -> dict[str, str]:
 
 
 def test_flags_only_installs_selected_provider(source, project, home):
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "claude" in proc.stdout
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
@@ -215,8 +212,14 @@ def test_flags_only_installs_selected_provider(source, project, home):
 
 def test_flags_only_repeats_in_request_order(source, project, home):
     proc = run_install(
-        "--only", "cursor", "--only", "claude", "--home", str(home),
-        project=project, source=source,
+        "--only",
+        "cursor",
+        "--only",
+        "claude",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     installed_lines = [line for line in proc.stdout.splitlines() if line.startswith("installed ")]
@@ -227,8 +230,7 @@ def test_flags_only_repeats_in_request_order(source, project, home):
 
 def test_flags_all_installs_every_matrix_provider(source, project, home):
     expected = load_matrix()
-    proc = run_install("--all", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install("--all", "--home", str(home), "--copy", project=project, source=source)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert len(markers(home)) == len(expected)
     for provider in expected:
@@ -238,23 +240,24 @@ def test_flags_all_installs_every_matrix_provider(source, project, home):
 
 
 def test_flags_global_installs_under_home(source, project, home):
-    proc = run_install("--only", "claude", "--global", "--copy",
-                       project=project, source=source, home=home)
+    proc = run_install(
+        "--only", "claude", "--global", "--copy", project=project, source=source, home=home
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (home / ".claude" / "skills" / "init" / "SKILL.md").is_file()
     assert not (project / ".claude").exists()
 
 
 def test_flags_copy_switches_from_symlink_to_copy(source, project, home):
-    linked = run_install("--only", "claude", "--home", str(home),
-                         project=project, source=source)
+    linked = run_install("--only", "claude", "--home", str(home), project=project, source=source)
     assert linked.returncode == 0, linked.stdout + linked.stderr
     linked_skill = home / ".claude" / "skills" / "init"
     assert linked_skill.is_symlink()
     assert linked_skill.resolve() == (source / "skills" / "init").resolve()
 
-    copied = run_install("--only", "claude", "--home", str(home), "--copy",
-                         project=project, source=source)
+    copied = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert copied.returncode == 0, copied.stdout + copied.stderr
     copied_skill = home / ".claude" / "skills" / "init" / "SKILL.md"
     assert copied_skill.is_file()
@@ -264,8 +267,9 @@ def test_flags_copy_switches_from_symlink_to_copy(source, project, home):
 
 
 def test_flags_dry_run_writes_nothing(source, project, home):
-    proc = run_install("--all", "--home", str(home), "--copy", "--dry-run",
-                       project=project, source=source)
+    proc = run_install(
+        "--all", "--home", str(home), "--copy", "--dry-run", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "dry run" in proc.stdout
     assert "install claude" in proc.stdout
@@ -274,13 +278,15 @@ def test_flags_dry_run_writes_nothing(source, project, home):
 
 
 def test_flags_uninstall_removes_registration(source, project, home):
-    installed = run_install("--only", "claude", "--home", str(home), "--copy",
-                            project=project, source=source)
+    installed = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert installed.returncode == 0, installed.stdout + installed.stderr
     assert markers(home)
 
-    removed = run_install("--only", "claude", "--home", str(home), "--uninstall",
-                          project=project, source=source)
+    removed = run_install(
+        "--only", "claude", "--home", str(home), "--uninstall", project=project, source=source
+    )
     assert removed.returncode == 0, removed.stdout + removed.stderr
     assert "uninstalled claude" in removed.stdout
     assert markers(home) == []
@@ -288,10 +294,12 @@ def test_flags_uninstall_removes_registration(source, project, home):
 
 
 def test_flags_uninstall_is_safe_to_repeat(source, project, home):
-    first = run_install("--only", "claude", "--home", str(home), "--uninstall",
-                        project=project, source=source)
-    second = run_install("--only", "claude", "--home", str(home), "--uninstall",
-                         project=project, source=source)
+    first = run_install(
+        "--only", "claude", "--home", str(home), "--uninstall", project=project, source=source
+    )
+    second = run_install(
+        "--only", "claude", "--home", str(home), "--uninstall", project=project, source=source
+    )
     assert first.returncode == 0, first.stdout + first.stderr
     assert second.returncode == 0, second.stdout + second.stderr
     assert "not installed" in second.stdout
@@ -299,24 +307,25 @@ def test_flags_uninstall_is_safe_to_repeat(source, project, home):
 
 
 def test_flags_reject_unknown_only_provider(source, project, home):
-    proc = run_install("--only", "nope", "--home", str(home),
-                       project=project, source=source)
+    proc = run_install("--only", "nope", "--home", str(home), project=project, source=source)
     assert proc.returncode == 2
     assert "unknown provider" in proc.stderr
     assert not home.exists()
 
 
 def test_flags_reject_only_with_all(source, project, home):
-    proc = run_install("--only", "claude", "--all", "--home", str(home),
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--all", "--home", str(home), project=project, source=source
+    )
     assert proc.returncode == 2
     assert "mutually exclusive" in proc.stderr
     assert not home.exists()
 
 
 def test_flags_help_lists_documented_flags(source, project):
-    proc = run_install("--help", project=project, source=source,
-                       home=project.parent / "unused-home")
+    proc = run_install(
+        "--help", project=project, source=source, home=project.parent / "unused-home"
+    )
     assert proc.returncode == 0, proc.stderr
     for flag in ("--only", "--all", "--global", "--copy", "--dry-run", "--uninstall"):
         assert flag in proc.stdout
@@ -343,8 +352,9 @@ def test_allowlist_rejects_denied_and_foreign_paths():
 
 
 def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, project, home):
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     installed = sorted(path.relative_to(home).as_posix() for path in home.rglob("*"))
     for relative in installed:
@@ -363,8 +373,7 @@ def test_allowlist_copy_excludes_artifacts_worktrees_and_dashboard(source, proje
 
 
 def test_allowlist_symlink_targets_stay_in_source(source, project, home):
-    proc = run_install("--only", "claude", "--home", str(home),
-                       project=project, source=source)
+    proc = run_install("--only", "claude", "--home", str(home), project=project, source=source)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     links = [path for path in home.rglob("*") if path.is_symlink()]
     assert links
@@ -396,10 +405,18 @@ def test_idempotent_second_install_leaves_one_registration_per_host(source, proj
 
 
 def test_idempotent_switch_mode_keeps_one_registration(source, project, home):
-    assert run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source).returncode == 0
-    assert run_install("--only", "claude", "--home", str(home),
-                       project=project, source=source).returncode == 0
+    assert (
+        run_install(
+            "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+        ).returncode
+        == 0
+    )
+    assert (
+        run_install(
+            "--only", "claude", "--home", str(home), project=project, source=source
+        ).returncode
+        == 0
+    )
     assert len(markers(home)) == 1
     payload = json.loads(markers(home)[0].read_text())
     assert payload["mode"] == "symlink"
@@ -407,13 +424,18 @@ def test_idempotent_switch_mode_keeps_one_registration(source, project, home):
 
 
 def test_idempotent_prunes_entries_removed_from_source(source, project, home):
-    assert run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source).returncode == 0
+    assert (
+        run_install(
+            "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+        ).returncode
+        == 0
+    )
     assert (home / ".claude" / "skills" / "plan-phase").is_dir()
 
     shutil.rmtree(source / "skills" / "plan-phase")
-    rerun = run_install("--only", "claude", "--home", str(home), "--copy",
-                        project=project, source=source)
+    rerun = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert rerun.returncode == 0, rerun.stdout + rerun.stderr
     assert not (home / ".claude" / "skills" / "plan-phase").exists()
     payload = json.loads((home / ".claude" / MARKER).read_text())
@@ -422,12 +444,25 @@ def test_idempotent_prunes_entries_removed_from_source(source, project, home):
 
 
 def test_idempotent_uninstall_leaves_nothing_behind(source, project, home):
-    assert run_install("--only", "claude", "--only", "cursor", "--home", str(home),
-                       "--copy", project=project, source=source).returncode == 0
+    assert (
+        run_install(
+            "--only",
+            "claude",
+            "--only",
+            "cursor",
+            "--home",
+            str(home),
+            "--copy",
+            project=project,
+            source=source,
+        ).returncode
+        == 0
+    )
     assert len(markers(home)) == 2
     for provider in ("claude", "cursor"):
-        proc = run_install("--only", provider, "--home", str(home), "--uninstall",
-                           project=project, source=source)
+        proc = run_install(
+            "--only", provider, "--home", str(home), "--uninstall", project=project, source=source
+        )
         assert proc.returncode == 0, proc.stdout + proc.stderr
         assert not (home / f".{provider}").exists()
     assert markers(home) == []
@@ -501,8 +536,9 @@ def test_native_adapters_registered_for_claude_cursor_and_opencode(project, sour
 
 
 def test_native_claude_installs_skills_agent_and_hooks(source, project, home):
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".claude"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
@@ -516,8 +552,9 @@ def test_native_claude_installs_skills_agent_and_hooks(source, project, home):
 
 
 def test_native_cursor_installs_read_only_agent_and_hooks(source, project, home):
-    proc = run_install("--only", "cursor", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "cursor", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".cursor"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
@@ -529,11 +566,10 @@ def test_native_cursor_installs_read_only_agent_and_hooks(source, project, home)
     assert not (root / "plugin.js").exists()
 
 
-def test_native_opencode_installs_skills_source_plugin_and_subagent(
-    source, project, home
-):
-    proc = run_install("--only", "opencode", "--home", str(home), "--copy",
-                       project=project, source=source)
+def test_native_opencode_installs_skills_source_plugin_and_subagent(source, project, home):
+    proc = run_install(
+        "--only", "opencode", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".opencode"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
@@ -552,9 +588,9 @@ def test_native_opencode_installs_skills_source_plugin_and_subagent(
 
 
 def test_opencode_plugin_uses_the_v2_default_definition():
-    plugin = (
-        Path(__file__).resolve().parents[1] / "hosts" / "opencode" / "plugin.js"
-    ).read_text(encoding="utf-8")
+    plugin = (Path(__file__).resolve().parents[1] / "hosts" / "opencode" / "plugin.js").read_text(
+        encoding="utf-8"
+    )
     assert "export default Plugin.define" in plugin
     assert 'id: "orchestra-hooks"' in plugin
     assert "export const OrchestraHooks" not in plugin
@@ -569,8 +605,7 @@ def test_opencode_reinstall_moves_the_legacy_root_plugin(source, project, home):
     marker_path = root / MARKER
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
     marker["entries"] = [
-        "plugin.js" if entry == "plugins/plugin.js" else entry
-        for entry in marker["entries"]
+        "plugin.js" if entry == "plugins/plugin.js" else entry for entry in marker["entries"]
     ]
     marker_path.write_text(json.dumps(marker) + "\n", encoding="utf-8")
 
@@ -583,8 +618,9 @@ def test_opencode_reinstall_moves_the_legacy_root_plugin(source, project, home):
 
 def test_native_agent_matches_the_generated_rendering(source, project, home):
     for provider in ("claude", "cursor", "opencode"):
-        proc = run_install("--only", provider, "--home", str(home), "--copy",
-                           project=project, source=source)
+        proc = run_install(
+            "--only", provider, "--home", str(home), "--copy", project=project, source=source
+        )
         assert proc.returncode == 0, proc.stdout + proc.stderr
         installed = home / f".{provider}" / "agents" / "reviewer.md"
         expected = render_agent(provider, load_agent(source))
@@ -605,8 +641,17 @@ def hook_commands(settings: dict) -> list[str]:
 
 def test_hooks_are_installed_for_every_supported_native_host(source, project, home):
     proc = run_install(
-        "--only", "claude", "--only", "cursor", "--only", "opencode",
-        "--home", str(home), "--copy", project=project, source=source,
+        "--only",
+        "claude",
+        "--only",
+        "cursor",
+        "--only",
+        "opencode",
+        "--home",
+        str(home),
+        "--copy",
+        project=project,
+        source=source,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     settings = json.loads((home / ".claude" / "settings.json").read_text())
@@ -626,12 +671,11 @@ def test_claude_hooks_merge_into_the_settings_read_path(source, project, home):
         "permissions": {"allow": ["Bash(git status)"]},
         "env": {"ORCHESTRA_TEST": "1"},
     }
-    (root / "settings.json").write_text(
-        json.dumps(preexisting) + "\n", encoding="utf-8"
-    )
+    (root / "settings.json").write_text(json.dumps(preexisting) + "\n", encoding="utf-8")
 
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
     settings = json.loads((root / "settings.json").read_text())
@@ -658,14 +702,17 @@ def test_claude_hooks_uninstall_restores_preexisting_settings(source, project, h
     root = home / ".claude"
     root.mkdir(parents=True)
     preexisting = {"permissions": {"allow": ["Bash(git status)"]}}
-    (root / "settings.json").write_text(
-        json.dumps(preexisting) + "\n", encoding="utf-8"
-    )
+    (root / "settings.json").write_text(json.dumps(preexisting) + "\n", encoding="utf-8")
 
-    assert run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source).returncode == 0
-    removed = run_install("--only", "claude", "--home", str(home), "--uninstall",
-                          project=project, source=source)
+    assert (
+        run_install(
+            "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+        ).returncode
+        == 0
+    )
+    removed = run_install(
+        "--only", "claude", "--home", str(home), "--uninstall", project=project, source=source
+    )
     assert removed.returncode == 0, removed.stdout + removed.stderr
     assert json.loads((root / "settings.json").read_text()) == preexisting
     assert markers(home) == []
@@ -681,8 +728,9 @@ def test_claude_hooks_merge_through_a_symlinked_settings_file(source, project, h
     link = root / "settings.json"
     link.symlink_to(target)
 
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert link.is_symlink()
     settings = json.loads(link.read_text(encoding="utf-8"))
@@ -703,10 +751,15 @@ def test_claude_uninstall_preserves_a_symlinked_settings_file(source, project, h
     link = root / "settings.json"
     link.symlink_to(target)
 
-    assert run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source).returncode == 0
-    removed = run_install("--only", "claude", "--home", str(home), "--uninstall",
-                          project=project, source=source)
+    assert (
+        run_install(
+            "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+        ).returncode
+        == 0
+    )
+    removed = run_install(
+        "--only", "claude", "--home", str(home), "--uninstall", project=project, source=source
+    )
     assert removed.returncode == 0, removed.stdout + removed.stderr
     assert link.is_symlink()
     assert json.loads(target.read_text(encoding="utf-8")) == preexisting
@@ -718,8 +771,9 @@ def test_claude_invalid_settings_fails_cleanly(source, project, home):
     root.mkdir(parents=True)
     (root / "settings.json").write_text("{not json", encoding="utf-8")
 
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 2
     assert "not valid JSON" in proc.stderr
     assert "Traceback" not in proc.stderr
@@ -733,8 +787,9 @@ def test_claude_broken_settings_symlink_fails_cleanly(source, project, home):
     link = root / "settings.json"
     link.symlink_to(home / "missing-settings.json")
 
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 2
     assert "broken symlink" in proc.stderr
     assert "Traceback" not in proc.stderr
@@ -744,8 +799,9 @@ def test_claude_broken_settings_symlink_fails_cleanly(source, project, home):
 
 def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
     shutil.rmtree(source / "hosts" / "claude")
-    proc = run_install("--only", "claude", "--home", str(home), "--copy",
-                       project=project, source=source)
+    proc = run_install(
+        "--only", "claude", "--home", str(home), "--copy", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     root = home / ".claude"
     assert (root / "skills" / "init" / "SKILL.md").is_file()
@@ -758,8 +814,17 @@ def test_hooks_optional_when_a_host_payload_omits_them(source, project, home):
 def test_hooks_absent_from_every_host_still_installs(source, project, home):
     shutil.rmtree(source / "hosts")
     proc = run_install(
-        "--only", "claude", "--only", "cursor", "--only", "opencode",
-        "--home", str(home), "--copy", project=project, source=source,
+        "--only",
+        "claude",
+        "--only",
+        "cursor",
+        "--only",
+        "opencode",
+        "--home",
+        str(home),
+        "--copy",
+        project=project,
+        source=source,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert len(markers(home)) == 3
@@ -773,11 +838,8 @@ def test_hooks_absent_from_every_host_still_installs(source, project, home):
 # -- skills-CLI tail -----------------------------------------------------
 
 
-def test_tail_delegates_to_npx_skills_add_and_reports_the_profile(
-    source, project, home
-):
-    proc = run_install("--only", "codex", "--home", str(home),
-                       project=project, source=source)
+def test_tail_delegates_to_npx_skills_add_and_reports_the_profile(source, project, home):
+    proc = run_install("--only", "codex", "--home", str(home), project=project, source=source)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert npx_calls(project) == ["skills add -a codex"]
     assert "npx skills add -a codex" in proc.stdout
@@ -788,11 +850,10 @@ def test_tail_delegates_to_npx_skills_add_and_reports_the_profile(
     assert "verified: ok" in proc.stdout
 
 
-def test_tail_dry_run_reports_the_profile_without_delegating(
-    source, project, home
-):
-    proc = run_install("--only", "gemini", "--home", str(home), "--dry-run",
-                       project=project, source=source)
+def test_tail_dry_run_reports_the_profile_without_delegating(source, project, home):
+    proc = run_install(
+        "--only", "gemini", "--home", str(home), "--dry-run", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "delegate npx skills add -a gemini-cli" in proc.stdout
     assert "profile: gemini-cli" in proc.stdout
@@ -801,8 +862,9 @@ def test_tail_dry_run_reports_the_profile_without_delegating(
 
 
 def test_tail_falls_back_when_npx_fails(source, project, home):
-    proc = run_install("--only", "codex", "--home", str(home),
-                       project=project, source=source, npx_exit=1)
+    proc = run_install(
+        "--only", "codex", "--home", str(home), project=project, source=source, npx_exit=1
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "fell back" in proc.stdout
     assert "profile: codex" in proc.stdout
@@ -811,10 +873,15 @@ def test_tail_falls_back_when_npx_fails(source, project, home):
 
 
 def test_tail_uninstall_names_the_profile_it_leaves_behind(source, project, home):
-    assert run_install("--only", "codex", "--home", str(home),
-                       project=project, source=source).returncode == 0
-    proc = run_install("--only", "codex", "--home", str(home), "--uninstall",
-                       project=project, source=source)
+    assert (
+        run_install(
+            "--only", "codex", "--home", str(home), project=project, source=source
+        ).returncode
+        == 0
+    )
+    proc = run_install(
+        "--only", "codex", "--home", str(home), "--uninstall", project=project, source=source
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "profile codex stays managed by npx skills" in proc.stdout
     assert markers(home) == []

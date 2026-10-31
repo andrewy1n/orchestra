@@ -115,9 +115,7 @@ def _build(request: dict, *, cwd: Path | None = None, load_check_run=None, **kwa
     loader = load_check_run
     if loader is None and request.get("transition") == "done":
         loader = _matching_loader(request)
-    return close_batch.build_batch(
-        request, cwd=cwd, load_check_run=loader, **kwargs
-    )
+    return close_batch.build_batch(request, cwd=cwd, load_check_run=loader, **kwargs)
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -158,7 +156,15 @@ def _run_script(
     input_path = tmp_path / "close-request.json"
     input_path.write_text(json.dumps(request))
     out_path = tmp_path / "close-batch.ndjson"
-    cmd = [sys.executable, str(CLI), "close-batch", "--input", str(input_path), "--out", str(out_path)]
+    cmd = [
+        sys.executable,
+        str(CLI),
+        "close-batch",
+        "--input",
+        str(input_path),
+        "--out",
+        str(out_path),
+    ]
     if cwd is not None:
         cmd.extend(["--cwd", str(cwd)])
     # process_cwd is the primary checkout (store discovery); --cwd is code HEAD.
@@ -293,9 +299,7 @@ def test_no_execution_report_omits_the_second_informed_by_on_manual():
 
 
 def test_criteria_entry_outside_acceptance_ids_is_malformed():
-    request = _request(
-        criteria=[_tdd_with_dirty_red(criterion_id="rec-not-active")]
-    )
+    request = _request(criteria=[_tdd_with_dirty_red(criterion_id="rec-not-active")])
     with pytest.raises(close_batch.CloseRequestError):
         _build(request)
 
@@ -361,7 +365,15 @@ def test_cli_malformed_json_exits_1(tmp_path):
     input_path.write_text("{not json")
     out_path = tmp_path / "close-batch.ndjson"
     result = subprocess.run(
-        [sys.executable, str(CLI), "close-batch", "--input", str(input_path), "--out", str(out_path)],
+        [
+            sys.executable,
+            str(CLI),
+            "close-batch",
+            "--input",
+            str(input_path),
+            "--out",
+            str(out_path),
+        ],
         capture_output=True,
         text=True,
     )
@@ -459,9 +471,7 @@ def _seed_runner_check_run(
     return json.loads(created.stdout)["record"]
 
 
-def test_end_to_end_all_pass_closes_the_work_item_to_done(
-    cli, store, resolved_contract, tmp_path
-):
+def test_end_to_end_all_pass_closes_the_work_item_to_done(cli, store, resolved_contract, tmp_path):
     defs = h.record_defs_by_id(resolved_contract)
     subject = "demo-close-task"
     effort = "demo-effort"
@@ -512,7 +522,9 @@ def test_end_to_end_all_pass_closes_the_work_item_to_done(
     assert applied["applied"] == 1
     assert applied["failed"] == 0
 
-    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(
+        cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout
+    )
     assert final_work_item["lifecycle_state"] == "done"
 
     check_runs = json.loads(
@@ -559,13 +571,13 @@ def test_end_to_end_refusal_leaves_the_work_item_in_progress(
     assert result.returncode == 2
     assert not out_path.exists()
 
-    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(
+        cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout
+    )
     assert final_work_item["lifecycle_state"] == "in_progress"
 
 
-def test_cli_claim_gate_refuses_unknown_claim(
-    cli, store, resolved_contract, tmp_path
-):
+def test_cli_claim_gate_refuses_unknown_claim(cli, store, resolved_contract, tmp_path):
     """Real close-batch refuses a payload.claim the manifest does not list."""
     defs = h.record_defs_by_id(resolved_contract)
     subject = "demo-unknown-claim-task"
@@ -573,9 +585,7 @@ def test_cli_claim_gate_refuses_unknown_claim(
     work_item, acceptance, execution_report = _build_work_item_family(
         cli, defs, subject, effort, method="check"
     )
-    current = json.loads(
-        cli("get", "--type", "score:acceptance", "--id", acceptance["id"]).stdout
-    )
+    current = json.loads(cli("get", "--type", "score:acceptance", "--id", acceptance["id"]).stdout)
     updated = cli(
         "update",
         "--type",
@@ -660,7 +670,9 @@ def test_end_to_end_failing_criterion_with_finding_closes_and_surfaces_needs_hum
     applied = json.loads(apply_result.stdout)
     assert applied["applied"] == 2
 
-    final_work_item = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
+    final_work_item = json.loads(
+        cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout
+    )
     assert final_work_item["lifecycle_state"] == "done"
 
     findings = json.loads(
@@ -797,9 +809,7 @@ def test_red_first_order_refuses_non_ancestor_on_divergent_history(tmp_path):
 
 
 def test_red_first_order_dirty_red_requires_nonempty_diff_sha256():
-    request = _request(
-        criteria=[_tdd_with_dirty_red(red_diff_sha256="")]
-    )
+    request = _request(criteria=[_tdd_with_dirty_red(red_diff_sha256="")])
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
         _build(request)
     assert "diff_sha256" in str(excinfo.value)
@@ -979,9 +989,7 @@ def test_missing_green_revision_refuses_with_sha_red(tmp_path):
     # Matching loader still plants a store revision; request omission must refuse.
     loader = _matching_loader(_request(criteria=[{**entry, "revision": green_sha}]))
     with pytest.raises(close_batch.CloseRefused, match="green revision"):
-        close_batch.build_batch(
-            _request(criteria=[entry]), cwd=repo, load_check_run=loader
-        )
+        close_batch.build_batch(_request(criteria=[entry]), cwd=repo, load_check_run=loader)
 
 
 def test_tdd_revision_without_red_is_request_error():
@@ -1049,7 +1057,10 @@ def _linked_phase_worktree(primary: Path, tmp_path: Path) -> Path:
 
 
 def test_close_batch_worktree_cwd_primary_store_authority(
-    cli, store, resolved_contract, tmp_path,
+    cli,
+    store,
+    resolved_contract,
+    tmp_path,
 ):
     """R5: close-batch --cwd=worktree still loads check-runs from primary store."""
     defs = h.record_defs_by_id(resolved_contract)
@@ -1080,9 +1091,7 @@ def test_close_batch_worktree_cwd_primary_store_authority(
         ],
         "finding": None,
     }
-    result, out_path = _run_script(
-        request, tmp_path, cwd=worktree, process_cwd=store
-    )
+    result, out_path = _run_script(request, tmp_path, cwd=worktree, process_cwd=store)
     assert result.returncode == 0, result.stderr
     assert out_path.is_file()
     ops = [json.loads(line) for line in out_path.read_text().splitlines() if line.strip()]
@@ -1090,13 +1099,14 @@ def test_close_batch_worktree_cwd_primary_store_authority(
 
 
 def test_close_batch_store_cwd_ignores_worktree_when_resolving(
-    cli, store, resolved_contract, tmp_path,
+    cli,
+    store,
+    resolved_contract,
+    tmp_path,
 ):
     """R5: fabricated id still refused when --cwd is a phase worktree."""
     worktree = _linked_phase_worktree(store, tmp_path)
-    result, out_path = _run_script(
-        _request(), tmp_path, cwd=worktree, process_cwd=store
-    )
+    result, out_path = _run_script(_request(), tmp_path, cwd=worktree, process_cwd=store)
     assert result.returncode == 2
     assert not out_path.exists()
 
@@ -1230,9 +1240,7 @@ def _oracle_loader(
 
 
 def _build_oracle(request: dict, *, cwd: Path, acceptance=None, amendments=None):
-    load, load_acc, list_am = _oracle_loader(
-        request, acceptance=acceptance, amendments=amendments
-    )
+    load, load_acc, list_am = _oracle_loader(request, acceptance=acceptance, amendments=amendments)
     return close_batch.build_batch(
         request,
         cwd=cwd,
@@ -1287,9 +1295,21 @@ def test_default_amendment_lister_still_matches_a_legacy_acceptance_id(monkeypat
     class Project:
         def list(self, record_type):
             return [
-                {"id": "rec-legacy", "lifecycle_state": "active", "payload": {"acceptance": "rec-ac1"}},
-                {"id": "rec-subject", "lifecycle_state": "active", "payload": {"acceptance": "claim-gate"}},
-                {"id": "rec-other", "lifecycle_state": "active", "payload": {"acceptance": "other"}},
+                {
+                    "id": "rec-legacy",
+                    "lifecycle_state": "active",
+                    "payload": {"acceptance": "rec-ac1"},
+                },
+                {
+                    "id": "rec-subject",
+                    "lifecycle_state": "active",
+                    "payload": {"acceptance": "claim-gate"},
+                },
+                {
+                    "id": "rec-other",
+                    "lifecycle_state": "active",
+                    "payload": {"acceptance": "other"},
+                },
             ]
 
         def get(self, record_id, record_type):
@@ -1502,9 +1522,7 @@ def _oracle_cli_close_request(
     }
 
 
-def test_cli_oracle_freeze_happy_path_writes_batch(
-    cli, store, resolved_contract, tmp_path
-):
+def test_cli_oracle_freeze_happy_path_writes_batch(cli, store, resolved_contract, tmp_path):
     """Real close-batch CLI accepts matching freeze hashes + assertion-level red."""
     repo, green_sha = _oracle_repo(tmp_path)
     defs = h.record_defs_by_id(resolved_contract)
@@ -1863,9 +1881,7 @@ def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
     assert "recheck" in msg
 
 
-def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(
-    tmp_path, monkeypatch
-):
+def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(tmp_path, monkeypatch):
     """Both failing clocks are named in one refusal."""
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)

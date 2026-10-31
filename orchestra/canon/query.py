@@ -116,9 +116,7 @@ def _same(actual: Any, expected: Any) -> bool:
     return actual == expected
 
 
-def where_matches(
-    record: dict[str, Any], filters: list[tuple[str, str, str, Any]]
-) -> bool:
+def where_matches(record: dict[str, Any], filters: list[tuple[str, str, str, Any]]) -> bool:
     for namespace, field, op, value in filters:
         if namespace == "record":
             actual = record.get(field, _MISSING)
@@ -142,9 +140,7 @@ def where_matches(
     return True
 
 
-def subject_matches(
-    record: dict[str, Any], subject: str | None, *, exact: bool = False
-) -> bool:
+def subject_matches(record: dict[str, Any], subject: str | None, *, exact: bool = False) -> bool:
     if subject is None:
         return True
     actual = record.get("subject") or ""
@@ -194,7 +190,6 @@ def order_by_recorded_at(
     return missing + present
 
 
-
 def order_by_path(
     records: list[dict[str, Any]], path: str, *, reverse: bool = False
 ) -> list[dict[str, Any]]:
@@ -202,6 +197,7 @@ def order_by_path(
 
     Missing values sort first (stable with recorded_at missing behavior).
     """
+
     def lookup(record: dict[str, Any]) -> Any:
         if path in ("subject", "lifecycle_state", "recorded_at"):
             return record.get(path, _MISSING)
@@ -216,6 +212,7 @@ def order_by_path(
     present = [r for r in records if lookup(r) is not _MISSING]
     present.sort(key=lambda r: lookup(r), reverse=reverse)
     return missing + present
+
 
 def record_matches(
     record: dict[str, Any],

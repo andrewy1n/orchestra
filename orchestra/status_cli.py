@@ -9,8 +9,12 @@ from pathlib import Path
 
 def add_parser(sub) -> None:
     status = sub.add_parser("status", help="Print running, ready, and needs-you counts per effort")
-    status.add_argument("directory", nargs="?", default=None, help="Project directory (default: current directory)")
-    status.add_argument("--count", action="store_true", help="Print only the merged needs-you count")
+    status.add_argument(
+        "directory", nargs="?", default=None, help="Project directory (default: current directory)"
+    )
+    status.add_argument(
+        "--count", action="store_true", help="Print only the merged needs-you count"
+    )
 
 
 def run(args: argparse.Namespace) -> int:

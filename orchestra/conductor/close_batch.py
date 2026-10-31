@@ -373,6 +373,7 @@ def _resolve_red_check_run(
 
     return record, payload
 
+
 def _enforce_red_first_from_store(
     entry: dict[str, Any],
     *,
@@ -386,8 +387,7 @@ def _enforce_red_first_from_store(
     red_result = red_payload.get("result")
     if red_result != "fail":
         raise CloseRefused(
-            f"criterion {criterion_id!r}: red evidence result must be "
-            f"'fail', got {red_result!r}"
+            f"criterion {criterion_id!r}: red evidence result must be 'fail', got {red_result!r}"
         )
 
     red_runner = red_payload.get("runner")
@@ -399,16 +399,13 @@ def _enforce_red_first_from_store(
 
     red_revision = red_payload.get("revision")
     if not red_revision:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: red evidence missing revision"
-        )
+        raise CloseRefused(f"criterion {criterion_id!r}: red evidence missing revision")
 
     if red_revision == "dirty":
         digest = red_payload.get("diff_sha256") or ""
         if not digest:
             raise CloseRefused(
-                f"criterion {criterion_id!r}: dirty red requires non-empty "
-                "diff_sha256"
+                f"criterion {criterion_id!r}: dirty red requires non-empty diff_sha256"
             )
         return
 
@@ -416,14 +413,12 @@ def _enforce_red_first_from_store(
     # must match the store; ancestry uses the store revision.
     if "revision" not in entry:
         raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for "
-            "git-ancestry red-first check"
+            f"criterion {criterion_id!r}: green revision required for git-ancestry red-first check"
         )
     green_revision = green_payload.get("revision")
     if not green_revision:
         raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for "
-            "git-ancestry red-first check"
+            f"criterion {criterion_id!r}: green revision required for git-ancestry red-first check"
         )
     if green_revision == "dirty":
         raise CloseRefused(
@@ -504,8 +499,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         from orchestra.tuner.verdict import run_verdict
     except ImportError as exc:
         raise CloseRefused(
-            f"tuner is not importable; cannot run verdict or recheck "
-            f"for claim {claim_id!r}"
+            f"tuner is not importable; cannot run verdict or recheck for claim {claim_id!r}"
         ) from exc
     failed: list[str] = []
     details: list[str] = []
@@ -529,8 +523,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         clocks = " and ".join(failed)
         suffix = f" ({'; '.join(details)})" if details else ""
         raise CloseRefused(
-            f"tuner {clocks} refused for claim {claim_id!r} "
-            f"at revision {revision!r}{suffix}"
+            f"tuner {clocks} refused for claim {claim_id!r} at revision {revision!r}{suffix}"
         )
 
 
@@ -610,9 +603,7 @@ def _enforce_oracle_gates(
     try:
         assertion_red = _assertion_level_red(red_record)
     except OracleAdapterUnavailable as exc:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: {exc}"
-        ) from exc
+        raise CloseRefused(f"criterion {criterion_id!r}: {exc}") from exc
     if not assertion_red:
         raise CloseRefused(
             f"criterion {criterion_id!r}: oracle-backed tdd requires "
@@ -623,15 +614,13 @@ def _enforce_oracle_gates(
     frozen = parse_oracle_hashes(acceptance_payload.get("oracle_hashes"))
     if not frozen:
         raise CloseRefused(
-            f"criterion {criterion_id!r}: oracle_hashes freeze field is empty "
-            "or unparseable"
+            f"criterion {criterion_id!r}: oracle_hashes freeze field is empty or unparseable"
         )
 
     green_revision = green_payload.get("revision")
     if not green_revision:
         raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for "
-            "oracle freeze hash check"
+            f"criterion {criterion_id!r}: green revision required for oracle freeze hash check"
         )
 
     try:
@@ -684,6 +673,7 @@ def build_batch(
     if load_check_run is not None:
         loader = load_check_run
     else:
+
         def _store_check_run(check_run_id: str) -> dict[str, Any]:
             return default_load_check_run(check_run_id, store_root=resolved_store)
 
@@ -695,15 +685,15 @@ def build_batch(
     if load_acceptance is not None:
         acceptance_loader = load_acceptance
     elif load_check_run is None:
+
         def _store_acceptance(acceptance_id: str) -> dict[str, Any]:
             return default_load_acceptance(acceptance_id, store_root=resolved_store)
 
         acceptance_loader = _store_acceptance
     else:
+
         def _unavailable_acceptance(_acceptance_id: str) -> dict[str, Any]:
-            raise AcceptanceStoreUnavailable(
-                "acceptance store not available in unit test hook"
-            )
+            raise AcceptanceStoreUnavailable("acceptance store not available in unit test hook")
 
         acceptance_loader = _unavailable_acceptance
 
@@ -711,13 +701,13 @@ def build_batch(
     if list_oracle_amendments is not None:
         amendment_lister = list_oracle_amendments
     elif load_check_run is None:
+
         def _store_amendments(acceptance_id: str) -> list[dict[str, Any]]:
-            return default_list_oracle_amendments(
-                acceptance_id, store_root=resolved_store
-            )
+            return default_list_oracle_amendments(acceptance_id, store_root=resolved_store)
 
         amendment_lister = _store_amendments
     else:
+
         def _no_amendments(_acceptance_id: str) -> list[dict[str, Any]]:
             return []
 
@@ -757,11 +747,7 @@ def build_batch(
                     f"criteria entry {criterion_id!r} method={method!r} must "
                     "not carry revision/signed_by; reference check_run_id only"
                 )
-            if (
-                method == "tdd"
-                and "revision" in entry
-                and not entry.get("red_check_run_id")
-            ):
+            if method == "tdd" and "revision" in entry and not entry.get("red_check_run_id"):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method=tdd must not "
                     "carry revision without red-first fields "
@@ -771,9 +757,7 @@ def build_batch(
         elif method == "manual":
             for field in ("result", "revision"):
                 if field not in entry:
-                    raise CloseRequestError(
-                        f"criteria entry missing field: '{field}'"
-                    )
+                    raise CloseRequestError(f"criteria entry missing field: '{field}'")
             if entry.get("check_run_id"):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method=manual must not "
@@ -823,9 +807,7 @@ def build_batch(
                 list_oracle_amendments=amendment_lister,
             )
 
-    passed_ids = {
-        entry["criterion_id"] for entry in criteria if _entry_passed(entry)
-    }
+    passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
     unmet = [aid for aid in acceptance_ids if aid not in passed_ids]
 
     if transition == "done" and unmet and not finding:

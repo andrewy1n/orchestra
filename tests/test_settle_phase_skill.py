@@ -25,7 +25,11 @@ def test_settle_phase_skill_is_discoverable():
 
 
 def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
-    written = {inv["type"] for inv in extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text()) if inv["subcommand"] in WRITES}
+    written = {
+        inv["type"]
+        for inv in extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text())
+        if inv["subcommand"] in WRITES
+    }
     assert written == {
         "composer:idea",
         "score:specification",
@@ -43,12 +47,12 @@ def test_settle_phase_promotes_idea_after_new_phase():
     assert "idea: none" in lower or "`none`" in text
     invs = extract_invocations(text)
     idea_lists = [
-        inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
     assert len(idea_lists) == 1
     promotes = [
-        inv for inv in invs
+        inv
+        for inv in invs
         if inv["subcommand"] == "supersede"
         and inv["type"] == "composer:idea"
         and (inv.get("payload") or {}).get("status") == "promoted"
@@ -65,7 +69,8 @@ def test_engage_routes_new_phases_through_settle_phase():
 
 def test_plan_phase_opens_a_blocking_plan_review_question():
     reviews = [
-        inv for inv in extract_invocations(_text("plan-phase"))
+        inv
+        for inv in extract_invocations(_text("plan-phase"))
         if inv["subcommand"] == "create" and inv["type"] == "score:continuity-question"
     ]
     # Initial plan review plus optional re-open after next:plan deltas.
@@ -86,19 +91,22 @@ def test_kinds_and_focus_documents_human_dismissible_clears():
         assert kind in text
     asserts = extract_invocations(_kinds())
     answered = [
-        inv for inv in asserts
+        inv
+        for inv in asserts
         if inv["subcommand"] == "update"
         and inv["type"] == "score:continuity-question"
         and inv["transition"] == "answered"
     ]
     finding_clear = [
-        inv for inv in asserts
+        inv
+        for inv in asserts
         if inv["subcommand"] == "update"
         and inv["type"] == "tuner:finding"
         and inv.get("payload", {}).get("needs") == "none"
     ]
     signed = [
-        inv for inv in asserts
+        inv
+        for inv in asserts
         if inv["subcommand"] == "correct"
         and inv["type"] == "tuner:check-run"
         and inv.get("payload", {}).get("signed_by")
@@ -114,7 +122,9 @@ def test_engage_lists_human_dismissible_needs_you_without_blocking_route():
     assert "do not refuse" in lower or "does not refuse" in lower or "without blocking" in lower
     assert "route" in lower
     for token in ("continuity-question", "finding", "check-run", "signed_by"):
-        assert token in lower or token.replace("-", " ") in lower or token.replace("_", " ") in lower
+        assert (
+            token in lower or token.replace("-", " ") in lower or token.replace("_", " ") in lower
+        )
 
 
 def test_skills_that_open_human_gates_document_matching_clears():

@@ -281,9 +281,7 @@ def _silence_stdio() -> Iterator[None]:
 
 
 def _assertion_red(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
-    return bool(tests) and all(
-        outcomes.get(test_id) == "assertion_failed" for test_id in tests
-    )
+    return bool(tests) and all(outcomes.get(test_id) == "assertion_failed" for test_id in tests)
 
 
 def _head_passed(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
@@ -296,9 +294,7 @@ def _viable(
     base_outcomes: dict[str, str],
     head_outcomes: dict[str, str],
 ) -> bool:
-    return _assertion_red(base_tests, base_outcomes) and _head_passed(
-        head_tests, head_outcomes
-    )
+    return _assertion_red(base_tests, base_outcomes) and _head_passed(head_tests, head_outcomes)
 
 
 def _disagrees(

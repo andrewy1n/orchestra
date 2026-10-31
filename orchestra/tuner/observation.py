@@ -145,9 +145,7 @@ def maybe_record_verdict_observation(
 ) -> None:
     """Best-effort record; failures go to stderr and never raise."""
     try:
-        record_verdict_observation(
-            cwd, at=at, base=base, claim_ids=claim_ids, result=result
-        )
+        record_verdict_observation(cwd, at=at, base=base, claim_ids=claim_ids, result=result)
     except Exception as exc:  # noqa: BLE001 — must not flip judge exit
         print(f"observation record skipped: {exc}", file=sys.stderr)
 

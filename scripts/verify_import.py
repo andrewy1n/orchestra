@@ -43,8 +43,7 @@ def verify(source: Backend) -> tuple[int, int]:
         imported_records = list(target.iter_records())
         source_keys = {(record["record_type"], record["id"]) for record in records}
         mismatches += sum(
-            (record["record_type"], record["id"]) not in source_keys
-            for record in imported_records
+            (record["record_type"], record["id"]) not in source_keys for record in imported_records
         )
         imported_history: dict[tuple[str, str, str], dict[str, Any]] = {
             (record["record_type"], record["id"], record["revision"]): record

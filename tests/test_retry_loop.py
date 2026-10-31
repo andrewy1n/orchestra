@@ -85,8 +85,10 @@ def test_fix_task_depends_on_and_no_reopen_done():
     assert "fix" in flat and "work-item" in flat
     assert "depends_on" in flat
     assert "never reopen" in flat or "never transition" in flat and "`done`" in flat
-    assert "done` work-items are never" in flat or "never reopen `done`" in flat or (
-        "never" in flat and "`done`" in flat and ("reopen" in flat or "transition" in flat)
+    assert (
+        "done` work-items are never" in flat
+        or "never reopen `done`" in flat
+        or ("never" in flat and "`done`" in flat and ("reopen" in flat or "transition" in flat))
     )
     creates = [
         inv
@@ -111,7 +113,7 @@ def test_budget_defaults_overrides_and_exhaustion():
     assert "retry_max_redispatches" in text
     assert "retry_time_multiplier" in text
     assert "retry_max_fix_tasks" in text
-    assert "scope: retry:" in flat or '`scope` `retry:' in flat or "retry:<task-slug>" in flat
+    assert "scope: retry:" in flat or "`scope` `retry:" in flat or "retry:<task-slug>" in flat
     assert "`needs` `human`" in flat or '"needs":"human"' in text or "needs: human" in flat
     questions = [
         inv
@@ -137,7 +139,10 @@ def test_budget_defaults_overrides_and_exhaustion():
         for inv in extract_invocations(text)
     )
     assert "stop" in flat and ("dispatch" in flat or "selecting" in flat)
-    assert "Evidence escalation still chooses `level` / `next`; the budget only decides when to stop." in flat
+    assert (
+        "Evidence escalation still chooses `level` / `next`; the budget only decides when to stop."
+        in flat
+    )
 
 
 def test_plan_phase_consumes_next_plan():

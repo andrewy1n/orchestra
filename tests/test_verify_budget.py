@@ -29,7 +29,10 @@ def _testing_section(name: str) -> str:
 
 def test_plan_phase_limits_verification_to_phase_checks():
     text = _flat(_text("plan-phase"))
-    assert "Acceptances come from phase exit criteria; at least one is an integration check through the real entry point." in text
+    assert (
+        "Acceptances come from phase exit criteria; at least one is an integration check through the real entry point."
+        in text
+    )
 
 
 def test_plan_phase_rejects_whole_suite_and_unfiltered_app_file():

@@ -77,9 +77,7 @@ def run_audit(
     try:
         worktree = checked[1]
         head_pass = _passing_tests(worktree, claim_tests, runner)
-        blocks = [
-            _label_block(worktree, hunk, head_pass, runner) for hunk in hunks
-        ]
+        blocks = [_label_block(worktree, hunk, head_pass, runner) for hunk in hunks]
         mutants, survivors = _plant_mutants(
             worktree,
             blocks,
@@ -162,9 +160,7 @@ def _audit_replay(base: str, head: str) -> str:
     )
 
 
-def _probe_replay(
-    base: str, head: str, probe: dict[str, Any], probe_id: str
-) -> str:
+def _probe_replay(base: str, head: str, probe: dict[str, Any], probe_id: str) -> str:
     hint: dict[str, Any] = {
         "technique": _TECHNIQUE_PROBES,
         "base": base,
@@ -416,9 +412,7 @@ def _is_source_path(path: str) -> bool:
     return True
 
 
-def _passing_tests(
-    worktree: Path, tests: Sequence[str], runner: Sequence[str]
-) -> list[str]:
+def _passing_tests(worktree: Path, tests: Sequence[str], runner: Sequence[str]) -> list[str]:
     if not tests:
         return []
     outcomes = run_tests(worktree, tests, runner)

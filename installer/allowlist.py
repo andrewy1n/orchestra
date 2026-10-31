@@ -51,6 +51,4 @@ def is_allowed(relative: Path | str, provider_id: str) -> bool:
 
 def assert_allowed(relative: Path | str, provider_id: str) -> None:
     if not is_allowed(relative, provider_id):
-        raise ValueError(
-            f"installer allowlist rejects {relative!s} for provider {provider_id!r}"
-        )
+        raise ValueError(f"installer allowlist rejects {relative!s} for provider {provider_id!r}")

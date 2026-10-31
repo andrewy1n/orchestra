@@ -53,11 +53,7 @@ def _verdict_body(
         "commit": commit,
         "manifest_hash": manifest_hash,
         "runner_digest": runner_digest,
-        "claims": list(
-            claims
-            if claims is not None
-            else [{"id": CLAIM_ID, "result": "pass"}]
-        ),
+        "claims": list(claims if claims is not None else [{"id": CLAIM_ID, "result": "pass"}]),
     }
 
 
@@ -225,6 +221,4 @@ def test_ci_workflow_runs_verdict_and_attest() -> None:
         "parent .gitignore must ignore the built nested .git under verdict-repo"
     )
     manifest = (fixture_root / ".tuner" / "manifest.json").read_text()
-    assert "claim-widget" in manifest, (
-        "fixture manifest must declare claim-widget"
-    )
+    assert "claim-widget" in manifest, "fixture manifest must declare claim-widget"

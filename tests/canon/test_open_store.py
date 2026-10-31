@@ -15,9 +15,7 @@ def load_open_store():
     try:
         from orchestra.canon.project import open_store
     except (ImportError, AttributeError) as exc:
-        raise AssertionError(
-            "orchestra.canon.project.open_store is not available"
-        ) from exc
+        raise AssertionError("orchestra.canon.project.open_store is not available") from exc
     if not callable(open_store):
         raise AssertionError("orchestra.canon.project.open_store is not available")
     return open_store
@@ -68,9 +66,7 @@ def git_toplevel(directory: Path) -> Path | None:
 
 def write_config(store: Path) -> None:
     store.mkdir(parents=True, exist_ok=True)
-    (store / "config.json").write_text(
-        '{"format": "canon/1", "schemas": {}}\n', encoding="utf-8"
-    )
+    (store / "config.json").write_text('{"format": "canon/1", "schemas": {}}\n', encoding="utf-8")
 
 
 def write_binding(root: Path, filename: str, value: str) -> None:
@@ -90,11 +86,7 @@ def global_store(home: Path, root: Path) -> Path:
 def file_set(root: Path) -> set[str]:
     if not root.exists():
         return set()
-    return {
-        path.relative_to(root).as_posix()
-        for path in root.rglob("*")
-        if path.is_file()
-    }
+    return {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
 
 
 def _as_path(value):

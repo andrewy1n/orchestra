@@ -34,9 +34,7 @@ def not_shown_line(ctx):
     return lines[0] if lines else ""
 
 
-def test_r14_needs_human_finding_without_effort_reaches_start_context(
-    repo, monkeypatch, capsys
-):
+def test_r14_needs_human_finding_without_effort_reaches_start_context(repo, monkeypatch, capsys):
     create(
         repo,
         "tuner:finding",

@@ -4,13 +4,21 @@ from orchestra.sessions.session_tools import tool_metrics
 
 
 def use(tid, name, **inp):
-    return {"type": "assistant", "message": {"content": [
-        {"type": "tool_use", "id": tid, "name": name, "input": inp}]}}
+    return {
+        "type": "assistant",
+        "message": {"content": [{"type": "tool_use", "id": tid, "name": name, "input": inp}]},
+    }
 
 
 def result(tid, is_error=False, text="SECRET"):
-    return {"type": "user", "message": {"content": [
-        {"type": "tool_result", "tool_use_id": tid, "content": text, "is_error": is_error}]}}
+    return {
+        "type": "user",
+        "message": {
+            "content": [
+                {"type": "tool_result", "tool_use_id": tid, "content": text, "is_error": is_error}
+            ]
+        },
+    }
 
 
 def fixture():
@@ -54,6 +62,11 @@ def test_output_holds_no_input_or_result_text():
 
 
 def test_unmatched_result_and_malformed_events_are_ignored():
-    events = [result("zzz", True), {"type": "user"}, {"message": {"content": "text"}}, use("1", "Bash")]
+    events = [
+        result("zzz", True),
+        {"type": "user"},
+        {"message": {"content": "text"}},
+        use("1", "Bash"),
+    ]
     m = tool_metrics(events)
     assert m["totals"] == {"calls": 1, "errors": 0, "retries": 0}

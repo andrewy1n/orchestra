@@ -16,7 +16,15 @@ SLUG = "analyze-phase"
 EFFORT = "analyze-effort"
 
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne"
-DESIGN_SECTIONS = ("Architecture", "Interfaces", "Decisions", "Invariants", "Assumptions", "Tradeoffs", "Risks")
+DESIGN_SECTIONS = (
+    "Architecture",
+    "Interfaces",
+    "Decisions",
+    "Invariants",
+    "Assumptions",
+    "Tradeoffs",
+    "Risks",
+)
 SPEC_TAIL = ("Constraints", "Non-goals", "Invariants")
 
 
@@ -73,7 +81,9 @@ def spec_body(body_ids, *, texts: dict[str, str] | None = None, assumptions: str
 
 
 def design_body(*, risks: str = "none") -> str:
-    return "\n\n".join(f"## {name}\n\n{risks if name == 'Risks' else 'none'}" for name in DESIGN_SECTIONS)
+    return "\n\n".join(
+        f"## {name}\n\n{risks if name == 'Risks' else 'none'}" for name in DESIGN_SECTIONS
+    )
 
 
 def seed_phase(
@@ -99,33 +109,49 @@ def seed_phase(
     _create(cli, "score:phase", slug, {"title": slug, "ordinal": 1, "effort": EFFORT}, PHASE_BODY)
     if with_spec:
         _create(
-            cli, "score:specification", f"{slug}-spec",
+            cli,
+            "score:specification",
+            f"{slug}-spec",
             {"weight": "full", "phase": slug, "effort": EFFORT, "requirements": list(ids)},
             spec_body(body_ids, texts=texts, assumptions=spec_assumptions),
         )
     if with_design:
         _create(
-            cli, "score:design", f"{slug}-design",
+            cli,
+            "score:design",
+            f"{slug}-design",
             {"phase": slug, "effort": EFFORT, "decisions": []},
             design_body(risks=design_risks),
         )
     items = {}
     for rid in item_ids:
         items[rid] = _create(
-            cli, "score:work-item", f"{slug}-wi-{rid.lower()}",
+            cli,
+            "score:work-item",
+            f"{slug}-wi-{rid.lower()}",
             {
-                "title": f"item {rid}", "phase": slug, "kind": "code", "assignee": "agent",
-                "effort": EFFORT, "requirements": [rid],
+                "title": f"item {rid}",
+                "phase": slug,
+                "kind": "code",
+                "assignee": "agent",
+                "effort": EFFORT,
+                "requirements": [rid],
             },
             "## Description\n\nd",
         )
     acceptances = {}
     for rid in acceptance_ids:
         acceptances[rid] = _create(
-            cli, "score:acceptance", f"{slug}-ac-{rid.lower()}",
+            cli,
+            "score:acceptance",
+            f"{slug}-ac-{rid.lower()}",
             {
-                "criterion": f"criterion {rid}", "method": "check", "phase": slug, "effort": EFFORT,
-                "verify_command": "true", "requirement": rid,
+                "criterion": f"criterion {rid}",
+                "method": "check",
+                "phase": slug,
+                "effort": EFFORT,
+                "verify_command": "true",
+                "requirement": rid,
             },
         )
     return {"items": items, "acceptances": acceptances}
@@ -133,21 +159,41 @@ def seed_phase(
 
 def withdraw(cli, record: dict) -> None:
     result = cli(
-        "update", "--type", "score:work-item", "--id", record["id"],
-        "--transition", "withdrawn", "--expected-revision", record["revision"],
+        "update",
+        "--type",
+        "score:work-item",
+        "--id",
+        record["id"],
+        "--transition",
+        "withdrawn",
+        "--expected-revision",
+        record["revision"],
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def add_check_run(store: Path, cli, acceptance: dict, result: str, *, earlier: bool = False) -> dict:
+def add_check_run(
+    store: Path, cli, acceptance: dict, result: str, *, earlier: bool = False
+) -> dict:
     payload = {
-        "criterion_id": acceptance["id"], "revision": "deadbeef", "result": result, "effort": EFFORT,
-        "method": "check", "signed_by": "", "informed_by": [acceptance["id"]],
+        "criterion_id": acceptance["id"],
+        "revision": "deadbeef",
+        "result": result,
+        "effort": EFFORT,
+        "method": "check",
+        "signed_by": "",
+        "informed_by": [acceptance["id"]],
     }
     if earlier:
         return h.run_cli_48h_ago(
-            store, "create", "--type", "tuner:check-run", "--subject", acceptance["subject"],
-            "--payload", json.dumps(payload),
+            store,
+            "create",
+            "--type",
+            "tuner:check-run",
+            "--subject",
+            acceptance["subject"],
+            "--payload",
+            json.dumps(payload),
         )
     return _create(cli, "tuner:check-run", acceptance["subject"], payload)
 
@@ -207,7 +253,9 @@ def test_r12_work_item_with_unlisted_requirement_is_error(store, cli, resolved_c
     assert any("R9" in json.dumps(f) for f in report["findings"])
 
 
-def test_r12_withdrawn_work_item_with_unlisted_requirement_is_ignored(store, cli, resolved_contract):
+def test_r12_withdrawn_work_item_with_unlisted_requirement_is_ignored(
+    store, cli, resolved_contract
+):
     seeded = seed_phase(cli, resolved_contract, item_ids=("R1", "R2", "R9"))
     withdraw(cli, seeded["items"]["R9"])
     code, report = analyze_json(store)
@@ -266,10 +314,15 @@ def test_r17_acceptance_without_check_run_is_error_in_close_stage(store, cli, re
     code, report = analyze_json(store, "--stage", "close")
     assert code == 1
     assert codes(report, "error") == {"acceptance-no-check-run"}
-    assert any("R2" in json.dumps(f) or seeded["acceptances"]["R2"]["id"] in json.dumps(f) for f in report["findings"])
+    assert any(
+        "R2" in json.dumps(f) or seeded["acceptances"]["R2"]["id"] in json.dumps(f)
+        for f in report["findings"]
+    )
 
 
-def test_r18_acceptance_with_failing_latest_check_run_is_error_in_close_stage(store, cli, resolved_contract):
+def test_r18_acceptance_with_failing_latest_check_run_is_error_in_close_stage(
+    store, cli, resolved_contract
+):
     seeded = seed_phase(cli, resolved_contract)
     add_check_run(store, cli, seeded["acceptances"]["R1"], "pass")
     add_check_run(store, cli, seeded["acceptances"]["R2"], "fail")
@@ -309,7 +362,8 @@ def test_r18_blocked_latest_check_run_is_not_passing(store, cli, resolved_contra
 
 def test_r22_clarification_marker_in_code_span_is_not_a_finding(store, cli, resolved_contract):
     seed_phase(
-        cli, resolved_contract,
+        cli,
+        resolved_contract,
         spec_assumptions="The marker is written `[NEEDS CLARIFICATION: <question>]` in bodies",
         design_risks="Use `[NEEDS CLARIFICATION: <question>]` to flag gaps",
     )
@@ -318,9 +372,12 @@ def test_r22_clarification_marker_in_code_span_is_not_a_finding(store, cli, reso
     assert report["findings"] == []
 
 
-def test_r22_marker_outside_code_span_on_same_line_is_still_a_finding(store, cli, resolved_contract):
+def test_r22_marker_outside_code_span_on_same_line_is_still_a_finding(
+    store, cli, resolved_contract
+):
     seed_phase(
-        cli, resolved_contract,
+        cli,
+        resolved_contract,
         spec_assumptions="Written `[NEEDS CLARIFICATION: a]` here and [NEEDS CLARIFICATION: b] there",
     )
     code, report = analyze_json(store)

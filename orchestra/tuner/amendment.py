@@ -102,16 +102,12 @@ def authorize(
         old_hashes = _as_hashes(amendment["old_hashes"])
         if old_tests != current_tests or old_hashes != current_hashes:
             return False, "missing step"
-        touches_support = (
-            "old_support_hashes" in amendment or "new_support_hashes" in amendment
-        )
+        touches_support = "old_support_hashes" in amendment or "new_support_hashes" in amendment
         if touches_support:
             old_support = _as_hashes(amendment.get("old_support_hashes"))
             if old_support != current_support:
                 return False, "missing step"
-        touches_runner = (
-            "old_runner_digest" in amendment or "new_runner_digest" in amendment
-        )
+        touches_runner = "old_runner_digest" in amendment or "new_runner_digest" in amendment
         if touches_runner:
             old_runner = _as_runner_digest(amendment.get("old_runner_digest"))
             if old_runner != current_runner:

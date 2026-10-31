@@ -92,9 +92,7 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
             "subject": "status-tabs",
             "title": "status-tabs",
             "body": (
-                "## Description\n\n"
-                f"{MARKER_TASK}\n\n"
-                "## Approach\n\nShip Active and Done tabs."
+                f"## Description\n\n{MARKER_TASK}\n\n## Approach\n\nShip Active and Done tabs."
             ),
         },
         {
@@ -181,15 +179,14 @@ def test_execute_phase_invokes_reviewer_after_verification_before_merge():
     m_idx = flat.lower().find("merge")
     assert v_idx >= 0 and r_idx >= 0 and m_idx >= 0
     assert v_idx < r_idx < m_idx or (
-        "after" in flat
-        and "verification" in flat
-        and "reviewer" in flat
-        and "before merge" in flat
+        "after" in flat and "verification" in flat and "reviewer" in flat and "before merge" in flat
     )
     assert "writes no store" in flat or "reviewer writes no" in flat
     # Pre-verification integration-report path relocated.
-    assert "from the reviewer" in flat or "reviewer `integration`" in flat or (
-        "reviewer's" in flat and "integration" in flat
+    assert (
+        "from the reviewer" in flat
+        or "reviewer `integration`" in flat
+        or ("reviewer's" in flat and "integration" in flat)
     )
     # Documented create for review check-run.
     creates = [
@@ -420,12 +417,9 @@ def test_status_tabs_fixture_yields_needs_work_spec_gap():
     assert graded["verdict"] == "NEEDS_WORK"
     kinds = {f.get("kind") for f in graded["findings"]}
     assert "spec-gap" in kinds
-    status_findings = [
-        f for f in graded["findings"] if f.get("kind") == "spec-gap"
-    ]
+    status_findings = [f for f in graded["findings"] if f.get("kind") == "spec-gap"]
     assert status_findings
     assert any(
-        "Archived" in (f.get("expected") or "")
-        or "Archived" in (f.get("observed") or "")
+        "Archived" in (f.get("expected") or "") or "Archived" in (f.get("observed") or "")
         for f in status_findings
     )

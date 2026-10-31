@@ -6,7 +6,13 @@ def row(efforts, turns, cost, calls, errors, retries):
         "turns": turns,
         "cost_usd": cost,
         "tools": {"tools": {}, "totals": {"calls": calls, "errors": errors, "retries": retries}},
-        "records": {"total": len(efforts), "by_type": {}, "efforts": efforts, "tasks": [], "ambiguous": 0},
+        "records": {
+            "total": len(efforts),
+            "by_type": {},
+            "efforts": efforts,
+            "tasks": [],
+            "ambiguous": 0,
+        },
     }
 
 
@@ -17,10 +23,26 @@ def test_three_sessions_two_efforts_split_shared_and_exclusive_cost():
         row(["b"], 30, None, 11, 0, 3),
     ]
     assert effort_rollup(rows) == {
-        "a": {"sessions": 2, "exclusive_sessions": 1, "turns": 30, "tool_calls": 12,
-              "errors": 3, "retries": 1, "cost_shared": 3.0, "cost_exclusive": 1.0},
-        "b": {"sessions": 2, "exclusive_sessions": 1, "turns": 50, "tool_calls": 18,
-              "errors": 2, "retries": 4, "cost_shared": 2.0, "cost_exclusive": 0.0},
+        "a": {
+            "sessions": 2,
+            "exclusive_sessions": 1,
+            "turns": 30,
+            "tool_calls": 12,
+            "errors": 3,
+            "retries": 1,
+            "cost_shared": 3.0,
+            "cost_exclusive": 1.0,
+        },
+        "b": {
+            "sessions": 2,
+            "exclusive_sessions": 1,
+            "turns": 50,
+            "tool_calls": 18,
+            "errors": 2,
+            "retries": 4,
+            "cost_shared": 2.0,
+            "cost_exclusive": 0.0,
+        },
     }
 
 

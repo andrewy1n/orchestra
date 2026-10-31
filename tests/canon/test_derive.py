@@ -71,13 +71,20 @@ def test_only_staged_types_get_ready_and_wave(project):
 
 def test_corrected_and_inverse_links(project):
     make_task(project, "t")
-    log = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"})
+    log = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"}
+    )
     corrector = project.correct(log["id"], payload={"message": "b"})["record"]
     derived = project.derived()
-    assert derived[log["id"]] == {"referenced_by": {"corrects": [corrector["id"]]}, "corrected": True}
+    assert derived[log["id"]] == {
+        "referenced_by": {"corrects": [corrector["id"]]},
+        "corrected": True,
+    }
     assert corrector["id"] not in derived
 
-    config = project.create(record_type="alpha:config", subject="c", payload={"title": "t", "level": 1})
+    config = project.create(
+        record_type="alpha:config", subject="c", payload={"title": "t", "level": 1}
+    )
     newer = project.supersede(config["id"])["record"]
     assert project.derived()[config["id"]] == {"referenced_by": {"supersedes": [newer["id"]]}}
 
@@ -105,11 +112,7 @@ def test_derived_values_are_never_persisted(project):
     assert "derived" not in project.get(task["id"])
     backend = open_backend(project.store_path)
     assert all("derived" not in record for record in backend.iter_records())
-    assert all(
-        "derived" not in op["record"]
-        for _, ops in backend.iter_chains()
-        for op in ops
-    )
+    assert all("derived" not in op["record"] for _, ops in backend.iter_chains() for op in ops)
 
 
 def test_list_filters_on_derived_values(cli, project):
@@ -119,15 +122,36 @@ def test_list_filters_on_derived_values(cli, project):
     ready = cli.ok("list", "--type", "task", "--where", "derived.ready=true", "--fields", "subject")
     assert sorted(r["subject"] for r in ready["records"]) == ["a", "c"]
     advance(project, a, "in_progress", "done")
-    ready = cli.ok("list", "--type", "task", "--state", "planned", "--where", "derived.ready=true", "--fields", "subject")
+    ready = cli.ok(
+        "list",
+        "--type",
+        "task",
+        "--state",
+        "planned",
+        "--where",
+        "derived.ready=true",
+        "--fields",
+        "subject",
+    )
     assert sorted(r["subject"] for r in ready["records"]) == ["b", "c"]
-    waves = cli.ok("list", "--type", "task", "--order-by", "derived.wave", "--desc", "--fields", "subject,derived.wave")
+    waves = cli.ok(
+        "list",
+        "--type",
+        "task",
+        "--order-by",
+        "derived.wave",
+        "--desc",
+        "--fields",
+        "subject,derived.wave",
+    )
     assert waves["records"][0] == {"subject": "b", "derived.wave": 2}
 
 
 def test_has_inbound_filters_on_relationship_type(cli, project):
     make_task(project, "t")
-    first = project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"})
+    first = project.create(
+        record_type="alpha:log", subject="t", payload={"task": "t", "message": "a"}
+    )
     project.create(record_type="alpha:log", subject="t", payload={"task": "t", "message": "b"})
     project.correct(first["id"], payload={"message": "c"})
     out = cli.ok("list", "--type", "log", "--has-inbound", "corrects", "--fields", "id")

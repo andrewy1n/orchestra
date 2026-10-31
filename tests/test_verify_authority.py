@@ -42,9 +42,7 @@ def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
     creates = [
         inv
         for inv in extract_invocations(_skill())
-        if inv["subcommand"] == "create"
-        and inv["type"] == "tuner:check-run"
-        and inv.get("payload")
+        if inv["subcommand"] == "create" and inv["type"] == "tuner:check-run" and inv.get("payload")
     ]
     assert creates, "manual check-run create examples must remain"
     for inv in creates:
@@ -196,7 +194,9 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
 
-def test_close_batch_still_creates_manual_check_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_close_batch_still_creates_manual_check_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     ops = close_batch.build_batch(
         {

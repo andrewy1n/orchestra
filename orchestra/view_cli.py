@@ -49,4 +49,3 @@ def run(args: argparse.Namespace) -> int:
         return 1
     print(text)
     return 0
-

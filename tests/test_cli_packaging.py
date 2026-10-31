@@ -102,9 +102,7 @@ def run_cli(env: dict[str, str], cwd: Path, *args: str) -> subprocess.CompletedP
 
 
 def run_canon(env: dict[str, str], cwd: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["canon", *args], cwd=str(cwd), env=env, capture_output=True, text=True
-    )
+    return subprocess.run(["canon", *args], cwd=str(cwd), env=env, capture_output=True, text=True)
 
 
 def _git_repo(tmp_path: Path) -> Path:
@@ -116,9 +114,7 @@ def _git_repo(tmp_path: Path) -> Path:
         ["config", "user.name", "test"],
         ["commit", "--allow-empty", "-qm", "init"],
     ):
-        proc = subprocess.run(
-            ["git", "-C", str(root), *args], capture_output=True, text=True
-        )
+        proc = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
         assert proc.returncode == 0, proc.stdout + proc.stderr
     return root
 
@@ -178,9 +174,7 @@ def _write_session(root: Path, project: str, name: str, session_id: str) -> None
             "type": "assistant",
             "timestamp": "2026-01-01T00:01:00Z",
             "message": {
-                "content": [
-                    {"type": "tool_use", "id": "1", "name": "Bash", "input": {"cmd": "ls"}}
-                ]
+                "content": [{"type": "tool_use", "id": "1", "name": "Bash", "input": {"cmd": "ls"}}]
             },
         },
     ]
@@ -259,12 +253,10 @@ def _standalone_env(env: dict[str, str], prefix: Path, home: Path) -> dict[str, 
             scrubbed.pop(key, None)
     # Ensure the installed prefix supplies the package and the script.
     script_dirs = [str(prefix / "bin"), str(prefix / "local" / "bin"), str(prefix / "Scripts")]
-    scrubbed["PATH"] = os.pathsep.join([*script_dirs, scrubbed.get("PATH", "")]).strip(
+    scrubbed["PATH"] = os.pathsep.join([*script_dirs, scrubbed.get("PATH", "")]).strip(os.pathsep)
+    scrubbed["PYTHONPATH"] = os.pathsep.join([*site_dirs, scrubbed.get("PYTHONPATH", "")]).strip(
         os.pathsep
     )
-    scrubbed["PYTHONPATH"] = os.pathsep.join(
-        [*site_dirs, scrubbed.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
     return scrubbed
 
 
@@ -312,10 +304,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
         [
             sys.executable,
             "-c",
-            (
-                "import orchestra.conductor.close_batch as cb\n"
-                "print(cb._assertion_level_red({}))\n"
-            ),
+            ("import orchestra.conductor.close_batch as cb\nprint(cb._assertion_level_red({}))\n"),
         ],
         cwd=str(elsewhere),
         env=env,

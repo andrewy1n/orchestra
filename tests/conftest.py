@@ -66,7 +66,9 @@ def _preimport_tuner_binding():
     import orchestra.tuner.binding  # noqa: F401
 
 
-def run_cli(*args: str, root: Path | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess:
+def run_cli(
+    *args: str, root: Path | None = None, cwd: Path | None = None
+) -> subprocess.CompletedProcess:
     cmd = list(CANON_CMD)
     if root is not None:
         cmd.extend(["--root", str(root)])
@@ -93,7 +95,9 @@ SCHEMAS = "score,conductor,tuner,composer"
 def write_config(store: Path) -> Path:
     """A minimal canon store marker, with no schemas."""
     store.mkdir(parents=True, exist_ok=True)
-    (store / "config.json").write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": {}}))
+    (store / "config.json").write_text(
+        json.dumps({"format": "canon/1", "schemas": {}, "settings": {}})
+    )
     return store
 
 
@@ -119,7 +123,9 @@ def build_store(drop: frozenset[str] | set[str] = frozenset()) -> Path:
         env["CANON_SCHEMA_PATH"] = os.pathsep.join(paths)
     init_result = subprocess.run(
         [*CANON_CMD, "--root", str(root), "init", "--schemas", SCHEMAS],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
     assert init_result.returncode == 0, init_result.stdout + init_result.stderr
     return root

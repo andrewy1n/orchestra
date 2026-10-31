@@ -43,8 +43,7 @@ def select_providers(
     unknown = [name for name in request.only if name not in by_id]
     if unknown:
         raise InstallError(
-            f"unknown provider(s): {', '.join(unknown)}; "
-            f"choose from {', '.join(by_id)}"
+            f"unknown provider(s): {', '.join(unknown)}; choose from {', '.join(by_id)}"
         )
     selected: list[Provider] = []
     for name in request.only:
@@ -75,9 +74,7 @@ def install_base(request: InstallRequest, scope: str = "project") -> Path:
 
 def render_plan(plan: Plan, *, dry_run: bool) -> None:
     verb = "uninstall" if plan.uninstall else "install"
-    header = (
-        f"{verb} {plan.provider.id} [{plan.mode}/{plan.scope}] -> {plan.root}"
-    )
+    header = f"{verb} {plan.provider.id} [{plan.mode}/{plan.scope}] -> {plan.root}"
     if plan.note:
         header = f"{header} ({plan.note})"
     print(header)
@@ -180,11 +177,7 @@ def run(request: InstallRequest) -> int:
     needs_detection = not request.uninstall and (
         wizard or not (request.only or request.all_providers)
     )
-    statuses = (
-        detect_hosts(providers, project_base, global_base, source)
-        if needs_detection
-        else ()
-    )
+    statuses = detect_hosts(providers, project_base, global_base, source) if needs_detection else ()
 
     if request.only or request.all_providers:
         selected = explicit

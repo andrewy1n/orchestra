@@ -36,16 +36,27 @@ def _create(cli, record_type: str, subject: str, payload: dict, body: str | None
     if body is not None:
         args.extend(["--body", body])
     result = cli(*args)
-    assert result.returncode == 0, f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"create {record_type} {subject}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
 def _supersede(cli, record: dict, payload: dict) -> dict:
     result = cli(
-        "supersede", "--type", record["record_type"], "--id", record["id"],
-        "--expected-revision", "@current", "--payload", json.dumps(payload),
+        "supersede",
+        "--type",
+        record["record_type"],
+        "--id",
+        record["id"],
+        "--expected-revision",
+        "@current",
+        "--payload",
+        json.dumps(payload),
     )
-    assert result.returncode == 0, f"supersede {record['subject']}: {result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"supersede {record['subject']}: {result.stdout}\n{result.stderr}"
+    )
     return json.loads(result.stdout)["record"]
 
 
@@ -59,7 +70,11 @@ def _area(cli, subject: str, title: str, scope: str) -> dict:
 
 def _idea(cli, subject: str, status: str = "open", text: str | None = None, **refs: str) -> dict:
     return _create(
-        cli, "composer:idea", subject, {"status": status, **refs}, f"{text or 'text of ' + subject}\n",
+        cli,
+        "composer:idea",
+        subject,
+        {"status": status, **refs},
+        f"{text or 'text of ' + subject}\n",
     )
 
 
@@ -98,7 +113,10 @@ def test_r2_each_area_lists_the_ideas_that_point_at_it(store, cli):
     _idea(cli, "typo-tolerance", area="search")
     _idea(cli, "unfiled")
     areas = _by_subject(_areas(store))
-    assert sorted(idea["subject"] for idea in areas["billing"]["ideas"]) == ["invoice-pdf", "refund-flow"]
+    assert sorted(idea["subject"] for idea in areas["billing"]["ideas"]) == [
+        "invoice-pdf",
+        "refund-flow",
+    ]
     assert [idea["subject"] for idea in areas["search"]["ideas"]] == ["typo-tolerance"]
 
 
@@ -225,8 +243,13 @@ def test_web_entry_lists_the_repo_areas(tmp_path, store, cli):
     err = tmp_path / "err"
     with (tmp_path / "out").open("w") as out, err.open("w") as errfile:
         proc = subprocess.Popen(
-            [str(SCRIPT), "--port", str(port)], cwd=str(REPO_ROOT), env=env,
-            stdout=out, stderr=errfile, text=True, start_new_session=True,
+            [str(SCRIPT), "--port", str(port)],
+            cwd=str(REPO_ROOT),
+            env=env,
+            stdout=out,
+            stderr=errfile,
+            text=True,
+            start_new_session=True,
         )
         try:
             status, body = _get(proc, port, "/api/areas", err)

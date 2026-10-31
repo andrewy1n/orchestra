@@ -188,7 +188,10 @@ def test_phase_landing_readonly_missing_branch_leaves_repo():
     before_files = sorted(p.relative_to(store).as_posix() for p in store.rglob("*"))
 
     assert phase_landing(root, LANDING_BODY, "human-gates") == Landing(
-        branch="phase/human-gates", exists=False, ahead=0, merged=False,
+        branch="phase/human-gates",
+        exists=False,
+        ahead=0,
+        merged=False,
     )
 
     assert git(root, "status", "--porcelain").stdout == before_status

@@ -139,7 +139,10 @@ def _finding_evidence(item: NeedsYouItem, record: dict[str, Any]) -> list[tuple[
 
 
 def _check_evidence(
-    target: Project, item: NeedsYouItem, root: Path, record: dict[str, Any],
+    target: Project,
+    item: NeedsYouItem,
+    root: Path,
+    record: dict[str, Any],
 ) -> list[tuple[str, str]]:
     payload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
@@ -155,9 +158,7 @@ def _check_evidence(
                 acceptance_text = (
                     f"{acceptance_text}\n\n{(acceptance.get('body') or '').strip()}"
                 ).strip()
-    rev_line = (
-        f"**Revision.** check `{_short(checked_rev)}` · HEAD `{_short(head) or 'unknown'}`"
-    )
+    rev_line = f"**Revision.** check `{_short(checked_rev)}` · HEAD `{_short(head) or 'unknown'}`"
     if checked_rev and head and not checked_rev.startswith("sha256:"):
         rev_line += (
             " · matches HEAD" if _revisions_match(checked_rev, head) else " · **differs from HEAD**"
@@ -214,11 +215,18 @@ def evidence_panels(
 ) -> list[tuple[str, str]]:
     """Kind-specific evidence panels for the Needs-you detail screen."""
     if item.kind == "needs-human":
-        record = _cli_json(target, "get", "--id", item.id, "--type", item.record_type or "tuner:finding")
+        record = _cli_json(
+            target, "get", "--id", item.id, "--type", item.record_type or "tuner:finding"
+        )
         return _finding_evidence(item, record)
     if item.kind == "unsigned-check":
         record = _cli_json(
-            target, "get", "--id", item.id, "--type", item.record_type or "tuner:check-run",
+            target,
+            "get",
+            "--id",
+            item.id,
+            "--type",
+            item.record_type or "tuner:check-run",
         )
         return _check_evidence(target, item, root, record)
     if item.kind in ("blocking-question", "open-question"):

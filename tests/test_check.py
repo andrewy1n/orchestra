@@ -11,7 +11,11 @@ from pathlib import Path
 import helpers as h
 from conftest import REPO_ROOT, git, run_cli
 
-from orchestra.conductor.policy import dirty_pass_decision, manual_refuse_message, map_process_outcome
+from orchestra.conductor.policy import (
+    dirty_pass_decision,
+    manual_refuse_message,
+    map_process_outcome,
+)
 
 BIN = REPO_ROOT / "bin" / "orchestra"
 
@@ -166,7 +170,11 @@ def test_manual_refuse_message_mentions_sign_off():
 
 def test_cli_integration_pass_check_run(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="pass-task", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="pass-task",
+        verify_command="true",
     )
     head = git(store, "rev-parse", "HEAD").stdout.strip()
     assert not git(store, "status", "--porcelain").stdout.strip()
@@ -185,7 +193,11 @@ def test_cli_integration_pass_check_run(store, cli, resolved_contract):
 def test_check_writes_runner_orchestra(store, cli, resolved_contract):
     """R1: orchestra check stamps payload.runner as orchestra."""
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="runner-orchestra-task", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="runner-orchestra-task",
+        verify_command="true",
     )
     result = _run_tuner("check", "--acceptance", acceptance["id"], cwd=store)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -195,7 +207,11 @@ def test_check_writes_runner_orchestra(store, cli, resolved_contract):
 
 def test_cli_integration_fail_check_run(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="fail-task", verify_command="false",
+        store,
+        cli,
+        resolved_contract,
+        subject="fail-task",
+        verify_command="false",
     )
     result = _run_tuner("check", "--acceptance", acceptance["id"], cwd=store)
     assert result.returncode == 1, result.stdout + result.stderr
@@ -222,7 +238,11 @@ def test_cli_blocked_missing_command(store, cli, resolved_contract):
 
 def test_dirty_pass_refused_without_allow_dirty(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="dirty-refuse", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="dirty-refuse",
+        verify_command="true",
     )
     (store / "dirt.txt").write_text("dirty\n")
     before = _list_check_runs(store)
@@ -235,11 +255,19 @@ def test_dirty_pass_refused_without_allow_dirty(store, cli, resolved_contract):
 
 def test_dirty_pass_with_allow_dirty_sets_revision_and_diff(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="dirty-allow", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="dirty-allow",
+        verify_command="true",
     )
     (store / "dirt.txt").write_text("dirty\n")
     result = _run_tuner(
-        "check", "--acceptance", acceptance["id"], "--allow-dirty", cwd=store,
+        "check",
+        "--acceptance",
+        acceptance["id"],
+        "--allow-dirty",
+        cwd=store,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     record = _parse_check_stdout(result)
@@ -251,7 +279,11 @@ def test_dirty_pass_with_allow_dirty_sets_revision_and_diff(store, cli, resolved
 
 def test_dirty_fail_may_be_recorded(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="dirty-fail", verify_command="false",
+        store,
+        cli,
+        resolved_contract,
+        subject="dirty-fail",
+        verify_command="false",
     )
     (store / "dirt.txt").write_text("dirty\n")
     result = _run_tuner("check", "--acceptance", acceptance["id"], cwd=store)
@@ -323,7 +355,9 @@ def test_exit_code_field_matches_process_for_fail(store, cli, resolved_contract)
 
 
 def test_failing_node_ids_recorded_on_pytest_assertion_fail(
-    store, cli, resolved_contract,
+    store,
+    cli,
+    resolved_contract,
 ):
     """R2: orchestra check fail from pytest assert → payload failing_node_ids JSON list."""
     probe = store / "probe_oracle_assert.py"
@@ -351,7 +385,11 @@ def test_failing_node_ids_recorded_on_pytest_assertion_fail(
 
 def test_failing_node_ids_absent_on_pass(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="pass-no-nodes", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="pass-no-nodes",
+        verify_command="true",
     )
     result = _run_tuner("check", "--acceptance", acceptance["id"], cwd=store)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -385,13 +423,20 @@ def _linked_phase_worktree(primary: Path, tmp_path: Path) -> tuple[Path, str, st
 
 
 def test_check_worktree_cwd_primary_store_revision_from_worktree(
-    store, cli, resolved_contract, tmp_path,
+    store,
+    cli,
+    resolved_contract,
+    tmp_path,
 ):
     """R5: --cwd=worktree, process cwd=primary → revision from worktree, write to primary."""
     worktree, primary_head, worktree_head = _linked_phase_worktree(store, tmp_path)
     # Seed after worktree exists so the acceptance lives only on primary.
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="wt-check-task", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="wt-check-task",
+        verify_command="true",
     )
     before_primary = _list_check_runs(store)
 
@@ -412,19 +457,28 @@ def test_check_worktree_cwd_primary_store_revision_from_worktree(
     assert len(after_primary) == len(before_primary) + 1
     assert record["id"] in {r["id"] for r in after_primary}
     # Worktree checkout must not gain the new check-run record file.
-    wt_check_runs = list((worktree / ".canon" / "records").rglob("*check-run*")) if (
-        worktree / ".canon" / "records"
-    ).exists() else []
+    wt_check_runs = (
+        list((worktree / ".canon" / "records").rglob("*check-run*"))
+        if (worktree / ".canon" / "records").exists()
+        else []
+    )
     assert record["id"] not in "".join(str(p) for p in wt_check_runs)
 
 
 def test_check_store_cwd_discovery_ignores_worktree(
-    store, cli, resolved_contract, tmp_path,
+    store,
+    cli,
+    resolved_contract,
+    tmp_path,
 ):
     """R5/R6: store discovery must use process cwd, not --cwd worktree."""
     worktree, _primary_head, worktree_head = _linked_phase_worktree(store, tmp_path)
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="store-cwd-task", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="store-cwd-task",
+        verify_command="true",
     )
 
     result = _run_tuner(
@@ -443,12 +497,19 @@ def test_check_store_cwd_discovery_ignores_worktree(
 
 
 def test_cli_cwd_forwarded_uses_worktree_head(
-    store, cli, resolved_contract, tmp_path,
+    store,
+    cli,
+    resolved_contract,
+    tmp_path,
 ):
     """R6 b-cli-cwd-not-forwarded: CLI --cwd must reach run_check, not Path.cwd()."""
     worktree, primary_head, worktree_head = _linked_phase_worktree(store, tmp_path)
     acceptance = _seed_acceptance(
-        store, cli, resolved_contract, subject="cwd-fwd-task", verify_command="true",
+        store,
+        cli,
+        resolved_contract,
+        subject="cwd-fwd-task",
+        verify_command="true",
     )
 
     result = _run_tuner(

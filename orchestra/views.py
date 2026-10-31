@@ -69,9 +69,7 @@ class View:
     tally_field: str = "result"
 
 
-GOAL = Role(
-    "goal", "score:effort", ("goal", "kind"), _all(_state("active"), _not_closed)
-)
+GOAL = Role("goal", "score:effort", ("goal", "kind"), _all(_state("active"), _not_closed))
 POSITION = Role(
     "position",
     "score:position",
@@ -339,9 +337,7 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
     return bits
 
 
-def _record_line(
-    record: Record, role: Role, extra_bits: list[str], link: bool = True
-) -> str:
+def _record_line(record: Record, role: Role, extra_bits: list[str], link: bool = True) -> str:
     payload = record_payload(record)
     bits = []
     for name in role.fields:
@@ -401,21 +397,13 @@ def _group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            lines.append(
-                _record_line(record, role, _status_bits(record, view, tally), link)
-            )
+            lines.append(_record_line(record, role, _status_bits(record, view, tally), link))
         lines.append("")
     return lines
 
 
-def render_view(
-    view: View, records: list[Record], *, effort: str | None = None
-) -> str:
-    tally = (
-        [r for r in records if r["record_type"] == view.tally_type]
-        if view.tally_type
-        else []
-    )
+def render_view(view: View, records: list[Record], *, effort: str | None = None) -> str:
+    tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
     groups = _group_records(view, records, effort)
 
     lines = [
@@ -538,9 +526,7 @@ def live_efforts(records: list[Record]) -> set[str]:
     return {
         effort
         for r in records
-        if r["record_type"] == GOAL.record_type
-        and GOAL.select(r)
-        and (effort := effort_of(r))
+        if r["record_type"] == GOAL.record_type and GOAL.select(r) and (effort := effort_of(r))
     }
 
 
@@ -557,9 +543,7 @@ def _position_recorded_at(records: list[Record]) -> dict[str, str]:
 
 
 def _group_subjects(group: dict[str, list[Record]]) -> list[str]:
-    return sorted(
-        {str(r.get("subject", "")) for items in group.values() for r in items}
-    )
+    return sorted({str(r.get("subject", "")) for items in group.values() for r in items})
 
 
 def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:

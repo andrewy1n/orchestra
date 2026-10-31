@@ -13,17 +13,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 VERIFY = [sys.executable, str(REPO / "bin" / "orchestra"), "verify"]
 
-BASE_APP = (
-    "def add(a, b):\n"
-    "    return a - b\n"
-    "\n"
-    "\n"
-    "LIMIT = 1\n"
-    "\n"
-    "\n"
-    "def mid():\n"
-    "    return 0\n"
-)
+BASE_APP = "def add(a, b):\n    return a - b\n\n\nLIMIT = 1\n\n\ndef mid():\n    return 0\n"
 HEAD_APP = (
     "def add(a, b):\n"
     "    return a + b\n"
@@ -56,9 +46,7 @@ PYTEST_INI = "[pytest]\npythonpath = .\n"
 
 
 def _git(cwd: Path, *args: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(cwd), *args], capture_output=True, text=True
-    )
+    result = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True)
     if result.returncode != 0:
         raise AssertionError(f"git {args!r} failed\n{result.stderr}")
     return result.stdout
@@ -136,7 +124,9 @@ def _audit(
         argv += ["--test", node]
     if mutants is not None:
         argv += ["--mutants", str(mutants)]
-    return subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=_no_store_env())
+    return subprocess.run(
+        argv, capture_output=True, text=True, timeout=timeout, env=_no_store_env()
+    )
 
 
 def _payload(proc: subprocess.CompletedProcess[str]) -> dict:

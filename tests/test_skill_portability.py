@@ -37,9 +37,7 @@ _INLINE_PATH = re.compile(r"`((?:\.\.?/|references/)[^`\s]+)`")
 #: Authored sources that must be generated into the skill's ``references/``.
 #: A skill that names one directly would break once it is installed alone.
 _OUTSIDE_SKILL_DIRS = ("agents", "shared")
-_BARE_OUTSIDE_PATH = re.compile(
-    r"`((?:" + "|".join(_OUTSIDE_SKILL_DIRS) + r")/[^`\s]+)`"
-)
+_BARE_OUTSIDE_PATH = re.compile(r"`((?:" + "|".join(_OUTSIDE_SKILL_DIRS) + r")/[^`\s]+)`")
 
 _CHECKOUT_PATH = re.compile(
     r"(?:^|[\s`(])(?:\.{1,2}/|~/|/)[^\s`)]*/(?:bin/)?(?:orchestra|aff|canon)(?=\s|$|[;&|])"
@@ -107,9 +105,7 @@ def path_errors(skill_dir: Path, text: str) -> list[str]:
             or (parts and parts[0] in _OUTSIDE_SKILL_DIRS)
         )
         if leaves:
-            errors.append(
-                f"{skill_dir.name}: referenced path leaves the skill directory: {target}"
-            )
+            errors.append(f"{skill_dir.name}: referenced path leaves the skill directory: {target}")
             continue
         if not (skill_dir / target).exists():
             errors.append(f"{skill_dir.name}: referenced path is missing: {target}")
@@ -136,9 +132,7 @@ def module_api_errors(text: str) -> list[str]:
         if module in seen:
             continue
         seen.add(module)
-        errors.append(
-            f"names the module API orchestra.{module} instead of a CLI command"
-        )
+        errors.append(f"names the module API orchestra.{module} instead of a CLI command")
     return errors
 
 
@@ -161,7 +155,9 @@ def test_paths_every_reference_stays_inside_the_skill_directory(skill_dir: Path)
 def test_paths_planted_parent_reference_is_rejected(tmp_path: Path):
     skill = tmp_path / "skills" / "bad" / "references"
     skill.mkdir(parents=True)
-    text = "---\nname: bad\ndescription: bad skill\n---\n\nSee [shared](../shared/ensure-store.md).\n"
+    text = (
+        "---\nname: bad\ndescription: bad skill\n---\n\nSee [shared](../shared/ensure-store.md).\n"
+    )
     errors = path_errors(skill.parent, text)
     assert any("leaves the skill directory" in error for error in errors), errors
 
@@ -177,10 +173,7 @@ def test_paths_planted_missing_reference_is_rejected(tmp_path: Path):
 def test_paths_planted_bare_agents_reference_is_rejected(tmp_path: Path):
     skill = tmp_path / "skills" / "bad"
     skill.mkdir(parents=True)
-    text = (
-        "---\nname: bad\ndescription: bad skill\n---\n\n"
-        "Dispatch `agents/reviewer.md`.\n"
-    )
+    text = "---\nname: bad\ndescription: bad skill\n---\n\nDispatch `agents/reviewer.md`.\n"
     errors = path_errors(skill, text)
     assert any("leaves the skill directory" in error for error in errors), errors
 
@@ -286,9 +279,7 @@ def test_execute_phase_carries_the_canonical_reviewer_prompt():
     prompt = ROOT / "agents" / "reviewer.prompt.md"
     reference = SKILLS / "execute-phase" / "references" / "reviewer.md"
     assert reference.is_file(), f"{reference} is missing"
-    assert reference.read_bytes() == prompt.read_bytes(), (
-        f"{reference} drifted from {prompt}"
-    )
+    assert reference.read_bytes() == prompt.read_bytes(), f"{reference} drifted from {prompt}"
 
 
 def test_generated_references_drift_is_detected(tmp_path: Path):

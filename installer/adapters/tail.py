@@ -30,9 +30,7 @@ class SkillsCliAdapter(BaseAdapter):
     def __init__(self, provider, **kwargs) -> None:
         super().__init__(provider, **kwargs)
         if not provider.profile:
-            raise ValueError(
-                f"provider {provider.id!r} needs a skills profile to delegate"
-            )
+            raise ValueError(f"provider {provider.id!r} needs a skills profile to delegate")
         self.profile = provider.profile
 
     # -- delegation -----------------------------------------------------
@@ -92,9 +90,7 @@ class SkillsCliAdapter(BaseAdapter):
             )
 
         reason = (
-            "npx is not available"
-            if completed is None
-            else f"npx exited {completed.returncode}"
+            "npx is not available" if completed is None else f"npx exited {completed.returncode}"
         )
         fallback = BaseAdapter.apply(self, BaseAdapter.plan(self))
         return ApplyResult(
@@ -121,21 +117,15 @@ class SkillsCliAdapter(BaseAdapter):
         problems: list[str] = []
         if marker["provider"] != self.provider.id:
             problems.append(
-                f"registration names {marker['provider']!r}, "
-                f"expected {self.provider.id!r}"
+                f"registration names {marker['provider']!r}, expected {self.provider.id!r}"
             )
         if marker["scope"] != self.scope:
-            problems.append(
-                f"registration scope is {marker['scope']!r}, expected {self.scope!r}"
-            )
+            problems.append(f"registration scope is {marker['scope']!r}, expected {self.scope!r}")
         if marker["mode"] != self.mode:
-            problems.append(
-                f"registration mode is {marker['mode']!r}, expected {self.mode!r}"
-            )
+            problems.append(f"registration mode is {marker['mode']!r}, expected {self.mode!r}")
         if marker.get("profile") != self.profile:
             problems.append(
-                f"registration profile is {marker.get('profile')!r}, "
-                f"expected {self.profile!r}"
+                f"registration profile is {marker.get('profile')!r}, expected {self.profile!r}"
             )
         for entry in marker["entries"]:
             destination = self.root / entry

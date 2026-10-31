@@ -30,6 +30,7 @@ def make_git_repo() -> Path:
     git(root, "commit", "--allow-empty", "-qm", "init")
     return root
 
+
 _SCORE = "score"
 _COMPOSER = "composer"
 _BACKLOG = "backlog" + "-" + "item"
@@ -157,7 +158,9 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
 
     project = open_store(root)
     store = open_backend(project.store_path)
-    ideas = {record["id"]: record for record in project.records() if record["record_type"] == _IDEA_TYPE}
+    ideas = {
+        record["id"]: record for record in project.records() if record["record_type"] == _IDEA_TYPE
+    }
     assert set(ideas) == set(before)
     for record_id, old in before.items():
         new = ideas[record_id]

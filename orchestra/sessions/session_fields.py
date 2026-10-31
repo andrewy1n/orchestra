@@ -31,7 +31,11 @@ def _skill_names(event: dict) -> Iterable[str]:
     if not isinstance(content, list):
         return
     for block in content:
-        if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "Skill":
+        if (
+            isinstance(block, dict)
+            and block.get("type") == "tool_use"
+            and block.get("name") == "Skill"
+        ):
             name = (block.get("input") or {}).get("skill")
             if isinstance(name, str) and name:
                 yield name

@@ -178,9 +178,7 @@ def render(provider_id: str, agent: CanonicalAgent) -> str:
     return "\n".join(lines) + "\n\n" + agent.body
 
 
-def generated_agent(
-    source_root: Path | str, provider_id: str
-) -> tuple[str, str] | None:
+def generated_agent(source_root: Path | str, provider_id: str) -> tuple[str, str] | None:
     """Return ``(destination-relative path, text)`` for a native host.
 
     ``None`` means this host has no generated-agent rendering or the canonical
@@ -197,6 +195,4 @@ def generated_agent(
 def render_all(source_root: Path | str) -> dict[str, str]:
     """Every host rendering, keyed by provider id (for tests and docs)."""
     agent = load(source_root)
-    return {
-        provider_id: render(provider_id, agent) for provider_id in HOST_DESTINATIONS
-    }
+    return {provider_id: render(provider_id, agent) for provider_id in HOST_DESTINATIONS}

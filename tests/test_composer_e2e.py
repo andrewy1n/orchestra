@@ -32,7 +32,9 @@ def _canon_file_list_hash(store_dir: Path) -> str:
     entries = []
     for path in sorted(p for p in store_dir.rglob("*") if p.is_file()):
         stat = path.stat()
-        entries.append(f"{path.relative_to(store_dir).as_posix()}:{stat.st_size}:{stat.st_mtime_ns}")
+        entries.append(
+            f"{path.relative_to(store_dir).as_posix()}:{stat.st_size}:{stat.st_mtime_ns}"
+        )
     return hashlib.sha256("\n".join(entries).encode()).hexdigest()
 
 
@@ -173,7 +175,9 @@ def composer_flow(installed, tmp_path_factory) -> ComposerFlow:  # noqa: F811
     idea_after_promote = _active_idea(env, repo)
 
     roadmap_second_proc = run_cli(env, repo, "view", "roadmap")
-    assert roadmap_second_proc.returncode == 0, roadmap_second_proc.stdout + roadmap_second_proc.stderr
+    assert roadmap_second_proc.returncode == 0, (
+        roadmap_second_proc.stdout + roadmap_second_proc.stderr
+    )
 
     validated = run_canon(env, repo, "validate")
     assert validated.returncode == 0, validated.stdout + validated.stderr

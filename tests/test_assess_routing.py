@@ -75,7 +75,10 @@ def test_verify_and_assess_are_separate_steps():
 def test_routing_table_chooses_next_from_the_evidence():
     text = _text("verify-work")
     flat = _normalized(text)
-    assert "Choose the first `next` the evidence supports. Do not send every failure to execute" in flat
+    assert (
+        "Choose the first `next` the evidence supports. Do not send every failure to execute"
+        in flat
+    )
     for cause, status, level, nxt in ROUTES:
         assert cause in text
         row = next(line for line in text.splitlines() if cause in line and line.startswith("|"))
@@ -89,8 +92,10 @@ def test_routing_table_chooses_next_from_the_evidence():
     assert "`environment` or `unknown`" in text
     assert "acceptance, integration, unit, property, fuzz, review" in flat
 
-    by_next = {(inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
-               for inv in _writes("verify-work", "conductor:assessment")}
+    by_next = {
+        (inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
+        for inv in _writes("verify-work", "conductor:assessment")
+    }
     assert ("implementation", "execute", "failed") in by_next
     assert ("design", "design", "failed") in by_next
     assert ("verification", "verify", "insufficient") in by_next
@@ -113,7 +118,8 @@ def test_evidence_escalation_ladder():
     assert "`needs` `human`" in text
 
     raised = [
-        inv for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
+        inv
+        for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
         if inv["payload"].get("level") == "design" and inv["payload"]["next"] == "design"
     ]
     assert len(raised) == 1
@@ -124,7 +130,8 @@ def test_evidence_escalation_ladder():
     assert len(questions) == 1
     assert questions[0]["payload"]["blocking"] is True
     findings = [
-        inv for inv in _writes("verify-work", "tuner:finding", {"create"})
+        inv
+        for inv in _writes("verify-work", "tuner:finding", {"create"})
         if "specification repeated" in inv["payload"]["claim"]
     ]
     assert len(findings) == 1
@@ -185,8 +192,7 @@ def test_engage_documents_idea_list_create_supersede():
     assert "promoted" in text and "dismissed" in text
     invs = extract_invocations(text)
     idea_lists = [
-        inv for inv in invs
-        if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "list" and inv["type"] == "composer:idea"
     ]
     assert len(idea_lists) == 2
     by_subject = {inv["raw"] for inv in idea_lists}
@@ -196,15 +202,13 @@ def test_engage_documents_idea_list_create_supersede():
         for raw in by_subject
     )
     creates = [
-        inv for inv in invs
-        if inv["subcommand"] == "create" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "create" and inv["type"] == "composer:idea"
     ]
     assert len(creates) == 1
     assert creates[0]["payload"]["status"] == "open"
     assert creates[0]["payload"]["effort"]
     supersedes = [
-        inv for inv in invs
-        if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
+        inv for inv in invs if inv["subcommand"] == "supersede" and inv["type"] == "composer:idea"
     ]
     statuses = {inv["payload"]["status"] for inv in supersedes if inv["payload"]}
     assert statuses == {"dismissed"}
@@ -230,7 +234,8 @@ def test_engage_idea_input():
     assert "stays `open` until" in flat
     assert "stops before an effort or phase exists" in flat
     idea_reads = [
-        inv for inv in extract_invocations(text)
+        inv
+        for inv in extract_invocations(text)
         if inv["subcommand"] == "list"
         and inv["type"] == "composer:idea"
         and "--exact-subject" in inv["raw"]
@@ -272,7 +277,9 @@ def test_assessment_and_check_run_enums_match_the_contract(contract_indexes):
     assert check_enum["result"] == ["pass", "fail", "blocked", "insufficient"]
     assert check_enum["method"] == ["tdd", "check", "manual", "review"]
     assert defs["score:acceptance"]["payload_enum"]["method"] == [
-        "tdd", "check", "manual",
+        "tdd",
+        "check",
+        "manual",
     ]
     evidence_kinds = set(check_enum["evidence_kind"])
     results = set(check_enum["result"])

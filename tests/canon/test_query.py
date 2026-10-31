@@ -25,24 +25,40 @@ def subjects(result):
 
 def test_type_state_and_subject_filters(seeded):
     assert seeded.ok("list")["count"] == 4
-    assert subjects(seeded.ok("list", "--type", "config", "--order-by", "subject")) == ["web-api", "web-ui", "worker"]
+    assert subjects(seeded.ok("list", "--type", "config", "--order-by", "subject")) == [
+        "web-api",
+        "web-ui",
+        "worker",
+    ]
     assert subjects(seeded.ok("list", "--state", "planned")) == ["t1"]
-    assert subjects(seeded.ok("list", "--subject", "web", "--order-by", "subject")) == ["web-api", "web-ui"]
+    assert subjects(seeded.ok("list", "--subject", "web", "--order-by", "subject")) == [
+        "web-api",
+        "web-ui",
+    ]
     assert subjects(seeded.ok("list", "--subject", "web", "--exact-subject")) == []
     assert subjects(seeded.ok("list", "--subject", "worker", "--exact-subject")) == ["worker"]
 
 
 def test_where_operators(seeded):
     assert subjects(seeded.ok("list", "--where", "payload.level=2")) == ["web-ui"]
-    assert sorted(subjects(seeded.ok("list", "--type", "config", "--where", "payload.mode!=slow"))) == ["web-api", "worker"]
-    assert sorted(subjects(seeded.ok("list", "--where", "payload.level=any_of:1,3"))) == ["web-api", "worker"]
-    assert subjects(seeded.ok("list", "--where", "payload.mode=fast", "--where", "payload.level=3")) == ["worker"]
+    assert sorted(
+        subjects(seeded.ok("list", "--type", "config", "--where", "payload.mode!=slow"))
+    ) == ["web-api", "worker"]
+    assert sorted(subjects(seeded.ok("list", "--where", "payload.level=any_of:1,3"))) == [
+        "web-api",
+        "worker",
+    ]
+    assert subjects(
+        seeded.ok("list", "--where", "payload.mode=fast", "--where", "payload.level=3")
+    ) == ["worker"]
     assert subjects(seeded.ok("list", "--where", "subject=worker")) == ["worker"]
     assert subjects(seeded.ok("list", "--where", "lifecycle_state=planned")) == ["t1"]
 
 
 def test_not_equals_does_not_match_an_unset_field(seeded):
-    assert subjects(seeded.ok("list", "--where", "payload.mode!=slow", "--order-by", "subject")) == ["web-api", "worker"]
+    assert subjects(
+        seeded.ok("list", "--where", "payload.mode!=slow", "--order-by", "subject")
+    ) == ["web-api", "worker"]
 
 
 def test_where_values_are_typed(seeded):
@@ -67,10 +83,27 @@ def test_summary_and_full(seeded):
 
 
 def test_order_limit_fields(seeded):
-    desc = seeded.ok("list", "--type", "config", "--order-by", "payload.level", "--desc", "--limit", "2", "--fields", "subject,payload.level")
-    assert desc["records"] == [{"subject": "worker", "payload.level": 3}, {"subject": "web-ui", "payload.level": 2}]
+    desc = seeded.ok(
+        "list",
+        "--type",
+        "config",
+        "--order-by",
+        "payload.level",
+        "--desc",
+        "--limit",
+        "2",
+        "--fields",
+        "subject,payload.level",
+    )
+    assert desc["records"] == [
+        {"subject": "worker", "payload.level": 3},
+        {"subject": "web-ui", "payload.level": 2},
+    ]
     assert desc["count"] == 2
-    assert subjects(seeded.ok("list", "--type", "config", "--order-by", "recorded_at", "--limit", "1")) != []
+    assert (
+        subjects(seeded.ok("list", "--type", "config", "--order-by", "recorded_at", "--limit", "1"))
+        != []
+    )
 
 
 def test_time_range(seeded):
@@ -82,10 +115,30 @@ def test_time_range(seeded):
 def test_formats(seeded):
     lines = seeded("list", "--type", "config", "--format", "ndjson", "--fields", "subject").lines
     assert sorted(line["subject"] for line in lines) == ["web-api", "web-ui", "worker"]
-    table = seeded("list", "--type", "config", "--format", "table", "--fields", "subject,payload.level", "--order-by", "subject").out.splitlines()
+    table = seeded(
+        "list",
+        "--type",
+        "config",
+        "--format",
+        "table",
+        "--fields",
+        "subject,payload.level",
+        "--order-by",
+        "subject",
+    ).out.splitlines()
     assert table[0].split() == ["subject", "payload.level"]
     assert table[1].split() == ["web-api", "1"]
-    tsv = seeded("list", "--type", "config", "--format", "tsv", "--fields", "subject,payload.level", "--order-by", "subject").out.splitlines()
+    tsv = seeded(
+        "list",
+        "--type",
+        "config",
+        "--format",
+        "tsv",
+        "--fields",
+        "subject,payload.level",
+        "--order-by",
+        "subject",
+    ).out.splitlines()
     assert tsv[0] == "subject\tpayload.level"
     assert tsv[1] == "web-api\t1"
     default = seeded("list", "--format", "table").out.splitlines()[0].split()

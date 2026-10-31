@@ -116,9 +116,7 @@ def test_verdict_gate_command_calls_run_verdict(tmp_path: Path, monkeypatch, cap
         return result
 
     monkeypatch.setattr(cli_mod, "run_verdict", wrapped)
-    code = main(
-        ["verdict", "--cwd", str(root), "--base", base, "--at", head, CLAIM]
-    )
+    code = main(["verdict", "--cwd", str(root), "--base", base, "--at", head, CLAIM])
     captured = capsys.readouterr()
     assert seen.get("result"), "orchestra verify verdict calls run_verdict"
     assert seen["before"] == []

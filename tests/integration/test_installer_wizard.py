@@ -45,9 +45,9 @@ def test_interactive_end_to_end(tmp_path):
     source = _make_source(tmp_path)
 
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(REPO_ROOT), env.get("PYTHONPATH", "")]
-    ).strip(os.pathsep)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
+        os.pathsep
+    )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     env["HOME"] = str(home)
     proc = subprocess.run(

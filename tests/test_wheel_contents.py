@@ -213,7 +213,9 @@ def _copy_source(destination: Path) -> Path:
 
 
 def _site_dirs(prefix: Path) -> list[Path]:
-    purelib = Path(sysconfig.get_path("purelib", vars={"base": str(prefix), "platbase": str(prefix)}))
+    purelib = Path(
+        sysconfig.get_path("purelib", vars={"base": str(prefix), "platbase": str(prefix)})
+    )
     found = [purelib, *prefix.glob("**/site-packages"), *prefix.glob("**/dist-packages")]
     return sorted({path for path in found if path.is_dir()})
 

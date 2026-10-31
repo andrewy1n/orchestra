@@ -47,6 +47,7 @@ DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
 FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
 
+
 @dataclass(frozen=True)
 class SuitePolicy:
     """Configured ``phase_gate.suite`` after consumer defaults are applied."""
@@ -272,9 +273,7 @@ def advisory_finding_payload(
     return {
         "claim": f"advisory suite fail for {subject} at {suite.revision}",
         "basis": f"exit_code={suite.exit_code}; failing: {nodes}",
-        "invalidated_when": (
-            "suite check-run passes at phase head, or human clears the finding"
-        ),
+        "invalidated_when": ("suite check-run passes at phase head, or human clears the finding"),
         "effort": effort,
         "needs": "none",
     }
@@ -368,9 +367,7 @@ def start_suite_background(
     head = phase_head or git_head(work)
 
     if not resolved_policy.run_locally and suite_command is None:
-        reason = (
-            f"suite skipped (mode={resolved_policy.mode}, gate={resolved_policy.gate})"
-        )
+        reason = f"suite skipped (mode={resolved_policy.mode}, gate={resolved_policy.gate})"
         return SuiteStart(
             session_name=session_name or f"orchestra-suite-{phase_slug.strip()}",
             worktree=work,
@@ -386,7 +383,9 @@ def start_suite_background(
         )
 
     revision, _diff, refuse_msg = resolve_suite_revision(
-        work, allow_dirty=allow_dirty, provisional_result="pass",
+        work,
+        allow_dirty=allow_dirty,
+        provisional_result="pass",
     )
     if refuse_msg:
         return SuiteResult(
@@ -690,8 +689,7 @@ def record_suite_check_run(
     body_parts = [_body_tail(suite.output)]
     if suite.failing_node_ids:
         body_parts.append(
-            "\n## Failing node IDs\n\n"
-            + "\n".join(f"- {n}" for n in suite.failing_node_ids)
+            "\n## Failing node IDs\n\n" + "\n".join(f"- {n}" for n in suite.failing_node_ids)
         )
     try:
         project = open_store(store_root)

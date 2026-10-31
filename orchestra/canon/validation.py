@@ -104,7 +104,9 @@ def value_errors(
         if isinstance(value, list):
             errors: list[str] = []
             for position, item in enumerate(value):
-                errors.extend(value_errors(schemas, index, form["list"], item, f"{path}[{position}]"))
+                errors.extend(
+                    value_errors(schemas, index, form["list"], item, f"{path}[{position}]")
+                )
             return errors
     return [f"{path}: expected {_describe(form)}, got {value!r}"]
 
@@ -119,7 +121,9 @@ def payload_errors(
     errors: list[str] = []
     for key in payload:
         if key not in type_def.fields:
-            errors.append(f"{label}: payload field {key!r} is not declared by {type_def.record_type}")
+            errors.append(
+                f"{label}: payload field {key!r} is not declared by {type_def.record_type}"
+            )
     for field, form in type_def.fields.items():
         if field not in payload:
             if not form.get("optional"):
@@ -342,7 +346,9 @@ def check_transition(type_def: TypeDef, src: str, dest: str) -> None:
 
 def reject_supersede_via_update(type_def: TypeDef, dest: str) -> None:
     if dest == SUPERSEDED:
-        raise TransitionError("transition to superseded requires the supersede operation", "use_supersede")
+        raise TransitionError(
+            "transition to superseded requires the supersede operation", "use_supersede"
+        )
 
 
 def reject_event_mutation(type_def: TypeDef) -> None:
