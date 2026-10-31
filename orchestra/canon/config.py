@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from orchestra.canon.paths import validate_namespace
-from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.canon.types import JsonObject, JsonValue, get_object
 
 FORMAT = "canon/1"
 CONFIG_NAME = "config.json"
@@ -20,12 +20,14 @@ def new_config(schemas: dict[str, str] | None = None) -> JsonObject:
 
 
 def validate_config(data: JsonValue) -> JsonObject:
-    if not isinstance(data, dict):
+    config = get_object({"config": data}, "config")
+    if config is None:
         raise ConfigError("config.json must be a JSON object")
-    if data.get("format") != FORMAT:
-        raise ConfigError(f"unsupported store format {data.get('format')!r}; expected {FORMAT!r}")
-    schemas = data.get("schemas")
-    if not isinstance(schemas, dict):
+    format_value = config.get("format")
+    if format_value != FORMAT:
+        raise ConfigError(f"unsupported store format {format_value!r}; expected {FORMAT!r}")
+    schemas = get_object(config, "schemas")
+    if schemas is None:
         raise ConfigError("config.json schemas must be an object")
     for namespace, version in schemas.items():
         try:
@@ -34,10 +36,10 @@ def validate_config(data: JsonValue) -> JsonObject:
             raise ConfigError(str(exc)) from exc
         if not isinstance(version, str) or not version:
             raise ConfigError(f"config.json schemas.{namespace} must be a version string")
-    settings = data.get("settings", {})
-    if not isinstance(settings, dict):
+    settings = config.get("settings", {})
+    if get_object({"settings": settings}, "settings") is None:
         raise ConfigError("config.json settings must be an object")
-    return data
+    return config
 
 
 def dump_config(config: JsonObject) -> str:
