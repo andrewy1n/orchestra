@@ -8,7 +8,7 @@
   const rollup = $derived(areaRollup(efforts, area));
 </script>
 
-<a class="area-card [align-self:start]" data-area-card={area.subject} href={areaHref(area.subject)}>
+<a class="area-card" data-area-card={area.subject} href={areaHref(area.subject)}>
   <h2 class="area-card-title" data-card-title>{area.title || area.subject}</h2>
   <p class="area-card-scope" data-card-scope>{firstSentence(area.scope)}</p>
   <p class="area-card-counts">
@@ -19,11 +19,4 @@
       >{rollup.openIdeas} open {rollup.openIdeas === 1 ? "idea" : "ideas"}</span
     >
   </p>
-  {#if efforts.length}
-    <ul class="area-card-efforts">
-      {#each efforts as view (view.effort)}
-        <li class="text-(--brand)" data-card-effort>{view.effort}</li>
-      {/each}
-    </ul>
-  {/if}
 </a>
