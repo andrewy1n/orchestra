@@ -48,7 +48,8 @@ orchestra = ["_scripts/*.py"]
 "orchestra.composer" = ["schemas/*.json"]
 "orchestra.conductor" = ["schemas/*.json"]
 "orchestra.tuner" = ["schemas/*.json"]
-installer = ["providers.json"]
+# `payload/{skills,agents,hosts}` are directory symlinks; the wheel builder dereferences them.
+installer = ["providers.json", "payload/**/*"]
 dashboard = ["frontend/dist/**/*"]
 
 [dependency-groups]
