@@ -182,10 +182,14 @@ def cmd_stop(fmt: str, data: JsonObject) -> JsonObject | None:
         if data.get("stop_hook_active"):
             return {}
     else:
+        if data.get("status") != "completed":
+            return {}
         loop_count = data.get("loop_count", 0)
-        if data.get("status") != "completed" or (
-            isinstance(loop_count, (int, float)) and loop_count > 0
-        ):
+        if not isinstance(loop_count, (int, float)):
+            raise TypeError(
+                f"'>' not supported between instances of '{type(loop_count).__name__}' and 'int'"
+            )
+        if loop_count > 0:
             return {}
     root = _root_from_hook(data, fmt)
     try:
