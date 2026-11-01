@@ -56,15 +56,16 @@ Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-foc
 
 ## Install
 
-The orchestra plugin is not in Anthropic's official marketplace.
-
-### uv tool install
-
-Install the package first. It provides the `orchestra` and `canon`
-commands:
+The installer installs the orchestra and canon commands when they are missing.
 
 ```bash
-uv tool install --editable ~/orchestra
+uvx --from git+https://github.com/andrewy1n/orchestra orchestra install
+```
+
+Without uv, run the bootstrap script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/andrewy1n/orchestra/main/install.sh | sh
 ```
 
 ### Claude Code
@@ -135,6 +136,14 @@ Replace `<ref>` with a branch, tag, or commit. The console script serves the
 subcommands listed under [CLI](#cli). Host installs run from a checkout as
 `./bin/orchestra install`, because the installer reads `skills/`,
 `agents/`, and `hosts/` from that tree.
+
+### From a checkout
+
+Developers install the checkout in place:
+
+```bash
+uv tool install --editable ~/orchestra
+```
 
 ### Host matrix
 
