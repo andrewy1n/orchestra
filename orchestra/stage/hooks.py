@@ -10,11 +10,12 @@ import sys
 import tempfile
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TextIO, TypeGuard
 
 from orchestra import views
 from orchestra.canon.backend import open_backend
-from orchestra.canon.types import Record
+from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 
 PROTOCOL = (
@@ -33,33 +34,41 @@ CLAUDE = "--claude"
 CURSOR = "--cursor"
 
 
-def read_hook_input(stream: TextIO) -> dict[str, Any]:
+def _is_json_object(value: object) -> TypeGuard[JsonObject]:
+    return isinstance(value, dict)
+
+
+def _is_json_array(value: object) -> TypeGuard[list[JsonValue]]:
+    return isinstance(value, list)
+
+
+def read_hook_input(stream: TextIO) -> JsonObject:
     try:
-        data = json.load(stream)
+        value: object = json.load(stream)
     except Exception:
         return {}
-    return data if isinstance(data, dict) else {}
+    return value if _is_json_object(value) else {}
 
 
-def _root_from_hook(data: dict[str, Any], fmt: str) -> Path:
+def _root_from_hook(data: JsonObject, fmt: str) -> Path:
     if fmt == CLAUDE:
-        start = Path(data.get("cwd") or Path.cwd())
+        cwd = data.get("cwd")
+        start = Path(cwd) if isinstance(cwd, str) and cwd else Path.cwd()
     else:
-        roots = data.get("workspace_roots") or []
-        start = Path(roots[0]) if roots else Path.cwd()
+        roots = data.get("workspace_roots")
+        first_root = roots[0] if isinstance(roots, list) and roots else None
+        start = Path(first_root) if isinstance(first_root, str) else Path.cwd()
     return start.resolve()
 
 
-def _open_project(root: Path):
-    from orchestra.canon.project import StoreBindingError, open_store
-
+def _open_project(root: Path) -> Project | None:
     try:
         return open_store(root)
     except StoreBindingError:
         return None
 
 
-def baseline_path(root: Path, data: dict[str, Any]) -> Path | None:
+def baseline_path(root: Path, data: JsonObject) -> Path | None:
     session = data.get("session_id") or data.get("conversation_id")
     if not session:
         return None
@@ -69,7 +78,7 @@ def baseline_path(root: Path, data: dict[str, Any]) -> Path | None:
     return base / f"{key}.json"
 
 
-def _save_baseline(project, root: Path, data: dict[str, Any]) -> None:
+def _save_baseline(project: Project, root: Path, data: JsonObject) -> None:
     path = baseline_path(root, data)
     if path is None:
         return
@@ -81,12 +90,15 @@ def _save_baseline(project, root: Path, data: dict[str, Any]) -> None:
         return
 
 
-def _load_baseline(root: Path, data: dict[str, Any]) -> set[str] | None:
+def _load_baseline(root: Path, data: JsonObject) -> set[str] | None:
     path = baseline_path(root, data)
     if path is None or not path.is_file():
         return None
     try:
-        return {str(item) for item in json.loads(path.read_text())}
+        value: object = json.loads(path.read_text())
+        if _is_json_array(value):
+            return {str(item) for item in value}
+        return None
     except (OSError, json.JSONDecodeError, TypeError):
         return None
 
@@ -138,7 +150,7 @@ def _assemble_start(constraint_lines: list[str], sections: list[tuple[str, str]]
     )
 
 
-def _wrap_start(fmt: str, ctx: str) -> dict[str, Any]:
+def _wrap_start(fmt: str, ctx: str) -> JsonObject:
     if fmt == CLAUDE:
         return {
             "hookSpecificOutput": {
@@ -149,7 +161,7 @@ def _wrap_start(fmt: str, ctx: str) -> dict[str, Any]:
     return {"additional_context": ctx}
 
 
-def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
+def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
     root = _root_from_hook(data, fmt)
     try:
         project = _open_project(root)
@@ -165,12 +177,16 @@ def cmd_start(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return _wrap_start(fmt, ctx)
 
 
-def cmd_stop(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
+def cmd_stop(fmt: str, data: JsonObject) -> JsonObject | None:
     if fmt == CLAUDE:
         if data.get("stop_hook_active"):
             return {}
-    elif data.get("status") != "completed" or data.get("loop_count", 0) > 0:
-        return {}
+    else:
+        loop_count = data.get("loop_count", 0)
+        if data.get("status") != "completed" or (
+            isinstance(loop_count, (int, float)) and loop_count > 0
+        ):
+            return {}
     root = _root_from_hook(data, fmt)
     try:
         project = _open_project(root)
@@ -200,7 +216,7 @@ def cmd_stop(fmt: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return _block(fmt, message)
 
 
-def _block(fmt: str, message: str) -> dict[str, Any]:
+def _block(fmt: str, message: str) -> JsonObject:
     if fmt == CLAUDE:
         return {"decision": "block", "reason": message}
     return {"followup_message": message}

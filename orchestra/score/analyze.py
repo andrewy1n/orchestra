@@ -3,12 +3,47 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import TypeAlias
+
+from orchestra.canon.types import JsonValue
 
 MARKER = "[NEEDS CLARIFICATION"
 _CODE_SPAN = re.compile(r"`[^`]*`")
 _REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 _COMPOUND = re.compile(r"\band\b|;")
+
+RecordData: TypeAlias = Mapping[str, JsonValue]
+
+
+def _payload(record: RecordData) -> Mapping[str, JsonValue]:
+    payload = record.get("payload")
+    return payload if isinstance(payload, dict) else {}
+
+
+def _requirements(record: RecordData) -> list[str]:
+    requirements = _payload(record).get("requirements")
+    if not isinstance(requirements, list):
+        return []
+    result: list[str] = []
+    for requirement in requirements:
+        if isinstance(requirement, str):
+            result.append(requirement)
+    return result
+
+
+def _recorded_at(record: RecordData) -> str:
+    recorded_at = record.get("recorded_at")
+    return recorded_at if isinstance(recorded_at, str) else ""
+
+
+def _body(record: RecordData) -> str:
+    body = record.get("body")
+    return body if isinstance(body, str) else ""
+
+
+def _subject(record: RecordData) -> str:
+    subject = record.get("subject")
+    return subject if isinstance(subject, str) else ""
 
 
 @dataclass(frozen=True)
@@ -50,13 +85,13 @@ def _has_marker(body: str) -> bool:
     return MARKER in _CODE_SPAN.sub("", body)
 
 
-def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str = "plan") -> Report:
-    def of_type(record_type: str, *states: str) -> list[Mapping[str, Any]]:
+def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan") -> Report:
+    def of_type(record_type: str, *states: str) -> list[RecordData]:
         return [
             r
             for r in records
             if r.get("record_type") == record_type
-            and (r.get("payload") or {}).get("phase") == phase
+            and _payload(r).get("phase") == phase
             and r.get("lifecycle_state") in states
         ]
 
@@ -73,9 +108,9 @@ def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str =
     def add(severity: str, code: str, subject: str, message: str) -> None:
         report.findings.append(Finding(severity, code, subject, message))
 
-    spec_subject = spec["subject"]
-    listed = list(spec["payload"].get("requirements") or [])
-    body_lines = _requirements_section(spec.get("body") or "")
+    spec_subject = _subject(spec)
+    listed = _requirements(spec)
+    body_lines = _requirements_section(_body(spec))
     body_ids = [rid for rid, _ in body_lines]
 
     for rid in listed:
@@ -95,8 +130,8 @@ def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str =
                 f"{rid} is in ## Requirements but absent from the specification requirements",
             )
 
-    carried = {rid for item in items for rid in item["payload"].get("requirements") or []}
-    named = {a["payload"].get("requirement") for a in acceptances}
+    carried = {rid for item in items for rid in _requirements(item)}
+    named = [_payload(acceptance).get("requirement") for acceptance in acceptances]
     for rid in listed:
         if rid not in carried:
             add(
@@ -114,30 +149,30 @@ def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str =
             )
 
     for item in items:
-        for rid in item["payload"].get("requirements") or []:
+        for rid in _requirements(item):
             if rid not in listed:
                 add(
                     "error",
                     "work-item-unknown-requirement",
-                    item["subject"],
+                    _subject(item),
                     f"work-item names {rid}, which the specification does not list",
                 )
     for acceptance in acceptances:
-        rid = acceptance["payload"].get("requirement")
+        rid = _payload(acceptance).get("requirement")
         if rid and rid not in listed:
             add(
                 "error",
                 "acceptance-unknown-requirement",
-                acceptance["subject"],
+                _subject(acceptance),
                 f"acceptance names {rid}, which the specification does not list",
             )
 
     for record in (spec, *designs):
-        if _has_marker(record.get("body") or ""):
+        if _has_marker(_body(record)):
             add(
                 "error",
                 "clarification-marker",
-                record["subject"],
+                _subject(record),
                 f"{MARKER}] marker outside a code span",
             )
 
@@ -156,24 +191,24 @@ def analyze_phase(records: Sequence[Mapping[str, Any]], phase: str, stage: str =
                 r
                 for r in records
                 if r.get("record_type") == "tuner:check-run"
-                and (r.get("payload") or {}).get("criterion_id") == acceptance["id"]
+                and _payload(r).get("criterion_id") == acceptance.get("id")
             ]
             if not runs:
                 add(
                     "error",
                     "acceptance-no-check-run",
-                    acceptance["subject"],
-                    f"acceptance {acceptance['id']} has no check-run",
+                    _subject(acceptance),
+                    f"acceptance {acceptance.get('id')} has no check-run",
                 )
                 continue
-            latest = max(runs, key=lambda r: r.get("recorded_at") or "")
-            result = latest["payload"].get("result")
+            latest = max(runs, key=_recorded_at)
+            result = _payload(latest).get("result")
             if result != "pass":
                 add(
                     "error",
                     "acceptance-not-passing",
-                    acceptance["subject"],
-                    f"acceptance {acceptance['id']} latest check-run result is {result!r}, not 'pass'",
+                    _subject(acceptance),
+                    f"acceptance {acceptance.get('id')} latest check-run result is {result!r}, not 'pass'",
                 )
 
     return report
