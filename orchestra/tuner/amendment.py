@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
 
+from orchestra.canon.types import JsonValue
 from orchestra.tuner.sign import verify as verify_signed
 
 
-def canonical_payload(amendment: Mapping[str, Any]) -> bytes:
+def canonical_payload(amendment: Mapping[str, JsonValue]) -> bytes:
     """UTF-8 bytes signed for one amendment. The signature field is omitted.
 
     ``old_support_hashes`` / ``new_support_hashes`` and ``old_runner_digest`` /
@@ -18,18 +18,20 @@ def canonical_payload(amendment: Mapping[str, Any]) -> bytes:
     lines = [
         "tuner-amendment v1",
         f"claim: {amendment['claim']}",
-        "old_tests: " + ",".join(amendment["old_tests"]),
-        "new_tests: " + ",".join(amendment["new_tests"]),
+        "old_tests: " + ",".join(_string_list(amendment["old_tests"])),
+        "new_tests: " + ",".join(_string_list(amendment["new_tests"])),
         "old_hashes:",
     ]
-    for relpath in sorted(amendment["old_hashes"]):
-        lines.append(f"{relpath} {amendment['old_hashes'][relpath]}")
+    old_hashes = _string_mapping(amendment["old_hashes"])
+    new_hashes = _string_mapping(amendment["new_hashes"])
+    for relpath in sorted(old_hashes):
+        lines.append(f"{relpath} {old_hashes[relpath]}")
     lines.append("new_hashes:")
-    for relpath in sorted(amendment["new_hashes"]):
-        lines.append(f"{relpath} {amendment['new_hashes'][relpath]}")
+    for relpath in sorted(new_hashes):
+        lines.append(f"{relpath} {new_hashes[relpath]}")
     if "old_support_hashes" in amendment or "new_support_hashes" in amendment:
-        old_support = amendment.get("old_support_hashes") or {}
-        new_support = amendment.get("new_support_hashes") or {}
+        old_support = _string_mapping(amendment.get("old_support_hashes") or {})
+        new_support = _string_mapping(amendment.get("new_support_hashes") or {})
         lines.append("old_support_hashes:")
         for relpath in sorted(old_support):
             lines.append(f"{relpath} {old_support[relpath]}")
@@ -51,24 +53,36 @@ def verify_signature(
     return verify_signed("tuner-amendment", payload, signature, allowlist_bytes)
 
 
-def _as_tests(value: Sequence[str]) -> list[str]:
-    return list(value)
+def _as_tests(value: JsonValue) -> list[str]:
+    return list(_string_list(value))
 
 
-def _as_hashes(value: Mapping[str, str] | None) -> dict[str, str]:
-    return dict(value or {})
+def _as_hashes(value: JsonValue) -> dict[str, str]:
+    return dict(_string_mapping(value or {}))
 
 
-def _as_runner_digest(value: Any) -> str:
+def _string_list(value: JsonValue) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise TypeError("expected a list of strings")
+    return [item for item in value if isinstance(item, str)]
+
+
+def _string_mapping(value: JsonValue) -> dict[str, str]:
+    if not isinstance(value, dict) or not all(isinstance(item, str) for item in value.values()):
+        raise TypeError("expected a string mapping")
+    return {key: item for key, item in value.items() if isinstance(item, str)}
+
+
+def _as_runner_digest(value: JsonValue) -> str:
     if value is None:
         return ""
     return str(value)
 
 
 def authorize(
-    base_claim: Mapping[str, Any],
-    head_claim: Mapping[str, Any],
-    amendments: Sequence[Mapping[str, Any]],
+    base_claim: Mapping[str, JsonValue],
+    head_claim: Mapping[str, JsonValue],
+    amendments: Sequence[Mapping[str, JsonValue]],
     base_allowlist: bytes,
     head_allowlist: bytes,
 ) -> tuple[bool, str]:
@@ -114,6 +128,8 @@ def authorize(
             if old_runner != current_runner:
                 return False, "missing step"
         signature = amendment.get("signature", b"")
+        if not isinstance(signature, (str, bytes)):
+            return False, "bad signature"
         if not verify_signature(canonical_payload(amendment), signature, base_allowlist):
             return False, "bad signature"
         current_tests = _as_tests(amendment["new_tests"])
