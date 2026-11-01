@@ -82,16 +82,16 @@ then add again.
 
 ### Cursor
 
-Install canon with `uv tool install` (above), then clone and sync
-orchestra:
+Install canon with `uv tool install` (above). From a checkout, install the
+Cursor host:
 
 ```bash
 git clone https://github.com/andrewy1n/orchestra.git
-./scripts/sync-plugin.sh
+./bin/orchestra install --only cursor
 ```
 
-Then reload Cursor so it picks up `~/.cursor/plugins/local/orchestra`.
-Or install from the repository URL in the Cursor plugin flow.
+Then reload Cursor. Or install from the repository URL in the Cursor plugin
+flow.
 
 #### Codex / other Agent Skills hosts
 
