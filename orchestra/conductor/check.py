@@ -8,12 +8,11 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.policy import (
@@ -209,7 +208,7 @@ def run_check(
     if decision.refuse:
         return CheckOutcome(exit_code=3, stdout="", message=decision.refuse_message)
 
-    check_payload: dict[str, Any] = {
+    check_payload: JsonObject = {
         "criterion_id": acceptance["id"],
         "revision": decision.revision,
         "result": result,
@@ -231,12 +230,15 @@ def run_check(
     if result == "fail":
         failing_nodes = parse_failing_node_ids(output)
         if failing_nodes:
-            check_payload["failing_node_ids"] = list(failing_nodes)
+            failing_node_values: list[JsonValue] = []
+            failing_node_values.extend(failing_nodes)
+            check_payload["failing_node_ids"] = failing_node_values
 
     informed_by = [acceptance["id"]]
     if execution_report:
         informed_by.append(execution_report)
-    check_payload["informed_by"] = informed_by
+    informed_by_values: list[JsonValue] = [*informed_by]
+    check_payload["informed_by"] = informed_by_values
 
     try:
         record = project.create(
