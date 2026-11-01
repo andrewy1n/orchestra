@@ -102,7 +102,7 @@ def run_verify_command(
         return None, duration, f"[orchestra check] could not run command: {exc}\n", False, True
 
 
-def _output_sha256(output: str) -> str:
+def output_sha256(output: str) -> str:
     return hashlib.sha256(output.encode("utf-8", "replace")).hexdigest()
 
 
@@ -217,7 +217,7 @@ def run_check(
         "signed_by": "",
         "runner": RUNNER,
         "duration_s": round(duration_s, 6),
-        "output_sha256": _output_sha256(output),
+        "output_sha256": output_sha256(output),
     }
     if exit_code is not None:
         check_payload["exit_code"] = exit_code

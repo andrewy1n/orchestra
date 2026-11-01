@@ -9,7 +9,6 @@ fix-and-rerun inline. Suite is never red-first.
 
 from __future__ import annotations
 
-import hashlib
 import re
 import shlex
 import subprocess
@@ -29,6 +28,7 @@ from orchestra.conductor.check import (
     git_head,
     git_is_dirty,
     parse_failing_node_ids,
+    output_sha256,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 
@@ -46,10 +46,6 @@ DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
 FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
-
-
-def _output_sha256(output: str) -> str:
-    return hashlib.sha256(output.encode("utf-8", "replace")).hexdigest()
 
 
 def _revision_matches(check_revision: str, phase_head: str) -> bool:
@@ -407,7 +403,7 @@ def start_suite_background(
             exit_code=3,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="blocked",
             revision=revision,
@@ -474,7 +470,7 @@ def poll_suite(
             exit_code=0,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="pass",
             revision=job.phase_head,
@@ -497,7 +493,7 @@ def collect_suite(
             exit_code=0,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="pass",
             revision=job.phase_head,
@@ -526,7 +522,7 @@ def collect_suite(
             exit_code=3,
             duration_s=round(duration, 6),
             output=output,
-            output_sha256=_output_sha256(output),
+            output_sha256=output_sha256(output),
             failing_node_ids=parse_failing_node_ids(output),
             result="blocked",
             revision=revision,
@@ -542,7 +538,7 @@ def collect_suite(
         exit_code=exit_code,
         duration_s=round(duration, 6),
         output=output,
-        output_sha256=_output_sha256(output),
+        output_sha256=output_sha256(output),
         failing_node_ids=nodes,
         result=result,
         revision=revision,
