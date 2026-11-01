@@ -61,7 +61,11 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   Phase body records session shape (`one sitting` | `more than one`),
   human stops, collision notes, `## Proof`, and `## Landing` (branch
   `phase/<phase-slug>`, worktree `<repo>/.worktrees/<phase-slug>`,
-  base `main`, close actions; push only as a human stop). No Landing
+  base `main`). When Landing is present and the phase gate holds,
+  commit the phase branch from the phase worktree. Integrate the
+  committed phase branch as the repo's own contributor instructions
+  describe. When those contributor instructions do not say how a
+  finished branch lands, stop and ask. No Landing
   → not ready for plan review. Incidental has no Landing.
 - Decisions change via `supersede`, never `update` to `superseded`.
 - Parent writes records. Only subagent here: phase-scoped
@@ -133,10 +137,15 @@ canon update --type score:phase --id <phase-id> \
    criteria`, `## Proof`, and `## Landing`. Record size (`one sitting`
    | `more than one`), human stops, collision notes. `## Proof`:
    `kind` (`demo`|`commands`|`claims`|`audit-triage`|`mixed`) + one
-   sentence on look intent. `## Landing`: branch
+   sentence on look intent.    `## Landing`: branch
    `phase/<phase-slug>`, worktree `<repo>/.worktrees/<phase-slug>`,
-   base `main`, close actions (commit phase branch → merge `main` →
-   store commit); push only as a human stop. Missing phase record →
+   base `main`. When Landing is present and the phase gate holds,
+   commit the phase branch from the phase worktree. Integrate the
+   committed phase branch as the repo's own contributor instructions
+   describe. When those contributor instructions do not say how a
+   finished branch lands, stop and ask. Do not write a merge into
+   the default branch, a push, a pull request, or a store commit on
+   the default branch into Landing. Missing phase record →
    `create` first (`init` step 7), then `update`. Skip for incidental.
 
    Then create this phase's position (`subject` = phase slug,
