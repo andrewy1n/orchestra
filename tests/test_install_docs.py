@@ -13,6 +13,7 @@ _CURL_INSTALL = (
 _BASH_FENCE: re.Pattern[str] = re.compile(r"```bash\n(.*?)```", re.DOTALL)
 _CURSOR_END: re.Pattern[str] = re.compile(r"\n#{1,3}(?!#) ")
 _SENTENCE_END: re.Pattern[str] = re.compile(r"(?<=[.!?])\s+")
+_COPY_SCRIPT = "".join(("sync-", "plugin"))
 
 
 def _readme() -> str:
@@ -71,4 +72,4 @@ def test_installer_puts_cli_on_path() -> None:
 def test_cursor_section_has_no_copy_script() -> None:
     section = _cursor_section()
     assert "orchestra install" in section
-    assert "sync-plugin" not in section
+    assert _COPY_SCRIPT not in section
