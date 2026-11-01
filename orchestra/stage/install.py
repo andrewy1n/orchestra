@@ -7,10 +7,11 @@ without ``installer/`` still serves every other subcommand.
 from __future__ import annotations
 
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 
-def main(args) -> int:
+def main(args: Namespace) -> int:
     try:
         from installer.model import InstallRequest
         from installer.runner import run
