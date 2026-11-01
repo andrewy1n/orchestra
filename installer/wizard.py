@@ -1,11 +1,13 @@
-"""Standard-library prompts for the installer wizard."""
+"""Prompts for the installer wizard."""
 
 from __future__ import annotations
 
+import importlib
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TextIO
+from types import ModuleType
+from typing import Protocol, TextIO, TypeGuard
 
 from installer.detect import HostStatus
 from installer.model import InstallRequest
@@ -27,6 +29,111 @@ def _stdin_isatty() -> bool:
 
 def _stdout_isatty() -> bool:
     return sys.stdout.isatty()
+
+
+class _Answer(Protocol):
+    def ask(self) -> object: ...
+
+
+class _ChoiceFactory(Protocol):
+    def __call__(
+        self,
+        title: str,
+        value: str | None = None,
+        *,
+        checked: bool = False,
+    ) -> object: ...
+
+
+class _RichPrompts(Protocol):
+    Choice: _ChoiceFactory
+
+    def checkbox(self, message: str, *, choices: Sequence[object]) -> _Answer: ...
+
+    def select(
+        self,
+        message: str,
+        *,
+        choices: Sequence[str],
+        default: str,
+    ) -> _Answer: ...
+
+    def confirm(self, message: str, *, default: bool) -> _Answer: ...
+
+
+def _module_is_rich(module: ModuleType) -> TypeGuard[_RichPrompts]:
+    return (
+        callable(getattr(module, "checkbox", None))
+        and callable(getattr(module, "select", None))
+        and callable(getattr(module, "confirm", None))
+        and callable(getattr(module, "Choice", None))
+    )
+
+
+def _rich_prompts() -> _RichPrompts | None:
+    if not (_stdin_isatty() and _stdout_isatty()):
+        return None
+    try:
+        module = importlib.import_module("questionary")
+    except ImportError:
+        return None
+    if _module_is_rich(module):
+        return module
+    return None
+
+
+def _refuse_cancel(answer: object) -> object:
+    if answer is None:
+        raise WizardCancelled("cancelled")
+    return answer
+
+
+def _questionary_hosts(
+    prompts: _RichPrompts,
+    statuses: tuple[HostStatus, ...],
+    default_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    defaults = set(default_ids)
+    choices = [
+        prompts.Choice(
+            f"{status.provider.name} ({status.provider.id})",
+            value=status.provider.id,
+            checked=status.provider.id in defaults,
+        )
+        for status in statuses
+    ]
+    answer = _refuse_cancel(prompts.checkbox("Select hosts", choices=choices).ask())
+    if isinstance(answer, str) or not isinstance(answer, Sequence):
+        raise WizardSelectionError("select at least one host")
+    allowed = set(_provider_ids(statuses))
+    selected: list[str] = []
+    for item in answer:
+        if not isinstance(item, str) or item not in allowed:
+            raise WizardSelectionError("select at least one host")
+        if item not in selected:
+            selected.append(item)
+    if not selected:
+        raise WizardSelectionError("select at least one host")
+    return tuple(selected)
+
+
+def _questionary_choice(
+    prompts: _RichPrompts,
+    message: str,
+    choices: tuple[str, ...],
+    default: str,
+) -> str:
+    answer = _refuse_cancel(prompts.select(message, choices=choices, default=default).ask())
+    if isinstance(answer, str) and answer in choices:
+        return answer
+    raise WizardSelectionError(f"unknown selection: {answer!r}")
+
+
+def _questionary_confirm(prompts: _RichPrompts, question: str, default: bool) -> bool:
+    answer = _refuse_cancel(prompts.confirm(question, default=default).ask())
+    if isinstance(answer, bool):
+        return answer
+    raise WizardSelectionError("answer yes or no")
 
 
 def wants_wizard(request: InstallRequest) -> bool:
@@ -107,6 +214,9 @@ def prompt_hosts(
     output: TextIO = sys.stdout,
 ) -> tuple[str, ...]:
     """Render the host matrix and loop until a valid selection is made."""
+    prompts = _rich_prompts()
+    if prompts is not None:
+        return _questionary_hosts(prompts, statuses, default_ids)
     print("Detected hosts:", file=output)
     for index, status in enumerate(statuses, 1):
         project = "yes" if status.project else "no"
@@ -141,6 +251,13 @@ def prompt_scope(
     """Prompt for project or global scope, defaulting to project."""
     if default not in ("project", "global"):
         default = "project"
+    prompts = _rich_prompts()
+    if prompts is not None:
+        choice = _questionary_choice(prompts, "Scope", ("project", "global"), default)
+        if project_base is not None and global_base is not None:
+            base = project_base if choice == "project" else global_base
+            print(f"Base: {base}", file=output)
+        return choice
     while True:
         answer = _ask(
             f"Scope: [p]roject / [g]lobal (default: {default}): ",
@@ -171,6 +288,11 @@ def prompt_mode(
     """Prompt for symlink or copy mode, defaulting to symlink."""
     if default not in ("symlink", "copy"):
         default = "symlink"
+    prompts = _rich_prompts()
+    if prompts is not None:
+        choice = _questionary_choice(prompts, "Mode", ("symlink", "copy"), default)
+        print(f"Mode: {choice}", file=output)
+        return choice
     while True:
         answer = _ask(
             f"Mode: [s]ymlink / [c]opy (default: {default}): ",
@@ -198,6 +320,9 @@ def confirm(
     output: TextIO = sys.stdout,
 ) -> bool:
     """Ask a yes/no question; a blank answer uses ``default``."""
+    prompts = _rich_prompts()
+    if prompts is not None:
+        return _questionary_confirm(prompts, question, default)
     suffix = "[Y/n]" if default else "[y/N]"
     while True:
         answer = _ask(f"{question} {suffix}: ", input_fn)
