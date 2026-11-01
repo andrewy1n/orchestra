@@ -9,6 +9,7 @@ from installer.adapters import build_adapter
 from installer.detect import HostStatus, detect_hosts, detected_ids
 from installer.matrix import MatrixError, load_matrix
 from installer.model import InstallReport, InstallRequest, Plan, Provider
+from installer.paths import is_packaged
 from installer.paths import source_root as default_source_root
 from installer.wizard import (
     WizardCancelled,
@@ -153,6 +154,7 @@ def run(request: InstallRequest) -> int:
         return 2
 
     source = request.source_root or default_source_root()
+    default_mode = "copy" if is_packaged() else "symlink"
     project_base, global_base = install_bases(request)
 
     if request.list_only:
@@ -217,11 +219,11 @@ def run(request: InstallRequest) -> int:
         mode = "copy"
     elif wizard:
         try:
-            mode = prompt_mode(default="symlink")
+            mode = prompt_mode(default=default_mode)
         except WizardCancelled:
             return _cancelled()
     else:
-        mode = "symlink"
+        mode = default_mode
 
     base = global_base if scope == "global" else project_base
     report = InstallReport()
