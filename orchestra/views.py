@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Any
 
-from orchestra.canon.types import Record
-from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.canon import record_payload
+from orchestra.canon.project import Project
+from orchestra.canon.types import JsonValue, Record
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -31,16 +31,12 @@ def _not_closed(record: Record) -> bool:
     return record_payload(record).get("status") != "closed"
 
 
-def _payload_is(name: str, value: Any) -> Predicate:
+def _payload_is(name: str, value: JsonValue) -> Predicate:
     return lambda r: record_payload(r).get(name) == value
 
 
 def _payload_truthy(name: str) -> Predicate:
     return lambda r: bool(record_payload(r).get(name))
-
-
-def _derived_is(name: str, value: Any) -> Predicate:
-    return lambda r: (r.get("derived") or {}).get(name) == value
 
 
 def _any(record: Record) -> bool:
@@ -251,13 +247,13 @@ def _title(value: str) -> str:
     return " ".join(part.replace("-", " ").title() for part in value.split(":"))
 
 
-def _display(value: Any) -> str:
+def _display(value: JsonValue) -> str:
     if isinstance(value, list):
         return ", ".join(str(item) for item in value)
     return str(value)
 
 
-def _empty(value: Any) -> bool:
+def _empty(value: JsonValue) -> bool:
     return value is None or value == "" or value == []
 
 
@@ -265,7 +261,31 @@ def effort_of(record: Record) -> str | None:
     if record.get("record_type") == EFFORT_TYPE:
         return record.get("subject")
     payload = record_payload(record)
-    return payload.get("effort") or None
+    value = payload.get("effort")
+    return value if isinstance(value, str) and value else None
+
+
+def _derived_value(record: Record, name: str) -> JsonValue:
+    derived = record.get("derived")
+    if derived is None:
+        return None
+    values: dict[str, JsonValue] = {}
+    ready = derived.get("ready")
+    if ready is not None:
+        values["ready"] = ready
+    wave = derived.get("wave")
+    if wave is not None:
+        values["wave"] = wave
+    referenced_by = derived.get("referenced_by")
+    if referenced_by is not None:
+        references: dict[str, JsonValue] = {}
+        for subject, ids in referenced_by.items():
+            references[subject] = list(ids)
+        values["referenced_by"] = references
+    corrected = derived.get("corrected")
+    if corrected is not None:
+        values["corrected"] = corrected
+    return values.get(name)
 
 
 def _in_effort(record: Record, effort: str | None) -> bool:
@@ -302,8 +322,10 @@ def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | 
     return None
 
 
-def _group_sort_key(order_field: str | None, records: list[Record]):
-    def key(name: str) -> tuple[int, Any]:
+def _group_sort_key(
+    order_field: str | None, records: list[Record]
+) -> Callable[[str], tuple[int, tuple[int, str] | tuple[str]]]:
+    def key(name: str) -> tuple[int, tuple[int, str] | tuple[str]]:
         if order_field:
             ordinal = _group_ordinal(name, order_field, records)
             if ordinal is not None:
@@ -314,11 +336,11 @@ def _group_sort_key(order_field: str | None, records: list[Record]):
 
 
 def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
-    bits = []
+    bits: list[str] = []
     if view.show_lifecycle_state:
         bits.append(f"state: {record.get('lifecycle_state')}")
     for name in view.show_derived:
-        value = (record.get("derived") or {}).get(name)
+        value = _derived_value(record, name)
         if value is not None:
             bits.append(f"{name}: {value}")
     if view.tally_type:
@@ -340,7 +362,7 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
 
 def _record_line(record: Record, role: Role, extra_bits: list[str], link: bool = True) -> str:
     payload = record_payload(record)
-    bits = []
+    bits: list[str] = []
     for name in role.fields:
         if name in SUPPRESSED_FIELDS:
             continue
@@ -445,7 +467,7 @@ _BRIEF_TITLES = {
 }
 
 
-def _brief_in_scope(role: Role, subject: str, effort: str, record: Record) -> bool:
+def _brief_in_scope(role: Role, subject: str, effort: JsonValue, record: Record) -> bool:
     if role.name == "work":
         return record.get("subject") == subject
     if role.name in _BRIEF_EFFORT_SCOPED:
@@ -487,7 +509,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     if work_item is None:
         raise ViewError(f"no work item found for subject {subject!r}")
     effort = record_payload(work_item).get("effort", "")
-    sections = []
+    sections: list[str] = []
     for role in BRIEF_ROLES:
         selected = sorted(
             (
@@ -517,7 +539,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     )
 
 
-def load_records(project: Any) -> list[Record]:
+def load_records(project: Project) -> list[Record]:
     from orchestra.canon.derive import attach_derived_all
 
     return attach_derived_all(project.records(), project.derived())
@@ -555,7 +577,7 @@ def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
     stamped.sort(key=stamps.__getitem__, reverse=True)
     unstamped = sorted(n for n in groups if n in live and n not in stamps)
     rest = sorted(n for n in groups if n not in live)
-    sections = []
+    sections: list[tuple[str, str]] = []
     for name in (*stamped, *unstamped, *rest):
         lines = _group_lines(HOOK_VIEW, name, groups[name], [], link=False)
         label = name or ", ".join(_group_subjects(groups[name]))
