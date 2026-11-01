@@ -10,9 +10,9 @@ import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tuner.manifest import (
     DEFAULT_RUNNER,
     ManifestError,
@@ -49,7 +49,7 @@ def run_audit(
     mutants_path: Path | str | None = None,
     max_mutants: int | None = 20,
     probes_path: Path | str | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Label source hunks between ``base`` and ``head``; optionally plant mutants.
 
     Also runs declared probes from ``.tuner/probes.json`` at head (or
@@ -97,16 +97,24 @@ def run_audit(
         _remove(root, checked)
         _remove(root, base_checked)
 
-    result = {
+    block_values: list[JsonValue] = []
+    block_values.extend(blocks)
+    mutant_values: list[JsonValue] = []
+    mutant_values.extend(mutants)
+    diff_values: list[JsonValue] = []
+    diff_values.extend(diffs)
+    survivor_values: list[JsonValue] = []
+    survivor_values.extend(survivors)
+    result: JsonObject = {
         "advisory": True,
         "base": base_commit,
         "head": head_commit,
-        "blocks": blocks,
-        "mutants": mutants,
-        "survivors": survivors,
-        "diffs": diffs,
+        "blocks": block_values,
+        "mutants": mutant_values,
+        "survivors": survivor_values,
+        "diffs": diff_values,
     }
-    _record_unbound(root, result, probes)
+    _record_unbound(root, base_commit, head_commit, diffs, probes)
     return result
 
 
@@ -116,12 +124,12 @@ _TECHNIQUE_PROBES = "probes"
 
 def _record_unbound(
     root: Path,
-    result: dict[str, Any],
-    probes: Sequence[dict[str, Any]],
+    base: str,
+    head: str,
+    diffs: Sequence[JsonObject],
+    probes: Sequence[JsonObject],
 ) -> None:
     """Record unbound audit and probe observations when a store is usable."""
-    base = str(result["base"])
-    head = str(result["head"])
     maybe_record_observation(
         root,
         technique=_TECHNIQUE_AUDIT,
@@ -132,9 +140,7 @@ def _record_unbound(
         subject=_TECHNIQUE_AUDIT + ":" + base + ":" + head,
     )
     by_id = {str(probe.get("id", "")): probe for probe in probes}
-    for diff in result["diffs"]:
-        if not isinstance(diff, dict):
-            continue
+    for diff in diffs:
         probe_id = str(diff.get("probe") or "")
         if not probe_id:
             continue
@@ -161,8 +167,8 @@ def _audit_replay(base: str, head: str) -> str:
     )
 
 
-def _probe_replay(base: str, head: str, probe: dict[str, Any], probe_id: str) -> str:
-    hint: dict[str, Any] = {
+def _probe_replay(base: str, head: str, probe: JsonObject, probe_id: str) -> str:
+    hint: JsonObject = {
         "technique": _TECHNIQUE_PROBES,
         "base": base,
         "head": head,
@@ -189,7 +195,7 @@ def _claim_ids(root: Path, head_commit: str) -> set[str]:
     return {claim.id for claim in manifest.claims}
 
 
-def _load_probes(root: Path, head_commit: str) -> list[dict[str, Any]]:
+def _load_probes(root: Path, head_commit: str) -> list[JsonObject]:
     proc = run_git(
         root,
         "show",
@@ -202,7 +208,7 @@ def _load_probes(root: Path, head_commit: str) -> list[dict[str, Any]]:
     return _parse_probes(proc.stdout, PROBES_PATH)
 
 
-def _load_probes_file(path: Path) -> list[dict[str, Any]]:
+def _load_probes_file(path: Path) -> list[JsonObject]:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -210,9 +216,9 @@ def _load_probes_file(path: Path) -> list[dict[str, Any]]:
     return _parse_probes(text, str(path))
 
 
-def _parse_probes(text: str, label: str) -> list[dict[str, Any]]:
+def _parse_probes(text: str, label: str) -> list[JsonObject]:
     try:
-        raw = json.loads(text)
+        raw: JsonValue = json.loads(text)
     except json.JSONDecodeError as exc:
         raise AuditError(f"invalid {label}: {exc}") from exc
     probes = raw.get("probes") if isinstance(raw, dict) else None
@@ -224,13 +230,18 @@ def _parse_probes(text: str, label: str) -> list[dict[str, Any]]:
 def _probe_diffs(
     base_wt: Path,
     head_wt: Path,
-    probes: Sequence[dict[str, Any]],
+    probes: Sequence[JsonObject],
     claim_ids: set[str],
-) -> list[dict[str, Any]]:
-    diffs: list[dict[str, Any]] = []
+) -> list[JsonObject]:
+    diffs: list[JsonObject] = []
     for probe in probes:
         probe_id = str(probe.get("id", ""))
-        cited = {str(c) for c in probe.get("claims", []) if c}
+        raw_claims = probe.get("claims", [])
+        cited: set[str]
+        if isinstance(raw_claims, (list, str, dict)):
+            cited = {str(claim) for claim in raw_claims if claim}
+        else:
+            cited = set()
         if cited & claim_ids:
             continue
         base_out = _run_probe(base_wt, probe)
@@ -247,14 +258,17 @@ def _probe_diffs(
     return diffs
 
 
-def _run_probe(worktree: Path, probe: dict[str, Any]) -> dict[str, Any]:
+def _run_probe(worktree: Path, probe: JsonObject) -> JsonObject:
     kind = str(probe.get("kind", "cli"))
     if kind == "cli":
         argv = probe.get("argv")
-        if not isinstance(argv, list) or not all(isinstance(x, str) and x for x in argv):
+        if not isinstance(argv, list):
+            return {"exit_code": 2, "stdout": "", "stderr": "invalid argv"}
+        argv_strings = [item for item in argv if isinstance(item, str) and item]
+        if len(argv_strings) != len(argv):
             return {"exit_code": 2, "stdout": "", "stderr": "invalid argv"}
         proc = subprocess.run(
-            argv,
+            argv_strings,
             cwd=str(worktree),
             capture_output=True,
             text=True,
@@ -423,9 +437,9 @@ def _label_block(
     hunk: _Hunk,
     head_pass: Sequence[str],
     runner: Sequence[str],
-) -> dict[str, Any]:
+) -> JsonObject:
     end = hunk.new_start if hunk.new_count == 0 else hunk.new_start + hunk.new_count - 1
-    block = {
+    block: JsonObject = {
         "file": hunk.file_path,
         "start": hunk.new_start,
         "end": end,
@@ -447,17 +461,17 @@ def _label_block(
 
 def _plant_mutants(
     worktree: Path,
-    blocks: Sequence[dict[str, Any]],
+    blocks: Sequence[JsonObject],
     head_pass: Sequence[str],
     runner: Sequence[str],
     mutants_path: Path | str | None,
     max_mutants: int | None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+) -> tuple[list[JsonObject], list[str]]:
     if mutants_path is None:
         return [], []
     path = Path(mutants_path)
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw: JsonValue = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise AuditError(f"invalid mutants file: {exc}") from exc
     specs = raw.get("mutants") if isinstance(raw, dict) else None
@@ -469,10 +483,12 @@ def _plant_mutants(
 
     noticed_by_file: dict[str, list[str]] = {}
     for block in blocks:
-        if block["label"] == "noticed":
-            noticed_by_file.setdefault(block["file"], []).append(block["text"])
+        file_path = block.get("file")
+        text = block.get("text")
+        if block.get("label") == "noticed" and isinstance(file_path, str) and isinstance(text, str):
+            noticed_by_file.setdefault(file_path, []).append(text)
 
-    reported: list[dict[str, Any]] = []
+    reported: list[JsonObject] = []
     survivors: list[str] = []
     for spec in specs:
         if not isinstance(spec, dict):
@@ -483,7 +499,7 @@ def _plant_mutants(
         patch = raw_patch if isinstance(raw_patch, dict) else {}
         old = str(patch.get("old", ""))
         new = str(patch.get("new", ""))
-        entry: dict[str, Any] = {"id": mutant_id, "file": file_path, "status": "skipped"}
+        entry: JsonObject = {"id": mutant_id, "file": file_path, "status": "skipped"}
         in_noticed = any(old and old in text for text in noticed_by_file.get(file_path, ()))
         if not in_noticed or not old:
             reported.append(entry)

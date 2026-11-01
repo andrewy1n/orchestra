@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, OperationResult, Record
@@ -99,7 +98,7 @@ def bind_observation(
         raise
     except Exception as exc:
         raise BindingError(str(exc)) from exc
-    if not isinstance(record, dict):
+    if not isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Preserve runtime handling of malformed record returns.
         raise BindingError("create did not return a record")
     return record
 
@@ -137,7 +136,7 @@ def unbind(cwd: Path | str, binding_id: str) -> OperationResult:
     return body
 
 
-def recheck(cwd: Path | str, claim: str) -> dict[str, Any]:
+def recheck(cwd: Path | str, claim: str) -> JsonObject:
     """Re-judge ``claim`` under every active binding's base and head pins.
 
     Raises ``BindingError`` when no active binding exists. Returns the
@@ -147,7 +146,7 @@ def recheck(cwd: Path | str, claim: str) -> dict[str, Any]:
     active = active_for_claim(root, claim)
     if not active:
         raise BindingError(f"no active binding for {claim}")
-    verdict: dict[str, Any] | None = None
+    verdict: JsonObject | None = None
     for row in active:
         payload = row.get("payload") or {}
         base = payload.get("base_rev")
