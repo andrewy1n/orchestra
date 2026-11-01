@@ -117,7 +117,7 @@ The migration replaces each id with that record's subject.
 6. Add `schemas sync`, `schemas add`, `schemas show`, and
    `init --schemas`.
 7. Delete `design/contracts/`, `design/DESIGN.md`, `skills/`, `hooks/`, the
-   plugin manifests, `scripts/sync-plugin.sh`, `.cursor/`, and the
+   plugin manifests, `.cursor/`, and the
    commands `resolve`, `lock`, `capture`, `contradict`, `handoff`, `view`,
    `watch`, `brief`, `hook-start`, and `hook-stop`. Delete `handoff.py`,
    `session_hooks.py`, `watch.py`, and `terminal.py` if nothing else
