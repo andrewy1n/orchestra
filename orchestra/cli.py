@@ -11,7 +11,7 @@ from pathlib import Path
 from orchestra import status_cli, view_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
@@ -31,8 +31,8 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    view_cli.add_parsers(sub)
-    status_cli.add_parser(sub)
+    view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
+    status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     sub.add_parser(
         "verify",
         add_help=False,
@@ -484,7 +484,7 @@ def _load_review_records(
         except StoreError as exc:
             failures.append(f"{record_type}: {exc}")
             continue
-        records.extend(row for row in rows if isinstance(row, dict))
+        records.extend(row for row in rows if isinstance(row, dict))  # pyright: ignore[reportUnnecessaryIsInstance]
     if not records and failures:
         raise RuntimeError("; ".join(failures))
     return records, failures
@@ -662,7 +662,7 @@ def _flag_values(argv: list[str]) -> dict[str, list[str]]:
     return values
 
 
-def _dispatch_store(project, argv: list[str]) -> tuple[object, int]:
+def _dispatch_store(project: Project, argv: list[str]) -> tuple[object, int]:
     verb = argv[0]
     flags = _flag_values(argv[1:])
     if verb == "list":
@@ -842,7 +842,7 @@ def main(argv: list[str] | None = None) -> int:
             argv.extend(["--cwd", args.cwd])
         return close_batch_main(argv)
     if args.command == "install":
-        from orchestra.stage.install import main as install_main
+        from orchestra.stage.install import main as install_main  # noqa: I001  # pyright: ignore[reportUnknownVariableType]
 
         return install_main(args)
     if args.command == "sessions":
