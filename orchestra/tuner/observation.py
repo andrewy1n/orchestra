@@ -73,6 +73,8 @@ def record_observation(
         raise
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
+    if not isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Preserve runtime handling of malformed record returns.
+        raise RuntimeError("create did not return a record")
     return record
 
 
