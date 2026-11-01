@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any
+
+from orchestra.canon.types import JsonValue
 
 # Short-test-summary / inline failure reasons that are not assertion-level.
 _NON_ASSERTION_RE = re.compile(
@@ -75,7 +76,7 @@ def is_assertion_level_failure(
     return False
 
 
-def _payload_and_body(check_run: Mapping[str, Any]) -> tuple[Mapping[str, Any], str]:
+def _payload_and_body(check_run: Mapping[str, JsonValue]) -> tuple[Mapping[str, JsonValue], str]:
     nested = check_run.get("payload")
     if isinstance(nested, dict):
         body = str(check_run.get("body") or nested.get("body") or nested.get("output") or "")
@@ -84,22 +85,22 @@ def _payload_and_body(check_run: Mapping[str, Any]) -> tuple[Mapping[str, Any], 
     return check_run, body
 
 
-def _parse_failing_nodes(raw: Any) -> list[str]:
+def _parse_failing_nodes(raw: JsonValue) -> list[str]:
     if raw is None or raw == "":
         return []
-    if isinstance(raw, list):
-        return _normalize_nodes(raw)
+    if isinstance(raw, (list, tuple)):
+        return _normalize_nodes([str(item) for item in raw])
     if isinstance(raw, str):
         try:
-            loaded = json.loads(raw)
+            loaded: JsonValue = json.loads(raw)
         except json.JSONDecodeError:
             return []
         if isinstance(loaded, list):
-            return _normalize_nodes(loaded)
+            return _normalize_nodes([str(item) for item in loaded])
     return []
 
 
-def is_assertion_level_red(check_run: Mapping[str, Any]) -> bool:
+def is_assertion_level_red(check_run: Mapping[str, JsonValue]) -> bool:
     """True when check-run is result=fail with assertion-level failing nodes.
 
     Accepts a full check-run record (``payload`` + ``body``) or a flat

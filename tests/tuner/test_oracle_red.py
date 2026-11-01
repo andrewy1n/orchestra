@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 
-from orchestra.tuner.oracle_red import is_assertion_level_failure, is_assertion_level_red
+from orchestra.tuner.oracle_red import (
+    _parse_failing_nodes,
+    is_assertion_level_failure,
+    is_assertion_level_red,
+)
 
 # Realistic pytest tails (fixture shapes pinned by design).
 
@@ -149,3 +153,8 @@ def test_oracle_red_accepts_flat_check_run_mapping():
         "body": ASSERTION_FAIL_TAIL,
     }
     assert is_assertion_level_red(flat) is True
+
+
+def test_failing_node_values_keep_string_normalization():
+    assert _parse_failing_nodes([NODE_ASSERT, 42]) == [NODE_ASSERT, "42"]
+    assert _parse_failing_nodes(json.dumps([NODE_ASSERT, 42])) == [NODE_ASSERT, "42"]

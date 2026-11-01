@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
@@ -51,12 +50,13 @@ def record_observation(
     if not store_usable(root):
         return None
     ids = [str(item) for item in claim_ids]
-    payload: dict[str, Any] = {
+    json_ids: list[JsonValue] = [item for item in ids]
+    payload: JsonObject = {
         "technique": technique,
         "base_rev": base_rev,
         "head_rev": head_rev,
         "result": result,
-        "claim_ids": ids,
+        "claim_ids": json_ids,
     }
     if replay:
         payload["replay"] = replay
@@ -73,8 +73,6 @@ def record_observation(
         raise
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
-    if not isinstance(record, dict):
-        raise RuntimeError("create did not return a record")
     return record
 
 
@@ -151,24 +149,26 @@ def maybe_record_verdict_observation(
         print(f"observation record skipped: {exc}", file=sys.stderr)
 
 
-def _claim_ids_of(item: Mapping[str, Any]) -> list[str]:
-    if "claim_ids" in item:
-        raw = item.get("claim_ids")
-    else:
-        raw = (item.get("payload") or {}).get("claim_ids")
+def _claim_ids_of(item: Record) -> list[str]:
+    raw = item.get("claim_ids") if "claim_ids" in item else item.get("payload", {}).get("claim_ids")
     if isinstance(raw, (list, tuple)):
-        return [str(x) for x in raw]
+        values: list[str] = []
+        for value in raw:
+            normalized: object = value
+            values.append(str(normalized))
+        return values
     return []
 
 
-def _technique_of(item: Mapping[str, Any]) -> str | None:
+def _technique_of(item: Record) -> str | None:
     if "technique" in item:
-        return item.get("technique")
-    payload = item.get("payload") or {}
-    return payload.get("technique")
+        value = item.get("technique")
+        return value if isinstance(value, str) else None
+    value = item.get("payload", {}).get("technique")
+    return value if isinstance(value, str) else None
 
 
-def _matches_claim(item: Mapping[str, Any], claim: str) -> bool:
+def _matches_claim(item: Record, claim: str) -> bool:
     return claim in _claim_ids_of(item)
 
 
