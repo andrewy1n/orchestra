@@ -27,8 +27,8 @@ from orchestra.conductor.check import (
     git_diff_sha256,
     git_head,
     git_is_dirty,
-    parse_failing_node_ids,
     output_sha256,
+    parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 
