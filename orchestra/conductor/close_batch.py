@@ -45,12 +45,12 @@ import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import TypedDict, TypeGuard
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 
@@ -61,6 +61,39 @@ _HASH_SEP = ":sha256:"
 CheckRunLoader = Callable[[str], Record]
 AcceptanceLoader = Callable[[str], Record]
 AmendmentLister = Callable[[str], list[Record]]
+
+
+class FindingRequest(TypedDict):
+    claim: str
+    basis: str
+    invalidated_when: str
+    body: str
+
+
+class CriterionRequest(TypedDict):
+    criterion_id: str
+    method: str | None
+    result: str
+    revision: str
+    signed_by: str
+    check_run_id: str
+    red_check_run_id: str
+    red_result: str
+    red_runner: str
+    red_revision: str
+    red_diff_sha256: str
+    runner: str
+
+
+class CloseRequest(TypedDict):
+    subject: str
+    effort: str
+    work_item_id: str
+    transition: str
+    acceptance_ids: list[str]
+    criteria: list[CriterionRequest]
+    execution_report_id: str
+    finding: FindingRequest
 
 
 class CloseRequestError(Exception):
@@ -88,7 +121,7 @@ class AcceptanceStoreUnavailable(LookupError):
     """
 
 
-def _entry_passed(entry: dict[str, Any]) -> bool:
+def _entry_passed(entry: CriterionRequest) -> bool:
     return entry.get("result") == "pass"
 
 
@@ -152,8 +185,6 @@ def default_list_oracle_amendments(
         refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
     matched: list[Record] = []
     for record in records:
-        if not isinstance(record, dict):
-            continue
         if record.get("lifecycle_state") not in (None, "active"):
             continue
         if str(record_payload(record).get("acceptance")) in refs:
@@ -181,7 +212,7 @@ def parse_oracle_hashes(raw: list[str] | str | None) -> dict[str, str]:
     return out
 
 
-def is_oracle_backed(acceptance_payload: Mapping[str, Any]) -> bool:
+def is_oracle_backed(acceptance_payload: PlanningPayload) -> bool:
     """True when acceptance has freeze fields: non-empty test_ids and parseable hashes.
 
     ``oracle_hashes`` must parse to at least one ``relpath:sha256:<hex>`` entry.
@@ -189,7 +220,12 @@ def is_oracle_backed(acceptance_payload: Mapping[str, Any]) -> bool:
     """
     if not acceptance_payload.get("test_ids"):
         return False
-    return bool(parse_oracle_hashes(acceptance_payload.get("oracle_hashes")))
+    hashes = acceptance_payload.get("oracle_hashes")
+    if isinstance(hashes, str):
+        return bool(parse_oracle_hashes(hashes))
+    if not isinstance(hashes, list):
+        return False
+    return bool(parse_oracle_hashes(hashes))
 
 
 def _sha256_digest(data: bytes) -> str:
@@ -226,7 +262,7 @@ def tree_oracle_hashes(
 def _load_check_run(
     check_run_id: str,
     *,
-    criterion_id: Any,
+    criterion_id: JsonValue,
     label: str,
     loader: CheckRunLoader,
 ) -> Record:
@@ -241,11 +277,11 @@ def _load_check_run(
 
 def _match_field(
     *,
-    criterion_id: Any,
+    criterion_id: JsonValue,
     label: str,
     field: str,
-    requested: Any,
-    stored: Any,
+    requested: JsonValue,
+    stored: JsonValue,
 ) -> None:
     if requested != stored:
         raise CloseRefused(
@@ -255,7 +291,7 @@ def _match_field(
 
 
 def _resolve_green_check_run(
-    entry: dict[str, Any],
+    entry: CriterionRequest,
     *,
     loader: CheckRunLoader,
 ) -> PlanningPayload:
@@ -313,7 +349,7 @@ def _resolve_green_check_run(
 
 
 def _resolve_red_check_run(
-    entry: dict[str, Any],
+    entry: CriterionRequest,
     *,
     loader: CheckRunLoader,
 ) -> tuple[Record, PlanningPayload]:
@@ -380,10 +416,10 @@ def _resolve_red_check_run(
 
 
 def _enforce_red_first_from_store(
-    entry: dict[str, Any],
+    entry: CriterionRequest,
     *,
-    green_payload: Mapping[str, Any],
-    red_payload: Mapping[str, Any],
+    green_payload: Mapping[str, object],
+    red_payload: Mapping[str, object],
     cwd: Path,
 ) -> None:
     """Refuse tdd done closes whose store red does not precede store green."""
@@ -431,6 +467,8 @@ def _enforce_red_first_from_store(
             "when green revision is dirty and red is a SHA"
         )
 
+    if not isinstance(red_revision, str) or not isinstance(green_revision, str):
+        raise CloseRefused(f"criterion {criterion_id!r}: revisions must be strings")
     if not _is_git_ancestor(red_revision, green_revision, cwd):
         raise CloseRefused(
             f"criterion {criterion_id!r}: green revision is not equal to or "
@@ -439,7 +477,7 @@ def _enforce_red_first_from_store(
         )
 
 
-def _assertion_level_red(record: Mapping[str, Any]) -> bool:
+def _assertion_level_red(record: Mapping[str, object]) -> bool:
     """Ask tuner whether red failed at assertion level.
 
     The import stays inside this function so ``orchestra --help`` does not
@@ -480,7 +518,7 @@ def _manifest_claim_ids(cwd: Path) -> set[str] | None:
     if not path.is_file():
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return set()
     claims = data.get("claims") if isinstance(data, dict) else None
@@ -514,7 +552,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         failed.append("verdict")
         details.append(f"verdict: {exc}")
     else:
-        if not isinstance(verdict, dict) or verdict.get("result") != "pass":
+        if not _is_pass_result(verdict):
             failed.append("verdict")
     try:
         outcome = recheck(cwd, claim_id)
@@ -522,7 +560,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         failed.append("recheck")
         details.append(f"recheck: {exc}")
     else:
-        if not isinstance(outcome, dict) or outcome.get("result") != "pass":
+        if not _is_pass_result(outcome):
             failed.append("recheck")
     if failed:
         clocks = " and ".join(failed)
@@ -532,10 +570,18 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         )
 
 
+def _is_pass_result(value: object) -> bool:
+    return _is_object(value) and value.get("result") == "pass"
+
+
+def _is_object(value: object) -> TypeGuard[dict[str, object]]:
+    return isinstance(value, dict)
+
+
 def _enforce_claim_gates(
-    criteria: list[dict[str, Any]],
+    criteria: list[CriterionRequest],
     *,
-    green_by_criterion: dict[Any, Mapping[str, Any]],
+    green_by_criterion: dict[JsonValue, Mapping[str, object]],
     cwd: Path,
     load_acceptance: AcceptanceLoader,
 ) -> None:
@@ -568,7 +614,7 @@ def _enforce_claim_gates(
                 f"criterion {criterion_id!r}: claim {claim_id!r} is not "
                 "listed in .tuner/manifest.json"
             )
-        revision: Any = None
+        revision: object = None
         green = green_by_criterion.get(criterion_id)
         if green is not None:
             revision = green.get("revision")
@@ -583,10 +629,10 @@ def _enforce_claim_gates(
 
 
 def _enforce_oracle_gates(
-    entry: dict[str, Any],
+    entry: CriterionRequest,
     *,
-    green_payload: Mapping[str, Any],
-    red_record: Mapping[str, Any],
+    green_payload: Mapping[str, object],
+    red_record: Mapping[str, object],
     cwd: Path,
     load_acceptance: AcceptanceLoader,
     list_oracle_amendments: AmendmentLister,
@@ -651,14 +697,14 @@ def _enforce_oracle_gates(
 
 
 def build_batch(
-    request: dict[str, Any],
+    request: CloseRequest,
     *,
     cwd: str | Path | None = None,
     store_root: str | Path | None = None,
     load_check_run: CheckRunLoader | None = None,
     load_acceptance: AcceptanceLoader | None = None,
     list_oracle_amendments: AmendmentLister | None = None,
-) -> list[dict[str, Any]]:
+) -> list[JsonObject]:
     try:
         subject = request["subject"]
         effort = request["effort"]
@@ -774,7 +820,7 @@ def build_batch(
             )
 
     # Store authority for done closes: resolve every runner check-run id.
-    green_by_criterion: dict[Any, Mapping[str, Any]] = {}
+    green_by_criterion: dict[JsonValue, Mapping[str, object]] = {}
     if transition == "done":
         for entry in criteria:
             if entry.get("method") not in RUNNER_METHODS:
@@ -823,13 +869,13 @@ def build_batch(
             "invalidated_when, body) to close anyway."
         )
 
-    ops: list[dict[str, Any]] = []
+    ops: list[JsonObject] = []
     for entry in criteria:
         method = entry["method"]
         if method in RUNNER_METHODS:
             # Runner already wrote the check-run; do not invent another.
             continue
-        payload = {
+        payload: JsonObject = {
             "criterion_id": entry["criterion_id"],
             "revision": entry["revision"],
             "result": entry["result"],
@@ -837,22 +883,24 @@ def build_batch(
             "method": method,
             "signed_by": entry.get("signed_by", ""),
         }
-        informed_by = [entry["criterion_id"]]
+        informed_by: list[JsonValue] = [entry["criterion_id"]]
         if execution_report_id:
             informed_by.append(execution_report_id)
         payload["informed_by"] = informed_by
         ops.append(
-            {
-                "op": "create",
-                "type": "tuner:check-run",
-                "subject": subject,
-                "payload": payload,
-            }
+            JsonObject(
+                {
+                    "op": "create",
+                    "type": "tuner:check-run",
+                    "subject": subject,
+                    "payload": payload,
+                }
+            )
         )
 
     if finding:
         try:
-            finding_payload = {
+            finding_payload: JsonObject = {
                 "claim": finding["claim"],
                 "basis": finding["basis"],
                 "invalidated_when": finding["invalidated_when"],
@@ -866,23 +914,27 @@ def build_batch(
         except KeyError as exc:
             raise CloseRequestError(f"finding missing field: {exc}") from exc
         ops.append(
-            {
-                "op": "create",
-                "type": "tuner:finding",
-                "subject": subject,
-                "payload": finding_payload,
-                "body": finding_body,
-            }
+            JsonObject(
+                {
+                    "op": "create",
+                    "type": "tuner:finding",
+                    "subject": subject,
+                    "payload": finding_payload,
+                    "body": finding_body,
+                }
+            )
         )
 
     ops.append(
-        {
-            "op": "update",
-            "type": "score:work-item",
-            "id": work_item_id,
-            "transition": transition,
-            "expected_revision": "@current",
-        }
+        JsonObject(
+            {
+                "op": "update",
+                "type": "score:work-item",
+                "id": work_item_id,
+                "transition": transition,
+                "expected_revision": "@current",
+            }
+        )
     )
     return ops
 

@@ -11,9 +11,58 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TypeAlias, TypedDict
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonValue, Record
+
+ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
+
+
+class ReviewerFinding(TypedDict):
+    task: str
+    kind: str
+    expected: str
+    observed: str
+    severity: str
+
+
+class IntegrationFields(TypedDict):
+    interfaces: str
+    assumptions: str
+    invariants: str
+    conflicts: str
+
+
+class ParsedReviewerOutput(TypedDict):
+    verdict: str
+    findings: list[ReviewerFinding]
+    integration: IntegrationFields
+
+
+class ReviewCheckRunPayload(TypedDict):
+    criterion_id: str
+    revision: str
+    result: str
+    effort: str
+    method: str
+    signed_by: str
+    evidence_kind: str
+
+
+class FindingPayload(TypedDict):
+    claim: str
+    basis: str
+    invalidated_when: str
+    effort: str
+    needs: str
+
+
+class GradedReviewerOutput(TypedDict):
+    verdict: str
+    findings: list[ReviewerFinding]
+    integration: IntegrationFields
+
 
 # Kinds the reviewer must never see (builder self-grades / dispatch notes).
 EXCLUDED_KINDS = frozenset(
@@ -60,10 +109,10 @@ def is_excluded_kind(record_type: str) -> bool:
 
 
 def filter_reviewer_records(
-    records: Sequence[Mapping[str, Any]],
-) -> list[Mapping[str, Any]]:
+    records: Sequence[ReviewerRecord],
+) -> list[ReviewerRecord]:
     """Drop excluded kinds; keep only allowed task/spec text."""
-    kept: list[Mapping[str, Any]] = []
+    kept: list[ReviewerRecord] = []
     for record in records:
         kind = _short_kind(str(record.get("record_type") or record.get("kind") or ""))
         if kind in EXCLUDED_KINDS:
@@ -97,7 +146,7 @@ def git_phase_diff(
     return result.stdout or ""
 
 
-def _record_text(record: Mapping[str, Any]) -> str:
+def _record_text(record: ReviewerRecord) -> str:
     parts: list[str] = []
     title = record.get("title") or record.get("subject") or ""
     subject = record.get("subject") or ""
@@ -114,7 +163,7 @@ def _record_text(record: Mapping[str, Any]) -> str:
 
 def build_reviewer_brief(
     *,
-    records: Sequence[Mapping[str, Any]],
+    records: Sequence[ReviewerRecord],
     phase_diff: str,
     base: str = "main",
     phase_head: str = "HEAD",
@@ -135,7 +184,7 @@ def build_reviewer_brief(
         "",
     ]
 
-    by_kind: dict[str, list[Mapping[str, Any]]] = {}
+    by_kind: dict[str, list[ReviewerRecord]] = {}
     for record in allowed:
         kind = _short_kind(str(record.get("record_type") or record.get("kind") or "work-item"))
         by_kind.setdefault(kind, []).append(record)
@@ -184,7 +233,7 @@ def _strip_fence(text: str) -> str:
     return stripped
 
 
-def parse_reviewer_output(text: str) -> dict[str, Any]:
+def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
     """Parse the structured PASS/NEEDS_WORK block from the reviewer."""
     raw = _strip_fence(text)
     verdict_m = re.search(r"(?im)^\s*verdict:\s*(\S+)", raw)
@@ -192,7 +241,7 @@ def parse_reviewer_output(text: str) -> dict[str, Any]:
     if verdict in {"NEEDS_WORK", "NEEDS-WORK"}:
         verdict = "NEEDS_WORK"
 
-    findings: list[dict[str, str]] = []
+    findings: list[ReviewerFinding] = []
     findings_m = re.search(
         r"(?is)^\s*findings:\s*(.*?)^\s*integration:\s*",
         raw,
@@ -221,7 +270,7 @@ def parse_reviewer_output(text: str) -> dict[str, Any]:
                 }
             )
 
-    integration: dict[str, str] = {
+    integration: IntegrationFields = {
         "interfaces": "",
         "assumptions": "",
         "invariants": "",
@@ -251,7 +300,7 @@ def build_review_check_run_payload(
     phase_head: str,
     effort: str,
     verdict: str,
-) -> dict[str, str]:
+) -> ReviewCheckRunPayload:
     """Parent-only payload for the phase-end review check-run."""
     return {
         "criterion_id": criterion_id,
@@ -269,11 +318,11 @@ def is_fixable_finding_kind(kind: str) -> bool:
 
 
 def build_finding_payload(
-    finding: Mapping[str, Any],
+    finding: Mapping[str, JsonValue],
     *,
     effort: str,
     fix_task_created: bool,
-) -> dict[str, str]:
+) -> FindingPayload:
     """Parent-only finding payload for one NEEDS_WORK item."""
     severity = str(finding.get("severity") or "").strip().lower()
     if severity == "judgment":
@@ -304,7 +353,7 @@ class ReviewRouting:
 
 
 def route_review_findings(
-    findings: Sequence[Mapping[str, Any]],
+    findings: Sequence[Mapping[str, JsonValue]],
     *,
     fix_budget_remaining: int,
     reviewer_rerun_used: bool = False,
@@ -364,7 +413,7 @@ def _revision_matches(check_revision: str, phase_head: str) -> bool:
 
 def phase_review_gate_holds(
     *,
-    check_runs: Sequence[Mapping[str, Any]],
+    check_runs: Sequence[ReviewerRecord],
     phase_head: str,
 ) -> bool:
     """True when a passing method:review check-run exists at the phase head."""
@@ -381,7 +430,7 @@ def phase_review_gate_holds(
     return False
 
 
-def integration_report_body(integration: Mapping[str, Any]) -> str:
+def integration_report_body(integration: Mapping[str, JsonValue]) -> str:
     """Fill integration-report required sections from reviewer integration."""
     return (
         "## Interfaces\n\n"
@@ -423,9 +472,9 @@ def _ui_labels_in(text: str) -> list[str]:
 
 def grade_reviewer_inputs(
     *,
-    records: Sequence[Mapping[str, Any]],
+    records: Sequence[ReviewerRecord],
     phase_diff: str,
-) -> dict[str, Any]:
+) -> GradedReviewerOutput:
     """Deterministic stub mirroring ``agents/reviewer.md`` spec-gap grading.
 
     When a work-item description promises UI labels that neither that task's
@@ -434,7 +483,7 @@ def grade_reviewer_inputs(
     """
     allowed = filter_reviewer_records(records)
     accept_by_subject: dict[str, list[str]] = {}
-    work_items: list[Mapping[str, Any]] = []
+    work_items: list[ReviewerRecord] = []
     for record in allowed:
         kind = _short_kind(str(record.get("record_type") or record.get("kind") or ""))
         subject = str(record.get("subject") or record.get("title") or "phase")
@@ -452,7 +501,7 @@ def grade_reviewer_inputs(
             )
             accept_by_subject.setdefault(subject, []).append(text)
 
-    findings: list[dict[str, str]] = []
+    findings: list[ReviewerFinding] = []
     delivered_global = _ui_labels_in(phase_diff or "")
     for item in work_items:
         subject = str(item.get("subject") or item.get("title") or "phase")

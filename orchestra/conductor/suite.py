@@ -13,26 +13,24 @@ import re
 import shlex
 import subprocess
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
-    _output_sha256,
     git_diff_sha256,
     git_head,
     git_is_dirty,
+    output_sha256,
     parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
-from orchestra.conductor.reviewer import _revision_matches
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
@@ -48,6 +46,17 @@ DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
 FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
+
+
+def _revision_matches(check_revision: str, phase_head: str) -> bool:
+    a = check_revision.strip().lower()
+    b = phase_head.strip().lower()
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+    return longer.startswith(shorter) and len(shorter) >= 7
 
 
 @dataclass(frozen=True)
@@ -95,7 +104,7 @@ class SuitePolicy:
 
 
 def normalize_suite_policy(
-    raw: Mapping[str, Any] | None,
+    raw: Mapping[str, JsonValue] | None,
     *,
     source_path: str | None = None,
 ) -> SuitePolicy:
@@ -144,7 +153,7 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
         data = project.config()
     except (StoreBindingError, StoreError, OSError, ValueError, TypeError):
         return normalize_suite_policy(None)
-    settings = data.get("settings") if isinstance(data, dict) else None
+    settings = data.get("settings")
     conductor = settings.get("conductor") if isinstance(settings, dict) else None
     phase_gate = conductor.get("phase_gate") if isinstance(conductor, dict) else None
     suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
@@ -268,7 +277,7 @@ def advisory_finding_payload(
     phase_slug: str,
     effort: str,
     suite: SuiteResult,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Finding payload for an advisory suite fail (does not block merge)."""
     subject = suite_subject(phase_slug)
     nodes = ", ".join(suite.failing_node_ids[:8]) if suite.failing_node_ids else "(see check-run)"
@@ -356,7 +365,7 @@ def start_suite_background(
     policy: SuitePolicy | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
-    runner: Any = None,
+    runner: Callable[..., object] | None = None,
 ) -> SuiteStart | SuiteResult:
     """Start the suite in a detached tmux session; return immediately.
 
@@ -394,7 +403,7 @@ def start_suite_background(
             exit_code=3,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="blocked",
             revision=revision,
@@ -461,7 +470,7 @@ def poll_suite(
             exit_code=0,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="pass",
             revision=job.phase_head,
@@ -484,7 +493,7 @@ def collect_suite(
             exit_code=0,
             duration_s=0.0,
             output="",
-            output_sha256=_output_sha256(""),
+            output_sha256=output_sha256(""),
             failing_node_ids=[],
             result="pass",
             revision=job.phase_head,
@@ -513,7 +522,7 @@ def collect_suite(
             exit_code=3,
             duration_s=round(duration, 6),
             output=output,
-            output_sha256=_output_sha256(output),
+            output_sha256=output_sha256(output),
             failing_node_ids=parse_failing_node_ids(output),
             result="blocked",
             revision=revision,
@@ -529,7 +538,7 @@ def collect_suite(
         exit_code=exit_code,
         duration_s=round(duration, 6),
         output=output,
-        output_sha256=_output_sha256(output),
+        output_sha256=output_sha256(output),
         failing_node_ids=nodes,
         result=result,
         revision=revision,
@@ -543,10 +552,10 @@ def build_suite_check_run_payload(
     effort: str,
     suite: SuiteResult,
     criterion_id: str | None = None,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Parent-only payload for the suite ``tuner:check-run``."""
     subject = suite_subject(phase_slug)
-    payload: dict[str, Any] = {
+    payload: JsonObject = {
         "criterion_id": criterion_id or subject,
         "revision": suite.revision,
         "result": suite.result,
@@ -566,7 +575,7 @@ def build_suite_check_run_payload(
     return payload
 
 
-def is_suite_check_run(run: Mapping[str, Any], *, phase_slug: str | None = None) -> bool:
+def is_suite_check_run(run: Mapping[str, JsonValue], *, phase_slug: str | None = None) -> bool:
     evidence = str(run.get("evidence_kind") or "")
     if evidence != EVIDENCE_KIND:
         return False
@@ -586,11 +595,11 @@ def is_suite_check_run(run: Mapping[str, Any], *, phase_slug: str | None = None)
 def acceptance_passes_at_head(
     *,
     acceptance_id: str,
-    check_runs: Sequence[Mapping[str, Any]],
+    check_runs: Sequence[Mapping[str, JsonValue]],
     phase_head: str,
 ) -> bool:
     """True when a runner check-run for this criterion passes at the phase head."""
-    matching: list[Mapping[str, Any]] = []
+    matching: list[Mapping[str, JsonValue]] = []
     for run in check_runs:
         if str(run.get("criterion_id") or "") != acceptance_id:
             continue
@@ -610,7 +619,7 @@ def acceptance_passes_at_head(
 
 def suite_pass_at_head(
     *,
-    check_runs: Sequence[Mapping[str, Any]],
+    check_runs: Sequence[Mapping[str, JsonValue]],
     phase_head: str,
     phase_slug: str,
 ) -> bool:
@@ -626,8 +635,8 @@ def suite_pass_at_head(
 
 def phase_suite_gate_holds(
     *,
-    acceptances: Sequence[Mapping[str, Any]],
-    check_runs: Sequence[Mapping[str, Any]],
+    acceptances: Sequence[Mapping[str, JsonValue]],
+    check_runs: Sequence[Mapping[str, JsonValue]],
     phase_head: str,
     phase_slug: str,
     policy: SuitePolicy | None = None,

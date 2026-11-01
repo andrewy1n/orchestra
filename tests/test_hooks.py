@@ -164,6 +164,12 @@ def test_hook_stop_plain_mode_skips_incomplete_session(repo, monkeypatch, capsys
     assert run_hook(monkeypatch, capsys, "hook-stop", stdin=stdin) == (0, {})
 
 
+@pytest.mark.parametrize("loop_count", [None, "1"])
+def test_hook_stop_plain_mode_rejects_malformed_loop_count(loop_count):
+    with pytest.raises(TypeError):
+        hooks.cmd_stop("plain", {"status": "completed", "loop_count": loop_count})
+
+
 def test_hooks_never_write_records(repo, monkeypatch, capsys):
     def snapshot():
         return {
