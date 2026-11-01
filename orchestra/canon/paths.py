@@ -28,7 +28,7 @@ def validate_record_type(record_type: str) -> tuple[str, str]:
     return namespace, local
 
 
-def validate_namespace(namespace: str) -> None:
+def validate_namespace(namespace: object) -> None:
     if not isinstance(namespace, str) or not SAFE_SEGMENT.match(namespace):
         raise PathValidationError(f"unsafe namespace {namespace!r}")
 

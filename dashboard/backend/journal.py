@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from dashboard.backend import records, store
-from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
+from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -44,14 +45,14 @@ class JournalItem:
 
 def _soft_list(
     target: Project, record_type: str, *, payload: dict[str, str] | None = None
-) -> list[dict[str, Any]]:
+) -> list[Record]:
     try:
         return records._list(target, record_type, payload=payload)
     except store.ModelError:
         return []
 
 
-def _phase_for_task(subject: str, tasks: list[dict[str, Any]]) -> tuple[str | None, str]:
+def _phase_for_task(subject: str, tasks: list[Record]) -> tuple[str | None, str]:
     matches = [
         task
         for task in tasks
@@ -76,11 +77,11 @@ def _question_scope_text(scope: str, phase_titles: dict[str, str]) -> str:
     return scope
 
 
-def _question_open(record: dict[str, Any]) -> bool:
+def _question_open(record: Record) -> bool:
     return record.get("lifecycle_state") == "open"
 
 
-def _finding_open(record: dict[str, Any]) -> bool:
+def _finding_open(record: Record) -> bool:
     return (
         record_payload(record).get("needs") == "human"
         and record.get("lifecycle_state") in FINDING_OPEN_STATES
@@ -94,7 +95,7 @@ def _first_line(text: str) -> str:
     return ""
 
 
-def _attempt_text(payload: dict[str, Any]) -> str:
+def _attempt_text(payload: PlanningPayload) -> str:
     parts = [payload.get("attempted_action") or "", "don't retry"]
     retry = payload.get("retry_when") or ""
     if retry:
@@ -102,7 +103,7 @@ def _attempt_text(payload: dict[str, Any]) -> str:
     return " · ".join(part for part in parts if part)
 
 
-def _finding_text(payload: dict[str, Any]) -> str:
+def _finding_text(payload: PlanningPayload) -> str:
     claim = payload.get("claim") or ""
     needs = payload.get("needs") or ""
     if claim and needs:
@@ -110,7 +111,7 @@ def _finding_text(payload: dict[str, Any]) -> str:
     return claim or needs
 
 
-def _question_text(record: dict[str, Any], phase_titles: dict[str, str]) -> str:
+def _question_text(record: Record, phase_titles: dict[str, str]) -> str:
     scope = record_payload(record).get("scope") or ""
     shown = _question_scope_text(scope, phase_titles)
     state = record.get("lifecycle_state") or ""
@@ -119,7 +120,7 @@ def _question_text(record: dict[str, Any], phase_titles: dict[str, str]) -> str:
     return shown or state
 
 
-def _amendment_text(record: dict[str, Any], task_subject: str) -> str:
+def _amendment_text(record: Record, task_subject: str) -> str:
     correction = _first_line(records._section(record.get("body") or "", "Correction"))
     if correction and task_subject:
         return f"{correction} · {task_subject}"
@@ -127,7 +128,7 @@ def _amendment_text(record: dict[str, Any], task_subject: str) -> str:
 
 
 def _belongs_to_effort(
-    record: dict[str, Any],
+    record: Record,
     effort: str,
     *,
     sole_goal: bool,
@@ -142,10 +143,10 @@ def _belongs_to_effort(
 
 
 def _assignment_task(
-    record: dict[str, Any],
-    assignments: dict[str, dict[str, Any]],
-    tasks_by_id: dict[str, dict[str, Any]],
-    tasks_by_subject: dict[str, dict[str, Any]],
+    record: Record,
+    assignments: dict[str, Record],
+    tasks_by_id: dict[str, Record],
+    tasks_by_subject: dict[str, Record],
 ) -> tuple[str | None, str, str]:
     ref = record_payload(record).get("assignment") or ""
     assignment = assignments.get(ref)
@@ -194,12 +195,12 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     }
 
     assignments_listed = records._remapped(_soft_list(target, "conductor:assignment"), aliases)
-    assignments: dict[str, dict[str, Any]] = {}
+    assignments: dict[str, Record] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
         assignments[record["subject"]] = record
 
-    listed: dict[str, list[dict[str, Any]]] = {}
+    listed: dict[str, list[Record]] = {}
     for record_type in JOURNAL_TYPES:
         raw = records._remapped(_soft_list(target, record_type), aliases)
         by_subject = record_type == "score:continuity-question"
@@ -331,7 +332,7 @@ def filter_items(items: list[JournalItem], needle: str) -> list[JournalItem]:
     return [item for item in items if needle in item.subject.lower() or needle in item.text.lower()]
 
 
-def load_record(target: Project, record_id: str) -> dict[str, Any]:
+def load_record(target: Project, record_id: str) -> Record:
     """Fetch one record by id (type optional on the CLI)."""
     record = store.get_record(target, record_id)
     if "subject" not in record:
@@ -360,7 +361,7 @@ def list_markdown(items: list[JournalItem], *, scope: str) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def record_markdown(record: dict[str, Any]) -> str:
+def record_markdown(record: Record) -> str:
     """Markdown for one record: type, subject, payload, body (R5)."""
     payload = record_payload(record)
     lines = [

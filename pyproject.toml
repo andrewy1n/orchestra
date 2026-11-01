@@ -43,6 +43,7 @@ packages = [
 [tool.setuptools.package-data]
 # `_scripts/` is a symlink in the checkout; the wheel builder dereferences it.
 orchestra = ["_scripts/*.py"]
+"orchestra.canon" = ["py.typed"]
 "orchestra.score" = ["schemas/*.json"]
 "orchestra.composer" = ["schemas/*.json"]
 "orchestra.conductor" = ["schemas/*.json"]
@@ -74,10 +75,35 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "ERA"]
+extend-select = ["TID251"]
 ignore = ["E501"]
 allowed-confusables = ["–", "×"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.cast" = { msg = "Narrow the value instead of casting it." }
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
 pythonVersion = "3.10"
 include = ["orchestra", "dashboard", "installer"]
+strict = ["orchestra/canon", "orchestra/composer", "orchestra/store.py"]
+reportIgnoreCommentWithoutRule = "error"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "orchestra/canon"
+extraPaths = ["."]
+reportExplicitAny = "error"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "orchestra/composer"
+extraPaths = ["."]
+reportExplicitAny = "error"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "orchestra/store.py"
+extraPaths = ["."]
+reportExplicitAny = "error"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "."
+extraPaths = ["."]

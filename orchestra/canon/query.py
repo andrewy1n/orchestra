@@ -10,7 +10,8 @@ import json
 import re
 from collections.abc import Iterable
 from re import Pattern
-from typing import Any
+
+from orchestra.canon.types import JsonObject, JsonValue, Record
 
 # derived is read-time only (see derive.py) but a --where clause treats it
 # like any other namespaced field -- an agent asking "what's ready" shouldn't
@@ -27,7 +28,7 @@ class QueryError(Exception):
 _MISSING = object()
 
 
-def _coerce_value(raw: str) -> Any:
+def _coerce_value(raw: str) -> JsonValue:
     """Best-effort JSON-decode a --where value so `true`/`42`/`"x"` compare
     against their typed payload counterparts; anything else is a literal
     string."""
@@ -55,7 +56,7 @@ def _split_where_item(item: str) -> tuple[str, str, str]:
     return item[:eq_at], "eq", item[eq_at + 1 :]
 
 
-def _parse_where_value(raw: str, op: str) -> tuple[str, Any]:
+def _parse_where_value(raw: str, op: str) -> tuple[str, JsonValue]:
     """Map raw value + base op into (op, coerced_value).
 
     ``any_of:a,b,c`` on an equals clause becomes op ``any_of`` with a list.
@@ -66,13 +67,13 @@ def _parse_where_value(raw: str, op: str) -> tuple[str, Any]:
     return op, _coerce_value(raw)
 
 
-def parse_where(raw: Iterable[str] | None) -> list[tuple[str, str, str, Any]]:
+def parse_where(raw: Iterable[str] | None) -> list[tuple[str, str, str, JsonValue]]:
     """Parse repeatable --where flags into (namespace, field, op, value).
 
     ``field`` may be dotted (``meta.tier``) for nested payload/derived walks.
     ``op`` is ``eq``, ``ne``, or ``any_of``.
     """
-    filters: list[tuple[str, str, str, Any]] = []
+    filters: list[tuple[str, str, str, JsonValue]] = []
     for item in raw or []:
         field, base_op, raw_value = _split_where_item(item)
         op, value = _parse_where_value(raw_value, base_op)
@@ -91,14 +92,14 @@ def parse_where(raw: Iterable[str] | None) -> list[tuple[str, str, str, Any]]:
     return filters
 
 
-def resolve_path(bucket: Any, field_path: str) -> Any:
+def resolve_path(bucket: object, field_path: str) -> object:
     """Walk dotted ``field_path`` through nested dicts; ``_MISSING`` if absent."""
-    cur: Any = bucket
+    cur: object = bucket
     for part in field_path.split("."):
         if not isinstance(cur, dict) or part not in cur:
             return _MISSING
-        cur = cur[part]
-    return cur
+        cur = cur[part]  # pyright: ignore[reportUnknownVariableType]  # Preserve arbitrary values while traversing runtime dictionaries.
+    return cur  # pyright: ignore[reportUnknownVariableType]  # Preserve arbitrary values while traversing runtime dictionaries.
 
 
 def compile_grep(pattern: str | None) -> Pattern[str] | None:
@@ -111,14 +112,14 @@ def compile_grep(pattern: str | None) -> Pattern[str] | None:
         raise QueryError(f"invalid --grep pattern {pattern!r}: {exc}") from exc
 
 
-def _same(actual: Any, expected: Any) -> bool:
+def _same(actual: object, expected: object) -> bool:
     # bool is an int subclass, so plain == makes 1 match True. Keep them distinct.
     if isinstance(actual, bool) != isinstance(expected, bool):
         return False
     return actual == expected
 
 
-def where_matches(record: dict[str, Any], filters: list[tuple[str, str, str, Any]]) -> bool:
+def where_matches(record: Record, filters: list[tuple[str, str, str, JsonValue]]) -> bool:
     for namespace, field, op, value in filters:
         if namespace == "record":
             actual = record.get(field, _MISSING)
@@ -135,34 +136,34 @@ def where_matches(record: dict[str, Any], filters: list[tuple[str, str, str, Any
             if _same(actual, value):
                 return False
         elif op == "any_of":
-            if not any(_same(actual, candidate) for candidate in value):
+            if not any(_same(actual, candidate) for candidate in value):  # pyright: ignore[reportOptionalIterable, reportGeneralTypeIssues, reportUnknownArgumentType, reportUnknownVariableType]  # Preserve native iteration behavior for direct callers.
                 return False
         else:
             raise QueryError(f"unknown where op {op!r}")
     return True
 
 
-def subject_matches(record: dict[str, Any], subject: str | None, *, exact: bool = False) -> bool:
+def subject_matches(record: Record, subject: str | None, *, exact: bool = False) -> bool:
     if subject is None:
         return True
     actual = record.get("subject") or ""
     return actual == subject if exact else actual == subject or actual.startswith(subject)
 
 
-def body_matches(record: dict[str, Any], grep: Pattern[str] | None) -> bool:
+def body_matches(record: Record, grep: Pattern[str] | None) -> bool:
     if grep is None:
         return True
     return grep.search(record.get("body") or "") is not None
 
 
-def has_inbound(record: dict[str, Any], rel_type: str) -> bool:
+def has_inbound(record: Record, rel_type: str) -> bool:
     """True if `derived.referenced_by` (see derive.compute_inverse) has at
     least one source recorded under `rel_type`."""
     by_type = (record.get("derived") or {}).get("referenced_by") or {}
     return bool(by_type.get(rel_type))
 
 
-def within_time_range(record: dict[str, Any], since: str | None, until: str | None) -> bool:
+def within_time_range(record: Record, since: str | None, until: str | None) -> bool:
     """`recorded_at` string-compares against ISO-8601 bounds (valid because
     `_now()` is fixed-width UTC). A record with no `recorded_at` (written
     before this field existed) fails any bounded query -- conservative,
@@ -177,9 +178,7 @@ def within_time_range(record: dict[str, Any], since: str | None, until: str | No
     return not (until is not None and recorded_at > until)
 
 
-def order_by_recorded_at(
-    records: list[dict[str, Any]], *, reverse: bool = False
-) -> list[dict[str, Any]]:
+def order_by_recorded_at(records: list[Record], *, reverse: bool = False) -> list[Record]:
     """Stable sort by `recorded_at`; records missing it (pre-existing,
     backward-compat) sort first regardless of `reverse` -- "unknown when" is
     not "most recent", so `reverse` must only flip ordering among records
@@ -190,15 +189,13 @@ def order_by_recorded_at(
     return missing + present
 
 
-def order_by_path(
-    records: list[dict[str, Any]], path: str, *, reverse: bool = False
-) -> list[dict[str, Any]]:
+def order_by_path(records: list[Record], path: str, *, reverse: bool = False) -> list[Record]:
     """Sort by a top-level or dotted ``payload.*`` / ``derived.*`` path.
 
     Missing values sort first (stable with recorded_at missing behavior).
     """
 
-    def lookup(record: dict[str, Any]) -> Any:
+    def lookup(record: Record) -> object:
         if path in ("subject", "lifecycle_state", "recorded_at"):
             return record.get(path, _MISSING)
         namespace, sep, sub = path.partition(".")
@@ -210,14 +207,15 @@ def order_by_path(
 
     missing = [r for r in records if lookup(r) is _MISSING]
     present = [r for r in records if lookup(r) is not _MISSING]
-    present.sort(key=lambda r: lookup(r), reverse=reverse)
+    # JSON arrays and objects retain Python's native comparison errors here.
+    present.sort(key=lambda r: lookup(r), reverse=reverse)  # pyright: ignore[reportArgumentType]
     return missing + present
 
 
 def record_matches(
-    record: dict[str, Any],
+    record: Record,
     *,
-    where_filters: list[tuple[str, str, str, Any]] | None = None,
+    where_filters: list[tuple[str, str, str, JsonValue]] | None = None,
     subject: str | None = None,
     exact_subject: bool = False,
     grep: Pattern[str] | None = None,
@@ -253,7 +251,7 @@ def _first_nonblank_line(text: str) -> str:
     return ""
 
 
-def matching_line(record: dict[str, Any], grep: Pattern[str]) -> str | None:
+def matching_line(record: Record, grep: Pattern[str]) -> str | None:
     for line in (record.get("body") or "").splitlines():
         if grep.search(line):
             return line.strip()
@@ -267,7 +265,7 @@ def truncate(text: str, limit: int = DEFAULT_EXCERPT_LIMIT) -> str:
     return collapsed[: max(limit - 1, 0)].rstrip() + "…"
 
 
-def summarize(record: dict[str, Any], *, grep: Pattern[str] | None = None) -> dict[str, Any]:
+def summarize(record: Record, *, grep: Pattern[str] | None = None) -> JsonObject:
     """Compact, human-scannable projection of a record: no raw body dump.
 
     Shows a one-line excerpt instead -- the line that matched --grep when one
@@ -277,7 +275,7 @@ def summarize(record: dict[str, Any], *, grep: Pattern[str] | None = None) -> di
     excerpt = matching_line(record, grep) if grep is not None else None
     if excerpt is None:
         excerpt = _first_nonblank_line(body)
-    summary: dict[str, Any] = {
+    summary: JsonObject = {
         "id": record.get("id"),
         "record_type": record.get("record_type"),
         "subject": record.get("subject"),
@@ -287,7 +285,7 @@ def summarize(record: dict[str, Any], *, grep: Pattern[str] | None = None) -> di
         "recorded_at": record.get("recorded_at"),
     }
     if "derived" in record:
-        summary["derived"] = record["derived"]
+        summary["derived"] = record["derived"]  # pyright: ignore[reportArgumentType]  # Every declared derived field is JSON-compatible.
     if excerpt:
         summary["body_excerpt"] = truncate(excerpt)
     return summary

@@ -14,6 +14,8 @@ from typing import Any, TextIO
 
 from orchestra import views
 from orchestra.canon.backend import open_backend
+from orchestra.canon.types import Record
+from orchestra.conductor.model_types import PlanningPayload
 
 PROTOCOL = (
     "This project keeps its state as canon records. Views are derived: edit "
@@ -89,13 +91,14 @@ def _load_baseline(root: Path, data: dict[str, Any]) -> set[str] | None:
         return None
 
 
-def _constraint_lines(records: list[dict[str, Any]]) -> list[str]:
+def _constraint_lines(records: list[Record]) -> list[str]:
     items, total = views.hook_constraints(records, MAX_HOOK_CONSTRAINTS)
     if not items:
         return []
     lines = ["", "Active constraints:"]
     for item in items:
-        statement = ((item.get("payload") or {}).get("statement") or "").strip()
+        payload: PlanningPayload = item.get("payload") or {}  # pyright: ignore[reportAssignmentType]  # Constraint schemas validate these payload fields.
+        statement = (payload.get("statement") or "").strip()
         if len(statement) > MAX_CONSTRAINT_STATEMENT_CHARS:
             statement = statement[:MAX_CONSTRAINT_STATEMENT_CHARS].rstrip() + "…"
         lines.append(f"- **{item.get('subject')}**: {statement}")

@@ -255,7 +255,9 @@ def _run_git(
     check: bool = True,
 ) -> subprocess.CompletedProcess[bytes]:
     try:
-        result = run_git(cwd, "--no-pager", *args, capture_output=True)
+        result: subprocess.CompletedProcess[bytes] = run_git(
+            cwd, "--no-pager", *args, capture_output=True
+        )  # pyright: ignore[reportAssignmentType]  # No text or encoding options are passed.
     except FileNotFoundError as exc:
         raise ManifestError("git is not available") from exc
     if check and result.returncode != 0:

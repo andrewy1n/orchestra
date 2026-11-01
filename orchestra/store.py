@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 
 __all__ = [
@@ -29,7 +29,7 @@ def find_store_root(start: Path) -> Path:
     return start.resolve()
 
 
-def get_record(root: Path, record_id: str, record_type: str | None = None) -> dict[str, Any]:
+def get_record(root: Path, record_id: str, record_type: str | None = None) -> Record:
     project = open_store(root)
     try:
         return project.get(record_id, record_type)
@@ -42,9 +42,9 @@ def create_record(
     *,
     record_type: str,
     subject: str,
-    payload: dict[str, Any],
+    payload: JsonObject,
     body: str | None = None,
-) -> dict[str, Any]:
+) -> Record:
     project = open_store(root)
     try:
         return project.create(

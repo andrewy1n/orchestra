@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
+from orchestra.canon.types import Record
 
 DEFAULT_TYPES = (
     "score:acceptance",
@@ -47,7 +48,7 @@ def _utc(ts: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _metadata(raw: dict, store: str) -> dict:
+def _metadata(raw: Record, store: str) -> dict:
     payload = raw.get("payload") or {}
     return {
         "id": raw["id"],

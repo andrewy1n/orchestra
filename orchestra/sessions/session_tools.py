@@ -1,7 +1,6 @@
 import json
 from collections.abc import Iterable
 from pathlib import Path
-from typing import cast
 
 from orchestra.sessions.session_metrics import read_events
 
@@ -20,7 +19,7 @@ def _key(name, tool_input):
 
 def tool_metrics(events: Iterable[dict]) -> dict:
     tools: dict[str, dict[str, int]] = {}
-    pending: dict[str, tuple] = {}
+    pending: dict[object, tuple] = {}
     errored: set[tuple] = set()
     for event in events:
         if not isinstance(event, dict):
@@ -39,7 +38,7 @@ def tool_metrics(events: Iterable[dict]) -> dict:
                 if isinstance(block.get("id"), str):
                     pending[block["id"]] = key
             elif kind == "tool_result":
-                key = pending.get(cast(str, block.get("tool_use_id")))
+                key = pending.get(block.get("tool_use_id"))
                 if key is None:
                     continue
                 if block.get("is_error") is True:

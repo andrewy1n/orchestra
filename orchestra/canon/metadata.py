@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.config import CONFIG_NAME, ConfigError, dump_config, validate_config
 from orchestra.canon.errors import PartialStoreError, StoreError, StoreNotInitializedError
+from orchestra.canon.types import JsonObject
 
 
 class MetadataFiles:
@@ -27,7 +27,7 @@ class MetadataFiles:
     def is_absent(self) -> bool:
         return not self.root.exists() or not self.config_path().exists()
 
-    def load_config(self) -> dict[str, Any]:
+    def load_config(self) -> JsonObject:
         if not self.config_path().is_file():
             if self.root.exists() and any(self.root.iterdir()):
                 raise PartialStoreError("store exists without valid config.json")
@@ -41,7 +41,7 @@ class MetadataFiles:
         except ConfigError as exc:
             raise StoreError(str(exc)) from exc
 
-    def write_config(self, config: dict[str, Any]) -> None:
+    def write_config(self, config: JsonObject) -> None:
         try:
             validate_config(config)
         except ConfigError as exc:

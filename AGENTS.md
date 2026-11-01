@@ -35,8 +35,17 @@ their response. They do not call `canon`.
 - Do not add comments that explain a change. Comment only a fact the
   code cannot show.
 - Use Conventional Commits. Keep the subject short and imperative.
-- The Python type gate is basedpyright. Annotate all new code. Do not
-  use or suggest mypy.
+- The Python type gate is basedpyright. Annotate all new code, including
+  every Python function and method parameter and return value. Do not use
+  explicit `Any` or `typing.cast`; use a specific type or narrow the value
+  instead. Each ignore comment must name the checker rule and give a factual
+  reason the diagnostic does not apply, using
+  `# pyright: ignore[ruleName]`. Do not use or suggest mypy.
+- Type enforcement is staged by package. basedpyright checks
+  `orchestra/canon`, `orchestra/composer`, and `orchestra/store.py` in
+  strict mode, with explicit `Any` reported as an error in those roots.
+  Other included paths currently use standard mode; an explicit `Any`
+  outside the strict roots is not yet rejected by basedpyright.
 - Before closing a task, run `ruff check` with `uvx ruff@0.13.1 check .`
   and `ruff format --check` with `uvx ruff@0.13.1 format --check .`.
   Use `uvx ruff@0.13.1 format .` to apply formatting when needed.

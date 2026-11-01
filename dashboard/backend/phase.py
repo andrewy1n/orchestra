@@ -31,8 +31,9 @@ from dashboard.backend.task import (
     _latest_checks,
     _task_rows,
 )
-from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.types import Record
+from orchestra.conductor.model_types import planning_payload as record_payload
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
@@ -79,7 +80,7 @@ def _requirement_texts(body: str) -> dict[str, str]:
     return texts
 
 
-def _oldest_first(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _oldest_first(records: list[Record]) -> list[Record]:
     """Order a supersede chain from the original record to the active one.
 
     Supersede rewrites the predecessor's recorded_at to the moment it is retired,
@@ -97,13 +98,13 @@ def _oldest_first(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if links:
             previous[record["id"]] = links[0]
             pointed.add(links[0])
-    ordered: list[dict[str, Any]] = []
+    ordered: list[Record] = []
     seen: set[str] = set()
     for start in sorted(
         (record for record in records if record["id"] not in pointed), key=_recorded_at
     ):
-        chain: list[dict[str, Any]] = []
-        current: dict[str, Any] | None = start
+        chain: list[Record] = []
+        current: Record | None = start
         while current is not None and current["id"] not in seen:
             seen.add(current["id"])
             chain.append(current)
@@ -116,7 +117,7 @@ def _oldest_first(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return ordered
 
 
-def _for_phase(records: list[dict[str, Any]], phase: str, effort: str) -> list[dict[str, Any]]:
+def _for_phase(records: list[Record], phase: str, effort: str) -> list[Record]:
     matched = []
     for record in _live(records):
         payload = record_payload(record)
@@ -128,17 +129,15 @@ def _for_phase(records: list[dict[str, Any]], phase: str, effort: str) -> list[d
     return matched
 
 
-def _latest_assessment_map(records: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
-    grouped: dict[tuple[str, str], dict[str, Any]] = {}
+def _latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record]:
+    grouped: dict[tuple[str, str], Record] = {}
     for record in sorted(_live(records), key=_recorded_at):
         payload = record_payload(record)
         grouped[(payload.get("phase", ""), payload.get("requirement", ""))] = record
     return grouped
 
 
-def _traced_records(
-    tasks: list[dict[str, Any]], phase: str, requirement: str
-) -> list[dict[str, Any]]:
+def _traced_records(tasks: list[Record], phase: str, requirement: str) -> list[Record]:
     return [
         task
         for task in tasks
@@ -148,8 +147,8 @@ def _traced_records(
     ]
 
 
-def _choices(subjects: list[str], decisions: list[dict[str, Any]]) -> tuple[DecisionChoice, ...]:
-    by_subject: dict[str, dict[str, Any]] = {}
+def _choices(subjects: list[str], decisions: list[Record]) -> tuple[DecisionChoice, ...]:
+    by_subject: dict[str, Record] = {}
     for record in sorted(_live(decisions), key=_recorded_at):
         by_subject[record["subject"]] = record
     return tuple(
@@ -164,8 +163,8 @@ def _choices(subjects: list[str], decisions: list[dict[str, Any]]) -> tuple[Deci
 def _latest_requirement_check(
     requirement: str,
     phase: str,
-    acceptances: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
+    acceptances: list[Record],
+    checks: list[Record],
 ) -> CheckRun | None:
     acceptance_ids = {
         record["id"]
@@ -216,10 +215,10 @@ def _short_revision(revision: str) -> str:
     return rev[:7]
 
 
-def _suite_check_for_phase(phase: str, checks: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _suite_check_for_phase(phase: str, checks: list[Record]) -> Record | None:
     """Newest active suite check-run for phase; fall back to legacy `-tier2`."""
 
-    def matching(suffix: str) -> list[dict[str, Any]]:
+    def matching(suffix: str) -> list[Record]:
         return [
             record
             for record in checks
@@ -234,7 +233,7 @@ def _suite_check_for_phase(phase: str, checks: list[dict[str, Any]]) -> dict[str
     return _newest(matching(LEGACY_TIER2_SUBJECT_SUFFIX))
 
 
-def suite_status_label(phase: str, checks: list[dict[str, Any]]) -> str:
+def suite_status_label(phase: str, checks: list[Record]) -> str:
     """Compact suite chrome for a phase header: suite running / suite ok@SHA / suite fail@SHA."""
     record = _suite_check_for_phase(phase, checks)
     if record is None:
@@ -285,9 +284,9 @@ def phase_elapsed(tasks: list[TaskRow]) -> tuple[int | None, int]:
 
 
 def _awaits_signoff(
-    task: dict[str, Any],
+    task: Record,
     others: list[str],
-    acceptances: list[dict[str, Any]],
+    acceptances: list[Record],
     latest: dict[str, CheckRun],
 ) -> bool:
     effort = record_payload(task).get("effort", "")
@@ -304,10 +303,10 @@ def _awaits_signoff(
 
 
 def _phase_rows(
-    records: list[dict[str, Any]],
-    tasks: list[dict[str, Any]],
-    acceptances: list[dict[str, Any]] | None = None,
-    checks: list[dict[str, Any]] | None = None,
+    records: list[Record],
+    tasks: list[Record],
+    acceptances: list[Record] | None = None,
+    checks: list[Record] | None = None,
     evidence_by_phase: dict[str, PhaseEvidence] | None = None,
 ) -> list[PhaseRow]:
     latest = _latest_checks(checks or [])
@@ -366,7 +365,7 @@ def _milestone_state(members: list[PhaseRow]) -> str:
     return "planned"
 
 
-def _milestone_rows(records: list[dict[str, Any]], phases: list[PhaseRow]) -> list[MilestoneRow]:
+def _milestone_rows(records: list[Record], phases: list[PhaseRow]) -> list[MilestoneRow]:
     by_slug: dict[str, list[PhaseRow]] = {}
     for phase in phases:
         if phase.milestone:
@@ -481,13 +480,13 @@ def _stage(
     phase: str,
     effort: str,
     spec_ids: list[str],
-    designs: list[dict[str, Any]],
-    tasks: list[dict[str, Any]],
-    acceptances: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
-    assessments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
-    releases: list[dict[str, Any]],
+    designs: list[Record],
+    tasks: list[Record],
+    acceptances: list[Record],
+    checks: list[Record],
+    assessments: list[Record],
+    reports: list[Record],
+    releases: list[Record],
 ) -> tuple[str, bool]:
     latest_release = _newest(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
@@ -502,7 +501,7 @@ def _stage(
     ]
     if non_verified:
 
-        def rank(record: dict[str, Any]) -> int:
+        def rank(record: Record) -> int:
             nxt = record_payload(record).get("next", "")
             return LOOP_NEXT.index(nxt) if nxt in LOOP_NEXT else len(LOOP_NEXT)
 
@@ -549,15 +548,15 @@ def _stage(
 def _phase_evidence(
     phase: str,
     effort: str,
-    specs: list[dict[str, Any]],
-    designs: list[dict[str, Any]],
-    decisions: list[dict[str, Any]],
-    tasks: list[dict[str, Any]],
-    acceptances: list[dict[str, Any]],
-    checks: list[dict[str, Any]],
-    assessments: list[dict[str, Any]],
-    reports: list[dict[str, Any]],
-    releases: list[dict[str, Any]],
+    specs: list[Record],
+    designs: list[Record],
+    decisions: list[Record],
+    tasks: list[Record],
+    acceptances: list[Record],
+    checks: list[Record],
+    assessments: list[Record],
+    reports: list[Record],
+    releases: list[Record],
 ) -> PhaseEvidence | None:
     spec = _newest(_for_phase(specs, phase, effort))
     if spec is None:
@@ -693,8 +692,8 @@ def tabs_for(detail: PhaseDetail) -> tuple[str, ...]:
 
 
 def _decision_entry(
-    record: dict[str, Any],
-    by_id: dict[str, dict[str, Any]],
+    record: Record,
+    by_id: dict[str, Record],
     history: bool,
 ) -> DecisionEntry:
     payload = record_payload(record)
@@ -786,7 +785,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     """Load one phase with its body, decisions, constraints, and tasks."""
     aliases = _merge_aliases(_list(target, "score:effort"))
 
-    def by_effort(record_type: str) -> dict[str, list[dict[str, Any]]]:
+    def by_effort(record_type: str) -> dict[str, list[Record]]:
         return _by_effort(_remapped(_list(target, record_type), aliases))
 
     snapshot_phases = by_effort("score:phase").get(effort, [])
@@ -906,7 +905,7 @@ def load_requirement_detail(
     """Load one requirement, including superseded assessments oldest first."""
     aliases = _merge_aliases(_list(target, "score:effort"))
 
-    def listed(record_type: str, state: str | None = None) -> list[dict[str, Any]]:
+    def listed(record_type: str, state: str | None = None) -> list[Record]:
         return _remapped(_list(target, record_type, state=state), aliases)
 
     specs = listed("score:specification")

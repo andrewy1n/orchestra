@@ -20,7 +20,7 @@ class Lifecycle:
                     seen.append(state)
         return tuple(seen)
 
-    def allows(self, src: str, dest: str) -> bool:
+    def allows(self, src: str, dest: object) -> bool:
         return dest in self.transitions.get(src, ())
 
     @property

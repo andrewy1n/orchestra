@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import io
 import json
 import os
 import subprocess
@@ -13,9 +14,13 @@ import pytest
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.config import new_config
+from orchestra.canon.errors import StoreError
+from orchestra.canon.migrate import migration_path, transform
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.revision import with_revision
+from orchestra.canon.sqlite_backend import SqliteBackend
+from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.stage import hooks
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -230,6 +235,94 @@ def test_cutover_r20_ci_does_not_read_the_live_store() -> None:
     jobs = workflow["jobs"]
     commands = [str(step.get("run", "")) for job in jobs.values() for step in job.get("steps", [])]
     assert not any("canon validate" in command for command in commands)
+
+
+def test_transfer_import_retains_bodyless_snapshot_fields_and_unknown_op_keys(
+    tmp_path: Path,
+) -> None:
+    record = with_revision(
+        {
+            "id": EFFORT_ID,
+            "record_type": "alpha:config",
+            "subject": "legacy snapshot",
+            "payload": {"title": "legacy", "level": 1},
+            "lifecycle_state": "active",
+            "relationships": {},
+            "recorded_at": "2026-01-01T00:00:00+00:00",
+            "legacy_metadata": {"source": "old-export"},
+        }
+    )
+    operation = {
+        "seq": 1,
+        "op_id": "legacy-op",
+        "kind": "create",
+        "outcome": "accepted",
+        "record": record,
+        "future_operation_field": {"kept": True},
+    }
+    envelope = {
+        "record_type": "alpha:config",
+        "record_id": EFFORT_ID,
+        "seq": 1,
+        "op": operation,
+    }
+    backend = SqliteBackend(tmp_path / "metadata", tmp_path / "data")
+
+    assert import_ops(backend, io.StringIO(json.dumps(envelope) + "\n")) == 1
+
+    assert backend.read_record("alpha:config", EFFORT_ID) == record
+    exported = io.StringIO()
+    assert export_ops(backend, exported) == 1
+    exported_envelope = json.loads(exported.getvalue())
+    assert exported_envelope["op"] == operation
+
+
+def test_transfer_export_skips_truthy_nonobject_operation_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backend = SqliteBackend(tmp_path / "metadata", tmp_path / "data")
+    malformed_op = {
+        "seq": 1,
+        "op_id": "malformed-op",
+        "kind": "create",
+        "outcome": "accepted",
+        "record": "legacy malformed value",
+    }
+    monkeypatch.setattr(
+        backend,
+        "iter_chains",
+        lambda: iter([(EFFORT_ID, [malformed_op])]),
+    )
+    monkeypatch.setattr(backend, "read_history", lambda: iter([]))
+
+    with pytest.raises(
+        StoreError,
+        match=rf"^{EFFORT_ID}: cannot determine chain record type$",
+    ):
+        export_ops(backend, io.StringIO())
+
+
+def test_migration_path_retains_numeric_version_coercion() -> None:
+    step = {"from": 1.5, "to": 3.9}
+    module = {"namespace": "alpha", "migrations": [step]}
+
+    assert migration_path(module, 1, 3) == [step]
+
+
+def test_transform_retains_nonstring_rename_type_target() -> None:
+    record = _record(EFFORT_ID, "alpha:config", "legacy", {"title": "item"})
+    step = {"rename_type": {"alpha:config": 42}}
+
+    moved = transform(record, [step])
+
+    assert moved["record_type"] == 42
+
+
+def test_transfer_nonobject_error_has_no_empty_identity_prefix(tmp_path: Path) -> None:
+    backend = SqliteBackend(tmp_path / "metadata", tmp_path / "data")
+
+    with pytest.raises(StoreError, match=r"^import line 1: envelope must be an object$"):
+        import_ops(backend, io.StringIO("[]\n"))
 
 
 def test_cutover_r1_config_selects_sqlite() -> None:

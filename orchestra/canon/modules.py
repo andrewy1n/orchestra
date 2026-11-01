@@ -8,9 +8,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata, resources
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.schema import SchemaError, validate_module
+from orchestra.canon.types import JsonObject, get_string
 
 GROUP = "canon.schemas"
 PATH_ENV = "CANON_SCHEMA_PATH"
@@ -22,14 +22,14 @@ class InstalledModule:
     version: str
     source: str
     text: str
-    module: dict[str, Any]
+    module: JsonObject
 
 
-def _entry_points() -> list[Any]:
+def _entry_points() -> list[metadata.EntryPoint]:
     return list(metadata.entry_points(group=GROUP))
 
 
-def _read_source(entry: Any) -> tuple[str, str]:
+def _read_source(entry: metadata.EntryPoint) -> tuple[str, str]:
     package = entry.value
     if ":" in package or not package:
         raise SchemaError(f"entry point {entry.name} = {package!r} must name a package")
@@ -43,7 +43,7 @@ def _read_source(entry: Any) -> tuple[str, str]:
 
 
 def _path_sources() -> list[tuple[str, str]]:
-    sources = []
+    sources: list[tuple[str, str]] = []
     for raw in os.environ.get(PATH_ENV, "").split(os.pathsep):
         if not raw:
             continue
@@ -67,7 +67,11 @@ def _collect(sources: Iterable[tuple[str, str]]) -> dict[str, InstalledModule]:
         except json.JSONDecodeError as exc:
             raise SchemaError(f"malformed JSON in schema module {source!r}: {exc}") from exc
         module = validate_module(data, source)
-        installed = InstalledModule(module["namespace"], module["version"], source, text, module)
+        namespace = get_string(module, "namespace")
+        version = get_string(module, "version")
+        if namespace is None or version is None:
+            raise SchemaError(f"invalid schema module {source!r}")
+        installed = InstalledModule(namespace, version, source, text, module)
         known = found.get(installed.namespace)
         if known is not None and known.text != text:
             raise SchemaError(

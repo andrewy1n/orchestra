@@ -21,29 +21,36 @@ record and never hand that copy back to the store.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from collections.abc import Iterator
+from dataclasses import dataclass
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.lifecycle import terminal_success_state
 from orchestra.canon.schema import DEPENDS_ON, SchemaSet
+from orchestra.canon.types import DerivedValues, Record
 
 
 def eligible_record_types(schemas: SchemaSet) -> set[str]:
     return {name for name, d in schemas.types.items() if DEPENDS_ON in d.fields}
 
 
-def _dependency_ids(record: dict[str, Any], index: RecordIndex) -> list[str | None]:
+def _dependency_ids(record: Record, index: RecordIndex) -> list[str | None]:
     subjects = (record.get("payload") or {}).get(DEPENDS_ON) or []
     ids: list[str | None] = []
-    for subject in subjects:
+    for subject in _dependency_subjects(subjects):
         target = index.resolve_subject(record["record_type"], subject)
         ids.append(target["id"] if target is not None else None)
     return ids
 
 
+def _dependency_subjects(subjects: object) -> Iterator[object]:
+    # Let Python retain its exact iteration behavior for malformed dependency values.
+    return iter(subjects)  # pyright: ignore[reportArgumentType, reportCallIssue, reportUnknownVariableType]
+
+
 def _is_ready(
     deps: list[str | None],
-    by_id: dict[str, dict[str, Any]],
+    by_id: dict[str, Record],
     success_cache: dict[str, str | None],
     schemas: SchemaSet,
 ) -> bool:
@@ -63,8 +70,15 @@ def _is_ready(
     return True
 
 
+@dataclass
+class _Frame:
+    node: str
+    deps: list[str]
+    index: int = 0
+
+
 def _compute_waves(
-    by_id: dict[str, dict[str, Any]], dependencies: dict[str, list[str | None]]
+    by_id: dict[str, Record], dependencies: dict[str, list[str | None]]
 ) -> dict[str, int | None]:
     WHITE, GRAY, BLACK = 0, 1, 2
     color: dict[str, int] = {}
@@ -77,24 +91,24 @@ def _compute_waves(
     for start_id in by_id:
         if color.get(start_id, WHITE) != WHITE:
             continue
-        stack: list[list[Any]] = [[start_id, deps_of(start_id), 0]]
+        stack = [_Frame(start_id, deps_of(start_id))]
         color[start_id] = GRAY
         while stack:
             frame = stack[-1]
-            node, deps, idx = frame[0], frame[1], frame[2]
+            node, deps, idx = frame.node, frame.deps, frame.index
             if idx < len(deps):
-                frame[2] += 1
+                frame.index += 1
                 dep = deps[idx]
                 dep_color = color.get(dep, WHITE)
                 if dep_color == WHITE:
                     if dep in by_id:
                         color[dep] = GRAY
-                        stack.append([dep, deps_of(dep), 0])
+                        stack.append(_Frame(dep, deps_of(dep)))
                     # else: dangling, no node to descend into
                 elif dep_color == GRAY:
                     # back edge: everything on the current path is unresolved
-                    for pending_id, _, _ in stack:
-                        cyclic.add(pending_id)
+                    for pending in stack:
+                        cyclic.add(pending.node)
                 continue
             stack.pop()
             color[node] = BLACK
@@ -115,7 +129,7 @@ def _compute_waves(
     return wave
 
 
-def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[str]]]:
+def compute_inverse(records: list[Record]) -> dict[str, dict[str, list[str]]]:
     """{target_id: {relationship_type: [source_id, ...]}} over every relationship
     edge in the record set, regardless of record type.
 
@@ -126,17 +140,19 @@ def compute_inverse(records: list[dict[str, Any]]) -> dict[str, dict[str, list[s
     """
     inverse: dict[str, dict[str, list[str]]] = {}
     for record in records:
-        source_id = cast(str, record.get("id"))
+        source_id = record.get("id")
         for rel_type, targets in (record.get("relationships") or {}).items():
             for target_id in targets or []:
-                inverse.setdefault(target_id, {}).setdefault(rel_type, []).append(source_id)
+                inverse.setdefault(target_id, {}).setdefault(rel_type, []).append(
+                    source_id  # pyright: ignore[reportArgumentType] # Preserve missing-id behavior for malformed records.
+                )
     for by_type in inverse.values():
         for sources in by_type.values():
             sources.sort()
     return inverse
 
 
-def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[str, dict[str, Any]]:
+def compute_derived(records: list[Record], schemas: SchemaSet) -> dict[str, DerivedValues]:
     """{record_id: {...}} of read-time-only values, never persisted.
 
     Call with the full record set: a dependency can name a record of any
@@ -161,10 +177,10 @@ def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[s
         by_type.get(DEPENDS_ON, []).sort()
     wave = _compute_waves(by_id, dependencies) if eligible else {}
     success_cache: dict[str, str | None] = {}
-    derived: dict[str, dict[str, Any]] = {}
+    derived: dict[str, DerivedValues] = {}
     for record in records:
         record_id = record["id"]
-        entry: dict[str, Any] = {}
+        entry: DerivedValues = {}
         if record.get("record_type") in eligible:
             entry["ready"] = _is_ready(dependencies[record_id], by_id, success_cache, schemas)
             entry["wave"] = wave.get(record_id)
@@ -177,22 +193,23 @@ def compute_derived(records: list[dict[str, Any]], schemas: SchemaSet) -> dict[s
     return derived
 
 
-def attach_derived(
-    record: dict[str, Any], derived_map: dict[str, dict[str, Any]]
-) -> dict[str, Any]:
+def attach_derived(record: Record, derived_map: dict[str, DerivedValues]) -> Record:
     """A copy of `record` with a top-level `derived` mapping, or `record`
     itself, unmodified, when it has no derived values."""
-    values = derived_map.get(cast(str, record.get("id")))
+    values = derived_map.get(
+        record.get("id")  # pyright: ignore[reportArgumentType] # Preserve missing-id lookup behavior for malformed records.
+    )
     if values is None:
         return record
-    out = dict(record)
-    out["derived"] = dict(values)
+    out: Record = {**record}
+    derived_copy: DerivedValues = {**values}
+    out["derived"] = derived_copy
     return out
 
 
 def attach_derived_all(
-    records: list[dict[str, Any]], derived_map: dict[str, dict[str, Any]]
-) -> list[dict[str, Any]]:
+    records: list[Record], derived_map: dict[str, DerivedValues]
+) -> list[Record]:
     if not derived_map:
         return records
     return [attach_derived(record, derived_map) for record in records]
