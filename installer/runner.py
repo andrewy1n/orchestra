@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import importlib.metadata
+import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 from installer.adapters import build_adapter
 from installer.detect import HostStatus, detect_hosts, detected_ids
 from installer.matrix import MatrixError, load_matrix
-from installer.model import InstallReport, InstallRequest, Plan, Provider
+from installer.model import Action, InstallReport, InstallRequest, Plan, Provider
 from installer.paths import is_packaged
 from installer.paths import source_root as default_source_root
 from installer.wizard import (
@@ -24,6 +29,76 @@ from installer.wizard import (
 
 class InstallError(ValueError):
     """A request the installer refuses before touching the filesystem."""
+
+
+_MANUAL_TOOL_URL = "git+https://github.com/andrewy1n/orchestra"
+
+
+class _ToolStep(NamedTuple):
+    action: Action
+    argv: tuple[str, ...]
+    execute: bool
+
+
+def _direct_tool_url() -> str | None:
+    """Direct URL of the first ``orchestra`` distribution on ``sys.path``.
+
+    ``vcs_info.commit_id`` is appended as ``@<commit_id>`` when present.
+    """
+    try:
+        dist = importlib.metadata.distribution("orchestra")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    raw = dist.read_text("direct_url.json")
+    if not raw:
+        return None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    url = payload.get("url")
+    if not isinstance(url, str) or not url:
+        return None
+    vcs = payload.get("vcs_info")
+    if isinstance(vcs, dict):
+        commit = vcs.get("commit_id")
+        if isinstance(commit, str) and commit:
+            return f"{url}@{commit}"
+    return url
+
+
+def _tool_step() -> _ToolStep | None:
+    """One tool-install step when ``orchestra`` is not on PATH."""
+    if shutil.which("orchestra") is not None:
+        return None
+    url = _direct_tool_url()
+    if url is None:
+        command = f"uv tool install {_MANUAL_TOOL_URL}"
+        action = Action(kind="tool", destination=Path("."), content=command)
+        return _ToolStep(action=action, argv=(), execute=False)
+    argv = ("uv", "tool", "install", url)
+    action = Action(kind="tool", destination=Path("."), content=" ".join(argv))
+    return _ToolStep(action=action, argv=argv, execute=True)
+
+
+def _execute_tool(request: InstallRequest, step: _ToolStep) -> int | None:
+    """Run the tool install. A dry run never runs the command."""
+    if request.dry_run or not step.execute:
+        return None
+    try:
+        completed = subprocess.run(list(step.argv), check=False)
+    except OSError as exc:
+        print(f"orchestra install: {exc}", file=sys.stderr)
+        return 1
+    if completed.returncode != 0:
+        command = " ".join(step.argv)
+        print(
+            f"orchestra install: {command} failed ({completed.returncode})",
+            file=sys.stderr,
+        )
+    return completed.returncode
 
 
 def select_providers(
@@ -244,9 +319,12 @@ def run(request: InstallRequest) -> int:
         pairs.append((adapter, plan))
         report.plans.append(plan)
 
+    step = None if request.uninstall else _tool_step()
     if request.dry_run or wizard:
         for plan in report.plans:
             render_plan(plan, dry_run=request.dry_run)
+    if step is not None:
+        print(f"  {step.action.render()}")
 
     if wizard and not request.dry_run:
         try:
@@ -283,6 +361,9 @@ def run(request: InstallRequest) -> int:
         else:
             print(f"  verified: FAILED ({'; '.join(verified.problems)})")
 
+    tool_status = _execute_tool(request, step) if step is not None else None
     if request.dry_run:
         print(f"planned {len(report.plans)} provider(s) at {base}")
+    if tool_status not in (None, 0):
+        return tool_status
     return 0 if report.ok else 1

@@ -28,13 +28,16 @@ class Provider:
 class Action:
     """One filesystem step in a plan."""
 
-    kind: str  # link | copy | write | remove | register | delegate
+    kind: str  # link | copy | write | remove | register | delegate | tool
     destination: Path
     source: Path | None = None
     unchanged: bool = False
     content: str | None = None
 
     def render(self) -> str:
+        if self.kind == "tool":
+            command = self.content or ""
+            return f"tool-install {command}".rstrip()
         prefix = {
             "link": "link",
             "copy": "copy",
