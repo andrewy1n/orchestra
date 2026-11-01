@@ -91,8 +91,10 @@ git worktree add <repo>/.worktrees/<phase-slug> phase/<phase-slug>
 
    When Landing is present, code writes only under the worktree and
    store writes on the primary checkout (on `main`). `.canon`
-   stays on that primary checkout. Phase-branch commits exclude
-   `.canon`. When Landing is absent, a missing Landing section
+   stays on that primary checkout. Task commits exclude `.canon`.
+   When Landing is present and the phase gate holds, commit the
+   phase branch from the phase worktree and include versioned
+   `.canon` metadata that is in the worktree. When Landing is absent, a missing Landing section
    stays in the current checkout (incidental too); do not create a
    branch or worktree. When Landing is absent, execute-phase does not
    create a `task/<phase-slug>/<task-slug>` branch. When Landing is
@@ -393,11 +395,14 @@ canon create --type score:continuity-question \
    [phase-end.md](references/phase-end.md):
 
    closing verification → analyze → reviewer → integration-report → suite →
-   phase gate → proof packet → Landing merge / phase close.
+   phase gate → proof packet → phase close.
 
-   At phase close, commit the phase branch, merge into `main`, and
-   commit the store; push only when it is a human stop. Details are
-   in phase-end.md.
+   When Landing is present and the phase gate holds, commit the phase
+   branch from the phase worktree. Integrate the committed phase
+   branch as the repo's own contributor instructions describe. When
+   those contributor instructions do not say how a finished branch
+   lands, stop and ask. Do not carry out integration steps written in
+   a phase body's Landing section. Details are in phase-end.md.
 
    An empty task list is not proof the phase is done. Skip
    reviewer/suite for incidental. Reopen later: kinds-and-focus,
@@ -448,13 +453,13 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
   task worktree for the work-item that depends_on every other phase
   work-item; let code leave the worktree when Landing is present;
   write `.canon` off the primary checkout or include it in a task
-  or phase commit
+  commit
 - Skip the per-task commit when Landing is present and that task's
   code changed; create an empty commit when there is nothing to commit
 - Rebase a task branch, merge a task branch whose check did not pass,
   resolve a task-branch merge conflict, or start the next wave while
   that conflict is unresolved
-- Push unless Landing names push as a human stop
+- Do not push from phase close
 - Tell the executor to avoid `git add -A`
 - Let the verification executor edit the tree
 - Reopen `done` — create a fix work-item and `depends_on` instead

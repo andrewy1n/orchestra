@@ -6,7 +6,7 @@ incidental task is closed). Order:
 
 last implementation wave → closing verification → analyze → reviewer →
 integration-report from reviewer `integration` → suite (per
-`phase_gate.suite`) → phase gate → Landing merge.
+`phase_gate.suite`) → phase gate → phase close.
 
 After the last implementation wave's execution-reports, return to
 execute-phase step 3 for the closing verification task. Do **not**
@@ -205,7 +205,7 @@ Do not waive suite policy. `deliver`/`repair` always need verification
 
 ## Proof packet
 
-When the gate holds, assemble a **proof packet** before Landing merge
+When the gate holds, assemble a **proof packet** before phase close
 or "phase done" language (skip only when no code/claim change).
 Incidental / no-Landing still get a packet when code or claims
 changed. Read `## Proof` on the phase for `kind` (default `claims`).
@@ -226,25 +226,28 @@ Body: `## Look`, `## Machine`, `## Attention`, `## Diff`
 and Attention in chat. Refuse "phase complete" without a packet at
 this phase-head. Head moves after fixes → new packet.
 
-## Landing merge and close
+## Commit the phase branch and stop
 
-With Landing: commit phase branch from worktree (exclude
-`.canon`); from primary checkout merge into `main`; store commit
-on `main` follows phase close. Push only when Landing names push as a
-human stop — otherwise do not push. No Landing → skip branch commit,
-merge, and store commit. Commit subject `type(scope): summary`; body
-1–2 sentences why.
+When Landing is present and the phase gate holds, commit the phase
+branch from the phase worktree. The phase-branch commit will include
+versioned `.canon` metadata that is in the worktree. Integrate the
+committed phase branch as the repo's own contributor instructions
+describe. When those contributor instructions do not say how a
+finished branch lands, stop and ask. Do not carry out integration
+steps written in a phase body's Landing section: a merge into the
+default branch, a push, a pull request, or a store commit on the
+default branch. No Landing → skip the phase-branch commit. Commit
+subject `type(scope): summary`; body 1–2 sentences why.
 
 ```bash
-git -C <repo>/.worktrees/<phase-slug> add -A -- . ':!.canon'
+git -C <repo>/.worktrees/<phase-slug> add -A -- .
 git -C <repo>/.worktrees/<phase-slug> commit -m "$(cat <<'EOF'
 feat(<phase-slug>): <summary>
 
-Commit the phase branch so the merge onto main has a revision to land.
+Commit the phase branch from the phase worktree so the work has a revision.
 
 EOF
 )"
-git -C <primary-checkout> merge phase/<phase-slug>
 ```
 
 At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
@@ -269,20 +272,7 @@ canon supersede --type score:position --id <effort-position-id> \
   --payload '{"position":"<phase-slug> done; next up: <next-phase-slug>","scope":"<unchanged from predecessor>","effort":"<focus>","phase":"<next-phase-slug>"}'
 ```
 
-Then store commit on `main` (Landing only):
-
-```bash
-git -C <primary-checkout> add -- .canon
-git -C <primary-checkout> commit -m "$(cat <<'EOF'
-chore(<phase-slug>): record the store
-
-Commit the store on main so the record diff shows what changed and why.
-
-EOF
-)"
-```
-
-Skip phase close / Landing commits for incidental. On revision
+Skip phase close commits for incidental. On revision
 conflict, re-read effort position and retry. Do not materialize the
 next phase's tasks unless asked (`plan-phase`).
 
