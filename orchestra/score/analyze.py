@@ -5,14 +5,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
-from orchestra.canon.types import JsonValue
+from orchestra.canon.types import JsonValue, Record
 
 MARKER = "[NEEDS CLARIFICATION"
 _CODE_SPAN = re.compile(r"`[^`]*`")
 _REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 _COMPOUND = re.compile(r"\band\b|;")
 
-RecordData: TypeAlias = Mapping[str, JsonValue]
+RecordData: TypeAlias = Record | Mapping[str, JsonValue]
 
 
 def _payload(record: RecordData) -> Mapping[str, JsonValue]:
