@@ -258,9 +258,11 @@ class CursorAdapter(NativeAdapter):
 
     Cursor reads session hooks from ``hooks.json``. The source payload at
     ``hosts/cursor/hooks.json`` contributes ``{command}`` entries, merged by
-    exact command string into the existing file. The registration records
-    each ``(event, command)`` pair this installer added under ``hooks``.
-    Uninstall removes only those pairs.
+    exact command string into the existing file. A symlinked ``hooks.json``
+    is replaced by a regular file holding the merged hooks; the symlink
+    target is not written. The registration records each ``(event, command)``
+    pair this installer added under ``hooks``. Uninstall removes only those
+    pairs.
     """
 
     def desired_entries(self) -> dict[str, Path]:
@@ -303,10 +305,26 @@ class CursorAdapter(NativeAdapter):
             return {}
         return self._load_object(path)
 
-    def _write_hooks(self, payload: dict[str, object]) -> None:
+    def _write_hooks(self, payload: dict[str, object]) -> bool:
         path = self._hooks_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        replaced_symlink = self._unlink_if_symlink(path)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return replaced_symlink
+
+    @staticmethod
+    def _unlink_if_symlink(path: Path) -> bool:
+        if not path.is_symlink():
+            return False
+        path.unlink()
+        return True
+
+    @staticmethod
+    def _symlink_replacement_note(note: str) -> str:
+        message = "hooks.json was a symlink and is now a regular file"
+        if not note:
+            return message
+        return f"{note}; {message}"
 
     def _discard_hooks_file(self) -> None:
         path = self._hooks_path()
@@ -565,21 +583,25 @@ class CursorAdapter(NativeAdapter):
         result = super().apply(rest)
         applied = list(result.applied)
         unchanged = list(result.unchanged)
+        note = result.note
         fragment = self._fragment()
         if merges and fragment:
+            linked = self._hooks_path().is_symlink()
             document = self._read_hooks()
-            if self._hooks_have_payload(document, fragment):
+            if self._hooks_have_payload(document, fragment) and not linked:
                 unchanged.append("hooks.json")
             else:
-                self._write_hooks(self._merge_hooks(document, fragment))
+                replaced_symlink = self._write_hooks(self._merge_hooks(document, fragment))
                 applied.append("hooks.json")
+                if replaced_symlink:
+                    note = self._symlink_replacement_note(note)
         return ApplyResult(
             provider=result.provider,
             root=result.root,
             applied=tuple(applied),
             unchanged=tuple(unchanged),
             removed=result.removed,
-            note=result.note,
+            note=note,
         )
 
     def verify(self) -> VerifyResult:
