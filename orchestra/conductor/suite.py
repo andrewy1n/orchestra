@@ -363,6 +363,7 @@ def start_suite_background(
     log_dir: Path | None = None,
     suite_command: str | None = None,
     policy: SuitePolicy | None = None,
+    store_root: Path | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
     runner: Callable[..., object] | None = None,
@@ -374,7 +375,7 @@ def start_suite_background(
     On dirty-pass refusal, returns a ``SuiteResult`` with ``refuse=True``.
     """
     work = worktree.resolve()
-    resolved_policy = policy if policy is not None else load_suite_policy(work)
+    resolved_policy = policy if policy is not None else load_suite_policy(store_root or work)
     head = phase_head or git_head(work)
 
     if not resolved_policy.run_locally and suite_command is None:

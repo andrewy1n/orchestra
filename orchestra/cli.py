@@ -18,6 +18,7 @@ from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
+from orchestra.store import resolve_store
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
 
@@ -64,6 +65,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_TIMEOUT_S,
         help=f"verify_command timeout in seconds (default: {DEFAULT_TIMEOUT_S:g})",
+    )
+    check.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
     )
 
     close_batch = sub.add_parser(
@@ -216,7 +223,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--store",
         default=None,
         metavar="DIR",
-        help="Store root (default: resolve from --cwd)",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
     )
     review_brief.add_argument(
         "--out",
@@ -245,7 +252,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--store",
         default=None,
         metavar="DIR",
-        help="Store root (default: resolve from --cwd)",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
     )
 
     suite_parser = sub.add_parser(
@@ -259,6 +266,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Print the configured phase_gate.suite policy as JSON",
     )
     suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
+    suite_policy.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
+    )
 
     suite_start = suite_sub.add_parser(
         "start",
@@ -270,6 +283,12 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="suite_command",
         default=None,
         help="Override the configured suite command",
+    )
+    suite_start.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
     )
 
     suite_poll = suite_sub.add_parser(
@@ -303,7 +322,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--store",
         default=None,
         metavar="DIR",
-        help="Store root (default: resolve from --cwd)",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
     )
 
     store = sub.add_parser(
@@ -471,10 +490,10 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
 
 
 def _load_review_records(
-    work: Path,
+    store_root: Path,
 ) -> tuple[list[Record], list[str]]:
     """Read the reviewer-allowed kinds from the opened store."""
-    project = open_store(work)
+    project = open_store(store_root)
     records: list[Record] = []
     failures: list[str] = []
     for kind in sorted(reviewer.ALLOWED_KINDS):
@@ -493,7 +512,7 @@ def _load_review_records(
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records, failures = _load_review_records(work)
+        records, failures = _load_review_records(resolve_store(args.store, work))
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
@@ -518,7 +537,7 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
 
 def _cmd_analyze(args: argparse.Namespace) -> int:
     try:
-        records = open_store(_cwd(args), store=args.store).records()
+        records = open_store(resolve_store(args.store, _cwd(args))).records()
     except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -550,7 +569,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
 
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
-        policy = suite.load_suite_policy(_cwd(args))
+        policy = suite.load_suite_policy(resolve_store(args.store, _cwd(args)))
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra suite policy: {exc}", file=sys.stderr)
         return 2
@@ -562,6 +581,7 @@ def _cmd_suite_start(args: argparse.Namespace) -> int:
     try:
         outcome = suite.start_suite_background(
             worktree=_cwd(args),
+            store_root=resolve_store(args.store, _cwd(args)),
             phase_slug=args.phase,
             phase_head=args.phase_head,
             session_name=args.session,
@@ -634,9 +654,8 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 3
-        directory = Path(args.store).expanduser() if getattr(args, "store", None) else work
         record = suite.record_suite_check_run(
-            store_root=directory,
+            store_root=resolve_store(args.store, work),
             phase_slug=args.phase,
             effort=args.effort,
             suite=result,
@@ -825,6 +844,7 @@ def main(argv: list[str] | None = None) -> int:
         outcome = run_check(
             acceptance_id=args.acceptance,
             cwd=work,
+            store_root=resolve_store(args.store, Path.cwd()),
             allow_dirty=args.allow_dirty,
             execution_report=args.execution_report,
             timeout=args.timeout,
