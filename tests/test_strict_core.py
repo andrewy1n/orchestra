@@ -110,7 +110,7 @@ def test_strict_core_roots_reject_unannotated_parameters(root: str, tmp_path: Pa
 
 def test_any_remains_allowed_outside_strict_roots(tmp_path: Path) -> None:
     project = _probe_project(tmp_path)
-    probe = _probe_path(project, "orchestra/tuner")
+    probe = _probe_path(project, "orchestra")
     probe.write_text(
         "from typing import Any\n\ndef value(item: Any) -> Any:\n    return item\n",
         encoding="utf-8",
