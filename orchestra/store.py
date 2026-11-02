@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
@@ -14,6 +15,7 @@ __all__ = [
     "create_record",
     "find_store_root",
     "get_record",
+    "resolve_store",
 ]
 
 
@@ -27,6 +29,16 @@ def find_store_root(start: Path) -> Path:
             continue
         return project.project_root
     return start.resolve()
+
+
+def resolve_store(store: str | None, cwd: Path) -> Path:
+    """Return the store root: the flag, then $ORCHESTRA_STORE, then the root found from cwd."""
+    if store:
+        return Path(store).expanduser()
+    env = os.environ.get("ORCHESTRA_STORE")
+    if env:
+        return Path(env).expanduser()
+    return find_store_root(cwd)
 
 
 def get_record(root: Path, record_id: str, record_type: str | None = None) -> Record:
