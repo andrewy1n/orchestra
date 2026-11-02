@@ -26,6 +26,8 @@ from orchestra.conductor import suite
 HELP_PATHS = [
     ["idea"],
     ["analyze"],
+    ["gate"],
+    ["land"],
     ["review-brief"],
     ["suite", "policy"],
     ["suite", "start"],

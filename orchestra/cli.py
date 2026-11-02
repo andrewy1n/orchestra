@@ -13,7 +13,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import reviewer, suite
+from orchestra.conductor import gate, reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
@@ -253,6 +253,31 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="DIR",
         help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
+    )
+
+    gate_parser = sub.add_parser(
+        "gate",
+        help="Check the phase gate; exit 1 and name each missing term when it does not hold",
+    )
+    gate_parser.add_argument("phase", help="Phase slug")
+    gate_parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    gate_parser.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
+    )
+
+    land_parser = sub.add_parser(
+        "land",
+        help="Run the phase gate, then the Landing merge: command",
+    )
+    land_parser.add_argument("phase", help="Phase slug")
+    land_parser.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
     )
 
     suite_parser = sub.add_parser(
@@ -567,6 +592,38 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _cmd_gate(args: argparse.Namespace) -> int:
+    try:
+        terms = gate.gate_terms(resolve_store(args.store, Path.cwd()), args.phase)
+    except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    missing = gate.missing_terms(terms)
+    if args.json:
+        _print_json(
+            {
+                "phase": args.phase,
+                "holds": not missing,
+                "missing": [term.name for term in missing],
+            }
+        )
+    elif missing:
+        for line in gate.format_missing(missing):
+            print(f"{args.phase}: {line}")
+    else:
+        print(f"{args.phase}: gate holds")
+    return 1 if missing else 0
+
+
+def _cmd_land(args: argparse.Namespace) -> int:
+    try:
+        store_root = resolve_store(args.store, Path.cwd())
+        return gate.land(store_root, args.phase)
+    except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra land: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
         policy = suite.load_suite_policy(resolve_store(args.store, _cwd(args)))
@@ -877,6 +934,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_review_brief(args)
     if args.command == "analyze":
         return _cmd_analyze(args)
+    if args.command == "gate":
+        return _cmd_gate(args)
+    if args.command == "land":
+        return _cmd_land(args)
     if args.command == "suite":
         if args.action == "policy":
             return _cmd_suite_policy(args)
