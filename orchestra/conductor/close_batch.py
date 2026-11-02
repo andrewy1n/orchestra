@@ -477,7 +477,7 @@ def _enforce_red_first_from_store(
         )
 
 
-def _assertion_level_red(record: Mapping[str, object]) -> bool:
+def _assertion_level_red(record: JsonObject) -> bool:
     """Ask tuner whether red failed at assertion level.
 
     The import stays inside this function so ``orchestra --help`` does not
@@ -632,7 +632,7 @@ def _enforce_oracle_gates(
     entry: CriterionRequest,
     *,
     green_payload: Mapping[str, object],
-    red_record: Mapping[str, object],
+    red_record: Record,
     cwd: Path,
     load_acceptance: AcceptanceLoader,
     list_oracle_amendments: AmendmentLister,
@@ -651,8 +651,11 @@ def _enforce_oracle_gates(
     if not is_oracle_backed(acceptance_payload):
         return
 
+    assertion_record: JsonObject = {"payload": red_record["payload"]}
+    if "body" in red_record:
+        assertion_record["body"] = red_record["body"]
     try:
-        assertion_red = _assertion_level_red(red_record)
+        assertion_red = _assertion_level_red(assertion_record)
     except OracleAdapterUnavailable as exc:
         raise CloseRefused(f"criterion {criterion_id!r}: {exc}") from exc
     if not assertion_red:
