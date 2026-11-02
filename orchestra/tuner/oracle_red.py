@@ -6,7 +6,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 
-from orchestra.canon.types import JsonValue
+from orchestra.canon.types import JsonValue, Record
 
 # Short-test-summary / inline failure reasons that are not assertion-level.
 _NON_ASSERTION_RE = re.compile(
@@ -76,7 +76,9 @@ def is_assertion_level_failure(
     return False
 
 
-def _payload_and_body(check_run: Mapping[str, JsonValue]) -> tuple[Mapping[str, JsonValue], str]:
+def _payload_and_body(
+    check_run: Mapping[str, JsonValue] | Record,
+) -> tuple[Mapping[str, JsonValue] | Record, str]:
     nested = check_run.get("payload")
     if isinstance(nested, dict):
         body = str(check_run.get("body") or nested.get("body") or nested.get("output") or "")
@@ -100,7 +102,7 @@ def _parse_failing_nodes(raw: JsonValue) -> list[str]:
     return []
 
 
-def is_assertion_level_red(check_run: Mapping[str, JsonValue]) -> bool:
+def is_assertion_level_red(check_run: Mapping[str, JsonValue] | Record) -> bool:
     """True when check-run is result=fail with assertion-level failing nodes.
 
     Accepts a full check-run record (``payload`` + ``body``) or a flat
