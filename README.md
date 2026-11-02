@@ -305,9 +305,11 @@ The phase body includes a `## Landing` section with branch
 `phase/<phase-slug>`, worktree
 `<repo>/.worktrees/<phase-slug>`, base `main`. When Landing is
 present and the phase gate holds, commit the phase branch from the
-phase worktree. Integrate the committed phase branch as the repo's
-own contributor instructions describe. When those contributor
-instructions do not say how a finished branch lands, stop and ask.
+phase worktree. Then run `orchestra land <phase-slug>` to integrate
+it. Land runs `orchestra gate` first and merges only when the gate
+holds. The Landing section names the repo's `merge: <command>` line
+and an optional `suite: <command>` line. Exit 2 means the Landing
+section names no `merge:` line. Stop and ask.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 
