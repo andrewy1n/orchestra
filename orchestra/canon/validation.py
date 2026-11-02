@@ -279,20 +279,19 @@ def _correct_errors(records: list[Record], index: RecordIndex, errors: list[str]
 
 
 def _current_errors(records: list[Record], schemas: SchemaSet, errors: list[str]) -> None:
-    active: dict[tuple[str, str], str] = {}
+    active: dict[tuple[str, str], list[str]] = {}
     for record in records:
         type_def = schemas.types.get(record.get("record_type", ""))
         if type_def is None or type_def.lifecycle.name != "current":
             continue
         if record.get("lifecycle_state") != type_def.lifecycle.initial:
             continue
-        key = (record["record_type"], record["subject"])
-        if key in active:
+        active.setdefault((record["record_type"], record["subject"]), []).append(record["id"])
+    for (record_type, subject), ids in active.items():
+        if len(ids) > 1:
             errors.append(
-                f"multiple active {key[0]} for subject={key[1]!r}: {active[key]} and {record['id']}"
+                f"multiple active {record_type} for subject={subject!r}: {', '.join(ids)}"
             )
-        else:
-            active[key] = record["id"]
 
 
 def validate_append_only_history(

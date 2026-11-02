@@ -424,7 +424,7 @@ def _require_one_active(
         if other["id"] != ignore and other["lifecycle_state"] == type_def.lifecycle.initial:
             raise ValidationError(
                 f"another active {record['record_type']} already exists for "
-                f"subject={record['subject']!r}: supersede {other['id']}"
+                f"subject={record['subject']!r}: use `canon supersede --id {other['id']}`"
             )
 
 
