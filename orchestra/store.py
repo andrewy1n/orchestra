@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
@@ -16,6 +18,7 @@ __all__ = [
     "find_store_root",
     "get_record",
     "resolve_store",
+    "resolved_store",
 ]
 
 
@@ -39,6 +42,19 @@ def resolve_store(store: str | None, cwd: Path) -> Path:
     if env:
         return Path(env).expanduser()
     return find_store_root(cwd)
+
+
+@contextmanager
+def resolved_store(store: str | None, cwd: Path) -> Generator[Path]:
+    """Yield the store root; an explicit flag or $ORCHESTRA_STORE hides $CANON_STORE meanwhile."""
+    root = resolve_store(store, cwd)
+    explicit = bool(store or os.environ.get("ORCHESTRA_STORE"))
+    hidden = os.environ.pop("CANON_STORE", None) if explicit else None
+    try:
+        yield root
+    finally:
+        if hidden is not None:
+            os.environ["CANON_STORE"] = hidden
 
 
 def get_record(root: Path, record_id: str, record_type: str | None = None) -> Record:
