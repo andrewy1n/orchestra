@@ -163,6 +163,29 @@ def test_store_client_create_observation(tmp_path: Path, monkeypatch) -> None:
     assert result.get("record_type") == OBS_TYPE
 
 
+def test_store_client_rejects_non_dict_observation_return(tmp_path: Path, monkeypatch) -> None:
+    root = _usable_root(tmp_path)
+    _block_cli(monkeypatch, observation)
+
+    def create_non_dict(self, *args, **kwargs):
+        return None
+
+    monkeypatch.setattr(observation.Project, "create", create_non_dict)
+    result, error = _call(
+        lambda: observation.record_observation(
+            root,
+            technique="verdict",
+            base_rev="base-pin",
+            head_rev="head-pin",
+            result="pass",
+        )
+    )
+
+    assert result is None
+    assert isinstance(error, RuntimeError)
+    assert str(error) == "create did not return a record"
+
+
 def test_store_client_list_observations(tmp_path: Path, monkeypatch) -> None:
     """R2: tuner.observation lists evidence-observations by calling Project.list."""
     root = _usable_root(tmp_path)

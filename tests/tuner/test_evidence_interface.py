@@ -24,6 +24,15 @@ from test_verdict import (
 RECORD_TYPE = "tuner:evidence-observation"
 
 
+def test_observation_filters_accept_top_level_and_nested_payload_shapes() -> None:
+    from orchestra.tuner.observation import _claim_ids_of, _technique_of
+
+    assert _claim_ids_of({"claim_ids": ("claim-a", 7)}) == ["claim-a", "7"]
+    assert _claim_ids_of({"payload": {"claim_ids": ["claim-b"]}}) == ["claim-b"]
+    assert _technique_of({"technique": "verdict"}) == "verdict"
+    assert _technique_of({"payload": {"technique": "pytest"}}) == "pytest"
+
+
 def _env() -> dict[str, str]:
     env = os.environ.copy()
     return env

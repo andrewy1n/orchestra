@@ -9,12 +9,12 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tuner.amendment import authorize
 from orchestra.tuner.evidence_kind import kind_allows_runner
 from orchestra.tuner.human_claim import verify_claim_signature
@@ -39,7 +39,7 @@ def run_verdict(
     base: str | None,
     claim_ids: Sequence[str],
     provenance: bool = False,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Judge ``claim_ids`` by re-executing their oracle tests.
 
     When ``base`` is omitted, the base revision is ``merge_base(cwd, at)``.
@@ -81,7 +81,7 @@ def run_verdict(
     base_runner_digest = runner_digest(base_manifest.runner)
     head_runner_digest = runner_digest(at_manifest.runner)
 
-    verdicts: list[dict[str, str] | None] = [None] * len(claim_ids)
+    verdicts: list[JsonObject | None] = [None] * len(claim_ids)
     pending: list[tuple[int, str, Claim, Claim]] = []
     for index, claim_id in enumerate(claim_ids):
         if claim_id in provenance_fails:
@@ -143,21 +143,23 @@ def run_verdict(
     return _payload(claims)
 
 
-def _payload(claims: list[dict[str, str]]) -> dict[str, Any]:
+def _payload(claims: list[JsonObject]) -> JsonObject:
     if any(item["result"] == "fail" for item in claims):
         result = "fail"
     elif any(item["result"] == "unstable" for item in claims):
         result = "unstable"
     else:
         result = "pass"
-    return {"result": result, "claims": claims}
+    claim_values: list[JsonValue] = []
+    claim_values.extend(claims)
+    return {"result": result, "claims": claim_values}
 
 
-def _fail(claim_id: str, reason: str) -> dict[str, str]:
+def _fail(claim_id: str, reason: str) -> JsonObject:
     return {"id": claim_id, "result": "fail", "reason": reason}
 
 
-def _human_verdict(claim: Claim, allowlist: bytes) -> dict[str, str]:
+def _human_verdict(claim: Claim, allowlist: bytes) -> JsonObject:
     if not claim.signature:
         return _fail(claim.id, "human signature missing")
     if not verify_claim_signature(claim.id, claim.text, claim.signature, allowlist):
@@ -169,7 +171,7 @@ def _mapping(
     claim: Claim,
     support_hashes: dict[str, str],
     digest: str,
-) -> dict[str, Any]:
+) -> JsonObject:
     return {
         "id": claim.id,
         "tests": list(claim.tests),
@@ -200,7 +202,7 @@ def _hashes_match(cwd: Path, revision: str, claim: Claim) -> bool:
     return actual == claim.oracle_hashes
 
 
-def _union(groups: Any) -> list[str]:
+def _union(groups: Iterable[Sequence[str]]) -> list[str]:
     nodes: list[str] = []
     for group in groups:
         for node in group:
@@ -216,7 +218,7 @@ def _judge_pending(
     base_runner: Sequence[str],
     head_runner: Sequence[str],
     pending: Sequence[tuple[int, str, Claim, Claim]],
-    verdicts: list[dict[str, str] | None],
+    verdicts: list[JsonObject | None],
 ) -> None:
     base_ids = _union(claim.tests for _, _, claim, _ in pending)
     head_ids = _union(claim.tests for _, _, _, claim in pending)
@@ -265,7 +267,7 @@ def _outcomes(
 
 
 @contextmanager
-def _silence_stdio() -> Iterator[None]:
+def _silence_stdio() -> Generator[None, None, None]:
     devnull = os.open(os.devnull, os.O_WRONLY)
     saved_out = os.dup(1)
     saved_err = os.dup(2)

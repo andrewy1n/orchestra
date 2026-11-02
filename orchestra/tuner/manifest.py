@@ -13,9 +13,10 @@ import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Literal
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonObject, JsonValue
 
 MANIFEST_PATH = ".tuner/manifest.json"
 ALLOWLIST_PATH = ".tuner/allowed_signers"
@@ -30,6 +31,7 @@ DEFAULT_RUNNER = (
 )
 
 _HASH_RE = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
+EvidenceKind = Literal["unit", "integration", "interaction"]
 
 
 class ManifestError(Exception):
@@ -43,15 +45,15 @@ class Claim:
     tests: tuple[str, ...]
     oracle_hashes: dict[str, str]
     support_files: tuple[str, ...] = ()
-    evidence_kind: str = "unit"
-    witness: str = "tests"
+    evidence_kind: EvidenceKind = "unit"
+    witness: Literal["tests", "human"] = "tests"
     signature: str = ""
 
 
 @dataclass(frozen=True)
 class Manifest:
     claims: tuple[Claim, ...]
-    amendments: tuple[dict[str, Any], ...]
+    amendments: tuple[JsonObject, ...]
     runner: tuple[str, ...]
     support_files: tuple[str, ...] = ()
 
@@ -135,7 +137,7 @@ def hash_oracle_files(
     return out
 
 
-def _parse_manifest(parsed: Any) -> Manifest:
+def _parse_manifest(parsed: JsonValue) -> Manifest:
     if not isinstance(parsed, dict):
         raise ManifestError("manifest must be a JSON object")
     claims_raw = parsed.get("claims")
@@ -150,30 +152,31 @@ def _parse_manifest(parsed: Any) -> Manifest:
     )
 
 
-def _parse_runner(parsed: Mapping[str, Any]) -> tuple[str, ...]:
+def _parse_runner(parsed: Mapping[str, JsonValue]) -> tuple[str, ...]:
     if "runner" not in parsed:
         return DEFAULT_RUNNER
     raw = parsed["runner"]
+    values = _string_items(raw)
     if (
-        not isinstance(raw, list)
-        or not raw
-        or not all(isinstance(item, str) and item for item in raw)
-        or sum(item == "{tests}" for item in raw) != 1
-        or not any("{report}" in item for item in raw)
+        values is None
+        or not values
+        or sum(item == "{tests}" for item in values) != 1
+        or not any("{report}" in item for item in values)
     ):
         raise ManifestError("runner must be a non-empty argv list with {tests} and {report}")
-    return tuple(raw)
+    return values
 
 
-def _parse_support_files(raw: Any, label: str) -> tuple[str, ...]:
+def _parse_support_files(raw: JsonValue, label: str) -> tuple[str, ...]:
     if raw is None:
         return ()
-    if not isinstance(raw, list) or not all(isinstance(item, str) and item for item in raw):
+    values = _string_items(raw)
+    if values is None:
         raise ManifestError(f"{label} must be a list of paths")
-    return tuple(raw)
+    return values
 
 
-def _parse_claim(raw: Any, index: int) -> Claim:
+def _parse_claim(raw: JsonValue, index: int) -> Claim:
     if not isinstance(raw, dict):
         raise ManifestError(f"claims[{index}] is not an object")
     claim_id = raw.get("id")
@@ -184,18 +187,21 @@ def _parse_claim(raw: Any, index: int) -> Claim:
         raise ManifestError(f"claims[{index}].id must be a non-empty string")
     if not isinstance(text, str):
         raise ManifestError(f"claims[{index}].text must be a string")
-    if not isinstance(tests, list) or not all(isinstance(item, str) and item for item in tests):
+    test_ids = _string_items(tests)
+    if test_ids is None:
         raise ManifestError(f"claims[{index}].tests must be a list of node ids")
     if not isinstance(hashes, dict):
         raise ManifestError(f"claims[{index}].oracle_hashes must be an object")
     from orchestra.tuner.evidence_kind import DEFAULT_KIND, KINDS
 
     kind = raw.get("evidence_kind", DEFAULT_KIND)
-    if kind not in KINDS:
+    if not isinstance(kind, str) or kind not in KINDS:
         raise ManifestError(f"claims[{index}].evidence_kind must be one of {', '.join(KINDS)}")
+    evidence_kind = _parse_evidence_kind(kind)
     witness = raw.get("witness", "tests")
     if witness not in ("tests", "human"):
         raise ManifestError(f"claims[{index}].witness must be 'tests' or 'human'")
+    typed_witness: Literal["tests", "human"] = witness
     signature = raw.get("signature", "")
     if signature is None:
         signature = ""
@@ -204,22 +210,22 @@ def _parse_claim(raw: Any, index: int) -> Claim:
     return Claim(
         id=claim_id,
         text=text,
-        tests=tuple(tests),
+        tests=test_ids,
         oracle_hashes=_parse_hashes(hashes, index),
         support_files=_parse_support_files(
             raw.get("support_files"),
             f"claims[{index}].support_files",
         ),
-        evidence_kind=kind,
-        witness=witness,
+        evidence_kind=evidence_kind,
+        witness=typed_witness,
         signature=signature,
     )
 
 
-def _parse_hashes(hashes: Mapping[str, Any], index: int) -> dict[str, str]:
+def _parse_hashes(hashes: Mapping[str, JsonValue], index: int) -> dict[str, str]:
     parsed: dict[str, str] = {}
     for relpath, digest in hashes.items():
-        if not isinstance(relpath, str) or not relpath:
+        if not relpath:
             raise ManifestError(f"claims[{index}].oracle_hashes has an empty path")
         if not isinstance(digest, str) or _HASH_RE.fullmatch(digest) is None:
             raise ManifestError(f"claims[{index}].oracle_hashes[{relpath!r}] must be sha256:<hex>")
@@ -227,17 +233,38 @@ def _parse_hashes(hashes: Mapping[str, Any], index: int) -> dict[str, str]:
     return parsed
 
 
-def _parse_amendments(raw: Any) -> tuple[dict[str, Any], ...]:
+def _parse_amendments(raw: JsonValue) -> tuple[JsonObject, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list):
         raise ManifestError("amendments must be a list")
-    amendments: list[dict[str, Any]] = []
+    amendments: list[JsonObject] = []
     for index, item in enumerate(raw):
         if not isinstance(item, dict):
             raise ManifestError(f"amendments[{index}] is not an object")
         amendments.append(dict(item))
     return tuple(amendments)
+
+
+def _string_items(raw: JsonValue) -> tuple[str, ...] | None:
+    if not isinstance(raw, list):
+        return None
+    values: list[str] = []
+    for item in raw:
+        if not isinstance(item, str) or not item:
+            return None
+        values.append(item)
+    return tuple(values)
+
+
+def _parse_evidence_kind(value: str) -> EvidenceKind:
+    if value == "unit":
+        return "unit"
+    if value == "integration":
+        return "integration"
+    if value == "interaction":
+        return "interaction"
+    raise AssertionError("evidence kind was validated")
 
 
 def _show_blob(cwd: Path | str, revision: str, relpath: str) -> bytes:

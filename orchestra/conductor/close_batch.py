@@ -477,7 +477,7 @@ def _enforce_red_first_from_store(
         )
 
 
-def _assertion_level_red(record: Mapping[str, object]) -> bool:
+def _assertion_level_red(record: Record) -> bool:
     """Ask tuner whether red failed at assertion level.
 
     The import stays inside this function so ``orchestra --help`` does not
@@ -632,7 +632,7 @@ def _enforce_oracle_gates(
     entry: CriterionRequest,
     *,
     green_payload: Mapping[str, object],
-    red_record: Mapping[str, object],
+    red_record: Record,
     cwd: Path,
     load_acceptance: AcceptanceLoader,
     list_oracle_amendments: AmendmentLister,

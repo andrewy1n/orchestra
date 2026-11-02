@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from orchestra.canon.types import JsonObject
 from orchestra.tuner.attestation import emit, verify
 from orchestra.tuner.audit import AuditError, run_audit
 from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
@@ -19,10 +20,12 @@ from orchestra.tuner.oracle_red import is_assertion_level_red
 from orchestra.tuner.verdict import run_verdict
 
 
-def _read_json(path: str | None) -> dict:
+def _read_json(path: str | None) -> JsonObject:
     if path is None or path == "-":
-        return json.load(sys.stdin)
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+        body: JsonObject = json.load(sys.stdin)
+        return body
+    body = json.loads(Path(path).read_text(encoding="utf-8"))
+    return body
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -283,14 +286,17 @@ def main(argv: list[str] | None = None) -> int:
             print(exc, file=sys.stderr)
             return 2
         print(json.dumps(payload, separators=(",", ":")))
+        result = payload["result"]
+        if not isinstance(result, str):
+            raise TypeError("verdict result must be a string")
         maybe_record_verdict_observation(
             work,
             at=args.at,
             base=args.base,
             claim_ids=args.claim_ids,
-            result=payload["result"],
+            result=result,
         )
-        return 0 if payload["result"] == "pass" else 1
+        return 0 if result == "pass" else 1
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
         try:
