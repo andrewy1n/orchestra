@@ -115,6 +115,12 @@ worktree (tmux); one check-run at phase-head SHA, subject
 metadata. Dirty-only pass refused like `orchestra check`. Suite is
 never red-first.
 
+When the phase's Landing names a `suite: <command>` line, that command
+replaces `phase_gate.suite.command` from the config. Mode and gate still
+come from the config. Run `orchestra suite policy --phase <phase-slug>`
+to read the policy with the Landing command. `orchestra suite start
+--phase <phase-slug>` uses the same command.
+
 After a local run:
 
 - `gate=required` — missing/failing suite blocks merge. On fail, fix
@@ -161,6 +167,25 @@ Advisory finding only when `gate=advisory` and the suite failed.
 
 ## Phase gate
 
+Run `orchestra gate <phase-slug>`. Exit 0 means the gate holds. Exit 1
+lists each missing term. Do not judge the gate from the queries below
+when the command is available.
+
+The gate holds only when all terms are true (skip review/suite terms
+for incidental):
+
+- Verification task exists and is `done`
+- Every active phase acceptance: latest check-run per `criterion_id`
+  passes, and a passing runner check-run at phase-head SHA
+- Every latest `method=manual` check-run has `signed_by`
+- Passing `method: review` / `evidence_kind: review` at phase-head
+- When `phase_gate.suite.gate` is `required` (and mode ≠ `none`):
+  passing `<phase-slug>-suite` at that same phase-head SHA.
+  `advisory` fail does not block; `deferred` / `none` → skip
+- No active `tuner:finding` for the effort has `needs` `human`
+
+Fallback for reading the records by hand:
+
 ```bash
 canon list --type score:work-item \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
@@ -178,19 +203,10 @@ canon list --type tuner:check-run \
 canon list --type tuner:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
+
+canon list --type tuner:finding --where payload.effort=<focus> \
+  --where payload.needs=human
 ```
-
-Gate holds only when all are true (skip review/suite bullets for
-incidental):
-
-- Verification task exists and is `done`
-- Every active phase acceptance: latest check-run per `criterion_id`
-  passes, and a passing runner check-run at phase-head SHA
-- Every latest `method=manual` check-run has `signed_by`
-- Passing `method: review` / `evidence_kind: review` at phase-head
-- When `phase_gate.suite.gate` is `required` (and mode ≠ `none`):
-  passing `<phase-slug>-suite` at that same phase-head SHA.
-  `advisory` fail does not block; `deferred` / `none` → skip
 
 User signs an unsigned manual check:
 

@@ -292,6 +292,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
     suite_policy.add_argument(
+        "--phase",
+        default=None,
+        help="Phase slug; a Landing suite: line replaces the configured command",
+    )
+    suite_policy.add_argument(
         "--store",
         default=None,
         metavar="DIR",
@@ -624,9 +629,20 @@ def _cmd_land(args: argparse.Namespace) -> int:
         return 2
 
 
+def _phase_suite_policy(store_root: Path, phase_slug: str | None) -> suite.SuitePolicy:
+    policy = suite.load_suite_policy(store_root)
+    if not phase_slug:
+        return policy
+    try:
+        landing = gate.landing_for(store_root, phase_slug)
+    except (LookupError, OSError, StoreBindingError, StoreError, ValueError):
+        return policy
+    return suite.with_landing_command(policy, landing.suite)
+
+
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
-        policy = suite.load_suite_policy(resolve_store(args.store, _cwd(args)))
+        policy = _phase_suite_policy(resolve_store(args.store, _cwd(args)), args.phase)
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra suite policy: {exc}", file=sys.stderr)
         return 2
@@ -636,9 +652,11 @@ def _cmd_suite_policy(args: argparse.Namespace) -> int:
 
 def _cmd_suite_start(args: argparse.Namespace) -> int:
     try:
+        store_root = resolve_store(args.store, _cwd(args))
         outcome = suite.start_suite_background(
             worktree=_cwd(args),
-            store_root=resolve_store(args.store, _cwd(args)),
+            store_root=store_root,
+            policy=_phase_suite_policy(store_root, args.phase),
             phase_slug=args.phase,
             phase_head=args.phase_head,
             session_name=args.session,

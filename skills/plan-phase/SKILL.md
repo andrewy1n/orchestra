@@ -146,7 +146,9 @@ canon update --type score:phase --id <phase-id> \
    `orchestra land <phase-slug>` to integrate it. Land runs
    `orchestra gate` first and merges only when the gate holds.
    Landing may carry a `merge: <command>` line and an optional
-   `suite: <command>` line. Exit 2 means the Landing section names no
+   `suite: <command>` line. The `suite:` command replaces the configured
+   `phase_gate.suite.command` for this phase; mode and gate still come
+   from the config. Exit 2 means the Landing section names no
    `merge:` line. Stop and ask. Write the merge only as a `merge:`
    line. Do not write it as a prose step. Do not write a push, a pull
    request, or a store commit on the default branch into Landing. Missing phase record →
