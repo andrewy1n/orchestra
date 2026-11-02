@@ -40,12 +40,10 @@ _CLAUSE_SPLIT = re.compile(r"\n+|(?<=[.;])\s+|\s+—\s+|\s+otherwise\s+", re.IGN
 
 _COMMIT = "commit the phase branch from the phase worktree"
 _GATE = "when landing is present and the phase gate holds"
-_INTEGRATE = (
-    "integrate the committed phase branch as the repo's own contributor instructions describe"
-)
-_ASK = "when those contributor instructions do not say how a finished branch lands, stop and ask"
+_INTEGRATE = "run `orchestra land <phase-slug>` to integrate it"
+_ASK = "exit 2 means the landing section names no `merge:` line"
 _CANON_META = "include versioned `.canon` metadata that is in the worktree"
-_IGNORE_BODY = "do not carry out integration steps written in a phase body's landing section"
+_IGNORE_BODY = "do not carry out integration steps from a phase body's landing section by hand"
 
 
 def _flat(text: str) -> str:
@@ -191,13 +189,13 @@ def test_r4_omits_pull_request() -> None:
 
 
 def test_r5_follows_repo_instructions() -> None:
-    """R5: Integrate the committed phase branch as the repo's contributor instructions describe."""
+    """R5: Integrate the committed phase branch with `orchestra land`."""
     for label, text in landing_surfaces():
         assert _INTEGRATE in _flat(text).lower(), label
 
 
 def test_r6_asks_when_silent() -> None:
-    """R6: When contributor instructions are silent, stop and ask."""
+    """R6: When the Landing section names no merge line, stop and ask."""
     for label, text in landing_surfaces():
         assert _ASK in _flat(text).lower(), label
 
@@ -221,7 +219,7 @@ def test_r8_phase_commit_includes_canon_metadata() -> None:
 
 
 def test_r9_ignores_landing_body_integration() -> None:
-    """R9: Do not carry out integration steps written in a phase body's Landing section."""
+    """R9: Do not carry out Landing integration steps by hand."""
     phase_end = dict(landing_surfaces())["skills/execute-phase/references/phase-end.md"]
     flat = _flat(phase_end).lower()
     start = flat.find(_IGNORE_BODY)
