@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,7 +58,7 @@ def validate_technique_result(technique: VerificationTechnique, result: object) 
         raise TechniqueContractError("technique result must use TechniqueResult")
     if result.verdict not in ("pass", "fail", "error", "skip"):
         raise TechniqueContractError(f"invalid technique verdict: {result.verdict!r}")
-    if not isinstance(result.output, dict) or not _is_json_value(result.output):
+    if not _is_json_object(result.output):
         raise TechniqueContractError("technique output must be structured JSON")
     technique.validate_result(result)
     return result
@@ -70,7 +71,7 @@ def run_claim_replay(
     if not _supports_claim_replay(technique):
         raise TechniqueContractError("claim replay requires a replay-capable technique")
     outcomes = technique.replay(request)
-    if not isinstance(outcomes, Mapping):
+    if not _is_mapping(outcomes):
         raise TechniqueContractError("replay outcomes must be a mapping")
     if set(outcomes) != set(request.test_ids):
         raise TechniqueContractError("replay outcomes must cover each requested test exactly once")
@@ -111,10 +112,17 @@ def _supports_claim_replay(technique: object) -> TypeGuard[ClaimReplayTechnique]
 
 
 def _is_json_value(value: object) -> bool:
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return True
-    if isinstance(value, list):
-        return all(_is_json_value(item) for item in value)
-    if isinstance(value, dict):
-        return all(isinstance(key, str) and _is_json_value(item) for key, item in value.items())
-    return False
+    try:
+        encoded = json.dumps(value, allow_nan=False)
+        decoded: object = json.loads(encoded)
+    except (TypeError, ValueError):
+        return False
+    return type(decoded) is type(value) and decoded == value
+
+
+def _is_json_object(value: object) -> bool:
+    return isinstance(value, dict) and _is_json_value(value)  # pyright: ignore[reportUnknownArgumentType]  # Plugin object keys remain dynamic until JSON serialization validates them.
+
+
+def _is_mapping(value: object) -> bool:
+    return isinstance(value, Mapping)

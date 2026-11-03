@@ -7,7 +7,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import metadata
-from typing import Literal
+from typing import Literal, TypeGuard
 
 from orchestra.canon.types import JsonObject
 
@@ -105,15 +105,15 @@ def _registrations(scope: PluginScope) -> tuple[PluginRegistration, ...]:
         distribution = entry.dist
         if distribution is None:
             raise PluginCatalogError(f"plugin entry point {entry.name!r} has no distribution")
-        name = distribution.metadata.get("Name")
+        name = _metadata_value(distribution, "Name")
         version = distribution.version
         if not name or not version:
             raise PluginCatalogError(
                 f"plugin entry point {entry.name!r} has no distribution identity"
             )
-        api_version = distribution.metadata.get("Orchestra-Plugin-API", PLUGIN_API_VERSION)
+        api_version = _metadata_value(distribution, "Orchestra-Plugin-API")
         config_shape = _config_shape(
-            distribution.metadata.get("Orchestra-Plugin-Config", "{}"), entry.name
+            _metadata_value(distribution, "Orchestra-Plugin-Config") or "{}", entry.name
         )
         descriptor = PluginDescriptor(
             scope=scope,
@@ -121,7 +121,7 @@ def _registrations(scope: PluginScope) -> tuple[PluginRegistration, ...]:
             target=entry.value,
             distribution=name,
             version=version,
-            api_version=api_version,
+            api_version=api_version or PLUGIN_API_VERSION,
             config_shape=config_shape,
         )
         registrations.append(PluginRegistration(descriptor, entry))
@@ -133,9 +133,24 @@ def _config_shape(raw: str, plugin_id: str) -> Mapping[str, object]:
         shape = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise PluginCatalogError(f"invalid config shape for plugin {plugin_id!r}: {exc}") from exc
-    if not isinstance(shape, dict) or any(not isinstance(key, str) for key in shape):
+    if not _is_string_mapping(shape):
         raise PluginCatalogError(f"config shape for plugin {plugin_id!r} must be a JSON object")
     return shape
+
+
+def _metadata_value(
+    distribution: metadata.Distribution,
+    key: str,
+    default: str | None = None,
+) -> str | None:
+    value: object = distribution.metadata.get(key, default)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]  # PackageMetadata implements get at runtime; typeshed omits it.
+    return value if isinstance(value, str) else default
+
+
+def _is_string_mapping(value: object) -> TypeGuard[dict[str, object]]:
+    if not isinstance(value, dict):
+        return False
+    return all(isinstance(key, str) for key in value)  # pyright: ignore[reportUnknownVariableType]  # JSON keys are dynamic until validated.
 
 
 def _reject_duplicates(registrations: tuple[PluginRegistration, ...]) -> None:

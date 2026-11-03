@@ -93,7 +93,8 @@ def dispatch_land(
     adapter = factory()
     if not isinstance(adapter, LandAdapter):
         raise ValueError(f"landing adapter {config.land_adapter!r} has no run method")
-    result = adapter.run(
+    result = _run_adapter(
+        adapter,
         LandRequest(
             root=project_root,
             proof_packet=proof_packet,
@@ -102,18 +103,36 @@ def dispatch_land(
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
             config=dict(config.land_config),
-        )
+        ),
     )
     if not isinstance(result, LandingResult):
         raise ValueError("landing adapter must return LandingResult")
     if result.result not in ("success", "fail", "blocked", "skipped"):
         raise ValueError(f"landing adapter returned invalid result: {result.result!r}")
-    if (
-        result.number < 0
-        or not isinstance(result.url, str)
-        or not isinstance(result.head_sha, str)
-        or any(not isinstance(status, str) for status in result.statuses)
-        or any(not isinstance(check, LandingCheck) for check in result.checks)
-    ):
+    if not _valid_landing_fields(result):
         raise ValueError("landing adapter returned malformed structured output")
     return result
+
+
+def _run_adapter(adapter: LandAdapter, request: LandRequest) -> object:
+    return adapter.run(request)
+
+
+def _valid_landing_fields(value: object) -> bool:
+    if not isinstance(value, LandingResult):
+        return False
+    return (
+        value.number >= 0
+        and _is_string(value.url)
+        and _is_string(value.head_sha)
+        and all(_is_string(status) for status in value.statuses)
+        and all(_is_landing_check(check) for check in value.checks)
+    )
+
+
+def _is_string(value: object) -> bool:
+    return isinstance(value, str)
+
+
+def _is_landing_check(value: object) -> bool:
+    return isinstance(value, LandingCheck)

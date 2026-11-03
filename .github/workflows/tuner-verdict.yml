@@ -36,6 +36,9 @@ jobs:
       - name: Install pytest
         run: python3 -m pip install --user pytest
 
+      - name: Install Orchestra plugin entry points
+        run: python3 -m pip install --user --no-deps -e .
+
       - name: Resolve fixture and claim
         id: ctx
         run: |

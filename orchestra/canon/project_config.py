@@ -102,7 +102,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     stages_raw = _table(verify.get("stages"), "verify.stages")
     stages = _parse_stages(stages_raw)
     unit_value = verify.get("unit")
-    unit = {} if unit_value is None else _table(unit_value, "verify.unit")
+    unit: Mapping[str, object] = {} if unit_value is None else _table(unit_value, "verify.unit")
     runner_value = unit.get("runner", list(DEFAULT_RUNNER))
     runner = _string_list(runner_value, "verify.unit.runner")
     if not runner:
@@ -187,14 +187,14 @@ def _json_value(value: object, label: str) -> JsonValue:
     if value is None or isinstance(value, (str, bool, int, float)):
         return value
     if isinstance(value, list):
-        return [_json_value(item, label) for item in value]
-    if isinstance(value, dict):
+        return [_json_value(item, label) for item in value]  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]  # TOML values are dynamic until validated.
+    if _is_string_mapping(value):
         result: JsonObject = {}
         for key, item in value.items():
-            if not isinstance(key, str):
-                raise ProjectConfigError(f"{label} contains a non-string key")
             result[key] = _json_value(item, f"{label}.{key}")
         return result
+    if isinstance(value, dict):
+        raise ProjectConfigError(f"{label} contains a non-string key")
     raise ProjectConfigError(f"{label} must contain only JSON values")
 
 

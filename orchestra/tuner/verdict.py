@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -30,7 +30,7 @@ from orchestra.tuner.manifest import (
     runner_digest,
 )
 from orchestra.tuner.provenance import check_provenance
-from orchestra.tuner.technique import replay_at_revision
+from orchestra.tuner.technique import TestOutcome, replay_at_revision
 
 
 def run_verdict(
@@ -257,7 +257,7 @@ def _outcomes(
     worktree: Path | None,
     test_ids: Sequence[str],
     runner: Sequence[str],
-) -> dict[str, str]:
+) -> dict[str, TestOutcome]:
     if worktree is None:
         return {test_id: "not_run" for test_id in test_ids}
     if not test_ids:
@@ -283,27 +283,27 @@ def _silence_stdio() -> Generator[None, None, None]:
         os.close(devnull)
 
 
-def _assertion_red(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
+def _assertion_red(tests: Sequence[str], outcomes: Mapping[str, str]) -> bool:
     return bool(tests) and all(outcomes.get(test_id) == "assertion_failed" for test_id in tests)
 
 
-def _head_passed(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
+def _head_passed(tests: Sequence[str], outcomes: Mapping[str, str]) -> bool:
     return bool(tests) and all(outcomes.get(test_id) == "passed" for test_id in tests)
 
 
 def _viable(
     base_tests: Sequence[str],
     head_tests: Sequence[str],
-    base_outcomes: dict[str, str],
-    head_outcomes: dict[str, str],
+    base_outcomes: Mapping[str, str],
+    head_outcomes: Mapping[str, str],
 ) -> bool:
     return _assertion_red(base_tests, base_outcomes) and _head_passed(head_tests, head_outcomes)
 
 
 def _disagrees(
     tests: Sequence[str],
-    first: dict[str, str],
-    second: dict[str, str],
+    first: Mapping[str, str],
+    second: Mapping[str, str],
 ) -> bool:
     return any(second.get(test_id) != first.get(test_id) for test_id in tests)
 
