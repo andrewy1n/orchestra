@@ -431,7 +431,15 @@ subcommands and shells to `canon` for store reads/writes:
 | `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
+| `land` | Publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
+
+`orchestra land --phase <phase> --cwd <phase-worktree>` requires a
+proof packet for that phase at the worktree's current commit and
+`[land].adapter = "github-pr"` in `orchestra.toml`. It pushes the branch,
+opens the PR with the packet body, and reports the completed check runs
+and commit statuses. It never merges; the merge decision stays with a
+human.
 
 `orchestra verify` runs tuner, the evidence CLI. Flags live in each
 subcommand's `--help`:

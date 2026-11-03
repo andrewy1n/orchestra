@@ -1,4 +1,4 @@
-"""The CLI exposes the reviewer, suite, and store surface skills call by name.
+"""The CLI exposes the reviewer, suite, landing, and store surfaces.
 
 A skill must be able to run the phase-end reviewer, the configured suite, and
 store-bound ``canon`` calls with ``orchestra`` alone. These tests
@@ -27,6 +27,7 @@ HELP_PATHS = [
     ["idea"],
     ["analyze"],
     ["review-brief"],
+    ["land"],
     ["suite", "policy"],
     ["suite", "start"],
     ["suite", "poll"],
@@ -91,7 +92,7 @@ def test_top_level_help_names_the_runtime_surface(capsys):
         cli.main(["--help"])
     assert exit_info.value.code == 0
     text = capsys.readouterr().out
-    for name in ("analyze", "review-brief", "suite", "store"):
+    for name in ("analyze", "review-brief", "land", "suite", "store"):
         assert name in text
 
 

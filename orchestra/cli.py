@@ -13,8 +13,9 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import reviewer, suite
+from orchestra.conductor import github_pr, reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
+from orchestra.conductor.github_pr import GitHubPRError
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
@@ -305,6 +306,19 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Store root (default: resolve from --cwd)",
     )
+
+    land = sub.add_parser(
+        "land",
+        help="Open the configured pull request with the phase proof packet and wait for CI",
+    )
+    land.add_argument("--phase", required=True, help="Phase slug")
+    land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
+    land.add_argument("--base", default="main", help="Pull request base branch")
+    land.add_argument("--remote", default="origin", help="Git remote to publish")
+    land.add_argument(
+        "--poll-interval", type=float, default=10, help="CI polling interval in seconds"
+    )
+    land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
 
     store = sub.add_parser(
         "store",
@@ -649,6 +663,64 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_land(args: argparse.Namespace) -> int:
+    work = _cwd(args).resolve()
+    try:
+        project = open_store(work)
+        head = git_head(work)
+        packets = project.list("conductor:proof-packet")
+        packet = next(
+            (
+                record
+                for record in reversed(packets)
+                if record["subject"] == args.phase and record["payload"].get("revision") == head
+            ),
+            None,
+        )
+        if packet is None:
+            raise ValueError(f"no proof packet for phase {args.phase!r} at HEAD {head}")
+        body = packet.get("body")
+        if not isinstance(body, str):
+            raise ValueError("phase proof packet has no body")
+        result = github_pr.open_pull_request(
+            work,
+            body,
+            base=args.base,
+            remote=args.remote,
+            poll_interval_s=args.poll_interval,
+            timeout_s=args.timeout,
+        )
+    except (
+        GitHubPRError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+        TimeoutError,
+        ValueError,
+    ) as exc:
+        print(f"orchestra land: {exc}", file=sys.stderr)
+        return 2
+    _print_json(
+        {
+            "ok": result.result == "success",
+            "op": "land",
+            "pull_request": {
+                "number": result.number,
+                "url": result.url,
+                "head_sha": result.head_sha,
+            },
+            "checks": [
+                {"name": check.name, "status": check.status, "conclusion": check.conclusion}
+                for check in result.checks
+            ],
+            "statuses": result.statuses,
+            "result": result.result,
+        }
+    )
+    return 0 if result.result == "success" else 1
+
+
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
     values: dict[str, list[str]] = {}
     index = 0
@@ -867,6 +939,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "collect":
             return _cmd_suite_collect(args)
         return _cmd_suite_record(args)
+    if args.command == "land":
+        return _cmd_land(args)
     if args.command == "store":
         if args.action == "path":
             return _cmd_store_path(args)
