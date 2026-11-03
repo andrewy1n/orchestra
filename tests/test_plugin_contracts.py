@@ -81,6 +81,13 @@ def test_selected_third_party_technique_uses_the_shared_result(
     from orchestra.plugins import PluginContext, dispatch_plugins
 
     class ThirdPartyTechnique:
+        def validate_config(self, config: object) -> None:
+            del config
+
+        def execution_definition(self, config: object) -> dict[str, object]:
+            del config
+            return {"engine": "external-v1"}
+
         def run(self, config: object, context: object) -> TechniqueResult:
             del config, context
             return TechniqueResult("pass", {"checks": {"ready": True}})
@@ -121,6 +128,13 @@ def test_selected_stage_only_technique_cannot_replay(
     from orchestra.canon import extensions
 
     class StageOnlyFactory:
+        def validate_config(self, config: object) -> None:
+            del config
+
+        def execution_definition(self, config: object) -> dict[str, object]:
+            del config
+            return {"engine": "stage-only-v1"}
+
         def validate_result(self, result: TechniqueResult) -> None:
             del result
 

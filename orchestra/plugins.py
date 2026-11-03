@@ -9,6 +9,7 @@ from typing import Protocol, runtime_checkable
 from orchestra.canon.extensions import (
     PluginCatalogError,
     PluginDescriptor,
+    compute_execution_identity,
     list_plugins,
     resolve_plugin,
 )
@@ -50,6 +51,8 @@ class PluginResult:
     result: str
     runner_digest: str | None
     output: JsonObject
+    execution_identity: JsonObject
+    execution_digest: str
 
 
 @runtime_checkable
@@ -59,6 +62,12 @@ class BuiltinPlugin(VerificationTechnique, Protocol):
 
 class UnitPlugin:
     plugin_id: str = "unit"
+
+    def validate_config(self, config: ProjectConfig) -> None:
+        del config
+
+    def execution_definition(self, config: ProjectConfig) -> JsonObject:
+        return {"runner_argv": list(config.runner)}
 
     def run(self, config: ProjectConfig, context: PluginContext) -> TechniqueResult:
         if not context.tests:
@@ -81,6 +90,13 @@ class UnitPlugin:
 
 class ReviewPlugin:
     plugin_id: str = "review"
+
+    def validate_config(self, config: ProjectConfig) -> None:
+        del config
+
+    def execution_definition(self, config: ProjectConfig) -> JsonObject:
+        del config
+        return {"reviewer_contract": 1}
 
     def run(self, config: ProjectConfig, context: PluginContext) -> TechniqueResult:
         del config
@@ -130,7 +146,8 @@ def dispatch_plugins(
     results: list[PluginResult] = []
     for plugin_id in plugin_ids:
         try:
-            factory = resolve_plugin("tuner.verify", plugin_id).load()
+            registration = resolve_plugin("tuner.verify", plugin_id)
+            factory = registration.load()
         except PluginCatalogError as exc:
             raise ValueError(str(exc)) from exc
         if not callable(factory):
@@ -138,6 +155,10 @@ def dispatch_plugins(
         plugin = factory()
         if not isinstance(plugin, BuiltinPlugin):
             raise ValueError(f"verification plugin {plugin_id!r} has no run method")
+        plugin.validate_config(config)
+        definition = plugin.execution_definition(config)
+        parameters = config.verify_config.get(plugin_id, {})
+        identity = compute_execution_identity(registration.descriptor, parameters, definition)
         technique_result = validate_technique_result(plugin, plugin.run(config, pinned_context))
         results.append(
             PluginResult(
@@ -145,8 +166,10 @@ def dispatch_plugins(
                 stage=context.stage,
                 revision=revision,
                 result=technique_result.verdict,
-                runner_digest=runner_digest(config.runner) if plugin_id == "unit" else None,
+                runner_digest=_runner_digest(definition),
                 output=technique_result.output,
+                execution_identity=identity.payload,
+                execution_digest=identity.digest,
             )
         )
     return tuple(results)
@@ -158,3 +181,10 @@ def registered_plugin_ids() -> tuple[str, ...]:
 
 def resolve_plugin_catalog() -> tuple[PluginDescriptor, ...]:
     return list_plugins("tuner.verify")
+
+
+def _runner_digest(definition: JsonObject) -> str | None:
+    argv = definition.get("runner_argv")
+    if not isinstance(argv, list) or any(not isinstance(arg, str) for arg in argv):
+        return None
+    return runner_digest(argv)

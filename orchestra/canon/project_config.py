@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, TypeGuard
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonObject, JsonValue
 
 CONFIG_PATH = "orchestra.toml"
 StageName = Literal["task", "phase", "milestone"]
@@ -44,8 +45,8 @@ class ProjectConfig:
     suite: SuiteConfig
     land_adapter: str
     merge_policy: str
-    verify_config: Mapping[str, Mapping[str, object]]
-    land_config: Mapping[str, object]
+    verify_config: Mapping[str, JsonObject]
+    land_config: JsonObject
     replay_technique: str
 
 
@@ -161,20 +162,40 @@ def _parse_stages(raw: Mapping[str, object]) -> dict[StageName, tuple[PluginName
     return result
 
 
-def _parse_verify_config(verify: Mapping[str, object]) -> Mapping[str, Mapping[str, object]]:
+def _parse_verify_config(verify: Mapping[str, object]) -> Mapping[str, JsonObject]:
     return {
-        plugin_id: _table(value, f"verify.{plugin_id}")
+        plugin_id: _json_object(value, f"verify.{plugin_id}")
         for plugin_id, value in verify.items()
         if plugin_id not in ("stages", "replay")
     }
 
 
-def _parse_land_config(value: object) -> Mapping[str, object]:
+def _parse_land_config(value: object) -> JsonObject:
     if value is None:
         return {}
     raw = _table(value, "land")
     config = raw.get("config", {})
-    return _table(config, "land.config")
+    return _json_object(config, "land.config")
+
+
+def _json_object(value: object, label: str) -> JsonObject:
+    raw = _table(value, label)
+    return {key: _json_value(item, f"{label}.{key}") for key, item in raw.items()}
+
+
+def _json_value(value: object, label: str) -> JsonValue:
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    if isinstance(value, list):
+        return [_json_value(item, label) for item in value]
+    if isinstance(value, dict):
+        result: JsonObject = {}
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ProjectConfigError(f"{label} contains a non-string key")
+            result[key] = _json_value(item, f"{label}.{key}")
+        return result
+    raise ProjectConfigError(f"{label} must contain only JSON values")
 
 
 def _parse_replay_technique(value: object) -> str:

@@ -9,10 +9,13 @@ from pathlib import Path
 import pytest
 
 from orchestra import plugins
+from orchestra.canon.extensions import PluginDescriptor, compute_execution_identity
 from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.cli import main as orchestra_main
 from orchestra.plugin_evidence import (
     NAMESPACE,
+    _execution_identity,
+    canonical_payload,
     sign_plugin_result,
     verify_plugin_evidence,
 )
@@ -60,14 +63,17 @@ def _seed_repo(root: Path, plugin: str = "unit") -> tuple[str, Path, tuple[str, 
     return _git(root, "rev-parse", "HEAD"), key_path, runner
 
 
-def _plugin_result(revision: str, runner: tuple[str, ...]) -> plugins.PluginResult:
+def _plugin_result(root: Path, revision: str, runner: tuple[str, ...]) -> plugins.PluginResult:
+    identity, execution_digest, expected_runner = _execution_identity(root, revision, "unit")
     return plugins.PluginResult(
         plugin_id="unit",
         stage="phase",
         revision=revision,
         result="pass",
-        runner_digest=runner_digest(runner),
+        runner_digest=expected_runner,
         output={"tests/test_widget.py::test_widget": "passed"},
+        execution_identity=identity,
+        execution_digest=execution_digest,
     )
 
 
@@ -120,15 +126,107 @@ def test_target_commit_is_loaded_for_unit_evidence(
 def test_runner_digest_uses_canonical_argv(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     revision, key_path, runner = _seed_repo(root)
-    evidence = sign_plugin_result(root, _plugin_result(revision, runner), key_path=key_path)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
 
     assert evidence.runner_digest == runner_digest(runner)
+    assert evidence.execution_identity is not None
+    assert evidence.execution_identity["scope"] == "tuner.verify"
+    assert evidence.execution_identity["plugin_id"] == "unit"
+    assert evidence.execution_identity["distribution_name"] == "orchestra"
+    assert evidence.execution_identity["distribution_version"] == "0.1.0"
+    assert evidence.execution_identity["execution_definition"] == {"runner_argv": list(runner)}
+
+
+def test_execution_identity_canonical_hash_preserves_argv_boundaries() -> None:
+    descriptor = PluginDescriptor(
+        scope="tuner.verify",
+        plugin_id="unit",
+        target="orchestra.plugins:UnitPlugin",
+        distribution="orchestra",
+        version="1.0",
+        api_version="1",
+        config_shape={},
+    )
+    first = compute_execution_identity(
+        descriptor, {"value": "same"}, {"runner_argv": ["--path", "a b"]}
+    )
+    repeat = compute_execution_identity(
+        descriptor, {"value": "same"}, {"runner_argv": ["--path", "a b"]}
+    )
+    changed = compute_execution_identity(
+        descriptor, {"value": "same"}, {"runner_argv": ["--path a", "b"]}
+    )
+
+    assert first.digest == repeat.digest
+    assert first.digest != changed.digest
+
+
+def test_execution_identity_mismatch_is_rejected_for_each_bound_field(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    revision, key_path, runner = _seed_repo(root)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
+    assert evidence.execution_identity is not None
+    mutations = {
+        "scope": "composer.ideas",
+        "plugin_id": "other",
+        "entry_point_target": "other:Plugin",
+        "distribution_name": "other",
+        "distribution_version": "99",
+        "api_version": "99",
+        "parameters": {"changed": True},
+        "execution_definition": {"runner_argv": ["changed"]},
+    }
+
+    for field, value in mutations.items():
+        identity = {**evidence.execution_identity, field: value}
+        forged = replace(evidence, execution_identity=identity)
+        assert verify_plugin_evidence(root, forged, expected_revision=revision) == (
+            False,
+            "execution identity mismatch",
+        )
+
+
+def test_core_checks_identity_before_signing(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    revision, key_path, runner = _seed_repo(root)
+    result = _plugin_result(root, revision, runner)
+
+    with pytest.raises(ValueError, match="execution identity"):
+        sign_plugin_result(
+            root,
+            replace(result, execution_digest="sha256:" + "0" * 64),
+            key_path=key_path,
+        )
+
+
+def test_legacy_plugin_payload_bytes_remain_unchanged() -> None:
+    from orchestra.plugin_evidence import PluginEvidence
+
+    evidence = PluginEvidence(
+        plugin_id="unit",
+        stage="phase",
+        commit="commit",
+        config_digest="config",
+        runner_digest="runner",
+        result="pass",
+        output_hash="output",
+        output={"test": "passed"},
+        signature="",
+    )
+
+    assert canonical_payload(evidence) == (
+        b'orchestra-plugin-evidence v1\n{"commit":"commit","config_digest":"config",'
+        b'"output":{"test":"passed"},"output_hash":"output","plugin_id":"unit",'
+        b'"result":"pass","runner_digest":"runner","stage":"phase"}\n'
+    )
 
 
 def test_allowlisted_signature_verifies(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     revision, key_path, runner = _seed_repo(root)
-    evidence = sign_plugin_result(root, _plugin_result(revision, runner), key_path=key_path)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
 
     assert verify_plugin_evidence(root, evidence, expected_revision=revision) == (True, "")
 
@@ -136,7 +234,7 @@ def test_allowlisted_signature_verifies(tmp_path: Path) -> None:
 def test_invalid_signature_is_rejected(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     revision, key_path, runner = _seed_repo(root)
-    evidence = sign_plugin_result(root, _plugin_result(revision, runner), key_path=key_path)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
     forged = replace(evidence, signature="invalid signature")
 
     assert verify_plugin_evidence(root, forged, expected_revision=revision) == (
@@ -148,7 +246,7 @@ def test_invalid_signature_is_rejected(tmp_path: Path) -> None:
 def test_mismatched_commit_is_rejected(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     revision, key_path, runner = _seed_repo(root)
-    evidence = sign_plugin_result(root, _plugin_result(revision, runner), key_path=key_path)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
     (root / "README.md").write_text("next commit\n", encoding="utf-8")
     _git(root, "add", "README.md")
     _git(root, "commit", "-qm", "next")
@@ -162,7 +260,7 @@ def test_mismatched_commit_is_rejected(tmp_path: Path) -> None:
 def test_mismatched_runner_digest_is_rejected(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     revision, key_path, runner = _seed_repo(root)
-    evidence = sign_plugin_result(root, _plugin_result(revision, runner), key_path=key_path)
+    evidence = sign_plugin_result(root, _plugin_result(root, revision, runner), key_path=key_path)
     forged = replace(evidence, runner_digest="sha256:" + "0" * 64)
 
     assert verify_plugin_evidence(root, forged, expected_revision=revision) == (

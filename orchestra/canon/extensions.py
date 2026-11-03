@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import metadata
 from typing import Literal
+
+from orchestra.canon.types import JsonObject
 
 PluginScope = Literal["composer.ideas", "tuner.verify", "conductor.land"]
 PLUGIN_GROUPS: Mapping[PluginScope, str] = {
@@ -41,6 +44,12 @@ class PluginRegistration:
         return self.entry_point.load()
 
 
+@dataclass(frozen=True)
+class PluginExecutionIdentity:
+    payload: JsonObject
+    digest: str
+
+
 def list_plugins(scope: PluginScope | None = None) -> tuple[PluginDescriptor, ...]:
     selected_scopes = (scope,) if scope is not None else tuple(PLUGIN_GROUPS)
     registrations = tuple(
@@ -57,8 +66,35 @@ def resolve_plugin(scope: PluginScope, plugin_id: str) -> PluginRegistration:
     _reject_duplicates(registrations)
     for registration in registrations:
         if registration.descriptor.plugin_id == plugin_id:
+            if registration.descriptor.api_version != PLUGIN_API_VERSION:
+                raise PluginCatalogError(
+                    f"plugin {plugin_id!r} uses unsupported API version "
+                    f"{registration.descriptor.api_version!r}"
+                )
             return registration
     raise PluginCatalogError(f"unknown {scope} plugin: {plugin_id}")
+
+
+def compute_execution_identity(
+    descriptor: PluginDescriptor,
+    parameters: JsonObject,
+    execution_definition: JsonObject,
+) -> PluginExecutionIdentity:
+    payload: JsonObject = {
+        "format_version": 1,
+        "scope": descriptor.scope,
+        "plugin_id": descriptor.plugin_id,
+        "entry_point_target": descriptor.target,
+        "distribution_name": descriptor.distribution,
+        "distribution_version": descriptor.version,
+        "api_version": descriptor.api_version,
+        "parameters": parameters,
+        "execution_definition": execution_definition,
+    }
+    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    digest = "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    payload["digest"] = digest
+    return PluginExecutionIdentity(payload=payload, digest=digest)
 
 
 def _registrations(scope: PluginScope) -> tuple[PluginRegistration, ...]:

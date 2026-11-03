@@ -7,6 +7,11 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from orchestra.canon.extensions import (
+    PluginCatalogError,
+    compute_execution_identity,
+    resolve_plugin,
+)
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import (
     CONFIG_PATH,
@@ -26,6 +31,7 @@ from orchestra.tuner.manifest import (
 )
 from orchestra.tuner.sign import sign
 from orchestra.tuner.sign import verify as verify_signature
+from orchestra.tuner.technique import VerificationTechnique
 
 NAMESPACE = "orchestra-plugin-evidence"
 
@@ -41,6 +47,7 @@ class PluginEvidence:
     output_hash: str
     output: JsonObject
     signature: str
+    execution_identity: JsonObject | None = None
 
 
 def dispatch_signed_plugins(
@@ -66,7 +73,11 @@ def sign_plugin_result(
     config = load_project_config_at_revision(root, commit)
     if result.plugin_id not in config.stages.get(result.stage, ()):
         raise ValueError("plugin is not configured for the target stage")
-    expected_runner = runner_digest(config.runner) if result.plugin_id == "unit" else None
+    identity, execution_digest, expected_runner = _execution_identity(
+        root, commit, result.plugin_id
+    )
+    if result.execution_identity != identity or result.execution_digest != execution_digest:
+        raise ValueError("plugin execution identity does not match the target config and provider")
     if result.runner_digest != expected_runner:
         raise ValueError("plugin result runner digest does not match the target config")
     output = _normalize_output(result.output)
@@ -82,6 +93,7 @@ def sign_plugin_result(
         output_hash=_digest(_canonical_json(_json_output(output))),
         output=output,
         signature="",
+        execution_identity=identity,
     )
     signature = sign(NAMESPACE, canonical_payload(evidence), key_path)
     return PluginEvidence(
@@ -94,6 +106,7 @@ def sign_plugin_result(
         output_hash=evidence.output_hash,
         output=evidence.output,
         signature=signature,
+        execution_identity=evidence.execution_identity,
     )
 
 
@@ -113,7 +126,14 @@ def verify_plugin_evidence(
             return False, "plugin is not configured for the target stage"
         if evidence.config_digest != _config_digest(root, commit):
             return False, "config digest mismatch"
-        expected_runner = runner_digest(config.runner) if evidence.plugin_id == "unit" else None
+        if evidence.execution_identity is None:
+            expected_runner = runner_digest(config.runner) if evidence.plugin_id == "unit" else None
+        else:
+            identity, _execution_digest, expected_runner = _execution_identity(
+                root, commit, evidence.plugin_id
+            )
+            if evidence.execution_identity != identity:
+                return False, "execution identity mismatch"
         if evidence.runner_digest != expected_runner:
             return False, "runner digest mismatch"
         output = _normalize_output(evidence.output)
@@ -136,11 +156,18 @@ def verify_plugin_evidence(
 
 def canonical_payload(evidence: PluginEvidence) -> bytes:
     """Return canonical bytes signed for a plugin evidence envelope."""
-    return b"orchestra-plugin-evidence v1\n" + _canonical_json(_unsigned_payload(evidence)) + b"\n"
+    version = b"v2" if evidence.execution_identity is not None else b"v1"
+    return (
+        b"orchestra-plugin-evidence "
+        + version
+        + b"\n"
+        + _canonical_json(_unsigned_payload(evidence))
+        + b"\n"
+    )
 
 
 def _unsigned_payload(evidence: PluginEvidence) -> JsonObject:
-    return {
+    payload: JsonObject = {
         "plugin_id": evidence.plugin_id,
         "stage": evidence.stage,
         "commit": evidence.commit,
@@ -150,6 +177,39 @@ def _unsigned_payload(evidence: PluginEvidence) -> JsonObject:
         "output_hash": evidence.output_hash,
         "output": _json_output(evidence.output),
     }
+    if evidence.execution_identity is not None:
+        payload["execution_identity"] = evidence.execution_identity
+    return payload
+
+
+def _execution_identity(
+    root: Path | str, commit: str, plugin_id: str
+) -> tuple[JsonObject, str, str | None]:
+    config = load_project_config_at_revision(root, commit)
+    try:
+        registration = resolve_plugin("tuner.verify", plugin_id)
+        factory = registration.load()
+    except PluginCatalogError as exc:
+        raise ValueError(str(exc)) from exc
+    if not callable(factory):
+        raise ValueError(f"verification plugin {plugin_id!r} is not constructible")
+    plugin = factory()
+    if not isinstance(plugin, VerificationTechnique):
+        raise ValueError(f"verification plugin {plugin_id!r} has an invalid technique contract")
+    plugin.validate_config(config)
+    definition = plugin.execution_definition(config)
+    identity = compute_execution_identity(
+        registration.descriptor,
+        config.verify_config.get(plugin_id, {}),
+        definition,
+    )
+    argv = definition.get("runner_argv")
+    expected_runner = (
+        runner_digest(argv)
+        if isinstance(argv, list) and all(isinstance(item, str) for item in argv)
+        else None
+    )
+    return identity.payload, identity.digest, expected_runner
 
 
 def _normalize_output(output: JsonObject) -> JsonObject:

@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol, TypeGuard
+from typing import Literal, Protocol, TypeGuard, runtime_checkable
 
+from orchestra.canon.project_config import ProjectConfig
 from orchestra.canon.types import JsonObject
 
 Verdict = Literal["pass", "fail", "error", "skip"]
@@ -38,7 +39,12 @@ class TechniqueResult:
     output: JsonObject
 
 
+@runtime_checkable
 class VerificationTechnique(Protocol):
+    def validate_config(self, config: ProjectConfig) -> None: ...
+
+    def execution_definition(self, config: ProjectConfig) -> JsonObject: ...
+
     def validate_result(self, result: TechniqueResult) -> None: ...
 
 
