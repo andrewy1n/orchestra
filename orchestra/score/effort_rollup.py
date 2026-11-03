@@ -1,7 +1,18 @@
 from collections.abc import Mapping, Sequence
+from typing import TypedDict
 
 from orchestra.canon.types import JsonValue
-from orchestra.sessions.session_types import EffortRollup
+
+
+class EffortRollup(TypedDict):
+    sessions: int
+    exclusive_sessions: int
+    turns: int | float
+    tool_calls: int | float
+    errors: int | float
+    retries: int | float
+    cost_shared: int | float
+    cost_exclusive: int | float
 
 
 def _mapping(value: JsonValue) -> Mapping[str, JsonValue]:
