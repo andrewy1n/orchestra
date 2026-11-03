@@ -88,7 +88,7 @@ allowed-confusables = ["–", "×"]
 typeCheckingMode = "standard"
 pythonVersion = "3.10"
 include = ["orchestra", "dashboard", "installer"]
-strict = ["orchestra/canon", "orchestra/composer", "orchestra/store.py", "orchestra/score", "orchestra/conductor", "orchestra/stage", "orchestra/cli.py", "orchestra/views.py", "orchestra/tuner", "orchestra/sessions"]
+strict = ["orchestra/canon", "orchestra/composer", "orchestra/store.py", "orchestra/score", "orchestra/conductor", "orchestra/stage", "orchestra/cli.py", "orchestra/views.py", "orchestra/tuner", "orchestra/sessions", "dashboard"]
 reportIgnoreCommentWithoutRule = "error"
 
 [[tool.basedpyright.executionEnvironments]]
@@ -138,6 +138,11 @@ reportExplicitAny = "error"
 
 [[tool.basedpyright.executionEnvironments]]
 root = "orchestra/sessions"
+extraPaths = ["."]
+reportExplicitAny = "error"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "dashboard"
 extraPaths = ["."]
 reportExplicitAny = "error"
 
