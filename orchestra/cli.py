@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import status_cli, view_cli
+from orchestra import plugin_cli, status_cli, view_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
@@ -34,6 +34,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     sub.add_parser(
         "verify",
         add_help=False,
@@ -212,6 +213,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--phase-head",
         default="HEAD",
         help="Phase head revision (default: HEAD)",
+    )
+    review_brief.add_argument(
+        "--phase",
+        default=None,
+        help="Include records for this phase only",
     )
     review_brief.add_argument(
         "--store",
@@ -514,6 +520,7 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
             phase_diff=phase_diff,
             base=args.base,
             phase_head=args.phase_head,
+            phase=args.phase,
         )
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra review-brief: {exc}", file=sys.stderr)
@@ -957,6 +964,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_place(args)
     if args.command == "status":
         return status_cli.run(args)
+    if args.command == "plugins":
+        return plugin_cli.run(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")

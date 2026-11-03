@@ -164,6 +164,34 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
         assert f"### {kind}" not in lowered
 
 
+def test_reviewer_brief_can_filter_records_to_one_phase():
+    records = [
+        {
+            "record_type": "score:work-item",
+            "subject": "package-plugins-task",
+            "title": "Package plugin task",
+            "body": "PLUGIN_PHASE_MARKER",
+            "payload": {"phase": "package-plugins"},
+        },
+        {
+            "record_type": "score:work-item",
+            "subject": "other-task",
+            "title": "Other task",
+            "body": "OTHER_PHASE_MARKER",
+            "payload": {"phase": "other-phase"},
+        },
+    ]
+
+    brief = build_reviewer_brief(
+        records=records,
+        phase_diff="phase diff",
+        phase="package-plugins",
+    )
+
+    assert "PLUGIN_PHASE_MARKER" in brief
+    assert "OTHER_PHASE_MARKER" not in brief
+
+
 def test_execute_phase_invokes_reviewer_after_verification_before_merge():
     text = _skill_text()
     flat = _skill_flat()

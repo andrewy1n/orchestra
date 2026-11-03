@@ -162,12 +162,18 @@ def _record_text(record: ReviewerRecord) -> str:
     return "\n\n".join(parts)
 
 
+def _record_matches_phase(record: ReviewerRecord, phase: str) -> bool:
+    payload = record.get("payload")
+    return isinstance(payload, Mapping) and payload.get("phase") == phase
+
+
 def build_reviewer_brief(
     *,
     records: Sequence[ReviewerRecord],
     phase_diff: str,
     base: str = "main",
     phase_head: str = "HEAD",
+    phase: str | None = None,
 ) -> str:
     """Compose the reviewer brief from allowed records plus the phase diff.
 
@@ -175,6 +181,8 @@ def build_reviewer_brief(
     even if present in ``records``.
     """
     allowed = filter_reviewer_records(records)
+    if phase is not None:
+        allowed = [record for record in allowed if _record_matches_phase(record, phase)]
     sections: list[str] = [
         "# Reviewer brief",
         "",
