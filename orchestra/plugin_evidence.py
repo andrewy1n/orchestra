@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,7 +39,7 @@ class PluginEvidence:
     runner_digest: str | None
     result: str
     output_hash: str
-    output: Mapping[str, str] | str
+    output: JsonObject
     signature: str
 
 
@@ -153,13 +152,11 @@ def _unsigned_payload(evidence: PluginEvidence) -> JsonObject:
     }
 
 
-def _normalize_output(output: Mapping[str, str] | str) -> dict[str, str] | str:
-    if isinstance(output, str):
-        return output
+def _normalize_output(output: JsonObject) -> JsonObject:
     return {key: output[key] for key in sorted(output)}
 
 
-def _valid_review_result(result: str, output: dict[str, str] | str) -> bool:
+def _valid_review_result(result: str, output: JsonObject) -> bool:
     if not isinstance(output, dict):
         return False
     verdict = output.get("verdict")
@@ -174,13 +171,8 @@ def _valid_review_result(result: str, output: dict[str, str] | str) -> bool:
     return result == expected and parsed["verdict"] == verdict
 
 
-def _json_output(output: Mapping[str, str] | str) -> JsonValue:
-    if isinstance(output, str):
-        return output
-    result: dict[str, JsonValue] = {}
-    for key in sorted(output):
-        result[key] = output[key]
-    return result
+def _json_output(output: JsonObject) -> JsonValue:
+    return output
 
 
 def _canonical_json(value: JsonValue) -> bytes:

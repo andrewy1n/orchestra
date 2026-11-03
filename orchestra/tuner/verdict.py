@@ -30,7 +30,7 @@ from orchestra.tuner.manifest import (
     runner_digest,
 )
 from orchestra.tuner.provenance import check_provenance
-from orchestra.tuner.runner import run_tests
+from orchestra.tuner.technique import replay_at_revision
 
 
 def run_verdict(
@@ -263,7 +263,7 @@ def _outcomes(
     if not test_ids:
         return {}
     with _silence_stdio():
-        return run_tests(worktree, test_ids, runner)
+        return replay_at_revision(worktree, "HEAD", tuple(test_ids), tuple(runner))
 
 
 @contextmanager

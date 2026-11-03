@@ -96,6 +96,15 @@ def test_non_unit_verification_does_not_require_unit_runner(tmp_path: Path) -> N
     assert load_project_config(tmp_path).stages["phase"] == ("external",)
 
 
+def test_replay_technique_is_selected_from_project_config(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["external"]\n[verify.replay]\ntechnique = "replay-external"\n',
+        encoding="utf-8",
+    )
+
+    assert load_project_config(tmp_path).replay_technique == "replay-external"
+
+
 def test_invalid_stage_is_rejected(tmp_path: Path) -> None:
     (tmp_path / "orchestra.toml").write_text(
         _config_text(stage="release"),

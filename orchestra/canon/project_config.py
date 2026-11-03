@@ -46,6 +46,7 @@ class ProjectConfig:
     merge_policy: str
     verify_config: Mapping[str, Mapping[str, object]]
     land_config: Mapping[str, object]
+    replay_technique: str
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -115,6 +116,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
         merge_policy=_parse_merge_policy(root.get("land")),
         verify_config=_parse_verify_config(verify),
         land_config=_parse_land_config(root.get("land")),
+        replay_technique=_parse_replay_technique(verify.get("replay")),
     )
 
 
@@ -173,6 +175,16 @@ def _parse_land_config(value: object) -> Mapping[str, object]:
     raw = _table(value, "land")
     config = raw.get("config", {})
     return _table(config, "land.config")
+
+
+def _parse_replay_technique(value: object) -> str:
+    if value is None:
+        return "unit"
+    raw = _table(value, "verify.replay")
+    technique = raw.get("technique", "unit")
+    if not isinstance(technique, str) or not technique:
+        raise ProjectConfigError("verify.replay.technique must be a non-empty plugin id")
+    return technique
 
 
 def _parse_suite(value: object) -> SuiteConfig:
