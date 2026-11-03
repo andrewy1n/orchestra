@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, PlainSerializer, RootModel
 
@@ -381,8 +381,8 @@ class StoredRecord(Model):
     revision: str
     recorded_at: str
     body: str
-    payload: dict[str, Any]
-    relationships: dict[str, Any]
+    payload: dict[str, object]
+    relationships: dict[str, object]
 
 
 class RecordResponse(Model):
