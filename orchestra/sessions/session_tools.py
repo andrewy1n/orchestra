@@ -3,9 +3,10 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from orchestra.sessions.session_metrics import read_events
+from orchestra.sessions.types import JsonValue, ToolCount, ToolMetrics, TranscriptEvent
 
 
-def _blocks(event):
+def _blocks(event: TranscriptEvent) -> list[dict[str, JsonValue]]:
     message = event.get("message")
     content = message.get("content") if isinstance(message, dict) else None
     if not isinstance(content, list):
@@ -13,17 +14,15 @@ def _blocks(event):
     return [b for b in content if isinstance(b, dict)]
 
 
-def _key(name, tool_input):
+def _key(name: str, tool_input: JsonValue) -> tuple[str, str]:
     return name, json.dumps(tool_input, sort_keys=True, default=str)
 
 
-def tool_metrics(events: Iterable[dict]) -> dict:
-    tools: dict[str, dict[str, int]] = {}
-    pending: dict[object, tuple] = {}
-    errored: set[tuple] = set()
+def tool_metrics(events: Iterable[TranscriptEvent]) -> ToolMetrics:
+    tools: dict[str, ToolCount] = {}
+    pending: dict[str, tuple[str, str]] = {}
+    errored: set[tuple[str, str]] = set()
     for event in events:
-        if not isinstance(event, dict):
-            continue
         for block in _blocks(event):
             kind = block.get("type")
             if kind == "tool_use":
@@ -35,10 +34,14 @@ def tool_metrics(events: Iterable[dict]) -> dict:
                 row["calls"] += 1
                 if key in errored:
                     row["retries"] += 1
-                if isinstance(block.get("id"), str):
-                    pending[block["id"]] = key
+                tool_id = block.get("id")
+                if isinstance(tool_id, str):
+                    pending[tool_id] = key
             elif kind == "tool_result":
-                key = pending.get(block.get("tool_use_id"))
+                tool_use_id = block.get("tool_use_id")
+                if not isinstance(tool_use_id, str):
+                    continue
+                key = pending.get(tool_use_id)
                 if key is None:
                     continue
                 if block.get("is_error") is True:
@@ -46,9 +49,13 @@ def tool_metrics(events: Iterable[dict]) -> dict:
                     errored.add(key)
                 else:
                     errored.discard(key)
-    totals = {f: sum(r[f] for r in tools.values()) for f in ("calls", "errors", "retries")}
+    totals: ToolCount = {
+        "calls": sum(row["calls"] for row in tools.values()),
+        "errors": sum(row["errors"] for row in tools.values()),
+        "retries": sum(row["retries"] for row in tools.values()),
+    }
     return {"tools": tools, "totals": totals}
 
 
-def tool_metrics_for_path(path: Path) -> dict:
+def tool_metrics_for_path(path: Path) -> ToolMetrics:
     return tool_metrics(read_events(path))
