@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
+from orchestra.sessions.types import RecordMetadata
 
 DEFAULT_TYPES = (
     "score:acceptance",
@@ -48,22 +49,23 @@ def _utc(ts: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _metadata(raw: Record, store: str) -> dict:
-    payload = raw.get("payload") or {}
+def _metadata(raw: Record, store: str) -> RecordMetadata:
+    payload = raw.get("payload", {})
+    effort = payload.get("effort")
     return {
         "id": raw["id"],
         "record_type": raw["record_type"],
         "subject": raw.get("subject"),
-        "effort": payload.get("effort"),
+        "effort": effort if isinstance(effort, str) else None,
         "recorded_at": _utc(raw["recorded_at"]),
         "lifecycle_state": raw.get("lifecycle_state"),
         "store": store,
     }
 
 
-def _read_open_store(root: str, types: Iterable[str] | None) -> list[dict]:
+def _read_open_store(root: str, types: Iterable[str] | None) -> list[RecordMetadata]:
     project = open_store(root)
-    rows: list[dict] = []
+    rows: list[RecordMetadata] = []
     chosen = types if types is not None else DEFAULT_TYPES
     for record_type in chosen:
         try:
@@ -80,12 +82,12 @@ def read_records(
     root: str,
     types: Iterable[str] | None = None,
     run: Callable[[list[str]], str] | None = None,
-) -> list[dict]:
+) -> list[RecordMetadata]:
     if run is None or run is subprocess_runner:
         return _read_open_store(root, types)
     store = os.path.basename(os.path.abspath(root))
     store_path = os.path.join(os.path.expanduser("~"), ".canon", store)
-    rows: list[dict] = []
+    rows: list[RecordMetadata] = []
     for record_type in types if types is not None else DEFAULT_TYPES:
         argv = [
             "record-list",
