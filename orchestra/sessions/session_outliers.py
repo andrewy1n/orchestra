@@ -1,35 +1,63 @@
-def _errors(row):
-    return row.get("tools", {}).get("totals", {}).get("errors") or 0
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, Sequence
+
+from orchestra.sessions.types import JsonValue, SessionOutlier
 
 
-def _retries(row):
-    return row.get("tools", {}).get("totals", {}).get("retries") or 0
+def _mapping(value: JsonValue) -> Mapping[str, JsonValue]:
+    return value if isinstance(value, dict) else {}
 
 
-def _cost(row):
-    return round(row.get("cost_usd") or 0, 4)
+def _number(value: JsonValue) -> int | float:
+    return value if isinstance(value, (int, float)) else 0
 
 
-_METRICS = {"errors": _errors, "retries": _retries, "cost": _cost}
+def _errors(row: Mapping[str, JsonValue]) -> int | float:
+    tools = _mapping(row.get("tools"))
+    totals = _mapping(tools.get("totals"))
+    return _number(totals.get("errors")) or 0
 
 
-def _entry(row, value):
+def _retries(row: Mapping[str, JsonValue]) -> int | float:
+    tools = _mapping(row.get("tools"))
+    totals = _mapping(tools.get("totals"))
+    return _number(totals.get("retries")) or 0
+
+
+def _cost(row: Mapping[str, JsonValue]) -> float:
+    return round(_number(row.get("cost_usd")) or 0, 4)
+
+
+_METRICS: dict[str, Callable[[Mapping[str, JsonValue]], int | float]] = {
+    "errors": _errors,
+    "retries": _retries,
+    "cost": _cost,
+}
+
+
+def _entry(row: Mapping[str, JsonValue], value: int | float) -> SessionOutlier:
+    records = _mapping(row.get("records"))
+    effort_value = records.get("efforts")
+    efforts = effort_value if isinstance(effort_value, list) else []
     return {
         "session_id": row.get("session_id"),
         "file": row.get("file"),
         "project": row.get("project"),
         "branch": row.get("branch"),
-        "efforts": list((row.get("records") or {}).get("efforts") or []),
+        "efforts": efforts,
         "value": value,
     }
 
 
-def outliers(rows, top=5):
-    usable = [r for r in rows if "error" not in r]
-    result = {}
+def outliers(
+    rows: Sequence[Mapping[str, JsonValue]], top: int = 5
+) -> dict[str, list[SessionOutlier]]:
+    usable = [row for row in rows if "error" not in row]
+    result: dict[str, list[SessionOutlier]] = {}
     for name, getter in _METRICS.items():
-        scored = [(getter(r), r) for r in usable]
-        scored = [(v, r) for v, r in scored if v]
-        scored.sort(key=lambda p: (-p[0], str(p[1].get("session_id"))))
-        result[name] = [_entry(r, v) for v, r in scored[:top]]
+        scored = [(getter(row), row) for row in usable]
+        scored = [(value, row) for value, row in scored if value]
+        scored.sort(key=lambda pair: (-pair[0], str(pair[1].get("session_id"))))
+        result[name] = [_entry(row, value) for value, row in scored[:top]]
     return result

@@ -1,36 +1,71 @@
-def tool_skill_rollup(rows):
-    tools = {}
-    skills = {}
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from typing import TypedDict
+
+from orchestra.sessions.types import JsonValue, SkillRollup, ToolRollup
+
+
+class ToolSkillRollup(TypedDict):
+    tools: list[ToolRollup]
+    skills: list[SkillRollup]
+
+
+def _mapping(value: JsonValue) -> Mapping[str, JsonValue]:
+    return value if isinstance(value, dict) else {}
+
+
+def _count(value: JsonValue) -> int:
+    return value if isinstance(value, int) else 0
+
+
+def tool_skill_rollup(
+    rows: Sequence[Mapping[str, JsonValue]],
+) -> ToolSkillRollup:
+    tools: dict[str, dict[str, int]] = {}
+    skills: dict[str, dict[str, int]] = {}
     for row in rows:
         if "error" in row:
             continue
-        for name, stats in ((row.get("tools") or {}).get("tools") or {}).items():
-            calls = stats.get("calls", 0)
+        tool_container = _mapping(row.get("tools"))
+        for name, stats_value in _mapping(tool_container.get("tools")).items():
+            stats = _mapping(stats_value)
+            calls = _count(stats.get("calls"))
             if calls <= 0:
                 continue
             agg = tools.setdefault(name, {"calls": 0, "errors": 0, "retries": 0, "sessions": 0})
             agg["calls"] += calls
-            agg["errors"] += stats.get("errors", 0)
-            agg["retries"] += stats.get("retries", 0)
+            agg["errors"] += _count(stats.get("errors"))
+            agg["retries"] += _count(stats.get("retries"))
             agg["sessions"] += 1
-        for name, count in (row.get("skills") or {}).items():
+        for name, count_value in _mapping(row.get("skills")).items():
+            count = _count(count_value)
             if count <= 0:
                 continue
             agg = skills.setdefault(name, {"invocations": 0, "sessions": 0})
             agg["invocations"] += count
             agg["sessions"] += 1
-    tool_rows = [
+    tool_rows: list[ToolRollup] = [
         {
             "name": name,
-            "calls": a["calls"],
-            "errors": a["errors"],
-            "error_rate": round(a["errors"] / a["calls"], 4) if a["calls"] else 0.0,
-            "retries": a["retries"],
-            "sessions": a["sessions"],
+            "calls": aggregate["calls"],
+            "errors": aggregate["errors"],
+            "error_rate": round(aggregate["errors"] / aggregate["calls"], 4)
+            if aggregate["calls"]
+            else 0.0,
+            "retries": aggregate["retries"],
+            "sessions": aggregate["sessions"],
         }
-        for name, a in tools.items()
+        for name, aggregate in tools.items()
     ]
-    skill_rows = [{"name": name, **a} for name, a in skills.items()]
-    tool_rows.sort(key=lambda r: (-r["calls"], r["name"]))
-    skill_rows.sort(key=lambda r: (-r["invocations"], r["name"]))
+    skill_rows: list[SkillRollup] = [
+        {
+            "name": name,
+            "invocations": aggregate["invocations"],
+            "sessions": aggregate["sessions"],
+        }
+        for name, aggregate in skills.items()
+    ]
+    tool_rows.sort(key=lambda row: (-row["calls"], row["name"]))
+    skill_rows.sort(key=lambda row: (-row["invocations"], row["name"]))
     return {"tools": tool_rows, "skills": skill_rows}
