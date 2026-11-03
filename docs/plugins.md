@@ -32,22 +32,41 @@ for descriptor in list_plugins():
     print(descriptor.scope, descriptor.plugin_id, descriptor.target)
 ```
 
+The CLI provides the same catalog view:
+
+```sh
+orchestra plugins list
+orchestra plugins list --scope tuner.verify --format json
+```
+
 `list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, or `conductor.land`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `1`.
 
 ## Idea-source plugins
 
-Register idea sources in `orchestra.composer.ideas`. The catalog can discover and load the selected entry point. Composer does not yet define a callable source protocol, project setting, or source ingestion flow. The entry point class can hold the provider's own source client, but Orchestra does not call it or write ideas from it.
+Register idea sources in `orchestra.composer.ideas`. The interface returns structured items. It does not write ideas to the Canon store.
 
-Use the catalog to inspect an installed source:
+Implement the list operation with `IdeaSourceRequest` and `IdeaSourceItem`:
 
 ```python
-from orchestra.canon.extensions import resolve_plugin
+from orchestra.composer.idea_source import IdeaSourceItem, IdeaSourceRequest
 
-source_type = resolve_plugin("composer.ideas", "acme-ideas").load()
-source = source_type()
+
+class Source:
+    def list_ideas(self, request: IdeaSourceRequest) -> tuple[IdeaSourceItem, ...]:
+        project = request.parameters["project"]
+        return (
+            IdeaSourceItem(
+                external_id="issue-17",
+                title="Add plugin discovery",
+                body="Expose ideas from the configured project.",
+                url=f"https://example.test/{project}/issues/17",
+                updated_at="2026-11-03T09:00:00Z",
+                labels=("orchestra",),
+            ),
+        )
 ```
 
-Keep source access explicit in the provider until Composer defines its invocation contract. Do not rely on Orchestra to call a method on `source`.
+Each item carries an external id, title, body, URL, ISO 8601 update time, and labels. `list_ideas` does not paginate, persist, or synchronize items. Issue #31 owns source ingestion and storage mapping.
 
 ## Verification plugins
 
