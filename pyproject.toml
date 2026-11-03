@@ -87,70 +87,7 @@ allowed-confusables = ["–", "×"]
 [tool.basedpyright]
 typeCheckingMode = "standard"
 pythonVersion = "3.10"
-include = ["orchestra", "dashboard", "installer"]
-strict = ["orchestra/canon", "orchestra/composer", "orchestra/store.py", "orchestra/score", "orchestra/conductor", "orchestra/stage", "orchestra/cli.py", "orchestra/views.py", "orchestra/tuner", "orchestra/sessions", "dashboard", "installer"]
+include = ["orchestra", "dashboard", "installer", "tests", "scripts"]
+strict = ["orchestra", "dashboard", "installer"]
 reportIgnoreCommentWithoutRule = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/canon"
-extraPaths = ["."]
 reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/composer"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/store.py"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/score"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/conductor"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/stage"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/cli.py"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/views.py"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/tuner"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "orchestra/sessions"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "dashboard"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "installer"
-extraPaths = ["."]
-reportExplicitAny = "error"
-
-[[tool.basedpyright.executionEnvironments]]
-root = "."
-extraPaths = ["."]
