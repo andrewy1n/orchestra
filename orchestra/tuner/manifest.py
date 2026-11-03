@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Literal
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.project_config import ProjectConfigError, load_project_config_at_revision
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.project_config import ProjectConfigError, load_project_config_at_revision
 
 MANIFEST_PATH = ".tuner/manifest.json"
 ALLOWLIST_PATH = ".tuner/allowed_signers"

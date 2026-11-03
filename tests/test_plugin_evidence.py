@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 
 from orchestra import plugins
+from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.plugin_evidence import (
     NAMESPACE,
     sign_plugin_result,
     verify_plugin_evidence,
 )
-from orchestra.project_config import DEFAULT_RUNNER
 from orchestra.tuner.manifest import runner_digest
 
 

@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 import orchestra.plugins as plugins
+from orchestra.canon.project_config import PluginName, StageName
 from orchestra.canon.types import JsonValue
-from orchestra.project_config import PluginName, StageName
 
 
 def _write_config(

@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.plugins import PluginContext, PluginResult, dispatch_plugins
-from orchestra.project_config import (
+from orchestra.canon.git_backend import run_git
+from orchestra.canon.project_config import (
     CONFIG_PATH,
     PluginName,
     ProjectConfigError,
     StageName,
     load_project_config_at_revision,
 )
+from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.plugins import PluginContext, PluginResult, dispatch_plugins
 from orchestra.tuner.manifest import (
     ManifestError,
     load_allowlist,
@@ -170,14 +170,17 @@ def _canonical_json(value: JsonValue) -> bytes:
 
 
 def _config_digest(root: Path | str, commit: str) -> str:
-    completed = subprocess.run(
-        ["git", "-C", str(root), "show", f"{commit}:{CONFIG_PATH}"],
+    completed = run_git(
+        root,
+        "show",
+        f"{commit}:{CONFIG_PATH}",
         check=False,
         capture_output=True,
+        text=True,
     )
     if completed.returncode != 0:
         raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {commit}")
-    return _digest(completed.stdout)
+    return _digest(completed.stdout.encode("utf-8"))
 
 
 def _digest(payload: bytes) -> str:

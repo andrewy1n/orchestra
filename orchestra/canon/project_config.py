@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeGuard
+
+from orchestra.canon.git_backend import run_git
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -65,30 +66,37 @@ def load_project_config(root: Path | str) -> ProjectConfig:
 def load_project_config_at_revision(root: Path | str, revision: str) -> ProjectConfig:
     """Load orchestra.toml from a committed revision, ignoring worktree edits."""
     try:
-        commit_result = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--verify", f"{revision}^{{commit}}"],
-            check=True,
+        commit_result = run_git(
+            root,
+            "rev-parse",
+            "--verify",
+            f"{revision}^{{commit}}",
+            check=False,
             capture_output=True,
             text=True,
         )
+        if commit_result.returncode != 0:
+            raise ProjectConfigError(f"cannot resolve commit {revision}")
         commit = commit_result.stdout.strip()
-        config_result = subprocess.run(
-            ["git", "-C", str(root), "show", f"{commit}:{CONFIG_PATH}"],
-            check=True,
+        config_result = run_git(
+            root,
+            "show",
+            f"{commit}:{CONFIG_PATH}",
+            check=False,
             capture_output=True,
             text=True,
         )
+        if config_result.returncode != 0:
+            raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {revision}")
     except FileNotFoundError as exc:
         raise ProjectConfigError("git executable not found while loading project config") from exc
-    except subprocess.CalledProcessError as exc:
-        raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {revision}") from exc
     return _parse_project_config(config_result.stdout, source=f"{CONFIG_PATH} at {commit}")
 
 
 def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     try:
-        raw = tomllib.loads(text)
-    except tomllib.TOMLDecodeError as exc:
+        raw = _load_toml(text)
+    except ValueError as exc:
         raise ProjectConfigError(f"invalid TOML in {source}: {exc}") from exc
     root = _table(raw, source)
     verify = _table(root.get("verify"), "verify")
@@ -110,9 +118,20 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
 
 
 def _table(value: object, label: str) -> Mapping[str, object]:
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+    if not _is_string_mapping(value):
         raise ProjectConfigError(f"{label} must be a TOML table")
     return value
+
+
+def _load_toml(text: str) -> object:
+    return tomllib.loads(text)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]  # TOML parser tables are runtime-validated by _table and _string_list.
+
+
+def _is_string_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    return isinstance(value, dict) and all(
+        isinstance(key, str)
+        for key in value  # pyright: ignore[reportUnknownVariableType]  # TOML parser keys are dynamic until validated.
+    )
 
 
 def _parse_stages(raw: Mapping[str, object]) -> dict[StageName, tuple[PluginName, ...]]:
@@ -179,11 +198,13 @@ def _parse_merge_policy(value: object) -> str:
 
 
 def _string_list(value: object, label: str) -> tuple[str, ...]:
-    if not isinstance(value, list):
+    if not _is_string_list(value):
         raise ProjectConfigError(f"{label} must be a list of strings")
-    result: list[str] = []
-    for item in value:
-        if not isinstance(item, str):
-            raise ProjectConfigError(f"{label} must be a list of strings")
-        result.append(item)
-    return tuple(result)
+    return tuple(value)
+
+
+def _is_string_list(value: object) -> TypeGuard[list[str]]:
+    return isinstance(value, list) and all(
+        isinstance(item, str)
+        for item in value  # pyright: ignore[reportUnknownVariableType]  # TOML parser values are dynamic until validated.
+    )

@@ -12,8 +12,8 @@ import orchestra.cli as cli
 import orchestra.conductor.github_pr as github_pr
 import orchestra.plugins as plugins
 from orchestra.canon.project import open_store
+from orchestra.canon.project_config import DEFAULT_RUNNER, load_project_config_at_revision
 from orchestra.conductor.github_pr import GitHubCheck
-from orchestra.project_config import DEFAULT_RUNNER, load_project_config_at_revision
 
 
 def _git(root: Path, *args: str) -> str:

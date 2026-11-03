@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from orchestra.conductor.reviewer import ReviewerRecord, build_reviewer_brief
-from orchestra.project_config import (
+from orchestra.canon.project_config import (
     PluginName,
     ProjectConfig,
     StageName,
     load_project_config_at_revision,
 )
+from orchestra.conductor.reviewer import ReviewerRecord, build_reviewer_brief
 from orchestra.tuner.manifest import resolve_commit, runner_digest
 from orchestra.tuner.runner import run_tests
 

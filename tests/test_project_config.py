@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.project_config import (
+from orchestra.canon.project_config import (
     DEFAULT_RUNNER,
     ProjectConfigError,
     load_project_config,

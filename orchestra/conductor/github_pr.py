@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from orchestra.canon.git_backend import run_git
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonValue
-from orchestra.project_config import load_project_config
 
 
 @dataclass(frozen=True)
@@ -55,7 +56,7 @@ class GitHubCLI:
         self.root = root
 
     def push_branch(self, remote: str, branch: str) -> None:
-        self._run("git", "push", "--set-upstream", remote, branch)
+        _git(self.root, "push", "--set-upstream", remote, branch)
 
     def repository(self) -> str:
         return self._run(
@@ -244,8 +245,9 @@ def _final_result(checks: Sequence[GitHubCheck], statuses: Sequence[str]) -> str
 
 def _git(root: Path, *args: str) -> str:
     try:
-        completed = subprocess.run(
-            ["git", "-C", str(root), *args],
+        completed = run_git(
+            root,
+            *args,
             check=False,
             capture_output=True,
             text=True,

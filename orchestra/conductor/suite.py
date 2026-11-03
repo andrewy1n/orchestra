@@ -19,6 +19,7 @@ from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
@@ -31,7 +32,6 @@ from orchestra.conductor.check import (
     parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
-from orchestra.project_config import load_project_config
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
