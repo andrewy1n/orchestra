@@ -389,7 +389,10 @@ def _dependency_names(text: str) -> list[str]:
 
 def _load_toml(text: str) -> dict:
     try:
-        import tomllib
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:
+            import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
     except ModuleNotFoundError:
         tomllib = None
     if tomllib is not None:
