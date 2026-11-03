@@ -11,12 +11,12 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Any
 
 from dashboard.backend import store
 from dashboard.backend.snapshot import NeedsYouItem
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
+from orchestra.canon.types import JsonValue
 
 HUMAN_DISMISSIBLE = frozenset(
     {
@@ -68,8 +68,8 @@ def default_signer() -> str:
     )
 
 
-def _operation(args: list[str]) -> dict[str, Any]:
-    operation: dict[str, Any] = {"op": args[0]}
+def _operation(args: list[str]) -> dict[str, JsonValue]:
+    operation: dict[str, JsonValue] = {"op": args[0]}
     index = 1
     while index < len(args):
         flag = args[index]

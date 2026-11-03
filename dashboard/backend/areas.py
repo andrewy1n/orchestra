@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from dashboard.backend.records import _list, _live, _recorded_at, _section
-from dashboard.backend.snapshot import PLACEMENT_TYPE, _backlog_text
+from dashboard.backend.records import list_records, live_records, recorded_at, section
+from dashboard.backend.snapshot import PLACEMENT_TYPE
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -43,32 +43,40 @@ def _home_area(idea: Record, placed: dict[str, str]) -> str:
     return payload.get("area") or ""
 
 
+def _idea_text(idea: Record) -> str:
+    for line in (idea.get("body") or "").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            return stripped
+    return idea.get("subject") or ""
+
+
 def load_areas(target: Project) -> list[AreaView]:
-    areas = _live(_list(target, AREA_TYPE))
+    areas = live_records(list_records(target, AREA_TYPE))
     if not areas:
         return []
     ideas = [
         idea
-        for idea in _live(_list(target, IDEA_TYPE))
+        for idea in live_records(list_records(target, IDEA_TYPE))
         if record_payload(idea).get("status") in SHOWN_STATUSES
     ]
     ideas.sort(
         key=lambda idea: (
             record_payload(idea)["status"] != "open",  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The shown-status filter establishes this field.
-            _recorded_at(idea),
+            recorded_at(idea),
             idea["subject"],
         )
     )
     placed = {
         record["subject"]: record_payload(record).get("area") or ""
-        for record in _live(_list(target, PLACEMENT_TYPE))
+        for record in live_records(list_records(target, PLACEMENT_TYPE))
     }
-    views = []
+    views: list[AreaView] = []
     for area in sorted(areas, key=lambda record: record["subject"]):
         listed = [
             AreaIdea(
                 subject=idea["subject"],
-                text=_backlog_text(idea),
+                text=_idea_text(idea),
                 status=record_payload(idea)["status"],  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The shown-status filter establishes this field.
                 area=record_payload(idea).get("area") or "",
                 effort=record_payload(idea).get("effort") or "",
@@ -81,7 +89,7 @@ def load_areas(target: Project) -> list[AreaView]:
             AreaView(
                 subject=area["subject"],
                 title=record_payload(area).get("title") or area["subject"],
-                scope=_section(area.get("body") or "", "Scope"),
+                scope=section(area.get("body") or "", "Scope"),
                 open_count=sum(idea.status == "open" for idea in listed),
                 ideas=listed,
             )

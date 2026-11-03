@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -26,6 +27,8 @@ _LOOP_SKILL = {
 class _LandingState(Protocol):
     exists: bool
     merged: bool
+    branch: str
+    ahead: int
 
 
 def plan_review_slug(item: NeedsYouItem) -> str | None:
@@ -228,21 +231,7 @@ def merge_landing_needs(
         )
     items = [item for item in view.needs_you if item.kind != "merge-branch"] + extras
     items.sort(key=lambda entry: NEEDS_ORDER.index(entry.kind))
-    fields = {
-        "effort": view.effort,
-        "goal": view.goal,
-        "phases": view.phases,
-        "tasks": view.tasks,
-        "needs_you": items,
-        "activity": view.activity,
-        "release_ready": view.release_ready,
-        "kind": getattr(view, "kind", ""),
-        "journal_open": list(getattr(view, "journal_open", []) or []),
-        "backlog": list(getattr(view, "backlog", []) or []),
-    }
-    if hasattr(view, "position"):
-        fields["position"] = view.position
-    return EffortView(**fields)
+    return replace(view, needs_you=items)
 
 
 def landing_for_view(root: Path, view: EffortView) -> dict[str, Landing]:
