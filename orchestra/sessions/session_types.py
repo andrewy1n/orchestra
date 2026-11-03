@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeAlias, TypedDict
 
+from orchestra.score.effort_rollup import EffortRollup
+
 JsonPrimitive: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
 JsonObject: TypeAlias = dict[str, JsonValue]
@@ -124,17 +126,6 @@ class SessionCaveats(TypedDict):
     sessions_without_cost: int
     cost_note: str
     bad_input_lines: int
-
-
-class EffortRollup(TypedDict):
-    sessions: int
-    exclusive_sessions: int
-    turns: int | float
-    tool_calls: int | float
-    errors: int | float
-    retries: int | float
-    cost_shared: int | float
-    cost_exclusive: int | float
 
 
 class SessionAggregate(TypedDict):
