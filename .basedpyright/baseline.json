@@ -18,24 +18,6 @@
                 }
             }
         ],
-        "./installer/detect.py": [
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 47,
-                    "endColumn": 53,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 51,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./installer/runner.py": [
             {
                 "code": "reportPossiblyUnboundVariable",
