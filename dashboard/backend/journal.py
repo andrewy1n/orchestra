@@ -47,7 +47,7 @@ def _soft_list(
     target: Project, record_type: str, *, payload: dict[str, str] | None = None
 ) -> list[Record]:
     try:
-        return records._list(target, record_type, payload=payload)
+        return records.list_records(target, record_type, payload=payload)
     except store.ModelError:
         return []
 
@@ -121,7 +121,7 @@ def _question_text(record: Record, phase_titles: dict[str, str]) -> str:
 
 
 def _amendment_text(record: Record, task_subject: str) -> str:
-    correction = _first_line(records._section(record.get("body") or "", "Correction"))
+    correction = _first_line(records.section(record.get("body") or "", "Correction"))
     if correction and task_subject:
         return f"{correction} · {task_subject}"
     return correction or task_subject
@@ -163,29 +163,29 @@ def _assignment_task(
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
-    aliases = records._merge_aliases(records._list(target, "score:effort"))
+    aliases = records.merge_aliases(records.list_records(target, "score:effort"))
     goals = [
         record
-        for record in records._list(target, "score:effort")
+        for record in records.list_records(target, "score:effort")
         if record.get("lifecycle_state") == "active"
         and record_payload(record).get("status") != "closed"
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
-    tasks = records._remapped(
+    tasks = records.remap_records(
         _soft_list(target, "score:work-item", payload={"effort": effort}),
         aliases,
     )
     if not tasks:
         tasks = [
             record
-            for record in records._remapped(_soft_list(target, "score:work-item"), aliases)
+            for record in records.remap_records(_soft_list(target, "score:work-item"), aliases)
             if record_payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
-    phases = records._remapped(
+    phases = records.remap_records(
         _soft_list(target, "score:phase", payload={"effort": effort}),
         aliases,
     )
@@ -194,7 +194,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         for record in phases
     }
 
-    assignments_listed = records._remapped(_soft_list(target, "conductor:assignment"), aliases)
+    assignments_listed = records.remap_records(_soft_list(target, "conductor:assignment"), aliases)
     assignments: dict[str, Record] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
@@ -202,7 +202,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
 
     listed: dict[str, list[Record]] = {}
     for record_type in JOURNAL_TYPES:
-        raw = records._remapped(_soft_list(target, record_type), aliases)
+        raw = records.remap_records(_soft_list(target, record_type), aliases)
         by_subject = record_type == "score:continuity-question"
         listed[record_type] = [
             record
@@ -222,7 +222,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["record_type"],
                 record["subject"],
                 phase,
-                records._recorded_at(record),
+                records.recorded_at(record),
                 _attempt_text(record_payload(record)),
                 False,
                 task_id,
@@ -238,7 +238,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["record_type"],
                 record["subject"],
                 phase,
-                records._recorded_at(record),
+                records.recorded_at(record),
                 record_payload(record).get("what_was_observed") or "",
                 open_item,
                 task_id,
@@ -253,7 +253,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["record_type"],
                 record["subject"],
                 phase,
-                records._recorded_at(record),
+                records.recorded_at(record),
                 _finding_text(record_payload(record)),
                 _finding_open(record),
                 task_id,
@@ -270,7 +270,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["record_type"],
                 record["subject"],
                 phase,
-                records._recorded_at(record),
+                records.recorded_at(record),
                 _question_text(record, phase_titles),
                 _question_open(record),
                 "",
@@ -290,7 +290,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["record_type"],
                 record["subject"],
                 phase,
-                records._recorded_at(record),
+                records.recorded_at(record),
                 _amendment_text(record, task_subject),
                 False,
                 task_id,
