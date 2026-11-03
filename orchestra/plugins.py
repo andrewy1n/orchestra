@@ -13,7 +13,7 @@ from orchestra.canon.project_config import (
     StageName,
     load_project_config_at_revision,
 )
-from orchestra.conductor.reviewer import ReviewerRecord, build_reviewer_brief
+from orchestra.conductor.reviewer import ReviewerRecord, validate_reviewer_output
 from orchestra.tuner.manifest import resolve_commit, runner_digest
 from orchestra.tuner.runner import run_tests
 
@@ -28,6 +28,7 @@ class PluginContext:
     phase_diff: str = ""
     base_revision: str = "main"
     phase_head: str = "HEAD"
+    reviewer_output: str | None = None
 
 
 @dataclass(frozen=True)
@@ -69,19 +70,17 @@ class ReviewPlugin:
 
     def run(self, config: ProjectConfig, context: PluginContext) -> PluginResult:
         del config
-        brief = build_reviewer_brief(
-            records=context.review_records,
-            phase_diff=context.phase_diff,
-            base=context.base_revision,
-            phase_head=context.phase_head,
-        )
+        if context.reviewer_output is None or not context.reviewer_output.strip():
+            raise ValueError("review plugin requires structured output from the host reviewer")
+        parsed = validate_reviewer_output(context.reviewer_output)
+        verdict = parsed["verdict"]
         return PluginResult(
             plugin_id=self.plugin_id,
             stage=context.stage,
             revision=context.revision,
-            result="ready",
+            result="pass" if verdict == "PASS" else "fail",
             runner_digest=None,
-            output=brief,
+            output={"verdict": verdict, "reviewer_output": context.reviewer_output},
         )
 
 
@@ -112,6 +111,7 @@ def dispatch_plugins(
         phase_diff=context.phase_diff,
         base_revision=context.base_revision,
         phase_head=context.phase_head,
+        reviewer_output=context.reviewer_output,
     )
     return tuple(BUILTIN_PLUGINS[plugin_id].run(config, pinned_context) for plugin_id in plugin_ids)
 

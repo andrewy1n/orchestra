@@ -17,6 +17,7 @@ from orchestra.canon.project_config import (
     load_project_config_at_revision,
 )
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.conductor.reviewer import validate_reviewer_output
 from orchestra.plugins import PluginContext, PluginResult, dispatch_plugins
 from orchestra.tuner.manifest import (
     ManifestError,
@@ -70,6 +71,8 @@ def sign_plugin_result(
     if result.runner_digest != expected_runner:
         raise ValueError("plugin result runner digest does not match the target config")
     output = _normalize_output(result.output)
+    if result.plugin_id == "review" and not _valid_review_result(result.result, output):
+        raise ValueError("review plugin evidence must bind a valid reviewer verdict and output")
     evidence = PluginEvidence(
         plugin_id=result.plugin_id,
         stage=result.stage,
@@ -115,6 +118,8 @@ def verify_plugin_evidence(
         if evidence.runner_digest != expected_runner:
             return False, "runner digest mismatch"
         output = _normalize_output(evidence.output)
+        if evidence.plugin_id == "review" and not _valid_review_result(evidence.result, output):
+            return False, "invalid signed reviewer verdict"
         if evidence.output_hash != _digest(_canonical_json(_json_output(output))):
             return False, "output hash mismatch"
         allowlist = load_allowlist(root, commit)
@@ -152,6 +157,21 @@ def _normalize_output(output: Mapping[str, str] | str) -> dict[str, str] | str:
     if isinstance(output, str):
         return output
     return {key: output[key] for key in sorted(output)}
+
+
+def _valid_review_result(result: str, output: dict[str, str] | str) -> bool:
+    if not isinstance(output, dict):
+        return False
+    verdict = output.get("verdict")
+    reviewer_output = output.get("reviewer_output")
+    if verdict not in {"PASS", "NEEDS_WORK"} or not isinstance(reviewer_output, str):
+        return False
+    try:
+        parsed = validate_reviewer_output(reviewer_output)
+    except (TypeError, ValueError):
+        return False
+    expected = "pass" if verdict == "PASS" else "fail"
+    return result == expected and parsed["verdict"] == verdict
 
 
 def _json_output(output: Mapping[str, str] | str) -> JsonValue:

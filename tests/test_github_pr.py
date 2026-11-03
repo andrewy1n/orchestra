@@ -7,9 +7,12 @@ from pathlib import Path
 import pytest
 
 import orchestra.cli as cli
+import orchestra.conductor.github_pr as github_pr
 from orchestra.conductor.github_pr import (
     GitHubCheck,
+    GitHubPRError,
     GitHubPRResult,
+    GitHubREST,
     open_pull_request,
 )
 
@@ -177,6 +180,63 @@ def test_github_pr_never_merges(tmp_path: Path) -> None:
 
     assert all("merge" not in event for event in github.events)
     assert not hasattr(github, "merge")
+
+
+def test_github_rest_requires_token_without_gh_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+
+    with pytest.raises(GitHubPRError, match="set GITHUB_TOKEN or GH_TOKEN"):
+        GitHubREST(root)
+
+
+def test_github_rest_uses_token_authenticated_api(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    monkeypatch.setenv("GH_TOKEN", "test-token")
+    captured: list[object] = []
+
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"number":7,"html_url":"https://github.com/owner/repo/pull/7"}'
+
+    def fake_urlopen(request: object, timeout: float) -> Response:
+        captured.extend((request, timeout))
+        return Response()
+
+    monkeypatch.setattr(github_pr, "urlopen", fake_urlopen)
+    client = GitHubREST(root)
+    number, url = client.create_pull_request("owner/repo", "topic", "main", "title", "proof")
+
+    request = captured[0]
+    assert number == 7
+    assert url.endswith("/pull/7")
+    assert request.full_url == "https://api.github.com/repos/owner/repo/pulls"
+    assert request.get_header("Authorization") == "Bearer test-token"
+    assert captured[1] == 30
+
+
+def test_github_rest_derives_repository_from_git_remote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _git(root, "remote", "add", "origin", "git@github.com:owner/repo.git")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    assert GitHubREST(root).repository() == "owner/repo"
 
 
 def test_land_cli_reports_pull_request_and_final_checks(

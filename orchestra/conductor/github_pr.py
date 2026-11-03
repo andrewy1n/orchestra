@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import json
 import math
-import subprocess
+import os
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlparse
+from urllib.request import Request, urlopen
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import load_project_config
-from orchestra.canon.types import JsonValue
+from orchestra.canon.types import JsonObject, JsonValue
 
 
 @dataclass(frozen=True)
@@ -51,32 +54,38 @@ class GitHubClient(Protocol):
     def statuses(self, repository: str, revision: str) -> tuple[str, ...]: ...
 
 
-class GitHubCLI:
-    def __init__(self, root: Path) -> None:
+class GitHubREST:
+    def __init__(self, root: Path, remote: str = "origin") -> None:
         self.root = root
+        self.remote = remote
+        self.token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if not self.token:
+            raise GitHubPRError("set GITHUB_TOKEN or GH_TOKEN to use the GitHub API")
 
     def push_branch(self, remote: str, branch: str) -> None:
         _git(self.root, "push", "--set-upstream", remote, branch)
 
     def repository(self) -> str:
-        return self._run(
-            "gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"
-        ).strip()
+        remote_url = _git(self.root, "remote", "get-url", self.remote)
+        parsed = urlparse(remote_url)
+        if parsed.hostname == "github.com":
+            repository = parsed.path.lstrip("/")
+        elif parsed.scheme == "" and remote_url.startswith("git@github.com:"):
+            repository = remote_url.removeprefix("git@github.com:")
+        else:
+            raise GitHubPRError(f"unsupported GitHub remote URL: {remote_url}")
+        repository = repository.removesuffix(".git").strip("/")
+        if len(repository.split("/")) != 2:
+            raise GitHubPRError(f"cannot determine owner/repository from remote: {remote_url}")
+        return repository
 
     def create_pull_request(
         self, repository: str, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]:
-        response = _json_object(
-            self._run(
-                "gh",
-                "api",
-                f"repos/{repository}/pulls",
-                "--method",
-                "POST",
-                "--input",
-                "-",
-                input_text=json.dumps({"title": title, "head": head, "base": base, "body": body}),
-            )
+        response = self._request(
+            "POST",
+            f"repos/{repository}/pulls",
+            {"title": title, "head": head, "base": base, "body": body},
         )
         number = response.get("number")
         url = response.get("html_url")
@@ -85,37 +94,28 @@ class GitHubCLI:
         return number, url
 
     def checks(self, repository: str, revision: str) -> tuple[GitHubCheck, ...]:
-        output = self._run(
-            "gh",
-            "api",
-            f"repos/{repository}/commits/{revision}/check-runs",
-            "--paginate",
-            "--jq",
-            ".check_runs[] | {name: .name, status: .status, conclusion: .conclusion}",
-        )
         result: list[GitHubCheck] = []
-        for line in output.splitlines():
-            if not line.strip():
-                continue
-            check = _json_object(line)
-            name = check.get("name")
-            status = check.get("status")
-            conclusion = check.get("conclusion")
-            if not isinstance(name, str) or not isinstance(status, str):
-                raise GitHubPRError("GitHub returned a malformed check run")
-            result.append(
-                GitHubCheck(
-                    name=name,
-                    status=status,
-                    conclusion=conclusion if isinstance(conclusion, str) else None,
+        for page in self._pages(f"repos/{repository}/commits/{revision}/check-runs"):
+            checks = page.get("check_runs")
+            if not isinstance(checks, list):
+                raise GitHubPRError("GitHub returned malformed check runs")
+            for check in checks:
+                if not isinstance(check, dict):
+                    raise GitHubPRError("GitHub returned a malformed check run")
+                name, status, conclusion = (
+                    check.get("name"),
+                    check.get("status"),
+                    check.get("conclusion"),
                 )
-            )
+                if not isinstance(name, str) or not isinstance(status, str):
+                    raise GitHubPRError("GitHub returned a malformed check run")
+                result.append(
+                    GitHubCheck(name, status, conclusion if isinstance(conclusion, str) else None)
+                )
         return tuple(result)
 
     def statuses(self, repository: str, revision: str) -> tuple[str, ...]:
-        response = _json_object(
-            self._run("gh", "api", f"repos/{repository}/commits/{revision}/status")
-        )
+        response = self._request("GET", f"repos/{repository}/commits/{revision}/status")
         values = response.get("statuses")
         if not isinstance(values, list):
             raise GitHubPRError("GitHub returned malformed commit statuses")
@@ -129,22 +129,44 @@ class GitHubCLI:
             statuses.append(state)
         return tuple(statuses)
 
-    def _run(self, *argv: str, input_text: str | None = None) -> str:
+    def _pages(self, path: str) -> tuple[JsonObject, ...]:
+        pages: list[JsonObject] = []
+        page = 1
+        while True:
+            response = self._request("GET", f"{path}?per_page=100&page={page}")
+            pages.append(response)
+            check_runs = response.get("check_runs")
+            if not isinstance(check_runs, list):
+                raise GitHubPRError("GitHub returned malformed check runs")
+            if len(check_runs) < 100:
+                return tuple(pages)
+            page += 1
+
+    def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> JsonObject:
+        encoded_path = quote(path, safe="/?=&")
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        request = Request(
+            f"https://api.github.com/{encoded_path}",
+            data=data,
+            method=method,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {self.token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+                **({"Content-Type": "application/json"} if data is not None else {}),
+            },
+        )
         try:
-            completed = subprocess.run(
-                list(argv),
-                cwd=self.root,
-                input=input_text,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError as exc:
-            raise GitHubPRError(f"required executable not found: {argv[0]}") from exc
-        if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout).strip()
-            raise GitHubPRError(detail or f"command failed: {argv[0]}")
-        return completed.stdout
+            with urlopen(request, timeout=30) as response:
+                payload: JsonValue = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise GitHubPRError(f"GitHub API returned HTTP {exc.code}: {detail}") from exc
+        except (URLError, OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise GitHubPRError(f"GitHub API request failed: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise GitHubPRError("GitHub returned a non-object API response")
+        return payload
 
 
 def open_pull_request(
@@ -179,7 +201,7 @@ def open_pull_request(
     if _git(project_root, "status", "--porcelain"):
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
-    github = client or GitHubCLI(project_root)
+    github = client or GitHubREST(project_root, remote)
     github.push_branch(remote, branch)
     repository = github.repository()
     pr_title = title or f"{branch}: phase proof"
@@ -258,13 +280,3 @@ def _git(root: Path, *args: str) -> str:
         detail = (completed.stderr or completed.stdout).strip()
         raise GitHubPRError(detail or f"git command failed: {' '.join(args)}")
     return completed.stdout.strip()
-
-
-def _json_object(text: str) -> dict[str, JsonValue]:
-    try:
-        value: JsonValue = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise GitHubPRError("GitHub returned invalid JSON") from exc
-    if not isinstance(value, dict):
-        raise GitHubPRError("GitHub returned a non-object response")
-    return value

@@ -10,7 +10,6 @@ import pytest
 
 import orchestra.plugins as plugins
 from orchestra.canon.project_config import PluginName, StageName
-from orchestra.canon.types import JsonValue
 
 
 def _write_config(
@@ -70,31 +69,59 @@ def test_unit_stage_selects_configured_builtin(
     assert results[0].result == "pass"
 
 
-def test_review_stage_builds_existing_reviewer_input(tmp_path: Path) -> None:
+def test_review_stage_signs_actual_pass_verdict(tmp_path: Path) -> None:
     revision = _write_config(
         tmp_path,
         stage="phase",
         selected=["review"],
         runner=["python", "-m", "pytest", "{tests}", "--junitxml={report}"],
     )
-    context = _context(tmp_path, "phase", revision)
-    record: dict[str, JsonValue] = {
-        "record_type": "score:work-item",
-        "subject": "task-a",
-        "body": "review this behavior",
-    }
     context = replace(
-        context,
-        review_records=(record,),
-        phase_diff="+ expected behavior\n",
+        _context(tmp_path, "phase", revision),
+        reviewer_output=(
+            "verdict: PASS\nfindings: []\nintegration:\n"
+            "  interfaces: stable API\n  assumptions: host reviewer ran\n"
+            "  invariants: signed evidence\n  conflicts: none\n"
+        ),
     )
 
     results = plugins.dispatch_plugins(context)
 
     assert [result.plugin_id for result in results] == ["review"]
-    assert isinstance(results[0].output, str)
-    assert "review this behavior" in results[0].output
-    assert "+ expected behavior" in results[0].output
+    assert results[0].result == "pass"
+    assert results[0].output == {
+        "verdict": "PASS",
+        "reviewer_output": context.reviewer_output,
+    }
+
+
+def test_review_stage_maps_needs_work_and_rejects_invalid_output(tmp_path: Path) -> None:
+    revision = _write_config(
+        tmp_path,
+        stage="phase",
+        selected=["review"],
+        runner=["python", "-m", "pytest", "{tests}", "--junitxml={report}"],
+    )
+    valid_prefix = (
+        "verdict: NEEDS_WORK\nfindings:\n  - task: task-a\n"
+        "    kind: behavior-bug\n    expected: correct behavior\n"
+        "    observed: wrong behavior\n    severity: high\nintegration:\n"
+        "  interfaces: stable API\n  assumptions: host reviewer ran\n"
+        "  invariants: signed evidence\n  conflicts: none\n"
+    )
+
+    result = plugins.dispatch_plugins(
+        replace(_context(tmp_path, "phase", revision), reviewer_output=valid_prefix)
+    )[0]
+    assert result.result == "fail"
+    assert isinstance(result.output, dict)
+    assert result.output["verdict"] == "NEEDS_WORK"
+
+    for invalid in (None, "verdict: MAYBE", valid_prefix.replace("    kind: behavior-bug\n", "")):
+        with pytest.raises(ValueError):
+            plugins.dispatch_plugins(
+                replace(_context(tmp_path, "phase", revision), reviewer_output=invalid)
+            )
 
 
 def test_exact_argv_reaches_process_without_shell_joining(tmp_path: Path) -> None:
