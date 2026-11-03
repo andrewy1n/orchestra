@@ -139,17 +139,17 @@ class BaseAdapter:
                     note="not installed",
                 )
             entries = self._marker_entries(previous)
-            actions = tuple(
+            remove_actions = tuple(
                 Action(kind="remove", destination=self.root / entry)
                 for entry in entries
             )
-            actions += (Action(kind="remove", destination=self.marker),)
+            remove_actions += (Action(kind="remove", destination=self.marker),)
             return Plan(
                 provider=self.provider,
                 scope=self.scope,
                 mode=self.mode,
                 root=self.root,
-                actions=actions,
+                actions=remove_actions,
                 entries=tuple(entries),
                 uninstall=True,
             )
