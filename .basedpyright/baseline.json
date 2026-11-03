@@ -42,24 +42,6 @@
                 }
             }
         ],
-        "./dashboard/backend/task.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 21,
-                    "endColumn": 56,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 18,
-                    "endColumn": 50,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./installer/adapters/base.py": [
             {
                 "code": "reportAssignmentType",

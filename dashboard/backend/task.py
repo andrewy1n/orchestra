@@ -9,13 +9,12 @@ from dashboard.backend import store
 from dashboard.backend.records import (
     CHECK_RESULT,
     INACTIVE_STATES,
-    _derived,
-    _items,
-    _list,
-    _merge_aliases,
-    _recorded_at,
-    _remapped,
-    _section,
+    derived_values,
+    list_records,
+    merge_aliases,
+    recorded_at,
+    remap_records,
+    section,
 )
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
@@ -176,7 +175,7 @@ def _without_section(body: str, heading: str) -> str:
     return "\n".join(kept).strip()
 
 
-def _check_from(record: Record) -> CheckRun:
+def check_from(record: Record) -> CheckRun:
     payload = record_payload(record)
     return CheckRun(
         record["id"],
@@ -184,7 +183,7 @@ def _check_from(record: Record) -> CheckRun:
         payload.get("method", ""),
         payload.get("signed_by", ""),
         payload.get("revision", ""),
-        _recorded_at(record),
+        recorded_at(record),
         payload.get("evidence_kind") or "",
     )
 
@@ -209,12 +208,7 @@ def _size(payload: PlanningPayload) -> str:
 
 
 def _estimate_minutes(payload: PlanningPayload) -> int | None:
-    if "estimate_minutes" not in payload:
-        return None
-    value = payload["estimate_minutes"]
-    if value is None:
-        return None
-    return value
+    return payload.get("estimate_minutes")
 
 
 def _executor(payload: PlanningPayload) -> str:
@@ -223,24 +217,19 @@ def _executor(payload: PlanningPayload) -> str:
 
 
 def _attempts(payload: PlanningPayload) -> int:
-    if "attempts" not in payload:
-        return 0
-    value = payload["attempts"]
-    if value is None or value == "":
-        return 0
-    return int(value)
+    return payload.get("attempts") or 0
 
 
 def _task_status(record: Record) -> str | None:
     state = record["lifecycle_state"]
     if state == "planned":
-        return "ready" if _derived(record).get("ready") else "waiting"
+        return "ready" if derived_values(record).get("ready") else "waiting"
     return {"in_progress": "running", "done": "done", "withdrawn": "withdrawn"}.get(state)
 
 
 def _assigned_at(assignments: list[Record], record: Record) -> datetime | None:
     names = {record["id"], record["subject"]}
-    stamps = [_recorded_at(a) for a in assignments if record_payload(a).get("work_item") in names]
+    stamps = [recorded_at(a) for a in assignments if record_payload(a).get("work_item") in names]
     return max(stamps, default=None)
 
 
@@ -260,16 +249,16 @@ def _last_record_at(
     """Latest assignment / amendment / execution-report / check-run stamp for a running task."""
     names = {record["id"], record["subject"]}
     mine = _task_assignments(assignments, record)
-    stamps = [_recorded_at(a) for a in mine]
+    stamps = [recorded_at(a) for a in mine]
     assignment_names = names | {a["id"] for a in mine} | {a["subject"] for a in mine}
     stamps.extend(
-        _recorded_at(a)
+        recorded_at(a)
         for a in amendments
         if record_payload(a).get("assignment") in assignment_names
     )
-    stamps.extend(_recorded_at(r) for r in reports if record_payload(r).get("work_item") in names)
+    stamps.extend(recorded_at(r) for r in reports if record_payload(r).get("work_item") in names)
     slug, effort = record["subject"], record_payload(record).get("effort", "")
-    stamps.extend(_recorded_at(c) for c in checks if _belongs(c, slug, effort, others))
+    stamps.extend(recorded_at(c) for c in checks if belongs(c, slug, effort, others))
     return max(stamps, default=None)
 
 
@@ -277,7 +266,7 @@ def _depends(record: Record) -> list[str]:
     return record_payload(record).get("depends_on") or []
 
 
-def _task_rows(
+def task_rows(
     records: list[Record],
     assignments: list[Record] | None = None,
     amendments: list[Record] | None = None,
@@ -285,7 +274,7 @@ def _task_rows(
     checks: list[Record] | None = None,
     phases: list[Record] | None = None,
 ) -> list[TaskRow]:
-    by_subject = {record["subject"]: record for record in sorted(records, key=_recorded_at)}
+    by_subject = {record["subject"]: record for record in sorted(records, key=recorded_at)}
     assignments = assignments or []
     amendments = amendments or []
     reports = reports or []
@@ -295,13 +284,13 @@ def _task_rows(
         for phase in (phases or [])
     }
     subjects = [record["subject"] for record in records]
-    rows = []
+    rows: list[TaskRow] = []
     for record in records:
         status = _task_status(record)
         if status is None:
             continue
         payload = record_payload(record)
-        depends_on = [by_subject[ref] for ref in _items(_depends(record)) if ref in by_subject]
+        depends_on = [by_subject[ref] for ref in _depends(record) if ref in by_subject]
         running_since = _assigned_at(assignments, record) if status == "running" else None
         others = [s for s in subjects if s != record["subject"]]
         last_record_at = (
@@ -317,7 +306,7 @@ def _task_rows(
                 title=payload.get("title", ""),
                 phase=phase,
                 assignee=payload.get("assignee", ""),
-                wave=_derived(record).get("wave"),
+                wave=derived_values(record).get("wave"),
                 status=status,
                 waits_on=tuple(
                     dep["subject"] for dep in depends_on if dep["lifecycle_state"] != "done"
@@ -348,7 +337,7 @@ def _linked(ids: list[str], rows: dict[str, TaskRow]) -> list[LinkedTask]:
     ]
 
 
-def _belongs(record: Record, slug: str, effort: str, others: list[str]) -> bool:
+def belongs(record: Record, slug: str, effort: str, others: list[str]) -> bool:
     subject = record["subject"]
     if subject != slug and not subject.startswith(slug + "-"):
         return False
@@ -361,13 +350,13 @@ def _refers_to(record: Record, key: str, names: set[str]) -> bool:
     return record_payload(record).get(key) in names
 
 
-def _latest_checks(checks: list[Record]) -> dict[str, CheckRun]:
+def latest_checks(checks: list[Record]) -> dict[str, CheckRun]:
     latest: dict[str, CheckRun] = {}
-    for record in sorted(checks, key=_recorded_at):
+    for record in sorted(checks, key=recorded_at):
         if record["lifecycle_state"] in INACTIVE_STATES:
             continue
         payload = record_payload(record)
-        latest[payload.get("criterion_id", "")] = _check_from(record)
+        latest[payload.get("criterion_id", "")] = check_from(record)
     return latest
 
 
@@ -377,7 +366,7 @@ def _timeline(
     reports: list[Record],
     checks: list[Record],
 ) -> list[TimelineEvent]:
-    events = []
+    events: list[tuple[str, Record, str]] = []
     for record in assignments:
         events.append(
             ("assignment", record, f"assigned to {record_payload(record).get('executor', '')}")
@@ -395,7 +384,7 @@ def _timeline(
         TimelineEvent(
             kind,
             record["id"],
-            _recorded_at(record),
+            recorded_at(record),
             summary,
             record.get("body") or "",
             record_payload(record).get("revision", "")
@@ -414,7 +403,7 @@ def _amendments_for(
 ) -> list[Record]:
     keys = {assignment["id"], assignment["subject"]}
     matched = [record for record in amendments if record_payload(record).get("assignment") in keys]
-    matched.sort(key=_recorded_at)
+    matched.sort(key=recorded_at)
     return matched
 
 
@@ -424,7 +413,7 @@ def _report_for(
 ) -> Record | None:
     keys = {assignment["id"], assignment["subject"]}
     matched = [record for record in reports if record_payload(record).get("assignment") in keys]
-    return max(matched, key=_recorded_at) if matched else None
+    return max(matched, key=recorded_at) if matched else None
 
 
 def _agent_work(
@@ -434,21 +423,21 @@ def _agent_work(
 ) -> tuple[AgentWork, ...]:
     """Group assignment bodies, amendments by payload.assignment, and reports; newest first."""
     works: list[AgentWork] = []
-    for record in sorted(assignments, key=_recorded_at, reverse=True):
+    for record in sorted(assignments, key=recorded_at, reverse=True):
         body = record.get("body") or ""
         assignment = AgentAssignment(
             id=record["id"],
             subject=record["subject"],
-            recorded_at=_recorded_at(record),
+            recorded_at=recorded_at(record),
             executor=record_payload(record).get("executor", ""),
-            orientation=_section(body, "Orientation"),
+            orientation=section(body, "Orientation"),
             body=_without_section(body, "Orientation"),
         )
         amend_rows = tuple(
             AgentAmendment(
                 record_a["id"],
-                _recorded_at(record_a),
-                _section(record_a.get("body") or "", "Correction"),
+                recorded_at(record_a),
+                section(record_a.get("body") or "", "Correction"),
             )
             for record_a in _amendments_for(record, amendments)
         )
@@ -458,7 +447,7 @@ def _agent_work(
             payload = record_payload(report_record)
             report = AgentReport(
                 id=report_record["id"],
-                recorded_at=_recorded_at(report_record),
+                recorded_at=recorded_at(report_record),
                 result=payload.get("result", ""),
                 verdict=payload.get("verdict", ""),
                 body=report_record.get("body") or "",
@@ -476,13 +465,13 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     item = store.get_record(target, work_item_id, "score:work-item")
     if "subject" not in item:
         raise ModelError(f"get score:work-item {work_item_id} returned unreadable output")
-    aliases = _merge_aliases(_list(target, "score:effort"))
-    item = _remapped([item], aliases)[0]
+    aliases = merge_aliases(list_records(target, "score:effort"))
+    item = remap_records([item], aliases)[0]
     slug, payload = item["subject"], record_payload(item)
     effort = payload.get("effort", "")
-    records = _remapped(store.list_records(target, subject=slug), aliases)
+    records = remap_records(store.list_records(target, subject=slug), aliases)
     efforts = store.list_records(target, "score:work-item", payload={"effort": effort})
-    rows = {row.id: row for row in _task_rows(efforts)}
+    rows = {row.id: row for row in task_rows(efforts)}
     by_subject = {row.subject: row for row in rows.values()}
     mine = next((r for r in records if r["id"] == work_item_id), item)
     others = [
@@ -493,7 +482,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     names = {work_item_id, slug}
     of_type: dict[str, list[Record]] = {}
     for record in records:
-        if record["id"] != work_item_id and _belongs(record, slug, effort, others):
+        if record["id"] != work_item_id and belongs(record, slug, effort, others):
             of_type.setdefault(record["record_type"], []).append(record)
     assignments = [
         r for r in of_type.get("conductor:assignment", []) if _refers_to(r, "work_item", names)
@@ -510,7 +499,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         if _refers_to(r, "work_item", names)
     ]
     checks = of_type.get("tuner:check-run", [])
-    latest = _latest_checks(checks)
+    latest = latest_checks(checks)
     acceptances = [
         AcceptanceRow(
             r["id"],
@@ -520,7 +509,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
             record_payload(r).get("verify_command", ""),
             latest.get(r["id"]),
         )
-        for r in sorted(of_type.get("score:acceptance", []), key=_recorded_at)
+        for r in sorted(of_type.get("score:acceptance", []), key=recorded_at)
     ]
     related = [
         RelatedRecord(kind, r["id"], r["subject"], record_payload(r).get(field, ""))
@@ -535,23 +524,28 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         title=payload.get("title", ""),
         status=status,
         phase=payload.get("phase", ""),
-        wave=_derived(mine).get("wave"),
+        wave=derived_values(mine).get("wave"),
         assignee=payload.get("assignee", ""),
         body=item.get("body") or "",
         depends_on=_linked(
-            [by_subject[ref].id for ref in _items(_depends(item)) if ref in by_subject], rows
+            [by_subject[ref].id for ref in _depends(item) if ref in by_subject], rows
         ),
-        blocks=_linked((_derived(mine).get("referenced_by") or {}).get("depends_on", []), rows),
+        blocks=_linked(
+            (derived_values(mine).get("referenced_by") or {}).get("depends_on", []), rows
+        ),
         acceptances=acceptances,
         timeline=_timeline(assignments, amendments, reports, checks),
         related=related,
-        running_since=max(map(_recorded_at, assignments), default=None)
+        running_since=max(map(recorded_at, assignments), default=None)
         if status == "running"
         else None,
-        requirements=_items(payload.get("requirements")),
-        decisions=_items(payload.get("decisions")),
+        requirements=tuple(payload.get("requirements") or ()),
+        decisions=tuple(payload.get("decisions") or ()),
         size=_size(payload),
         estimate_minutes=_estimate_minutes(payload),
         executor=_executor(payload),
         agent_work=_agent_work(assignments, amendments, reports),
     )
+
+
+_task_rows = task_rows
