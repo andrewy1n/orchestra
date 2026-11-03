@@ -10,11 +10,6 @@ from typing import Literal, TypeGuard
 
 from orchestra.canon.git_backend import run_git
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Conditional dependency for Python <3.11.
-
 CONFIG_PATH = "orchestra.toml"
 StageName = Literal["task", "phase", "milestone"]
 PluginName = Literal["unit", "review"]
@@ -124,6 +119,11 @@ def _table(value: object, label: str) -> Mapping[str, object]:
 
 
 def _load_toml(text: str) -> object:
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:
+        import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Conditional dependency for Python <3.11.
+
     return tomllib.loads(text)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]  # TOML parser tables are runtime-validated by _table and _string_list.
 
 
