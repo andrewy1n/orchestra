@@ -1,8 +1,7 @@
 from collections.abc import Mapping, Sequence
 
 from orchestra.canon.types import JsonValue
-
-Rollup = dict[str, int | float]
+from orchestra.sessions.session_types import EffortRollup
 
 
 def _mapping(value: JsonValue) -> Mapping[str, JsonValue]:
@@ -23,8 +22,8 @@ def _strings(value: JsonValue) -> list[str]:
     return result
 
 
-def effort_rollup(rows: Sequence[Mapping[str, JsonValue]]) -> dict[str, Rollup]:
-    out: dict[str, Rollup] = {}
+def effort_rollup(rows: Sequence[Mapping[str, JsonValue]]) -> dict[str, EffortRollup]:
+    out: dict[str, EffortRollup] = {}
     for row in rows:
         records_value = row.get("records")
         if "error" in row or not records_value:
