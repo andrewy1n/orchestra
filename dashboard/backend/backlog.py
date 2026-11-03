@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
 
 from dashboard.backend.snapshot import BacklogItem
 from orchestra.canon.project import Project
+from orchestra.canon.types import JsonValue
 
 BACKLOG_TYPE = "composer:idea"
 
@@ -40,8 +40,8 @@ def prompt(item: BacklogItem, effort: str | None = None) -> str:
     )
 
 
-def _operation(args: list[str]) -> dict[str, Any]:
-    operation: dict[str, Any] = {"op": args[0]}
+def _operation(args: list[str]) -> dict[str, JsonValue]:
+    operation: dict[str, JsonValue] = {"op": args[0]}
     index = 1
     while index < len(args):
         flag = args[index]
@@ -74,8 +74,10 @@ def _write(target: Project, args: list[str]) -> None:
     raise BacklogError(f"{label} failed: {detail.splitlines()[0]}")
 
 
-def _successor_payload(item: BacklogItem, status: str, *, phase: str | None = None) -> dict:
-    payload: dict = {"effort": item.effort, "status": status}
+def _successor_payload(
+    item: BacklogItem, status: str, *, phase: str | None = None
+) -> dict[str, JsonValue]:
+    payload: dict[str, JsonValue] = {"effort": item.effort, "status": status}
     if item.source:
         payload["source"] = item.source
     chosen = phase if phase is not None else item.phase

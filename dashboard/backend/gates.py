@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -26,6 +28,8 @@ _LOOP_SKILL = {
 class _LandingState(Protocol):
     exists: bool
     merged: bool
+    branch: str
+    ahead: int
 
 
 def plan_review_slug(item: NeedsYouItem) -> str | None:
@@ -117,7 +121,7 @@ def _has_decisions(phase: PhaseRow) -> bool:
 
 
 def _unmerged_done_slug(
-    view: EffortView, landing: dict[str, Landing | _LandingState]
+    view: EffortView, landing: Mapping[str, Landing | _LandingState]
 ) -> str | None:
     for phase in sorted(view.phases, key=lambda row: row.ordinal):
         if phase.state != "done":
@@ -206,7 +210,7 @@ def landing_summary(state: Landing) -> str:
 
 def merge_landing_needs(
     view: EffortView,
-    landing: dict[str, Landing | _LandingState],
+    landing: Mapping[str, Landing | _LandingState],
 ) -> EffortView:
     """Append merge-branch Needs you items for unmerged done phases (R6); re-sort by NEEDS_ORDER."""
     extras: list[NeedsYouItem] = []
@@ -228,21 +232,7 @@ def merge_landing_needs(
         )
     items = [item for item in view.needs_you if item.kind != "merge-branch"] + extras
     items.sort(key=lambda entry: NEEDS_ORDER.index(entry.kind))
-    fields = {
-        "effort": view.effort,
-        "goal": view.goal,
-        "phases": view.phases,
-        "tasks": view.tasks,
-        "needs_you": items,
-        "activity": view.activity,
-        "release_ready": view.release_ready,
-        "kind": getattr(view, "kind", ""),
-        "journal_open": list(getattr(view, "journal_open", []) or []),
-        "backlog": list(getattr(view, "backlog", []) or []),
-    }
-    if hasattr(view, "position"):
-        fields["position"] = view.position
-    return EffortView(**fields)
+    return replace(view, needs_you=items)
 
 
 def landing_for_view(root: Path, view: EffortView) -> dict[str, Landing]:
@@ -293,7 +283,7 @@ def apply_landing_needs(
     return Snapshot(efforts, snapshot.token, snapshot.generated_at)
 
 
-def needs_you_count(view: EffortView, landing: dict[str, Landing | _LandingState]) -> int:
+def needs_you_count(view: EffortView, landing: Mapping[str, Landing | _LandingState]) -> int:
     """Needs you length after landing merge — same count the app and status segment use."""
     return len(merge_landing_needs(view, landing).needs_you)
 
