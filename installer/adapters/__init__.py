@@ -14,6 +14,7 @@ new matrix row works before its native adapter exists.
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import import_module
 from pathlib import Path
 
 from installer.adapters.base import Adapter, BaseAdapter
@@ -73,7 +74,7 @@ class GenericSkillsAdapter(BaseAdapter):
 
 # Importing the native module runs its @register_adapter decorators. It comes
 # last because those modules import the registry above.
-from installer.adapters import native as _native  # noqa: E402,F401
+import_module("installer.adapters.native")
 from installer.adapters.native import (  # noqa: E402
     ClaudeAdapter,
     CursorAdapter,
