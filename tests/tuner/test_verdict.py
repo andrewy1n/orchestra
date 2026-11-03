@@ -57,7 +57,6 @@ def _manifest(
     oracle: bytes,
     amendments: list | None = None,
     digest: str | None = None,
-    runner: list[str] | None = None,
     support_files: list[str] | None = None,
     claim_support_files: list[str] | None = None,
 ) -> dict:
@@ -73,8 +72,6 @@ def _manifest(
         "claims": [claim],
         "amendments": list(amendments or []),
     }
-    if runner is not None:
-        document["runner"] = list(runner)
     if support_files is not None:
         document["support_files"] = list(support_files)
     return document
@@ -87,8 +84,22 @@ def _write_tree(
     app: bytes,
     allowlist: bytes,
     manifest: dict,
+    runner: list[str] | None = None,
     extra: dict[str, bytes] | None = None,
 ) -> None:
+    configured_runner = runner or [
+        "python3",
+        "-m",
+        "pytest",
+        "-o",
+        "junit_family=xunit1",
+        "{tests}",
+        "--junitxml={report}",
+    ]
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(configured_runner)}\n"
+    )
     tuner = root / ".tuner"
     tuner.mkdir(exist_ok=True)
     (tuner / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -143,10 +154,10 @@ def _repo(
             base_oracle,
             base_amendments,
             base_digest,
-            base_runner,
             support_files=base_support_files,
             claim_support_files=base_claim_support_files,
         ),
+        runner=base_runner,
         extra=base_extra,
     )
     base = _commit(root, "red")
@@ -161,10 +172,10 @@ def _repo(
             head_oracle,
             head_amendments,
             head_digest,
-            head_runner,
             support_files=head_support_files,
             claim_support_files=head_claim_support_files,
         ),
+        runner=head_runner,
         extra=head_extra,
     )
     head = _commit(root, "green")

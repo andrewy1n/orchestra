@@ -1,4 +1,4 @@
-"""Read a committed claims manifest and allowlist from a git revision.
+"""Read committed claims and allowlist data from a git revision.
 
 No test run and no signature check. A dirty worktree is ignored because
 every read goes through ``git show`` of a commit.
@@ -17,6 +17,7 @@ from typing import Literal
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.project_config import ProjectConfigError, load_project_config_at_revision
 
 MANIFEST_PATH = ".tuner/manifest.json"
 ALLOWLIST_PATH = ".tuner/allowed_signers"
@@ -90,13 +91,12 @@ def merge_base(cwd: Path | str, at: str, main: str = "main") -> str:
 
 
 def load_manifest(cwd: Path | str, revision: str) -> Manifest:
-    """Load ``.tuner/manifest.json`` from ``revision``.
+    """Load claims from `.tuner/manifest.json` and runner argv from orchestra.toml.
 
     ``claims`` become ``Claim`` values (id, text, node-id tests, and
     ``oracle_hashes``). ``amendments`` are returned as parsed objects with
-    no signature check. An absent ``runner`` is ``DEFAULT_RUNNER``. A present
-    ``runner`` must be a non-empty argv list with ``{tests}`` and ``{report}``.
-    A missing blob, invalid JSON, or bad runner raises ``ManifestError``.
+    no signature check. A missing blob, invalid JSON, or invalid project config
+    raises ``ManifestError``.
     """
     commit = resolve_commit(cwd, revision)
     try:
@@ -107,7 +107,11 @@ def load_manifest(cwd: Path | str, revision: str) -> Manifest:
         parsed = json.loads(blob)
     except json.JSONDecodeError as exc:
         raise ManifestError(f"invalid JSON in {MANIFEST_PATH} at {revision}") from exc
-    return _parse_manifest(parsed)
+    try:
+        config = load_project_config_at_revision(cwd, commit)
+    except ProjectConfigError as exc:
+        raise ManifestError(str(exc)) from exc
+    return _parse_manifest(parsed, runner=config.runner)
 
 
 def load_allowlist(cwd: Path | str, revision: str) -> bytes:
@@ -137,7 +141,7 @@ def hash_oracle_files(
     return out
 
 
-def _parse_manifest(parsed: JsonValue) -> Manifest:
+def _parse_manifest(parsed: JsonValue, *, runner: tuple[str, ...]) -> Manifest:
     if not isinstance(parsed, dict):
         raise ManifestError("manifest must be a JSON object")
     claims_raw = parsed.get("claims")
@@ -147,24 +151,9 @@ def _parse_manifest(parsed: JsonValue) -> Manifest:
     return Manifest(
         claims=claims,
         amendments=_parse_amendments(parsed.get("amendments")),
-        runner=_parse_runner(parsed),
+        runner=runner,
         support_files=_parse_support_files(parsed.get("support_files"), "support_files"),
     )
-
-
-def _parse_runner(parsed: Mapping[str, JsonValue]) -> tuple[str, ...]:
-    if "runner" not in parsed:
-        return DEFAULT_RUNNER
-    raw = parsed["runner"]
-    values = _string_items(raw)
-    if (
-        values is None
-        or not values
-        or sum(item == "{tests}" for item in values) != 1
-        or not any("{report}" in item for item in values)
-    ):
-        raise ManifestError("runner must be a non-empty argv list with {tests} and {report}")
-    return values
 
 
 def _parse_support_files(raw: JsonValue, label: str) -> tuple[str, ...]:
