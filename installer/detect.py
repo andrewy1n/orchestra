@@ -8,9 +8,6 @@ from pathlib import Path
 from installer.adapters import build_adapter
 from installer.model import Provider
 
-REGISTRATION = ".orchestra-install.json"
-
-
 @dataclass(frozen=True)
 class HostStatus:
     """One provider's footprint at the project and global install bases."""
@@ -57,12 +54,8 @@ def detect_hosts(
                 provider=provider,
                 project=project_adapter.detect(),
                 global_=global_adapter.detect(),
-                marker_project=(
-                    (project_base / provider.project_root).expanduser() / REGISTRATION
-                ).is_file(),
-                marker_global=(
-                    (global_base / provider.global_root).expanduser() / REGISTRATION
-                ).is_file(),
+                marker_project=project_adapter.marker.is_file(),
+                marker_global=global_adapter.marker.is_file(),
             )
         )
     return tuple(statuses)
