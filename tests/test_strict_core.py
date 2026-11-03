@@ -6,7 +6,11 @@ import sys
 from pathlib import Path
 
 import pytest
-import tomllib
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 ROOT = Path(__file__).resolve().parents[1]
 STRICT_ROOTS = (

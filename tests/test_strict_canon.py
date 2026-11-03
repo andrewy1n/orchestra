@@ -4,9 +4,13 @@ import ast
 import importlib
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
-import tomllib
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 ROOT = Path(__file__).resolve().parents[1]
 
