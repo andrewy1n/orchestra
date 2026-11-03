@@ -56,6 +56,10 @@ def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def _init(root: Path) -> None:
     root.mkdir(parents=True)
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+    )
     _git(root, "init", "-q", "-b", "main")
     _git(root, "config", "user.email", "test@example.com")
     _git(root, "config", "user.name", "test")
@@ -193,7 +197,6 @@ def test_r1_claim_add_writes_manifest_entry_standalone(tmp_path):
         {
             "claims": [prior],
             "amendments": [],
-            "runner": ["python3", "-m", "pytest", "{tests}"],
             "support_files": ["conftest.py"],
         },
     )
@@ -211,7 +214,7 @@ def test_r1_claim_add_writes_manifest_entry_standalone(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     document = _read_manifest(existing)
-    assert document["runner"] == ["python3", "-m", "pytest", "{tests}"]
+    assert "runner" not in document
     assert document["support_files"] == ["conftest.py"]
     assert document["claims"][0] == prior
     assert document["claims"][1]["id"] == "claim-new"

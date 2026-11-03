@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from orchestra.tuner.manifest import (
+    DEFAULT_RUNNER,
     ManifestError,
     frozen_support_files,
     hash_oracle_files,
@@ -48,7 +49,6 @@ def _manifest_doc(
     oracle: bytes,
     *,
     claim_id: str = "claim-widget",
-    runner: object = _OMIT,
     support_files: object = _OMIT,
     claim_support_files: object = _OMIT,
 ) -> dict:
@@ -70,8 +70,6 @@ def _manifest_doc(
             }
         ],
     }
-    if runner is not _OMIT:
-        doc["runner"] = runner
     if support_files is not _OMIT:
         doc["support_files"] = support_files
     return doc
@@ -96,6 +94,11 @@ def _write_tree(
     support_files: object = _OMIT,
     claim_support_files: object = _OMIT,
 ) -> None:
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER if runner is _OMIT else runner)}\n",
+        encoding="utf-8",
+    )
     tuner = root / ".tuner"
     tuner.mkdir(exist_ok=True)
     (tuner / "manifest.json").write_text(
@@ -103,7 +106,6 @@ def _write_tree(
             _manifest_doc(
                 oracle,
                 claim_id=claim_id,
-                runner=runner,
                 support_files=support_files,
                 claim_support_files=claim_support_files,
             ),
@@ -229,6 +231,8 @@ def test_missing_oracle_path_raises(repo: dict[str, Path | str]) -> None:
 def test_missing_manifest_raises(tmp_path: Path) -> None:
     root = _init(tmp_path)
     (root / "README").write_text("x\n")
+    _write_tree(root, ORACLE_V1, ALLOWLIST_V1)
+    (root / ".tuner" / "manifest.json").unlink()
     revision = _commit(root, "no manifest")
     with pytest.raises(ManifestError):
         load_manifest(root, revision)

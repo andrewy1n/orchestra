@@ -431,7 +431,15 @@ subcommands and shells to `canon` for store reads/writes:
 | `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
+| `land` | Publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
+
+`orchestra land --phase <phase> --cwd <phase-worktree>` requires a
+proof packet for that phase at the worktree's current commit and
+`[land].adapter = "github-pr"` in `orchestra.toml`. It pushes the branch,
+opens the PR with the packet body, and reports the completed check runs
+and commit statuses. It never merges; the merge decision stays with a
+human.
 
 `orchestra verify` runs tuner, the evidence CLI. Flags live in each
 subcommand's `--help`:
@@ -530,27 +538,26 @@ run apart from the orchestra tests. CI runs the same three commands as
 parallel jobs. When the configured suite `command` is empty, the suite
 falls back to `uv run pytest tests -q -n 4`.
 
-These three commands are the **phase-level suite** (`phase_gate.suite`).
+These three commands are the **phase-level suite** configured in the root
+`orchestra.toml` under `[suite]`.
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
 pass, `execute-phase` honors the configured suite policy — agents must
-not waive it; a human changes `settings.conductor.phase_gate` in
-`.canon/config.json` instead.
+not waive it; a human changes `[suite]` in `orchestra.toml` instead.
 
-`phase_gate.suite` fields:
+`[suite]` fields:
 
 | Field | Values | Behavior |
 |---|---|---|
 | `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached tmux window in the phase worktree; `external` does not run locally |
 | `gate` | `required`, `advisory`, `deferred` | `required` blocks Landing merge on missing/failing suite@head; `advisory` records the check-run (and a finding on fail) without blocking; `deferred` is a Landing human stop with no local run |
 
-`phase_gate` lives in `.canon/config.json` under
-`settings.conductor.phase_gate`. A new store defaults to `mode=none` (skip).
-When a suite is configured (`mode` not `none` and `command` set) and
-`gate` is omitted, gate defaults to `required`. This repo's live
-`.canon/config.json` sets `mode=full` and `gate=advisory` with
-the three commands chained with `&&`. The suite check-run
+The `[suite]` section lives in the required root `orchestra.toml`; a
+missing section defaults to `mode=none` (skip). When a suite is configured
+(`mode` not `none` and `command` set) and `gate` is omitted, gate defaults
+to `required`. This repo's `orchestra.toml` sets `mode=full` and
+`gate=advisory` with the three commands chained with `&&`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 

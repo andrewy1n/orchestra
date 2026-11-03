@@ -1,0 +1,16 @@
+[verify.stages]
+task = ["unit"]
+phase = ["unit", "review"]
+milestone = ["unit", "review"]
+
+[verify.unit]
+runner = ["uv", "run", "python", "-m", "pytest", "-p", "no:rerunfailures", "--confcutdir=tests/canon", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]
+
+[suite]
+mode = "full"
+command = "uv run pytest -q -n auto --confcutdir=tests/canon tests/canon && uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner && uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner"
+gate = "advisory"
+
+[land]
+adapter = "github-pr"
+merge = "human"

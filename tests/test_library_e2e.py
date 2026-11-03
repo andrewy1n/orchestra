@@ -121,6 +121,11 @@ def _repository(directory: Path) -> tuple[Path, dict]:
     _git(repo, "config", "user.email", "test@example.com")
     _git(repo, "config", "user.name", "test")
     _git(repo, "config", "commit.gpgsign", "false")
+    (repo / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n',
+        encoding="utf-8",
+    )
 
     key_dir = directory / "keys"
     key_dir.mkdir()

@@ -27,7 +27,7 @@ def _git(cwd: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def _manifest(evidence_kind: str | None, runner: list[str] | None) -> dict:
+def _manifest(evidence_kind: str | None) -> dict:
     claim: dict = {
         "id": CLAIM,
         "text": "value is one",
@@ -37,12 +37,14 @@ def _manifest(evidence_kind: str | None, runner: list[str] | None) -> dict:
     if evidence_kind is not None:
         claim["evidence_kind"] = evidence_kind
     document: dict = {"claims": [claim], "amendments": []}
-    if runner is not None:
-        document["runner"] = list(runner)
     return document
 
 
 def _write(root: Path, *, app: bytes, manifest: dict) -> None:
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+    )
     tuner = root / ".tuner"
     tuner.mkdir(exist_ok=True)
     (tuner / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -67,11 +69,19 @@ def _repo(root: Path, evidence_kind: str | None, runner: list[str] | None = None
     _git(root, "config", "user.name", "test")
     _git(root, "config", "core.autocrlf", "false")
     _git(root, "config", "commit.gpgsign", "false")
-    manifest = _manifest(evidence_kind, runner)
+    manifest = _manifest(evidence_kind)
     _write(root, app=APP_RED, manifest=manifest)
+    if runner is not None:
+        (root / "orchestra.toml").write_text(
+            f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(runner)}\n'
+        )
     _commit(root, "red")
     _git(root, "checkout", "-qb", "phase/widget")
     _write(root, app=APP_GREEN, manifest=manifest)
+    if runner is not None:
+        (root / "orchestra.toml").write_text(
+            f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(runner)}\n'
+        )
     return _commit(root, "green")
 
 
