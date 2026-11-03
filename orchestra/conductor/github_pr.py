@@ -156,8 +156,8 @@ def open_pull_request(
     poll_interval_s: float = 10,
     timeout_s: float = 1800,
     client: GitHubClient | None = None,
-    sleep: Callable[[float], None] = time.sleep,
-    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] | None = None,
+    monotonic: Callable[[], float] | None = None,
 ) -> GitHubPRResult:
     """Push a committed branch, open a PR with its proof packet, and await CI."""
     project_root = Path(root)
@@ -183,14 +183,16 @@ def open_pull_request(
     repository = github.repository()
     pr_title = title or f"{branch}: phase proof"
     number, url = github.create_pull_request(repository, branch, base, pr_title, proof_packet)
+    sleep_fn = sleep if sleep is not None else time.sleep
+    monotonic_fn = monotonic if monotonic is not None else time.monotonic
     checks, statuses = wait_for_checks(
         github,
         repository,
         head_sha,
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
-        sleep=sleep,
-        monotonic=monotonic,
+        sleep=sleep_fn,
+        monotonic=monotonic_fn,
     )
     return GitHubPRResult(
         number=number,
