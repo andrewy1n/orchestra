@@ -154,8 +154,10 @@ def test_runner_records_suite_check_run_payload_fields():
         "tests/test_bar.py::test_b",
     ]
     assert payload["criterion_id"] == suite_subject(PHASE)
-    assert payload["criterion_id"].endswith("-suite")
-    assert not payload["criterion_id"].endswith("-tier2")
+    criterion_id = payload["criterion_id"]
+    assert isinstance(criterion_id, str)
+    assert criterion_id.endswith("-suite")
+    assert not criterion_id.endswith("-tier2")
 
 
 def test_suite_record_writes_runner_orchestra():
@@ -380,7 +382,9 @@ def test_advisory_gate_does_not_block_merge_on_suite_fail():
         effort="workflow-loop",
         suite=suite,
     )
-    assert "advisory" in finding["claim"]
+    claim = finding["claim"]
+    assert isinstance(claim, str)
+    assert "advisory" in claim
     assert finding["needs"] == "none"
     routed = route_suite_failures(
         suite.failing_node_ids,

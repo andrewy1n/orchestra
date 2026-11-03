@@ -6,11 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 STRICT_ROOT = "orchestra/sessions"
@@ -33,29 +29,16 @@ def _probe_project(tmp_path: Path) -> Path:
     basedpyright = tool["basedpyright"]
     assert isinstance(basedpyright, dict)
     strict = basedpyright["strict"]
-    environments = basedpyright["executionEnvironments"]
     assert isinstance(strict, list)
-    assert isinstance(environments, list)
     config = [
         "[tool.basedpyright]",
         'typeCheckingMode = "standard"',
         'pythonVersion = "3.10"',
         'include = ["orchestra"]',
         "strict = " + json.dumps(strict),
+        'reportExplicitAny = "error"',
         "",
     ]
-    for environment in environments:
-        assert isinstance(environment, dict)
-        config.extend(
-            [
-                "[[tool.basedpyright.executionEnvironments]]",
-                f"root = {json.dumps(environment['root'])}",
-                'extraPaths = ["."]',
-            ]
-        )
-        if "reportExplicitAny" in environment:
-            config.append(f"reportExplicitAny = {json.dumps(environment['reportExplicitAny'])}")
-        config.append("")
     (tmp_path / "pyproject.toml").write_text("\n".join(config), encoding="utf-8")
     return tmp_path
 
@@ -78,16 +61,9 @@ def test_strict_root_config() -> None:
     basedpyright = tool["basedpyright"]
     assert isinstance(basedpyright, dict)
     strict = basedpyright["strict"]
-    environments = basedpyright["executionEnvironments"]
     assert isinstance(strict, list)
-    assert isinstance(environments, list)
-    assert STRICT_ROOT in strict
-    assert any(
-        isinstance(environment, dict)
-        and environment.get("root") == STRICT_ROOT
-        and environment.get("reportExplicitAny") == "error"
-        for environment in environments
-    )
+    assert basedpyright["reportExplicitAny"] == "error"
+    assert "orchestra" in strict or STRICT_ROOT in strict
 
 
 def test_explicit_any_is_rejected(tmp_path: Path) -> None:
@@ -112,7 +88,7 @@ def test_unannotated_parameter_is_rejected(tmp_path: Path) -> None:
     assert result.returncode != 0, result.stdout
 
 
-def test_any_is_allowed_outside_strict_root(tmp_path: Path) -> None:
+def test_any_is_rejected_outside_strict_root(tmp_path: Path) -> None:
     project = _probe_project(tmp_path)
     probe = project / "orchestra" / "other" / "probe.py"
     probe.parent.mkdir(parents=True, exist_ok=True)
@@ -121,15 +97,12 @@ def test_any_is_allowed_outside_strict_root(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     result = _typecheck(project, probe)
-    assert result.returncode == 0, result.stdout
+    assert result.returncode != 0, result.stdout
+    assert "reportExplicitAny" in result.stdout
 
 
 def test_baseline_has_no_sessions_entries() -> None:
-    baseline_path = ROOT / ".basedpyright" / "baseline.json"
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-    files = baseline.get("files", {})
-    assert isinstance(files, dict)
-    assert not any(STRICT_ROOT in path for path in files)
+    assert not (ROOT / ".basedpyright" / "baseline.json").exists()
 
 
 def test_tests_standard_mode() -> None:

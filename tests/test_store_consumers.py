@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
 from canon_support import make_project
@@ -13,7 +12,7 @@ def test_suite_policy_reads_project_config(tmp_path: Path, monkeypatch: pytest.M
     project = make_project(tmp_path / "repo")
     calls: list[Project] = []
 
-    def config(target: Project) -> dict[str, Any]:
+    def config(target: Project) -> dict:
         calls.append(target)
         return {
             "settings": {
@@ -41,7 +40,7 @@ def test_suite_policy_defaults_when_project_config_fails(
 ) -> None:
     project = make_project(tmp_path / "repo")
 
-    def config(target: Project) -> dict[str, Any]:
+    def config(target: Project) -> dict:
         raise StoreError("backend unavailable")
 
     monkeypatch.setattr(Project, "config", config)

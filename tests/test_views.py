@@ -2,6 +2,7 @@ import pytest
 from canon_support import create, make_project, seed_effort
 
 from orchestra import views
+from orchestra.canon.types import Record
 
 
 @pytest.fixture
@@ -345,10 +346,23 @@ def test_roadmap_heads_each_group_with_its_area_and_collects_arealess_ideas(proj
 
 
 def test_group_key_keeps_empty_values_when_a_view_has_no_group_default():
-    record = {"subject": "incidental-task", "payload": {"phase": ""}}
+    record: Record = {
+        "id": "rec-test",
+        "record_type": "score:work-item",
+        "subject": "incidental-task",
+        "payload": {"phase": ""},
+        "lifecycle_state": "active",
+        "relationships": {},
+        "revision": "sha256:pending",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+    }
     assert views._group_key(record, views.PLAN, views.PLAN.roles[0]) == ""
     assert (
-        views._group_key({"subject": "x", "payload": {}}, views.ROADMAP, views.ROADMAP.roles[1])
+        views._group_key(
+            {**record, "subject": "x", "payload": {}},
+            views.ROADMAP,
+            views.ROADMAP.roles[1],
+        )
         == "untriaged"
     )
 

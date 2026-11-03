@@ -1,6 +1,7 @@
 import io
 import json
 import re
+from typing import TypeGuard
 
 import pytest
 from canon_support import create, make_project, seed_effort
@@ -23,11 +24,32 @@ def repo(tmp_path):
     return project
 
 
-def run_hook(monkeypatch, capsys, command, *flags, stdin):
+def _is_json_object(value: object) -> TypeGuard[dict]:
+    return isinstance(value, dict)
+
+
+def _output(value: dict | None) -> dict:
+    if value is None:
+        raise AssertionError("hook output must be an object")
+    return value
+
+
+def run_hook(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+    *flags: str,
+    stdin: object,
+) -> tuple[int, dict | None]:
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(stdin)))
     code = cli.main([command, *flags])
     out = capsys.readouterr().out
-    return code, (json.loads(out) if out.strip() else None)
+    if not out.strip():
+        return code, None
+    parsed: object = json.loads(out)
+    if not _is_json_object(parsed):
+        raise AssertionError("hook output must be an object")
+    return code, parsed
 
 
 def claude_input(repo, **extra):
@@ -44,6 +66,7 @@ def test_hook_start_claude_wraps_protocol_and_handoff_in_additional_context(
     repo, monkeypatch, capsys
 ):
     code, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
+    out = _output(out)
     assert code == 0
     assert set(out) == {"hookSpecificOutput"}
     inner = out["hookSpecificOutput"]
@@ -65,6 +88,7 @@ def test_hook_start_protocol_names_canon():
 def test_hook_start_plain_mode_emits_additional_context_key(repo, monkeypatch, capsys):
     stdin = {"workspace_roots": [str(repo.project_root)], "conversation_id": "c1"}
     code, out = run_hook(monkeypatch, capsys, "hook-start", stdin=stdin)
+    out = _output(out)
     assert code == 0
     assert set(out) == {"additional_context"}
     assert "# Project Handoff" in out["additional_context"]
@@ -79,6 +103,7 @@ def test_hook_start_injects_active_constraints_for_focused_effort(repo, monkeypa
         body="## Basis\n\nWhy.",
     )
     _, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
+    out = _output(out)
     ctx = out["hookSpecificOutput"]["additionalContext"]
     assert "Active constraints:\n- **stay-small**: Keep it small" in ctx
 
@@ -105,12 +130,14 @@ def test_hook_stop_without_store_exits_silently(tmp_path, monkeypatch, capsys):
 
 def test_hook_stop_allows_a_valid_store(repo, monkeypatch, capsys):
     code, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=claude_input(repo))
+    out = _output(out)
     assert (code, out) == (0, {})
 
 
 def test_hook_stop_blocks_on_error_when_no_baseline_exists(repo, monkeypatch, capsys):
     corrupt_reference(repo, monkeypatch)
     code, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=claude_input(repo))
+    out = _output(out)
     assert code == 0
     assert out["decision"] == "block"
     assert "ghost-effort" in out["reason"]
@@ -121,6 +148,7 @@ def test_hook_stop_allows_errors_already_present_at_session_start(repo, monkeypa
     stdin = claude_input(repo)
     run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=stdin)
     code, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
+    out = _output(out)
     assert (code, out) == (0, {})
 
 
@@ -134,6 +162,7 @@ def test_hook_stop_blocks_only_on_errors_new_since_session_start(repo, monkeypat
     )
     errors[:] = ["invalid reference: ghost-effort", "invalid reference: another-ghost"]
     _, out = run_hook(monkeypatch, capsys, "hook-stop", "--claude", stdin=stdin)
+    out = _output(out)
     assert out["decision"] == "block"
     assert "another-ghost" in out["reason"]
     assert "ghost-effort" not in out["reason"]
@@ -155,6 +184,7 @@ def test_hook_stop_plain_mode_returns_followup_message(repo, monkeypatch, capsys
         "loop_count": 0,
     }
     _, out = run_hook(monkeypatch, capsys, "hook-stop", stdin=stdin)
+    out = _output(out)
     assert "ghost-effort" in out["followup_message"]
 
 
@@ -306,12 +336,14 @@ def close_effort(project, slug):
 
 def claude_context(repo, monkeypatch, capsys):
     _, out = run_hook(monkeypatch, capsys, "hook-start", "--claude", stdin=claude_input(repo))
+    out = _output(out)
     return out["hookSpecificOutput"]["additionalContext"]
 
 
 def plain_context(repo, monkeypatch, capsys):
     stdin = {"workspace_roots": [str(repo.project_root)], "conversation_id": "c1"}
     _, out = run_hook(monkeypatch, capsys, "hook-start", stdin=stdin)
+    out = _output(out)
     return out["additional_context"]
 
 
@@ -476,8 +508,8 @@ def test_r10_effort_sections_follow_position_recorded_at_newest_first(
     monkeypatch.chdir(project.project_root)
     ctx = claude_context(project, monkeypatch, capsys)
     starts = [section_start(ctx, slug) for slug in ("charlie", "alpha", "bravo")]
-    assert None not in starts
-    assert starts == sorted(starts)
+    assert all(start is not None for start in starts)
+    assert starts == sorted(start for start in starts if start is not None)
 
 
 def test_r11_orchestra_handoff_keeps_every_effort_and_id_links_beyond_the_hook_budget(

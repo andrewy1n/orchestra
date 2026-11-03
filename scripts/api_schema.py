@@ -33,7 +33,9 @@ def render() -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0] if __doc__ is not None else ""
+    )
     parser.add_argument(
         "--check",
         action="store_true",

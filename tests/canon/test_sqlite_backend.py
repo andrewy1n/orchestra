@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -32,7 +31,7 @@ def test_failed_event_audit_leaves_no_record_or_op(
     sqlite_project.create(record_type="alpha:task", subject="task", payload={"title": "Task"})
     before = _contents(sqlite_project)
 
-    def reject(self: SqliteBackend, record: dict[str, Any]) -> None:
+    def reject(self: SqliteBackend, record: dict) -> None:
         raise StoreError("injected audit failure")
 
     monkeypatch.setattr(SqliteBackend, "archive_history", reject)
@@ -57,7 +56,7 @@ def test_failed_correction_restores_original_event_and_history(
     )
     before = _contents(sqlite_project)
 
-    def reject(self: SqliteBackend, record: dict[str, Any]) -> None:
+    def reject(self: SqliteBackend, record: dict) -> None:
         raise StoreError("injected audit failure")
 
     monkeypatch.setattr(SqliteBackend, "archive_history", reject)

@@ -261,10 +261,10 @@ def _prefer_fake_orchestra(monkeypatch: pytest.MonkeyPatch, directory: Path) -> 
 def _install_questionary(monkeypatch: pytest.MonkeyPatch, script: _Script) -> _Fake:
     fake = _Fake(script)
     module = types.ModuleType("questionary")
-    module.checkbox = fake.checkbox
-    module.select = fake.select
-    module.confirm = fake.confirm
-    module.Choice = Choice
+    module.__dict__["checkbox"] = fake.checkbox
+    module.__dict__["select"] = fake.select
+    module.__dict__["confirm"] = fake.confirm
+    module.__dict__["Choice"] = Choice
     monkeypatch.setitem(sys.modules, "questionary", module)
     return fake
 

@@ -6,10 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 TUNER_ROOT = "orchestra/tuner"
@@ -26,29 +23,16 @@ def _probe_project(tmp_path: Path) -> Path:
     basedpyright = tool_config["basedpyright"]
     assert isinstance(basedpyright, dict)
     strict = basedpyright["strict"]
-    environments = basedpyright["executionEnvironments"]
     assert isinstance(strict, list)
-    assert isinstance(environments, list)
     config = [
         "[tool.basedpyright]",
         'typeCheckingMode = "standard"',
         'pythonVersion = "3.10"',
         'include = ["orchestra", "tests", "scripts"]',
         "strict = " + json.dumps(strict),
+        'reportExplicitAny = "error"',
         "",
     ]
-    for environment in environments:
-        assert isinstance(environment, dict)
-        config.extend(
-            [
-                "[[tool.basedpyright.executionEnvironments]]",
-                "root = " + json.dumps(environment["root"]),
-                'extraPaths = ["."]',
-            ]
-        )
-        if "reportExplicitAny" in environment:
-            config.append("reportExplicitAny = " + json.dumps(environment["reportExplicitAny"]))
-        config.append("")
     (tmp_path / "pyproject.toml").write_text("\n".join(config), encoding="utf-8")
     return tmp_path
 
@@ -108,14 +92,12 @@ def test_standard_mode_keeps_tests_and_scripts_outside_strict_roots(tmp_path: Pa
         "from typing import Any\n\ndef value(item: Any) -> Any:\n    return item\n",
     )
     result = _typecheck(project, probe)
-    assert result.returncode == 0, result.stdout
+    assert result.returncode != 0, result.stdout
+    assert "reportExplicitAny" in result.stdout
 
 
 def test_baseline_has_no_tuner_entries() -> None:
-    baseline = json.loads((ROOT / ".basedpyright" / "baseline.json").read_text(encoding="utf-8"))
-    files = baseline.get("files", {})
-    assert isinstance(files, dict)
-    assert not any(path.lstrip("./").startswith(TUNER_ROOT) for path in files)
+    assert not (ROOT / ".basedpyright" / "baseline.json").exists()
 
 
 def test_import_boundary() -> None:

@@ -68,7 +68,7 @@ def _phase(cli, defs, subject: str) -> dict:
 
 
 def _work_item(cli, defs, subject: str, phase: str, *, requirements: str | None = None) -> dict:
-    payload = {
+    payload: dict[str, object] = {
         "title": subject,
         "phase": phase,
         "kind": "deliver",

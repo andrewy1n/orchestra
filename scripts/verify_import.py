@@ -5,12 +5,12 @@ from __future__ import annotations
 import argparse
 import tempfile
 from pathlib import Path
-from typing import Any
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.errors import StoreError
 from orchestra.canon.revision import compute_revision
 from orchestra.canon.transfer import export_ops, import_ops
+from orchestra.canon.types import Record
 
 
 def verify(source: Backend) -> tuple[int, int]:
@@ -45,7 +45,7 @@ def verify(source: Backend) -> tuple[int, int]:
         mismatches += sum(
             (record["record_type"], record["id"]) not in source_keys for record in imported_records
         )
-        imported_history: dict[tuple[str, str, str], dict[str, Any]] = {
+        imported_history: dict[tuple[str, str, str], Record] = {
             (record["record_type"], record["id"], record["revision"]): record
             for record in target.read_history()
         }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ def test_reviewer_and_suite_import():
 
 def test_tier2_module_raises_import_error():
     with pytest.raises(ImportError):
-        import orchestra.tier2  # noqa: F401
+        importlib.import_module("orchestra.tier2")
 
 
 def test_tuner_tier2_file_absent():

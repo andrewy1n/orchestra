@@ -12,7 +12,6 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -23,8 +22,9 @@ from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.oplog import fold
 from orchestra.canon.project import Binding, Project, open_store
 from orchestra.canon.revision import compute_revision
+from orchestra.canon.types import Record
 
-SCHEMA: dict[str, Any] = {
+SCHEMA: dict = {
     "namespace": "contract",
     "version": "0.1.0",
     "types": {
@@ -56,7 +56,7 @@ def _initialize(root: Path, selected: str = "sqlite") -> Backend:
     return backend
 
 
-def _record(record_id: str, title: str = "initial") -> dict[str, Any]:
+def _record(record_id: str, title: str = "initial") -> Record:
     return {
         "id": _record_id(record_id),
         "record_type": "contract:setting",
@@ -66,6 +66,7 @@ def _record(record_id: str, title: str = "initial") -> dict[str, Any]:
         "relationships": {},
         "recorded_at": "2026-01-01T00:00:00+00:00",
         "body": "",
+        "revision": "sha256:pending",
     }
 
 
@@ -208,7 +209,7 @@ def test_writes_begin_immediate_and_use_ten_second_busy_timeout(
     traces: list[tuple[str, int]] = []
     connections: list[sqlite3.Connection] = []
 
-    def connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+    def connect(*args, **kwargs) -> sqlite3.Connection:
         connection = real_connect(*args, **kwargs)
         connections.append(connection)
 
@@ -285,7 +286,7 @@ def test_failed_supersede_rolls_back_predecessor_and_successor(
     backend_class = type(db_store.backend)
     original_create = backend_class.create_record
 
-    def fail_successor(self: Backend, record: dict[str, Any]) -> dict[str, Any]:
+    def fail_successor(self: Backend, record: Record) -> Record:
         if record.get("relationships", {}).get("supersedes") == [old["id"]]:
             raise StoreError("contract successor failure")
         return original_create(self, record)
@@ -298,12 +299,12 @@ def test_failed_supersede_rolls_back_predecessor_and_successor(
     assert db_store.project.records() == [old]
 
 
-def _write_worker(root: str, worker: int, count: int, barrier: Any, results: Any) -> None:
+def _write_worker(root: str, worker: int, count: int, barrier, results) -> None:
     try:
         real_connect = sqlite3.connect
         begins: list[str] = []
 
-        def connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        def connect(*args, **kwargs) -> sqlite3.Connection:
             connection = real_connect(*args, **kwargs)
 
             def trace(statement: str) -> None:
@@ -325,9 +326,7 @@ def _write_worker(root: str, worker: int, count: int, barrier: Any, results: Any
         raise
 
 
-def _contested_worker(
-    root: str, record: dict[str, Any], body: str, barrier: Any, results: Any
-) -> None:
+def _contested_worker(root: str, record: Record, body: str, barrier, results) -> None:
     try:
         backend = _open(Path(root))
         barrier.wait(timeout=20)
@@ -344,7 +343,7 @@ def _contested_worker(
         raise
 
 
-def _join(workers: list[Any]) -> None:
+def _join(workers: list) -> None:
     try:
         for worker in workers:
             worker.join(timeout=30)
@@ -520,20 +519,20 @@ def contract_backend(request: pytest.FixtureRequest, tmp_path: Path) -> Callable
 def test_shared_backend_contract_reads_updates_history_and_chains(
     contract_backend: Callable[[], Backend],
 ) -> None:
-    contract_backend = contract_backend()
-    first = contract_backend.create_record(_record("shared-record"))
-    updated = contract_backend.write_record(
+    backend = contract_backend()
+    first = backend.create_record(_record("shared-record"))
+    updated = backend.write_record(
         {**first, "payload": {"title": "changed"}},
         expected_revision=first["revision"],
         archive_prior=first,
     )
-    assert contract_backend.record_exists("contract:setting", first["id"])
-    assert contract_backend.read_record("contract:setting", first["id"]) == updated
-    assert contract_backend.list_records("contract:setting", "active") == [updated]
-    assert list(contract_backend.iter_records("contract:setting")) == [updated]
-    assert contract_backend.history_exists("contract:setting", first["id"], first["revision"])
-    assert first in list(contract_backend.read_history())
-    assert fold(dict(contract_backend.iter_chains())[first["id"]]) == updated
+    assert backend.record_exists("contract:setting", first["id"])
+    assert backend.read_record("contract:setting", first["id"]) == updated
+    assert backend.list_records("contract:setting", "active") == [updated]
+    assert list(backend.iter_records("contract:setting")) == [updated]
+    assert backend.history_exists("contract:setting", first["id"], first["revision"])
+    assert first in list(backend.read_history())
+    assert fold(dict(backend.iter_chains())[first["id"]]) == updated
     errors: list[str] = []
-    contract_backend.check_integrity(errors)
+    backend.check_integrity(errors)
     assert errors == []

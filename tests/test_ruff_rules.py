@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 import tempfile
@@ -88,9 +87,8 @@ def test_r9_unformatted_file_fails() -> None:
     assert _ruff_rejects("value = [1,2,3]\n", "format --check", "Would reformat")
 
 
-def test_r11_baseline_count() -> None:
-    baseline = json.loads((REPO_ROOT / ".basedpyright/baseline.json").read_text())
-    assert sum(len(entries) for entries in baseline["files"].values()) <= 19
+def test_r11_basedpyright_baseline_is_removed() -> None:
+    assert not (REPO_ROOT / ".basedpyright" / "baseline.json").exists()
 
 
 def test_r12_agent_lint() -> None:

@@ -12,6 +12,7 @@ from pathlib import Path
 from orchestra.canon.backend import open_backend
 from orchestra.canon.migrate import apply_steps
 from orchestra.canon.project import open_store
+from orchestra.canon.types import JsonObject, JsonValue
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CANON_CMD = [sys.executable, "-m", "orchestra.canon"]
@@ -152,7 +153,8 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
     }
     assert set(before) == {open_record["id"], successor["id"], second["id"]}
 
-    step = {"rename_type": {_LEGACY_TYPE: _IDEA_TYPE}}
+    renames: dict[str, JsonValue] = {_LEGACY_TYPE: _IDEA_TYPE}
+    step: JsonObject = {"rename_type": renames}
     rewritten = apply_steps(store, [step])
     assert rewritten == 3
 

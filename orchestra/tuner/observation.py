@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TypeGuard
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
+
+
+def _is_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    return isinstance(value, Mapping)
+
+
+def _is_value_sequence(value: object) -> TypeGuard[Sequence[object]]:
+    return isinstance(value, (list, tuple))
 
 
 def store_usable(cwd: Path | str) -> bool:
@@ -151,26 +160,32 @@ def maybe_record_verdict_observation(
         print(f"observation record skipped: {exc}", file=sys.stderr)
 
 
-def _claim_ids_of(item: Record) -> list[str]:
-    raw = item.get("claim_ids") if "claim_ids" in item else item.get("payload", {}).get("claim_ids")
-    if isinstance(raw, (list, tuple)):
+def _claim_ids_of(item: Mapping[str, object]) -> list[str]:
+    payload = item.get("payload")
+    nested: object | None = None
+    if _is_object_mapping(payload):
+        nested = payload.get("claim_ids")
+    raw = item.get("claim_ids", nested)
+    if _is_value_sequence(raw):
         values: list[str] = []
         for value in raw:
-            normalized: object = value
-            values.append(str(normalized))
+            values.append(str(value))
         return values
     return []
 
 
-def _technique_of(item: Record) -> str | None:
+def _technique_of(item: Mapping[str, object]) -> str | None:
     if "technique" in item:
         value = item.get("technique")
         return value if isinstance(value, str) else None
-    value = item.get("payload", {}).get("technique")
+    payload = item.get("payload")
+    value: object | None = None
+    if _is_object_mapping(payload):
+        value = payload.get("technique")
     return value if isinstance(value, str) else None
 
 
-def _matches_claim(item: Record, claim: str) -> bool:
+def _matches_claim(item: Mapping[str, object], claim: str) -> bool:
     return claim in _claim_ids_of(item)
 
 

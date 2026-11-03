@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -26,17 +26,20 @@ def _row(id_, rtype, effort=None):
     }
 
 
-def _stub(by_type):
-    calls = []
+class _Stub:
+    def __init__(self, by_type: dict[str, list[dict]]) -> None:
+        self.by_type = by_type
+        self.calls: list[list[str]] = []
 
-    def run(argv):
-        calls.append(argv)
+    def __call__(self, argv: list[str]) -> str:
+        self.calls.append(argv)
         rtype = argv[argv.index("--type") + 1]
-        rows = by_type.get(rtype, [])
+        rows = self.by_type.get(rtype, [])
         return json.dumps({"records": rows, "count": len(rows)})
 
-    run.calls = calls
-    return run
+
+def _stub(by_type: dict[str, list[dict]]) -> _Stub:
+    return _Stub(by_type)
 
 
 def test_yields_metadata_with_utc_times_and_no_body():
@@ -53,8 +56,10 @@ def test_yields_metadata_with_utc_times_and_no_body():
             "store": "proj-x",
         }
     ]
-    assert rows[0]["recorded_at"].utcoffset() == timedelta(0)
-    assert rows[0]["recorded_at"].tzinfo == timezone.utc
+    recorded_at = rows[0]["recorded_at"]
+    assert isinstance(recorded_at, datetime)
+    assert recorded_at.utcoffset() == timedelta(0)
+    assert recorded_at.tzinfo == timezone.utc
     assert BODY not in json.dumps(rows, default=str)
 
 

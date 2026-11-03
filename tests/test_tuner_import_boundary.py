@@ -28,7 +28,10 @@ def _imported_modules(path: Path) -> list[tuple[int, str, bool]]:
             self.generic_visit(node)
             self._function_depth -= 1
 
-        visit_AsyncFunctionDef = visit_FunctionDef
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+            self._function_depth += 1
+            self.generic_visit(node)
+            self._function_depth -= 1
 
         def visit_Import(self, node: ast.Import) -> None:
             local = self._function_depth > 0

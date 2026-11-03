@@ -11,6 +11,7 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 
 
 class TranscriptEvent(TypedDict, total=False):
+    attributionSkill: JsonValue
     sessionId: JsonValue
     cwd: JsonValue
     gitBranch: JsonValue
@@ -39,7 +40,7 @@ class RecordMetadata(TypedDict):
     record_type: str
     subject: str | None
     effort: str | None
-    recorded_at: datetime
+    recorded_at: datetime | str
     lifecycle_state: str | None
     store: str
 

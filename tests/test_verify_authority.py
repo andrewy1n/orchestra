@@ -15,10 +15,24 @@ from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations
 
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close_batch
 
 SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"
 SCRIPT = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
+
+
+def _check_run(record_id: str, payload: JsonObject) -> Record:
+    return {
+        "id": record_id,
+        "record_type": "tuner:check-run",
+        "subject": record_id,
+        "payload": payload,
+        "lifecycle_state": "recorded",
+        "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+    }
 
 
 def _skill() -> str:
@@ -162,23 +176,23 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
         "finding": None,
     }
 
-    def loader(cid: str) -> dict:
+    def loader(cid: str) -> Record:
         entry = request["criteria"][0]
         if cid == entry["check_run_id"]:
-            return {
-                "id": cid,
-                "payload": {
+            return _check_run(
+                cid,
+                {
                     "criterion_id": entry["criterion_id"],
                     "result": entry["result"],
                     "runner": "orchestra",
                     "revision": entry["revision"],
                     "method": "tdd",
                 },
-            }
+            )
         if cid == entry["red_check_run_id"]:
-            return {
-                "id": cid,
-                "payload": {
+            return _check_run(
+                cid,
+                {
                     "criterion_id": entry["criterion_id"],
                     "result": entry["red_result"],
                     "runner": entry["red_runner"],
@@ -186,7 +200,7 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
                     "diff_sha256": entry["red_diff_sha256"],
                     "method": "tdd",
                 },
-            }
+            )
         raise LookupError(cid)
 
     ops = close_batch.build_batch(request, load_check_run=loader)
@@ -219,8 +233,10 @@ def test_close_batch_still_creates_manual_check_runs(
         }
     )
     assert ops[0]["type"] == "tuner:check-run"
-    assert ops[0]["payload"]["method"] == "manual"
-    assert ops[0]["payload"]["result"] == "pass"
+    payload = ops[0].get("payload")
+    assert isinstance(payload, dict)
+    assert payload["method"] == "manual"
+    assert payload["result"] == "pass"
 
 
 def test_close_batch_source_mentions_runner_authority():

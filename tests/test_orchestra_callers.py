@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from orchestra.canon.types import Record
 from orchestra.conductor import close_batch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -211,9 +212,15 @@ def _spy(monkeypatch, module_name: str, attr: str, calls: list) -> None:
         monkeypatch.setattr(module, attr, wrapped)
 
 
-def _check_loader(check_run_id: str) -> dict:
+def _check_loader(check_run_id: str) -> Record:
     return {
         "id": check_run_id,
+        "record_type": "tuner:check-run",
+        "subject": "check",
+        "lifecycle_state": "active",
+        "relationships": {},
+        "revision": "sha256:pending",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
         "payload": {
             "criterion_id": "rec-ac1",
             "result": "pass",
@@ -224,10 +231,15 @@ def _check_loader(check_run_id: str) -> dict:
     }
 
 
-def _claim_acceptance() -> dict:
+def _claim_acceptance() -> Record:
     return {
         "id": "rec-ac1",
+        "record_type": "score:acceptance",
         "subject": CLAIM_ID,
+        "lifecycle_state": "active",
+        "relationships": {},
+        "revision": "sha256:pending",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
         "payload": {"method": "check", "effort": "effort-1", "claim": CLAIM_ID},
     }
 
@@ -284,7 +296,7 @@ def _run_claim_close(repo: Path):
     return None
 
 
-def _oracle_request() -> dict:
+def _oracle_request() -> tuple[dict, Record]:
     digest = "ab" * 32
     return {
         "subject": "task-1",
@@ -307,6 +319,12 @@ def _oracle_request() -> dict:
         ],
     }, {
         "id": "rec-ac1",
+        "record_type": "score:acceptance",
+        "subject": "claim-widget",
+        "lifecycle_state": "active",
+        "relationships": {},
+        "revision": "sha256:pending",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
         "payload": {
             "method": "tdd",
             "effort": "effort-1",
@@ -316,10 +334,16 @@ def _oracle_request() -> dict:
     }
 
 
-def _oracle_loader(check_run_id: str) -> dict:
+def _oracle_loader(check_run_id: str) -> Record:
     if check_run_id == "rec-green":
         return {
             "id": check_run_id,
+            "record_type": "tuner:check-run",
+            "subject": "green check",
+            "lifecycle_state": "active",
+            "relationships": {},
+            "revision": "sha256:pending",
+            "recorded_at": "2026-01-01T00:00:00+00:00",
             "payload": {
                 "criterion_id": "rec-ac1",
                 "result": "pass",
@@ -331,6 +355,12 @@ def _oracle_loader(check_run_id: str) -> dict:
     if check_run_id == "rec-red":
         return {
             "id": check_run_id,
+            "record_type": "tuner:check-run",
+            "subject": "red check",
+            "lifecycle_state": "active",
+            "relationships": {},
+            "revision": "sha256:pending",
+            "recorded_at": "2026-01-01T00:00:00+00:00",
             "body": (
                 "E       AssertionError: assert 0 == 42\n"
                 "FAILED tests/test_oracle_probe.py::test_expected_behavior - AssertionError\n"
@@ -365,12 +395,7 @@ def _load_toml(text: str) -> dict:
     if tomllib is not None:
         loaded = tomllib.loads(text)
         return loaded if isinstance(loaded, dict) else {}
-    try:
-        import tomli
-    except ModuleNotFoundError:
-        return _loose_dependencies(text)
-    loaded = tomli.loads(text)
-    return loaded if isinstance(loaded, dict) else {}
+    return _loose_dependencies(text)
 
 
 def _loose_dependencies(text: str) -> dict:

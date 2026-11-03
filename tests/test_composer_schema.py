@@ -155,7 +155,9 @@ def installed_prefix(tmp_path_factory):
 
 def test_module_version(tmp_path: Path):
     _, _, initialized = _init_store_with_composer(tmp_path)
-    assert initialized["schemas"]["composer"] == "1.1.0"
+    schemas = initialized.get("schemas")
+    assert isinstance(schemas, dict)
+    assert schemas.get("composer") == "1.1.0"
 
 
 def test_area_scope(tmp_path: Path):

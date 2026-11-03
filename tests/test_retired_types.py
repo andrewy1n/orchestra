@@ -20,6 +20,7 @@ _RETIRED = (
 def test_score_module_declares_no_retired_types():
     module = discover()[_SCORE].module
     keys = module["types"]
+    assert isinstance(keys, dict)
     assert _BACKLOG not in keys
     assert _FEEDBACK not in keys
 

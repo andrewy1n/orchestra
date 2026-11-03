@@ -43,4 +43,5 @@ def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
         proof=proof,
     )
     assert "proof" in phase_mod.tabs_for(detail)
+    assert detail.proof is not None
     assert "dashboard phase detail Proof" in detail.proof.look
