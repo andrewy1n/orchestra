@@ -88,6 +88,10 @@ def _refuse_cancel(answer: object) -> object:
     return answer
 
 
+def _is_sequence(value: object) -> TypeGuard[Sequence[object]]:
+    return isinstance(value, Sequence) and not isinstance(value, str)
+
+
 def _questionary_hosts(
     prompts: _RichPrompts,
     statuses: tuple[HostStatus, ...],
@@ -103,7 +107,7 @@ def _questionary_hosts(
         for status in statuses
     ]
     answer = _refuse_cancel(prompts.checkbox("Select hosts", choices=choices).ask())
-    if isinstance(answer, str) or not isinstance(answer, Sequence):
+    if not _is_sequence(answer):
         raise WizardSelectionError("select at least one host")
     allowed = set(_provider_ids(statuses))
     selected: list[str] = []
