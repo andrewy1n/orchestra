@@ -30,7 +30,6 @@ from installer.agents import generated_agent
 from installer.allowlist import IGNORE_NAMES, IGNORE_SUFFIXES, is_allowed
 from installer.model import Action, ApplyResult, Plan, RemoveResult, VerifyResult
 
-
 JsonObject = dict[str, object]
 
 
@@ -137,11 +136,7 @@ class ClaudeAdapter(NativeAdapter):
         hooks = _as_object(fragment.get("hooks"))
         if hooks is None:
             return []
-        return [
-            (event, value)
-            for event, value in hooks.items()
-            if _is_object_list(value)
-        ]
+        return [(event, value) for event, value in hooks.items() if _is_object_list(value)]
 
     def _settings_have_fragment(self, settings: JsonObject, fragment: JsonObject) -> bool:
         hooks = _as_object(settings.get("hooks"))

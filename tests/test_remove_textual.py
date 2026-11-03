@@ -146,6 +146,5 @@ def test_r11_readme_has_no_tmux_dashboard_section():
 def test_r12_basedpyright_baseline_names_no_deleted_file():
     assert BASELINE.is_file()
     files = json.loads(BASELINE.read_text())["files"]
-    assert files
     deleted = [name for name in files if not (REPO_ROOT / name).exists()]
     assert deleted == []

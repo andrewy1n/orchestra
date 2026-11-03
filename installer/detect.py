@@ -8,6 +8,7 @@ from pathlib import Path
 from installer.adapters import build_adapter
 from installer.model import Provider
 
+
 @dataclass(frozen=True)
 class HostStatus:
     """One provider's footprint at the project and global install bases."""

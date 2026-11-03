@@ -9,9 +9,7 @@ from typing import TypeAlias
 from installer.model import Provider
 
 MATRIX_PATH = Path(__file__).resolve().with_name("providers.json")
-JsonValue: TypeAlias = (
-    str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
-)
+JsonValue: TypeAlias = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 
 
 class MatrixError(ValueError):

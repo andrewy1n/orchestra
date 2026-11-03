@@ -140,8 +140,7 @@ class BaseAdapter:
                 )
             entries = self._marker_entries(previous)
             remove_actions = tuple(
-                Action(kind="remove", destination=self.root / entry)
-                for entry in entries
+                Action(kind="remove", destination=self.root / entry) for entry in entries
             )
             remove_actions += (Action(kind="remove", destination=self.marker),)
             return Plan(
