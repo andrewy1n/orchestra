@@ -12,7 +12,7 @@ from typing import Literal
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Conditional dependency for Python <3.11.
 
 CONFIG_PATH = "orchestra.toml"
 StageName = Literal["task", "phase", "milestone"]
@@ -30,7 +30,7 @@ DEFAULT_RUNNER = (
 )
 
 
-class ProjectConfigError(Exception):
+class ProjectConfigError(ValueError):
     """The project config is missing, malformed, or invalid."""
 
 

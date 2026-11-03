@@ -56,14 +56,14 @@ def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
     """Per-task verify_command stays scoped; phase-level suite is the full run."""
     execute = _flat(_text("execute-phase"))
     assert "Put a whole-suite command on a per-task `verify_command`" in execute
-    assert "phase_gate.suite" in execute
+    assert "suite.gate" in execute
     assert "tier-2" not in execute and "tier2" not in execute
 
     reviewer = (REPO_ROOT / "agents" / "reviewer.md").read_text()
     assert "tier-2" not in reviewer and "tier2" not in reviewer
 
     readme = _testing_section("README.md")
-    assert "phase_gate.suite" in readme
+    assert "`[suite]`" in readme
     assert "phase-level suite" in readme
     assert "Per-task `verify_command` values stay narrowly scoped" in readme
     for mode in ("none", "smoke", "full", "external"):

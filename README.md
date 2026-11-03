@@ -530,27 +530,26 @@ run apart from the orchestra tests. CI runs the same three commands as
 parallel jobs. When the configured suite `command` is empty, the suite
 falls back to `uv run pytest tests -q -n 4`.
 
-These three commands are the **phase-level suite** (`phase_gate.suite`).
+These three commands are the **phase-level suite** configured in the root
+`orchestra.toml` under `[suite]`.
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
 pass, `execute-phase` honors the configured suite policy — agents must
-not waive it; a human changes `settings.conductor.phase_gate` in
-`.canon/config.json` instead.
+not waive it; a human changes `[suite]` in `orchestra.toml` instead.
 
-`phase_gate.suite` fields:
+`[suite]` fields:
 
 | Field | Values | Behavior |
 |---|---|---|
 | `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached tmux window in the phase worktree; `external` does not run locally |
 | `gate` | `required`, `advisory`, `deferred` | `required` blocks Landing merge on missing/failing suite@head; `advisory` records the check-run (and a finding on fail) without blocking; `deferred` is a Landing human stop with no local run |
 
-`phase_gate` lives in `.canon/config.json` under
-`settings.conductor.phase_gate`. A new store defaults to `mode=none` (skip).
-When a suite is configured (`mode` not `none` and `command` set) and
-`gate` is omitted, gate defaults to `required`. This repo's live
-`.canon/config.json` sets `mode=full` and `gate=advisory` with
-the three commands chained with `&&`. The suite check-run
+The `[suite]` section lives in the required root `orchestra.toml`; a
+missing section defaults to `mode=none` (skip). When a suite is configured
+(`mode` not `none` and `command` set) and `gate` is omitted, gate defaults
+to `required`. This repo's `orchestra.toml` sets `mode=full` and
+`gate=advisory` with the three commands chained with `&&`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
 
