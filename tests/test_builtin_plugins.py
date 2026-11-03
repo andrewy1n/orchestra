@@ -105,7 +105,7 @@ def test_review_stage_maps_needs_work_and_rejects_invalid_output(tmp_path: Path)
     valid_prefix = (
         "verdict: NEEDS_WORK\nfindings:\n  - task: task-a\n"
         "    kind: behavior-bug\n    expected: correct behavior\n"
-        "    observed: wrong behavior\n    severity: high\nintegration:\n"
+        "    observed: wrong behavior\n    severity: major\nintegration:\n"
         "  interfaces: stable API\n  assumptions: host reviewer ran\n"
         "  invariants: signed evidence\n  conflicts: none\n"
     )
@@ -117,7 +117,16 @@ def test_review_stage_maps_needs_work_and_rejects_invalid_output(tmp_path: Path)
     assert isinstance(result.output, dict)
     assert result.output["verdict"] == "NEEDS_WORK"
 
-    for invalid in (None, "verdict: MAYBE", valid_prefix.replace("    kind: behavior-bug\n", "")):
+    invalid_findings = (
+        valid_prefix.replace("    kind: behavior-bug\n", "    kind: unsupported-kind\n"),
+        valid_prefix.replace("    severity: major\n", "    severity: high\n"),
+    )
+    for invalid in (
+        None,
+        "verdict: MAYBE",
+        valid_prefix.replace("    kind: behavior-bug\n", ""),
+        *invalid_findings,
+    ):
         with pytest.raises(ValueError):
             plugins.dispatch_plugins(
                 replace(_context(tmp_path, "phase", revision), reviewer_output=invalid)

@@ -95,6 +95,7 @@ FIXABLE_FINDING_KINDS = frozenset(
         "invariant-violation",
     }
 )
+REVIEWER_SEVERITIES = frozenset({"blocker", "major", "minor", "judgment"})
 
 
 def _short_kind(record_type: str) -> str:
@@ -327,6 +328,10 @@ def validate_reviewer_output(text: str) -> ParsedReviewerOutput:
             raise ValueError(
                 "reviewer findings must include task, kind, expected, observed, and severity"
             )
+        if finding["kind"] not in FIXABLE_FINDING_KINDS:
+            raise ValueError(f"reviewer finding has unsupported kind: {finding['kind']}")
+        if finding["severity"] not in REVIEWER_SEVERITIES:
+            raise ValueError(f"reviewer finding has unsupported severity: {finding['severity']}")
     return parsed
 
 
