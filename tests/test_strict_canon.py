@@ -265,9 +265,7 @@ def test_r17_explicit_any_fails_canon(tmp_path: Path) -> None:
 
 def test_r18_explicit_any_outside_strict_scope_passes(tmp_path: Path) -> None:
     project = _project(tmp_path)
-    dashboard = project / "dashboard"
-    dashboard.mkdir()
-    probe = dashboard / "probe_r18.py"
+    probe = project / "orchestra" / "strict_probe.py"
     probe.write_text("from typing import Any\nvalue: Any = 1\n", encoding="utf-8")
     result = _typecheck(project, [str(probe)])
     assert result.returncode == 0, result.stdout
