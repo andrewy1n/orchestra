@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 
-from orchestra.sessions.types import JsonValue, SessionOutlier
+from orchestra.sessions.session_types import JsonValue, SessionOutlier
 
 
 def _mapping(value: JsonValue) -> Mapping[str, JsonValue]:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TypedDict
 
-from orchestra.sessions.types import JsonValue, SkillRollup, ToolRollup
+from orchestra.sessions.session_types import JsonValue, SkillRollup, ToolRollup
 
 
 class ToolSkillRollup(TypedDict):

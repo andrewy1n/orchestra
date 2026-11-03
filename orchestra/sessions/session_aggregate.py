@@ -6,13 +6,13 @@ from collections.abc import Iterable
 
 from orchestra.score.effort_rollup import effort_rollup
 from orchestra.sessions.session_outliers import outliers
-from orchestra.sessions.tool_skill_rollup import tool_skill_rollup
-from orchestra.sessions.types import (
+from orchestra.sessions.session_types import (
     JsonObject,
     JsonValue,
     SessionAggregate,
     SessionCaveats,
 )
+from orchestra.sessions.tool_skill_rollup import tool_skill_rollup
 
 NOTE = (
     "Per-session record counts are approximate: a session counts toward an effort "
