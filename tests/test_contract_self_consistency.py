@@ -137,16 +137,25 @@ def test_phase_gate_defaults_to_mode_none(tmp_path):
 
     repo = make_git_repo()
     assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0
+    (repo / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n'
+    )
     policy = suite.load_suite_policy(repo)
     assert policy.mode == "none"
     assert policy.gate == "required"
 
 
-def test_phase_gate_reads_store_config():
+def test_phase_gate_reads_toml_and_ignores_store_config():
     from orchestra.conductor import suite
 
     repo = make_git_repo()
     assert run_cli("init", "--schemas", "score,conductor,tuner", root=repo).returncode == 0
+    (repo / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n\n'
+        '[suite]\nmode = "smoke"\ncommand = "pytest toml-suite"\ngate = "required"\n'
+    )
     config_path = repo / ".canon" / "config.json"
     config = json.loads(config_path.read_text())
     config["settings"] = {
@@ -156,4 +165,8 @@ def test_phase_gate_reads_store_config():
     }
     config_path.write_text(json.dumps(config))
     policy = suite.load_suite_policy(repo)
-    assert (policy.mode, policy.command, policy.gate) == ("full", "pytest -q", "advisory")
+    assert (policy.mode, policy.command, policy.gate) == (
+        "smoke",
+        "pytest toml-suite",
+        "required",
+    )

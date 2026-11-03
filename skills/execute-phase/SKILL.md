@@ -443,8 +443,8 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Call the phase complete (or merge) without a proof-packet at phase-head
   when code or claims changed
 - Merge without passing review at phase-head, or without required suite
-  at phase-head when `phase_gate.suite.gate` is `required`
-- Waive / skip / override configured `phase_gate.suite` policy
+  at phase-head when `suite.gate` is `required`
+- Waive / skip / override configured suite policy in `orchestra.toml`
 - Let the reviewer call `canon` or write `.canon`
 - Re-run the reviewer more than once after fix tasks for the same phase-end
 - Fix-and-rerun inside the suite step (`required` → fix tasks + re-run at

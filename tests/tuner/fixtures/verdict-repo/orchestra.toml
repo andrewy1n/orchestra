@@ -1,0 +1,5 @@
+[verify.stages]
+phase = ["unit"]
+
+[verify.unit]
+runner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]

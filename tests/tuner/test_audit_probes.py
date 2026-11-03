@@ -27,6 +27,10 @@ PROBE_CLI = {
 
 def _init(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+    )
     subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
     subprocess.run(
         ["git", "config", "user.email", "probe@test"],
