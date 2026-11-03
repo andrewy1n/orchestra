@@ -1,31 +1,5 @@
 {
     "files": {
-        "./dashboard/backend/gates.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 43,
-                    "endColumn": 50,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 34,
-                    "endColumn": 63,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 39,
-                    "endColumn": 67,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./installer/adapters/base.py": [
             {
                 "code": "reportAssignmentType",
