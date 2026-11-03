@@ -181,12 +181,12 @@ def open_pull_request(
     client: GitHubClient | None = None,
     sleep: Callable[[float], None] | None = None,
     monotonic: Callable[[], float] | None = None,
+    adapter_config: JsonObject | None = None,
 ) -> GitHubPRResult:
     """Push a committed branch, open a PR with its proof packet, and await CI."""
     project_root = Path(root)
     config = load_project_config(project_root)
-    if config.land_adapter != "github-pr":
-        raise GitHubPRError("orchestra.toml must select land.adapter = github-pr")
+    del adapter_config
     if config.merge_policy != "human":
         raise GitHubPRError("land.merge must remain human")
     if not proof_packet.strip():

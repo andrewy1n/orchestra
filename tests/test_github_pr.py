@@ -15,6 +15,7 @@ from orchestra.conductor.github_pr import (
     GitHubREST,
     open_pull_request,
 )
+from orchestra.conductor.land import LandingCheck, LandingResult
 
 
 class FakeGitHub:
@@ -269,25 +270,25 @@ def test_land_cli_reports_pull_request_and_final_checks(
         remote: str,
         poll_interval_s: float,
         timeout_s: float,
-    ) -> GitHubPRResult:
+    ) -> LandingResult:
         assert root == tmp_path.resolve()
         assert proof_packet == "proof packet"
         assert base == "main"
         assert remote == "origin"
         assert poll_interval_s == 10
         assert timeout_s == 1800
-        return GitHubPRResult(
+        return LandingResult(
+            result="success",
             number=42,
             url="https://github.com/owner/repo/pull/42",
             head_sha="head-sha",
-            checks=(GitHubCheck("CI", "completed", "success"),),
+            checks=(LandingCheck("CI", "completed", "success"),),
             statuses=("success",),
-            result="success",
         )
 
     monkeypatch.setattr(cli, "open_store", lambda _root: FakeProject())
     monkeypatch.setattr(cli, "git_head", lambda _root: "head-sha")
-    monkeypatch.setattr(cli.github_pr, "open_pull_request", fake_open_pull_request)
+    monkeypatch.setattr(cli.land, "dispatch_land", fake_open_pull_request)
 
     exit_code = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
 

@@ -13,7 +13,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import github_pr, reviewer, suite
+from orchestra.conductor import land, reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.github_pr import GitHubPRError
 from orchestra.score.analyze import analyze_phase
@@ -682,7 +682,7 @@ def _cmd_land(args: argparse.Namespace) -> int:
         body = packet.get("body")
         if not isinstance(body, str):
             raise ValueError("phase proof packet has no body")
-        result = github_pr.open_pull_request(
+        result = land.dispatch_land(
             work,
             body,
             base=args.base,

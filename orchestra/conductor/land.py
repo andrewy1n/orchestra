@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol, runtime_checkable
+
+from orchestra.canon.extensions import PluginCatalogError, resolve_plugin
+from orchestra.canon.project_config import ProjectConfig, load_project_config
+from orchestra.canon.types import JsonObject
+
+
+@dataclass(frozen=True)
+class LandRequest:
+    root: Path
+    proof_packet: str
+    base: str
+    remote: str
+    poll_interval_s: float
+    timeout_s: float
+    config: JsonObject
+
+
+@dataclass(frozen=True)
+class LandingCheck:
+    name: str
+    status: str
+    conclusion: str | None
+
+
+@dataclass(frozen=True)
+class LandingResult:
+    result: str
+    number: int
+    url: str
+    head_sha: str
+    checks: tuple[LandingCheck, ...]
+    statuses: tuple[str, ...]
+
+
+@runtime_checkable
+class LandAdapter(Protocol):
+    def run(self, request: LandRequest) -> LandingResult: ...
+
+
+class NoneAdapter:
+    def run(self, request: LandRequest) -> LandingResult:
+        del request
+        return LandingResult("skipped", 0, "", "", (), ())
+
+
+class GitHubPRAdapter:
+    def run(self, request: LandRequest) -> LandingResult:
+        from orchestra.conductor.github_pr import open_pull_request
+
+        result = open_pull_request(
+            request.root,
+            request.proof_packet,
+            base=request.base,
+            remote=request.remote,
+            poll_interval_s=request.poll_interval_s,
+            timeout_s=request.timeout_s,
+            adapter_config=request.config,
+        )
+        return LandingResult(
+            result=result.result,
+            number=result.number,
+            url=result.url,
+            head_sha=result.head_sha,
+            checks=tuple(
+                LandingCheck(check.name, check.status, check.conclusion) for check in result.checks
+            ),
+            statuses=result.statuses,
+        )
+
+
+def dispatch_land(
+    root: Path | str,
+    proof_packet: str,
+    *,
+    base: str = "main",
+    remote: str = "origin",
+    poll_interval_s: float = 10,
+    timeout_s: float = 1800,
+) -> LandingResult:
+    project_root = Path(root)
+    config: ProjectConfig = load_project_config(project_root)
+    try:
+        factory = resolve_plugin("conductor.land", config.land_adapter).load()
+    except PluginCatalogError as exc:
+        raise ValueError(str(exc)) from exc
+    if not callable(factory):
+        raise ValueError(f"landing adapter {config.land_adapter!r} is not constructible")
+    adapter = factory()
+    if not isinstance(adapter, LandAdapter):
+        raise ValueError(f"landing adapter {config.land_adapter!r} has no run method")
+    result = adapter.run(
+        LandRequest(
+            root=project_root,
+            proof_packet=proof_packet,
+            base=base,
+            remote=remote,
+            poll_interval_s=poll_interval_s,
+            timeout_s=timeout_s,
+            config=dict(config.land_config),
+        )
+    )
+    if not isinstance(result, LandingResult):
+        raise ValueError("landing adapter must return LandingResult")
+    if result.result not in ("success", "fail", "blocked", "skipped"):
+        raise ValueError(f"landing adapter returned invalid result: {result.result!r}")
+    if (
+        result.number < 0
+        or not isinstance(result.url, str)
+        or not isinstance(result.head_sha, str)
+        or any(not isinstance(status, str) for status in result.statuses)
+        or any(not isinstance(check, LandingCheck) for check in result.checks)
+    ):
+        raise ValueError("landing adapter returned malformed structured output")
+    return result

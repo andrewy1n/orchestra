@@ -77,6 +77,10 @@ composer = "orchestra.composer.schemas"
 unit = "orchestra.plugins:UnitPlugin"
 review = "orchestra.plugins:ReviewPlugin"
 
+[project.entry-points."orchestra.conductor.land"]
+none = "orchestra.conductor.land:NoneAdapter"
+github-pr = "orchestra.conductor.land:GitHubPRAdapter"
+
 [tool.ruff]
 line-length = 100
 
