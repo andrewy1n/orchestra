@@ -218,8 +218,10 @@ def wait_for_checks(
     while True:
         checks = client.checks(repository, revision)
         statuses = client.statuses(repository, revision)
-        if all(check.status == "completed" for check in checks) and all(
-            status != "pending" for status in statuses
+        if (
+            (checks or statuses)
+            and all(check.status == "completed" for check in checks)
+            and all(status != "pending" for status in statuses)
         ):
             return checks, statuses
         remaining = deadline - monotonic()

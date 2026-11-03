@@ -129,6 +129,29 @@ def test_github_pr_waits_for_checks_to_complete(tmp_path: Path) -> None:
     assert sleeps == [2]
 
 
+def test_github_pr_waits_for_checks_to_appear(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    github = FakeGitHub()
+    github.check_batches.extend([(), (GitHubCheck("CI", "completed", "success"),)])
+    github.status_batches.extend([(), ("success",)])
+    sleeps: list[float] = []
+
+    result = open_pull_request(
+        root,
+        "proof packet",
+        client=github,
+        poll_interval_s=2,
+        timeout_s=10,
+        sleep=sleeps.append,
+        monotonic=lambda: 0,
+    )
+
+    assert result.result == "success"
+    assert len([event for event in github.events if event.startswith("checks:")]) == 2
+    assert sleeps == [2]
+
+
 def test_github_pr_reports_final_ci_result(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
