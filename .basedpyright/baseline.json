@@ -42,16 +42,6 @@
                 }
             }
         ],
-        "./dashboard/backend/records.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 27,
-                    "endColumn": 33,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./dashboard/backend/task.py": [
             {
                 "code": "reportArgumentType",
