@@ -887,6 +887,10 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["verify"]:
+        if argv[1:2] == ["plugins"]:
+            from orchestra.plugin_verify_cli import main as plugins_main
+
+            return plugins_main(argv[2:])
         from orchestra.tuner.cli import main as verify_main
 
         return verify_main(argv[1:])

@@ -5,12 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 from orchestra.canon.types import JsonObject
-from orchestra.plugin_evidence import dispatch_signed_plugins
-from orchestra.plugins import PluginContext
 from orchestra.tuner.attestation import emit, verify
 from orchestra.tuner.audit import AuditError, run_audit
 from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
@@ -273,21 +270,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Check-run JSON path (default: stdin)",
     )
 
-    plugins = sub.add_parser(
-        "plugins",
-        help="Run configured built-in plugins and emit signed evidence",
-    )
-    plugins.add_argument("--cwd", default=None, help="Repository root (default: process cwd)")
-    plugins.add_argument("--stage", choices=("task", "phase", "milestone"), required=True)
-    plugins.add_argument("--revision", default="HEAD", help="Target commit (default: HEAD)")
-    plugins.add_argument("--test", action="append", default=[], dest="tests", metavar="NODE")
-    plugins.add_argument(
-        "--review-output",
-        default=None,
-        help="Structured reviewer output path, or - to read it from stdin",
-    )
-    plugins.add_argument("--key", required=True, help="SSH private key path for signing")
-
     return parser
 
 
@@ -315,29 +297,6 @@ def main(argv: list[str] | None = None) -> int:
             result=result,
         )
         return 0 if result == "pass" else 1
-    if args.command == "plugins":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            reviewer_output = None
-            if args.review_output == "-":
-                reviewer_output = sys.stdin.read()
-            elif args.review_output is not None:
-                reviewer_output = Path(args.review_output).read_text(encoding="utf-8")
-            evidence = dispatch_signed_plugins(
-                PluginContext(
-                    root=work,
-                    stage=args.stage,
-                    revision=args.revision,
-                    tests=tuple(args.tests),
-                    reviewer_output=reviewer_output,
-                ),
-                key_path=args.key,
-            )
-        except (OSError, ValueError, ManifestError) as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        print(json.dumps([asdict(item) for item in evidence], separators=(",", ":")))
-        return 0 if all(item.result == "pass" for item in evidence) else 1
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
         try:

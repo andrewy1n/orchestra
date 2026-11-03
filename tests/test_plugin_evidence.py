@@ -10,12 +10,12 @@ import pytest
 
 from orchestra import plugins
 from orchestra.canon.project_config import DEFAULT_RUNNER
+from orchestra.cli import main as orchestra_main
 from orchestra.plugin_evidence import (
     NAMESPACE,
     sign_plugin_result,
     verify_plugin_evidence,
 )
-from orchestra.tuner.cli import main as verify_main
 from orchestra.tuner.manifest import runner_digest
 
 
@@ -208,8 +208,9 @@ def test_verify_plugins_cli_signs_host_reviewer_stdin(
         ),
     )
 
-    result = verify_main(
+    result = orchestra_main(
         [
+            "verify",
             "plugins",
             "--cwd",
             str(root),
