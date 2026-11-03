@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from orchestra import plugins
 from orchestra.canon.extensions import PluginDescriptor, compute_execution_identity
 from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.cli import main as orchestra_main
@@ -19,6 +18,7 @@ from orchestra.plugin_evidence import (
     sign_plugin_result,
     verify_plugin_evidence,
 )
+from orchestra.tuner import plugins
 from orchestra.tuner.manifest import runner_digest
 
 
@@ -287,7 +287,7 @@ def test_review_evidence_cannot_sign_ready_or_mismatched_verdict(tmp_path: Path)
     revision, key_path, _runner = _seed_repo(root, plugin="review")
     result = _review_result(root, revision)
 
-    with pytest.raises(ValueError, match="valid reviewer verdict"):
+    with pytest.raises(ValueError, match="invalid verdict"):
         sign_plugin_result(root, replace(result, result="ready"), key_path=key_path)
 
 

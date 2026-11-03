@@ -74,8 +74,8 @@ tuner = "orchestra.tuner.schemas"
 composer = "orchestra.composer.schemas"
 
 [project.entry-points."orchestra.tuner.verify"]
-unit = "orchestra.plugins:UnitPlugin"
-review = "orchestra.plugins:ReviewPlugin"
+unit = "orchestra.tuner.plugins:UnitPlugin"
+review = "orchestra.conductor.review_technique:ReviewTechnique"
 
 [project.entry-points."orchestra.conductor.land"]
 none = "orchestra.conductor.land:NoneAdapter"
