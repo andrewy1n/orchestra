@@ -164,5 +164,5 @@ def test_exact_argv_reaches_process_without_shell_joining(tmp_path: Path) -> Non
     assert captured[2].startswith("--junitxml=")
 
 
-def test_third_party_plugins_are_not_registered() -> None:
-    assert plugins.registered_plugin_ids() == ("unit", "review")
+def test_builtins_use_installed_entry_points() -> None:
+    assert plugins.registered_plugin_ids() == ("review", "unit")

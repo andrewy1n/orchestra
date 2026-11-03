@@ -12,7 +12,7 @@ from orchestra.canon.git_backend import run_git
 
 CONFIG_PATH = "orchestra.toml"
 StageName = Literal["task", "phase", "milestone"]
-PluginName = Literal["unit", "review"]
+PluginName = str
 SUITE_MODES = ("none", "smoke", "full", "external")
 SUITE_GATES = ("required", "advisory", "deferred")
 DEFAULT_RUNNER = (
@@ -44,6 +44,8 @@ class ProjectConfig:
     suite: SuiteConfig
     land_adapter: str
     merge_policy: str
+    verify_config: Mapping[str, Mapping[str, object]]
+    land_config: Mapping[str, object]
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -97,8 +99,10 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     verify = _table(root.get("verify"), "verify")
     stages_raw = _table(verify.get("stages"), "verify.stages")
     stages = _parse_stages(stages_raw)
-    unit = _table(verify.get("unit"), "verify.unit")
-    runner = _string_list(unit.get("runner"), "verify.unit.runner")
+    unit_value = verify.get("unit")
+    unit = {} if unit_value is None else _table(unit_value, "verify.unit")
+    runner_value = unit.get("runner", list(DEFAULT_RUNNER))
+    runner = _string_list(runner_value, "verify.unit.runner")
     if not runner:
         raise ProjectConfigError("verify.unit.runner must be a non-empty argv list")
     if runner.count("{tests}") != 1 or not any("{report}" in arg for arg in runner):
@@ -109,6 +113,8 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
         suite=_parse_suite(root.get("suite")),
         land_adapter=_parse_land_adapter(root.get("land")),
         merge_policy=_parse_merge_policy(root.get("land")),
+        verify_config=_parse_verify_config(verify),
+        land_config=_parse_land_config(root.get("land")),
     )
 
 
@@ -143,22 +149,30 @@ def _parse_stages(raw: Mapping[str, object]) -> dict[StageName, tuple[PluginName
         plugins = _string_list(plugins_value, f"verify.stages.{stage}")
         if not plugins:
             raise ProjectConfigError(f"verify.stages.{stage} must be a non-empty plugin list")
-        if any(plugin not in ("unit", "review") for plugin in plugins):
-            raise ProjectConfigError(f"verify.stages.{stage} contains an unknown plugin")
+        if any(not plugin for plugin in plugins):
+            raise ProjectConfigError(f"verify.stages.{stage} contains an empty plugin id")
         if len(set(plugins)) != len(plugins):
             raise ProjectConfigError(f"verify.stages.{stage} contains a duplicate plugin")
-        result[stage] = tuple(_plugin_name(plugin) for plugin in plugins)
+        result[stage] = plugins
     if not result:
         raise ProjectConfigError("verify.stages must configure at least one stage")
     return result
 
 
-def _plugin_name(value: str) -> PluginName:
-    if value == "unit":
-        return "unit"
-    if value == "review":
-        return "review"
-    raise ProjectConfigError(f"unknown verification plugin: {value}")
+def _parse_verify_config(verify: Mapping[str, object]) -> Mapping[str, Mapping[str, object]]:
+    return {
+        plugin_id: _table(value, f"verify.{plugin_id}")
+        for plugin_id, value in verify.items()
+        if plugin_id not in ("stages", "replay")
+    }
+
+
+def _parse_land_config(value: object) -> Mapping[str, object]:
+    if value is None:
+        return {}
+    raw = _table(value, "land")
+    config = raw.get("config", {})
+    return _table(config, "land.config")
 
 
 def _parse_suite(value: object) -> SuiteConfig:
@@ -182,8 +196,8 @@ def _parse_land_adapter(value: object) -> str:
         return "none"
     raw = _table(value, "land")
     adapter = raw.get("adapter", "none")
-    if not isinstance(adapter, str) or adapter not in ("none", "github-pr"):
-        raise ProjectConfigError("land.adapter must be none or github-pr")
+    if not isinstance(adapter, str) or not adapter:
+        raise ProjectConfigError("land.adapter must be a non-empty plugin id")
     return adapter
 
 

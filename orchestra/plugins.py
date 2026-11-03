@@ -5,10 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
+from orchestra.canon.extensions import (
+    PluginCatalogError,
+    PluginDescriptor,
+    list_plugins,
+    resolve_plugin,
+)
 from orchestra.canon.project_config import (
-    PluginName,
     ProjectConfig,
     StageName,
     load_project_config_at_revision,
@@ -33,7 +38,7 @@ class PluginContext:
 
 @dataclass(frozen=True)
 class PluginResult:
-    plugin_id: PluginName
+    plugin_id: str
     stage: StageName
     revision: str
     result: str
@@ -41,14 +46,13 @@ class PluginResult:
     output: Mapping[str, str] | str
 
 
+@runtime_checkable
 class BuiltinPlugin(Protocol):
-    plugin_id: PluginName
-
     def run(self, config: ProjectConfig, context: PluginContext) -> PluginResult: ...
 
 
 class UnitPlugin:
-    plugin_id: PluginName = "unit"
+    plugin_id: str = "unit"
 
     def run(self, config: ProjectConfig, context: PluginContext) -> PluginResult:
         if not context.tests:
@@ -66,7 +70,7 @@ class UnitPlugin:
 
 
 class ReviewPlugin:
-    plugin_id: PluginName = "review"
+    plugin_id: str = "review"
 
     def run(self, config: ProjectConfig, context: PluginContext) -> PluginResult:
         del config
@@ -82,12 +86,6 @@ class ReviewPlugin:
             runner_digest=None,
             output={"verdict": verdict, "reviewer_output": context.reviewer_output},
         )
-
-
-BUILTIN_PLUGINS: Mapping[PluginName, BuiltinPlugin] = {
-    "unit": UnitPlugin(),
-    "review": ReviewPlugin(),
-}
 
 
 def dispatch_plugins(
@@ -113,9 +111,24 @@ def dispatch_plugins(
         phase_head=context.phase_head,
         reviewer_output=context.reviewer_output,
     )
-    return tuple(BUILTIN_PLUGINS[plugin_id].run(config, pinned_context) for plugin_id in plugin_ids)
+    results: list[PluginResult] = []
+    for plugin_id in plugin_ids:
+        try:
+            factory = resolve_plugin("tuner.verify", plugin_id).load()
+        except PluginCatalogError as exc:
+            raise ValueError(str(exc)) from exc
+        if not callable(factory):
+            raise ValueError(f"verification plugin {plugin_id!r} is not constructible")
+        plugin = factory()
+        if not isinstance(plugin, BuiltinPlugin):
+            raise ValueError(f"verification plugin {plugin_id!r} has no run method")
+        results.append(plugin.run(config, pinned_context))
+    return tuple(results)
 
 
-def registered_plugin_ids() -> tuple[PluginName, ...]:
-    """Return the fixed built-in registry ids."""
-    return tuple(BUILTIN_PLUGINS)
+def registered_plugin_ids() -> tuple[str, ...]:
+    return tuple(sorted(descriptor.plugin_id for descriptor in resolve_plugin_catalog()))
+
+
+def resolve_plugin_catalog() -> tuple[PluginDescriptor, ...]:
+    return list_plugins("tuner.verify")

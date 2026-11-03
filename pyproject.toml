@@ -73,6 +73,10 @@ conductor = "orchestra.conductor.schemas"
 tuner = "orchestra.tuner.schemas"
 composer = "orchestra.composer.schemas"
 
+[project.entry-points."orchestra.tuner.verify"]
+unit = "orchestra.plugins:UnitPlugin"
+review = "orchestra.plugins:ReviewPlugin"
+
 [tool.ruff]
 line-length = 100
 

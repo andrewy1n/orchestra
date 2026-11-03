@@ -187,7 +187,7 @@ def test_suite_migration_uses_project_toml(
 
 
 def test_builtins_only_are_registered() -> None:
-    assert plugins.registered_plugin_ids() == ("unit", "review")
+    assert plugins.registered_plugin_ids() == ("review", "unit")
 
 
 def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
