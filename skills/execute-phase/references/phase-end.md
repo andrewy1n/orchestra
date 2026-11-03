@@ -5,8 +5,8 @@ no same-focus `planned`/`in_progress` work-items remain (or the
 incidental task is closed). Order:
 
 last implementation wave → closing verification → analyze → reviewer →
-integration-report from reviewer `integration` → suite (per
-`phase_gate.suite`) → phase gate → phase close.
+integration-report from reviewer `integration` → suite (per `[suite]` in
+`orchestra.toml`) → phase gate → phase close.
 
 After the last implementation wave's execution-reports, return to
 execute-phase step 3 for the closing verification task. Do **not**
@@ -105,8 +105,9 @@ phase head: leave phase `in_progress` and stop (or fix/escalate).
 ## Suite
 
 After reviewer passes and the integration-report is written. Do not
-waive `phase_gate.suite` — a human changes `settings.conductor.phase_gate` in
-`.canon/config.json` instead. Load with `orchestra suite policy`. Missing / `mode=none` → skip.
+waive suite policy — a human changes `[suite]` in the root
+`orchestra.toml` instead. Load with `orchestra suite policy`. An omitted
+`[suite]` section or `mode=none` → skip.
 `mode=external` or `gate=deferred` → do not run locally (`deferred` =
 Landing human stop). For `smoke`/`full` with a `command`: run via
 `orchestra suite start` / `poll` / `collect` / `record` in the phase
@@ -188,7 +189,7 @@ incidental):
   passes, and a passing runner check-run at phase-head SHA
 - Every latest `method=manual` check-run has `signed_by`
 - Passing `method: review` / `evidence_kind: review` at phase-head
-- When `phase_gate.suite.gate` is `required` (and mode ≠ `none`):
+- When `suite.gate` is `required` (and mode ≠ `none`):
   passing `<phase-slug>-suite` at that same phase-head SHA.
   `advisory` fail does not block; `deferred` / `none` → skip
 

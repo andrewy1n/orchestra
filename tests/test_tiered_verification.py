@@ -1,4 +1,4 @@
-"""Suite background runner, phase_gate.suite policy, gate, and fix clustering."""
+"""Suite background runner, project suite policy, gate, and fix clustering."""
 
 from __future__ import annotations
 
@@ -329,7 +329,7 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
     )
     flat = _skill_flat()
     assert "suite" in flat
-    assert "phase_gate.suite" in flat or "phase_gate" in flat
+    assert "orchestra.toml" in flat or "suite policy" in flat
     assert "blocks" in flat
 
 
@@ -505,7 +505,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
 def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     text = _skill_text()
     flat = _skill_flat()
-    assert "Do not waive `phase_gate.suite`" in flat
+    assert "Do not waive suite policy" in flat
     assert (
         "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
         in flat
@@ -523,7 +523,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
 def test_execute_phase_documents_no_agent_waiver_of_suite_policy():
     flat = _skill_flat()
     assert "not waive" in flat
-    assert "phase_gate.suite" in flat or "phase_gate" in flat
+    assert "orchestra.toml" in flat or "suite policy" in flat
     assert "contract" in flat
     # red-first remains tdd-only; suite never red-first
     assert "never red-first" in flat

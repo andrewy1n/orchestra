@@ -256,7 +256,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_policy = suite_sub.add_parser(
         "policy",
-        help="Print the configured phase_gate.suite policy as JSON",
+        help="Print the configured orchestra.toml suite policy as JSON",
     )
     suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
 
@@ -551,7 +551,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
         policy = suite.load_suite_policy(_cwd(args))
-    except (OSError, RuntimeError, StoreBindingError) as exc:
+    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
         print(f"orchestra suite policy: {exc}", file=sys.stderr)
         return 2
     _print_json(_policy_document(policy))

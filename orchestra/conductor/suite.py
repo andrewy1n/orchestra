@@ -1,6 +1,6 @@
 """Phase-level suite runner: policy, background tmux, check-run, gate, fix routing.
 
-Parent session loads ``phase_gate.suite`` from the store config, starts the
+Parent session loads ``[suite]`` from ``orchestra.toml``, starts the
 configured command in a detached tmux window in the phase worktree when mode
 is smoke/full, polls for completion, and records one ``tuner:check-run`` with
 ``evidence_kind: integration`` and subject ``<phase>-suite``. Does not
@@ -31,6 +31,7 @@ from orchestra.conductor.check import (
     parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
+from orchestra.project_config import load_project_config
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
@@ -61,7 +62,7 @@ def _revision_matches(check_revision: str, phase_head: str) -> bool:
 
 @dataclass(frozen=True)
 class SuitePolicy:
-    """Configured ``phase_gate.suite`` after consumer defaults are applied."""
+    """Configured project suite policy after consumer defaults are applied."""
 
     mode: str = "none"
     command: str = ""
@@ -108,7 +109,7 @@ def normalize_suite_policy(
     *,
     source_path: str | None = None,
 ) -> SuitePolicy:
-    """Apply consumer defaults to a raw ``phase_gate.suite`` object.
+    """Apply consumer defaults to a parsed suite table.
 
     Missing / empty → mode=none (skip). When mode!=none and command is set,
     omitted gate defaults to required.
@@ -141,25 +142,15 @@ def normalize_suite_policy(
 
 
 def load_suite_policy(start: Path | None = None) -> SuitePolicy:
-    """Load ``phase_gate.suite`` from store config under ``settings.conductor``.
-
-    A missing store, key, or malformed value yields the consumer default
-    (mode=none, skip). Agents must not waive or override this policy; change
-    the store config instead.
-    """
+    """Load the required suite policy from the project root config."""
     root = start or Path.cwd()
-    try:
-        project = open_store(root)
-        data = project.config()
-    except (StoreBindingError, StoreError, OSError, ValueError, TypeError):
-        return normalize_suite_policy(None)
-    settings = data.get("settings")
-    conductor = settings.get("conductor") if isinstance(settings, dict) else None
-    phase_gate = conductor.get("phase_gate") if isinstance(conductor, dict) else None
-    suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
-    if not isinstance(suite_raw, dict):
-        return normalize_suite_policy(None)
-    return normalize_suite_policy(suite_raw, source_path=str(project.store_path))
+    suite_config = load_project_config(root).suite
+    return SuitePolicy(
+        mode=suite_config.mode,
+        command=suite_config.command,
+        gate=suite_config.gate,
+        source_path=str(root / "orchestra.toml"),
+    )
 
 
 def suite_subject(phase_slug: str) -> str:

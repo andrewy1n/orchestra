@@ -114,8 +114,8 @@ Work on branch `phase/monorepo` in `~/orchestra`.
    Known conflict: phase `evidence-kind` exists in both orchestra (effort
    `workflow-loop`) and affidavit (effort `evidence-layer`). The affidavit
    phase becomes `tuner-evidence-kind`.
-8. Set `settings.conductor.phase_gate.suite` to the full suite with `gate:
-   required`. Use the three pytest commands in the README Testing section.
+8. Set `[suite]` in the root `orchestra.toml` to the full suite with
+   `gate = "required"`. Use the three pytest commands in the README Testing section.
 9. Delete `orchestra/canon/legacy.py` and `canon migrate-legacy`. No legacy
    store is left after Phase 0.
 10. Re-create `~/website/.canon/` with `canon init --schemas
