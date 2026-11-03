@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.sessions.types import JsonObject, JsonValue, TranscriptEvent
+from orchestra.sessions.session_types import JsonObject, JsonValue, TranscriptEvent
 
 
 @dataclass

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import overload
 
-from orchestra.sessions.types import (
+from orchestra.sessions.session_types import (
     RecordJoinBucket,
     RecordJoinResult,
     RecordMetadata,

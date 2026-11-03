@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from orchestra.sessions.session_metrics import read_events
-from orchestra.sessions.types import JsonValue, ToolCount, ToolMetrics, TranscriptEvent
+from orchestra.sessions.session_types import JsonValue, ToolCount, ToolMetrics, TranscriptEvent
 
 
 def _blocks(event: TranscriptEvent) -> list[dict[str, JsonValue]]:

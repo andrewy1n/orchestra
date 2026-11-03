@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Iterable
 from datetime import datetime
 
-from orchestra.sessions.types import JsonValue, SessionFields, TranscriptEvent
+from orchestra.sessions.session_types import JsonValue, SessionFields, TranscriptEvent
 
 
 def _parse(ts: JsonValue) -> datetime | None:

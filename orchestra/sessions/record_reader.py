@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
-from orchestra.sessions.types import RecordMetadata
+from orchestra.sessions.session_types import RecordMetadata
 
 DEFAULT_TYPES = (
     "score:acceptance",
