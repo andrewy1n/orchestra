@@ -23,6 +23,13 @@ Install the distribution in the Orchestra environment:
 python -m pip install .
 ```
 
+The runnable example distribution is in `examples/third-party-plugins`:
+
+```sh
+python -m pip install ./examples/third-party-plugins
+orchestra plugins list
+```
+
 List registered plugins without loading them:
 
 ```python
@@ -109,6 +116,8 @@ phase = ["acme-checks"]
 runner = ["acme-check", "--strict"]
 ```
 
+The example distribution registers `example-checks` and provides a replay implementation. Use its id to try the installed package.
+
 Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
 
 Claim replay is optional. To support it, add `replay(request)` and return one outcome for each requested test id. Outcomes are `passed`, `assertion_failed`, `errored`, or `not_run`. Configure `[verify.replay] technique = "acme-checks"` only when the technique supports replay.
@@ -145,5 +154,7 @@ merge = "human"
 [land.config]
 region = "west"
 ```
+
+The example `example-land` adapter returns `skipped`. It checks the dispatch contract without opening a pull request.
 
 Orchestra passes the proof packet, base branch, remote, polling limits, and config in `LandRequest`. A result uses `success`, `fail`, `blocked`, or `skipped`. Orchestra keeps the human merge decision.
