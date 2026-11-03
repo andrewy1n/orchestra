@@ -12,8 +12,9 @@ from orchestra.project_config import (
     PluginName,
     ProjectConfig,
     StageName,
+    load_project_config_at_revision,
 )
-from orchestra.tuner.manifest import runner_digest
+from orchestra.tuner.manifest import resolve_commit, runner_digest
 from orchestra.tuner.runner import run_tests
 
 
@@ -91,14 +92,28 @@ BUILTIN_PLUGINS: Mapping[PluginName, BuiltinPlugin] = {
 
 
 def dispatch_plugins(
-    config: ProjectConfig,
     context: PluginContext,
 ) -> tuple[PluginResult, ...]:
     """Run configured built-ins for one stage in declaration order."""
+    revision = resolve_commit(context.root, context.revision)
+    head = resolve_commit(context.root, "HEAD")
+    if revision != head:
+        raise ValueError("plugin execution worktree HEAD must match the target revision")
+    config = load_project_config_at_revision(context.root, revision)
     plugin_ids = config.stages.get(context.stage)
     if plugin_ids is None:
         raise ValueError(f"verification stage is not configured: {context.stage}")
-    return tuple(BUILTIN_PLUGINS[plugin_id].run(config, context) for plugin_id in plugin_ids)
+    pinned_context = PluginContext(
+        root=context.root,
+        stage=context.stage,
+        revision=revision,
+        tests=context.tests,
+        review_records=context.review_records,
+        phase_diff=context.phase_diff,
+        base_revision=context.base_revision,
+        phase_head=context.phase_head,
+    )
+    return tuple(BUILTIN_PLUGINS[plugin_id].run(config, pinned_context) for plugin_id in plugin_ids)
 
 
 def registered_plugin_ids() -> tuple[PluginName, ...]:
