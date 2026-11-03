@@ -6,16 +6,5 @@
     "tuner": "1.0.0",
     "composer": "1.1.0"
   },
-  "settings": {
-    "conductor": {
-      "phase_gate": {
-        "suite": {
-          "mode": "full",
-          "command": "uv run pytest -q -n auto --confcutdir=tests/canon tests/canon && uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner && uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner",
-          "gate": "advisory"
-        }
-      }
-    }
-  },
   "backend": "sqlite"
 }
