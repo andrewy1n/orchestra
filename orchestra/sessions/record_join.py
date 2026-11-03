@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import overload
@@ -35,7 +36,7 @@ def _window(session: SessionFields) -> tuple[datetime, datetime] | None:
     return start, end
 
 
-def join(sessions: list[SessionFields], records: list[RecordMetadata]) -> RecordJoinResult:
+def join(sessions: Sequence[SessionFields], records: list[RecordMetadata]) -> RecordJoinResult:
     by_session: dict[str, RecordJoinBucket] = {
         s["session_id"]: {"records": [], "ambiguous": []}
         for s in sessions

@@ -71,22 +71,24 @@ class SessionRecordSummary(TypedDict):
     ambiguous: int
 
 
-class SessionReport(TypedDict, total=False):
-    project: str
-    file: str
-    session_id: JsonValue
-    cwd: JsonValue
-    branch: JsonValue
-    start: str | None
-    end: str | None
-    duration_seconds: float | None
-    turns: int
-    cost_usd: float | None
-    skills: dict[str, int]
+class SessionSummary(SessionFields):
     tools: ToolMetrics
     bad_lines: int
+
+
+class SessionReport(SessionSummary, total=False):
+    project: str
+    file: str
     records: SessionRecordSummary
+
+
+class SessionError(TypedDict):
+    project: str
+    file: str
     error: str
+
+
+SessionOutput: TypeAlias = SessionReport | SessionError
 
 
 class ToolRollup(TypedDict):
