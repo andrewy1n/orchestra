@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from dataclasses import replace
-from typing import Any
+from typing import TypeVar
 
 from dashboard.backend import approval, areas, backlog, dismiss, journal, store
 from dashboard.backend.phase import (
@@ -25,6 +25,16 @@ from dashboard.backend.snapshot import (
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
+
+CachedResponse = (
+    schemas.AreasResponse
+    | schemas.PhaseResponse
+    | schemas.TaskResponse
+    | schemas.JournalResponse
+    | schemas.RecordResponse
+    | schemas.RequirementResponse
+)
+T = TypeVar("T", bound=CachedResponse)
 
 
 def phase_summary(phase: PhaseRow) -> schemas.PhaseSummary:
@@ -94,9 +104,9 @@ class Cache:
         self.lock = threading.Lock()
         self.token = ""
         self.snapshot: Snapshot | None = None
-        self.details: dict[tuple, object] = {}
+        self.details: dict[tuple[str, ...], CachedResponse] = {}
 
-    def _current(self) -> Snapshot:
+    def current(self) -> Snapshot:
         token = store.change_token(self.target)
         with self.lock:
             if self.snapshot is not None and token == self.token:
@@ -126,7 +136,7 @@ class Cache:
             self.token = ""
 
     def snapshot_payload(self) -> schemas.SnapshotResponse:
-        snapshot = self._current()
+        snapshot = self.current()
         return schemas.SnapshotResponse(
             token=snapshot.token,
             generated_at=snapshot.generated_at.isoformat(),
@@ -135,22 +145,23 @@ class Cache:
         )
 
     def effort(self, name: str) -> EffortView:
-        snapshot = self._current()
+        snapshot = self.current()
         for view in snapshot.efforts:
             if view.effort == name:
                 return view
         raise store.ModelError(f"effort {name} not found")
 
-    def remember(self, key: tuple, load: Callable[[], Any]) -> Any:
+    def remember(self, key: tuple[str, ...], load: Callable[[], T], response_type: type[T]) -> T:
         token = self.token_only()
+        cache_key = (token, *key)
         with self.lock:
-            cached = self.details.get((token, key))
-        if cached is not None:
+            cached = self.details.get(cache_key)
+        if isinstance(cached, response_type):
             return cached
         value = load()
         with self.lock:
             if self.token == token:
-                self.details[(token, key)] = value
+                self.details[cache_key] = value
         return value
 
 
@@ -173,6 +184,7 @@ class Reader:
             lambda: schemas.AreasResponse(
                 [schemas.AreaView.model_validate(view) for view in areas.load_areas(self.target)]
             ),
+            schemas.AreasResponse,
         )
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
@@ -185,7 +197,7 @@ class Reader:
                 decisions=schemas.DecisionLog.model_validate(log),
             )
 
-        return self.cache.remember(("phase", effort, phase), load)
+        return self.cache.remember(("phase", effort, phase), load, schemas.PhaseResponse)
 
     def task(self, task_id: str) -> schemas.TaskResponse:
         return self.cache.remember(
@@ -193,6 +205,7 @@ class Reader:
             lambda: schemas.TaskResponse(
                 detail=schemas.TaskDetail.model_validate(load_task_detail(self.target, task_id))
             ),
+            schemas.TaskResponse,
         )
 
     def journal(self, effort: str) -> schemas.JournalResponse:
@@ -203,7 +216,7 @@ class Reader:
                 rest=[schemas.JournalItem.model_validate(item) for item in rest],
             )
 
-        return self.cache.remember(("journal", effort), load)
+        return self.cache.remember(("journal", effort), load, schemas.JournalResponse)
 
     def record(self, record_id: str) -> schemas.RecordResponse:
         return self.cache.remember(
@@ -213,6 +226,7 @@ class Reader:
                     journal.load_record(self.target, record_id)
                 )
             ),
+            schemas.RecordResponse,
         )
 
     def requirement(self, effort: str, phase: str, requirement: str) -> schemas.RequirementResponse:
@@ -223,6 +237,7 @@ class Reader:
                     load_requirement_detail(self.target, effort, phase, requirement)
                 )
             ),
+            schemas.RequirementResponse,
         )
 
     def needs(self, effort: str, item_id: str) -> schemas.NeedsResponse:
@@ -246,7 +261,7 @@ class Reader:
                 if item.id == item_id:
                     return item
             raise store.ModelError(f"needs-you item {item_id} not found")
-        for view in self.cache._current().efforts:
+        for view in self.cache.current().efforts:
             for item in view.needs_you:
                 if item.id == item_id:
                     return item
@@ -259,13 +274,13 @@ class Reader:
                 if item.id == item_id:
                     return item
             raise store.ModelError(f"backlog item {item_id} not found")
-        for view in self.cache._current().efforts:
+        for view in self.cache.current().efforts:
             for item in view.backlog:
                 if item.id == item_id:
                     return item
         raise store.ModelError(f"backlog item {item_id} not found")
 
-    def write_needs(self, body: dict) -> schemas.OkResponse:
+    def write_needs(self, body: dict[str, object]) -> schemas.OkResponse:
         """POST /api/needs — clear a human Needs-you item through dismiss."""
         item_id = str(body.get("id") or "").strip()
         action = str(body.get("action") or "").strip().lower()
@@ -301,7 +316,7 @@ class Reader:
         self.cache.drop()
         return schemas.OkResponse(ok=True)
 
-    def write_backlog(self, body: dict) -> schemas.OkResponse:
+    def write_backlog(self, body: dict[str, object]) -> schemas.OkResponse:
         """POST /api/backlog — dismiss or promote an open backlog item."""
         item_id = str(body.get("id") or "").strip()
         action = str(body.get("action") or "").strip().lower()
