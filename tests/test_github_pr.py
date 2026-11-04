@@ -15,6 +15,7 @@ from orchestra.conductor.github_pr import (
     GitHubREST,
     open_pull_request,
 )
+from orchestra.conductor.land import LandingCheck, LandingResult, dispatch_land
 
 
 class FakeGitHub:
@@ -164,9 +165,41 @@ def test_github_pr_reports_final_ci_result(tmp_path: Path) -> None:
 
     result = _adapter(root, github)
 
-    assert result.result == "failure"
+    assert result.result == "fail"
     assert result.checks[0].conclusion == "failure"
     assert result.statuses == ("failure",)
+
+
+def test_github_pr_adapter_runs_through_dispatch_land(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    config_path = root / "orchestra.toml"
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8")
+        + '\n[land.config]\nrepository = "owner/repo"\ntoken_env = "PLUGIN_TOKEN"\n',
+        encoding="utf-8",
+    )
+    _git(root, "add", "orchestra.toml")
+    _git(root, "commit", "-qm", "configure GitHub adapter")
+    github = FakeGitHub()
+    github.check_batches.append((GitHubCheck("CI", "completed", "failure"),))
+    github.status_batches.append(("failure",))
+    configured: list[tuple[str, str, str]] = []
+
+    def create_client(root: Path, remote: str, config: dict[str, object]) -> FakeGitHub:
+        del root
+        configured.append((remote, str(config["repository"]), str(config["token_env"])))
+        return github
+
+    monkeypatch.setattr(github_pr, "GitHubREST", create_client)
+
+    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10)
+
+    assert result.result == "fail"
+    assert result.number == 42
+    assert configured == [("origin", "owner/repo", "PLUGIN_TOKEN")]
 
 
 def test_github_pr_never_merges(tmp_path: Path) -> None:
@@ -269,25 +302,25 @@ def test_land_cli_reports_pull_request_and_final_checks(
         remote: str,
         poll_interval_s: float,
         timeout_s: float,
-    ) -> GitHubPRResult:
+    ) -> LandingResult:
         assert root == tmp_path.resolve()
         assert proof_packet == "proof packet"
         assert base == "main"
         assert remote == "origin"
         assert poll_interval_s == 10
         assert timeout_s == 1800
-        return GitHubPRResult(
+        return LandingResult(
+            result="success",
             number=42,
             url="https://github.com/owner/repo/pull/42",
             head_sha="head-sha",
-            checks=(GitHubCheck("CI", "completed", "success"),),
+            checks=(LandingCheck("CI", "completed", "success"),),
             statuses=("success",),
-            result="success",
         )
 
     monkeypatch.setattr(cli, "open_store", lambda _root: FakeProject())
     monkeypatch.setattr(cli, "git_head", lambda _root: "head-sha")
-    monkeypatch.setattr(cli.github_pr, "open_pull_request", fake_open_pull_request)
+    monkeypatch.setattr(cli.land, "dispatch_land", fake_open_pull_request)
 
     exit_code = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
 

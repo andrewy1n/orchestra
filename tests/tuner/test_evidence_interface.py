@@ -166,10 +166,10 @@ def test_r2_verdict_without_store_matches_prephase_semantics(tmp_path: Path) -> 
     assert not (root / ".canon").exists()
     proc = _verdict(root, base, head)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {
-        "result": "pass",
-        "claims": [{"id": CLAIM, "result": "pass"}],
-    }
+    payload = _payload(proc)
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"
     assert not (root / ".canon" / "records" / "tuner__evidence-observation").exists()
 
 

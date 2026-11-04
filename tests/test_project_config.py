@@ -63,13 +63,50 @@ def test_malformed_toml_is_rejected(tmp_path: Path) -> None:
         load_project_config(tmp_path)
 
 
-def test_unknown_plugin_is_rejected(tmp_path: Path) -> None:
+def test_registered_plugin_id_is_loaded_from_project_config(tmp_path: Path) -> None:
     (tmp_path / "orchestra.toml").write_text(
         _config_text(plugins=("unit", "external")),
         encoding="utf-8",
     )
-    with pytest.raises(ProjectConfigError, match="unknown plugin"):
+    assert load_project_config(tmp_path).stages["phase"] == ("unit", "external")
+
+
+def test_plugin_parameters_are_read_from_scope_tables(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["external"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n\n"
+        '[verify.external]\nendpoint = "https://example.test"\n\n'
+        '[land]\nadapter = "external-land"\nmerge = "human"\n'
+        '[land.config]\nregion = "west"\n',
+        encoding="utf-8",
+    )
+
+    config = load_project_config(tmp_path)
+
+    assert config.verify_config["external"] == {"endpoint": "https://example.test"}
+    assert config.land_adapter == "external-land"
+    assert config.land_config == {"region": "west"}
+
+
+def test_unit_runner_is_required_for_each_project_config(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["external"]\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ProjectConfigError, match=r"verify\.unit"):
         load_project_config(tmp_path)
+
+
+def test_replay_technique_is_selected_from_project_config(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["external"]\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n"
+        '[verify.replay]\ntechnique = "replay-external"\n',
+        encoding="utf-8",
+    )
+
+    assert load_project_config(tmp_path).replay_technique == "replay-external"
 
 
 def test_invalid_stage_is_rejected(tmp_path: Path) -> None:

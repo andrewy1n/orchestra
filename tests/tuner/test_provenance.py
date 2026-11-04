@@ -211,4 +211,7 @@ def test_r4_ordered_oracle_only_distinct_signers_passes(tmp_path: Path) -> None:
 
     proc = _run(root, head, base)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    payload = _payload(proc)
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"

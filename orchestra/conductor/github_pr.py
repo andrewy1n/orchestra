@@ -55,17 +55,37 @@ class GitHubClient(Protocol):
 
 
 class GitHubREST:
-    def __init__(self, root: Path, remote: str = "origin") -> None:
+    def __init__(
+        self,
+        root: Path,
+        remote: str = "origin",
+        adapter_config: JsonObject | None = None,
+    ) -> None:
         self.root = root
-        self.remote = remote
-        self.token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        self.adapter_config = adapter_config or {}
+        configured_remote = self.adapter_config.get("remote", remote)
+        if not isinstance(configured_remote, str) or not configured_remote:
+            raise GitHubPRError("land.config.remote must be a non-empty string")
+        self.remote = configured_remote
+        token_env = self.adapter_config.get("token_env", "GITHUB_TOKEN")
+        if not isinstance(token_env, str) or not token_env:
+            raise GitHubPRError("land.config.token_env must be a non-empty string")
+        self.token = os.environ.get(token_env) or os.environ.get("GH_TOKEN")
         if not self.token:
-            raise GitHubPRError("set GITHUB_TOKEN or GH_TOKEN to use the GitHub API")
+            raise GitHubPRError(f"set {token_env} or GH_TOKEN to use the GitHub API")
 
     def push_branch(self, remote: str, branch: str) -> None:
         _git(self.root, "push", "--set-upstream", remote, branch)
 
     def repository(self) -> str:
+        configured_repository = self.adapter_config.get("repository")
+        if configured_repository is not None:
+            if (
+                not isinstance(configured_repository, str)
+                or len(configured_repository.split("/")) != 2
+            ):
+                raise GitHubPRError("land.config.repository must use owner/repository format")
+            return configured_repository
         remote_url = _git(self.root, "remote", "get-url", self.remote)
         parsed = urlparse(remote_url)
         if parsed.hostname == "github.com":
@@ -181,12 +201,12 @@ def open_pull_request(
     client: GitHubClient | None = None,
     sleep: Callable[[float], None] | None = None,
     monotonic: Callable[[], float] | None = None,
+    adapter_config: JsonObject | None = None,
 ) -> GitHubPRResult:
     """Push a committed branch, open a PR with its proof packet, and await CI."""
     project_root = Path(root)
     config = load_project_config(project_root)
-    if config.land_adapter != "github-pr":
-        raise GitHubPRError("orchestra.toml must select land.adapter = github-pr")
+    adapter_config = adapter_config or config.land_config
     if config.merge_policy != "human":
         raise GitHubPRError("land.merge must remain human")
     if not proof_packet.strip():
@@ -201,7 +221,7 @@ def open_pull_request(
     if _git(project_root, "status", "--porcelain"):
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
-    github = client or GitHubREST(project_root, remote)
+    github = client or GitHubREST(project_root, remote, adapter_config)
     github.push_branch(remote, branch)
     repository = github.repository()
     pr_title = title or f"{branch}: phase proof"
@@ -262,7 +282,7 @@ def _final_result(checks: Sequence[GitHubCheck], statuses: Sequence[str]) -> str
         check.conclusion not in ("success", "neutral", "skipped") for check in checks
     )
     failed_statuses = any(status != "success" for status in statuses)
-    return "failure" if failed_checks or failed_statuses else "success"
+    return "fail" if failed_checks or failed_statuses else "success"
 
 
 def _git(root: Path, *args: str) -> str:

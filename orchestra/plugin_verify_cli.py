@@ -8,9 +8,9 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from orchestra.plugin_evidence import dispatch_signed_plugins
-from orchestra.plugins import PluginContext
 from orchestra.tuner.manifest import ManifestError
+from orchestra.tuner.plugin_evidence import dispatch_signed_plugins
+from orchestra.tuner.plugins import PluginContext
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -30,7 +30,11 @@ from orchestra.tuner.manifest import (
     runner_digest,
 )
 from orchestra.tuner.provenance import check_provenance
-from orchestra.tuner.runner import run_tests
+from orchestra.tuner.technique import (
+    TestOutcome,
+    replay_at_revision,
+    replay_identity_at_revision,
+)
 
 
 def run_verdict(
@@ -56,6 +60,7 @@ def run_verdict(
     base_manifest = load_manifest(root, base_commit)
     at_allow = load_allowlist(root, at_commit)
     base_allow = load_allowlist(root, base_commit)
+    replay_plugin_id, replay_identity = replay_identity_at_revision(root, base_commit)
     at_by_id = {claim.id: claim for claim in at_manifest.claims}
     base_by_id = {claim.id: claim for claim in base_manifest.claims}
 
@@ -76,7 +81,7 @@ def run_verdict(
             _fail(claim_id, provenance_fails.get(claim_id, "allowlist changed"))
             for claim_id in claim_ids
         ]
-        return _payload(claims)
+        return _payload(claims, replay_identity)
 
     base_runner_digest = runner_digest(base_manifest.runner)
     head_runner_digest = runner_digest(at_manifest.runner)
@@ -135,15 +140,18 @@ def run_verdict(
             at_commit,
             base_manifest.runner,
             at_manifest.runner,
+            replay_plugin_id,
+            base_commit,
+            replay_identity,
             pending,
             verdicts,
         )
 
     claims = [item for item in verdicts if item is not None]
-    return _payload(claims)
+    return _payload(claims, replay_identity)
 
 
-def _payload(claims: list[JsonObject]) -> JsonObject:
+def _payload(claims: list[JsonObject], replay_identity: JsonObject) -> JsonObject:
     if any(item["result"] == "fail" for item in claims):
         result = "fail"
     elif any(item["result"] == "unstable" for item in claims):
@@ -152,7 +160,11 @@ def _payload(claims: list[JsonObject]) -> JsonObject:
         result = "pass"
     claim_values: list[JsonValue] = []
     claim_values.extend(claims)
-    return {"result": result, "claims": claim_values}
+    return {
+        "result": result,
+        "claims": claim_values,
+        "replay_identity": replay_identity,
+    }
 
 
 def _fail(claim_id: str, reason: str) -> JsonObject:
@@ -217,6 +229,9 @@ def _judge_pending(
     head_commit: str,
     base_runner: Sequence[str],
     head_runner: Sequence[str],
+    replay_plugin_id: str,
+    trusted_config_revision: str,
+    replay_identity: JsonObject,
     pending: Sequence[tuple[int, str, Claim, Claim]],
     verdicts: list[JsonObject | None],
 ) -> None:
@@ -225,8 +240,22 @@ def _judge_pending(
     base_tree = _checkout(root, base_commit)
     head_tree = _checkout(root, head_commit)
     try:
-        base_first = _outcomes(_worktree(base_tree), base_ids, base_runner)
-        head_first = _outcomes(_worktree(head_tree), head_ids, head_runner)
+        base_first = _outcomes(
+            _worktree(base_tree),
+            base_ids,
+            base_runner,
+            trusted_config_revision,
+            replay_plugin_id,
+            replay_identity,
+        )
+        head_first = _outcomes(
+            _worktree(head_tree),
+            head_ids,
+            head_runner,
+            trusted_config_revision,
+            replay_plugin_id,
+            replay_identity,
+        )
         viable: list[tuple[int, str, Claim, Claim]] = []
         for index, claim_id, base_claim, head_claim in pending:
             if _viable(base_claim.tests, head_claim.tests, base_first, head_first):
@@ -239,8 +268,22 @@ def _judge_pending(
             return
         confirm_base = _union(claim.tests for _, _, claim, _ in viable)
         confirm_head = _union(claim.tests for _, _, _, claim in viable)
-        base_second = _outcomes(_worktree(base_tree), confirm_base, base_runner)
-        head_second = _outcomes(_worktree(head_tree), confirm_head, head_runner)
+        base_second = _outcomes(
+            _worktree(base_tree),
+            confirm_base,
+            base_runner,
+            trusted_config_revision,
+            replay_plugin_id,
+            replay_identity,
+        )
+        head_second = _outcomes(
+            _worktree(head_tree),
+            confirm_head,
+            head_runner,
+            trusted_config_revision,
+            replay_plugin_id,
+            replay_identity,
+        )
         for index, claim_id, base_claim, head_claim in viable:
             if _disagrees(base_claim.tests, base_first, base_second) or _disagrees(
                 head_claim.tests, head_first, head_second
@@ -257,13 +300,24 @@ def _outcomes(
     worktree: Path | None,
     test_ids: Sequence[str],
     runner: Sequence[str],
-) -> dict[str, str]:
+    trusted_config_revision: str,
+    replay_plugin_id: str,
+    replay_identity: JsonObject,
+) -> dict[str, TestOutcome]:
     if worktree is None:
         return {test_id: "not_run" for test_id in test_ids}
     if not test_ids:
         return {}
     with _silence_stdio():
-        return run_tests(worktree, test_ids, runner)
+        return replay_at_revision(
+            worktree,
+            "HEAD",
+            tuple(test_ids),
+            tuple(runner),
+            trusted_config_revision=trusted_config_revision,
+            plugin_id=replay_plugin_id,
+            expected_identity=replay_identity,
+        )
 
 
 @contextmanager
@@ -283,27 +337,27 @@ def _silence_stdio() -> Generator[None, None, None]:
         os.close(devnull)
 
 
-def _assertion_red(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
+def _assertion_red(tests: Sequence[str], outcomes: Mapping[str, str]) -> bool:
     return bool(tests) and all(outcomes.get(test_id) == "assertion_failed" for test_id in tests)
 
 
-def _head_passed(tests: Sequence[str], outcomes: dict[str, str]) -> bool:
+def _head_passed(tests: Sequence[str], outcomes: Mapping[str, str]) -> bool:
     return bool(tests) and all(outcomes.get(test_id) == "passed" for test_id in tests)
 
 
 def _viable(
     base_tests: Sequence[str],
     head_tests: Sequence[str],
-    base_outcomes: dict[str, str],
-    head_outcomes: dict[str, str],
+    base_outcomes: Mapping[str, str],
+    head_outcomes: Mapping[str, str],
 ) -> bool:
     return _assertion_red(base_tests, base_outcomes) and _head_passed(head_tests, head_outcomes)
 
 
 def _disagrees(
     tests: Sequence[str],
-    first: dict[str, str],
-    second: dict[str, str],
+    first: Mapping[str, str],
+    second: Mapping[str, str],
 ) -> bool:
     return any(second.get(test_id) != first.get(test_id) for test_id in tests)
 

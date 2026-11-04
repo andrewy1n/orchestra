@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Literal, TypeGuard
 
 from orchestra.canon.git_backend import run_git
+from orchestra.canon.types import JsonObject, JsonValue
 
 CONFIG_PATH = "orchestra.toml"
 StageName = Literal["task", "phase", "milestone"]
-PluginName = Literal["unit", "review"]
+PluginName = str
 SUITE_MODES = ("none", "smoke", "full", "external")
 SUITE_GATES = ("required", "advisory", "deferred")
 DEFAULT_RUNNER = (
@@ -43,7 +44,11 @@ class ProjectConfig:
     runner: tuple[str, ...]
     suite: SuiteConfig
     land_adapter: str
+    land_configured: bool
     merge_policy: str
+    verify_config: Mapping[str, JsonObject]
+    land_config: JsonObject
+    replay_technique: str
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -97,18 +102,27 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     verify = _table(root.get("verify"), "verify")
     stages_raw = _table(verify.get("stages"), "verify.stages")
     stages = _parse_stages(stages_raw)
-    unit = _table(verify.get("unit"), "verify.unit")
-    runner = _string_list(unit.get("runner"), "verify.unit.runner")
+    unit_value = verify.get("unit")
+    unit = _table(unit_value, "verify.unit")
+    runner_value = unit.get("runner")
+    if runner_value is None:
+        raise ProjectConfigError("verify.unit.runner is required")
+    runner = _string_list(runner_value, "verify.unit.runner")
     if not runner:
         raise ProjectConfigError("verify.unit.runner must be a non-empty argv list")
     if runner.count("{tests}") != 1 or not any("{report}" in arg for arg in runner):
         raise ProjectConfigError("verify.unit.runner must include {tests} once and {report}")
+    land_value = root.get("land")
     return ProjectConfig(
         stages=stages,
         runner=runner,
         suite=_parse_suite(root.get("suite")),
-        land_adapter=_parse_land_adapter(root.get("land")),
-        merge_policy=_parse_merge_policy(root.get("land")),
+        land_adapter=_parse_land_adapter(land_value),
+        land_configured=land_value is not None,
+        merge_policy=_parse_merge_policy(land_value),
+        verify_config=_parse_verify_config(verify),
+        land_config=_parse_land_config(land_value),
+        replay_technique=_parse_replay_technique(verify.get("replay")),
     )
 
 
@@ -143,22 +157,60 @@ def _parse_stages(raw: Mapping[str, object]) -> dict[StageName, tuple[PluginName
         plugins = _string_list(plugins_value, f"verify.stages.{stage}")
         if not plugins:
             raise ProjectConfigError(f"verify.stages.{stage} must be a non-empty plugin list")
-        if any(plugin not in ("unit", "review") for plugin in plugins):
-            raise ProjectConfigError(f"verify.stages.{stage} contains an unknown plugin")
+        if any(not plugin for plugin in plugins):
+            raise ProjectConfigError(f"verify.stages.{stage} contains an empty plugin id")
         if len(set(plugins)) != len(plugins):
             raise ProjectConfigError(f"verify.stages.{stage} contains a duplicate plugin")
-        result[stage] = tuple(_plugin_name(plugin) for plugin in plugins)
+        result[stage] = plugins
     if not result:
         raise ProjectConfigError("verify.stages must configure at least one stage")
     return result
 
 
-def _plugin_name(value: str) -> PluginName:
-    if value == "unit":
+def _parse_verify_config(verify: Mapping[str, object]) -> Mapping[str, JsonObject]:
+    return {
+        plugin_id: _json_object(value, f"verify.{plugin_id}")
+        for plugin_id, value in verify.items()
+        if plugin_id not in ("stages", "replay")
+    }
+
+
+def _parse_land_config(value: object) -> JsonObject:
+    if value is None:
+        return {}
+    raw = _table(value, "land")
+    config = raw.get("config", {})
+    return _json_object(config, "land.config")
+
+
+def _json_object(value: object, label: str) -> JsonObject:
+    raw = _table(value, label)
+    return {key: _json_value(item, f"{label}.{key}") for key, item in raw.items()}
+
+
+def _json_value(value: object, label: str) -> JsonValue:
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    if isinstance(value, list):
+        return [_json_value(item, label) for item in value]  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]  # TOML values are dynamic until validated.
+    if _is_string_mapping(value):
+        result: JsonObject = {}
+        for key, item in value.items():
+            result[key] = _json_value(item, f"{label}.{key}")
+        return result
+    if isinstance(value, dict):
+        raise ProjectConfigError(f"{label} contains a non-string key")
+    raise ProjectConfigError(f"{label} must contain only JSON values")
+
+
+def _parse_replay_technique(value: object) -> str:
+    if value is None:
         return "unit"
-    if value == "review":
-        return "review"
-    raise ProjectConfigError(f"unknown verification plugin: {value}")
+    raw = _table(value, "verify.replay")
+    technique = raw.get("technique", "unit")
+    if not isinstance(technique, str) or not technique:
+        raise ProjectConfigError("verify.replay.technique must be a non-empty plugin id")
+    return technique
 
 
 def _parse_suite(value: object) -> SuiteConfig:
@@ -182,8 +234,8 @@ def _parse_land_adapter(value: object) -> str:
         return "none"
     raw = _table(value, "land")
     adapter = raw.get("adapter", "none")
-    if not isinstance(adapter, str) or adapter not in ("none", "github-pr"):
-        raise ProjectConfigError("land.adapter must be none or github-pr")
+    if not isinstance(adapter, str) or not adapter:
+        raise ProjectConfigError("land.adapter must be a non-empty plugin id")
     return adapter
 
 

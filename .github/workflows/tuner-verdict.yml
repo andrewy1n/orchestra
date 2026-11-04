@@ -36,6 +36,9 @@ jobs:
       - name: Install pytest
         run: python3 -m pip install --user pytest
 
+      - name: Install Orchestra plugin entry points
+        run: python3 -m pip install --user --no-deps -e .
+
       - name: Resolve fixture and claim
         id: ctx
         run: |
@@ -90,6 +93,7 @@ jobs:
               "runner_digest": runner_digest(load_manifest(fixture, sha).runner),
               "claims": verdict["claims"],
               "result": verdict["result"],
+              "replay_identity": verdict["replay_identity"],
           }
           json.dump(body, open("verdict.json", "w"))
           print(json.dumps(body, indent=2))

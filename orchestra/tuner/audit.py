@@ -20,7 +20,7 @@ from orchestra.tuner.manifest import (
     resolve_commit,
 )
 from orchestra.tuner.observation import maybe_record_observation
-from orchestra.tuner.runner import run_tests
+from orchestra.tuner.technique import replay_at_revision
 
 HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -428,7 +428,7 @@ def _is_source_path(path: str) -> bool:
 def _passing_tests(worktree: Path, tests: Sequence[str], runner: Sequence[str]) -> list[str]:
     if not tests:
         return []
-    outcomes = run_tests(worktree, tests, runner)
+    outcomes = replay_at_revision(worktree, "HEAD", tuple(tests), tuple(runner))
     return [t for t in tests if outcomes.get(t) == "passed"]
 
 
@@ -451,7 +451,7 @@ def _label_block(
         return block
     if not head_pass:
         return block
-    outcomes = run_tests(worktree, head_pass, runner)
+    outcomes = replay_at_revision(worktree, "HEAD", tuple(head_pass), tuple(runner))
     if any(outcomes.get(t) == "assertion_failed" for t in head_pass):
         block["label"] = "noticed"
     elif all(outcomes.get(t) == "passed" for t in head_pass):
@@ -522,7 +522,7 @@ def _plant_mutants(
             survivors.append(mutant_id)
             reported.append(entry)
             continue
-        outcomes = run_tests(worktree, head_pass, runner)
+        outcomes = replay_at_revision(worktree, "HEAD", tuple(head_pass), tuple(runner))
         if any(outcomes.get(t) == "assertion_failed" for t in head_pass):
             entry["status"] = "killed"
         elif all(outcomes.get(t) == "passed" for t in head_pass):

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orchestra-example-plugins"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+[project.entry-points."orchestra.composer.ideas"]
+example-ideas = "orchestra_example_plugins.ideas:Source"
+
+[project.entry-points."orchestra.tuner.verify"]
+example-checks = "orchestra_example_plugins.verify:Technique"
+
+[project.entry-points."orchestra.conductor.land"]
+example-land = "orchestra_example_plugins.land:Adapter"
+
+[project.entry-points."orchestra.plugin_api"]
+v1 = "orchestra_example_plugins.ideas:Source"
+
+[project.entry-points."orchestra.plugin_config"]
+"example-ideas__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJwcm9qZWN0Ijp7InR5cGUiOiJzdHJpbmcifX0sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZX0" = "orchestra_example_plugins.ideas:Source"
+"example-checks__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJlbmFibGVkIjp7InR5cGUiOiJib29sZWFuIn19LCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2V9" = "orchestra_example_plugins.verify:Technique"
+"example-land__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra_example_plugins.land:Adapter"
+
+[tool.setuptools.packages.find]
+where = ["src"]

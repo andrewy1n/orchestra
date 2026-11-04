@@ -10,10 +10,10 @@ from conftest import CANON_CMD
 
 import orchestra.cli as cli
 import orchestra.conductor.github_pr as github_pr
-import orchestra.plugins as plugins
 from orchestra.canon.project import open_store
 from orchestra.canon.project_config import DEFAULT_RUNNER, load_project_config_at_revision
 from orchestra.conductor.github_pr import GitHubCheck
+from orchestra.tuner import plugins
 
 
 def _git(root: Path, *args: str) -> str:
@@ -187,7 +187,7 @@ def test_suite_migration_uses_project_toml(
 
 
 def test_builtins_only_are_registered() -> None:
-    assert plugins.registered_plugin_ids() == ("unit", "review")
+    assert plugins.registered_plugin_ids() == ("review", "unit")
 
 
 def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
@@ -276,7 +276,7 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
             return ("pending",) if self.poll == 1 else ("success",)
 
     github = FakeGitHub()
-    monkeypatch.setattr(github_pr, "GitHubREST", lambda _root, _remote: github)
+    monkeypatch.setattr(github_pr, "GitHubREST", lambda _root, _remote, _config: github)
     monkeypatch.setattr(github_pr.time, "sleep", lambda _seconds: None)
 
     result = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])

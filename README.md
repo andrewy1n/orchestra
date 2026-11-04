@@ -34,6 +34,8 @@ materialized as `work-item` + `acceptance`.
 Run acceptance checks with `orchestra check --acceptance <id>` (see
 [Install with the CLI](#install-with-the-cli)).
 
+Write and register third-party plugins with the [plugin author guide](docs/plugins.md).
+
 ## Kinds
 
 `kind` is data on the goal and each work-item, not a new skill:

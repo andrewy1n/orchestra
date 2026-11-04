@@ -153,4 +153,7 @@ def test_r3_interaction_claim_passes_under_interaction_runner(tmp_path: Path) ->
     head = _repo(root, "interaction", runner)
     proc = _verdict(root, head)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    payload = _payload(proc)
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"
