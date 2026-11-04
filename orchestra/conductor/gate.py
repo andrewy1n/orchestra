@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
 from orchestra.canon.query import order_by_recorded_at
 from orchestra.canon.types import Record
@@ -104,7 +105,7 @@ def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+    return run_git(cwd, *args, capture_output=True, text=True, check=False)
 
 
 def _descent_term(worktree: Path, reviewed: str) -> Term:
@@ -211,12 +212,12 @@ def _term_for_acceptance(
     return first, second
 
 
-def gate_terms(store: Path, phase_slug: str) -> list[Term]:
+def gate_terms(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> list[Term]:
     """Every phase gate term for the phase, held or not.
 
     Raises LookupError when the store has no such phase.
     """
-    records = open_store(store).records()
+    records = open_store(store, store=store_dir).records()
     phase = next(
         (
             r
@@ -293,7 +294,7 @@ def gate_terms(store: Path, phase_slug: str) -> list[Term]:
     if worktree.is_dir():
         terms.append(_descent_term(worktree, head))
 
-    policy = suite.load_suite_policy(store)
+    policy = suite.load_suite_policy(store, store_dir=store_dir)
     if policy.gate == "required" and policy.mode not in ("none", ""):
         suite_ok = any(
             _is_suite_run(r, phase_slug)
@@ -334,9 +335,9 @@ def missing_terms(terms: Sequence[Term]) -> list[Term]:
     return [term for term in terms if not term.holds]
 
 
-def landing_for(store: Path, phase_slug: str) -> LandingSpec:
+def landing_for(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> LandingSpec:
     """The parsed Landing section of the phase body (absent when the phase has none)."""
-    for record in open_store(store).list("score:phase"):
+    for record in open_store(store, store=store_dir).list("score:phase"):
         if record["subject"] == phase_slug and record["lifecycle_state"] != "superseded":
             return parse_landing(record.get("body", ""))
     raise LookupError(f"phase {phase_slug!r} not found")
@@ -352,7 +353,7 @@ def run_merge(command: str, repo: Path) -> int:
     return subprocess.run(command, shell=True, cwd=repo, check=False).returncode
 
 
-def land(store: Path, phase_slug: str) -> int:
+def land(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> int:
     """Run the gate, then the Landing `merge:` command in the Landing repo.
 
     Returns 1 when the gate fails (nothing runs), 2 when the phase is unknown,
@@ -360,8 +361,8 @@ def land(store: Path, phase_slug: str) -> int:
     exits non-zero, else 0.
     """
     try:
-        terms = gate_terms(store, phase_slug)
-        landing = landing_for(store, phase_slug)
+        terms = gate_terms(store, phase_slug, store_dir=store_dir)
+        landing = landing_for(store, phase_slug, store_dir=store_dir)
     except LookupError as exc:
         print(f"orchestra land: {exc}", file=sys.stderr)
         return 2

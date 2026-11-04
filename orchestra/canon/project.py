@@ -249,6 +249,15 @@ def open_store(directory: str | Path, *, store: str | Path | None = None) -> Pro
         chosen = Path(os.environ["CANON_STORE"])
         return _open(root, chosen, Binding(_location(root, chosen), "CANON_STORE"))
 
+    return _open_bound(root)
+
+
+def bound_store_path(directory: str | Path) -> Path:
+    """Return the store directory that the binding of `directory` names, ignoring CANON_STORE."""
+    return _open_bound(_project_root(directory)).store_path
+
+
+def _open_bound(root: Path) -> Project:
     bound = _binding_file(root)
     if bound is not None:
         path, kind = bound

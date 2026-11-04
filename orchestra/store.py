@@ -3,22 +3,22 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Generator
-from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import Project, StoreBindingError, bound_store_path, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 
 __all__ = [
     "StoreBindingError",
+    "StoreLocation",
     "create_record",
     "find_store_root",
     "get_record",
+    "resolve_location",
     "resolve_store",
-    "resolved_store",
 ]
 
 
@@ -44,17 +44,20 @@ def resolve_store(store: str | None, cwd: Path) -> Path:
     return find_store_root(cwd)
 
 
-@contextmanager
-def resolved_store(store: str | None, cwd: Path) -> Generator[Path]:
-    """Yield the store root; an explicit flag or $ORCHESTRA_STORE hides $CANON_STORE meanwhile."""
+@dataclass(frozen=True)
+class StoreLocation:
+    root: Path
+    store: Path | None
+
+    def open(self) -> Project:
+        return open_store(self.root, store=self.store)
+
+
+def resolve_location(store: str | None, cwd: Path) -> StoreLocation:
+    """Resolve the root; an explicit flag or $ORCHESTRA_STORE also pins the store its binding names."""
     root = resolve_store(store, cwd)
     explicit = bool(store or os.environ.get("ORCHESTRA_STORE"))
-    hidden = os.environ.pop("CANON_STORE", None) if explicit else None
-    try:
-        yield root
-    finally:
-        if hidden is not None:
-            os.environ["CANON_STORE"] = hidden
+    return StoreLocation(root, bound_store_path(root) if explicit else None)
 
 
 def get_record(root: Path, record_id: str, record_type: str | None = None) -> Record:

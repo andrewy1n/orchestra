@@ -111,11 +111,13 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     calls: list[str] = []
 
     class _Project:
+        project_root = tmp_path
+
         def list(self, record_type: str):
             calls.append(record_type)
             return [row for row in records if row.get("record_type") == record_type]
 
-    monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
+    monkeypatch.setattr("orchestra.store.open_store", lambda directory, store=None: _Project())
     monkeypatch.setattr(
         "orchestra.conductor.reviewer.git_phase_diff", lambda *a, **k: "+reviewed line"
     )
@@ -228,7 +230,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
             recorded.append({"root": str(repo), **kwargs})
             return {"id": "rec-suite", "subject": kwargs.get("subject")}
 
-    monkeypatch.setattr(suite, "open_store", lambda directory: _Project())
+    monkeypatch.setattr(suite, "open_store", lambda directory, store=None: _Project())
     code, out, err = run(
         [
             "suite",

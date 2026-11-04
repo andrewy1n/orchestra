@@ -140,7 +140,7 @@ def normalize_suite_policy(
     )
 
 
-def load_suite_policy(start: Path | None = None) -> SuitePolicy:
+def load_suite_policy(start: Path | None = None, *, store_dir: Path | None = None) -> SuitePolicy:
     """Load ``phase_gate.suite`` from store config under ``settings.conductor``.
 
     A missing store, key, or malformed value yields the consumer default
@@ -149,7 +149,7 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     """
     root = start or Path.cwd()
     try:
-        project = open_store(root)
+        project = open_store(root, store=store_dir)
         data = project.config()
     except (StoreBindingError, StoreError, OSError, ValueError, TypeError):
         return normalize_suite_policy(None)
@@ -370,6 +370,7 @@ def start_suite_background(
     suite_command: str | None = None,
     policy: SuitePolicy | None = None,
     store_root: Path | None = None,
+    store_dir: Path | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
     runner: Callable[..., object] | None = None,
@@ -381,7 +382,9 @@ def start_suite_background(
     On dirty-pass refusal, returns a ``SuiteResult`` with ``refuse=True``.
     """
     work = worktree.resolve()
-    resolved_policy = policy if policy is not None else load_suite_policy(store_root or work)
+    resolved_policy = (
+        policy if policy is not None else load_suite_policy(store_root or work, store_dir=store_dir)
+    )
     head = phase_head or git_head(work)
 
     if not resolved_policy.run_locally and suite_command is None:
@@ -682,6 +685,7 @@ def phase_suite_gate_holds(
 def record_suite_check_run(
     *,
     store_root: Path,
+    store_dir: Path | None = None,
     phase_slug: str,
     effort: str,
     suite: SuiteResult,
@@ -705,7 +709,7 @@ def record_suite_check_run(
             "\n## Failing node IDs\n\n" + "\n".join(f"- {n}" for n in suite.failing_node_ids)
         )
     try:
-        project = open_store(store_root)
+        project = open_store(store_root, store=store_dir)
         return project.create(
             record_type="tuner:check-run",
             subject=subject,

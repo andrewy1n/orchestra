@@ -492,6 +492,13 @@ A set binding that points at a path without `config.json` fails; it does
 not fall through to the other store. This repository pins local in
 `.canon/store-binding.json`.
 
+`orchestra` phase-end verbs (`check`, `analyze`, `review-brief`, `gate`,
+`land`, `suite`) take `--store` to name a store repo root. They resolve
+the root from `--store`, then `$ORCHESTRA_STORE`, then the cwd. An
+explicit `--store` or `$ORCHESTRA_STORE` beats `$CANON_STORE`: the verb
+opens the store that root's binding names. It does not change the
+process environment, so child commands see `$CANON_STORE` unchanged.
+
 If a personal shell function wraps `canon` and forces
 `--store ~/.canon/<name>`, it bypasses this binding for bare CLI
 calls. Prefer `command canon`, or pass `--store` from the resolved

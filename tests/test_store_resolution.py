@@ -14,6 +14,8 @@ import pytest
 from conftest import REPO_ROOT, copy_store, git, make_git_repo, run_cli
 from test_analyze import SLUG, seed_phase
 from test_check import _seed_acceptance
+from test_gate import PHASE as GATE_PHASE
+from test_gate import seed as seed_gate
 
 from orchestra import store as store_module
 
@@ -504,6 +506,48 @@ def test_canon_store_does_not_override_env_suite_record(
     store, third_store, cli, resolved_contract, code_repo, home
 ):
     _do_suite_record("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_subprocess_keeps_canon_store_check(
+    store, third_store, cli, resolved_contract, code_repo, home, tmp_path
+):
+    seen = tmp_path / "seen.txt"
+    acceptance = _seed_acceptance(
+        store,
+        cli,
+        resolved_contract,
+        subject="resolve-check",
+        verify_command=f'printf %s "$CANON_STORE" > {seen}',
+    )
+    third = str(third_store / ".canon")
+    result = _orchestra(
+        *_check_args(acceptance, code_repo),
+        "--store",
+        str(store),
+        cwd=code_repo,
+        home=home,
+        extra_env={"CANON_STORE": third},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert seen.read_text() == third
+    assert [run["subject"] for run in _check_runs(store)] == ["resolve-check"]
+
+
+def test_subprocess_keeps_canon_store_land(store, third_store, cli, home, tmp_path):
+    seen = tmp_path / "seen.txt"
+    seed_gate(store, cli, landing_lines=(f'- merge: `printf %s "$CANON_STORE" > {seen}`',))
+    third = str(third_store / ".canon")
+    result = _orchestra(
+        "land",
+        GATE_PHASE,
+        "--store",
+        str(store),
+        cwd=store,
+        home=home,
+        extra_env={"CANON_STORE": third},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert seen.read_text() == third
 
 
 def test_canon_store_still_applies_without_flag_or_env(
