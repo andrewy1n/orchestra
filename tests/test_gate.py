@@ -1,4 +1,4 @@
-"""`orchestra gate` and `orchestra land` over a temp store and a temp git repo."""
+"""`orchestra gate` and the gate step of `orchestra land` over a temp store and a temp git repo."""
 
 from __future__ import annotations
 
@@ -15,14 +15,26 @@ import pytest
 from conftest import REPO_ROOT, git, make_git_repo
 
 from orchestra.canon.types import Record
-from orchestra.conductor import gate
+from orchestra.cli import main as cli_main
+from orchestra.conductor import gate, land
+from orchestra.conductor.check import git_head
 
 PHASE = "gate-phase"
 EFFORT = "gate-effort"
 HEAD = "a" * 40
 OTHER_HEAD = "b" * 40
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n"
-MERGE = "git merge --ff-only phase/x"
+POLICY = """[verify.stages]
+task = ["unit"]
+
+[verify.unit]
+runner = ["python3", "-m", "pytest", "{{tests}}", "--junitxml={{report}}"]
+
+[suite]
+mode = "{mode}"
+command = "{command}"
+gate = "{gate}"
+"""
 
 Cli = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -162,12 +174,7 @@ class Phase:
         )
 
     def set_suite_policy(self, gate_mode: str) -> None:
-        path = self.store / ".canon" / "config.json"
-        config = json.loads(path.read_text())
-        config.setdefault("settings", {})["conductor"] = {
-            "phase_gate": {"suite": {"mode": "smoke", "command": "true", "gate": gate_mode}}
-        }
-        path.write_text(json.dumps(config))
+        write_policy(self.store, mode="smoke", command="true", gate=gate_mode)
 
     def term(self, name: str) -> gate.Term:
         terms = {t.name: t for t in gate.gate_terms(self.store, PHASE)}
@@ -176,6 +183,12 @@ class Phase:
 
     def missing(self) -> list[str]:
         return [t.name for t in gate.missing_terms(gate.gate_terms(self.store, PHASE))]
+
+
+def write_policy(
+    root: Path, *, mode: str = "none", command: str = "", gate: str = "required"
+) -> None:
+    (root / "orchestra.toml").write_text(POLICY.format(mode=mode, command=command, gate=gate))
 
 
 def _code_repo() -> Path:
@@ -198,11 +211,12 @@ def seed(
     cli: Cli,
     *,
     method: str = "check",
-    landing_lines: tuple[str, ...] = (f"- merge: `{MERGE}`",),
+    landing_lines: tuple[str, ...] = (),
     verification: str = "done",
     review: bool = True,
     runner_check: bool = True,
 ) -> Phase:
+    write_policy(store)
     repo = _code_repo()
     phase = Phase(store, cli, repo, {})
     phase.create("score:effort", EFFORT, {"goal": "g", "kind": "deliver"})
@@ -452,7 +466,7 @@ def _worktree_phase(store: Path, cli: Cli, *landing_lines: str) -> tuple[Phase, 
         cli,
         review=False,
         runner_check=False,
-        landing_lines=landing_lines or (f"- merge: `{MERGE}`",),
+        landing_lines=landing_lines,
     )
     worktree = phase.repo / ".worktrees" / PHASE
     git(phase.repo, "worktree", "add", "-q", str(worktree), "phase/x")
@@ -470,13 +484,11 @@ def _commit(worktree: Path, relative: str) -> None:
     git(worktree, "commit", "-qm", f"touch {relative}")
 
 
-def test_canon_only_commit_after_review_lands(store: Path, cli: Cli) -> None:
+def test_canon_only_commit_after_review_holds(store: Path, cli: Cli) -> None:
     phase, worktree, _ = _worktree_phase(store, cli)
     _commit(worktree, ".canon/config.json")
     assert phase.missing() == []
-    result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (phase.repo / "landed.txt").exists()
+    assert _orchestra(store, "gate", PHASE).returncode == 0
 
 
 def test_code_commit_after_review_refuses(store: Path, cli: Cli) -> None:
@@ -485,11 +497,10 @@ def test_code_commit_after_review_refuses(store: Path, cli: Cli) -> None:
     _commit(worktree, ".canon/config.json")
     assert phase.missing() == ["head-descends-from-review"]
     assert "src/new.py" in phase.term("head-descends-from-review").detail
-    result = _orchestra(store, "land", PHASE)
+    result = _orchestra(store, "gate", PHASE)
     assert result.returncode == 1
-    assert "head-descends-from-review" in result.stderr
-    assert "src/new.py" in result.stderr
-    assert not (phase.repo / "landed.txt").exists()
+    assert "head-descends-from-review" in result.stdout
+    assert "src/new.py" in result.stdout
 
 
 def test_head_that_does_not_descend_from_review_refuses(store: Path, cli: Cli) -> None:
@@ -573,7 +584,7 @@ def test_relative_worktree_resolves_like_repo(store: Path, cli: Cli) -> None:
     phase.check_run(revision=head)
     phase.review(revision=head)
     relative = os.path.relpath(worktree, store)
-    body = _landing(phase.repo, f"- Worktree: `{relative}`", f"- merge: `{MERGE}`")
+    body = _landing(phase.repo, f"- Worktree: `{relative}`")
     record = next(
         r for r in json.loads(phase.cli("list", "--type", "score:phase").stdout)["records"]
     )
@@ -594,88 +605,101 @@ def test_relative_worktree_resolves_like_repo(store: Path, cli: Cli) -> None:
     assert not phase.term("head-descends-from-review").holds
 
 
-def test_land_runs_merge_after_gate_holds(phase: Phase) -> None:
-    result = _orchestra(phase.store, "land", PHASE)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (phase.repo / "landed.txt").read_text() == "landed\n"
-    assert "phase work" in git(phase.repo, "log", "-1", "--format=%s", "main").stdout
-
-
-def test_merge_failure_exits_3(store: Path, cli: Cli) -> None:
-    seed(store, cli, landing_lines=("- merge: `echo merging; exit 7`",))
-    result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 3
-    assert "merging" in result.stdout
-    assert "exited 7" in result.stderr
-
-
-def test_land_runs_merge_in_the_landing_repo(store: Path, cli: Cli) -> None:
-    phase = seed(store, cli, landing_lines=("- merge: `pwd > where.txt`",))
-    result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (phase.repo / "where.txt").read_text().strip() == str(phase.repo.resolve())
-
-
-def test_land_refuses_when_gate_fails(phase: Phase) -> None:
-    phase.finding()
-    result = _orchestra(phase.store, "land", PHASE)
-    assert result.returncode == 1
-    assert "finding-needs-human" in result.stderr
-    assert not (phase.repo / "landed.txt").exists()
-
-
-def test_land_refuses_when_gate_fails_and_runs_no_command(store: Path, cli: Cli) -> None:
-    marker = store / "ran.txt"
-    seed(store, cli, review=False, landing_lines=(f"- merge: `touch {marker}`",))
-    result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 1
-    assert "review-at-head" in result.stderr
-    assert not marker.exists()
-
-
-def test_land_refuses_when_gate_fails_names_the_missing_term_only_once(phase: Phase) -> None:
-    phase.check_run("fail")
-    result = _orchestra(phase.store, "land", PHASE)
-    assert result.returncode == 1
-    assert result.stderr.count(f"acceptance-passes:{PHASE}-ac") == 1
-
-
-def test_land_exits_2_without_a_merge_line(store: Path, cli: Cli) -> None:
-    seed(store, cli, landing_lines=("- suite: `true`",))
-    result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 2
-    assert "merge:" in result.stderr
-
-
-def test_landing_merge_and_suite_lines_are_parsed() -> None:
+def test_landing_parses_repo_and_worktree_lines() -> None:
     body = (
-        "## Approach\n\nmerge: not this\n\n## Landing\n\n"
+        "## Approach\n\nrepo: not this\n\n## Landing\n\n"
         "- Branch: `phase/x`\n"
         "- Repo: `/code/repo`\n"
-        "- merge: `git merge --ff-only phase/x`\n"
-        "suite: uv run pytest -q\n\n"
-        "## Proof\n\nmerge: ignored\n"
+        "- Worktree: `/code/repo/.worktrees/x`\n\n"
+        "## Proof\n\nrepo: ignored\n"
     )
     landing = gate.parse_landing(body)
     assert landing.present
-    assert landing.merge == "git merge --ff-only phase/x"
-    assert landing.suite == "uv run pytest -q"
     assert landing.repo == "/code/repo"
+    assert landing.worktree == "/code/repo/.worktrees/x"
 
 
-def test_landing_merge_and_suite_lines_are_optional() -> None:
-    landing = gate.parse_landing("## Landing\n\n- Branch: `phase/x`\n")
-    assert landing.present
-    assert landing.merge == ""
-    assert landing.suite == ""
-
-
-def test_landing_merge_and_suite_lines_absent_without_a_landing_section() -> None:
-    landing = gate.parse_landing("## Approach\n\nmerge: `git merge x`\n")
+def test_landing_is_absent_without_a_landing_section() -> None:
+    landing = gate.parse_landing("## Approach\n\nrepo: `/code/repo`\n")
     assert not landing.present
-    assert landing.merge == ""
+    assert landing.repo == ""
 
 
-def test_landing_merge_and_suite_lines_keep_inner_backticks() -> None:
-    landing = gate.parse_landing("## Landing\n\nmerge: `git merge $(echo `x`)`\n")
-    assert landing.merge == "git merge $(echo `x`)"
+@dataclass
+class FakeAdapter:
+    calls: list[land.LandRequest]
+
+    def run(self, request: land.LandRequest) -> land.LandingResult:
+        self.calls.append(request)
+        return land.LandingResult("success", 7, "https://example.test/pull/7", HEAD, (), ())
+
+
+def _land_args(phase: Phase) -> list[str]:
+    return ["land", "--phase", PHASE, "--cwd", str(phase.repo), "--store", str(phase.store)]
+
+
+def _packet(phase: Phase) -> None:
+    phase.create(
+        "conductor:proof-packet",
+        PHASE,
+        {
+            "phase": PHASE,
+            "effort": EFFORT,
+            "revision": git_head(phase.repo),
+            "base": "main",
+            "kind": "claims",
+        },
+        "## Look\nl\n\n## Machine\nm\n\n## Attention\nnone\n\n## Diff\n1 file changed\n",
+    )
+
+
+@pytest.fixture
+def adapter(monkeypatch: pytest.MonkeyPatch) -> FakeAdapter:
+    fake = FakeAdapter([])
+
+    def dispatch(root: Path, proof_packet: str, **kwargs: object) -> land.LandingResult:
+        return fake.run(land.LandRequest(root, proof_packet, "main", "origin", 0, 0, {}))
+
+    monkeypatch.setattr(land, "dispatch_land", dispatch)
+    return fake
+
+
+def test_land_refuses_when_gate_fails_no_push(
+    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _packet(phase)
+    phase.finding()
+    assert cli_main(_land_args(phase)) == 1
+    assert "finding-needs-human" in capsys.readouterr().err
+    assert adapter.calls == []
+
+
+def test_land_refuses_with_each_missing_term_once(
+    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _packet(phase)
+    phase.check_run("fail")
+    assert cli_main(_land_args(phase)) == 1
+    assert capsys.readouterr().err.count(f"acceptance-passes:{PHASE}-ac") == 1
+    assert adapter.calls == []
+
+
+def test_land_runs_adapter_after_gate_holds(
+    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _packet(phase)
+    assert cli_main(_land_args(phase)) == 0
+    assert len(adapter.calls) == 1
+    assert adapter.calls[0].root == phase.repo.resolve()
+    assert adapter.calls[0].proof_packet.startswith("## Look")
+    assert '"result": "success"' in capsys.readouterr().out
+
+
+def test_land_exits_2_for_an_unknown_phase(
+    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = _land_args(phase)
+    args[2] = "no-such-phase"
+    assert cli_main(args) == 2
+    assert "not found" in capsys.readouterr().err
+    assert adapter.calls == []

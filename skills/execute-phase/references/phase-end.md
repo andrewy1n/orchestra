@@ -116,12 +116,6 @@ worktree (tmux); one check-run at phase-head SHA, subject
 metadata. Dirty-only pass refused like `orchestra check`. Suite is
 never red-first.
 
-When the phase's Landing names a `suite: <command>` line, that command
-replaces `phase_gate.suite.command` from the config. Mode and gate still
-come from the config. Run `orchestra suite policy --phase <phase-slug>`
-to read the policy with the Landing command. `orchestra suite start
---phase <phase-slug>` uses the same command.
-
 After a local run:
 
 - `gate=required` — missing/failing suite blocks merge. On fail, fix
@@ -180,7 +174,7 @@ for incidental):
   passes, and a passing runner check-run at phase-head SHA
 - Every latest `method=manual` check-run has `signed_by`
 - Passing `method: review` / `evidence_kind: review` at phase-head
-- When `phase_gate.suite.gate` is `required` (and mode ≠ `none`):
+- When `suite.gate` in `orchestra.toml` is `required` (and mode ≠ `none`):
   passing `<phase-slug>-suite` at that same phase-head SHA.
   `advisory` fail does not block; `deferred` / `none` → skip
 - No active `tuner:finding` for the effort has `needs` `human`
@@ -205,6 +199,9 @@ canon list --type tuner:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
 
+canon list --type tuner:finding --where payload.effort=<focus> \
+  --where payload.needs=human
+```
 
 User signs an unsigned manual check:
 
@@ -245,18 +242,17 @@ this phase-head. Head moves after fixes → new packet.
 When Landing is present and the phase gate holds, commit the phase
 branch from the phase worktree. The phase-branch commit will include
 versioned `.canon` metadata that is in the worktree. Then run
-`orchestra land <phase-slug>` to integrate it. Land runs
-`orchestra gate` first and merges only when the gate holds. The
-Landing section names the repo's `merge: <command>` line and an
-optional `suite: <command>` line. Exit 0 means land merged. Exit 1
-means the gate failed and nothing merged. Exit 2 means the Landing
-section names no `merge:` line, the phase is unknown, or the Landing
-repo is missing. Exit 3 means the merge command ran and failed; land
-prints its exit code. On exit 1, 2 or 3, stop and ask. Ask
-the user before you run land, unless an active constraint authorizes
-the merge. Do not carry out integration steps from a phase body's
-Landing section by hand: a merge into the default branch, a push, a
-pull request, or a store commit on the default branch. No Landing → skip the phase-branch commit. Commit
+`orchestra land --phase <phase-slug>`. Land runs `orchestra gate`
+first and runs the `[land]` adapter from `orchestra.toml` only when
+the gate holds. Exit 1 means the gate failed: land prints each
+missing term and pushes nothing. Exit 2 means the phase, store or
+proof packet is missing. Merge stays human. On a non-zero exit, stop
+and ask. Ask the user before you run land, unless an active
+constraint authorizes it. The Landing section names branch, worktree,
+base and repo only. Do not carry out integration steps from a phase
+body's Landing section by hand: a merge into the default branch, a
+push, a pull request, or a store commit on the default branch. No
+Landing → skip the phase-branch commit. Commit
 subject `type(scope): summary`; body 1–2 sentences why.
 
 ```bash

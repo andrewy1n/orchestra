@@ -20,11 +20,10 @@ def _flat(text: str) -> str:
 
 def _assert_lands(text: str) -> None:
     flat = _flat(text)
-    assert "orchestra land <phase-slug>" in flat
+    assert "orchestra land --phase <phase-slug>" in flat
     assert "runs `orchestra gate` first" in flat
-    assert "`merge: <command>`" in flat
-    assert "`suite: <command>`" in flat
-    assert "Exit 2 means the Landing section names no `merge:` line" in flat
+    assert "`merge: <command>`" not in flat
+    assert "`suite: <command>`" not in flat
     for phrase in HAND_INTEGRATION:
         assert phrase not in flat
 
@@ -37,13 +36,28 @@ def test_phase_end_calls_orchestra_land() -> None:
     _assert_lands((SKILLS / "execute-phase" / "references" / "phase-end.md").read_text())
 
 
-def test_plan_phase_landing_allows_merge_and_suite_lines() -> None:
-    flat = _flat((SKILLS / "plan-phase" / "SKILL.md").read_text())
-    assert "Landing may carry a `merge: <command>` line" in flat
-    assert "an optional `suite: <command>` line" in flat
-    assert "Do not write it as a prose step" in flat
-    for phrase in HAND_INTEGRATION:
-        assert phrase not in flat
+def test_landing_section_has_no_merge_or_suite_command() -> None:
+    texts = [
+        (SKILLS / "plan-phase" / "SKILL.md").read_text(),
+        (SKILLS / "execute-phase" / "SKILL.md").read_text(),
+        (SKILLS / "execute-phase" / "references" / "phase-end.md").read_text(),
+        (REPO_ROOT / "shared" / "kinds-and-focus.md").read_text(),
+        (REPO_ROOT / "README.md").read_text(),
+    ]
+    for text in texts:
+        flat = _flat(text)
+        assert "`merge: <command>`" not in flat
+        assert "`suite: <command>`" not in flat
+        assert "replaces `phase_gate.suite.command`" not in flat
+        assert "suite policy --phase" not in flat
+        for phrase in HAND_INTEGRATION:
+            assert phrase not in flat
+    plan = _flat(texts[0])
+    assert "Landing names branch, worktree, base and repo only" in plan
+    assert "`[land]` and `[suite]` configure them" in plan
+    shared = _flat(texts[3])
+    assert "names branch, worktree, base and repo only" in shared
+    assert "`orchestra.toml` `[land]` and `[suite]` configure the adapter" in shared
 
 
 def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
@@ -57,12 +71,6 @@ def test_phase_gate_terms_name_needs_human_and_orchestra_gate() -> None:
     assert "Run `orchestra gate <phase-slug>`" in gate_section
     assert "Exit 0 means the gate holds" in gate_section
     assert "Exit 1 lists each missing term" in gate_section
+    assert "When `suite.gate` in `orchestra.toml` is `required`" in gate_section
     assert "No active `tuner:finding` for the effort has `needs` `human`" in gate_section
     assert "Fallback for reading the records by hand" in gate_section
-
-
-def test_suite_docs_say_landing_suite_replaces_config_command() -> None:
-    phase_end = _flat((SKILLS / "execute-phase" / "references" / "phase-end.md").read_text())
-    assert "`suite: <command>` line, that command replaces `phase_gate.suite.command`" in phase_end
-    plan = _flat((SKILLS / "plan-phase" / "SKILL.md").read_text())
-    assert "The `suite:` command replaces the configured `phase_gate.suite.command`" in plan

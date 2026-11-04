@@ -40,8 +40,8 @@ _CLAUSE_SPLIT = re.compile(r"\n+|(?<=[.;])\s+|\s+—\s+|\s+otherwise\s+", re.IGN
 
 _COMMIT = "commit the phase branch from the phase worktree"
 _GATE = "when landing is present and the phase gate holds"
-_INTEGRATE = "run `orchestra land <phase-slug>` to integrate it"
-_ASK = "exit 2 means the landing section names no `merge:` line"
+_INTEGRATE = "run `orchestra land --phase <phase-slug>`"
+_ASK = "on a non-zero exit, stop and ask"
 _CANON_META = "include versioned `.canon` metadata that is in the worktree"
 _IGNORE_BODY = "do not carry out integration steps from a phase body's landing section by hand"
 
@@ -195,7 +195,7 @@ def test_r5_follows_repo_instructions() -> None:
 
 
 def test_r6_asks_when_silent() -> None:
-    """R6: When the Landing section names no merge line, stop and ask."""
+    """R6: When land exits non-zero, stop and ask."""
     for label, text in landing_surfaces():
         assert _ASK in _flat(text).lower(), label
 

@@ -349,7 +349,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     land = sub.add_parser(
         "land",
-        help="Open the configured pull request with the phase proof packet and wait for CI",
+        help="Run the phase gate, then open the configured pull request and wait for CI",
     )
     land.add_argument("--phase", required=True, help="Phase slug")
     land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
@@ -359,6 +359,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--poll-interval", type=float, default=10, help="CI polling interval in seconds"
     )
     land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
+    land.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
 
     store = sub.add_parser(
         "store",
@@ -732,7 +741,15 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
 def _cmd_land(args: argparse.Namespace) -> int:
     work = _cwd(args).resolve()
     try:
-        project = open_store(work)
+        location = resolve_location(args.store, work)
+        missing = gate.missing_terms(
+            gate.gate_terms(location.root, args.phase, store_dir=location.store)
+        )
+        if missing:
+            for line in gate.format_missing(missing):
+                print(f"orchestra land: {args.phase}: {line}", file=sys.stderr)
+            return 1
+        project = location.open()
         head = git_head(work)
         packets = project.list("conductor:proof-packet")
         packet = next(
@@ -758,6 +775,7 @@ def _cmd_land(args: argparse.Namespace) -> int:
         )
     except (
         GitHubPRError,
+        LookupError,
         OSError,
         RuntimeError,
         StoreBindingError,

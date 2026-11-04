@@ -291,6 +291,8 @@ def test_land_cli_reports_pull_request_and_final_checks(
     }
 
     class FakeProject:
+        project_root = tmp_path
+
         def list(self, record_type: str) -> list[Record]:
             assert record_type == "conductor:proof-packet"
             return [packet]
@@ -319,7 +321,8 @@ def test_land_cli_reports_pull_request_and_final_checks(
             statuses=("success",),
         )
 
-    monkeypatch.setattr(cli, "open_store", lambda _root: FakeProject())
+    monkeypatch.setattr("orchestra.store.open_store", lambda _root, store=None: FakeProject())
+    monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(cli, "git_head", lambda _root: "head-sha")
     monkeypatch.setattr(cli.land, "dispatch_land", fake_open_pull_request)
 

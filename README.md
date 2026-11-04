@@ -307,11 +307,11 @@ The phase body includes a `## Landing` section with branch
 `phase/<phase-slug>`, worktree
 `<repo>/.worktrees/<phase-slug>`, base `main`. When Landing is
 present and the phase gate holds, commit the phase branch from the
-phase worktree. Then run `orchestra land <phase-slug>` to integrate
-it. Land runs `orchestra gate` first and merges only when the gate
-holds. The Landing section names the repo's `merge: <command>` line
-and an optional `suite: <command>` line. Exit 2 means the Landing
-section names no `merge:` line. Stop and ask.
+phase worktree. Then run `orchestra land --phase <phase-slug>`. Land
+runs `orchestra gate` first and runs the land adapter only when the
+gate holds. The Landing section names branch, worktree, base and repo
+only. `orchestra.toml` `[land]` and `[suite]` configure the adapter and
+the suite. Merge stays human. On a non-zero exit, stop and ask.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 
@@ -435,10 +435,13 @@ subcommands and shells to `canon` for store reads/writes:
 | `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
-| `land` | Publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
+| `gate` | Check every phase-end term; exit 1 and name each missing term. |
+| `land` | Run the phase gate, then publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
 
-`orchestra land --phase <phase> --cwd <phase-worktree>` requires a
+`orchestra land --phase <phase> --cwd <phase-worktree>` runs
+`orchestra gate <phase>` first. When the gate fails, it prints each
+missing term, exits 1, and pushes nothing. It requires a
 proof packet for that phase at the worktree's current commit and
 `[land].adapter = "github-pr"` in `orchestra.toml`. It pushes the branch,
 opens the PR with the packet body, and reports the completed check runs

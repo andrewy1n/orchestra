@@ -63,12 +63,12 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   `phase/<phase-slug>`, worktree `<repo>/.worktrees/<phase-slug>`,
   base `main`). When Landing is present and the phase gate holds,
   commit the phase branch from the phase worktree. Then run
-  `orchestra land <phase-slug>` to integrate it. Land runs
-  `orchestra gate` first and merges only when the gate holds. The
-  Landing section names the repo's `merge: <command>` line and an
-  optional `suite: <command>` line. Exit 2 means the Landing section
-  names no `merge:` line. Stop and ask. No Landing
-  → not ready for plan review. Incidental has no Landing.
+  `orchestra land --phase <phase-slug>`. Land runs `orchestra gate`
+  first and runs the land adapter only when the gate holds. The
+  Landing section names branch, worktree, base and repo only.
+  `orchestra.toml` `[land]` and `[suite]` configure the adapter and
+  the suite. Merge stays human. On a non-zero exit, stop and ask. No
+  Landing → not ready for plan review. Incidental has no Landing.
 - Decisions change via `supersede`, never `update` to `superseded`.
 - Parent writes records. Only subagent here: phase-scoped
   **oracle-author** (step 8, deliver/repair) — tests only, no
@@ -143,15 +143,13 @@ canon update --type score:phase --id <phase-id> \
    `phase/<phase-slug>`, worktree `<repo>/.worktrees/<phase-slug>`,
    base `main`. When Landing is present and the phase gate holds,
    commit the phase branch from the phase worktree. Then run
-   `orchestra land <phase-slug>` to integrate it. Land runs
-   `orchestra gate` first and merges only when the gate holds.
-   Landing may carry a `merge: <command>` line and an optional
-   `suite: <command>` line. The `suite:` command replaces the configured
-   `phase_gate.suite.command` for this phase; mode and gate still come
-   from the config. Exit 2 means the Landing section names no
-   `merge:` line. Stop and ask. Write the merge only as a `merge:`
-   line. Do not write it as a prose step. Do not write a push, a pull
-   request, or a store commit on the default branch into Landing. Missing phase record →
+   `orchestra land --phase <phase-slug>`. Land runs `orchestra gate`
+   first and runs the land adapter only when the gate holds. Landing
+   names branch, worktree, base and repo only. Do not write a merge
+   command, a suite command, a push, a pull request, or a store
+   commit on the default branch into Landing. `orchestra.toml`
+   `[land]` and `[suite]` configure them. On a non-zero exit, stop
+   and ask. Missing phase record →
    `create` first (`init` step 7), then `update`. Skip for incidental.
 
    Then create this phase's position (`subject` = phase slug,

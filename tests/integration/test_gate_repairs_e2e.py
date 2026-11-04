@@ -13,6 +13,15 @@ from conftest import REPO_ROOT, git, make_git_repo
 PHASE = "e2e-phase"
 EFFORT = "e2e-effort"
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n"
+POLICY = """[verify.stages]
+task = ["unit"]
+
+[verify.unit]
+runner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]
+
+[land]
+adapter = "none"
+"""
 SECTIONS = "## Evidence\n\ne\n\n## Consequence\n\nc\n\n## Follow-up\n\nf"
 
 
@@ -111,7 +120,8 @@ def _seed_phase(world: World) -> tuple[Path, str]:
     git(code, "worktree", "add", "-q", str(worktree), "phase/x")
     head = git(worktree, "rev-parse", "HEAD").stdout.strip()
 
-    landing = f"\n## Landing\n\n- Repo: `{code}`\n- merge: `git merge --ff-only phase/x`\n"
+    (world.store / "orchestra.toml").write_text(POLICY)
+    landing = f"\n## Landing\n\n- Repo: `{code}`\n"
     world.create("score:effort", EFFORT, {"goal": "g", "kind": "deliver"})
     world.create(
         "score:phase", PHASE, {"title": PHASE, "ordinal": 1, "effort": EFFORT}, PHASE_BODY + landing
@@ -170,8 +180,9 @@ def _seed_phase(world: World) -> tuple[Path, str]:
     return code, head
 
 
-def test_land_refuses_while_a_needs_human_finding_is_open_then_merges(world: World) -> None:
+def test_land_refuses_while_a_needs_human_finding_is_open_then_proceeds(world: World) -> None:
     code, _ = _seed_phase(world)
+    worktree = code / ".worktrees" / PHASE
     store = str(world.store)
     gate = world.run("orchestra", "gate", PHASE, "--store", store)
     assert gate.returncode == 0, gate.stdout + gate.stderr
@@ -188,10 +199,11 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_merges(world: Wor
         },
         SECTIONS,
     )
-    refused = world.run("orchestra", "land", PHASE, "--store", store)
+    land = ("orchestra", "land", "--phase", PHASE, "--cwd", str(worktree), "--store", store)
+    refused = world.run(*land)
     assert refused.returncode == 1
     assert "finding-needs-human:review-e2e-phase-spec-gap" in refused.stderr
-    assert not (code / "landed.txt").exists()
+    assert '"op": "land"' not in refused.stdout
 
     world.canon(
         "update",
@@ -204,15 +216,29 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_merges(world: Wor
         "--expected-revision",
         finding["revision"],
     )
-    worktree = code / ".worktrees" / PHASE
     metadata = worktree / ".canon" / "note.json"
     metadata.parent.mkdir(exist_ok=True)
     metadata.write_text("{}\n")
     git(worktree, "add", "-A", "--", ".canon")
     git(worktree, "commit", "-qm", "chore(canon): record metadata")
-    merged = world.run("orchestra", "land", PHASE, "--store", store)
-    assert merged.returncode == 0, merged.stdout + merged.stderr
-    assert (code / "landed.txt").read_text() == "landed\n"
+    (worktree / "orchestra.toml").write_text(POLICY)
+    world.create(
+        "conductor:proof-packet",
+        PHASE,
+        {
+            "phase": PHASE,
+            "effort": EFFORT,
+            "revision": git(worktree, "rev-parse", "HEAD").stdout.strip(),
+            "base": "main",
+            "kind": "claims",
+        },
+        "## Look\nl\n\n## Machine\nm\n\n## Attention\nnone\n\n## Diff\n1 file changed\n",
+    )
+    landed = world.run(*land)
+    assert "missing" not in landed.stderr, landed.stdout + landed.stderr
+    result = json.loads(landed.stdout)
+    assert result["op"] == "land"
+    assert result["result"] == "skipped"
 
 
 def test_review_brief_reads_a_store_in_another_repo(world: World) -> None:

@@ -14,8 +14,7 @@ import pytest
 from conftest import REPO_ROOT, copy_store, git, make_git_repo, run_cli
 from test_analyze import SLUG, seed_phase
 from test_check import _seed_acceptance
-from test_gate import PHASE as GATE_PHASE
-from test_gate import seed as seed_gate
+from test_gate import write_policy
 
 from orchestra import store as store_module
 
@@ -67,15 +66,6 @@ def code_repo() -> Path:
     git(repo, "add", "code.txt")
     git(repo, "commit", "-qm", "code")
     return repo
-
-
-def _set_suite_policy(store: Path, command: str) -> None:
-    config_path = store / ".canon" / "config.json"
-    config = json.loads(config_path.read_text())
-    config.setdefault("settings", {})["conductor"] = {
-        "phase_gate": {"suite": {"mode": "smoke", "command": command, "gate": "advisory"}}
-    }
-    config_path.write_text(json.dumps(config))
 
 
 def _check_runs(store: Path) -> list[dict]:
@@ -173,37 +163,6 @@ def test_cwd_fallback_review_brief(store, cli, resolved_contract, home):
     assert f"{SLUG}-wi-r1" in result.stdout
 
 
-def test_suite_store_flag(store, code_repo, home):
-    _set_suite_policy(store, "echo from-store")
-    result = _orchestra(
-        "suite", "policy", "--cwd", str(code_repo), "--store", str(store), cwd=code_repo, home=home
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    policy = json.loads(result.stdout)
-    assert policy["command"] == "echo from-store"
-
-
-def test_suite_store_flag_start(store, code_repo, home):
-    _set_suite_policy(store, "")
-    result = _orchestra(
-        "suite",
-        "start",
-        "--phase",
-        PHASE,
-        "--cwd",
-        str(code_repo),
-        "--store",
-        str(store),
-        cwd=code_repo,
-        home=home,
-        extra_env={"PATH": os.environ["PATH"]},
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    document = json.loads(result.stdout)
-    assert document["state"] == "skipped"
-    assert document["policy"]["mode"] == "smoke"
-
-
 def test_suite_store_flag_record(store, cli, resolved_contract, code_repo, home):
     _seed_suite_effort(store, cli, resolved_contract)
     _write_finished_suite(code_repo)
@@ -215,19 +174,6 @@ def test_suite_store_flag_record(store, cli, resolved_contract, code_repo, home)
 
 
 def test_env_fallback_suite(store, cli, resolved_contract, code_repo, home):
-    _set_suite_policy(store, "echo from-env")
-    policy = _orchestra(
-        "suite",
-        "policy",
-        "--cwd",
-        str(code_repo),
-        cwd=code_repo,
-        home=home,
-        extra_env={"ORCHESTRA_STORE": str(store)},
-    )
-    assert policy.returncode == 0, policy.stdout + policy.stderr
-    assert json.loads(policy.stdout)["command"] == "echo from-env"
-
     _seed_suite_effort(store, cli, resolved_contract)
     _write_finished_suite(code_repo)
     record = _orchestra(
@@ -241,11 +187,6 @@ def test_env_fallback_suite(store, cli, resolved_contract, code_repo, home):
 
 
 def test_cwd_fallback_suite(store, cli, resolved_contract, home):
-    _set_suite_policy(store, "echo from-cwd")
-    policy = _orchestra("suite", "policy", cwd=store, home=home)
-    assert policy.returncode == 0, policy.stdout + policy.stderr
-    assert json.loads(policy.stdout)["command"] == "echo from-cwd"
-
     _seed_suite_effort(store, cli, resolved_contract)
     _write_finished_suite(store)
     record = _orchestra(*_suite_record_args(store), cwd=store, home=home)
@@ -367,6 +308,7 @@ def _do_check(via, store, third, cli, contract, repo, home) -> None:
 
 def _do_gate(via, store, third, cli, contract, repo, home) -> None:
     seed_phase(cli, contract)
+    write_policy(store)
     result = _run_with_canon_store(
         ["gate", SLUG], via=via, store=store, third=third, repo=repo, home=home
     )
@@ -376,29 +318,17 @@ def _do_gate(via, store, third, cli, contract, repo, home) -> None:
 
 def _do_land(via, store, third, cli, contract, repo, home) -> None:
     seed_phase(cli, contract)
+    write_policy(store)
     result = _run_with_canon_store(
-        ["land", SLUG], via=via, store=store, third=third, repo=repo, home=home
+        ["land", "--phase", SLUG, "--cwd", str(repo)],
+        via=via,
+        store=store,
+        third=third,
+        repo=repo,
+        home=home,
     )
     assert "missing" in result.stderr, result.stdout + result.stderr
     assert "not found" not in result.stderr
-
-
-def _do_suite_policy(via, store, third, cli, contract, repo, home) -> None:
-    _set_suite_policy(store, "echo from-store")
-    args = ["suite", "policy", "--cwd", str(repo)]
-    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert json.loads(result.stdout)["command"] == "echo from-store"
-
-
-def _do_suite_start(via, store, third, cli, contract, repo, home) -> None:
-    _set_suite_policy(store, "")
-    args = ["suite", "start", "--phase", PHASE, "--cwd", str(repo)]
-    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
-    assert result.returncode == 0, result.stdout + result.stderr
-    document = json.loads(result.stdout)
-    assert document["state"] == "skipped"
-    assert document["policy"]["mode"] == "smoke"
 
 
 def _do_suite_record(via, store, third, cli, contract, repo, home) -> None:
@@ -472,30 +402,6 @@ def test_canon_store_does_not_override_env_land(
     _do_land("env", store, third_store, cli, resolved_contract, code_repo, home)
 
 
-def test_canon_store_does_not_override_flag_suite_policy(
-    store, third_store, cli, resolved_contract, code_repo, home
-):
-    _do_suite_policy("flag", store, third_store, cli, resolved_contract, code_repo, home)
-
-
-def test_canon_store_does_not_override_env_suite_policy(
-    store, third_store, cli, resolved_contract, code_repo, home
-):
-    _do_suite_policy("env", store, third_store, cli, resolved_contract, code_repo, home)
-
-
-def test_canon_store_does_not_override_flag_suite_start(
-    store, third_store, cli, resolved_contract, code_repo, home
-):
-    _do_suite_start("flag", store, third_store, cli, resolved_contract, code_repo, home)
-
-
-def test_canon_store_does_not_override_env_suite_start(
-    store, third_store, cli, resolved_contract, code_repo, home
-):
-    _do_suite_start("env", store, third_store, cli, resolved_contract, code_repo, home)
-
-
 def test_canon_store_does_not_override_flag_suite_record(
     store, third_store, cli, resolved_contract, code_repo, home
 ):
@@ -531,23 +437,6 @@ def test_subprocess_keeps_canon_store_check(
     assert result.returncode == 0, result.stdout + result.stderr
     assert seen.read_text() == third
     assert [run["subject"] for run in _check_runs(store)] == ["resolve-check"]
-
-
-def test_subprocess_keeps_canon_store_land(store, third_store, cli, home, tmp_path):
-    seen = tmp_path / "seen.txt"
-    seed_gate(store, cli, landing_lines=(f'- merge: `printf %s "$CANON_STORE" > {seen}`',))
-    third = str(third_store / ".canon")
-    result = _orchestra(
-        "land",
-        GATE_PHASE,
-        "--store",
-        str(store),
-        cwd=store,
-        home=home,
-        extra_env={"CANON_STORE": third},
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert seen.read_text() == third
 
 
 def test_canon_store_still_applies_without_flag_or_env(
