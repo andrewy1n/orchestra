@@ -38,6 +38,12 @@ class AuditError(Exception):
     """Usage or git failure that should exit 2."""
 
 
+class AuditTrailError(AuditError):
+    def __init__(self, report: JsonObject) -> None:
+        super().__init__("required observation trail could not be persisted")
+        self.report = report
+
+
 PROBES_PATH = ".tuner/probes.json"
 
 
@@ -49,6 +55,8 @@ def run_audit(
     mutants_path: Path | str | None = None,
     max_mutants: int | None = 20,
     probes_path: Path | str | None = None,
+    *,
+    require_trail: bool = False,
 ) -> JsonObject:
     """Label source hunks between ``base`` and ``head``; optionally plant mutants.
 
@@ -114,7 +122,9 @@ def run_audit(
         "survivors": survivor_values,
         "diffs": diff_values,
     }
-    _record_unbound(root, base_commit, head_commit, diffs, probes)
+    recorded = _record_unbound(root, base_commit, head_commit, diffs, probes)
+    if require_trail and not recorded:
+        raise AuditTrailError(result)
     return result
 
 
@@ -128,9 +138,9 @@ def _record_unbound(
     head: str,
     diffs: Sequence[JsonObject],
     probes: Sequence[JsonObject],
-) -> None:
-    """Record unbound audit and probe observations when a store is usable."""
-    maybe_record_observation(
+) -> bool:
+    """Return whether every audit and probe observation was stored."""
+    complete = maybe_record_observation(
         root,
         technique=_TECHNIQUE_AUDIT,
         base_rev=base,
@@ -144,7 +154,7 @@ def _record_unbound(
         probe_id = str(diff.get("probe") or "")
         if not probe_id:
             continue
-        maybe_record_observation(
+        recorded = maybe_record_observation(
             root,
             technique=_TECHNIQUE_PROBES,
             base_rev=base,
@@ -153,6 +163,9 @@ def _record_unbound(
             replay=_probe_replay(base, head, by_id.get(probe_id, {}), probe_id),
             subject=_TECHNIQUE_PROBES + ":" + probe_id + ":" + base + ":" + head,
         )
+        if not recorded:
+            complete = False
+    return complete
 
 
 def _audit_replay(base: str, head: str) -> str:

@@ -352,3 +352,13 @@ def test_r7_fixture_trail_visible_unbound_observations(store: Path) -> None:
             _assert_replay(item, base, head, AUDIT_TECHNIQUE)
         elif _technique(item) == PROBES_TECHNIQUE:
             _assert_replay(item, base, head, PROBE_ID)
+
+
+def test_requested_audit_trail_keeps_report_on_write_failure(tmp_path: Path) -> None:
+    root = tmp_path / "subject"
+    _init(root)
+    base, head = _seed_subject(root, probes=False)
+    result = _tuner("audit", "--cwd", str(root), "--base", base, "--head", head, "--require-trail")
+    assert result.returncode == 2
+    assert "required observation trail" in result.stderr
+    assert json.loads(result.stdout) == _advisory(_audit(root, base, head))
