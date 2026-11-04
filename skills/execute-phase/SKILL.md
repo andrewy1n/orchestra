@@ -400,8 +400,10 @@ canon create --type score:continuity-question \
    When Landing is present and the phase gate holds, commit the phase
    branch from the phase worktree. Then run `orchestra land --phase
    <phase-slug>`. Land runs `orchestra gate` first and runs the land
-   adapter only when the gate holds. Exit 1 means the gate failed and
-   nothing was pushed. Merge stays human per `orchestra.toml`. The
+   adapter only when the gate holds. Exit 0 means landed (adapter
+   success). Exit 1 means the adapter did not succeed and a PR may
+   exist. Exit 2 means a usage, unknown phase or config error. Exit 5
+   means the gate failed and nothing was pushed. Merge stays human per `orchestra.toml`. The
    Landing section names branch, worktree, base and repo only. On a
    non-zero exit, stop and ask. Ask the user before you run land,
    unless an active constraint authorizes it. Do not merge the phase

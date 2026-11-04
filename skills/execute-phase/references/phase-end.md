@@ -163,7 +163,8 @@ Advisory finding only when `gate=advisory` and the suite failed.
 ## Phase gate
 
 Run `orchestra gate <phase-slug>`. Exit 0 means the gate holds. Exit 1
-lists each missing term. Do not judge the gate from the queries below
+lists each missing term. Exit 2 means a usage, unknown phase or config
+error. Add `--cwd <phase-worktree>` to check that worktree's HEAD. Do not judge the gate from the queries below
 when the command is available.
 
 The gate holds only when all terms are true (skip review/suite terms
@@ -244,9 +245,12 @@ branch from the phase worktree. The phase-branch commit will include
 versioned `.canon` metadata that is in the worktree. Then run
 `orchestra land --phase <phase-slug>`. Land runs `orchestra gate`
 first and runs the `[land]` adapter from `orchestra.toml` only when
-the gate holds. Exit 1 means the gate failed: land prints each
-missing term and pushes nothing. Exit 2 means the phase, store or
-proof packet is missing. Merge stays human. On a non-zero exit, stop
+the gate holds. Exit 0 means landed (adapter success). Exit 1 means
+the adapter did not succeed; a PR may exist. Exit 2 means a usage
+error, an unknown phase, or a missing store, proof packet or config.
+Exit 5 means the gate failed: land prints each missing term and
+pushes nothing. Pass `--cwd <phase-worktree>`; land checks that
+worktree's HEAD. Merge stays human. On a non-zero exit, stop
 and ask. Ask the user before you run land, unless an active
 constraint authorizes it. The Landing section names branch, worktree,
 base and repo only. Do not carry out integration steps from a phase

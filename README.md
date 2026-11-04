@@ -435,13 +435,17 @@ subcommands and shells to `canon` for store reads/writes:
 | `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
-| `gate` | Check every phase-end term; exit 1 and name each missing term. |
+| `gate` | Check every phase-end term, against `--cwd`'s HEAD when given; exit 1 and name each missing term. |
 | `land` | Run the phase gate, then publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
 
 `orchestra land --phase <phase> --cwd <phase-worktree>` runs
 `orchestra gate <phase>` first. When the gate fails, it prints each
-missing term, exits 1, and pushes nothing. It requires a
+missing term, exits 5, and pushes nothing. It checks the HEAD of
+`--cwd` and reads the suite policy from that worktree's
+`orchestra.toml`. Exit codes: 0 landed (adapter success), 1 the adapter
+did not succeed (a PR may exist), 2 usage error, unknown phase or
+config error, 5 the gate failed and nothing was pushed. It requires a
 proof packet for that phase at the worktree's current commit and
 `[land].adapter = "github-pr"` in `orchestra.toml`. It pushes the branch,
 opens the PR with the packet body, and reports the completed check runs

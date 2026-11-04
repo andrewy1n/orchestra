@@ -22,6 +22,7 @@ from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
+GATE_FAILED_EXIT = 5
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -278,11 +279,16 @@ def _build_parser() -> argparse.ArgumentParser:
     gate_parser.add_argument("phase", help="Phase slug")
     gate_parser.add_argument("--json", action="store_true", help="Print one JSON object")
     gate_parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Phase worktree whose HEAD the gate checks (default: the Landing worktree)",
+    )
+    gate_parser.add_argument(
         "--store",
         default=None,
         metavar="DIR",
         help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd). "
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd, else cwd). "
             "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
         ),
     )
@@ -613,9 +619,12 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
 
 
 def _cmd_gate(args: argparse.Namespace) -> int:
+    head_worktree = _cwd(args).resolve() if args.cwd else None
     try:
-        location = resolve_location(args.store, Path.cwd())
-        terms = gate.gate_terms(location.root, args.phase, store_dir=location.store)
+        location = resolve_location(args.store, head_worktree or Path.cwd())
+        terms = gate.gate_terms(
+            location.root, args.phase, store_dir=location.store, head_worktree=head_worktree
+        )
     except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -743,12 +752,12 @@ def _cmd_land(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, work)
         missing = gate.missing_terms(
-            gate.gate_terms(location.root, args.phase, store_dir=location.store)
+            gate.gate_terms(location.root, args.phase, store_dir=location.store, head_worktree=work)
         )
         if missing:
             for line in gate.format_missing(missing):
                 print(f"orchestra land: {args.phase}: {line}", file=sys.stderr)
-            return 1
+            return GATE_FAILED_EXIT
         project = location.open()
         head = git_head(work)
         packets = project.list("conductor:proof-packet")

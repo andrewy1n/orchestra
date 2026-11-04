@@ -1,11 +1,13 @@
 """Phase gate terms behind `orchestra gate` and the gate step of `orchestra land`.
 
 The gate binds to the reviewed revision: the revision of the latest review
-check-run for the phase. Terms bound to the head compare against it. When the
-Landing worktree exists (the phase body names a `Worktree`, or
-`<Repo>/.worktrees/<phase>` exists), its HEAD must equal or descend from the
-reviewed revision, and the commits after it may touch only `.canon/`. With no
-review check-run, no term bound to the head can hold.
+check-run for the phase. Terms bound to the head compare against it. The head
+worktree is the caller's worktree when it passes one; otherwise it is the
+Landing worktree when that exists (the phase body names a `Worktree`, or
+`<Repo>/.worktrees/<phase>` exists). Its HEAD must equal or descend from the
+reviewed revision, and the commits after it may touch only `.canon/`. The suite
+policy comes from the same worktree's `orchestra.toml`, else from the store
+root. With no review check-run, no term bound to the head can hold.
 
 Each term is one line of the "Phase gate" list in execute-phase's phase-end.md.
 """
@@ -204,7 +206,13 @@ def _term_for_acceptance(
     return first, second
 
 
-def gate_terms(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> list[Term]:
+def gate_terms(
+    store: Path,
+    phase_slug: str,
+    *,
+    store_dir: Path | None = None,
+    head_worktree: Path | None = None,
+) -> list[Term]:
     """Every phase gate term for the phase, held or not.
 
     Raises LookupError when the store has no such phase.
@@ -282,11 +290,14 @@ def gate_terms(store: Path, phase_slug: str, *, store_dir: Path | None = None) -
         )
     )
 
-    worktree = landing_worktree(store, phase_slug, landing)
-    if worktree.is_dir():
-        terms.append(_descent_term(worktree, head))
+    if head_worktree is not None:
+        terms.append(_descent_term(head_worktree, head))
+    else:
+        worktree = landing_worktree(store, phase_slug, landing)
+        if worktree.is_dir():
+            terms.append(_descent_term(worktree, head))
 
-    policy = suite.load_suite_policy(store)
+    policy = suite.load_suite_policy(head_worktree if head_worktree is not None else store)
     if policy.gate == "required" and policy.mode not in ("none", ""):
         suite_ok = any(
             _is_suite_run(r, phase_slug)

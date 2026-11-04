@@ -191,9 +191,15 @@ def write_policy(
     (root / "orchestra.toml").write_text(POLICY.format(mode=mode, command=command, gate=gate))
 
 
+PROSE_LANDING = PHASE_BODY + "\n## Landing\n\nMerge phase/x into main after the review passes.\n"
+
+
 def _code_repo() -> Path:
     repo = make_git_repo()
     git(repo, "branch", "-M", "main")
+    write_policy(repo)
+    git(repo, "add", "orchestra.toml")
+    git(repo, "commit", "-qm", "policy")
     git(repo, "checkout", "-qb", "phase/x")
     (repo / "landed.txt").write_text("landed\n")
     git(repo, "add", "landed.txt")
@@ -212,6 +218,7 @@ def seed(
     *,
     method: str = "check",
     landing_lines: tuple[str, ...] = (),
+    prose_landing: bool = False,
     verification: str = "done",
     review: bool = True,
     runner_check: bool = True,
@@ -224,7 +231,7 @@ def seed(
         "score:phase",
         PHASE,
         {"title": PHASE, "ordinal": 1, "effort": EFFORT},
-        _landing(repo, *landing_lines),
+        PROSE_LANDING if prose_landing else _landing(repo, *landing_lines),
     )
     item = {"phase": PHASE, "kind": "deliver", "assignee": "agent", "effort": EFFORT}
     impl = phase.create(
@@ -664,12 +671,19 @@ def adapter(monkeypatch: pytest.MonkeyPatch) -> FakeAdapter:
     return fake
 
 
+def _review_repo_head(phase: Phase) -> str:
+    head = git_head(phase.repo)
+    phase.check_run(revision=head)
+    phase.review(revision=head)
+    return head
+
+
 def test_land_refuses_when_gate_fails_no_push(
     phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _packet(phase)
     phase.finding()
-    assert cli_main(_land_args(phase)) == 1
+    assert cli_main(_land_args(phase)) == 5
     assert "finding-needs-human" in capsys.readouterr().err
     assert adapter.calls == []
 
@@ -679,7 +693,7 @@ def test_land_refuses_with_each_missing_term_once(
 ) -> None:
     _packet(phase)
     phase.check_run("fail")
-    assert cli_main(_land_args(phase)) == 1
+    assert cli_main(_land_args(phase)) == 5
     assert capsys.readouterr().err.count(f"acceptance-passes:{PHASE}-ac") == 1
     assert adapter.calls == []
 
@@ -687,12 +701,66 @@ def test_land_refuses_with_each_missing_term_once(
 def test_land_runs_adapter_after_gate_holds(
     phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    _review_repo_head(phase)
     _packet(phase)
     assert cli_main(_land_args(phase)) == 0
     assert len(adapter.calls) == 1
     assert adapter.calls[0].root == phase.repo.resolve()
     assert adapter.calls[0].proof_packet.startswith("## Look")
     assert '"result": "success"' in capsys.readouterr().out
+
+
+def test_land_cwd_refuses_code_commit_after_review(
+    store: Path, cli: Cli, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
+    _review_repo_head(phase)
+    _commit(phase.repo, "src/new.py")
+    _packet(phase)
+    assert cli_main(_land_args(phase)) == 5
+    err = capsys.readouterr().err
+    assert "head-descends-from-review" in err
+    assert "src/new.py" in err
+    assert adapter.calls == []
+
+
+def test_land_cwd_proceeds_after_canon_only_commit(
+    store: Path, cli: Cli, adapter: FakeAdapter
+) -> None:
+    phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
+    _review_repo_head(phase)
+    _commit(phase.repo, ".canon/config.json")
+    _packet(phase)
+    assert cli_main(_land_args(phase)) == 0
+    assert len(adapter.calls) == 1
+
+
+def test_gate_cwd_checks_that_head(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
+    _review_repo_head(phase)
+    args = ["gate", PHASE, "--cwd", str(phase.repo)]
+    assert _orchestra(store, *args).returncode == 0
+    _commit(phase.repo, "src/new.py")
+    result = _orchestra(store, *args)
+    assert result.returncode == 1
+    assert "head-descends-from-review" in result.stdout
+    assert "src/new.py" in result.stdout
+    assert _orchestra(store, "gate", PHASE).returncode == 0
+
+
+def test_gate_cwd_reads_suite_policy_from_that_worktree(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
+    _review_repo_head(phase)
+    args = ["gate", PHASE, "--cwd", str(phase.repo), "--json"]
+    write_policy(phase.repo, mode="smoke", command="true", gate="required")
+    result = _orchestra(store, *args)
+    assert result.returncode == 1
+    assert json.loads(result.stdout)["missing"] == ["suite-at-head"]
+    assert _orchestra(store, "gate", PHASE).returncode == 0
+    write_policy(phase.repo)
+    phase.set_suite_policy("required")
+    assert _orchestra(store, *args).returncode == 0
+    assert _orchestra(store, "gate", PHASE).returncode == 1
 
 
 def test_land_exits_2_for_an_unknown_phase(

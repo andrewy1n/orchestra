@@ -164,6 +164,7 @@ def _seed_phase(world: World) -> tuple[Path, str]:
         str(world.store),
     )
     assert check.returncode == 0, check.stdout + check.stderr
+    (worktree / "orchestra.toml").write_text(POLICY)
     world.create(
         "tuner:check-run",
         f"{PHASE}-review",
@@ -201,7 +202,7 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_proceeds(world: W
     )
     land = ("orchestra", "land", "--phase", PHASE, "--cwd", str(worktree), "--store", store)
     refused = world.run(*land)
-    assert refused.returncode == 1
+    assert refused.returncode == 5
     assert "finding-needs-human:review-e2e-phase-spec-gap" in refused.stderr
     assert '"op": "land"' not in refused.stdout
 
@@ -221,7 +222,6 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_proceeds(world: W
     metadata.write_text("{}\n")
     git(worktree, "add", "-A", "--", ".canon")
     git(worktree, "commit", "-qm", "chore(canon): record metadata")
-    (worktree / "orchestra.toml").write_text(POLICY)
     world.create(
         "conductor:proof-packet",
         PHASE,
@@ -235,6 +235,7 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_proceeds(world: W
         "## Look\nl\n\n## Machine\nm\n\n## Attention\nnone\n\n## Diff\n1 file changed\n",
     )
     landed = world.run(*land)
+    assert landed.returncode == 1, landed.stdout + landed.stderr
     assert "missing" not in landed.stderr, landed.stdout + landed.stderr
     result = json.loads(landed.stdout)
     assert result["op"] == "land"
