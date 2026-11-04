@@ -49,3 +49,20 @@ def test_plan_phase_landing_allows_merge_and_suite_lines() -> None:
 def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
     flat = _flat((SKILLS / "execute-phase" / "SKILL.md").read_text())
     assert "merge task/<phase-slug>/<task-slug>" in flat
+
+
+def test_phase_gate_terms_name_needs_human_and_orchestra_gate() -> None:
+    text = (SKILLS / "execute-phase" / "references" / "phase-end.md").read_text()
+    gate_section = _flat(text.split("## Phase gate", 1)[1].split("## Proof packet", 1)[0])
+    assert "Run `orchestra gate <phase-slug>`" in gate_section
+    assert "Exit 0 means the gate holds" in gate_section
+    assert "Exit 1 lists each missing term" in gate_section
+    assert "No active `tuner:finding` for the effort has `needs` `human`" in gate_section
+    assert "Fallback for reading the records by hand" in gate_section
+
+
+def test_suite_docs_say_landing_suite_replaces_config_command() -> None:
+    phase_end = _flat((SKILLS / "execute-phase" / "references" / "phase-end.md").read_text())
+    assert "`suite: <command>` line, that command replaces `phase_gate.suite.command`" in phase_end
+    plan = _flat((SKILLS / "plan-phase" / "SKILL.md").read_text())
+    assert "The `suite:` command replaces the configured `phase_gate.suite.command`" in plan

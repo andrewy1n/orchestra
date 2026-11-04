@@ -14,7 +14,7 @@ import shlex
 import subprocess
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
@@ -160,6 +160,12 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     if not isinstance(suite_raw, dict):
         return normalize_suite_policy(None)
     return normalize_suite_policy(suite_raw, source_path=str(project.store_path))
+
+
+def with_landing_command(policy: SuitePolicy, landing_suite: str) -> SuitePolicy:
+    """Policy whose command is the Landing ``suite:`` line; mode and gate stay."""
+    command = landing_suite.strip()
+    return replace(policy, command=command) if command else policy
 
 
 def suite_subject(phase_slug: str) -> str:
