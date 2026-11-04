@@ -171,32 +171,30 @@ def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
     for raw_entry in raw_criteria:
         if not _is_object_mapping(raw_entry):
             raise CloseRequestError("each criteria entry must be an object")
-        values = {
-            key: value if isinstance(value := raw_entry.get(key), str) else ""
-            for key in criterion_fields
-        }
-        method = raw_entry.get("method")
-        provided_fields = raw_entry.get("_provided_fields")
-        if not _is_object_list(provided_fields) or not all(
-            isinstance(value, str) for value in provided_fields
-        ):
-            provided_fields = [key for key in criterion_fields if key in raw_entry]
+        if "_provided_fields" in raw_entry:
+            raise CloseRequestError("field '_provided_fields' is reserved")
+        criterion_values: dict[str, str] = {}
+        for key in criterion_fields:
+            value = raw_entry.get(key)
+            if key in raw_entry and not isinstance(value, str):
+                raise CloseRequestError(f"criterion field '{key}' must be a string")
+            criterion_values[key] = value if isinstance(value, str) else ""
         entry: CriterionRequest = {
-            "criterion_id": values["criterion_id"],
-            "method": method if isinstance(method, str) else None,
-            "result": values["result"],
-            "revision": values["revision"],
-            "signed_by": values["signed_by"],
-            "check_run_id": values["check_run_id"],
-            "red_check_run_id": values["red_check_run_id"],
-            "red_result": values["red_result"],
-            "red_runner": values["red_runner"],
-            "red_revision": values["red_revision"],
-            "red_diff_sha256": values["red_diff_sha256"],
-            "red_body": values["red_body"],
-            "red_failing_node_ids": values["red_failing_node_ids"],
-            "runner": values["runner"],
-            "_provided_fields": [value for value in provided_fields if isinstance(value, str)],
+            "criterion_id": criterion_values["criterion_id"],
+            "method": criterion_values["method"] if "method" in raw_entry else None,
+            "result": criterion_values["result"],
+            "revision": criterion_values["revision"],
+            "signed_by": criterion_values["signed_by"],
+            "check_run_id": criterion_values["check_run_id"],
+            "red_check_run_id": criterion_values["red_check_run_id"],
+            "red_result": criterion_values["red_result"],
+            "red_runner": criterion_values["red_runner"],
+            "red_revision": criterion_values["red_revision"],
+            "red_diff_sha256": criterion_values["red_diff_sha256"],
+            "red_body": criterion_values["red_body"],
+            "red_failing_node_ids": criterion_values["red_failing_node_ids"],
+            "runner": criterion_values["runner"],
+            "_provided_fields": [key for key in criterion_fields if key in raw_entry],
         }
         criteria.append(entry)
 

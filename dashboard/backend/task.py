@@ -546,6 +546,3 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         executor=_executor(payload),
         agent_work=_agent_work(assignments, amendments, reports),
     )
-
-
-_task_rows = task_rows

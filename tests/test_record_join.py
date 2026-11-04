@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from orchestra.sessions.record_join import join
+from orchestra.sessions.record_join import _parse, join
 from orchestra.sessions.session_types import RecordMetadata, SessionFields
 
 
@@ -22,7 +22,7 @@ def session(sid: str, cwd: str, start: str | None, end: str | None) -> SessionFi
     }
 
 
-def record(rid: str, store: str, when: datetime | str) -> RecordMetadata:
+def record(rid: str, store: str, when: datetime) -> RecordMetadata:
     return {
         "id": rid,
         "record_type": "t",
@@ -66,15 +66,10 @@ def test_session_without_window_gets_nothing_but_stays_listed():
     assert out["unattached"] == ["a"]
 
 
-def test_recorded_at_accepts_iso_string():
-    out = join(
-        [S1],
-        [
-            record("a", "proj", "2026-01-01T02:00:00Z"),
-            record("b", "proj", "2026-01-01T02:00:00+00:00"),
-        ],
-    )
-    assert out["by_session"]["s1"]["records"] == ["a", "b"]
+def test_parse_accepts_iso_string() -> None:
+    expected = at(2)
+    assert _parse("2026-01-01T02:00:00Z") == expected
+    assert _parse("2026-01-01T02:00:00+00:00") == expected
 
 
 def test_output_holds_ids_only():

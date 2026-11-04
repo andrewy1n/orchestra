@@ -96,7 +96,7 @@ def test_strict_core_roots_reject_unannotated_parameters(root: str, tmp_path: Pa
     assert result.returncode != 0, result.stdout
 
 
-def test_any_remains_allowed_outside_strict_roots(tmp_path: Path) -> None:
+def test_any_is_rejected_outside_strict_roots(tmp_path: Path) -> None:
     project = _probe_project(tmp_path)
     probe = _probe_path(project, "tests")
     probe.write_text(

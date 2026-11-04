@@ -167,10 +167,7 @@ def _claim_ids_of(item: Mapping[str, object]) -> list[str]:
         nested = payload.get("claim_ids")
     raw = item.get("claim_ids", nested)
     if _is_value_sequence(raw):
-        values: list[str] = []
-        for value in raw:
-            values.append(str(value))
-        return values
+        return [value for value in raw if isinstance(value, str)]
     return []
 
 

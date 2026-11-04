@@ -40,7 +40,7 @@ class RecordMetadata(TypedDict):
     record_type: str
     subject: str | None
     effort: str | None
-    recorded_at: datetime | str
+    recorded_at: datetime
     lifecycle_state: str | None
     store: str
 

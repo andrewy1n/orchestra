@@ -31,7 +31,6 @@ from orchestra.conductor.close_batch import (
     AcceptanceLoader,
     AmendmentLister,
     CheckRunLoader,
-    CriterionRequest,
 )
 
 CLI = REPO_ROOT / "bin" / "orchestra"
@@ -78,30 +77,16 @@ def _tdd_pass_only_entry(
     check_run_id: str = "rec-runner-cr",
     result: str = "pass",
     signed_by: str = "",
-) -> CriterionRequest:
-    return {
+) -> dict[str, object]:
+    entry: dict[str, object] = {
         "criterion_id": criterion_id,
         "method": "tdd",
         "check_run_id": check_run_id,
         "result": result,
-        "revision": "",
-        "signed_by": signed_by,
-        "red_check_run_id": "",
-        "red_result": "",
-        "red_runner": "",
-        "red_revision": "",
-        "red_diff_sha256": "",
-        "red_body": "",
-        "red_failing_node_ids": "",
-        "runner": "",
-        "_provided_fields": [
-            "criterion_id",
-            "method",
-            "check_run_id",
-            "result",
-            *(["signed_by"] if signed_by else []),
-        ],
     }
+    if signed_by:
+        entry["signed_by"] = signed_by
+    return entry
 
 
 def _tdd_with_dirty_red(
@@ -118,9 +103,9 @@ def _tdd_with_dirty_red(
     red_body: str = "",
     red_failing_node_ids: str = "",
     signed_by: str = "",
-) -> CriterionRequest:
+) -> dict[str, object]:
     """Valid fail→pass via dirty red + diff_sha256 (no git ancestry needed)."""
-    return {
+    entry: dict[str, object] = {
         "criterion_id": criterion_id,
         "method": "tdd",
         "check_run_id": check_run_id,
@@ -131,26 +116,14 @@ def _tdd_with_dirty_red(
         "red_revision": red_revision,
         "red_runner": red_runner,
         "red_diff_sha256": red_diff_sha256,
-        "red_body": red_body,
-        "red_failing_node_ids": red_failing_node_ids,
-        "signed_by": signed_by,
-        "runner": "",
-        "_provided_fields": [
-            "criterion_id",
-            "method",
-            "check_run_id",
-            "result",
-            "revision",
-            "red_check_run_id",
-            "red_result",
-            "red_revision",
-            "red_runner",
-            "red_diff_sha256",
-            *(["signed_by"] if signed_by else []),
-            *(["red_body"] if red_body else []),
-            *(["red_failing_node_ids"] if red_failing_node_ids else []),
-        ],
     }
+    if signed_by:
+        entry["signed_by"] = signed_by
+    if red_body:
+        entry["red_body"] = red_body
+    if red_failing_node_ids:
+        entry["red_failing_node_ids"] = red_failing_node_ids
+    return entry
 
 
 def _request(
@@ -436,6 +409,19 @@ def test_missing_top_level_field_is_malformed_not_refused():
 def test_invented_tdd_with_signed_by_is_malformed():
     request = _request(criteria=[_tdd_with_dirty_red(signed_by="agent")])
     with pytest.raises(close_batch.CloseRequestError, match="signed_by"):
+        _build(request)
+
+
+def test_criterion_cannot_supply_provided_fields_marker() -> None:
+    entry = _tdd_with_dirty_red(signed_by="agent")
+    entry["_provided_fields"] = ["criterion_id", "method", "result"]
+    with pytest.raises(close_batch.CloseRequestError, match="reserved"):
+        _build(_request(criteria=[entry]))
+
+
+def test_wrong_type_criterion_field_is_malformed() -> None:
+    request = _request(criteria=[{"criterion_id": "rec-ac1", "method": "manual", "revision": 123}])
+    with pytest.raises(close_batch.CloseRequestError, match=r"revision.*string"):
         _build(request)
 
 
@@ -938,10 +924,8 @@ def test_red_first_order_dirty_red_requires_nonempty_diff_sha256():
 
 
 def test_red_first_order_dirty_red_without_digest_refused():
-    entry = dict(_tdd_with_dirty_red())
-    provided_fields = entry["_provided_fields"]
-    assert isinstance(provided_fields, list)
-    provided_fields.remove("red_diff_sha256")
+    entry = _tdd_with_dirty_red()
+    entry.pop("red_diff_sha256")
     # Store red is dirty without digest when request omits red_diff_sha256.
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
         _build(_request(criteria=[entry]))

@@ -48,18 +48,12 @@ def list_records(
         raise
 
 
-_list = list_records
-
-
 def merge_aliases(goals: list[Record]) -> dict[str, str]:
     return {
         old: goal["subject"]
         for goal in goals
         for old in record_payload(goal).get("merged_from") or []
     }
-
-
-_merge_aliases = merge_aliases
 
 
 def remap_records(records: list[Record], aliases: dict[str, str]) -> list[Record]:
@@ -79,22 +73,13 @@ def remap_records(records: list[Record], aliases: dict[str, str]) -> list[Record
     return rows
 
 
-_remapped = remap_records
-
-
 def derived_values(record: Record) -> DerivedValues:
     return record.get("derived") or {}
-
-
-_derived = derived_values
 
 
 def recorded_at(record: Record) -> datetime:
     stamp = record.get("recorded_at")
     return datetime.fromisoformat(stamp) if stamp else datetime.min.replace(tzinfo=timezone.utc)
-
-
-_recorded_at = recorded_at
 
 
 def items_from_value(value: JsonValue) -> list[str]:
@@ -103,9 +88,6 @@ def items_from_value(value: JsonValue) -> list[str]:
     if not isinstance(value, (str, list, dict)):
         raise TypeError(f"'{type(value).__name__}' object is not iterable")
     return [str(item).strip() for item in value if str(item).strip()]
-
-
-_items = items_from_value
 
 
 def section(body: str, heading: str) -> str:
@@ -123,21 +105,12 @@ def section(body: str, heading: str) -> str:
     return "\n".join(collected).strip()
 
 
-_section = section
-
-
 def live_records(records: list[Record]) -> list[Record]:
     return [record for record in records if record.get("lifecycle_state") not in INACTIVE_STATES]
 
 
-_live = live_records
-
-
 def newest_record(records: list[Record]) -> Record | None:
     return max(records, key=recorded_at) if records else None
-
-
-_newest = newest_record
 
 
 def records_by_effort(records: list[Record], key: str = "effort") -> dict[Hashable, list[Record]]:
@@ -146,6 +119,3 @@ def records_by_effort(records: list[Record], key: str = "effort") -> dict[Hashab
         effort = record["subject"] if key == "subject" else record_payload(record).get(key)
         grouped.setdefault(effort, []).append(record)
     return grouped
-
-
-_by_effort = records_by_effort

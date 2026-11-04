@@ -13,11 +13,13 @@ import pytest
 from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
+from dashboard.backend import approval as approval_mod
 from dashboard.backend import phase as phase_mod
 from dashboard.backend import records
 from dashboard.backend import snapshot as snapshot_mod
 from dashboard.backend import store as backend_store
 from dashboard.backend import task as task_mod
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 
@@ -2354,13 +2356,26 @@ def test_list_skips_types_absent_from_store_schemas(store, monkeypatch):
 
     monkeypatch.setattr(backend_store, "list_records", boom)
     monkeypatch.setattr(backend_store, "declared_record_types", lambda _target: {"score:effort"})
-    assert records._list(target, "score:phase") == []
-    assert records._list(target, "score:work-item") == []
+    assert records.list_records(target, "score:phase") == []
+    assert records.list_records(target, "score:work-item") == []
     assert calls == []
 
     with pytest.raises(backend_store.ModelError, match="should not be called"):
-        records._list(target, "score:effort")
+        records.list_records(target, "score:effort")
     assert calls == [("score:effort",)]
+
+
+def test_approval_record_lookup_propagates_store_errors(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = _target(store)
+
+    def fail_lookup(target: Project, record_id: str, record_type: str | None = None) -> Record:
+        raise StoreError("store read failed")
+
+    monkeypatch.setattr(backend_store, "stored_record", fail_lookup)
+    with pytest.raises(StoreError, match="store read failed"):
+        approval_mod._cli_json(target, "get", "--id", "rec-missing")
 
 
 def test_evidence_stage_returns_each_rule(store, cli, defs):
@@ -2558,7 +2573,7 @@ def test_estimate_view_row_fields(store, cli, defs):
     zero = _estimate_record("zero", size="", estimate_minutes=0, executor="")
     blank = _estimate_record("blank")
     null = _estimate_record("null", size=None, estimate_minutes=None, executor=None)
-    rows = {row.subject: row for row in task_mod._task_rows([sized, zero, blank, null])}
+    rows = {row.subject: row for row in task_mod.task_rows([sized, zero, blank, null])}
     assert (rows["sized"].size, rows["sized"].estimate_minutes, rows["sized"].executor) == (
         "L",
         25,
@@ -2588,7 +2603,7 @@ def test_estimate_view_row_fields(store, cli, defs):
         "revision": "sha256:test",
         "recorded_at": "2026-01-01T00:00:00+00:00",
     }
-    phase_row = phase_mod._phase_rows([phase], [sized])[0]
+    phase_row = phase_mod.phase_rows([phase], [sized])[0]
     assert phase_row.sitting == "more than one"
     assert phase_row.elapsed_minutes == 25
     assert phase_row.unset_estimates == 0
@@ -3259,7 +3274,7 @@ def test_attempt_row_fields_default_budget():
     retried = _estimate_record("retried", attempts=1)
     fresh = _estimate_record("fresh")
     zero = _estimate_record("zero", attempts=0)
-    rows = {row.subject: row for row in task_mod._task_rows([retried, fresh, zero])}
+    rows = {row.subject: row for row in task_mod.task_rows([retried, fresh, zero])}
     assert rows["retried"].attempts == 1
     assert rows["retried"].retry_budget == 2
     assert rows["fresh"].attempts == 0
@@ -3283,7 +3298,7 @@ def test_attempt_budget_from_phase_run_facts():
         "revision": "sha256:test",
         "recorded_at": "2026-01-01T00:00:00+00:00",
     }
-    row = task_mod._task_rows([task], phases=[phase])[0]
+    row = task_mod.task_rows([task], phases=[phase])[0]
     assert row.attempts == 2
     assert row.retry_budget == 5
 

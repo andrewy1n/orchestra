@@ -17,7 +17,6 @@ from dashboard.backend.dismiss import (
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
-from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
@@ -94,11 +93,7 @@ def _cli_json(target: Project, *args: str) -> Record | None:
             index += 1
     if not record_id:
         return None
-    try:
-        record = store.stored_record(target, record_id, record_type)
-    except StoreError:
-        return None
-    return record
+    return store.stored_record(target, record_id, record_type)
 
 
 def _git_head(root: Path) -> str:

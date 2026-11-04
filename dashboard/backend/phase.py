@@ -978,9 +978,3 @@ def load_requirement_detail(
             for record in history
         ),
     )
-
-
-_latest_assessment_map = latest_assessment_map
-_milestone_rows = milestone_rows
-_phase_evidence = phase_evidence
-_phase_rows = phase_rows
