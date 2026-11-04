@@ -318,7 +318,7 @@ def _do_gate(via, store, third, cli, contract, repo, home) -> None:
 
 def _do_land(via, store, third, cli, contract, repo, home) -> None:
     seed_phase(cli, contract)
-    write_policy(store)
+    write_policy(repo)
     result = _run_with_canon_store(
         ["land", "--phase", SLUG, "--cwd", str(repo)],
         via=via,
@@ -327,7 +327,8 @@ def _do_land(via, store, third, cli, contract, repo, home) -> None:
         repo=repo,
         home=home,
     )
-    assert "missing" in result.stderr, result.stdout + result.stderr
+    assert result.returncode == 5, result.stdout + result.stderr
+    assert "verification-task-done" in result.stderr, result.stdout + result.stderr
     assert "not found" not in result.stderr
 
 

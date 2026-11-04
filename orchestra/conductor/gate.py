@@ -6,8 +6,9 @@ worktree is the caller's worktree when it passes one; otherwise it is the
 Landing worktree when that exists (the phase body names a `Worktree`, or
 `<Repo>/.worktrees/<phase>` exists). Its HEAD must equal or descend from the
 reviewed revision, and the commits after it may touch only `.canon/`. The suite
-policy comes from the same worktree's `orchestra.toml`, else from the store
-root. With no review check-run, no term bound to the head can hold.
+policy comes from the caller's worktree's `orchestra.toml` when it passes one,
+else from the store root. With no review check-run, no term bound to the head
+can hold.
 
 Each term is one line of the "Phase gate" list in execute-phase's phase-end.md.
 """
