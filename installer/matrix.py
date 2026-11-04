@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import TypeAlias
 
+from installer.adapters import registered_adapters
 from installer.model import Provider
 
 MATRIX_PATH = Path(__file__).resolve().with_name("providers.json")
@@ -48,8 +49,12 @@ def load_matrix(path: Path | None = None) -> tuple[Provider, ...]:
         if provider_id in seen:
             raise MatrixError(f"provider matrix lists {provider_id!r} twice")
         seen.add(provider_id)
-        if row["kind"] not in ("native", "skills"):
+        if row["kind"] not in ("native", "skills", "directory"):
             raise MatrixError(f"provider {provider_id!r} has unknown kind {row['kind']!r}")
+        if row["kind"] == "native" and provider_id not in registered_adapters():
+            raise MatrixError(f"no native adapter for {provider_id!r}")
+        if row["kind"] == "skills" and not row.get("profile"):
+            raise MatrixError(f"provider {provider_id!r} needs a skills profile to delegate")
         detect = row.get("detect", [])
         if not isinstance(detect, list):
             raise MatrixError(f"provider {provider_id!r} detect must be a list")

@@ -235,10 +235,10 @@ npx skills add -a cline
 npx skills add -a windsurf
 ```
 
-If `npx` is unavailable or exits non-zero, the adapter falls back to a plain
-skills-directory install and says so. The registration records the profile;
-`--uninstall` removes the registration and leaves the profile managed by
-`npx skills`.
+A missing or failing `npx` stops installation for that provider. After successful
+delegation, the registration records the profile. `--uninstall` removes the
+registration and leaves the profile managed by `npx skills`. To install the
+allowlisted payload directly, select `kind: directory` in the provider matrix.
 
 ### Scope and flags
 
