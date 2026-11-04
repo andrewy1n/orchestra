@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
+from subprocess import CompletedProcess
 
 import pytest
 
@@ -568,3 +570,87 @@ def test_r34_stale(store, cli, defs, monkeypatch):
         assert status >= 400, status
         assert snapshot_mod.change_token(target) == before
     assert _revision(cli, question.record_type, question.id) == displayed
+
+
+@pytest.mark.parametrize(("action", "status"), [("promote", "promoted"), ("dismiss", "dismissed")])
+def test_structured_backlog(
+    store: Path,
+    cli: Callable[..., CompletedProcess[str]],
+    defs: dict[str, dict[str, object]],
+    action: str,
+    status: str,
+) -> None:
+    _seed(cli, defs)
+    with _running(store) as (client, target):
+        item = _backlog_item(_snapshot(target))
+        response = client.post("/api/backlog", json={"id": item.id, "action": action})
+        assert response.is_success, response.text
+        (successor,) = (
+            row
+            for row in target.list("composer:idea")
+            if item.id in row["relationships"].get("supersedes", [])
+        )
+        assert successor["payload"]["effort"] == "alpha"
+        assert successor["payload"]["source"] == "chat"
+        assert successor["payload"]["status"] == status
+
+
+def test_structured_dismiss(
+    store: Path,
+    cli: Callable[..., CompletedProcess[str]],
+    defs: dict[str, dict[str, object]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed(cli, defs)
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "maintainer")
+    note = 'Review "--payload" on line one.\nKeep the second line.'
+    with _running(store) as (client, target):
+        snap = _snapshot(target)
+        question = _model_item(snap, "blocking-question")
+        finding = _model_item(snap, "needs-human")
+        check = _model_item(snap, "unsigned-check")
+        for item, action in (
+            (question, "reject"),
+            (question, "approve"),
+            (finding, "accept"),
+            (check, "sign"),
+        ):
+            response = client.post(
+                "/api/needs",
+                json={"id": item.id, "action": action, "revision": item.revision, "note": note},
+            )
+            assert response.is_success, response.text
+        (routed,) = (
+            row
+            for row in target.list("tuner:finding")
+            if row["subject"].startswith("plan-rejected:")
+        )
+        assert routed["payload"]["basis"] == note
+        assert note in routed["body"]
+        answered = target.get(question.id, question.record_type)
+        assert answered["lifecycle_state"] == "answered"
+        assert answered["payload"]["answer"] == note
+        accepted = target.get(finding.id, finding.record_type)
+        assert accepted["payload"]["needs"] == "none"
+        assert accepted["payload"]["resolution_note"] == note
+        (signed,) = (
+            row
+            for row in target.list(check.record_type)
+            if check.id in row["relationships"].get("corrects", [])
+        )
+        assert signed["payload"]["signed_by"] == "maintainer"
+        assert signed["payload"]["signed_note"] == note
+
+
+def test_structured_dismiss_refuses_stale_revision(
+    store: Path, cli: Callable[..., CompletedProcess[str]], defs: dict[str, dict[str, object]]
+) -> None:
+    _seed(cli, defs)
+    with _running(store) as (client, target):
+        item = _model_item(_snapshot(target), "blocking-question")
+        response = client.post(
+            "/api/needs",
+            json={"id": item.id, "action": "approve", "revision": "outdated"},
+        )
+        assert response.status_code == 409
+        assert target.get(item.id, item.record_type)["revision"] == item.revision
