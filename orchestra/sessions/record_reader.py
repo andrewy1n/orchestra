@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import open_store
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
 from orchestra.sessions.session_types import RecordMetadata
 
@@ -63,14 +63,15 @@ def _metadata(raw: Record, store: str) -> RecordMetadata:
     }
 
 
-def _read_open_store(root: str, types: Iterable[str] | None) -> list[RecordMetadata]:
-    project = open_store(root)
+def read_project_records(
+    project: Project, types: Iterable[str] | None = None
+) -> list[RecordMetadata]:
     rows: list[RecordMetadata] = []
     chosen = types if types is not None else DEFAULT_TYPES
     for record_type in chosen:
         try:
             records = project.list(record_type)
-            rows.extend(_metadata(record, project.project_root.name) for record in records)
+            rows.extend(_metadata(record, str(project.store_path)) for record in records)
         except (StoreError, OSError, KeyError, TypeError, ValueError) as exc:
             raise RecordReadError(
                 f"cannot read records of type {record_type} ({type(exc).__name__})"
@@ -84,7 +85,7 @@ def read_records(
     run: Callable[[list[str]], str] | None = None,
 ) -> list[RecordMetadata]:
     if run is None or run is subprocess_runner:
-        return _read_open_store(root, types)
+        return read_project_records(open_store(root), types)
     store = os.path.basename(os.path.abspath(root))
     store_path = os.path.join(os.path.expanduser("~"), ".canon", store)
     rows: list[RecordMetadata] = []

@@ -1,8 +1,13 @@
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from orchestra.canon import record
+from orchestra.canon.project import open_store
 from orchestra.sessions import session_report
 
 SCRIPT = Path(__file__).resolve().parent.parent / "orchestra" / "sessions" / "session_report.py"
@@ -136,61 +141,61 @@ def build_records(root, cwd):
     )
 
 
-def fake_run(calls):
-    def runner(argv):
-        calls.append(argv)
-        rtype = argv[argv.index("--type") + 1]
-        rows = {
-            "score:work-item": [
-                {
-                    "id": "r1",
-                    "record_type": rtype,
-                    "subject": "task-one",
-                    "recorded_at": "2026-01-01T00:10:00Z",
-                    "payload": {"effort": "eff-a"},
-                },
-                {
-                    "id": "r2",
-                    "record_type": rtype,
-                    "subject": "task-two",
-                    "recorded_at": "2026-01-01T00:40:00Z",
-                    "payload": {"effort": "eff-b"},
-                },
-            ],
-            "tuner:finding": [
-                {
-                    "id": "r3",
-                    "record_type": rtype,
-                    "subject": "SECRET-body",
-                    "recorded_at": "2026-01-01T01:30:00Z",
-                    "payload": {"effort": "eff-a"},
-                },
-            ],
-        }.get(rtype, [])
-        return json.dumps({"records": rows})
-
-    return runner
-
-
-def run_records(tmp_path, capsys, calls):
-    cwd = tmp_path / "stores_src" / "proj"
-    cwd.mkdir(parents=True)
-    store_root = tmp_path / "artifacts"
-    (store_root / "proj").mkdir(parents=True)
-    build_records(tmp_path / "projects", cwd)
-    code = session_report.main(
-        ["--records", str(tmp_path / "projects")], run=fake_run(calls), store_root=store_root
+@pytest.fixture
+def records_report(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CANON_STORE", raising=False)
+    project = open_store(store)
+    for effort in ("eff-a", "eff-b"):
+        project.create(
+            record_type="score:effort", subject=effort, payload={"goal": effort, "kind": "repair"}
+        )
+    project.create(
+        record_type="score:phase",
+        subject="phase",
+        payload={"title": "Phase", "ordinal": 1, "effort": "eff-a"},
+        body="## Problem\nA\n## Approach\nB\n## Exit criteria\nC",
     )
-    assert code == 0
-    return capsys.readouterr().out
+    for minute, task, effort in (("10", "task-one", "eff-a"), ("40", "task-two", "eff-b")):
+        timestamp = f"2026-01-01T00:{minute}:00Z"
+        monkeypatch.setattr(record, "now", lambda timestamp=timestamp: timestamp)
+        project.create(
+            record_type="score:work-item",
+            subject=task,
+            payload={
+                "title": task,
+                "phase": "phase",
+                "effort": effort,
+                "assignee": "",
+                "kind": "repair",
+            },
+            body="## Description\nSECRET",
+        )
+    monkeypatch.setattr(record, "now", lambda: "2026-01-01T01:30:00Z")
+    project.create(
+        record_type="tuner:finding",
+        subject="SECRET-subject",
+        payload={
+            "claim": "SECRET",
+            "basis": "temporary",
+            "invalidated_when": "later",
+            "needs": "none",
+            "effort": "eff-a",
+        },
+        body="## Evidence\nSECRET\n## Consequence\nA\n## Follow-up\nB",
+    )
+    build_records(tmp_path / "projects", store)
+    result = run("--records", tmp_path / "projects")
+    assert result.returncode == 0, result.stderr
+    return result.stdout
 
 
 def parse(out):
     return {json.loads(line)["file"]: json.loads(line) for line in out.splitlines()}
 
 
-def test_records_flag_adds_per_session_counts_by_type(tmp_path, capsys):
-    rows = parse(run_records(tmp_path, capsys, []))
+def test_records_flag_adds_per_session_counts_by_type(records_report: str) -> None:
+    rows = parse(records_report)
     s1 = rows["s1.jsonl"]["records"]
     assert s1 == {
         "total": 2,
@@ -206,8 +211,8 @@ def test_records_flag_adds_per_session_counts_by_type(tmp_path, capsys):
     assert s2["ambiguous"] == 1
 
 
-def test_session_without_matches_gets_zero_and_empty_collections(tmp_path, capsys):
-    rows = parse(run_records(tmp_path, capsys, []))
+def test_session_without_matches_gets_zero_and_empty_collections(records_report: str) -> None:
+    rows = parse(records_report)
     assert rows["s3.jsonl"]["records"] == {
         "total": 0,
         "by_type": {},
@@ -217,28 +222,79 @@ def test_session_without_matches_gets_zero_and_empty_collections(tmp_path, capsy
     }
 
 
-def test_each_cwd_with_a_store_is_queried_once_per_type_and_others_skipped(tmp_path, capsys):
-    calls = []
-    run_records(tmp_path, capsys, calls)
-    roots = {c[c.index("--root") + 1] for c in calls}
-    assert roots == {str(tmp_path / "stores_src" / "proj")}
-    types = [c[c.index("--type") + 1] for c in calls]
-    assert len(types) == len(set(types))
+def test_records_output_holds_no_record_text_or_ids(records_report: str) -> None:
+    assert "SECRET" not in records_report
+    assert "rec-" not in records_report
 
 
-def test_records_output_holds_no_record_text_or_ids(tmp_path, capsys):
-    out = run_records(tmp_path, capsys, [])
-    assert "SECRET" not in out
-    assert '"r1"' not in out
-
-
-def test_without_flag_output_is_unchanged_and_reader_is_not_called(tmp_path, capsys):
+def test_without_flag_output_is_unchanged_and_reader_is_not_called(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     build(tmp_path)
 
-    def boom(argv):
+    def boom(argv: str) -> None:
         raise AssertionError("reader called")
 
-    session_report.main([str(tmp_path)], run=boom)
+    monkeypatch.setattr(session_report, "open_store", boom)
+    session_report.main([str(tmp_path)])
     out = capsys.readouterr().out
     assert out == run(tmp_path).stdout
     assert all("records" not in json.loads(line) for line in out.splitlines())
+
+
+def _report_count(transcripts: Path, cwd: Path) -> dict[str, int]:
+    write(
+        transcripts / "project" / "bound.jsonl",
+        [
+            {
+                "type": "user",
+                "cwd": str(cwd),
+                "sessionId": "bound",
+                "timestamp": "2000-01-01T00:00:00Z",
+            },
+            {"type": "user", "timestamp": "2099-12-31T23:59:59Z"},
+        ],
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "orchestra.cli",
+            "sessions",
+            "report",
+            str(transcripts),
+            "--records",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(result.stdout)["records"]["by_type"]
+
+
+def test_local_binding(tmp_path: Path, store: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CANON_STORE", raising=False)
+    (store / ".canon" / "store-binding.json").write_text('{"store":"local"}')
+    open_store(store).create(
+        record_type="score:effort", subject="local", payload={"goal": "local", "kind": "repair"}
+    )
+    nested = store / "src"
+    nested.mkdir()
+    assert _report_count(tmp_path / "logs", nested) == {"score:effort": 1}
+
+
+def test_store_override(tmp_path: Path, store: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CANON_STORE", raising=False)
+    override = tmp_path / "override"
+    shutil.copytree(store / ".canon", override)
+    open_store(store).create(
+        record_type="score:effort", subject="local", payload={"goal": "local", "kind": "repair"}
+    )
+    monkeypatch.setenv("CANON_STORE", str(override))
+    for subject in ("first", "second"):
+        open_store(store).create(
+            record_type="score:effort", subject=subject, payload={"goal": subject, "kind": "repair"}
+        )
+    assert _report_count(tmp_path / "logs", store) == {"score:effort": 2}
