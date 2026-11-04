@@ -94,8 +94,10 @@ def value_errors(
             return []
     elif "ref" in form:
         if isinstance(value, str):
-            if value == "" or index is None:
-                return []
+            if value == "":
+                return [] if optional else [f"{path}: required reference is empty"]
+            if index is None:
+                return [f"{path}: reference validation requires an index"]
             problem = _ref_errors(schemas, index, form, value)
             return [f"{path}: {problem}"] if problem else []
     else:

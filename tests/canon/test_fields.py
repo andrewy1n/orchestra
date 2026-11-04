@@ -252,3 +252,21 @@ class TestModuleValidation:
         data = copy.deepcopy(ALPHA)
         data["types"]["config"]["fields"]["grid"] = {"list": {"list": {"type": "integer"}}}
         validate_module(data)
+
+
+def test_required_empty_reference() -> None:
+    from orchestra.canon.validation import value_errors
+
+    schemas = SchemaSet({"alpha": copy.deepcopy(ALPHA)})
+    assert value_errors(schemas, None, {"ref": "alpha:task"}, "", "owner")
+    assert not value_errors(schemas, None, {"ref": "alpha:task"}, "", "owner", optional=True)
+
+
+def test_populated_reference_without_index() -> None:
+    from orchestra.canon.validation import value_errors
+
+    schemas = SchemaSet({"alpha": copy.deepcopy(ALPHA)})
+    assert (
+        "requires an index"
+        in value_errors(schemas, None, {"ref": "alpha:task"}, "task-one", "owner")[0]
+    )
