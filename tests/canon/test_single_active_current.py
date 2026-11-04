@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 import pytest
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.cli import EXIT_VALIDATION
+from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
 
 
-def _config(project, subject: str = "web", level: int = 1) -> dict[str, Any]:
+def _config(project, subject: str = "web", level: int = 1) -> Record:
     return project.create(
         record_type="alpha:config", subject=subject, payload={"title": subject, "level": level}
     )
@@ -49,7 +49,7 @@ def test_cli_refusal_exits_with_validation_code(cli, project):
 
 def test_validate_flags_duplicate_active_current(project):
     first = _config(project)
-    duplicate = {**first, "id": open_backend(project.store_path).new_id()}
+    duplicate: Record = {**first, "id": open_backend(project.store_path).new_id()}
     open_backend(project.store_path).create_record(duplicate)
     errors = [e for e in project.validate() if "multiple active" in e]
     assert len(errors) == 1
