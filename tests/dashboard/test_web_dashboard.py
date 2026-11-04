@@ -346,6 +346,7 @@ def test_r22_reject_note(store, cli, defs, monkeypatch):
 
 
 def test_r23_sign(store, cli, defs, monkeypatch):
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "maintainer")
     _seed(cli, defs)
     check = _model_item(_snapshot(open_store(store)), "unsigned-check")
     assert check.revision and check.revision != "@current"
@@ -654,3 +655,86 @@ def test_structured_dismiss_refuses_stale_revision(
         )
         assert response.status_code == 409
         assert target.get(item.id, item.record_type)["revision"] == item.revision
+
+
+@pytest.mark.parametrize("revision", ["outdated", None])
+def test_atomic_signoff(
+    store: Path,
+    cli: Callable[..., CompletedProcess[str]],
+    defs: dict[str, dict[str, object]],
+    monkeypatch: pytest.MonkeyPatch,
+    revision: str | None,
+) -> None:
+    _seed(cli, defs)
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "maintainer")
+    with _running(store) as (client, target):
+        item = _model_item(_snapshot(target), "unsigned-check")
+        if revision is None:
+            revision = item.revision
+        response = client.post(
+            "/api/needs",
+            json={
+                "id": item.id,
+                "action": "sign",
+                "revision": revision,
+            },
+        )
+        assert response.status_code == (200 if revision == item.revision else 409)
+        successors = [
+            r
+            for r in target.list(item.record_type)
+            if item.id in r["relationships"].get("corrects", [])
+        ]
+        assert len(successors) == (1 if revision == item.revision else 0)
+
+
+def test_missing_configured_signer(
+    store: Path,
+    cli: Callable[..., CompletedProcess[str]],
+    defs: dict[str, dict[str, object]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed(cli, defs)
+    monkeypatch.delenv("ORCHESTRA_SIGNED_BY", raising=False)
+    with _running(store) as (client, target):
+        item = _model_item(_snapshot(target), "unsigned-check")
+        response = client.post(
+            "/api/needs",
+            json={
+                "id": item.id,
+                "action": "sign",
+                "revision": item.revision,
+            },
+        )
+        assert response.status_code == 400
+        assert "ORCHESTRA_SIGNED_BY" in response.text
+        assert not any(
+            item.id in r["relationships"].get("corrects", []) for r in target.list(item.record_type)
+        )
+
+
+def test_configured_signoff(
+    store: Path,
+    cli: Callable[..., CompletedProcess[str]],
+    defs: dict[str, dict[str, object]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed(cli, defs)
+    monkeypatch.setenv("ORCHESTRA_SIGNED_BY", "maintainer")
+    with _running(store) as (client, target):
+        item = _model_item(_snapshot(target), "unsigned-check")
+        response = client.post(
+            "/api/needs",
+            json={
+                "id": item.id,
+                "action": "sign",
+                "revision": item.revision,
+            },
+        )
+        assert response.status_code == 200
+        (successor,) = [
+            r
+            for r in target.list(item.record_type)
+            if item.id in r["relationships"].get("corrects", [])
+        ]
+        assert successor["payload"]["signed_by"] == "maintainer"

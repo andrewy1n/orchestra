@@ -27,9 +27,6 @@ ACTION_REJECT = "reject"
 ACTION_SIGN = "sign"
 ACTION_ACCEPT = "accept"
 
-# ``correct`` does not accept --expected-revision; guard via get instead.
-CORRECT_SUPPORTS_EXPECTED_REVISION = False
-
 STALE_MESSAGE = "Item changed since opened (stale revision); refresh and try again."
 
 
@@ -52,12 +49,10 @@ def is_dismissible(kind: str) -> bool:
 
 
 def default_signer() -> str:
-    return (
-        os.environ.get(DEFAULT_SIGNER_ENV)
-        or os.environ.get("USER")
-        or os.environ.get("USERNAME")
-        or "dashboard"
-    )
+    signer = os.environ.get(DEFAULT_SIGNER_ENV, "").strip()
+    if not signer:
+        raise DismissError(f"{DEFAULT_SIGNER_ENV} is required")
+    return signer
 
 
 def _write(target: Project, operation: dict[str, JsonValue]) -> None:
@@ -172,6 +167,7 @@ def _check_sign(item: NeedsYouItem, signer: str, note: str | None) -> dict[str, 
         "op": "correct",
         "type": item.record_type or "tuner:check-run",
         "id": item.id,
+        "expected_revision": _displayed_revision(item),
         "payload": payload,
     }
 
@@ -208,7 +204,7 @@ def dismiss_item(
     if not is_dismissible(item.kind):
         raise DismissRefused(f"cannot dismiss {item.kind}")
     resolved = _resolve_action(item, action)
-    if resolved in (ACTION_SIGN, ACTION_REJECT):
+    if resolved == ACTION_REJECT:
         _assert_revision_current(target, item)
     if resolved == ACTION_APPROVE:
         operation = _question_approve(item, note)
