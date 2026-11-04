@@ -75,6 +75,9 @@ def _verdict_base() -> str:
         base = _git("merge-base", ref, "HEAD")
         if base.returncode == 0 and base.stdout.strip():
             return base.stdout.strip()
+    parent = _git("rev-parse", "HEAD^1")
+    if parent.returncode == 0 and parent.stdout.strip():
+        return parent.stdout.strip()
     return "HEAD"
 
 
