@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.sessions.session_types import RecordMetadata
 
@@ -33,13 +30,6 @@ DEFAULT_TYPES = (
 
 class RecordReadError(RuntimeError):
     pass
-
-
-def subprocess_runner(argv: list[str]) -> str:
-    proc = subprocess.run(argv, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        raise RecordReadError(f"exit code {proc.returncode}")
-    return proc.stdout
 
 
 def _utc(ts: str) -> datetime:
@@ -73,38 +63,6 @@ def read_project_records(
             records = project.list(record_type)
             rows.extend(_metadata(record, str(project.store_path)) for record in records)
         except (StoreError, OSError, KeyError, TypeError, ValueError) as exc:
-            raise RecordReadError(
-                f"cannot read records of type {record_type} ({type(exc).__name__})"
-            ) from None
-    return rows
-
-
-def read_records(
-    root: str,
-    types: Iterable[str] | None = None,
-    run: Callable[[list[str]], str] | None = None,
-) -> list[RecordMetadata]:
-    if run is None or run is subprocess_runner:
-        return read_project_records(open_store(root), types)
-    store = os.path.basename(os.path.abspath(root))
-    store_path = os.path.join(os.path.expanduser("~"), ".canon", store)
-    rows: list[RecordMetadata] = []
-    for record_type in types if types is not None else DEFAULT_TYPES:
-        argv = [
-            "record-list",
-            "--root",
-            root,
-            "--store",
-            store_path,
-            "--read-only",
-            "list",
-            "--type",
-            record_type,
-        ]
-        try:
-            records = json.loads(run(argv))["records"]
-            rows.extend(_metadata(record, store) for record in records)
-        except Exception as exc:
             raise RecordReadError(
                 f"cannot read records of type {record_type} ({type(exc).__name__})"
             ) from None
