@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from conftest import REPO_ROOT, git, make_git_repo, run_cli
+from conftest import REPO_ROOT, copy_store, git, make_git_repo, run_cli
 from test_analyze import SLUG, seed_phase
 from test_check import _seed_acceptance
 
@@ -47,6 +49,13 @@ def home(tmp_path: Path) -> Path:
     path = tmp_path / "home"
     path.mkdir()
     return path
+
+
+@pytest.fixture
+def third_store(store_template: Path) -> Iterator[Path]:
+    root = copy_store(store_template)
+    yield root
+    shutil.rmtree(root, ignore_errors=True)
 
 
 @pytest.fixture
@@ -316,3 +325,206 @@ def test_cwd_fallback_analyze(store, cli, resolved_contract, home):
     result = _orchestra("analyze", SLUG, "--json", cwd=store, home=home)
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["phase"] == SLUG
+
+
+def _run_with_canon_store(
+    args: list[str], *, via: str, store: Path, third: Path, repo: Path, home: Path
+) -> subprocess.CompletedProcess[str]:
+    env = {"CANON_STORE": str(third / ".canon"), "PATH": os.environ["PATH"]}
+    if via == "flag":
+        args = [*args, "--store", str(store)]
+    else:
+        env["ORCHESTRA_STORE"] = str(store)
+    return _orchestra(*args, cwd=repo, home=home, extra_env=env)
+
+
+def _do_review_brief(via, store, third, cli, contract, repo, home) -> None:
+    seed_phase(cli, contract)
+    args = ["review-brief", "--cwd", str(repo), "--base", "HEAD~1"]
+    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"{SLUG}-wi-r1" in result.stdout
+
+
+def _do_analyze(via, store, third, cli, contract, repo, home) -> None:
+    seed_phase(cli, contract)
+    args = ["analyze", SLUG, "--json", "--cwd", str(repo)]
+    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["phase"] == SLUG
+
+
+def _do_check(via, store, third, cli, contract, repo, home) -> None:
+    acceptance = _seed_check(store, cli, contract)
+    args = _check_args(acceptance, repo)
+    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert [run["subject"] for run in _check_runs(store)] == ["resolve-check"]
+    assert _check_runs(third) == []
+
+
+def _do_gate(via, store, third, cli, contract, repo, home) -> None:
+    seed_phase(cli, contract)
+    result = _run_with_canon_store(
+        ["gate", SLUG], via=via, store=store, third=third, repo=repo, home=home
+    )
+    assert "missing" in result.stdout, result.stdout + result.stderr
+    assert "not found" not in result.stdout + result.stderr
+
+
+def _do_land(via, store, third, cli, contract, repo, home) -> None:
+    seed_phase(cli, contract)
+    result = _run_with_canon_store(
+        ["land", SLUG], via=via, store=store, third=third, repo=repo, home=home
+    )
+    assert "missing" in result.stderr, result.stdout + result.stderr
+    assert "not found" not in result.stderr
+
+
+def _do_suite_policy(via, store, third, cli, contract, repo, home) -> None:
+    _set_suite_policy(store, "echo from-store")
+    args = ["suite", "policy", "--cwd", str(repo)]
+    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["command"] == "echo from-store"
+
+
+def _do_suite_start(via, store, third, cli, contract, repo, home) -> None:
+    _set_suite_policy(store, "")
+    args = ["suite", "start", "--phase", PHASE, "--cwd", str(repo)]
+    result = _run_with_canon_store(args, via=via, store=store, third=third, repo=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    document = json.loads(result.stdout)
+    assert document["state"] == "skipped"
+    assert document["policy"]["mode"] == "smoke"
+
+
+def _do_suite_record(via, store, third, cli, contract, repo, home) -> None:
+    _seed_suite_effort(store, cli, contract)
+    _write_finished_suite(repo)
+    result = _run_with_canon_store(
+        _suite_record_args(repo), via=via, store=store, third=third, repo=repo, home=home
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert [run["subject"] for run in _check_runs(store)] == [f"{PHASE}-suite"]
+    assert _check_runs(third) == []
+
+
+def test_canon_store_does_not_override_flag_review_brief(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_review_brief("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_review_brief(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_review_brief("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_analyze(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_analyze("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_analyze(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_analyze("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_check(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_check("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_check(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_check("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_gate(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_gate("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_gate(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_gate("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_land(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_land("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_land(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_land("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_suite_policy(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_policy("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_suite_policy(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_policy("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_suite_start(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_start("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_suite_start(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_start("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_flag_suite_record(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_record("flag", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_does_not_override_env_suite_record(
+    store, third_store, cli, resolved_contract, code_repo, home
+):
+    _do_suite_record("env", store, third_store, cli, resolved_contract, code_repo, home)
+
+
+def test_canon_store_still_applies_without_flag_or_env(
+    store, cli, resolved_contract, code_repo, home
+):
+    seed_phase(cli, resolved_contract)
+    result = _orchestra(
+        "analyze",
+        SLUG,
+        "--json",
+        cwd=code_repo,
+        home=home,
+        extra_env={"CANON_STORE": str(store / ".canon")},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["phase"] == SLUG
+
+
+def test_check_help_names_process_cwd(home):
+    result = _orchestra("check", "--help", cwd=REPO_ROOT, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    text = " ".join(result.stdout.split())
+    assert "then resolve from the process cwd" in text
+    assert "then resolve from --cwd" not in text

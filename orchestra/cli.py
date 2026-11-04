@@ -18,7 +18,7 @@ from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
-from orchestra.store import resolve_store
+from orchestra.store import resolved_store
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
 
@@ -70,7 +70,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--store",
         default=None,
         metavar="DIR",
-        help="Store root (default: $ORCHESTRA_STORE, then resolve from --cwd)",
+        help="Store root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
     )
 
     close_batch = sub.add_parser(
@@ -542,7 +542,8 @@ def _load_review_records(
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records, failures = _load_review_records(resolve_store(args.store, work))
+        with resolved_store(args.store, work) as root:
+            records, failures = _load_review_records(root)
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
@@ -567,7 +568,8 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
 
 def _cmd_analyze(args: argparse.Namespace) -> int:
     try:
-        records = open_store(resolve_store(args.store, _cwd(args))).records()
+        with resolved_store(args.store, _cwd(args)) as root:
+            records = open_store(root).records()
     except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -599,7 +601,8 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
 
 def _cmd_gate(args: argparse.Namespace) -> int:
     try:
-        terms = gate.gate_terms(resolve_store(args.store, Path.cwd()), args.phase)
+        with resolved_store(args.store, Path.cwd()) as root:
+            terms = gate.gate_terms(root, args.phase)
     except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -622,8 +625,8 @@ def _cmd_gate(args: argparse.Namespace) -> int:
 
 def _cmd_land(args: argparse.Namespace) -> int:
     try:
-        store_root = resolve_store(args.store, Path.cwd())
-        return gate.land(store_root, args.phase)
+        with resolved_store(args.store, Path.cwd()) as store_root:
+            return gate.land(store_root, args.phase)
     except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra land: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -642,7 +645,8 @@ def _phase_suite_policy(store_root: Path, phase_slug: str | None) -> suite.Suite
 
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
-        policy = _phase_suite_policy(resolve_store(args.store, _cwd(args)), args.phase)
+        with resolved_store(args.store, _cwd(args)) as root:
+            policy = _phase_suite_policy(root, args.phase)
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra suite policy: {exc}", file=sys.stderr)
         return 2
@@ -652,17 +656,17 @@ def _cmd_suite_policy(args: argparse.Namespace) -> int:
 
 def _cmd_suite_start(args: argparse.Namespace) -> int:
     try:
-        store_root = resolve_store(args.store, _cwd(args))
-        outcome = suite.start_suite_background(
-            worktree=_cwd(args),
-            store_root=store_root,
-            policy=_phase_suite_policy(store_root, args.phase),
-            phase_slug=args.phase,
-            phase_head=args.phase_head,
-            session_name=args.session,
-            suite_command=args.suite_command,
-            allow_dirty=args.allow_dirty,
-        )
+        with resolved_store(args.store, _cwd(args)) as root:
+            outcome = suite.start_suite_background(
+                worktree=_cwd(args),
+                store_root=root,
+                policy=_phase_suite_policy(root, args.phase),
+                phase_slug=args.phase,
+                phase_head=args.phase_head,
+                session_name=args.session,
+                suite_command=args.suite_command,
+                allow_dirty=args.allow_dirty,
+            )
     except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
         print(f"orchestra suite start: {exc}", file=sys.stderr)
         return 2
@@ -729,13 +733,14 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 3
-        record = suite.record_suite_check_run(
-            store_root=resolve_store(args.store, work),
-            phase_slug=args.phase,
-            effort=args.effort,
-            suite=result,
-            criterion_id=args.criterion_id,
-        )
+        with resolved_store(args.store, work) as root:
+            record = suite.record_suite_check_run(
+                store_root=root,
+                phase_slug=args.phase,
+                effort=args.effort,
+                suite=result,
+                criterion_id=args.criterion_id,
+            )
     except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
         print(f"orchestra suite record: {exc}", file=sys.stderr)
         return 2
@@ -916,14 +921,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "check":
         work = Path(args.cwd) if args.cwd else Path.cwd()
-        outcome = run_check(
-            acceptance_id=args.acceptance,
-            cwd=work,
-            store_root=resolve_store(args.store, Path.cwd()),
-            allow_dirty=args.allow_dirty,
-            execution_report=args.execution_report,
-            timeout=args.timeout,
-        )
+        with resolved_store(args.store, Path.cwd()) as root:
+            outcome = run_check(
+                acceptance_id=args.acceptance,
+                cwd=work,
+                store_root=root,
+                allow_dirty=args.allow_dirty,
+                execution_report=args.execution_report,
+                timeout=args.timeout,
+            )
         if outcome.record is not None:
             print(json.dumps({"ok": True, "op": "check", "record": outcome.record}, indent=2))
         if outcome.message:
