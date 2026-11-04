@@ -506,6 +506,8 @@ def _suite_result_document(result: suite.SuiteResult) -> dict[str, object]:
 
 
 def _suite_exit_code(result: suite.SuiteResult) -> int:
+    if result.skipped:
+        return suite.SKIPPED_EXIT_CODE
     if result.refuse or result.result == "blocked":
         return 2
     if result.result == "fail":
@@ -525,6 +527,8 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
     head = args.phase_head or git_head(work)
     log_path = work / ".suite" / f"{name}.log"
     exit_path = work / ".suite" / f"{name}.exit"
+    skip_path = work / ".suite" / f"{name}.skipped"
+    skipped = skip_path.is_file()
     started = time.monotonic()
     if log_path.is_file():
         started -= max(0.0, time.time() - log_path.stat().st_ctime)
@@ -536,6 +540,8 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
         log_path=log_path,
         exit_path=exit_path,
         started_monotonic=started,
+        skipped=skipped,
+        skip_reason=skip_path.read_text(encoding="utf-8") if skipped else "",
     )
 
 
@@ -684,7 +690,7 @@ def _cmd_suite_start(args: argparse.Namespace) -> int:
             "policy": _policy_document(outcome.policy) if outcome.policy else None,
         }
     )
-    return 0
+    return suite.SKIPPED_EXIT_CODE if outcome.skipped else 0
 
 
 def _cmd_suite_poll(args: argparse.Namespace) -> int:
@@ -731,6 +737,9 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 3
+        if result.skipped:
+            print(result.skip_reason, file=sys.stderr)
+            return suite.SKIPPED_EXIT_CODE
         location = resolve_location(args.store, work)
         record = suite.record_suite_check_run(
             store_root=location.root,

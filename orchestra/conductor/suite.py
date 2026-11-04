@@ -38,15 +38,7 @@ SUBJECT_SUFFIX = "-suite"
 LEGACY_SUBJECT_SUFFIX = "-tier2"
 METHOD = "check"
 
-SUITE_MODES = ("none", "smoke", "full", "external")
-SUITE_GATES = ("required", "advisory", "deferred")
-
-# Consumer / missing-design default: skip. When mode!=none and command set,
-# omitted gate means required.
-DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
-
-# Fallback when policy command is empty but mode is smoke/full (legacy README).
-FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
+SKIPPED_EXIT_CODE = 4
 
 
 def _revision_matches(check_revision: str, phase_head: str) -> bool:
@@ -104,43 +96,6 @@ class SuitePolicy:
         return self.blocks_merge and self.run_locally
 
 
-def normalize_suite_policy(
-    raw: Mapping[str, JsonValue] | None,
-    *,
-    source_path: str | None = None,
-) -> SuitePolicy:
-    """Apply consumer defaults to a parsed suite table.
-
-    Missing / empty → mode=none (skip). When mode!=none and command is set,
-    omitted gate defaults to required.
-    """
-    if not raw:
-        return SuitePolicy(
-            mode=DEFAULT_SUITE_POLICY["mode"],
-            command=DEFAULT_SUITE_POLICY["command"],
-            gate=DEFAULT_SUITE_POLICY["gate"],
-            source_path=source_path,
-        )
-    mode = str(raw.get("mode") or "none").strip() or "none"
-    command = str(raw.get("command") or "")
-    if "gate" in raw and raw.get("gate") not in (None, ""):
-        gate = str(raw.get("gate")).strip()
-    elif mode != "none" and command.strip():
-        gate = "required"
-    else:
-        gate = DEFAULT_SUITE_POLICY["gate"]
-    if mode not in SUITE_MODES:
-        mode = "none"
-    if gate not in SUITE_GATES:
-        gate = "required"
-    return SuitePolicy(
-        mode=mode,
-        command=command,
-        gate=gate,
-        source_path=source_path,
-    )
-
-
 def load_suite_policy(start: Path | None = None) -> SuitePolicy:
     """Load the required suite policy from the project root config."""
     root = start or Path.cwd()
@@ -167,17 +122,6 @@ def suite_subject(phase_slug: str) -> str:
 def is_suite_subject(subject: str) -> bool:
     text = (subject or "").strip()
     return text.endswith(SUBJECT_SUFFIX) or text.endswith(LEGACY_SUBJECT_SUFFIX)
-
-
-def readme_suite_command() -> str:
-    return FAST_SUITE_CMD
-
-
-def suite_command_for_policy(policy: SuitePolicy) -> str:
-    """Command to run for a smoke/full policy; empty when not run locally."""
-    if not policy.run_locally:
-        return ""
-    return policy.command.strip() or readme_suite_command()
 
 
 def cluster_by_module(node_ids: Sequence[str]) -> dict[str, list[str]]:
@@ -311,7 +255,7 @@ class SuiteResult:
     output: str
     output_sha256: str
     failing_node_ids: list[str]
-    result: str  # pass | fail | blocked
+    result: str
     revision: str
     diff_sha256: str | None = None
     refuse: bool = False
@@ -356,7 +300,7 @@ def start_suite_background(
     policy: SuitePolicy | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
-    runner: Callable[..., object] | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] | None = None,
 ) -> SuiteStart | SuiteResult:
     """Start the suite in a detached tmux session; return immediately.
 
@@ -368,15 +312,24 @@ def start_suite_background(
     resolved_policy = policy if policy is not None else load_suite_policy(work)
     head = phase_head or git_head(work)
 
-    if not resolved_policy.run_locally and suite_command is None:
+    slug = phase_slug.strip()
+    name = session_name or f"orchestra-suite-{slug}"
+    out_dir = (log_dir or (work / ".suite")).resolve()
+    log_path = out_dir / f"{name}.log"
+    exit_path = out_dir / f"{name}.exit"
+    skip_path = out_dir / f"{name}.skipped"
+
+    if not resolved_policy.run_locally:
         reason = f"suite skipped (mode={resolved_policy.mode}, gate={resolved_policy.gate})"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        skip_path.write_text(reason, encoding="utf-8")
         return SuiteStart(
-            session_name=session_name or f"orchestra-suite-{phase_slug.strip()}",
+            session_name=name,
             worktree=work,
-            phase_slug=phase_slug.strip(),
+            phase_slug=slug,
             phase_head=head,
-            log_path=work / ".suite" / "skipped.log",
-            exit_path=work / ".suite" / "skipped.exit",
+            log_path=log_path,
+            exit_path=exit_path,
             started_monotonic=time.monotonic(),
             blocking=False,
             skipped=True,
@@ -402,17 +355,13 @@ def start_suite_background(
             refuse_message=refuse_msg,
         )
 
-    slug = phase_slug.strip()
-    name = session_name or f"orchestra-suite-{slug}"
-    out_dir = (log_dir or (work / ".suite")).resolve()
+    cmd = suite_command if suite_command is not None else resolved_policy.command
+    if not cmd.strip():
+        raise ValueError("suite command must be non-empty")
     out_dir.mkdir(parents=True, exist_ok=True)
-    log_path = out_dir / f"{name}.log"
-    exit_path = out_dir / f"{name}.exit"
-    for path in (log_path, exit_path):
-        if path.exists():
-            path.unlink()
+    for path in (log_path, exit_path, skip_path):
+        path.unlink(missing_ok=True)
 
-    cmd = suite_command if suite_command is not None else suite_command_for_policy(resolved_policy)
     # Record exit code after the chain; keep full stdout/stderr in the log.
     inner = (
         f"cd {shlex.quote(str(work))} && "
@@ -430,7 +379,9 @@ def start_suite_background(
         f"bash -lc {shlex.quote(inner)}",
     ]
     run = runner or subprocess.run
-    run(tmux_args, check=False, capture_output=True, text=True)
+    completed = run(tmux_args, check=False, capture_output=True, text=True)
+    if completed.returncode != 0:
+        raise RuntimeError(f"tmux exited {completed.returncode}: {completed.stderr.strip()}")
     return SuiteStart(
         session_name=name,
         worktree=work,
@@ -456,18 +407,6 @@ def poll_suite(
     allow_dirty: bool = False,
 ) -> SuiteResult | None:
     """If the background job finished, return a ``SuiteResult``; else ``None``."""
-    if job.skipped:
-        return SuiteResult(
-            exit_code=0,
-            duration_s=0.0,
-            output="",
-            output_sha256=output_sha256(""),
-            failing_node_ids=[],
-            result="pass",
-            revision=job.phase_head,
-            skipped=True,
-            skip_reason=job.skip_reason,
-        )
     if not suite_job_finished(job):
         return None
     return collect_suite(job, allow_dirty=allow_dirty)
@@ -481,12 +420,12 @@ def collect_suite(
     """Read exit code / log for a finished (or finishing) job."""
     if job.skipped:
         return SuiteResult(
-            exit_code=0,
+            exit_code=SKIPPED_EXIT_CODE,
             duration_s=0.0,
             output="",
             output_sha256=output_sha256(""),
             failing_node_ids=[],
-            result="pass",
+            result="skipped",
             revision=job.phase_head,
             skipped=True,
             skip_reason=job.skip_reason,

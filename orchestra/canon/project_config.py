@@ -224,6 +224,8 @@ def _parse_suite(value: object) -> SuiteConfig:
         raise ProjectConfigError("suite.mode must be none, smoke, full, or external")
     if not isinstance(command, str):
         raise ProjectConfigError("suite.command must be a string")
+    if mode in ("smoke", "full") and not command.strip():
+        raise ProjectConfigError(f"suite.command must be non-empty for mode {mode!r}")
     if not isinstance(gate, str) or gate not in SUITE_GATES:
         raise ProjectConfigError("suite.gate must be required, advisory, or deferred")
     return SuiteConfig(mode=mode, command=command, gate=gate)
