@@ -1,24 +1,28 @@
 from datetime import datetime, timezone
 
-from orchestra.sessions.record_join import join
+from orchestra.sessions.record_join import _parse, join
+from orchestra.sessions.session_types import RecordMetadata, SessionFields
 
 
 def at(h, m=0):
     return datetime(2026, 1, 1, h, m, tzinfo=timezone.utc)
 
 
-def session(sid, cwd, start, end):
+def session(sid: str, cwd: str, start: str | None, end: str | None) -> SessionFields:
     return {
         "session_id": sid,
         "cwd": cwd,
+        "branch": "",
         "start": start,
         "end": end,
-        "file": f"{sid}.jsonl",
-        "project": "x",
+        "duration_seconds": None,
+        "turns": 0,
+        "cost_usd": None,
+        "skills": {},
     }
 
 
-def record(rid, store, when):
+def record(rid: str, store: str, when: datetime) -> RecordMetadata:
     return {
         "id": rid,
         "record_type": "t",
@@ -62,18 +66,13 @@ def test_session_without_window_gets_nothing_but_stays_listed():
     assert out["unattached"] == ["a"]
 
 
-def test_recorded_at_accepts_iso_string():
-    out = join(
-        [S1],
-        [
-            record("a", "proj", "2026-01-01T02:00:00Z"),
-            record("b", "proj", "2026-01-01T02:00:00+00:00"),
-        ],
-    )
-    assert out["by_session"]["s1"]["records"] == ["a", "b"]
+def test_parse_accepts_iso_string() -> None:
+    expected = at(2)
+    assert _parse("2026-01-01T02:00:00Z") == expected
+    assert _parse("2026-01-01T02:00:00+00:00") == expected
 
 
 def test_output_holds_ids_only():
     r = record("a", "proj", at(2))
-    r["body"] = "SECRET"
+    r["record_type"] = "SECRET"
     assert "SECRET" not in repr(join([S1], [r]))

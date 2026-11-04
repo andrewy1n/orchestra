@@ -18,17 +18,17 @@ def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
         "## Attention\n\nnone\n\n"
         "## Diff\n\nno tree change\n"
     )
-    assert records._section(sample, "Look").strip() == look
-    assert records._section(sample, "Attention").strip() == "none"
+    assert records.section(sample, "Look").strip() == look
+    assert records.section(sample, "Attention").strip() == "none"
     proof = phase_mod.ProofView(
         id="rec-smoke",
         kind="claims",
         revision="04737710" * 5,
         base="main",
-        look=records._section(sample, "Look"),
-        attention=records._section(sample, "Attention"),
-        machine=records._section(sample, "Machine"),
-        diff=records._section(sample, "Diff"),
+        look=records.section(sample, "Look"),
+        attention=records.section(sample, "Attention"),
+        machine=records.section(sample, "Machine"),
+        diff=records.section(sample, "Diff"),
     )
     detail = phase_mod.PhaseDetail(
         subject="phase-proof-packet",
@@ -43,4 +43,5 @@ def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
         proof=proof,
     )
     assert "proof" in phase_mod.tabs_for(detail)
+    assert detail.proof is not None
     assert "dashboard phase detail Proof" in detail.proof.look

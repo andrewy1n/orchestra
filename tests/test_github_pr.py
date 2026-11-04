@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from collections import deque
 from pathlib import Path
+from urllib.request import Request
 
 import pytest
 
@@ -233,7 +234,7 @@ def test_github_rest_uses_token_authenticated_api(
     root = tmp_path / "repo"
     _write_project(root)
     monkeypatch.setenv("GH_TOKEN", "test-token")
-    captured: list[object] = []
+    captured: list[tuple[Request, float]] = []
 
     class Response:
         def __enter__(self) -> Response:
@@ -245,20 +246,20 @@ def test_github_rest_uses_token_authenticated_api(
         def read(self) -> bytes:
             return b'{"number":7,"html_url":"https://github.com/owner/repo/pull/7"}'
 
-    def fake_urlopen(request: object, timeout: float) -> Response:
-        captured.extend((request, timeout))
+    def fake_urlopen(request: Request, timeout: float) -> Response:
+        captured.append((request, timeout))
         return Response()
 
     monkeypatch.setattr(github_pr, "urlopen", fake_urlopen)
     client = GitHubREST(root)
     number, url = client.create_pull_request("owner/repo", "topic", "main", "title", "proof")
 
-    request = captured[0]
+    request, timeout = captured[0]
     assert number == 7
     assert url.endswith("/pull/7")
     assert request.full_url == "https://api.github.com/repos/owner/repo/pulls"
     assert request.get_header("Authorization") == "Bearer test-token"
-    assert captured[1] == 30
+    assert timeout == 30
 
 
 def test_github_rest_derives_repository_from_git_remote(

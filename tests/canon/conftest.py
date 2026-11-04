@@ -11,7 +11,6 @@ import sys
 from dataclasses import dataclass
 from importlib import metadata
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -19,7 +18,7 @@ from orchestra.canon import modules
 
 SRC = Path(__file__).resolve().parents[2]
 
-ALPHA: dict[str, Any] = {
+ALPHA: dict = {
     "namespace": "alpha",
     "version": "0.1.0",
     "types": {
@@ -75,7 +74,7 @@ ALPHA: dict[str, Any] = {
     "migrations": [],
 }
 
-BETA: dict[str, Any] = {
+BETA: dict = {
     "namespace": "beta",
     "version": "0.1.0",
     "types": {
@@ -124,7 +123,7 @@ class Site:
         self.root = root
         self.packages: list[str] = []
 
-    def publish(self, module: dict[str, Any], package: str | None = None) -> None:
+    def publish(self, module: dict, package: str | None = None) -> None:
         namespace = module["namespace"]
         package = package or f"canonfix_{namespace}"
         pkg_dir = self.root / package
@@ -167,7 +166,7 @@ def isolated_environment(monkeypatch, tmp_path):
         monkeypatch.delenv(name, raising=False)
 
 
-def _site_entry_points(root: Path) -> list[Any]:
+def _site_entry_points(root: Path) -> list:
     return [
         entry
         for dist in metadata.distributions(path=[str(root)])
@@ -199,11 +198,11 @@ class CliResult:
     err: str
 
     @property
-    def json(self) -> Any:
+    def json(self):
         return json.loads(self.out)
 
     @property
-    def lines(self) -> list[Any]:
+    def lines(self) -> list:
         return [json.loads(line) for line in self.out.splitlines() if line.strip()]
 
 
@@ -223,7 +222,7 @@ class Cli:
             code = cli.main(argv)
         return CliResult(code, out.getvalue(), err.getvalue())
 
-    def ok(self, *args: str, stdin: str | None = None) -> Any:
+    def ok(self, *args: str, stdin: str | None = None):
         result = self(*args, stdin=stdin)
         assert result.code == 0, result.out + result.err
         return result.json if result.out.strip() else None
@@ -251,7 +250,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 @pytest.fixture
-def project(cli: Cli, repo: Path, backend_name: str) -> Any:
+def project(cli: Cli, repo: Path, backend_name: str):
     from orchestra.canon.backend import open_backend
     from orchestra.canon.project import open_store
 
@@ -262,17 +261,17 @@ def project(cli: Cli, repo: Path, backend_name: str) -> Any:
     return open_store(repo)
 
 
-def payload_of(task: str = "do it") -> dict[str, Any]:
+def payload_of(task: str = "do it") -> dict:
     return {"title": task}
 
 
-def make_task(project, subject: str, **extra) -> dict[str, Any]:
+def make_task(project, subject: str, **extra) -> dict:
     return project.create(
         record_type="alpha:task", subject=subject, payload={"title": subject, **extra}
     )
 
 
-def advance(project, record: dict[str, Any], *states: str) -> dict[str, Any]:
+def advance(project, record: dict, *states: str) -> dict:
     for state in states:
         record = project.update(record["id"], transition=state)
     return record

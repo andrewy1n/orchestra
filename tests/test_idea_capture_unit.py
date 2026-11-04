@@ -17,8 +17,10 @@ def test_capture_writes_an_open_idea_with_the_title_first_in_the_body(project):
     record = capture(project, "Add a Roadmap", body="More detail.")
     assert record["subject"] == "add-a-roadmap"
     assert record["payload"] == {"status": "open"}
-    assert record["body"].splitlines()[0] == "# Add a Roadmap"
-    assert record["body"].strip().endswith("More detail.")
+    body = record.get("body")
+    assert body is not None
+    assert body.splitlines()[0] == "# Add a Roadmap"
+    assert body.strip().endswith("More detail.")
 
 
 def test_capture_refuses_a_duplicate_subject_and_writes_nothing_more(project):

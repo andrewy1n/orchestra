@@ -1,7 +1,7 @@
 from orchestra.sessions.session_outliers import outliers
 
 
-def row(sid, errors=0, retries=0, cost=0.0, efforts=None, **extra):
+def row(sid, errors=0, retries=0, cost: float | None = 0.0, efforts=None, **extra):
     r = {
         "project": "p",
         "file": f"{sid}.jsonl",

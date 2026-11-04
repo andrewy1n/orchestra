@@ -16,6 +16,7 @@ import importlib
 import json
 from pathlib import Path
 
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -74,20 +75,29 @@ def _request(**overrides) -> dict:
 
 def _matching_loader(request: dict):
     """Echo request-carried check-run fields as store records (unit-test hook)."""
-    by_id: dict[str, dict] = {}
+    by_id: dict[str, Record] = {}
     for entry in request.get("criteria", []):
         cid = entry.get("check_run_id")
         if cid:
-            payload = {
+            payload: JsonObject = {
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("result"),
                 "runner": entry.get("runner", "orchestra"),
                 "revision": entry.get("revision", "deadbeef"),
                 "method": entry.get("method"),
             }
-            by_id[cid] = {"id": cid, "payload": payload}
+            by_id[cid] = {
+                "id": cid,
+                "record_type": "tuner:check-run",
+                "subject": cid,
+                "lifecycle_state": "active",
+                "relationships": {},
+                "revision": "sha256:pending",
+                "recorded_at": "2026-01-01T00:00:00+00:00",
+                "payload": payload,
+            }
 
-    def load(check_run_id: str) -> dict:
+    def load(check_run_id: str) -> Record:
         if check_run_id not in by_id:
             raise LookupError(check_run_id)
         return by_id[check_run_id]
@@ -103,6 +113,12 @@ def _green_loader(revision: str = GREEN_REVISION):
             raise LookupError(check_run_id)
         return {
             "id": check_run_id,
+            "record_type": "tuner:check-run",
+            "subject": check_run_id,
+            "lifecycle_state": "active",
+            "relationships": {},
+            "revision": "sha256:pending",
+            "recorded_at": "2026-01-01T00:00:00+00:00",
             "payload": {
                 "criterion_id": "rec-ac1",
                 "result": "pass",

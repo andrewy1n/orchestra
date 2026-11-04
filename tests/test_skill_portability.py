@@ -70,6 +70,7 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
         if not sep:
             continue
         key = name.strip()
+        assert key
         meta[key] = value.strip()
     return meta
 

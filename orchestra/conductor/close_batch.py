@@ -82,7 +82,10 @@ class CriterionRequest(TypedDict):
     red_runner: str
     red_revision: str
     red_diff_sha256: str
+    red_body: str
+    red_failing_node_ids: str
     runner: str
+    _provided_fields: list[str]
 
 
 class CloseRequest(TypedDict):
@@ -92,8 +95,8 @@ class CloseRequest(TypedDict):
     transition: str
     acceptance_ids: list[str]
     criteria: list[CriterionRequest]
-    execution_report_id: str
-    finding: FindingRequest
+    execution_report_id: str | None
+    finding: FindingRequest | None
 
 
 class CloseRequestError(Exception):
@@ -121,8 +124,120 @@ class AcceptanceStoreUnavailable(LookupError):
     """
 
 
+def _is_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    return isinstance(value, Mapping)
+
+
+def _is_object_list(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
+
+
+def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
+    required = ("subject", "effort", "work_item_id", "transition")
+    fields: dict[str, str] = {}
+    for key in required:
+        value = raw.get(key)
+        if not isinstance(value, str):
+            raise CloseRequestError(f"missing field: '{key}'")
+        fields[key] = value
+
+    acceptance_ids = raw.get("acceptance_ids")
+    if not _is_object_list(acceptance_ids) or not all(
+        isinstance(value, str) for value in acceptance_ids
+    ):
+        raise CloseRequestError("missing field: 'acceptance_ids'")
+    parsed_acceptance_ids: list[str] = [value for value in acceptance_ids if isinstance(value, str)]
+
+    raw_criteria = raw.get("criteria", [])
+    if not _is_object_list(raw_criteria):
+        raise CloseRequestError("field 'criteria' must be a list")
+    criteria: list[CriterionRequest] = []
+    criterion_fields = (
+        "criterion_id",
+        "method",
+        "result",
+        "revision",
+        "signed_by",
+        "check_run_id",
+        "red_check_run_id",
+        "red_result",
+        "red_runner",
+        "red_revision",
+        "red_diff_sha256",
+        "red_body",
+        "red_failing_node_ids",
+        "runner",
+    )
+    for raw_entry in raw_criteria:
+        if not _is_object_mapping(raw_entry):
+            raise CloseRequestError("each criteria entry must be an object")
+        if "_provided_fields" in raw_entry:
+            raise CloseRequestError("field '_provided_fields' is reserved")
+        criterion_values: dict[str, str] = {}
+        for key in criterion_fields:
+            value = raw_entry.get(key)
+            if key in raw_entry and not isinstance(value, str):
+                raise CloseRequestError(f"criterion field '{key}' must be a string")
+            criterion_values[key] = value if isinstance(value, str) else ""
+        entry: CriterionRequest = {
+            "criterion_id": criterion_values["criterion_id"],
+            "method": criterion_values["method"] if "method" in raw_entry else None,
+            "result": criterion_values["result"],
+            "revision": criterion_values["revision"],
+            "signed_by": criterion_values["signed_by"],
+            "check_run_id": criterion_values["check_run_id"],
+            "red_check_run_id": criterion_values["red_check_run_id"],
+            "red_result": criterion_values["red_result"],
+            "red_runner": criterion_values["red_runner"],
+            "red_revision": criterion_values["red_revision"],
+            "red_diff_sha256": criterion_values["red_diff_sha256"],
+            "red_body": criterion_values["red_body"],
+            "red_failing_node_ids": criterion_values["red_failing_node_ids"],
+            "runner": criterion_values["runner"],
+            "_provided_fields": [key for key in criterion_fields if key in raw_entry],
+        }
+        criteria.append(entry)
+
+    execution_report_id = raw.get("execution_report_id")
+    if execution_report_id is not None and not isinstance(execution_report_id, str):
+        raise CloseRequestError("field 'execution_report_id' must be a string")
+    raw_finding = raw.get("finding")
+    finding: FindingRequest | None = None
+    if raw_finding is not None:
+        if not _is_object_mapping(raw_finding):
+            raise CloseRequestError("field 'finding' must be an object")
+        finding_fields = ("claim", "basis", "invalidated_when", "body")
+        values: dict[str, str] = {}
+        for key in finding_fields:
+            value = raw_finding.get(key)
+            if not isinstance(value, str):
+                raise CloseRequestError(f"finding missing field: '{key}'")
+            values[key] = value
+        finding = {
+            "claim": values["claim"],
+            "basis": values["basis"],
+            "invalidated_when": values["invalidated_when"],
+            "body": values["body"],
+        }
+
+    return {
+        "subject": fields["subject"],
+        "effort": fields["effort"],
+        "work_item_id": fields["work_item_id"],
+        "transition": fields["transition"],
+        "acceptance_ids": parsed_acceptance_ids,
+        "criteria": criteria,
+        "execution_report_id": execution_report_id,
+        "finding": finding,
+    }
+
+
 def _entry_passed(entry: CriterionRequest) -> bool:
     return entry.get("result") == "pass"
+
+
+def _entry_has(entry: CriterionRequest, key: str) -> bool:
+    return key in entry["_provided_fields"]
 
 
 def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
@@ -327,7 +442,7 @@ def _resolve_green_check_run(
             f"criterion {criterion_id!r}: check-run is not runner-produced "
             f"(runner must be {RUNNER_MARKER!r}, got {stored_runner!r})"
         )
-    if "runner" in entry:
+    if _entry_has(entry, "runner"):
         _match_field(
             criterion_id=criterion_id,
             label="check-run",
@@ -336,7 +451,7 @@ def _resolve_green_check_run(
             stored=stored_runner,
         )
 
-    if "revision" in entry:
+    if _entry_has(entry, "revision"):
         _match_field(
             criterion_id=criterion_id,
             label="check-run",
@@ -379,7 +494,7 @@ def _resolve_red_check_run(
         stored=payload.get("criterion_id"),
     )
 
-    if "red_result" in entry:
+    if _entry_has(entry, "red_result"):
         _match_field(
             criterion_id=criterion_id,
             label="red check-run",
@@ -387,7 +502,7 @@ def _resolve_red_check_run(
             requested=entry.get("red_result"),
             stored=payload.get("result"),
         )
-    if "red_runner" in entry:
+    if _entry_has(entry, "red_runner"):
         _match_field(
             criterion_id=criterion_id,
             label="red check-run",
@@ -395,7 +510,7 @@ def _resolve_red_check_run(
             requested=entry.get("red_runner"),
             stored=payload.get("runner"),
         )
-    if "red_revision" in entry:
+    if _entry_has(entry, "red_revision"):
         _match_field(
             criterion_id=criterion_id,
             label="red check-run",
@@ -403,7 +518,7 @@ def _resolve_red_check_run(
             requested=entry.get("red_revision"),
             stored=payload.get("revision"),
         )
-    if "red_diff_sha256" in entry:
+    if _entry_has(entry, "red_diff_sha256"):
         _match_field(
             criterion_id=criterion_id,
             label="red check-run",
@@ -452,7 +567,7 @@ def _enforce_red_first_from_store(
 
     # SHA red: request must still carry green revision (anti-gap), and it
     # must match the store; ancestry uses the store revision.
-    if "revision" not in entry:
+    if not _entry_has(entry, "revision"):
         raise CloseRefused(
             f"criterion {criterion_id!r}: green revision required for git-ancestry red-first check"
         )
@@ -697,7 +812,7 @@ def _enforce_oracle_gates(
 
 
 def build_batch(
-    request: CloseRequest,
+    request: Mapping[str, object],
     *,
     cwd: str | Path | None = None,
     store_root: str | Path | None = None,
@@ -705,18 +820,19 @@ def build_batch(
     load_acceptance: AcceptanceLoader | None = None,
     list_oracle_amendments: AmendmentLister | None = None,
 ) -> list[JsonObject]:
+    parsed_request = _parse_close_request(request)
     try:
-        subject = request["subject"]
-        effort = request["effort"]
-        work_item_id = request["work_item_id"]
-        transition = request["transition"]
-        acceptance_ids = list(request["acceptance_ids"])
-        criteria = list(request.get("criteria", []))
+        subject = parsed_request["subject"]
+        effort = parsed_request["effort"]
+        work_item_id = parsed_request["work_item_id"]
+        transition = parsed_request["transition"]
+        acceptance_ids = list(parsed_request["acceptance_ids"])
+        criteria = list(parsed_request.get("criteria", []))
     except KeyError as exc:
         raise CloseRequestError(f"missing field: {exc}") from exc
 
-    execution_report_id = request.get("execution_report_id")
-    finding = request.get("finding")
+    execution_report_id = parsed_request.get("execution_report_id")
+    finding = parsed_request.get("finding")
     work_cwd = Path(cwd) if cwd is not None else Path.cwd()
     resolved_store = Path(store_root) if store_root is not None else None
 
@@ -780,7 +896,7 @@ def build_batch(
                     "reference a runner-produced check_run_id (from "
                     "orchestra check); do not invent pass/fail"
                 )
-            if "result" not in entry:
+            if not _entry_has(entry, "result"):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method={method!r} must "
                     "copy result from the runner check-run"
@@ -788,17 +904,21 @@ def build_batch(
             # Invented create shape: signed_by without going through the
             # runner — refuse. For tdd, revision may be copied only when
             # red-first fields are present; for check it remains forbidden.
-            if "signed_by" in entry:
+            if _entry_has(entry, "signed_by"):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method={method!r} must "
                     "not carry signed_by; reference check_run_id only"
                 )
-            if method == "check" and "revision" in entry:
+            if method == "check" and _entry_has(entry, "revision"):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method={method!r} must "
                     "not carry revision/signed_by; reference check_run_id only"
                 )
-            if method == "tdd" and "revision" in entry and not entry.get("red_check_run_id"):
+            if (
+                method == "tdd"
+                and _entry_has(entry, "revision")
+                and not entry.get("red_check_run_id")
+            ):
                 raise CloseRequestError(
                     f"criteria entry {criterion_id!r} method=tdd must not "
                     "carry revision without red-first fields "
@@ -807,7 +927,7 @@ def build_batch(
                 )
         elif method == "manual":
             for field in ("result", "revision"):
-                if field not in entry:
+                if not _entry_has(entry, field):
                     raise CloseRequestError(f"criteria entry missing field: '{field}'")
             if entry.get("check_run_id"):
                 raise CloseRequestError(

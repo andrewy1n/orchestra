@@ -5,11 +5,16 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Protocol
 
 COMMANDS = frozenset({"handoff", "view", "brief", "hook-start", "hook-stop"})
 
 
-def add_parsers(sub) -> None:
+class SubparserGroup(Protocol):
+    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+
+
+def add_parsers(sub: SubparserGroup) -> None:
     handoff = sub.add_parser("handoff", help="Print the handoff markdown")
     handoff.add_argument("--effort", default=None, help="Limit to one effort slug")
     view = sub.add_parser("view", help="Print a derived view as markdown")

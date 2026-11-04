@@ -8,6 +8,8 @@ import importlib
 import inspect
 import subprocess
 from pathlib import Path
+from types import FunctionType
+from typing import TypeGuard
 
 import pytest
 
@@ -16,7 +18,7 @@ GIT_BACKEND = "orchestra/canon/git_backend.py"
 SAMPLE_OUTPUT = "FAILED tests/test_mod.py::test_name\n"
 
 
-def _parse(path: Path) -> ast.AST:
+def _parse(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 
@@ -140,7 +142,7 @@ def _sign(key_path: Path, payload: bytes, namespace: str) -> str:
     return completed.stdout.decode("utf-8")
 
 
-def _reads_payload_field(node: ast.AST) -> bool:
+def _reads_payload_field(node: ast.FunctionDef) -> bool:
     for child in ast.walk(node):
         if (
             isinstance(child, ast.Call)
@@ -168,8 +170,8 @@ def _record_payload_getters(path: Path) -> list[str]:
     )
 
 
-def _callable_with_record(fn: object) -> bool:
-    if not callable(fn):
+def _callable_with_record(fn: object) -> TypeGuard[FunctionType]:
+    if not isinstance(fn, FunctionType):
         return False
     try:
         signature = inspect.signature(fn)
@@ -207,8 +209,8 @@ def _returns_record_payload(fn: object) -> bool:
     return results == [{"a": 1}, {}, {}, {}, {}, {}]
 
 
-def _canon_record_payload_getters() -> list[object]:
-    found: list[object] = []
+def _canon_record_payload_getters() -> list[FunctionType]:
+    found: list[FunctionType] = []
     for path in _python_files(ROOT / "orchestra" / "canon"):
         if path.name == "__main__.py":
             continue
@@ -228,7 +230,7 @@ def _canon_record_payload_getters() -> list[object]:
             fn = getattr(module, name, None)
             if getattr(fn, "__module__", None) != module.__name__:
                 continue
-            if _returns_record_payload(fn):
+            if _callable_with_record(fn) and _returns_record_payload(fn):
                 found.append(fn)
     return found
 

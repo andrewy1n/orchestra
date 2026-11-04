@@ -22,7 +22,7 @@ def test_parse_keeps_valid_events_and_counts_one_malformed_line(tmp_path):
     )
     stats = ReadStats()
     events = list(read_events(path, stats))
-    assert [e["type"] for e in events] == ["user", "never-seen-before", "assistant"]
+    assert [e.get("type") for e in events] == ["user", "never-seen-before", "assistant"]
     assert stats.bad_lines == 1
 
 

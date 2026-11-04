@@ -7,19 +7,21 @@ import sys
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 import helpers as h
 import pytest
 from conftest import REPO_ROOT, build_store, run_cli, stamped_store
 
 sys.path.insert(0, str(REPO_ROOT))
+from dashboard.backend import approval as approval_mod
 from dashboard.backend import phase as phase_mod
 from dashboard.backend import records
 from dashboard.backend import snapshot as snapshot_mod
 from dashboard.backend import store as backend_store
 from dashboard.backend import task as task_mod
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, open_store
+from orchestra.canon.types import JsonObject, JsonValue, Record
 
 
 def _goal(cli, defs, effort: str, kind: str = "deliver") -> None:
@@ -593,8 +595,8 @@ def test_catalog_reads_each_record_once(store, cli, defs, monkeypatch):
 
 def test_catalog_reuses_rows_until_token_changes(
     store: Path,
-    cli: Callable[..., Any],
-    defs: dict[str, Any],
+    cli: Callable[..., object],
+    defs: dict,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _goal(cli, defs, "alpha")
@@ -604,7 +606,7 @@ def test_catalog_reuses_rows_until_token_changes(
     reads: list[Project] = []
     real = Project.records
 
-    def records(project: Project) -> list[dict[str, Any]]:
+    def records(project: Project) -> list[Record]:
         reads.append(project)
         return real(project)
 
@@ -669,7 +671,13 @@ def test_skips_an_effort_whose_goal_is_closed(store, cli, defs):
 
 
 def _record(
-    cli, defs, record_type: str, subject: str, payload: dict, body: str | None = None, *rels: str
+    cli,
+    defs,
+    record_type: str,
+    subject: str,
+    payload: dict[str, object],
+    body: str | None = None,
+    *rels: str,
 ) -> dict:
     h.ensure_refs(cli, defs, defs[record_type], payload)
     args = [
@@ -945,6 +953,7 @@ def test_detail_pairs_each_acceptance_with_its_latest_check_run(detail_store):
     assert sorted(by_subject) == ["d-task", "d-task-first", "d-task-signoff"]
     signoff = by_subject["d-task-signoff"]
     assert (signoff.criterion, signoff.method) == ("second", "manual")
+    assert signoff.check is not None
     assert (
         signoff.check.result,
         signoff.check.method,
@@ -1277,7 +1286,7 @@ def test_running_since_is_the_latest_assignment_time_for_a_running_task(store, c
         "--payload",
         json.dumps({"work_item": running["subject"], "executor": "old", "effort": "alpha"}),
         "--body",
-        h.generic_body(defs["conductor:assignment"]),
+        h.generic_body(defs["conductor:assignment"]) or "",
     )
     latest = _assign(cli, defs, "r-running", "new")
     tasks = {
@@ -1435,7 +1444,7 @@ def _task(
     done: bool = False,
     effort: str = "alpha",
 ) -> dict:
-    payload = {
+    payload: dict[str, object] = {
         "title": subject,
         "phase": phase,
         "kind": "deliver",
@@ -1658,9 +1667,12 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
         ("R2", "p-rows", "beta holds", "unassessed", "", 1),
     ]
     assert evidence.requirements[0].latest_check is None
+    assert evidence.requirements[1].latest_check is not None
     assert evidence.requirements[1].latest_check.result == "fail"
     detail = phase_mod.load_phase_detail(_target(store), "alpha", "p-rows")
-    assert [row.id for row in detail.evidence.requirements] == ["R1", "R2"]
+    detail_evidence = detail.evidence
+    assert detail_evidence is not None
+    assert [row.id for row in detail_evidence.requirements] == ["R1", "R2"]
 
 
 def test_evidence_requirement_detail_includes_superseded_assessments(store, cli, defs, monkeypatch):
@@ -1758,6 +1770,7 @@ def test_evidence_requirement_detail_includes_superseded_assessments(store, cli,
     ]
     assert [task.id for task in detail.tasks] == [traced["id"]]
     assert len(detail.acceptances) == 1
+    assert detail.acceptances[0].check is not None
     assert (detail.acceptances[0].check.result, detail.acceptances[0].check.evidence_kind) == (
         "pass",
         "unit",
@@ -1800,7 +1813,7 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
             }
         ),
         "--body",
-        old_body,
+        old_body or "",
     )
     h.run_cli_48h_ago(
         store,
@@ -1812,7 +1825,7 @@ def test_evidence_activity_marks_upstream_and_failed(store, cli, defs):
         "--payload",
         json.dumps({"phase": "act-old", "effort": "alpha", "result": "fail", "revision": "dirty"}),
         "--body",
-        _body(defs, "conductor:integration-report"),
+        _body(defs, "conductor:integration-report") or "",
     )
     previous = _assessment(
         cli,
@@ -1912,7 +1925,7 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
         "--payload",
         json.dumps({"phase": "n-pass", "effort": "alpha", "result": "fail", "revision": "dirty"}),
         "--body",
-        _body(defs, "conductor:integration-report", {"Conflicts": "old"}),
+        _body(defs, "conductor:integration-report", {"Conflicts": "old"}) or "",
     )
     _report(cli, defs, "n-pass", "pass", "clean", subject="n-pass-new")
 
@@ -1942,15 +1955,23 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
         for item in view.needs_you
     )
     by_phase = {phase.subject: phase for phase in view.phases}
+    fail_phase_evidence = by_phase["n-fail"].evidence
+    pass_phase_evidence = by_phase["n-pass"].evidence
+    assert fail_phase_evidence is not None
+    assert pass_phase_evidence is not None
+    fail_integration = fail_phase_evidence.integration
+    pass_integration = pass_phase_evidence.integration
+    assert fail_integration is not None
+    assert pass_integration is not None
     assert (
-        by_phase["n-fail"].evidence.integration.result,
-        by_phase["n-fail"].evidence.integration.conflicts,
+        fail_integration.result,
+        fail_integration.conflicts,
     ) == (
         "fail",
         "ports disagree",
     )
-    assert by_phase["n-pass"].evidence.integration.result == "pass"
-    assert by_phase["n-pass"].evidence.integration.conflicts == "clean"
+    assert pass_integration.result == "pass"
+    assert pass_integration.conflicts == "clean"
 
 
 def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs):
@@ -1975,6 +1996,7 @@ def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs)
     gamma = _effort(snapshot, "gamma")
     assert alpha.release_ready is True
     assert alpha.finished is False
+    assert alpha.phases[0].evidence is not None
     assert alpha.phases[0].evidence.release_ready is True
     assert beta.release_ready is True
     assert beta.finished is True
@@ -2152,7 +2174,7 @@ def test_phase_screen_tabs_for_structured_and_simple_phases(store, cli, defs):
             "effort": "alpha",
             "decisions": ["pick-cols"],
         },
-        design_body,
+        design_body or "",
     )
     full = phase_mod.load_phase_detail(_target(store), "alpha", "p-full")
     plain = phase_mod.load_phase_detail(_target(store), "alpha", "p-plain")
@@ -2323,11 +2345,9 @@ def test_evidence_legacy_store_loads_when_types_are_rejected(monkeypatch):
         shutil.rmtree(root, ignore_errors=True)
 
 
-def test_list_skips_types_absent_from_store_schemas(monkeypatch):
+def test_list_skips_types_absent_from_store_schemas(store, monkeypatch):
     """Foreign stores lack score:phase; the dashboard skips undeclared types instead of listing them."""
-    from types import SimpleNamespace
-
-    target = SimpleNamespace(schemas=lambda: SimpleNamespace(types={"score:effort": object()}))
+    target = _target(store)
     calls: list[tuple[str, ...]] = []
 
     def boom(tgt, *args, **kwargs):
@@ -2335,13 +2355,27 @@ def test_list_skips_types_absent_from_store_schemas(monkeypatch):
         raise backend_store.ModelError("list should not be called for undeclared types")
 
     monkeypatch.setattr(backend_store, "list_records", boom)
-    assert records._list(target, "score:phase") == []
-    assert records._list(target, "score:work-item") == []
+    monkeypatch.setattr(backend_store, "declared_record_types", lambda _target: {"score:effort"})
+    assert records.list_records(target, "score:phase") == []
+    assert records.list_records(target, "score:work-item") == []
     assert calls == []
 
     with pytest.raises(backend_store.ModelError, match="should not be called"):
-        records._list(target, "score:effort")
+        records.list_records(target, "score:effort")
     assert calls == [("score:effort",)]
+
+
+def test_approval_record_lookup_propagates_store_errors(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = _target(store)
+
+    def fail_lookup(target: Project, record_id: str, record_type: str | None = None) -> Record:
+        raise StoreError("store read failed")
+
+    monkeypatch.setattr(backend_store, "stored_record", fail_lookup)
+    with pytest.raises(StoreError, match="store read failed"):
+        approval_mod._cli_json(target, "get", "--id", "rec-missing")
 
 
 def test_evidence_stage_returns_each_rule(store, cli, defs):
@@ -2419,7 +2453,10 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     view = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha")
     integrate = [task for task in view.tasks if task.phase == "s-integrate"]
     assert len(integrate) == 2 and len({task.wave for task in integrate}) == 1
-    assert {phase.subject: phase.evidence.stage for phase in view.phases} == {
+    stages = {
+        phase.subject: phase.evidence.stage for phase in view.phases if phase.evidence is not None
+    }
+    assert stages == {
         "s-ready": "release",
         "s-specify": "specify",
         "s-design": "design",
@@ -2438,7 +2475,11 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
         "s-verify": "verify",
         "s-assess": "assess",
     }
-    flags = {phase.subject: phase.evidence.release_ready for phase in view.phases}
+    flags = {
+        phase.subject: phase.evidence.release_ready
+        for phase in view.phases
+        if phase.evidence is not None
+    }
     assert flags["s-ready"] is True
     assert flags["s-verified"] is False
     assert flags["s-nextrelease"] is False
@@ -2511,16 +2552,19 @@ def test_estimate_view_unset_count():
     assert unset == 2
 
 
-def _estimate_record(subject: str, **payload) -> dict:
-    fields = {"title": subject, "phase": "p-est", "assignee": ""}
+def _estimate_record(subject: str, **payload: JsonValue) -> Record:
+    fields: JsonObject = {"title": subject, "phase": "p-est", "assignee": ""}
     fields.update(payload)
     return {
         "id": f"id-{subject}",
+        "record_type": "score:work-item",
         "subject": subject,
         "lifecycle_state": "planned",
         "payload": fields,
         "derived": {"wave": 1, "ready": True},
         "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
     }
 
 
@@ -2529,7 +2573,7 @@ def test_estimate_view_row_fields(store, cli, defs):
     zero = _estimate_record("zero", size="", estimate_minutes=0, executor="")
     blank = _estimate_record("blank")
     null = _estimate_record("null", size=None, estimate_minutes=None, executor=None)
-    rows = {row.subject: row for row in task_mod._task_rows([sized, zero, blank, null])}
+    rows = {row.subject: row for row in task_mod.task_rows([sized, zero, blank, null])}
     assert (rows["sized"].size, rows["sized"].estimate_minutes, rows["sized"].executor) == (
         "L",
         25,
@@ -2548,14 +2592,18 @@ def test_estimate_view_row_fields(store, cli, defs):
     assert rows["null"].estimate_minutes is None
     assert rows["null"].executor == "subagent"
 
-    phase = {
+    phase: Record = {
         "id": "phase-est",
+        "record_type": "score:phase",
         "subject": "p-est",
         "lifecycle_state": "in_progress",
         "payload": {"title": "Estimates", "ordinal": 1},
         "body": "Size: more than one sitting.",
+        "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
     }
-    phase_row = phase_mod._phase_rows([phase], [sized])[0]
+    phase_row = phase_mod.phase_rows([phase], [sized])[0]
     assert phase_row.sitting == "more than one"
     assert phase_row.elapsed_minutes == 25
     assert phase_row.unset_estimates == 0
@@ -3226,7 +3274,7 @@ def test_attempt_row_fields_default_budget():
     retried = _estimate_record("retried", attempts=1)
     fresh = _estimate_record("fresh")
     zero = _estimate_record("zero", attempts=0)
-    rows = {row.subject: row for row in task_mod._task_rows([retried, fresh, zero])}
+    rows = {row.subject: row for row in task_mod.task_rows([retried, fresh, zero])}
     assert rows["retried"].attempts == 1
     assert rows["retried"].retry_budget == 2
     assert rows["fresh"].attempts == 0
@@ -3239,14 +3287,18 @@ def test_attempt_budget_from_phase_run_facts():
     assert task_mod.retry_max_redispatches("retry_max_redispatches: 5") == 5
     assert task_mod.retry_max_redispatches("## Run facts\n\n- retry_max_redispatches: 4\n") == 4
     task = _estimate_record("retried", attempts=2, phase="p-retry")
-    phase = {
+    phase: Record = {
         "id": "phase-retry",
+        "record_type": "score:phase",
         "subject": "p-retry",
         "lifecycle_state": "in_progress",
         "payload": {"title": "Retry", "ordinal": 1},
         "body": "retry_max_redispatches: 5\n",
+        "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
     }
-    row = task_mod._task_rows([task], phases=[phase])[0]
+    row = task_mod.task_rows([task], phases=[phase])[0]
     assert row.attempts == 2
     assert row.retry_budget == 5
 
@@ -3309,9 +3361,10 @@ def _suite_check(
     revision: str = "abc1234deadbeef",
     *,
     body: str = "",
-) -> dict:
+) -> Record:
     return {
         "id": f"id-{subject}-{result}",
+        "record_type": "tuner:check-run",
         "subject": subject,
         "lifecycle_state": "recorded",
         "recorded_at": "2026-01-01T12:00:00+00:00",
@@ -3325,6 +3378,8 @@ def _suite_check(
             "evidence_kind": "integration",
         },
         "body": body,
+        "relationships": {},
+        "revision": "sha256:test",
     }
 
 

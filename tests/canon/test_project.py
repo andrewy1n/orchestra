@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from conftest import make_task
 
@@ -11,7 +9,7 @@ from orchestra.canon.project import Project, open_store
 from orchestra.canon.validation import ValidationError
 
 
-def history_revisions(project: Project, record: dict[str, Any]) -> set[str]:
+def history_revisions(project: Project, record: dict) -> set[str]:
     return {
         snapshot["revision"]
         for snapshot in open_backend(project.store_path).read_history()

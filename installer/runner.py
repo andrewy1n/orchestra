@@ -8,12 +8,20 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, TypeGuard
 
-from installer.adapters import build_adapter
+from installer.adapters import Adapter, build_adapter
 from installer.detect import HostStatus, detect_hosts, detected_ids
 from installer.matrix import MatrixError, load_matrix
-from installer.model import Action, InstallReport, InstallRequest, Plan, Provider
+from installer.model import (
+    Action,
+    ApplyResult,
+    InstallReport,
+    InstallRequest,
+    Plan,
+    Provider,
+    RemoveResult,
+)
 from installer.paths import is_packaged
 from installer.paths import source_root as default_source_root
 from installer.wizard import (
@@ -32,6 +40,10 @@ class InstallError(ValueError):
 
 
 _MANUAL_TOOL_URL = "git+https://github.com/andrewy1n/orchestra"
+
+
+def _is_json_object(value: object) -> TypeGuard[dict[str, object]]:
+    return isinstance(value, dict)
 
 
 class _ToolStep(NamedTuple):
@@ -53,16 +65,16 @@ def _direct_tool_url() -> str | None:
     if not raw:
         return None
     try:
-        payload = json.loads(raw)
+        payload: object = json.loads(raw)
     except json.JSONDecodeError:
         return None
-    if not isinstance(payload, dict):
+    if not _is_json_object(payload):
         return None
     url = payload.get("url")
     if not isinstance(url, str) or not url:
         return None
     vcs = payload.get("vcs_info")
-    if isinstance(vcs, dict):
+    if _is_json_object(vcs):
         commit = vcs.get("commit_id")
         if isinstance(commit, str) and commit:
             return f"{url}@{commit}"
@@ -197,7 +209,7 @@ def _cancelled() -> int:
     return 0
 
 
-def _print_apply(result) -> None:
+def _print_apply(result: ApplyResult) -> None:
     print(f"installed {result.provider.id} -> {result.root}")
     if result.applied:
         print(f"  applied: {', '.join(result.applied)}")
@@ -209,7 +221,7 @@ def _print_apply(result) -> None:
         print(f"  {result.note}")
 
 
-def _print_remove(result) -> None:
+def _print_remove(result: RemoveResult) -> None:
     if result.skipped:
         print(f"not installed: {result.provider.id} -> {result.root}")
         return
@@ -302,7 +314,7 @@ def run(request: InstallRequest) -> int:
 
     base = global_base if scope == "global" else project_base
     report = InstallReport()
-    pairs = []
+    pairs: list[tuple[Adapter, Plan]] = []
     for provider in selected:
         adapter = build_adapter(
             provider,
@@ -337,22 +349,27 @@ def run(request: InstallRequest) -> int:
     for adapter, plan in pairs:
         if request.dry_run:
             continue
-        try:
-            if request.uninstall:
+        if request.uninstall:
+            try:
                 removed = adapter.remove()
-            else:
-                applied = adapter.apply(plan)
-                verified = adapter.verify()
+            except (ValueError, OSError) as exc:
+                print(
+                    f"orchestra install: {adapter.provider.id}: {exc}",
+                    file=sys.stderr,
+                )
+                return 2
+            report.removed.append(removed)
+            _print_remove(removed)
+            continue
+        try:
+            applied = adapter.apply(plan)
+            verified = adapter.verify()
         except (ValueError, OSError) as exc:
             print(
                 f"orchestra install: {adapter.provider.id}: {exc}",
                 file=sys.stderr,
             )
             return 2
-        if request.uninstall:
-            report.removed.append(removed)
-            _print_remove(removed)
-            continue
         report.applied.append(applied)
         _print_apply(applied)
         report.verified.append(verified)

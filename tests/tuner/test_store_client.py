@@ -7,6 +7,7 @@ import importlib
 import pkgutil
 import re
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 import orchestra.tuner as tuner
@@ -119,7 +120,7 @@ def _call(fn):
         return None, exc
 
 
-def _payload_matches(record: dict, expected: dict) -> bool:
+def _payload_matches(record: Mapping[str, object], expected: Mapping[str, object]) -> bool:
     payload = record.get("payload")
     if not isinstance(payload, dict):
         return False

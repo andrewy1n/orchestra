@@ -170,10 +170,10 @@ def test_checks_runs_ruff_lint_and_format_with_same_pinned_version() -> None:
     formatting = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+.*format --check", line)]
     assert len(lint) == 1
     assert len(formatting) == 1
-    assert (
-        re.search(r"ruff@\d+\.\d+\.\d+", lint[0]).group()
-        == re.search(r"ruff@\d+\.\d+\.\d+", formatting[0]).group()
-    )
+    lint_match = re.search(r"ruff@\d+\.\d+\.\d+", lint[0])
+    format_match = re.search(r"ruff@\d+\.\d+\.\d+", formatting[0])
+    assert lint_match is not None and format_match is not None
+    assert lint_match.group() == format_match.group()
 
 
 def test_ruff_checks_are_blocking_steps() -> None:

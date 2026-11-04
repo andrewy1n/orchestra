@@ -63,8 +63,10 @@ def _parse_chunk(chunk: str) -> dict:
             payload = json.loads(pm.group(1))
         except json.JSONDecodeError:
             payload = None
+    match = _INVOCATION_START_RE.match(chunk)
+    assert match is not None
     return {
-        "subcommand": _INVOCATION_START_RE.match(chunk).group(1),
+        "subcommand": match.group(1),
         "type": _flag(chunk, "type"),
         "transition": _flag(chunk, "transition"),
         "rels": re.findall(r"--rel\s+(\S+)", chunk),

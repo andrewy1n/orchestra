@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -18,18 +17,17 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.migrate import migration_path, transform
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
-from orchestra.canon.revision import with_revision
+from orchestra.canon.revision import compute_revision, with_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.transfer import export_ops, import_ops
+from orchestra.canon.types import JsonObject, Record
 from orchestra.stage import hooks
 
 ROOT = Path(__file__).resolve().parents[2]
 EFFORT_ID = "rec-00000000-0000-4000-8000-000000000001"
 
 
-def _record(
-    record_id: str, record_type: str, subject: str, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _record(record_id: str, record_type: str, subject: str, payload: JsonObject) -> Record:
     return with_revision(
         {
             "id": record_id,
@@ -40,6 +38,7 @@ def _record(
             "relationships": {},
             "body": "",
             "recorded_at": "2026-01-01T00:00:00+00:00",
+            "revision": "sha256:pending",
         }
     )
 
@@ -152,7 +151,7 @@ def _backup_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     calls: list[list[str]] = []
     original_run = subprocess.run
 
-    def run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
         command = args[0]
         if isinstance(command, list) and command[:2] == ["canon", "backup"]:
             calls.append(command)
@@ -240,24 +239,21 @@ def test_cutover_r20_ci_does_not_read_the_live_store() -> None:
 def test_transfer_import_retains_bodyless_snapshot_fields_and_unknown_op_keys(
     tmp_path: Path,
 ) -> None:
-    record = with_revision(
-        {
-            "id": EFFORT_ID,
-            "record_type": "alpha:config",
-            "subject": "legacy snapshot",
-            "payload": {"title": "legacy", "level": 1},
-            "lifecycle_state": "active",
-            "relationships": {},
-            "recorded_at": "2026-01-01T00:00:00+00:00",
-            "legacy_metadata": {"source": "old-export"},
-        }
+    record = _record(
+        EFFORT_ID,
+        "alpha:config",
+        "legacy snapshot",
+        {"title": "legacy", "level": 1},
     )
+    legacy_record: dict[str, object] = dict(record)
+    legacy_record["legacy_metadata"] = {"source": "old-export"}
+    legacy_record["revision"] = compute_revision(legacy_record)
     operation = {
         "seq": 1,
         "op_id": "legacy-op",
         "kind": "create",
         "outcome": "accepted",
-        "record": record,
+        "record": legacy_record,
         "future_operation_field": {"kept": True},
     }
     envelope = {
@@ -270,7 +266,7 @@ def test_transfer_import_retains_bodyless_snapshot_fields_and_unknown_op_keys(
 
     assert import_ops(backend, io.StringIO(json.dumps(envelope) + "\n")) == 1
 
-    assert backend.read_record("alpha:config", EFFORT_ID) == record
+    assert backend.read_record("alpha:config", EFFORT_ID) == legacy_record
     exported = io.StringIO()
     assert export_ops(backend, exported) == 1
     exported_envelope = json.loads(exported.getvalue())
@@ -311,7 +307,7 @@ def test_migration_path_retains_numeric_version_coercion() -> None:
 
 def test_transform_retains_nonstring_rename_type_target() -> None:
     record = _record(EFFORT_ID, "alpha:config", "legacy", {"title": "item"})
-    step = {"rename_type": {"alpha:config": 42}}
+    step: JsonObject = {"rename_type": {"alpha:config": 42}}
 
     moved = transform(record, [step])
 

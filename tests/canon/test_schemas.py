@@ -14,7 +14,13 @@ from orchestra.canon.backend import open_backend
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.types import JsonValue
+from orchestra.canon.types import JsonObject, JsonValue
+
+
+def _object(value: JsonValue) -> JsonObject:
+    if not isinstance(value, dict):
+        raise AssertionError("schema value must be an object")
+    return value
 
 
 def test_migration_validation_preserves_input_list() -> None:
@@ -102,7 +108,9 @@ def test_discovery_finds_modules_through_entry_points(site):
     assert set(found) == {"alpha", "beta"}
     assert found["alpha"].version == "0.1.0"
     assert found["alpha"].source == "canonfix_alpha.schemas/alpha.json"
-    assert found["alpha"].module["types"]["task"]["lifecycle"] == "staged"
+    types = _object(found["alpha"].module["types"])
+    task = _object(types["task"])
+    assert task["lifecycle"] == "staged"
 
 
 def test_discovery_with_faked_entry_points(monkeypatch, site):
@@ -143,7 +151,8 @@ def test_canon_schema_path_overrides_an_installed_module_of_the_same_namespace(
     monkeypatch.setenv("CANON_SCHEMA_PATH", str(path))
     found = discover()
     assert found["alpha"].source == str(path)
-    assert "log" not in found["alpha"].module["types"]
+    types = _object(found["alpha"].module["types"])
+    assert "log" not in types
 
 
 def test_discovery_refuses_one_namespace_twice_in_canon_schema_path(monkeypatch, site, tmp_path):

@@ -1,27 +1,36 @@
 import json
 
 from orchestra.sessions.session_tools import tool_metrics
+from orchestra.sessions.session_types import JsonObject, JsonValue, TranscriptEvent
 
 
-def use(tid, name, **inp):
+def use(tid: str, name: str, **inp: str) -> TranscriptEvent:
+    tool_input: JsonObject = {}
+    for key, value in inp.items():
+        tool_input[key] = value
+    item: JsonObject = {"type": "tool_use", "id": tid, "name": name, "input": tool_input}
+    content: list[JsonValue] = [item]
     return {
         "type": "assistant",
-        "message": {"content": [{"type": "tool_use", "id": tid, "name": name, "input": inp}]},
+        "message": JsonObject({"content": content}),
     }
 
 
-def result(tid, is_error=False, text="SECRET"):
+def result(tid: str, is_error: bool = False, text: str = "SECRET") -> TranscriptEvent:
+    item: JsonObject = {
+        "type": "tool_result",
+        "tool_use_id": tid,
+        "content": text,
+        "is_error": is_error,
+    }
+    content: list[JsonValue] = [item]
     return {
         "type": "user",
-        "message": {
-            "content": [
-                {"type": "tool_result", "tool_use_id": tid, "content": text, "is_error": is_error}
-            ]
-        },
+        "message": JsonObject({"content": content}),
     }
 
 
-def fixture():
+def fixture() -> list[TranscriptEvent]:
     return [
         use("1", "Bash", cmd="make"),
         result("1", True),

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import importlib
-import json
 import shutil
 import subprocess
 import sys
@@ -11,8 +10,7 @@ from pathlib import Path
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib
-
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,7 +32,7 @@ def _project(tmp_path: Path) -> Path:
     shutil.copytree(ROOT / "orchestra" / "canon", package)
     baseline = tmp_path / ".basedpyright"
     baseline.mkdir()
-    shutil.copy2(ROOT / ".basedpyright" / "baseline.json", baseline / "baseline.json")
+    (baseline / "baseline.json").write_text('{"files": {}}', encoding="utf-8")
     return tmp_path
 
 
@@ -176,47 +174,38 @@ def test_r5_get_string_helper_cases(tmp_path: Path) -> None:
 
 def test_r6_strict_includes_canon() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    assert "orchestra/canon" in basedpyright.get("strict", [])
+    strict = basedpyright.get("strict")
+    assert isinstance(strict, list)
+    assert "orchestra" in strict or "orchestra/canon" in strict
 
 
 def test_r7_strict_includes_composer() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    assert "orchestra/composer" in basedpyright.get("strict", [])
+    strict = basedpyright.get("strict")
+    assert isinstance(strict, list)
+    assert "orchestra" in strict or "orchestra/composer" in strict
 
 
 def test_r8_strict_includes_store() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    assert "orchestra/store.py" in basedpyright.get("strict", [])
+    strict = basedpyright.get("strict")
+    assert isinstance(strict, list)
+    assert "orchestra" in strict or "orchestra/store.py" in strict
 
 
 def test_r9_canon_explicit_any_is_error() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    environments = basedpyright.get("executionEnvironments", [])
-    assert isinstance(environments, list)
-    assert any(
-        "orchestra/canon" in entry.get("root", "") and entry.get("reportExplicitAny") == "error"
-        for entry in environments
-    )
+    assert basedpyright.get("reportExplicitAny") == "error"
 
 
 def test_r10_composer_explicit_any_is_error() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    environments = basedpyright.get("executionEnvironments", [])
-    assert isinstance(environments, list)
-    assert any(
-        "orchestra/composer" in entry.get("root", "") and entry.get("reportExplicitAny") == "error"
-        for entry in environments
-    )
+    assert basedpyright.get("reportExplicitAny") == "error"
 
 
 def test_r11_store_explicit_any_is_error() -> None:
     basedpyright = _section(_config(), "tool", "basedpyright")
-    environments = basedpyright.get("executionEnvironments", [])
-    assert isinstance(environments, list)
-    assert any(
-        "orchestra/store.py" in entry.get("root", "") and entry.get("reportExplicitAny") == "error"
-        for entry in environments
-    )
+    assert basedpyright.get("reportExplicitAny") == "error"
 
 
 def test_r12_ignore_without_rule_is_error() -> None:
@@ -226,7 +215,10 @@ def test_r12_ignore_without_rule_is_error() -> None:
 
 def test_r13_ruff_bans_cast() -> None:
     lint = _section(_config(), "tool", "ruff", "lint")
-    enabled = set(lint.get("select", [])) | set(lint.get("extend-select", []))
+    select = lint.get("select", [])
+    extend_select = lint.get("extend-select", [])
+    assert isinstance(select, list) and isinstance(extend_select, list)
+    enabled = set(select) | set(extend_select)
     assert "TID251" in enabled
     tidy_imports = lint.get("flake8-tidy-imports", {})
     assert isinstance(tidy_imports, dict)
@@ -236,11 +228,7 @@ def test_r13_ruff_bans_cast() -> None:
 
 
 def test_r15_baseline_has_no_converted_path_entries() -> None:
-    baseline = json.loads((ROOT / ".basedpyright" / "baseline.json").read_text(encoding="utf-8"))
-    files = baseline["files"]
-    excluded = ("orchestra/canon/", "orchestra/composer/", "orchestra/store.py")
-    offending = [path for path in files if path.removeprefix("./").startswith(excluded)]
-    assert offending == []
+    assert not (ROOT / ".basedpyright" / "baseline.json").exists()
 
 
 def test_r16_unannotated_parameter_fails_strict_canon(tmp_path: Path) -> None:
@@ -263,14 +251,13 @@ def test_r17_explicit_any_fails_canon(tmp_path: Path) -> None:
     assert str(probe) in result.stdout, result.stdout
 
 
-def test_r18_explicit_any_outside_strict_scope_passes(tmp_path: Path) -> None:
+def test_r18_explicit_any_outside_strict_scope_fails_globally(tmp_path: Path) -> None:
     project = _project(tmp_path)
-    dashboard = project / "dashboard"
-    dashboard.mkdir()
-    probe = dashboard / "probe_r18.py"
+    probe = project / "orchestra" / "strict_probe.py"
     probe.write_text("from typing import Any\nvalue: Any = 1\n", encoding="utf-8")
     result = _typecheck(project, [str(probe)])
-    assert result.returncode == 0, result.stdout
+    assert result.returncode != 0, result.stdout
+    assert "reportExplicitAny" in result.stdout, result.stdout
 
 
 def test_r19_cast_call_fails_ruff(tmp_path: Path) -> None:

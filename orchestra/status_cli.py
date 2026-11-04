@@ -5,9 +5,14 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Protocol
 
 
-def add_parser(sub) -> None:
+class SubparserGroup(Protocol):
+    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+
+
+def add_parser(sub: SubparserGroup) -> None:
     status = sub.add_parser("status", help="Print running, ready, and needs-you counts per effort")
     status.add_argument(
         "directory", nargs="?", default=None, help="Project directory (default: current directory)"

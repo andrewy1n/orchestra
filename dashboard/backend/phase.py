@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from dashboard.backend import store
 from dashboard.backend.records import (
     INACTIVE_STATES,
-    _by_effort,
-    _derived,
-    _items,
-    _list,
-    _live,
-    _merge_aliases,
-    _newest,
-    _recorded_at,
-    _remapped,
-    _section,
+    derived_values,
+    list_records,
+    live_records,
+    merge_aliases,
+    newest_record,
+    recorded_at,
+    records_by_effort,
+    remap_records,
+    section,
 )
 from dashboard.backend.store import ModelError
 from dashboard.backend.task import (
@@ -26,10 +25,10 @@ from dashboard.backend.task import (
     CheckRun,
     RelatedRecord,
     TaskRow,
-    _belongs,
-    _check_from,
-    _latest_checks,
-    _task_rows,
+    belongs,
+    check_from,
+    latest_checks,
+    task_rows,
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
@@ -72,8 +71,8 @@ class MilestoneRow:
 
 
 def _requirement_texts(body: str) -> dict[str, str]:
-    texts = {}
-    for line in _section(body, "Requirements").splitlines():
+    texts: dict[str, str] = {}
+    for line in section(body, "Requirements").splitlines():
         ident, sep, text = line.partition(":")
         if sep and ident.strip():
             texts[ident.strip()] = text.strip()
@@ -101,7 +100,7 @@ def _oldest_first(records: list[Record]) -> list[Record]:
     ordered: list[Record] = []
     seen: set[str] = set()
     for start in sorted(
-        (record for record in records if record["id"] not in pointed), key=_recorded_at
+        (record for record in records if record["id"] not in pointed), key=recorded_at
     ):
         chain: list[Record] = []
         current: Record | None = start
@@ -112,14 +111,14 @@ def _oldest_first(records: list[Record]) -> list[Record]:
         chain.reverse()
         ordered.extend(chain)
     ordered.extend(
-        sorted((record for record in records if record["id"] not in seen), key=_recorded_at)
+        sorted((record for record in records if record["id"] not in seen), key=recorded_at)
     )
     return ordered
 
 
 def _for_phase(records: list[Record], phase: str, effort: str) -> list[Record]:
-    matched = []
-    for record in _live(records):
+    matched: list[Record] = []
+    for record in live_records(records):
         payload = record_payload(record)
         record_effort = payload.get("effort")
         if record_effort and record_effort != effort:
@@ -129,9 +128,9 @@ def _for_phase(records: list[Record], phase: str, effort: str) -> list[Record]:
     return matched
 
 
-def _latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record]:
+def latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record]:
     grouped: dict[tuple[str, str], Record] = {}
-    for record in sorted(_live(records), key=_recorded_at):
+    for record in sorted(live_records(records), key=recorded_at):
         payload = record_payload(record)
         grouped[(payload.get("phase", ""), payload.get("requirement", ""))] = record
     return grouped
@@ -143,13 +142,13 @@ def _traced_records(tasks: list[Record], phase: str, requirement: str) -> list[R
         for task in tasks
         if task.get("lifecycle_state") != "superseded"
         and record_payload(task).get("phase") == phase
-        and requirement in _items(record_payload(task).get("requirements"))
+        and requirement in (record_payload(task).get("requirements") or [])
     ]
 
 
 def _choices(subjects: list[str], decisions: list[Record]) -> tuple[DecisionChoice, ...]:
     by_subject: dict[str, Record] = {}
-    for record in sorted(_live(decisions), key=_recorded_at):
+    for record in sorted(live_records(decisions), key=recorded_at):
         by_subject[record["subject"]] = record
     return tuple(
         DecisionChoice(
@@ -179,8 +178,8 @@ def _latest_requirement_check(
         and record_payload(record).get("requirement") == requirement
         and record_payload(record).get("criterion_id") in acceptance_ids
     ]
-    record = _newest(matched)
-    return _check_from(record) if record else None
+    record = newest_record(matched)
+    return check_from(record) if record else None
 
 
 def sitting_phrase(body: str) -> str:
@@ -227,10 +226,10 @@ def _suite_check_for_phase(phase: str, checks: list[Record]) -> Record | None:
             and (record_payload(record).get("evidence_kind") or "") == SUITE_EVIDENCE_KIND
         ]
 
-    record = _newest(matching(SUITE_SUBJECT_SUFFIX))
+    record = newest_record(matching(SUITE_SUBJECT_SUFFIX))
     if record is not None:
         return record
-    return _newest(matching(LEGACY_TIER2_SUBJECT_SUFFIX))
+    return newest_record(matching(LEGACY_TIER2_SUBJECT_SUFFIX))
 
 
 def suite_status_label(phase: str, checks: list[Record]) -> str:
@@ -260,13 +259,13 @@ def phase_elapsed(tasks: list[TaskRow]) -> tuple[int | None, int]:
     A task with no wave is its own group. Blank estimates are skipped, and zero counts.
     """
     unset = sum(task.estimate_minutes is None for task in tasks)
-    groups: dict[Any, list[TaskRow]] = {}
+    groups: dict[int | str, list[TaskRow]] = {}
     for task in tasks:
         key = task.wave if task.wave is not None else task.id
         groups.setdefault(key, []).append(task)
 
-    def order(key: Any) -> tuple:
-        return (0, key) if isinstance(key, int) else (1, str(key))
+    def order(key: int | str) -> tuple[int, int | str]:
+        return (0, key) if isinstance(key, int) else (1, key)
 
     figures: list[int] = []
     for key in sorted(groups, key=order):
@@ -294,7 +293,7 @@ def _awaits_signoff(
         record
         for record in acceptances
         if record["lifecycle_state"] not in INACTIVE_STATES
-        and _belongs(record, task["subject"], effort, others)
+        and belongs(record, task["subject"], effort, others)
     ]
     runs = [latest.get(record["id"]) for record in mine]
     if not mine or any(run is None or run.result != "pass" for run in runs):
@@ -302,18 +301,18 @@ def _awaits_signoff(
     return any(run is not None and run.method == "manual" and not run.signed_by for run in runs)
 
 
-def _phase_rows(
+def phase_rows(
     records: list[Record],
     tasks: list[Record],
     acceptances: list[Record] | None = None,
     checks: list[Record] | None = None,
     evidence_by_phase: dict[str, PhaseEvidence] | None = None,
 ) -> list[PhaseRow]:
-    latest = _latest_checks(checks or [])
+    latest = latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
     subjects = [task["subject"] for task in tasks]
     counted = [task for task in tasks if task["lifecycle_state"] in COUNTED_TASK_STATES]
-    rows = []
+    rows: list[PhaseRow] = []
     for record in records:
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
             continue
@@ -332,7 +331,7 @@ def _phase_rows(
                 for task in open_tasks
             )
         )
-        elapsed_minutes, unset_estimates = phase_elapsed(_task_rows(members))
+        elapsed_minutes, unset_estimates = phase_elapsed(task_rows(members))
         body = record.get("body") or ""
         rows.append(
             PhaseRow(
@@ -365,7 +364,7 @@ def _milestone_state(members: list[PhaseRow]) -> str:
     return "planned"
 
 
-def _milestone_rows(records: list[Record], phases: list[PhaseRow]) -> list[MilestoneRow]:
+def milestone_rows(records: list[Record], phases: list[PhaseRow]) -> list[MilestoneRow]:
     by_slug: dict[str, list[PhaseRow]] = {}
     for phase in phases:
         if phase.milestone:
@@ -405,7 +404,7 @@ def attach_milestones(phases: list[PhaseRow], milestones: list[MilestoneRow]) ->
         for phase in phases
     ]
 
-    def sort_key(phase: PhaseRow) -> tuple:
+    def sort_key(phase: PhaseRow) -> tuple[int, int, int, str]:
         if not phase.milestone:
             return (0, 0, phase.ordinal, phase.subject)
         return (1, ordinals.get(phase.milestone, 10**6), phase.ordinal, phase.subject)
@@ -488,12 +487,12 @@ def _stage(
     reports: list[Record],
     releases: list[Record],
 ) -> tuple[str, bool]:
-    latest_release = _newest(_for_phase(releases, phase, effort))
+    latest_release = newest_record(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
         return "release", True
     latest = {
         requirement: record
-        for (record_phase, requirement), record in _latest_assessment_map(assessments).items()
+        for (record_phase, requirement), record in latest_assessment_map(assessments).items()
         if record_phase == phase
     }
     non_verified = [
@@ -522,9 +521,9 @@ def _stage(
         return "plan", False
     if any(task.get("lifecycle_state") != "done" for task in counted):
         return "execute", False
-    waves: dict[Any, int] = {}
+    waves: dict[int | None, int] = {}
     for task in counted:
-        wave = _derived(task).get("wave")
+        wave = derived_values(task).get("wave")
         waves[wave] = waves.get(wave, 0) + 1
     passing = any(
         record_payload(report).get("result") == "pass"
@@ -545,7 +544,7 @@ def _stage(
     return "assess", False
 
 
-def _phase_evidence(
+def phase_evidence(
     phase: str,
     effort: str,
     specs: list[Record],
@@ -558,17 +557,17 @@ def _phase_evidence(
     reports: list[Record],
     releases: list[Record],
 ) -> PhaseEvidence | None:
-    spec = _newest(_for_phase(specs, phase, effort))
+    spec = newest_record(_for_phase(specs, phase, effort))
     if spec is None:
         return None
-    spec_ids = _items(record_payload(spec).get("requirements"))
+    spec_ids = record_payload(spec).get("requirements") or []
     texts = _requirement_texts(spec.get("body") or "")
     latest = {
         requirement: record
-        for (record_phase, requirement), record in _latest_assessment_map(assessments).items()
+        for (record_phase, requirement), record in latest_assessment_map(assessments).items()
         if record_phase == phase
     }
-    rows = []
+    rows: list[RequirementRow] = []
     for requirement in spec_ids:
         assessment = latest.get(requirement)
         if assessment is None:
@@ -595,14 +594,14 @@ def _phase_evidence(
                 check_at=check.recorded_at if check else None,
             )
         )
-    design = _newest(_for_phase(designs, phase, effort))
-    subjects = _items(record_payload(design).get("decisions")) if design else []
-    report = _newest(_for_phase(reports, phase, effort))
+    design = newest_record(_for_phase(designs, phase, effort))
+    subjects = record_payload(design).get("decisions") or [] if design else []
+    report = newest_record(_for_phase(reports, phase, effort))
     integration = None
     if report is not None:
         integration = IntegrationView(
             record_payload(report).get("result", ""),
-            _section(report.get("body") or "", "Conflicts"),
+            section(report.get("body") or "", "Conflicts"),
         )
     stage, release_ready = _stage(
         phase,
@@ -616,7 +615,7 @@ def _phase_evidence(
         reports,
         releases,
     )
-    latest_release = _newest(_for_phase(releases, phase, effort))
+    latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
     return PhaseEvidence(
         phase,
@@ -626,7 +625,7 @@ def _phase_evidence(
         integration,
         release_ready,
         _choices(subjects, decisions),
-        _section(spec.get("body") or "", "Non-goals"),
+        section(spec.get("body") or "", "Non-goals"),
         release_state=release_state,
     )
 
@@ -700,7 +699,7 @@ def _decision_entry(
     body = record.get("body") or ""
     superseded: tuple[DecisionEntry, ...] = ()
     if history:
-        kids = []
+        kids: list[DecisionEntry] = []
         for ref in (record.get("relationships") or {}).get("supersedes") or []:
             predecessor = by_id.get(ref)
             if predecessor is not None:
@@ -711,8 +710,8 @@ def _decision_entry(
         phase=payload.get("phase", ""),
         choice=payload.get("choice", ""),
         alternatives=payload.get("alternatives", "") or "",
-        rationale=_section(body, "Rationale"),
-        counter=_section(body, "Counter-argument"),
+        rationale=section(body, "Rationale"),
+        counter=section(body, "Counter-argument"),
         superseded=superseded,
     )
 
@@ -724,10 +723,10 @@ def load_decision_log(
     history: bool,
 ) -> DecisionLog:
     """Phase- or effort-scoped decisions, with optional superseded chains (R7)."""
-    aliases = _merge_aliases(_list(target, "score:effort"))
+    aliases = merge_aliases(list_records(target, "score:effort"))
     phase_records = [
         record
-        for record in _remapped(_list(target, "score:phase"), aliases)
+        for record in remap_records(list_records(target, "score:phase"), aliases)
         if record_payload(record).get("effort") == effort
     ]
     phase_records.sort(
@@ -738,14 +737,14 @@ def load_decision_log(
         for record in phase_records
     }
 
-    listed = _remapped(
-        _list(target, "score:decision", payload={"effort": effort}),
+    listed = remap_records(
+        list_records(target, "score:decision", payload={"effort": effort}),
         aliases,
     )
     by_id = {record["id"]: record for record in listed}
     if history:
-        for record in _remapped(
-            _list(
+        for record in remap_records(
+            list_records(
                 target,
                 "score:decision",
                 state="superseded",
@@ -783,35 +782,35 @@ def load_decision_log(
 
 def load_phase_detail(target: Project, effort: str, phase_subject: str) -> PhaseDetail:
     """Load one phase with its body, decisions, constraints, and tasks."""
-    aliases = _merge_aliases(_list(target, "score:effort"))
+    aliases = merge_aliases(list_records(target, "score:effort"))
 
-    def by_effort(record_type: str) -> dict[str, list[Record]]:
-        return _by_effort(_remapped(_list(target, record_type), aliases))
+    def by_effort(record_type: str) -> dict[Hashable, list[Record]]:
+        return records_by_effort(remap_records(list_records(target, record_type), aliases))
 
     snapshot_phases = by_effort("score:phase").get(effort, [])
     record = next((r for r in snapshot_phases if r["subject"] == phase_subject), None)
     if record is None:
         raise ModelError(f"phase {phase_subject} not found in {effort}")
     item = store.get_record(target, record["id"], "score:phase")
-    tasks = _by_effort(_list(target, "score:work-item")).get(effort, [])
+    tasks = records_by_effort(list_records(target, "score:work-item")).get(effort, [])
     effort_acceptances = by_effort("score:acceptance").get(effort, [])
     effort_checks = by_effort("tuner:check-run").get(effort, [])
     decision_records = by_effort("score:decision").get(effort, [])
     row = next(
-        (p for p in _phase_rows([record], tasks, effort_acceptances, effort_checks)),
+        (p for p in phase_rows([record], tasks, effort_acceptances, effort_checks)),
         None,
     )
-    phase_specs = _remapped(
-        _list(target, "score:specification", payload={"phase": phase_subject}),
+    phase_specs = remap_records(
+        list_records(target, "score:specification", payload={"phase": phase_subject}),
         aliases,
     )
-    phase_designs = _remapped(
-        _list(target, "score:design", payload={"phase": phase_subject}),
+    phase_designs = remap_records(
+        list_records(target, "score:design", payload={"phase": phase_subject}),
         aliases,
     )
-    spec = _newest(_for_phase(phase_specs, phase_subject, effort))
-    design = _newest(_for_phase(phase_designs, phase_subject, effort))
-    evidence = _phase_evidence(
+    spec = newest_record(_for_phase(phase_specs, phase_subject, effort))
+    design = newest_record(_for_phase(phase_designs, phase_subject, effort))
+    evidence = phase_evidence(
         phase_subject,
         effort,
         phase_specs,
@@ -854,8 +853,8 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             milestone_title = milestone_slug
     proof_records = [
         r
-        for r in _remapped(
-            _list(
+        for r in remap_records(
+            list_records(
                 target,
                 "conductor:proof-packet",
                 payload={"phase": phase_subject},
@@ -864,7 +863,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         )
         if record_payload(r).get("effort") in (None, "", effort)
     ]
-    proof_record = _newest(proof_records)
+    proof_record = newest_record(proof_records)
     proof = None
     if proof_record is not None:
         proof_body = proof_record.get("body") or ""
@@ -874,10 +873,10 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             kind=proof_payload.get("kind") or "",
             revision=proof_payload.get("revision") or "",
             base=proof_payload.get("base") or "",
-            look=_section(proof_body, "Look"),
-            attention=_section(proof_body, "Attention"),
-            machine=_section(proof_body, "Machine"),
-            diff=_section(proof_body, "Diff"),
+            look=section(proof_body, "Look"),
+            attention=section(proof_body, "Attention"),
+            machine=section(proof_body, "Machine"),
+            diff=section(proof_body, "Diff"),
         )
     return PhaseDetail(
         subject=phase_subject,
@@ -888,7 +887,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         body=item.get("body") or "",
         decisions=decisions,
         constraints=constraints,
-        tasks=[t for t in _task_rows(tasks, phases=[record]) if t.phase == phase_subject],
+        tasks=[t for t in task_rows(tasks, phases=[record]) if t.phase == phase_subject],
         evidence=evidence,
         spec_body=(spec.get("body") or "") if spec else "",
         design_body=(design.get("body") or "") if design else "",
@@ -903,10 +902,10 @@ def load_requirement_detail(
     target: Project, effort: str, phase: str, requirement: str
 ) -> RequirementDetail:
     """Load one requirement, including superseded assessments oldest first."""
-    aliases = _merge_aliases(_list(target, "score:effort"))
+    aliases = merge_aliases(list_records(target, "score:effort"))
 
     def listed(record_type: str, state: str | None = None) -> list[Record]:
-        return _remapped(_list(target, record_type, state=state), aliases)
+        return remap_records(list_records(target, record_type, state=state), aliases)
 
     specs = listed("score:specification")
     by_id = {record["id"]: record for record in listed("conductor:assessment")}
@@ -921,7 +920,7 @@ def load_requirement_detail(
     ]
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
-    latest = _newest(active)
+    latest = newest_record(active)
     if latest is None:
         status, nxt = "unassessed", ""
     else:
@@ -929,7 +928,7 @@ def load_requirement_detail(
             record_payload(latest).get("status", ""),
             record_payload(latest).get("next", ""),
         )
-    spec = _newest(_for_phase(specs, phase, effort))
+    spec = newest_record(_for_phase(specs, phase, effort))
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [
         task
@@ -939,7 +938,7 @@ def load_requirement_detail(
     traced.sort(key=lambda record: record["subject"])
     subjects: list[str] = []
     for task in traced:
-        for subject in _items(record_payload(task).get("decisions")):
+        for subject in record_payload(task).get("decisions") or []:
             if subject not in subjects:
                 subjects.append(subject)
     acceptances = [
@@ -947,8 +946,8 @@ def load_requirement_detail(
         for record in _for_phase(listed("score:acceptance"), phase, effort)
         if record_payload(record).get("requirement") == requirement
     ]
-    acceptances.sort(key=_recorded_at)
-    latest_checks = _latest_checks(listed("tuner:check-run"))
+    acceptances.sort(key=recorded_at)
+    check_map = latest_checks(listed("tuner:check-run"))
     return RequirementDetail(
         phase,
         requirement,
@@ -956,7 +955,7 @@ def load_requirement_detail(
         status,
         nxt,
         _choices(subjects, listed("score:decision")),
-        tuple(row for row in _task_rows(traced) if row.phase == phase),
+        tuple(row for row in task_rows(traced) if row.phase == phase),
         tuple(
             AcceptanceRow(
                 record["id"],
@@ -964,7 +963,7 @@ def load_requirement_detail(
                 record_payload(record).get("criterion", ""),
                 record_payload(record).get("method", ""),
                 record_payload(record).get("verify_command", ""),
-                latest_checks.get(record["id"]),
+                check_map.get(record["id"]),
             )
             for record in acceptances
         ),

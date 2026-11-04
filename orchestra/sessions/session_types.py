@@ -11,6 +11,7 @@ JsonObject: TypeAlias = dict[str, JsonValue]
 
 
 class TranscriptEvent(TypedDict, total=False):
+    attributionSkill: JsonValue
     sessionId: JsonValue
     cwd: JsonValue
     gitBranch: JsonValue

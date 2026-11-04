@@ -314,14 +314,14 @@ def test_journal_scope_phase_plus_effort_only_open_questions(store, cli, defs):
 
 def test_journal_missing_types_do_not_error(store, cli, defs, monkeypatch):
     _goal(cli, defs, "alpha", kind="repair")
-    real = records._list
+    real = records.list_records
 
     def missing(target, record_type, **kwargs):
         if record_type in journal.JOURNAL_TYPES:
             raise backend_store.ModelError(f"unknown type {record_type}")
         return real(target, record_type, **kwargs)
 
-    monkeypatch.setattr(records, "_list", missing)
+    monkeypatch.setattr(records, "list_records", missing)
     items = journal.load_journal(_target(store), "alpha")
     assert items == []
 

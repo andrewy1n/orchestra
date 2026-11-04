@@ -18,10 +18,7 @@ import pytest
 
 from installer.adapters import (
     Adapter,
-    ClaudeAdapter,
-    CursorAdapter,
     GenericSkillsAdapter,
-    OpenCodeAdapter,
     SkillsCliAdapter,
     build_adapter,
     registered_adapters,
@@ -518,9 +515,9 @@ def frontmatter(path: Path) -> tuple[dict[str, str], str]:
 def test_native_adapters_registered_for_claude_cursor_and_opencode(project, source):
     assert {"claude", "cursor", "opencode"} <= set(registered_adapters())
     expected = {
-        "claude": ClaudeAdapter,
-        "cursor": CursorAdapter,
-        "opencode": OpenCodeAdapter,
+        "claude": "ClaudeAdapter",
+        "cursor": "CursorAdapter",
+        "opencode": "OpenCodeAdapter",
     }
     providers = {provider.id: provider for provider in load_matrix()}
     for provider_id, adapter_class in expected.items():
@@ -531,8 +528,7 @@ def test_native_adapters_registered_for_claude_cursor_and_opencode(project, sour
             mode="copy",
             source_root=source,
         )
-        assert isinstance(adapter, adapter_class), provider_id
-        assert isinstance(adapter, Adapter), provider_id
+        assert type(adapter).__name__ == adapter_class, provider_id
 
 
 def test_native_claude_installs_skills_agent_and_hooks(source, project, home):

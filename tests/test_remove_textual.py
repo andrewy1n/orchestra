@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import re
 from pathlib import Path
 
@@ -14,7 +13,6 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 PYTEST_INI = REPO_ROOT / "pytest.ini"
 README = REPO_ROOT / "README.md"
-BASELINE = REPO_ROOT / ".basedpyright" / "baseline.json"
 DASHBOARD = REPO_ROOT / "dashboard"
 BACKEND = DASHBOARD / "backend"
 
@@ -143,9 +141,5 @@ def test_r11_readme_has_no_tmux_dashboard_section():
     assert "dashboard/bin/dashboard" not in text.replace("dashboard/bin/web", "")
 
 
-def test_r12_basedpyright_baseline_names_no_deleted_file():
-    assert BASELINE.is_file()
-    files = json.loads(BASELINE.read_text())["files"]
-    assert files
-    deleted = [name for name in files if not (REPO_ROOT / name).exists()]
-    assert deleted == []
+def test_r12_basedpyright_baseline_is_removed():
+    assert not (REPO_ROOT / ".basedpyright" / "baseline.json").exists()

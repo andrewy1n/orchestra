@@ -12,7 +12,6 @@ import json
 import subprocess
 import sys
 from collections import deque
-from typing import Any
 
 from conftest import REPO_ROOT
 
@@ -176,7 +175,7 @@ def advertises_supersedes(record_def: dict) -> bool:
     return "supersedes" in record_def.get("relationships", [])
 
 
-def generic_payload_value(field: str) -> Any:
+def generic_payload_value(field: str) -> str:
     return f"test-{field}"
 
 
@@ -193,7 +192,7 @@ def unique_subject(record_def: dict) -> str:
     return f"test-{name}-{next(_COUNTER)}"
 
 
-def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, dict]) -> Any:
+def _generic_value(cli, defs, field: str, form: dict, target_cache: dict[str, dict]) -> object:
     if "list" in form:
         return []
     if "ref" in form:
@@ -258,7 +257,7 @@ def create_generic_record(
         target_cache = {}
     record_def = defs[record_type]
     subject = subject or unique_subject(record_def)
-    payload: dict[str, Any] = {}
+    payload: dict = {}
     for field, form in record_def["required"].items():
         if extra_payload and field in extra_payload:
             continue
