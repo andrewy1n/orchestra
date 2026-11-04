@@ -102,7 +102,18 @@ def test_selected_third_party_technique_uses_the_shared_result(
     entry = SimpleNamespace(
         name="external",
         value="external_plugin:Technique",
-        dist=SimpleNamespace(metadata={"Name": "external-plugin"}, version="2.0"),
+        dist=SimpleNamespace(
+            metadata={"Name": "external-plugin"},
+            version="2.0",
+            entry_points=(
+                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(
+                    name="external",
+                    value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',
+                    group=extensions.PLUGIN_CONFIG_GROUP,
+                ),
+            ),
+        ),
         load=lambda: ThirdPartyTechnique,
     )
     monkeypatch.setattr(extensions.metadata, "entry_points", lambda *, group: (entry,))
@@ -149,7 +160,16 @@ def test_selected_stage_only_technique_cannot_replay(
     entry = SimpleNamespace(
         name="stage-only",
         value="stage_only:Technique",
-        dist=SimpleNamespace(metadata={"Name": "stage-only-plugin"}, version="1"),
+        dist=SimpleNamespace(
+            metadata={"Name": "stage-only-plugin"},
+            version="1",
+            entry_points=(
+                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(
+                    name="stage-only", value="{}", group=extensions.PLUGIN_CONFIG_GROUP
+                ),
+            ),
+        ),
         load=lambda: StageOnlyFactory,
     )
     monkeypatch.setattr(extensions.metadata, "entry_points", lambda *, group: (entry,))
@@ -169,6 +189,11 @@ def _init_repo(root: Path, config: str) -> None:
     subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
     subprocess.run(["git", "-C", str(root), "config", "user.email", "test@example.com"], check=True)
     subprocess.run(["git", "-C", str(root), "config", "user.name", "test"], check=True)
+    if "[verify.unit]" not in config:
+        config += (
+            "\n[verify.unit]\nrunner = "
+            '["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n'
+        )
     (root / "orchestra.toml").write_text(config, encoding="utf-8")
     subprocess.run(["git", "-C", str(root), "add", "orchestra.toml"], check=True)
     subprocess.run(["git", "-C", str(root), "commit", "-qm", "config"], check=True)

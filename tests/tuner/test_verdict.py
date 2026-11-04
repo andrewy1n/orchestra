@@ -288,7 +288,9 @@ def test_verdict_pass_when_hashes_match_and_red_then_green(tmp_path: Path) -> No
     proc = _run(root, head, None)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     payload = _payload(proc)
-    assert payload == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"
 
 
 def test_verdict_refuses_hash_mismatch(tmp_path: Path) -> None:
@@ -386,7 +388,8 @@ def test_verdict_accepts_signed_amendment(tmp_path: Path) -> None:
     )
     proc = _run(root, head, base)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert _payload(proc)["result"] == "pass"
+    assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
 
 
 def test_verdict_refuses_head_failure(tmp_path: Path) -> None:
@@ -521,7 +524,8 @@ def test_verdict_cwd_phase_worktree(tmp_path: Path) -> None:
     try:
         proc = _run(primary, head, base, process_cwd=elsewhere, flag_cwd=phase)
         assert proc.returncode == 0, proc.stdout + proc.stderr
-        assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+        assert _payload(proc)["result"] == "pass"
+        assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
     finally:
         subprocess.run(
             ["git", "-C", str(primary), "worktree", "remove", "--force", str(phase)],
@@ -687,7 +691,8 @@ def test_verdict_fixture_junit_pass(tmp_path: Path) -> None:
     )
     proc = _run(root, head, _base)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert _payload(proc)["result"] == "pass"
+    assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
 
 
 def test_verdict_fixture_junit_error(tmp_path: Path) -> None:

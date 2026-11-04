@@ -74,6 +74,7 @@ def test_registered_plugin_id_is_loaded_from_project_config(tmp_path: Path) -> N
 def test_plugin_parameters_are_read_from_scope_tables(tmp_path: Path) -> None:
     (tmp_path / "orchestra.toml").write_text(
         '[verify.stages]\nphase = ["external"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n\n"
         '[verify.external]\nendpoint = "https://example.test"\n\n'
         '[land]\nadapter = "external-land"\nmerge = "human"\n'
         '[land.config]\nregion = "west"\n',
@@ -87,18 +88,21 @@ def test_plugin_parameters_are_read_from_scope_tables(tmp_path: Path) -> None:
     assert config.land_config == {"region": "west"}
 
 
-def test_non_unit_verification_does_not_require_unit_runner(tmp_path: Path) -> None:
+def test_unit_runner_is_required_for_each_project_config(tmp_path: Path) -> None:
     (tmp_path / "orchestra.toml").write_text(
         '[verify.stages]\nphase = ["external"]\n',
         encoding="utf-8",
     )
 
-    assert load_project_config(tmp_path).stages["phase"] == ("external",)
+    with pytest.raises(ProjectConfigError, match=r"verify\.unit"):
+        load_project_config(tmp_path)
 
 
 def test_replay_technique_is_selected_from_project_config(tmp_path: Path) -> None:
     (tmp_path / "orchestra.toml").write_text(
-        '[verify.stages]\nphase = ["external"]\n[verify.replay]\ntechnique = "replay-external"\n',
+        '[verify.stages]\nphase = ["external"]\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n"
+        '[verify.replay]\ntechnique = "replay-external"\n',
         encoding="utf-8",
     )
 

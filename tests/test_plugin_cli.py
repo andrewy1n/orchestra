@@ -16,12 +16,21 @@ def test_plugins_list_reports_scopes_without_loading_plugins(
     loaded: list[str] = []
 
     def entry(name: str, target: str, distribution: str) -> SimpleNamespace:
+        metadata_entries = (
+            SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+            SimpleNamespace(
+                name=name,
+                value="{}",
+                group=extensions.PLUGIN_CONFIG_GROUP,
+            ),
+        )
         return SimpleNamespace(
             name=name,
             value=target,
             dist=SimpleNamespace(
-                metadata={"Name": distribution, "Orchestra-Plugin-API": "1"},
+                metadata={"Name": distribution},
                 version="1.0",
+                entry_points=metadata_entries,
             ),
             load=lambda: loaded.append(name),
         )

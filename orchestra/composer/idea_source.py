@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, TypeGuard
+from typing import Protocol, TypeGuard, runtime_checkable
 
+from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
 from orchestra.canon.types import JsonObject
 
 
@@ -23,8 +24,24 @@ class IdeaSourceItem:
     labels: tuple[str, ...]
 
 
+@runtime_checkable
 class IdeaSource(Protocol):
     def list_ideas(self, request: IdeaSourceRequest) -> Sequence[IdeaSourceItem]: ...
+
+
+def fetch_plugin_ideas(plugin_id: str, parameters: JsonObject) -> tuple[IdeaSourceItem, ...]:
+    try:
+        registration = resolve_plugin("composer.ideas", plugin_id)
+    except PluginCatalogError as exc:
+        raise ValueError(str(exc)) from exc
+    validate_plugin_config(plugin_id, registration.descriptor.config_shape, parameters)
+    factory = registration.load()
+    if not callable(factory):
+        raise ValueError(f"idea source {plugin_id!r} is not constructible")
+    source = factory()
+    if not isinstance(source, IdeaSource):
+        raise ValueError(f"idea source {plugin_id!r} has no list_ideas method")
+    return validate_idea_source_items(source.list_ideas(IdeaSourceRequest(parameters)))
 
 
 def validate_idea_source_items(items: object) -> tuple[IdeaSourceItem, ...]:

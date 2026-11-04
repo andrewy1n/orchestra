@@ -8,18 +8,19 @@ from pathlib import Path
 
 import pytest
 
+from orchestra import plugin_verify_cli
 from orchestra.canon.extensions import PluginDescriptor, compute_execution_identity
 from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.cli import main as orchestra_main
-from orchestra.plugin_evidence import (
+from orchestra.tuner import plugins
+from orchestra.tuner.manifest import runner_digest
+from orchestra.tuner.plugin_evidence import (
     NAMESPACE,
     _execution_identity,
     canonical_payload,
     sign_plugin_result,
     verify_plugin_evidence,
 )
-from orchestra.tuner import plugins
-from orchestra.tuner.manifest import runner_digest
 
 
 def _git(root: Path, *args: str) -> str:
@@ -141,7 +142,7 @@ def test_execution_identity_canonical_hash_preserves_argv_boundaries() -> None:
     descriptor = PluginDescriptor(
         scope="tuner.verify",
         plugin_id="unit",
-        target="orchestra.plugins:UnitPlugin",
+        target="orchestra.tuner.plugins:UnitPlugin",
         distribution="orchestra",
         version="1.0",
         api_version="1",
@@ -201,8 +202,8 @@ def test_core_checks_identity_before_signing(tmp_path: Path) -> None:
         )
 
 
-def test_legacy_plugin_payload_bytes_remain_unchanged() -> None:
-    from orchestra.plugin_evidence import PluginEvidence
+def test_plugin_payload_uses_v2_and_binds_execution_identity() -> None:
+    from orchestra.tuner.plugin_evidence import PluginEvidence
 
     evidence = PluginEvidence(
         plugin_id="unit",
@@ -214,10 +215,12 @@ def test_legacy_plugin_payload_bytes_remain_unchanged() -> None:
         output_hash="output",
         output={"test": "passed"},
         signature="",
+        execution_identity={"digest": "sha256:identity"},
     )
 
     assert canonical_payload(evidence) == (
-        b'orchestra-plugin-evidence v1\n{"commit":"commit","config_digest":"config",'
+        b'orchestra-plugin-evidence v2\n{"commit":"commit","config_digest":"config",'
+        b'"execution_identity":{"digest":"sha256:identity"},'
         b'"output":{"test":"passed"},"output_hash":"output","plugin_id":"unit",'
         b'"result":"pass","runner_digest":"runner","stage":"phase"}\n'
     )
@@ -326,4 +329,32 @@ def test_verify_plugins_cli_signs_host_reviewer_stdin(
     assert output[0]["plugin_id"] == "review"
     assert output[0]["result"] == "pass"
     assert output[0]["output"]["verdict"] == "PASS"
+    assert output[0]["signature"]
+
+
+def test_signed_skip_does_not_pass_verification_cli(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = tmp_path / "repo"
+    revision, key_path, runner = _seed_repo(root)
+    skipped = sign_plugin_result(
+        root,
+        replace(_plugin_result(root, revision, runner), result="skip"),
+        key_path=key_path,
+    )
+    monkeypatch.setattr(
+        plugin_verify_cli,
+        "dispatch_signed_plugins",
+        lambda _context, key_path: (skipped,),
+    )
+
+    result = plugin_verify_cli.main(
+        ["--cwd", str(root), "--stage", "phase", "--key", str(key_path)]
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert result == 1
+    assert output[0]["result"] == "skip"
     assert output[0]["signature"]

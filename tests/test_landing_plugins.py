@@ -10,6 +10,18 @@ from orchestra.canon import extensions
 from orchestra.conductor.land import LandingResult, LandRequest, dispatch_land
 
 
+def test_landing_requires_explicit_land_table(tmp_path: Path) -> None:
+    _repo(tmp_path)
+    (tmp_path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"land\.adapter must be configured"):
+        dispatch_land(tmp_path, "proof packet")
+
+
 def test_selected_third_party_landing_adapter_runs_without_core_allowlist(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -23,6 +35,7 @@ def test_selected_third_party_landing_adapter_runs_without_core_allowlist(
     _repo(tmp_path)
     (tmp_path / "orchestra.toml").write_text(
         '[verify.stages]\nphase = ["unit"]\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n'
         '[land]\nadapter = "external-land"\nmerge = "human"\n'
         '[land.config]\nregion = "west"\n',
         encoding="utf-8",
@@ -30,7 +43,18 @@ def test_selected_third_party_landing_adapter_runs_without_core_allowlist(
     entry = SimpleNamespace(
         name="external-land",
         value="external_land:Adapter",
-        dist=SimpleNamespace(metadata={"Name": "external-land"}, version="1.0"),
+        dist=SimpleNamespace(
+            metadata={"Name": "external-land"},
+            version="1.0",
+            entry_points=(
+                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(
+                    name="external-land",
+                    value='{"type":"object","properties":{"region":{"type":"string"}},"required":["region"],"additionalProperties":false}',
+                    group=extensions.PLUGIN_CONFIG_GROUP,
+                ),
+            ),
+        ),
         load=lambda: ExternalAdapter,
     )
     monkeypatch.setattr(extensions.metadata, "entry_points", lambda *, group: (entry,))

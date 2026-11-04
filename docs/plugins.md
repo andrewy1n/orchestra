@@ -15,6 +15,29 @@ acme-land = "acme_orchestra.land:Adapter"
 
 [project.entry-points."orchestra.composer.ideas"]
 acme-ideas = "acme_orchestra.ideas:Source"
+
+[project.entry-points."orchestra.plugin_api"]
+v1 = "acme_orchestra.verify:Technique"
+
+[project.entry-points."orchestra.plugin_config"]
+"acme-checks__<base64url-schema>" = "acme_orchestra.verify:Technique"
+"acme-land__<base64url-schema>" = "acme_orchestra.land:Adapter"
+"acme-ideas__<base64url-schema>" = "acme_orchestra.ideas:Source"
+```
+
+Declare one `plugin_config` entry for every plugin id in the distribution. Encode its JSON object schema as unpadded URL-safe base64 in the entry name after `<plugin-id>__`. Orchestra checks `properties`, `required`, and `additionalProperties` against the matching table in `orchestra.toml`. The entry-point value must reference a Python object. Orchestra reads the API version from the `v1` entry name and rejects missing or unsupported versions.
+
+Generate the encoded config name with Python:
+
+```python
+import base64
+import json
+
+schema = {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}
+encoded = base64.urlsafe_b64encode(
+    json.dumps(schema, sort_keys=True, separators=(",", ":")).encode("utf-8")
+).decode("ascii").rstrip("=")
+print(f"acme-ideas__{encoded}")
 ```
 
 Install the distribution in the Orchestra environment:
@@ -75,6 +98,14 @@ class Source:
 
 Each item carries an external id, title, body, URL, ISO 8601 update time, and labels. `list_ideas` does not paginate, persist, or synchronize items. Issue #31 owns source ingestion and storage mapping.
 
+Load and run a registered source through Orchestra's public interface:
+
+```python
+from orchestra.composer.idea_source import fetch_plugin_ideas
+
+items = fetch_plugin_ideas("acme-ideas", {"project": "orchestra"})
+```
+
 ## Verification plugins
 
 Register a class that implements `VerificationTechnique` and a `run` method. The class must validate its configuration, declare its execution settings, return `TechniqueResult`, and validate its output.
@@ -112,11 +143,30 @@ Configure a stage and plugin parameters in the target repository's `orchestra.to
 [verify.stages]
 phase = ["acme-checks"]
 
+[verify.unit]
+runner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]
+
 [verify.acme-checks]
 runner = ["acme-check", "--strict"]
 ```
 
 The example distribution registers `example-checks` and provides a replay implementation. Use its id to try the installed package.
+
+## Landing plugins
+
+Configure a landing adapter explicitly. Missing `[land]` settings raise an error when you run `orchestra land`.
+
+```toml
+[land]
+adapter = "github-pr"
+merge = "human"
+
+[land.config]
+repository = "acme/orchestra"
+token_env = "ORCHESTRA_GITHUB_TOKEN"
+```
+
+The built-in GitHub adapter reads the token from `token_env` and uses `repository` when you set it. It reads the git remote when `repository` is absent.
 
 Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
 

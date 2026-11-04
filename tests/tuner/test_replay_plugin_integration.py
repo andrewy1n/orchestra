@@ -10,9 +10,10 @@ from typing import ClassVar
 import pytest
 
 from orchestra.canon import extensions
+from orchestra.canon.project_config import DEFAULT_RUNNER, ProjectConfig
 from orchestra.tuner.audit import run_audit
 from orchestra.tuner.lint import find_new_skips
-from orchestra.tuner.technique import ReplayRequest, replay_at_revision
+from orchestra.tuner.technique import ReplayRequest, TechniqueResult, replay_at_revision
 from orchestra.tuner.verdict import run_verdict
 
 CLAIM = "claim-replay-plugin"
@@ -23,6 +24,16 @@ ORACLE_BYTES = b"def test_plugin():\n    assert True\n"
 
 class ReplayPlugin:
     calls: ClassVar[list[tuple[str, str]]] = []
+
+    def validate_config(self, config: ProjectConfig) -> None:
+        del config
+
+    def execution_definition(self, config: ProjectConfig) -> dict[str, object]:
+        del config
+        return {"engine": "replay-test-v1"}
+
+    def validate_result(self, result: TechniqueResult) -> None:
+        del result
 
     def replay(self, request: ReplayRequest) -> dict[str, str]:
         behavior = subprocess.run(
@@ -41,6 +52,24 @@ class ReplayPlugin:
         return {test_id: outcomes[behavior] for test_id in request.test_ids}
 
 
+class UntrustedReplayPlugin:
+    calls: ClassVar[int] = 0
+
+    def validate_config(self, config: ProjectConfig) -> None:
+        del config
+
+    def execution_definition(self, config: ProjectConfig) -> dict[str, object]:
+        del config
+        return {"engine": "untrusted-replay-test-v1"}
+
+    def validate_result(self, result: TechniqueResult) -> None:
+        del result
+
+    def replay(self, request: ReplayRequest) -> dict[str, str]:
+        self.calls += 1
+        return {test_id: "passed" for test_id in request.test_ids}
+
+
 def _git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, text=True, check=True
@@ -50,7 +79,9 @@ def _git(root: Path, *args: str) -> str:
 
 def _write_revision(root: Path, behavior: str) -> None:
     (root / "orchestra.toml").write_text(
-        '[verify.stages]\nphase = ["unit"]\n[verify.replay]\ntechnique = "external-replay"\n',
+        '[verify.stages]\nphase = ["unit"]\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n"
+        '[verify.replay]\ntechnique = "external-replay"\n',
         encoding="utf-8",
     )
     digest = hashlib.sha256(ORACLE_BYTES).hexdigest()
@@ -92,13 +123,32 @@ def _repo(root: Path, base_behavior: str, head_behavior: str) -> tuple[str, str]
 
 
 def _register_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
-    entry = SimpleNamespace(
-        name="external-replay",
-        value="external_replay:Plugin",
-        dist=SimpleNamespace(metadata={"Name": "external-replay"}, version="1.0"),
-        load=lambda: ReplayPlugin,
+    entries = []
+    for plugin_id, factory in (
+        ("external-replay", ReplayPlugin),
+        ("untrusted-replay", UntrustedReplayPlugin),
+    ):
+        metadata_entries = (
+            SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+            SimpleNamespace(name=plugin_id, value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
+        )
+        entries.append(
+            SimpleNamespace(
+                name=plugin_id,
+                value=f"{plugin_id}:Plugin",
+                dist=SimpleNamespace(
+                    metadata={"Name": plugin_id},
+                    version="1.0",
+                    entry_points=metadata_entries,
+                ),
+                load=lambda factory=factory: factory,
+            )
+        )
+    monkeypatch.setattr(
+        extensions.metadata,
+        "entry_points",
+        lambda *, group: tuple(entries) if group == "orchestra.tuner.verify" else (),
     )
-    monkeypatch.setattr(extensions.metadata, "entry_points", lambda *, group: (entry,))
 
 
 def test_verdict_and_audit_replay_registered_plugin(
@@ -112,10 +162,35 @@ def test_verdict_and_audit_replay_registered_plugin(
     verdict = run_verdict(root, head, base, [CLAIM])
     audit = run_audit(root, base, head, max_mutants=0)
 
-    assert verdict == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert verdict["result"] == "pass"
+    assert verdict["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert verdict["replay_identity"]["plugin_id"] == "external-replay"
     assert audit["advisory"] is True
     assert any(behavior == "failure" for _, behavior in ReplayPlugin.calls)
     assert ReplayPlugin.calls.count(("HEAD", "pass")) >= 2
+
+
+def test_verdict_uses_replay_technique_from_trusted_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _register_plugin(monkeypatch)
+    UntrustedReplayPlugin.calls = 0
+    root = tmp_path / "repo"
+    base, head = _repo(root, "failure", "pass")
+    config_path = root / "orchestra.toml"
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace("external-replay", "untrusted-replay"),
+        encoding="utf-8",
+    )
+    _git(root, "add", "orchestra.toml")
+    _git(root, "commit", "-qm", "select untrusted replay")
+    head = _git(root, "rev-parse", "HEAD")
+
+    verdict = run_verdict(root, head, base, [CLAIM])
+
+    assert verdict["result"] == "pass"
+    assert verdict["replay_identity"]["plugin_id"] == "external-replay"
+    assert UntrustedReplayPlugin.calls == 0
 
 
 def test_error_and_skip_outcomes_remain_distinct_in_new_skip_lint(

@@ -90,6 +90,7 @@ def test_installed_example_plugins_run_through_public_interfaces(tmp_path: Path)
     (repo / ".tuner" / "allowed_signers").write_text(signer, encoding="utf-8")
     (repo / "orchestra.toml").write_text(
         '[verify.stages]\nphase = ["example-checks"]\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n'
         "[verify.example-checks]\nenabled = true\n"
         '[land]\nadapter = "example-land"\nmerge = "human"\n',
         encoding="utf-8",
@@ -190,8 +191,8 @@ def test_installed_example_plugins_run_through_public_interfaces(tmp_path: Path)
         [
             sys.executable,
             "-c",
-            "from orchestra_example_plugins.ideas import Source; from orchestra.composer.idea_source import IdeaSourceRequest; "
-            "item = Source().list_ideas(IdeaSourceRequest(parameters={'project': 'sample'}))[0]; "
+            "from orchestra.composer.idea_source import fetch_plugin_ideas; "
+            "item = fetch_plugin_ideas('example-ideas', {'project': 'sample'})[0]; "
             "print(item.external_id)",
         ],
         cwd=tmp_path,

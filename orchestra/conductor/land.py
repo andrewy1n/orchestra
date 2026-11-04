@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from orchestra.canon.extensions import PluginCatalogError, resolve_plugin
+from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
 from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject
 
@@ -84,8 +84,16 @@ def dispatch_land(
 ) -> LandingResult:
     project_root = Path(root)
     config: ProjectConfig = load_project_config(project_root)
+    if not config.land_configured:
+        raise ValueError("land.adapter must be configured before landing")
     try:
-        factory = resolve_plugin("conductor.land", config.land_adapter).load()
+        registration = resolve_plugin("conductor.land", config.land_adapter)
+        validate_plugin_config(
+            config.land_adapter,
+            registration.descriptor.config_shape,
+            config.land_config,
+        )
+        factory = registration.load()
     except PluginCatalogError as exc:
         raise ValueError(str(exc)) from exc
     if not callable(factory):

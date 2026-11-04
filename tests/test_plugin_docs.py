@@ -38,6 +38,6 @@ def test_plugin_author_guide_covers_each_scope_and_compiles_python_examples() ->
         assert entry_point in example_metadata
 
     examples = re.findall(r"```python\n(.*?)```", content, flags=re.DOTALL)
-    assert len(examples) == 4
+    assert len(examples) == 6
     for index, example in enumerate(examples):
         compile(example, f"plugin-guide-{index}.py", "exec")

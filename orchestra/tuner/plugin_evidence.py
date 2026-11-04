@@ -11,6 +11,7 @@ from orchestra.canon.extensions import (
     PluginCatalogError,
     compute_execution_identity,
     resolve_plugin,
+    validate_plugin_config,
 )
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import (
@@ -21,12 +22,7 @@ from orchestra.canon.project_config import (
     load_project_config_at_revision,
 )
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tuner.manifest import (
-    ManifestError,
-    load_allowlist,
-    resolve_commit,
-    runner_digest,
-)
+from orchestra.tuner.manifest import ManifestError, load_allowlist, resolve_commit, runner_digest
 from orchestra.tuner.plugins import PluginContext, PluginResult, dispatch_plugins
 from orchestra.tuner.sign import sign
 from orchestra.tuner.sign import verify as verify_signature
@@ -50,7 +46,7 @@ class PluginEvidence:
     output_hash: str
     output: JsonObject
     signature: str
-    execution_identity: JsonObject | None = None
+    execution_identity: JsonObject
 
 
 def dispatch_signed_plugins(
@@ -128,14 +124,11 @@ def verify_plugin_evidence(
             return False, "plugin is not configured for the target stage"
         if evidence.config_digest != _config_digest(root, commit):
             return False, "config digest mismatch"
-        if evidence.execution_identity is None:
-            expected_runner = runner_digest(config.runner) if evidence.plugin_id == "unit" else None
-        else:
-            identity, _execution_digest, expected_runner = _execution_identity(
-                root, commit, evidence.plugin_id
-            )
-            if evidence.execution_identity != identity:
-                return False, "execution identity mismatch"
+        identity, _execution_digest, expected_runner = _execution_identity(
+            root, commit, evidence.plugin_id
+        )
+        if evidence.execution_identity != identity:
+            return False, "execution identity mismatch"
         if evidence.runner_digest != expected_runner:
             return False, "runner digest mismatch"
         output = _normalize_output(evidence.output)
@@ -157,10 +150,9 @@ def verify_plugin_evidence(
 
 def canonical_payload(evidence: PluginEvidence) -> bytes:
     """Return canonical bytes signed for a plugin evidence envelope."""
-    version = b"v2" if evidence.execution_identity is not None else b"v1"
     return (
         b"orchestra-plugin-evidence "
-        + version
+        + b"v2"
         + b"\n"
         + _canonical_json(_unsigned_payload(evidence))
         + b"\n"
@@ -178,8 +170,7 @@ def _unsigned_payload(evidence: PluginEvidence) -> JsonObject:
         "output_hash": evidence.output_hash,
         "output": _json_output(evidence.output),
     }
-    if evidence.execution_identity is not None:
-        payload["execution_identity"] = evidence.execution_identity
+    payload["execution_identity"] = evidence.execution_identity
     return payload
 
 
@@ -197,6 +188,11 @@ def _execution_identity(
     plugin = factory()
     if not isinstance(plugin, VerificationTechnique):
         raise ValueError(f"verification plugin {plugin_id!r} has an invalid technique contract")
+    validate_plugin_config(
+        plugin_id,
+        registration.descriptor.config_shape,
+        config.verify_config.get(plugin_id, {}),
+    )
     plugin.validate_config(config)
     definition = plugin.execution_definition(config)
     identity = compute_execution_identity(
@@ -231,6 +227,11 @@ def _validate_plugin_result(
     plugin = factory()
     if not isinstance(plugin, VerificationTechnique):
         raise ValueError(f"verification plugin {plugin_id!r} has an invalid technique contract")
+    validate_plugin_config(
+        plugin_id,
+        registration.descriptor.config_shape,
+        config.verify_config.get(plugin_id, {}),
+    )
     plugin.validate_config(config)
     if result not in ("pass", "fail", "error", "skip"):
         raise ValueError(f"verification plugin {plugin_id!r} returned an invalid verdict")

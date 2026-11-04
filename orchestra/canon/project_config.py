@@ -44,6 +44,7 @@ class ProjectConfig:
     runner: tuple[str, ...]
     suite: SuiteConfig
     land_adapter: str
+    land_configured: bool
     merge_policy: str
     verify_config: Mapping[str, JsonObject]
     land_config: JsonObject
@@ -102,21 +103,25 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     stages_raw = _table(verify.get("stages"), "verify.stages")
     stages = _parse_stages(stages_raw)
     unit_value = verify.get("unit")
-    unit: Mapping[str, object] = {} if unit_value is None else _table(unit_value, "verify.unit")
-    runner_value = unit.get("runner", list(DEFAULT_RUNNER))
+    unit = _table(unit_value, "verify.unit")
+    runner_value = unit.get("runner")
+    if runner_value is None:
+        raise ProjectConfigError("verify.unit.runner is required")
     runner = _string_list(runner_value, "verify.unit.runner")
     if not runner:
         raise ProjectConfigError("verify.unit.runner must be a non-empty argv list")
     if runner.count("{tests}") != 1 or not any("{report}" in arg for arg in runner):
         raise ProjectConfigError("verify.unit.runner must include {tests} once and {report}")
+    land_value = root.get("land")
     return ProjectConfig(
         stages=stages,
         runner=runner,
         suite=_parse_suite(root.get("suite")),
-        land_adapter=_parse_land_adapter(root.get("land")),
-        merge_policy=_parse_merge_policy(root.get("land")),
+        land_adapter=_parse_land_adapter(land_value),
+        land_configured=land_value is not None,
+        merge_policy=_parse_merge_policy(land_value),
         verify_config=_parse_verify_config(verify),
-        land_config=_parse_land_config(root.get("land")),
+        land_config=_parse_land_config(land_value),
         replay_technique=_parse_replay_technique(verify.get("replay")),
     )
 

@@ -12,6 +12,7 @@ from orchestra.canon.extensions import (
     compute_execution_identity,
     list_plugins,
     resolve_plugin,
+    validate_plugin_config,
 )
 from orchestra.canon.project_config import (
     ProjectConfig,
@@ -122,9 +123,10 @@ def dispatch_plugins(
         plugin = factory()
         if not isinstance(plugin, BuiltinPlugin):
             raise ValueError(f"verification plugin {plugin_id!r} has no run method")
+        parameters = config.verify_config.get(plugin_id, {})
+        validate_plugin_config(plugin_id, registration.descriptor.config_shape, parameters)
         plugin.validate_config(config)
         definition = plugin.execution_definition(config)
-        parameters = config.verify_config.get(plugin_id, {})
         identity = compute_execution_identity(registration.descriptor, parameters, definition)
         technique_result = validate_technique_result(plugin, plugin.run(config, pinned_context))
         results.append(

@@ -93,6 +93,7 @@ jobs:
               "runner_digest": runner_digest(load_manifest(fixture, sha).runner),
               "claims": verdict["claims"],
               "result": verdict["result"],
+              "replay_identity": verdict["replay_identity"],
           }
           json.dump(body, open("verdict.json", "w"))
           print(json.dumps(body, indent=2))

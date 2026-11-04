@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol, TypeGuard, runtime_checkable
 
-from orchestra.canon.project_config import ProjectConfig
+from orchestra.canon.extensions import (
+    PluginRegistration,
+    compute_execution_identity,
+    resolve_plugin,
+    validate_plugin_config,
+)
+from orchestra.canon.project_config import ProjectConfig, load_project_config_at_revision
 from orchestra.canon.types import JsonObject
 
 Verdict = Literal["pass", "fail", "error", "skip"]
@@ -49,7 +55,7 @@ class VerificationTechnique(Protocol):
     def validate_result(self, result: TechniqueResult) -> None: ...
 
 
-class ClaimReplayTechnique(Protocol):
+class ClaimReplayTechnique(VerificationTechnique, Protocol):
     def replay(self, request: ReplayRequest) -> Mapping[str, TestOutcome]: ...
 
 
@@ -90,21 +96,69 @@ def replay_at_revision(
     revision: str,
     test_ids: tuple[str, ...],
     runner: tuple[str, ...],
+    *,
+    trusted_config_revision: str | None = None,
+    plugin_id: str | None = None,
+    expected_identity: JsonObject | None = None,
 ) -> dict[str, TestOutcome]:
-    from orchestra.canon.extensions import resolve_plugin
-    from orchestra.canon.project_config import load_project_config_at_revision
-
-    config = load_project_config_at_revision(root, revision)
-    plugin_id = config.replay_technique
-    registration = resolve_plugin("tuner.verify", plugin_id)
-    factory = registration.load()
-    if not callable(factory):
-        raise TechniqueContractError(f"verification plugin {plugin_id!r} is not constructible")
-    plugin = factory()
+    config_revision = trusted_config_revision or revision
+    config, selected_plugin_id, registration, plugin = _load_replay_technique(
+        root, config_revision, plugin_id
+    )
+    definition = plugin.execution_definition(config)
+    identity = compute_execution_identity(
+        registration.descriptor,
+        config.verify_config.get(selected_plugin_id, {}),
+        definition,
+    ).payload
+    if expected_identity is not None and identity != expected_identity:
+        raise TechniqueContractError("replay technique identity differs from trusted config")
     return run_claim_replay(
         plugin,
         ReplayRequest(root=Path(root), revision=revision, test_ids=test_ids, runner=runner),
     )
+
+
+def replay_identity_at_revision(
+    root: Path | str,
+    revision: str,
+) -> tuple[str, JsonObject]:
+    config, plugin_id, registration, plugin = _load_replay_technique(root, revision, None)
+    identity = compute_execution_identity(
+        registration.descriptor,
+        config.verify_config.get(plugin_id, {}),
+        plugin.execution_definition(config),
+    )
+    return plugin_id, identity.payload
+
+
+def _load_replay_technique(
+    root: Path | str,
+    revision: str,
+    plugin_id: str | None,
+) -> tuple[ProjectConfig, str, PluginRegistration, ClaimReplayTechnique]:
+    config = load_project_config_at_revision(root, revision)
+    selected_plugin_id = plugin_id or config.replay_technique
+    registration = resolve_plugin("tuner.verify", selected_plugin_id)
+    factory = registration.load()
+    if not callable(factory):
+        raise TechniqueContractError(
+            f"verification plugin {selected_plugin_id!r} is not constructible"
+        )
+    technique = factory()
+    if not isinstance(technique, VerificationTechnique):
+        raise TechniqueContractError(
+            f"verification plugin {selected_plugin_id!r} has an invalid technique contract"
+        )
+    validate_plugin_config(
+        selected_plugin_id,
+        registration.descriptor.config_shape,
+        config.verify_config.get(selected_plugin_id, {}),
+    )
+    technique.validate_config(config)
+    if not _supports_claim_replay(technique):
+        raise TechniqueContractError("claim replay requires a replay-capable technique")
+    return config, selected_plugin_id, registration, technique
 
 
 def _supports_claim_replay(technique: object) -> TypeGuard[ClaimReplayTechnique]:

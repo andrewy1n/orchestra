@@ -8,12 +8,17 @@ import orchestra.canon.extensions as extensions
 
 
 def _entry_point(name: str, target: str, distribution: str) -> SimpleNamespace:
+    metadata_entries = (
+        SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name=name, value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
+    )
     return SimpleNamespace(
         name=name,
         value=target,
         dist=SimpleNamespace(
-            metadata={"Name": distribution, "Orchestra-Plugin-API": "1"},
+            metadata={"Name": distribution},
             version="1.2.3",
+            entry_points=metadata_entries,
         ),
         load=lambda: target,
     )
@@ -86,3 +91,49 @@ def test_resolve_loads_only_the_selected_plugin(monkeypatch: pytest.MonkeyPatch)
     assert registration.descriptor.distribution == "two"
     assert registration.load() is None
     assert loaded == ["second"]
+
+
+def test_resolve_rejects_unsupported_api_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
+    plugin.dist.entry_points = (
+        SimpleNamespace(name="v2", value="plugin:Plugin", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="plugin", value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
+    )
+    _install_entries(monkeypatch, {"orchestra.tuner.verify": (plugin,)})
+
+    with pytest.raises(extensions.PluginCatalogError, match="unsupported API version '2'"):
+        extensions.resolve_plugin("tuner.verify", "plugin")
+
+
+def test_resolve_requires_an_api_version_marker(monkeypatch: pytest.MonkeyPatch) -> None:
+    plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
+    plugin.dist.entry_points = (
+        SimpleNamespace(name="plugin", value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
+    )
+    _install_entries(monkeypatch, {"orchestra.tuner.verify": (plugin,)})
+
+    with pytest.raises(extensions.PluginCatalogError, match=r"must declare orchestra\.plugin_api"):
+        extensions.resolve_plugin("tuner.verify", "plugin")
+
+
+def test_plugin_config_shape_checks_required_fields_and_types(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
+    plugin.dist.entry_points = (
+        SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(
+            name="plugin",
+            value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',
+            group=extensions.PLUGIN_CONFIG_GROUP,
+        ),
+    )
+    _install_entries(monkeypatch, {"orchestra.tuner.verify": (plugin,)})
+    shape = extensions.resolve_plugin("tuner.verify", "plugin").descriptor.config_shape
+
+    with pytest.raises(extensions.PluginCatalogError, match="missing required fields: mode"):
+        extensions.validate_plugin_config("plugin", shape, {})
+    with pytest.raises(extensions.PluginCatalogError, match="invalid type"):
+        extensions.validate_plugin_config("plugin", shape, {"mode": True})
+    with pytest.raises(extensions.PluginCatalogError, match="unknown fields: extra"):
+        extensions.validate_plugin_config("plugin", shape, {"mode": "safe", "extra": "x"})
