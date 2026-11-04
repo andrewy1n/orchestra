@@ -390,6 +390,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the resolved root, store, and binding as JSON",
     )
+    recover = store_sub.add_parser(
+        "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
+    )
+    recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
+    recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
     store_run = store_sub.add_parser(
         "run",
         help="Run a library read or write against the opened store",
@@ -1057,6 +1062,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "land":
         return _cmd_land(args)
     if args.command == "store":
+        if args.action == "recover-evidence":
+            from orchestra.canon.validation import ValidationError
+            from orchestra.conductor.evidence_recovery import recover_evidence
+
+            try:
+                report = recover_evidence(open_store(_cwd(args)), apply=args.apply)
+            except (OSError, StoreBindingError, StoreError, ValidationError) as exc:
+                print(f"orchestra store recover-evidence: {exc}", file=sys.stderr)
+                return 2
+            _print_json(report)
+            return 1 if report["fresh_proof_required"] else 0
         if args.action == "path":
             return _cmd_store_path(args)
         if args.action == "run":

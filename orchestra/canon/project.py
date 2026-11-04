@@ -232,6 +232,15 @@ class Project:
             results.append(result)
         return results
 
+    def apply_at_snapshot(self, operations: Iterable[JsonObject], change_token: str) -> None:
+        """Apply a batch atomically only if its source snapshot is still current."""
+        store, schemas = self._session()
+        with store.transaction():
+            if store.change_token() != change_token:
+                raise StaleWriteError("store changed since the snapshot")
+            for operation in operations:
+                _apply_operation(store, schemas, operation)
+
     def _session(self) -> tuple[Backend, SchemaSet]:
         store = open_backend(self.store_path)
         config = store.load_config()

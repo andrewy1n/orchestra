@@ -6,6 +6,7 @@ from conftest import make_task
 from orchestra.canon.backend import open_backend
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, open_store
+from orchestra.canon.types import JsonObject
 from orchestra.canon.validation import ValidationError
 
 
@@ -106,6 +107,24 @@ def test_apply_numbers_results_by_operation(project):
     assert [r["line"] for r in results] == [1, 2, 3, 4]
     assert [r["ok"] for r in results] == [True, False, False, False]
     assert [r.get("error") for r in results] == [None, "validation", "store", "not_found"]
+
+
+def test_snapshot_apply_refuses_concurrent_change(project: Project) -> None:
+    token = project.change_token()
+    make_task(project, "concurrent")
+    with pytest.raises(StaleWriteError):
+        project.apply_at_snapshot([], token)
+
+
+def test_snapshot_apply_rolls_back_partial_writes(project: Project) -> None:
+    token = project.change_token()
+    operations: list[JsonObject] = [
+        {"op": "create", "type": "alpha:task", "subject": "a", "payload": {"title": "a"}},
+        {"op": "create", "type": "alpha:task", "subject": "b", "payload": {}},
+    ]
+    with pytest.raises(ValidationError):
+        project.apply_at_snapshot(operations, token)
+    assert project.change_token() == token
 
 
 def test_supersede_failure_leaves_the_original_untouched(project):
