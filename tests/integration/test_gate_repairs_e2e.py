@@ -204,6 +204,12 @@ def test_land_refuses_while_a_needs_human_finding_is_open_then_merges(world: Wor
         "--expected-revision",
         finding["revision"],
     )
+    worktree = code / ".worktrees" / PHASE
+    metadata = worktree / ".canon" / "note.json"
+    metadata.parent.mkdir(exist_ok=True)
+    metadata.write_text("{}\n")
+    git(worktree, "add", "-A", "--", ".canon")
+    git(worktree, "commit", "-qm", "chore(canon): record metadata")
     merged = world.run("orchestra", "land", PHASE, "--store", store)
     assert merged.returncode == 0, merged.stdout + merged.stderr
     assert (code / "landed.txt").read_text() == "landed\n"

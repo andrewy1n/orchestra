@@ -1,9 +1,11 @@
 """Phase gate terms and the Landing merge step behind `orchestra gate` and `orchestra land`.
 
-Phase head is the HEAD of the Landing worktree when the phase body names a
-`Worktree` (or `<Repo>/.worktrees/<phase>` exists) and git resolves it. Without
-a worktree, phase head is the revision of the latest review check-run for the
-phase. With neither, no term bound to the phase head can hold.
+The gate binds to the reviewed revision: the revision of the latest review
+check-run for the phase. Terms bound to the head compare against it. When the
+Landing worktree exists (the phase body names a `Worktree`, or
+`<Repo>/.worktrees/<phase>` exists), its HEAD must equal or descend from the
+reviewed revision, and the commits after it may touch only `.canon/`. With no
+review check-run, no term bound to the head can hold.
 
 Each term is one line of the "Phase gate" list in execute-phase's phase-end.md.
 """
@@ -18,11 +20,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.project import open_store
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.query import order_by_recorded_at
+from orchestra.canon.types import Record
 from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import RUNNER, git_head
 
 INACTIVE_FINDING_STATES = frozenset({"refuted", "retracted"})
+METADATA_DIR = ".canon/"
+MERGE_FAILED = 3
 LIVE_WORK_ITEM_STATES = frozenset({"planned", "in_progress", "done"})
 
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
@@ -81,28 +86,46 @@ def parse_landing(body: str) -> LandingSpec:
     )
 
 
-def landing_repo(store: Path, landing: LandingSpec) -> Path:
-    if not landing.repo:
-        return store
-    path = Path(landing.repo).expanduser()
+def _resolve_path(store: Path, value: str) -> Path:
+    path = Path(value).expanduser()
     return path if path.is_absolute() else store / path
 
 
-def _worktree_head(store: Path, phase_slug: str, landing: LandingSpec) -> str:
+def landing_repo(store: Path, landing: LandingSpec) -> Path:
+    if not landing.repo:
+        return store
+    return _resolve_path(store, landing.repo)
+
+
+def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path:
     if landing.worktree:
-        worktree = Path(landing.worktree).expanduser()
-    else:
-        worktree = landing_repo(store, landing) / ".worktrees" / phase_slug
-    if not worktree.is_dir():
-        return ""
+        return _resolve_path(store, landing.worktree)
+    return landing_repo(store, landing) / ".worktrees" / phase_slug
+
+
+def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+
+
+def _descent_term(worktree: Path, reviewed: str) -> Term:
+    name = "head-descends-from-review"
+    if not reviewed:
+        return Term(name, False, "no review check-run")
     try:
-        return git_head(worktree)
-    except (OSError, RuntimeError):
-        return ""
-
-
-def _payload(record: Record) -> JsonObject:
-    return record["payload"]
+        head = git_head(worktree)
+    except (OSError, RuntimeError) as exc:
+        return Term(name, False, f"cannot resolve the worktree HEAD: {exc}")
+    ancestry = _git(worktree, "merge-base", "--is-ancestor", reviewed, head)
+    if ancestry.returncode != 0:
+        return Term(name, False, f"worktree HEAD {head} does not descend from {reviewed}")
+    diff = _git(worktree, "diff", "--name-only", "--no-renames", "-z", f"{reviewed}..{head}")
+    if diff.returncode != 0:
+        return Term(name, False, f"git diff {reviewed}..{head} failed")
+    changed = [path for path in diff.stdout.split("\0") if path]
+    other = [path for path in changed if not path.startswith(METADATA_DIR)]
+    if other:
+        return Term(name, False, f"paths changed after review outside .canon/: {', '.join(other)}")
+    return Term(name, True)
 
 
 def _str(record: Record, key: str) -> str:
@@ -111,12 +134,19 @@ def _str(record: Record, key: str) -> str:
 
 
 def _chronological(records: Sequence[Record]) -> list[Record]:
-    return sorted(records, key=lambda r: (r.get("recorded_at", ""), r["id"]))
+    return order_by_recorded_at(list(records))
 
 
 def _latest(records: Sequence[Record]) -> Record | None:
     ordered = _chronological(records)
     return ordered[-1] if ordered else None
+
+
+def _corrected_ids(records: Sequence[Record]) -> set[str]:
+    corrected: set[str] = set()
+    for record in records:
+        corrected.update((record.get("relationships") or {}).get("corrects") or [])
+    return corrected
 
 
 def _depends_on(record: Record) -> set[str]:
@@ -128,13 +158,11 @@ def _depends_on(record: Record) -> set[str]:
 
 def _verification_items(items: Sequence[Record]) -> list[Record]:
     live = [item for item in items if item["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
-    named = [item for item in live if item["subject"].startswith("verify")]
-    if named:
-        return named
     found: list[Record] = []
     for item in live:
-        others = {other["subject"] for other in live if other["id"] != item["id"]}
-        if others and others <= _depends_on(item):
+        others = [other for other in live if other["id"] != item["id"]]
+        deps = _depends_on(item)
+        if others and all(o["subject"] in deps or o["id"] in deps for o in others):
             found.append(item)
     return found
 
@@ -213,13 +241,12 @@ def gate_terms(store: Path, phase_slug: str) -> list[Term]:
         for r in of_type("score:acceptance")
         if _str(r, "phase") == phase_slug and r["lifecycle_state"] == "active"
     ]
-    runs = of_type("tuner:check-run")
+    corrected = _corrected_ids(records)
+    runs = [r for r in of_type("tuner:check-run") if r["id"] not in corrected]
     review_runs = [r for r in runs if _is_review_run(r, phase_slug, effort)]
 
-    head = _worktree_head(store, phase_slug, landing)
-    if not head:
-        latest_review = _latest(review_runs)
-        head = _str(latest_review, "revision") if latest_review else ""
+    latest_review = _latest(review_runs)
+    head = _str(latest_review, "revision") if latest_review else ""
 
     terms: list[Term] = []
 
@@ -253,9 +280,7 @@ def gate_terms(store: Path, phase_slug: str) -> list[Term]:
                 )
             )
 
-    review_ok = reviewer.phase_review_gate_holds(
-        check_runs=[_payload(r) for r in review_runs], phase_head=head
-    )
+    review_ok = latest_review is not None and _str(latest_review, "result") == "pass"
     terms.append(
         Term(
             "review-at-head",
@@ -263,6 +288,10 @@ def gate_terms(store: Path, phase_slug: str) -> list[Term]:
             "" if review_ok else f"no passing review check-run at {head or 'unknown head'}",
         )
     )
+
+    worktree = landing_worktree(store, phase_slug, landing)
+    if worktree.is_dir():
+        terms.append(_descent_term(worktree, head))
 
     policy = suite.load_suite_policy(store)
     if policy.gate == "required" and policy.mode not in ("none", ""):
@@ -327,7 +356,8 @@ def land(store: Path, phase_slug: str) -> int:
     """Run the gate, then the Landing `merge:` command in the Landing repo.
 
     Returns 1 when the gate fails (nothing runs), 2 when the phase is unknown,
-    names no `merge:` line, or its repo is missing, else the merge exit code.
+    names no `merge:` line, or its repo is missing, 3 when the merge command
+    exits non-zero, else 0.
     """
     try:
         terms = gate_terms(store, phase_slug)
@@ -347,4 +377,8 @@ def land(store: Path, phase_slug: str) -> int:
     if not repo.is_dir():
         print(f"orchestra land: {phase_slug}: Landing repo {repo} is missing", file=sys.stderr)
         return 2
-    return run_merge(landing.merge, repo)
+    code = run_merge(landing.merge, repo)
+    if code != 0:
+        print(f"orchestra land: {phase_slug}: merge command exited {code}", file=sys.stderr)
+        return MERGE_FAILED
+    return 0

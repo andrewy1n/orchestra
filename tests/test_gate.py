@@ -14,6 +14,7 @@ import helpers as h
 import pytest
 from conftest import REPO_ROOT, git, make_git_repo
 
+from orchestra.canon.types import Record
 from orchestra.conductor import gate
 
 PHASE = "gate-phase"
@@ -445,6 +446,154 @@ def test_gate_needs_human_finding_ignores_other_efforts(phase: Phase) -> None:
     assert _orchestra(phase.store, "gate", PHASE).returncode == 0
 
 
+def _worktree_phase(store: Path, cli: Cli, *landing_lines: str) -> tuple[Phase, Path, str]:
+    phase = seed(
+        store,
+        cli,
+        review=False,
+        runner_check=False,
+        landing_lines=landing_lines or (f"- merge: `{MERGE}`",),
+    )
+    worktree = phase.repo / ".worktrees" / PHASE
+    git(phase.repo, "worktree", "add", "-q", str(worktree), "phase/x")
+    head = git(worktree, "rev-parse", "HEAD").stdout.strip()
+    phase.check_run(revision=head)
+    phase.review(revision=head)
+    return phase, worktree, head
+
+
+def _commit(worktree: Path, relative: str) -> None:
+    path = worktree / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("changed\n")
+    git(worktree, "add", "-A", "--", ".")
+    git(worktree, "commit", "-qm", f"touch {relative}")
+
+
+def test_canon_only_commit_after_review_lands(store: Path, cli: Cli) -> None:
+    phase, worktree, _ = _worktree_phase(store, cli)
+    _commit(worktree, ".canon/config.json")
+    assert phase.missing() == []
+    result = _orchestra(store, "land", PHASE)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (phase.repo / "landed.txt").exists()
+
+
+def test_code_commit_after_review_refuses(store: Path, cli: Cli) -> None:
+    phase, worktree, _ = _worktree_phase(store, cli)
+    _commit(worktree, "src/new.py")
+    _commit(worktree, ".canon/config.json")
+    assert phase.missing() == ["head-descends-from-review"]
+    assert "src/new.py" in phase.term("head-descends-from-review").detail
+    result = _orchestra(store, "land", PHASE)
+    assert result.returncode == 1
+    assert "head-descends-from-review" in result.stderr
+    assert "src/new.py" in result.stderr
+    assert not (phase.repo / "landed.txt").exists()
+
+
+def test_head_that_does_not_descend_from_review_refuses(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, review=False, runner_check=False)
+    worktree = phase.repo / ".worktrees" / PHASE
+    git(phase.repo, "worktree", "add", "-q", str(worktree), "phase/x")
+    git(phase.repo, "checkout", "-q", "--detach", "main")
+    git(phase.repo, "commit", "--allow-empty", "-qm", "side")
+    side = git(phase.repo, "rev-parse", "HEAD").stdout.strip()
+    git(phase.repo, "checkout", "-q", "main")
+    phase.review(revision=side)
+    assert "does not descend" in phase.term("head-descends-from-review").detail
+    assert not phase.term("head-descends-from-review").holds
+
+
+def test_no_worktree_adds_no_descent_term(phase: Phase) -> None:
+    names = [t.name for t in gate.gate_terms(phase.store, PHASE)]
+    assert "head-descends-from-review" not in names
+
+
+def test_latest_check_run_stable_and_skips_corrected(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, method="manual", runner_check=False)
+    unsigned = phase.check_run(method="manual", runner=False, signed_by="")
+    assert phase.missing() == [f"manual-check-signed:{PHASE}-ac"]
+    result = phase.cli(
+        "correct",
+        "--type",
+        "tuner:check-run",
+        "--id",
+        unsigned["id"],
+        "--payload",
+        json.dumps({"signed_by": "me"}),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert phase.missing() == []
+
+
+def test_latest_check_run_keeps_store_order_on_equal_timestamps() -> None:
+    def run(record_id: str, result: str) -> Record:
+        return {
+            "id": record_id,
+            "record_type": "tuner:check-run",
+            "subject": "s",
+            "lifecycle_state": "active",
+            "relationships": {},
+            "revision": "r",
+            "recorded_at": "2026-11-01T00:00:00Z",
+            "payload": {"result": result},
+        }
+
+    runs = [run("z", "fail"), run("a", "pass")]
+    latest = gate._latest(runs)
+    assert latest is not None
+    assert latest["id"] == "a"
+
+
+def test_verification_task_needs_depends_on(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, verification="absent")
+    item = {"phase": PHASE, "kind": "deliver", "assignee": "agent", "effort": EFFORT}
+    named = phase.create(
+        "score:work-item", f"verify-{PHASE}", {"title": "verify", **item}, "## Description\n\nd"
+    )
+    phase.advance(named, "in_progress", "done")
+    assert phase.term("verification-task-done").detail == "no verification task"
+    closing = phase.create(
+        "score:work-item",
+        f"{PHASE}-closing",
+        {"title": "close", "depends_on": [f"{PHASE}-impl", f"verify-{PHASE}"], **item},
+        "## Description\n\nd",
+    )
+    assert phase.term("verification-task-done").detail == "verification task is not done"
+    phase.advance(closing, "in_progress", "done")
+    assert phase.term("verification-task-done").holds
+
+
+def test_relative_worktree_resolves_like_repo(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, review=False, runner_check=False)
+    worktree = phase.repo.parent / f"{phase.repo.name}-linked"
+    git(phase.repo, "worktree", "add", "-q", str(worktree), "phase/x")
+    head = git(worktree, "rev-parse", "HEAD").stdout.strip()
+    phase.check_run(revision=head)
+    phase.review(revision=head)
+    relative = os.path.relpath(worktree, store)
+    body = _landing(phase.repo, f"- Worktree: `{relative}`", f"- merge: `{MERGE}`")
+    record = next(
+        r for r in json.loads(phase.cli("list", "--type", "score:phase").stdout)["records"]
+    )
+    result = phase.cli(
+        "update",
+        "--type",
+        "score:phase",
+        "--id",
+        record["id"],
+        "--body",
+        body,
+        "--expected-revision",
+        record["revision"],
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert phase.term("head-descends-from-review").holds
+    _commit(worktree, "src/new.py")
+    assert not phase.term("head-descends-from-review").holds
+
+
 def test_land_runs_merge_after_gate_holds(phase: Phase) -> None:
     result = _orchestra(phase.store, "land", PHASE)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -452,11 +601,12 @@ def test_land_runs_merge_after_gate_holds(phase: Phase) -> None:
     assert "phase work" in git(phase.repo, "log", "-1", "--format=%s", "main").stdout
 
 
-def test_land_runs_merge_after_gate_and_exits_with_its_code(store: Path, cli: Cli) -> None:
+def test_merge_failure_exits_3(store: Path, cli: Cli) -> None:
     seed(store, cli, landing_lines=("- merge: `echo merging; exit 7`",))
     result = _orchestra(store, "land", PHASE)
-    assert result.returncode == 7
+    assert result.returncode == 3
     assert "merging" in result.stdout
+    assert "exited 7" in result.stderr
 
 
 def test_land_runs_merge_in_the_landing_repo(store: Path, cli: Cli) -> None:

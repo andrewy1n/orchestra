@@ -402,8 +402,10 @@ canon create --type score:continuity-question \
    <phase-slug>` to integrate it. Land runs `orchestra gate` first and
    merges only when the gate holds. The Landing section names the
    repo's `merge: <command>` line and an optional `suite: <command>`
-   line. Exit 2 means the Landing section names no `merge:` line.
-   Stop and ask. Ask the user before you run land, unless an active
+   line. Exit 1 means the gate failed and nothing merged. Exit 2 means
+   the Landing section names no `merge:` line, the phase is unknown, or
+   the Landing repo is missing. Exit 3 means the merge command failed.
+   On exit 1, 2 or 3, stop and ask. Ask the user before you run land, unless an active
    constraint authorizes the merge. Do not merge the phase branch by
    hand. Details are in phase-end.md.
 

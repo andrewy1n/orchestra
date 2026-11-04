@@ -236,7 +236,9 @@ versioned `.canon` metadata that is in the worktree. Then run
 Landing section names the repo's `merge: <command>` line and an
 optional `suite: <command>` line. Exit 0 means land merged. Exit 1
 means the gate failed and nothing merged. Exit 2 means the Landing
-section names no `merge:` line. On exit 1 or 2, stop and ask. Ask
+section names no `merge:` line, the phase is unknown, or the Landing
+repo is missing. Exit 3 means the merge command ran and failed; land
+prints its exit code. On exit 1, 2 or 3, stop and ask. Ask
 the user before you run land, unless an active constraint authorizes
 the merge. Do not carry out integration steps from a phase body's
 Landing section by hand: a merge into the default branch, a push, a
