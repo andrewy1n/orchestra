@@ -11,6 +11,7 @@ import pytest
 
 from orchestra.canon import extensions
 from orchestra.canon.project_config import DEFAULT_RUNNER, ProjectConfig
+from orchestra.canon.types import JsonObject, get_object, get_string
 from orchestra.tuner.audit import run_audit
 from orchestra.tuner.lint import find_new_skips
 from orchestra.tuner.technique import ReplayRequest, TechniqueResult, replay_at_revision
@@ -66,8 +67,16 @@ class UntrustedReplayPlugin:
         del result
 
     def replay(self, request: ReplayRequest) -> dict[str, str]:
-        self.calls += 1
+        UntrustedReplayPlugin.calls += 1
         return {test_id: "passed" for test_id in request.test_ids}
+
+
+def _replay_plugin_id(payload: JsonObject) -> str:
+    identity = get_object(payload, "replay_identity")
+    assert identity is not None, "verdict is missing replay_identity"
+    plugin_id = get_string(identity, "plugin_id")
+    assert plugin_id is not None, "replay_identity is missing plugin_id"
+    return plugin_id
 
 
 def _git(root: Path, *args: str) -> str:
@@ -164,7 +173,7 @@ def test_verdict_and_audit_replay_registered_plugin(
 
     assert verdict["result"] == "pass"
     assert verdict["claims"] == [{"id": CLAIM, "result": "pass"}]
-    assert verdict["replay_identity"]["plugin_id"] == "external-replay"
+    assert _replay_plugin_id(verdict) == "external-replay"
     assert audit["advisory"] is True
     assert any(behavior == "failure" for _, behavior in ReplayPlugin.calls)
     assert ReplayPlugin.calls.count(("HEAD", "pass")) >= 2
@@ -189,7 +198,7 @@ def test_verdict_uses_replay_technique_from_trusted_base(
     verdict = run_verdict(root, head, base, [CLAIM])
 
     assert verdict["result"] == "pass"
-    assert verdict["replay_identity"]["plugin_id"] == "external-replay"
+    assert _replay_plugin_id(verdict) == "external-replay"
     assert UntrustedReplayPlugin.calls == 0
 
 

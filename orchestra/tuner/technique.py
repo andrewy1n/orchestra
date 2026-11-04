@@ -47,19 +47,24 @@ class TechniqueResult:
 
 
 @runtime_checkable
-class VerificationTechnique(Protocol):
+class TechniqueResultValidator(Protocol):
+    def validate_result(self, result: TechniqueResult) -> None: ...
+
+
+@runtime_checkable
+class VerificationTechnique(TechniqueResultValidator, Protocol):
     def validate_config(self, config: ProjectConfig) -> None: ...
 
     def execution_definition(self, config: ProjectConfig) -> JsonObject: ...
-
-    def validate_result(self, result: TechniqueResult) -> None: ...
 
 
 class ClaimReplayTechnique(VerificationTechnique, Protocol):
     def replay(self, request: ReplayRequest) -> Mapping[str, TestOutcome]: ...
 
 
-def validate_technique_result(technique: VerificationTechnique, result: object) -> TechniqueResult:
+def validate_technique_result(
+    technique: TechniqueResultValidator, result: object
+) -> TechniqueResult:
     if not isinstance(result, TechniqueResult):
         raise TechniqueContractError("technique result must use TechniqueResult")
     if result.verdict not in ("pass", "fail", "error", "skip"):

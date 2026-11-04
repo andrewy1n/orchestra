@@ -52,7 +52,13 @@ def test_technique_owns_output_validation() -> None:
 
 def test_shared_contract_rejects_non_structured_output() -> None:
     with pytest.raises(TechniqueContractError, match="structured JSON"):
-        validate_technique_result(ReplayTechnique(), TechniqueResult("pass", "text"))
+        validate_technique_result(ReplayTechnique(), _result_with_unchecked_output("text"))
+
+
+def _result_with_unchecked_output(output: object) -> TechniqueResult:
+    result = TechniqueResult("pass", {})
+    object.__setattr__(result, "output", output)
+    return result
 
 
 def test_replay_requires_explicit_capability() -> None:
