@@ -41,14 +41,14 @@ their response. They do not call `canon`.
   instead. Each ignore comment must name the checker rule and give a factual
   reason the diagnostic does not apply, using
   `# pyright: ignore[ruleName]`. Do not use or suggest mypy.
-- Type enforcement is staged by package. basedpyright checks
-  `orchestra/canon`, `orchestra/composer`, and `orchestra/store.py` in
-  strict mode, with explicit `Any` reported as an error in those roots.
-  Other included paths currently use standard mode; an explicit `Any`
-  outside the strict roots is not yet rejected by basedpyright.
-- Before closing a task, run `ruff check` with `uvx ruff@0.13.1 check .`
-  and `ruff format --check` with `uvx ruff@0.13.1 format --check .`.
-  Use `uvx ruff@0.13.1 format .` to apply formatting when needed.
+- basedpyright includes `orchestra`, `dashboard`, `installer`, `tests`, and
+  `scripts`. It checks `orchestra`, `dashboard`, and `installer` in strict
+  mode. `tests` and `scripts` use standard mode. `reportExplicitAny` is
+  `error` on every included path.
+- Before closing a task, run `uv run basedpyright`, `ruff check` with
+  `uvx ruff@0.13.1 check .`, and `ruff format --check` with
+  `uvx ruff@0.13.1 format --check .`. Use `uvx ruff@0.13.1 format .` to
+  apply formatting when needed.
 - After `ruff --fix`, a bulk replace, or a rename script, review
   `git diff --stat` and the removed lines. Grep for the old name inside
   strings, f-strings, module paths and entry points. Run the affected
