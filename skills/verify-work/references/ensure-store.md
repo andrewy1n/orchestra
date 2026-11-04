@@ -2,7 +2,9 @@
 
 This plugin is installed once. Do **not** copy skills, rules, or this
 repo into the work project. Store selection comes from the versioned
-`.canon/config.json` and `.canon/store-binding.json`. In this repository,
+`.canon/store-binding.json`; `.canon/config.json` contains store mechanics.
+Project verification and landing policy comes from the root `orchestra.toml`.
+In this repository,
 records live in the shared SQLite database outside the worktree. Planning
 commands opened from any worktree use that same database.
 
@@ -94,17 +96,21 @@ canon schemas sync
 `canon` validates against the schema snapshots in
 `.canon/schemas/`, not against the installed tools.
 
-## Phase gate
+## Project policy
 
-The phase suite policy lives in `.canon/config.json` under
-`settings.conductor.phase_gate`:
+The root `orchestra.toml` is required for project policy. Its `[suite]`
+section controls the phase suite:
 
-```json
-{"settings": {"conductor": {"phase_gate": {"suite": {"mode": "none", "command": "", "gate": "required"}}}}}
+```toml
+[suite]
+mode = "none"
+command = ""
+gate = "required"
 ```
 
-Read it with `orchestra suite policy`. Do not waive it. A human
-changes it in `config.json`.
+Read it with `orchestra suite policy`. Do not waive it. A human changes
+`[suite]` in `orchestra.toml`. Keep `.canon/config.json` for store format,
+schema versions, backend, and related store mechanics.
 
 ## Store records and commits
 

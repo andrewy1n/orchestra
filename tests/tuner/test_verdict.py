@@ -57,7 +57,6 @@ def _manifest(
     oracle: bytes,
     amendments: list | None = None,
     digest: str | None = None,
-    runner: list[str] | None = None,
     support_files: list[str] | None = None,
     claim_support_files: list[str] | None = None,
 ) -> dict:
@@ -73,8 +72,6 @@ def _manifest(
         "claims": [claim],
         "amendments": list(amendments or []),
     }
-    if runner is not None:
-        document["runner"] = list(runner)
     if support_files is not None:
         document["support_files"] = list(support_files)
     return document
@@ -87,8 +84,22 @@ def _write_tree(
     app: bytes,
     allowlist: bytes,
     manifest: dict,
+    runner: list[str] | None = None,
     extra: dict[str, bytes] | None = None,
 ) -> None:
+    configured_runner = runner or [
+        "python3",
+        "-m",
+        "pytest",
+        "-o",
+        "junit_family=xunit1",
+        "{tests}",
+        "--junitxml={report}",
+    ]
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(configured_runner)}\n"
+    )
     tuner = root / ".tuner"
     tuner.mkdir(exist_ok=True)
     (tuner / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -143,10 +154,10 @@ def _repo(
             base_oracle,
             base_amendments,
             base_digest,
-            base_runner,
             support_files=base_support_files,
             claim_support_files=base_claim_support_files,
         ),
+        runner=base_runner,
         extra=base_extra,
     )
     base = _commit(root, "red")
@@ -161,10 +172,10 @@ def _repo(
             head_oracle,
             head_amendments,
             head_digest,
-            head_runner,
             support_files=head_support_files,
             claim_support_files=head_claim_support_files,
         ),
+        runner=head_runner,
         extra=head_extra,
     )
     head = _commit(root, "green")
@@ -277,7 +288,9 @@ def test_verdict_pass_when_hashes_match_and_red_then_green(tmp_path: Path) -> No
     proc = _run(root, head, None)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     payload = _payload(proc)
-    assert payload == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"
 
 
 def test_verdict_refuses_hash_mismatch(tmp_path: Path) -> None:
@@ -375,7 +388,8 @@ def test_verdict_accepts_signed_amendment(tmp_path: Path) -> None:
     )
     proc = _run(root, head, base)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert _payload(proc)["result"] == "pass"
+    assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
 
 
 def test_verdict_refuses_head_failure(tmp_path: Path) -> None:
@@ -510,7 +524,8 @@ def test_verdict_cwd_phase_worktree(tmp_path: Path) -> None:
     try:
         proc = _run(primary, head, base, process_cwd=elsewhere, flag_cwd=phase)
         assert proc.returncode == 0, proc.stdout + proc.stderr
-        assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+        assert _payload(proc)["result"] == "pass"
+        assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
     finally:
         subprocess.run(
             ["git", "-C", str(primary), "worktree", "remove", "--force", str(phase)],
@@ -676,7 +691,8 @@ def test_verdict_fixture_junit_pass(tmp_path: Path) -> None:
     )
     proc = _run(root, head, _base)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {"result": "pass", "claims": [{"id": CLAIM, "result": "pass"}]}
+    assert _payload(proc)["result"] == "pass"
+    assert _payload(proc)["claims"] == [{"id": CLAIM, "result": "pass"}]
 
 
 def test_verdict_fixture_junit_error(tmp_path: Path) -> None:

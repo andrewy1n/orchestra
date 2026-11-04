@@ -104,7 +104,11 @@ def test_create_examples_match_atomic_thin_shape():
     written = {inv["type"] for inv in extract_invocations(text) if inv["subcommand"] in WRITES}
     assert "conductor:assessment" not in written
     assert "conductor:integration-report" not in written
-    subjects = {re.search(r'--subject "([^"]+)"', inv["raw"]).group(1) for inv in acceptances}
+    subjects: set[str] = set()
+    for inv in acceptances:
+        match = re.search(r'--subject "([^"]+)"', inv["raw"])
+        assert match is not None
+        subjects.add(match.group(1))
     assert {"<task-slug>", "<task-slug>-perf"} <= subjects
 
 

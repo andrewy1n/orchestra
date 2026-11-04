@@ -15,7 +15,6 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -138,7 +137,9 @@ def _create(
     return json.loads(result.stdout)["record"]
 
 
-def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str, **extra: Any) -> dict:
+def _phase(
+    cli, defs, effort: str, subject: str, ordinal: int, *states: str, **extra: object
+) -> dict:
     record = _create(
         cli,
         defs,
@@ -149,7 +150,7 @@ def _phase(cli, defs, effort: str, subject: str, ordinal: int, *states: str, **e
     return h.transition(cli, "score:phase", record, *states) if states else record
 
 
-def _task(cli, defs, effort: str, subject: str, phase: str, **extra: Any) -> dict:
+def _task(cli, defs, effort: str, subject: str, phase: str, **extra: object) -> dict:
     return _create(
         cli,
         defs,
@@ -571,14 +572,14 @@ def _labels(cli) -> dict[str, str]:
     return labels
 
 
-def _build(root: Path, _cli, defs) -> dict[str, Any]:
+def _build(root: Path, _cli, defs) -> dict:
     cli = _stepped_cli(root)
     alpha = _seed_alpha(cli, defs)
     beta = _seed_beta(cli, defs)
     return {"alpha": alpha, "beta": beta, "labels": _labels(cli)}
 
 
-def _build_areas(root: Path, _cli, defs) -> dict[str, Any]:
+def _build_areas(root: Path, _cli, defs) -> dict:
     cli = _stepped_cli(root)
     _seed_areas(cli, defs)
     return {"labels": _labels(cli)}
@@ -600,7 +601,7 @@ def seeded(store, monkeypatch):
     return client, seed, store
 
 
-def _normalizer(seed: dict[str, Any], store: Path) -> Callable[[Any], Any]:
+def _normalizer(seed: dict, store: Path) -> Callable[[object], object]:
     labels: dict[str, str] = seed["labels"]
     store_text = str(store)
 
@@ -612,7 +613,7 @@ def _normalizer(seed: dict[str, Any], store: Path) -> Callable[[Any], Any]:
         value = REVISION.sub(lambda m: f"<{labels.get(m.group(0), 'unknown-revision')}>", value)
         return TIMESTAMP.sub("<timestamp>", value)
 
-    def walk(value: Any) -> Any:
+    def walk(value):
         if isinstance(value, dict):
             return {text(str(key)): walk(item) for key, item in value.items()}
         if isinstance(value, list):
@@ -624,23 +625,21 @@ def _normalizer(seed: dict[str, Any], store: Path) -> Callable[[Any], Any]:
     return walk
 
 
-def _by_label(seed: dict[str, Any], label: str) -> str:
+def _by_label(seed: dict, label: str) -> str:
     matches = [key for key, value in seed["labels"].items() if value == label]
     assert len(matches) == 1, (label, matches)
     return matches[0]
 
 
-def _record_id(seed: dict[str, Any], record_type: str, subject: str) -> str:
+def _record_id(seed: dict, record_type: str, subject: str) -> str:
     return _by_label(seed, f"{record_type}:{subject}")
 
 
-def _revision(seed: dict[str, Any], record_type: str, subject: str) -> str:
+def _revision(seed: dict, record_type: str, subject: str) -> str:
     return _by_label(seed, f"rev:{record_type}:{subject}")
 
 
-def _get(
-    path: str, **params: Any
-) -> Callable[[dict[str, Any]], tuple[str, str, dict[str, Any], dict | None]]:
+def _get(path: str, **params: object) -> Callable[[dict], tuple[str, str, dict, dict | None]]:
     def build(seed):
         resolved = {key: value(seed) if callable(value) else value for key, value in params.items()}
         return "GET", path, resolved, None
@@ -648,7 +647,7 @@ def _get(
     return build
 
 
-def _needs_body(record_type: str, subject: str, action: str, **extra: Any):
+def _needs_body(record_type: str, subject: str, action: str, **extra: object):
     def build(seed):
         body = {
             "id": _record_id(seed, record_type, subject),
@@ -685,7 +684,7 @@ def _beta(key: str):
     return lambda seed: seed["beta"][key]
 
 
-CASES: dict[str, Callable[[dict[str, Any]], tuple[str, str, dict[str, Any], dict | None]]] = {
+CASES: dict[str, Callable[[dict], tuple[str, str, dict, dict | None]]] = {
     "token": _get("/api/token"),
     "snapshot": _get("/api/snapshot"),
     "phase-rich": _get("/api/phase", effort="alpha", phase="p-work"),
@@ -754,7 +753,7 @@ def _fixture_path(name: str) -> Path:
     return FIXTURES / f"{name}.json"
 
 
-def _render(value: Any) -> str:
+def _render(value: object) -> str:
     return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 

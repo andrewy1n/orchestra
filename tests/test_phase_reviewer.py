@@ -10,6 +10,8 @@ from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations
 
+from orchestra.canon.types import JsonValue
+
 sys.path.insert(0, str(REPO_ROOT))
 
 from orchestra.conductor.reviewer import (
@@ -27,6 +29,18 @@ from orchestra.conductor.reviewer import (
 )
 
 STATUS_TABS_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "status_tabs_spec_gap.json"
+
+
+def _finding_mapping(finding: object) -> dict[str, JsonValue]:
+    if not isinstance(finding, dict):
+        raise AssertionError("reviewer finding must be a mapping")
+    return {
+        key: value
+        for key, value in finding.items()
+        if isinstance(key, str)
+        and isinstance(value, (str, int, float, bool, type(None), list, dict))
+    }
+
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
@@ -164,6 +178,34 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
         assert f"### {kind}" not in lowered
 
 
+def test_reviewer_brief_can_filter_records_to_one_phase():
+    records = [
+        {
+            "record_type": "score:work-item",
+            "subject": "package-plugins-task",
+            "title": "Package plugin task",
+            "body": "PLUGIN_PHASE_MARKER",
+            "payload": {"phase": "package-plugins"},
+        },
+        {
+            "record_type": "score:work-item",
+            "subject": "other-task",
+            "title": "Other task",
+            "body": "OTHER_PHASE_MARKER",
+            "payload": {"phase": "other-phase"},
+        },
+    ]
+
+    brief = build_reviewer_brief(
+        records=records,
+        phase_diff="phase diff",
+        phase="package-plugins",
+    )
+
+    assert "PLUGIN_PHASE_MARKER" in brief
+    assert "OTHER_PHASE_MARKER" not in brief
+
+
 def test_execute_phase_invokes_reviewer_after_verification_before_merge():
     text = _skill_text()
     flat = _skill_flat()
@@ -231,7 +273,7 @@ def test_parent_write_review_check_run_and_findings():
     findings = parsed["findings"]
     assert len(findings) == 3
     routed = route_review_findings(
-        findings,
+        [_finding_mapping(finding) for finding in findings],
         fix_budget_remaining=3,
         reviewer_rerun_used=False,
     )
@@ -239,7 +281,7 @@ def test_parent_write_review_check_run_and_findings():
     for finding, create_fix in zip(findings, routed.create_fix_flags, strict=False):
         payloads.append(
             build_finding_payload(
-                finding,
+                _finding_mapping(finding),
                 effort="workflow-loop",
                 fix_task_created=create_fix,
             )
@@ -266,7 +308,7 @@ def test_fix_task_routing_for_fixable_needs_work():
 
     findings = parse_reviewer_output(SAMPLE_NEEDS_WORK)["findings"]
     routed = route_review_findings(
-        findings,
+        [_finding_mapping(finding) for finding in findings],
         fix_budget_remaining=2,
         reviewer_rerun_used=False,
     )
@@ -378,7 +420,15 @@ def test_phase_gate_requires_passing_review_check_at_head():
 
 def test_integration_report_body_from_reviewer_section():
     parsed = parse_reviewer_output(SAMPLE_NEEDS_WORK)
-    body = integration_report_body(parsed["integration"])
+    integration = parsed["integration"]
+    body = integration_report_body(
+        {
+            "interfaces": integration["interfaces"],
+            "assumptions": integration["assumptions"],
+            "invariants": integration["invariants"],
+            "conflicts": integration["conflicts"],
+        }
+    )
     assert "## Interfaces" in body
     assert "partial tab wiring" in body
     assert "## Assumptions" in body

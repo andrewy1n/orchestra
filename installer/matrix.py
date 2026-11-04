@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TypeAlias
 
 from installer.model import Provider
 
 MATRIX_PATH = Path(__file__).resolve().with_name("providers.json")
+JsonValue: TypeAlias = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 
 
 class MatrixError(ValueError):
@@ -18,12 +20,14 @@ def load_matrix(path: Path | None = None) -> tuple[Provider, ...]:
     """Read ``providers.json`` into immutable :class:`Provider` rows."""
     matrix_path = Path(path) if path is not None else MATRIX_PATH
     try:
-        document = json.loads(matrix_path.read_text(encoding="utf-8"))
+        document: JsonValue = json.loads(matrix_path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise MatrixError(f"cannot read provider matrix {matrix_path}: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise MatrixError(f"provider matrix {matrix_path} is not valid JSON: {exc}") from exc
 
+    if not isinstance(document, dict):
+        raise MatrixError(f"provider matrix {matrix_path} is not an object")
     if document.get("version") != 1:
         raise MatrixError(f"provider matrix {matrix_path} has unsupported version")
     rows = document.get("providers")

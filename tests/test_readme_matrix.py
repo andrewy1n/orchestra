@@ -46,6 +46,7 @@ DOCUMENTED_COMMANDS = (
     "install",
     "sessions",
     "review-brief",
+    "land",
     "suite",
     "store",
 )

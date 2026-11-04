@@ -413,6 +413,7 @@ def test_mutating_commands_are_refused_in_read_only_mode(cli, repo, project, mon
 def test_the_declared_mutating_commands_cover_every_writing_subcommand():
     parser = canon_cli.build_parser()
     sub = next(a for a in parser._actions if a.dest == "command")
+    assert sub.choices is not None
     commands = set(sub.choices)
     assert commands == {
         "init",

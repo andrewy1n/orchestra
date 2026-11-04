@@ -22,12 +22,32 @@ import copy
 import json
 from dataclasses import replace
 from pathlib import Path
+from typing import TypeGuard
 
 from installer.adapters import register_adapter
 from installer.adapters.base import BaseAdapter
 from installer.agents import generated_agent
 from installer.allowlist import IGNORE_NAMES, IGNORE_SUFFIXES, is_allowed
 from installer.model import Action, ApplyResult, Plan, RemoveResult, VerifyResult
+
+JsonObject = dict[str, object]
+
+
+def _is_json_object(value: object) -> TypeGuard[JsonObject]:
+    if not isinstance(value, dict):
+        return False
+    return all(
+        isinstance(key, str)
+        for key in value  # pyright: ignore[reportUnknownVariableType]  # Each decoded key is checked below.
+    )
+
+
+def _is_object_list(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
+
+
+def _as_object(value: object) -> JsonObject | None:
+    return value if _is_json_object(value) else None
 
 
 class NativeAdapter(BaseAdapter):
@@ -76,20 +96,20 @@ class ClaudeAdapter(NativeAdapter):
     for older installs; ``settings.json`` is the file Claude actually reads.
     """
 
-    def _fragment(self) -> dict:
+    def _fragment(self) -> JsonObject:
         """The hooks fragment the source payload declares, if any."""
         source = self.source_root / "hosts" / "claude" / "hooks" / "hooks.json"
         if not source.is_file():
             return {}
-        payload = json.loads(source.read_text(encoding="utf-8"))
-        if not isinstance(payload.get("hooks"), dict):
+        payload = _as_object(json.loads(source.read_text(encoding="utf-8")))
+        if payload is None or _as_object(payload.get("hooks")) is None:
             raise ValueError(f"{source} does not declare a hooks map")
         return payload
 
     def _settings_path(self) -> Path:
         return self.root / "settings.json"
 
-    def _read_settings(self) -> dict:
+    def _read_settings(self) -> JsonObject:
         path = self._settings_path()
         if path.is_symlink() and not path.exists():
             raise ValueError(f"{path} is a broken symlink")
@@ -101,57 +121,63 @@ class ClaudeAdapter(NativeAdapter):
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise ValueError(f"{path} is not valid JSON: {exc}") from exc
-        if not isinstance(payload, dict):
+        result = _as_object(payload)
+        if result is None:
             raise ValueError(f"{path} must contain a JSON object")
-        return payload
+        return result
 
-    def _write_settings(self, payload: dict) -> None:
+    def _write_settings(self, payload: JsonObject) -> None:
         path = self._settings_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     @staticmethod
-    def _groups(fragment: dict) -> list[tuple[str, list]]:
-        return [
-            (event, groups)
-            for event, groups in fragment.get("hooks", {}).items()
-            if isinstance(groups, list)
-        ]
+    def _groups(fragment: JsonObject) -> list[tuple[str, list[object]]]:
+        hooks = _as_object(fragment.get("hooks"))
+        if hooks is None:
+            return []
+        return [(event, value) for event, value in hooks.items() if _is_object_list(value)]
 
-    def _settings_have_fragment(self, settings: dict, fragment: dict) -> bool:
-        hooks = settings.get("hooks")
-        if not isinstance(hooks, dict):
+    def _settings_have_fragment(self, settings: JsonObject, fragment: JsonObject) -> bool:
+        hooks = _as_object(settings.get("hooks"))
+        if hooks is None:
             return False
         for event, groups in self._groups(fragment):
             existing = hooks.get(event)
-            if not isinstance(existing, list):
+            if not _is_object_list(existing):
                 return False
             if any(group not in existing for group in groups):
                 return False
         return True
 
-    def _merge_settings(self, settings: dict, fragment: dict) -> dict:
+    def _merge_settings(self, settings: JsonObject, fragment: JsonObject) -> JsonObject:
         merged = copy.deepcopy(settings)
         hooks = merged.setdefault("hooks", {})
-        if not isinstance(hooks, dict):
+        hooks_object = _as_object(hooks)
+        if hooks_object is None:
             raise ValueError("settings.json has a non-object hooks value")
+        merged["hooks"] = hooks_object
+        hooks = hooks_object
         for event, groups in self._groups(fragment):
             existing = hooks.setdefault(event, [])
-            if not isinstance(existing, list):
+            if not _is_object_list(existing):
                 raise ValueError(f"settings.json hooks.{event} is not a list")
             for group in groups:
                 if group not in existing:
                     existing.append(copy.deepcopy(group))
         return merged
 
-    def _unmerge_settings(self, settings: dict, fragment: dict) -> dict:
+    def _unmerge_settings(self, settings: JsonObject, fragment: JsonObject) -> JsonObject:
         merged = copy.deepcopy(settings)
         hooks = merged.get("hooks")
-        if not isinstance(hooks, dict):
+        hooks_object = _as_object(hooks)
+        if hooks_object is None:
             return merged
+        hooks = hooks_object
+        merged["hooks"] = hooks
         for event, groups in self._groups(fragment):
             existing = hooks.get(event)
-            if not isinstance(existing, list):
+            if not _is_object_list(existing):
                 continue
             remainder = [group for group in existing if group not in groups]
             if remainder:
@@ -220,10 +246,10 @@ class ClaudeAdapter(NativeAdapter):
         )
 
     def remove(self) -> RemoveResult:
-        marker = self._read_marker()
+        marker = super().read_marker()
         touched_settings = False
         if marker is not None:
-            fragment = marker.get("settings_hooks") or {}
+            fragment = _as_object(marker.get("settings_hooks")) or {}
             if fragment and self._settings_path().exists():
                 settings = self._read_settings()
                 remainder = self._unmerge_settings(settings, fragment)
@@ -247,7 +273,7 @@ class ClaudeAdapter(NativeAdapter):
             note=result.note,
         )
 
-    def registration_extra(self) -> dict:
+    def registration_extra(self) -> dict[str, object]:
         fragment = self._fragment()
         return {"settings_hooks": fragment} if fragment else {}
 
@@ -333,18 +359,13 @@ class CursorAdapter(NativeAdapter):
 
     @staticmethod
     def _as_object(loaded: object, label: Path | str) -> dict[str, object]:
-        if not isinstance(loaded, dict):
+        if not _is_json_object(loaded):
             raise ValueError(f"{label} must contain a JSON object")
-        document: dict[str, object] = {}
-        for key, value in loaded.items():
-            if not isinstance(key, str):
-                raise ValueError(f"{label} must contain a JSON object")
-            document[key] = value
-        return document
+        return loaded
 
     @staticmethod
     def _command_of(entry: object) -> str | None:
-        if not isinstance(entry, dict):
+        if not _is_json_object(entry):
             return None
         command = entry.get("command")
         if isinstance(command, str):
@@ -355,22 +376,17 @@ class CursorAdapter(NativeAdapter):
         self, payload: dict[str, object]
     ) -> list[tuple[str, list[dict[str, object]]]]:
         hooks = payload.get("hooks")
-        if not isinstance(hooks, dict):
+        if not _is_json_object(hooks):
             return []
         grouped: list[tuple[str, list[dict[str, object]]]] = []
         for event, entries in hooks.items():
-            if not isinstance(event, str):
-                continue
-            if not isinstance(entries, list):
+            if not _is_object_list(entries):
                 raise ValueError(f"{self._source_path()} hooks.{event} is not a list")
             commands: list[dict[str, object]] = []
             for entry in entries:
-                if not isinstance(entry, dict):
+                if not _is_json_object(entry):
                     continue
-                normalized: dict[str, object] = {}
-                for key, value in entry.items():
-                    if isinstance(key, str):
-                        normalized[key] = value
+                normalized = dict(entry)
                 if isinstance(normalized.get("command"), str):
                     commands.append(normalized)
             if commands:
@@ -378,7 +394,7 @@ class CursorAdapter(NativeAdapter):
         return grouped
 
     def _commands_in(self, entries: object) -> set[str]:
-        if not isinstance(entries, list):
+        if not _is_object_list(entries):
             return set()
         commands: set[str] = set()
         for entry in entries:
@@ -391,7 +407,7 @@ class CursorAdapter(NativeAdapter):
         self, document: dict[str, object], payload: dict[str, object]
     ) -> list[tuple[str, str]]:
         hooks = document.get("hooks")
-        hooks_map = hooks if isinstance(hooks, dict) else {}
+        hooks_map = hooks if _is_json_object(hooks) else {}
         missing: list[tuple[str, str]] = []
         for event, entries in self._payload_entries(payload):
             present = self._commands_in(hooks_map.get(event))
@@ -403,22 +419,15 @@ class CursorAdapter(NativeAdapter):
         return missing
 
     def _previous_marker(self) -> dict[str, object] | None:
-        marker = self._read_marker()
-        if not isinstance(marker, dict):
-            return None
-        fields: dict[str, object] = {}
-        for key, value in marker.items():
-            if isinstance(key, str):
-                fields[key] = value
-        return fields
+        return super().read_marker()
 
     def _pairs_in(self, marker: dict[str, object]) -> list[tuple[str, str]]:
         raw = marker.get("hooks")
-        if not isinstance(raw, list):
+        if not _is_object_list(raw):
             return []
         pairs: list[tuple[str, str]] = []
         for item in raw:
-            if not isinstance(item, dict):
+            if not _is_json_object(item):
                 continue
             event = item.get("event")
             command = item.get("command")
@@ -454,7 +463,7 @@ class CursorAdapter(NativeAdapter):
         if "version" in payload and "version" not in document:
             return False
         hooks = document.get("hooks")
-        if not isinstance(hooks, dict):
+        if not _is_json_object(hooks):
             return False
         return not self._missing_pairs(document, payload)
 
@@ -468,7 +477,7 @@ class CursorAdapter(NativeAdapter):
         if hooks_value is None:
             hooks: dict[str, object] = {}
             merged["hooks"] = hooks
-        elif isinstance(hooks_value, dict):
+        elif _is_json_object(hooks_value):
             hooks = hooks_value
         else:
             raise ValueError("hooks.json has a non-object hooks value")
@@ -477,7 +486,7 @@ class CursorAdapter(NativeAdapter):
             if existing is None:
                 bucket: list[object] = []
                 hooks[event] = bucket
-            elif isinstance(existing, list):
+            elif _is_object_list(existing):
                 bucket = existing
             else:
                 raise ValueError(f"hooks.json hooks.{event} is not a list")
@@ -497,14 +506,14 @@ class CursorAdapter(NativeAdapter):
         if not pairs:
             return merged
         hooks_value = merged.get("hooks")
-        if not isinstance(hooks_value, dict):
+        if not _is_json_object(hooks_value):
             return merged
         grouped: dict[str, set[str]] = {}
         for event, command in pairs:
             grouped.setdefault(event, set()).add(command)
         for event, commands in grouped.items():
             existing = hooks_value.get(event)
-            if not isinstance(existing, list):
+            if not _is_object_list(existing):
                 continue
             kept: list[object] = []
             for entry in existing:
@@ -522,9 +531,9 @@ class CursorAdapter(NativeAdapter):
 
     def _hook_entries_remain(self, document: dict[str, object]) -> bool:
         hooks = document.get("hooks")
-        if not isinstance(hooks, dict):
+        if not _is_json_object(hooks):
             return False
-        return any(isinstance(entries, list) and len(entries) > 0 for entries in hooks.values())
+        return any(_is_object_list(entries) and len(entries) > 0 for entries in hooks.values())
 
     def _removable_shell(self, document: dict[str, object], payload: dict[str, object]) -> bool:
         if self._hook_entries_remain(document):

@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import os
 import subprocess
+from pathlib import Path
 
 from installer.adapters.base import BaseAdapter
 from installer.model import (
     Action,
     ApplyResult,
     Plan,
+    Provider,
     RemoveResult,
     VerifyResult,
 )
@@ -27,8 +29,16 @@ NPX_ENV = "ORCHESTRA_NPX"
 class SkillsCliAdapter(BaseAdapter):
     """Delegate one host to ``npx skills add -a <profile>``."""
 
-    def __init__(self, provider, **kwargs) -> None:
-        super().__init__(provider, **kwargs)
+    def __init__(
+        self,
+        provider: Provider,
+        *,
+        base: Path,
+        scope: str,
+        mode: str,
+        source_root: Path,
+    ) -> None:
+        super().__init__(provider, base=base, scope=scope, mode=mode, source_root=source_root)
         if not provider.profile:
             raise ValueError(f"provider {provider.id!r} needs a skills profile to delegate")
         self.profile = provider.profile
@@ -42,13 +52,13 @@ class SkillsCliAdapter(BaseAdapter):
     def delegate_label(self) -> str:
         return f"npx skills add -a {self.profile} (profile: {self.profile})"
 
-    def registration_extra(self) -> dict:
+    def registration_extra(self) -> dict[str, object]:
         return {
             "profile": self.profile,
             "delegate": f"npx skills add -a {self.profile}",
         }
 
-    def _run(self) -> subprocess.CompletedProcess | None:
+    def _run(self) -> subprocess.CompletedProcess[str] | None:
         self.base.mkdir(parents=True, exist_ok=True)
         try:
             return subprocess.run(
@@ -106,7 +116,7 @@ class SkillsCliAdapter(BaseAdapter):
         )
 
     def verify(self) -> VerifyResult:
-        marker = self._read_marker()
+        marker = self.read_marker()
         if marker is None:
             return VerifyResult(
                 provider=self.provider,
@@ -127,7 +137,7 @@ class SkillsCliAdapter(BaseAdapter):
             problems.append(
                 f"registration profile is {marker.get('profile')!r}, expected {self.profile!r}"
             )
-        for entry in marker["entries"]:
+        for entry in self._marker_entries(marker):
             destination = self.root / entry
             if not (destination.exists() or destination.is_symlink()):
                 problems.append(f"missing {entry}")
@@ -139,7 +149,7 @@ class SkillsCliAdapter(BaseAdapter):
         )
 
     def remove(self) -> RemoveResult:
-        marker = self._read_marker()
+        marker = self.read_marker()
         result = super().remove()
         if result.skipped or marker is None:
             return result

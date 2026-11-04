@@ -12,7 +12,7 @@ from pathlib import Path
 
 from orchestra.canon.git_backend import run_git
 from orchestra.tuner.manifest import MANIFEST_PATH, load_manifest, resolve_commit
-from orchestra.tuner.runner import run_tests
+from orchestra.tuner.technique import replay_at_revision
 
 
 def find_no_assert(paths: Sequence[Path | str]) -> list[str]:
@@ -48,12 +48,12 @@ def find_new_skips(
         base_wt = _worktree(base_tree)
         head_wt = _worktree(head_tree)
         base_outcomes = (
-            run_tests(base_wt, test_ids, head_manifest.runner)
+            replay_at_revision(base_wt, "HEAD", tuple(test_ids), tuple(head_manifest.runner))
             if base_wt is not None
             else {tid: "not_run" for tid in test_ids}
         )
         head_outcomes = (
-            run_tests(head_wt, test_ids, head_manifest.runner)
+            replay_at_revision(head_wt, "HEAD", tuple(test_ids), tuple(head_manifest.runner))
             if head_wt is not None
             else {tid: "not_run" for tid in test_ids}
         )

@@ -1,6 +1,14 @@
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import overload
+
+from orchestra.sessions.session_types import (
+    RecordJoinBucket,
+    RecordJoinResult,
+    RecordMetadata,
+    SessionFields,
+)
 
 
 @overload
@@ -21,19 +29,28 @@ def _parse(value: datetime | str | None) -> datetime | None:
     return value
 
 
-def _window(session):
+def _window(session: SessionFields) -> tuple[datetime, datetime] | None:
     start, end = _parse(session.get("start")), _parse(session.get("end"))
     if start is None or end is None:
         return None
     return start, end
 
 
-def join(sessions, records):
-    by_session = {s["session_id"]: {"records": [], "ambiguous": []} for s in sessions}
-    windows = [
-        (s["session_id"], PurePosixPath(s.get("cwd") or "").name, _window(s)) for s in sessions
-    ]
-    unattached = []
+def join(sessions: Sequence[SessionFields], records: list[RecordMetadata]) -> RecordJoinResult:
+    by_session: dict[str, RecordJoinBucket] = {
+        s["session_id"]: {"records": [], "ambiguous": []}
+        for s in sessions
+        if isinstance(s["session_id"], str)
+    }
+    windows: list[tuple[str, str, tuple[datetime, datetime] | None]] = []
+    for session in sessions:
+        session_id = session["session_id"]
+        if not isinstance(session_id, str):
+            continue
+        cwd = session.get("cwd")
+        name = PurePosixPath(cwd if isinstance(cwd, str) else "").name
+        windows.append((session_id, name, _window(session)))
+    unattached: list[str] = []
     for rec in records:
         when = _parse(rec["recorded_at"])
         hits = [

@@ -206,6 +206,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "questionary" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uvicorn" },
 ]
 
@@ -226,6 +227,7 @@ dev = [
 requires-dist = [
     { name = "fastapi" },
     { name = "questionary", specifier = ">=2.0,<3" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "uvicorn" },
 ]
 

@@ -46,7 +46,7 @@ _CHECKOUT_RELATIVE = re.compile(r"(?:^|[\s`(])bin/orchestra\b")
 _PLUGIN_ROOT = re.compile(r"<plugin>")
 #: Importable module APIs (`orchestra.conductor.reviewer`, `orchestra.conductor.suite.poll_suite`,
 #: `orchestra.store`) are not a runtime surface an installed CLI exposes.
-_MODULE_API = re.compile(r"`?\borchestra\.([a-z_][A-Za-z0-9_]*)")
+_MODULE_API = re.compile(r"`?\borchestra\.(?!toml\b)([a-z_][A-Za-z0-9_]*)")
 
 
 def advertised_skills(root: Path = ROOT) -> list[Path]:
@@ -70,6 +70,7 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
         if not sep:
             continue
         key = name.strip()
+        assert key
         meta[key] = value.strip()
     return meta
 

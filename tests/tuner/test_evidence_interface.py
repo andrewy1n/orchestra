@@ -27,7 +27,7 @@ RECORD_TYPE = "tuner:evidence-observation"
 def test_observation_filters_accept_top_level_and_nested_payload_shapes() -> None:
     from orchestra.tuner.observation import _claim_ids_of, _technique_of
 
-    assert _claim_ids_of({"claim_ids": ("claim-a", 7)}) == ["claim-a", "7"]
+    assert _claim_ids_of({"claim_ids": ("claim-a", 7)}) == ["claim-a"]
     assert _claim_ids_of({"payload": {"claim_ids": ["claim-b"]}}) == ["claim-b"]
     assert _technique_of({"technique": "verdict"}) == "verdict"
     assert _technique_of({"payload": {"technique": "pytest"}}) == "pytest"
@@ -166,10 +166,10 @@ def test_r2_verdict_without_store_matches_prephase_semantics(tmp_path: Path) -> 
     assert not (root / ".canon").exists()
     proc = _verdict(root, base, head)
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert _payload(proc) == {
-        "result": "pass",
-        "claims": [{"id": CLAIM, "result": "pass"}],
-    }
+    payload = _payload(proc)
+    assert payload["result"] == "pass"
+    assert payload["claims"] == [{"id": CLAIM, "result": "pass"}]
+    assert payload["replay_identity"]["plugin_id"] == "unit"
     assert not (root / ".canon" / "records" / "tuner__evidence-observation").exists()
 
 

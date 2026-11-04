@@ -6,9 +6,11 @@ from collections import Counter
 from collections.abc import Iterable
 from datetime import datetime
 
+from orchestra.sessions.session_types import JsonValue, SessionFields, TranscriptEvent
 
-def _parse(ts: str | None) -> datetime | None:
-    if ts is None:
+
+def _parse(ts: JsonValue) -> datetime | None:
+    if not isinstance(ts, str):
         return None
     try:
         return datetime.fromisoformat(ts.replace("Z", "+00:00"))
@@ -16,19 +18,28 @@ def _parse(ts: str | None) -> datetime | None:
         return None
 
 
-def _is_human_prompt(event: dict) -> bool:
+def _content(event: TranscriptEvent) -> JsonValue:
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return None
+    return message.get("content")
+
+
+def _is_human_prompt(event: TranscriptEvent) -> bool:
     if event.get("isMeta") or event.get("isSidechain"):
         return False
-    content = (event.get("message") or {}).get("content")
+    content = _content(event)
     if isinstance(content, str):
         return True
     if isinstance(content, list):
-        return any(isinstance(b, dict) and b.get("type") != "tool_result" for b in content)
+        return any(
+            isinstance(block, dict) and block.get("type") != "tool_result" for block in content
+        )
     return False
 
 
-def _skill_names(event: dict) -> Iterable[str]:
-    content = (event.get("message") or {}).get("content")
+def _skill_names(event: TranscriptEvent) -> Iterable[str]:
+    content = _content(event)
     if not isinstance(content, list):
         return
     for block in content:
@@ -37,12 +48,13 @@ def _skill_names(event: dict) -> Iterable[str]:
             and block.get("type") == "tool_use"
             and block.get("name") == "Skill"
         ):
-            name = (block.get("input") or {}).get("skill")
+            tool_input = block.get("input")
+            name = tool_input.get("skill") if isinstance(tool_input, dict) else None
             if isinstance(name, str) and name:
                 yield name
 
 
-def session_fields(events: Iterable[dict]) -> dict:
+def session_fields(events: Iterable[TranscriptEvent]) -> SessionFields:
     session_id = cwd = branch = None
     first = last = None
     turns = 0
@@ -58,9 +70,12 @@ def session_fields(events: Iterable[dict]) -> dict:
             if isinstance(value, (int, float)):
                 cost = float(value)
             continue
-        stamp = _parse(event.get("timestamp"))
+        timestamp = event.get("timestamp")
+        stamp = _parse(timestamp)
         if stamp is not None:
-            raw = event["timestamp"]
+            raw = timestamp
+            if not isinstance(raw, str):
+                continue
             if first is None or stamp < first[0]:
                 first = (stamp, raw)
             if last is None or stamp > last[0]:

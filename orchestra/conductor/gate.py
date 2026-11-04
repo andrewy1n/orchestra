@@ -1,4 +1,4 @@
-"""Phase gate terms and the Landing merge step behind `orchestra gate` and `orchestra land`.
+"""Phase gate terms behind `orchestra gate` and the gate step of `orchestra land`.
 
 The gate binds to the reviewed revision: the revision of the latest review
 check-run for the phase. Terms bound to the head compare against it. When the
@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,14 +27,11 @@ from orchestra.conductor.check import RUNNER, git_head
 
 INACTIVE_FINDING_STATES = frozenset({"refuted", "retracted"})
 METADATA_DIR = ".canon/"
-MERGE_FAILED = 3
 LIVE_WORK_ITEM_STATES = frozenset({"planned", "in_progress", "done"})
 
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
 _NEXT_HEADING = re.compile(r"^##\s+")
-_LANDING_LINE = re.compile(
-    r"^(?:[-*]\s+)?(merge|suite|repo|worktree)\s*:\s*(.+?)\s*$", re.IGNORECASE
-)
+_LANDING_LINE = re.compile(r"^(?:[-*]\s+)?(repo|worktree)\s*:\s*(.+?)\s*$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -48,8 +44,6 @@ class Term:
 @dataclass(frozen=True)
 class LandingSpec:
     present: bool = False
-    merge: str = ""
-    suite: str = ""
     repo: str = ""
     worktree: str = ""
 
@@ -62,7 +56,7 @@ def _unwrap(value: str) -> str:
 
 
 def parse_landing(body: str) -> LandingSpec:
-    """Read `merge:`, `suite:`, `Repo:` and `Worktree:` lines from the `## Landing` section."""
+    """Read `Repo:` and `Worktree:` lines from the `## Landing` section."""
     inside = False
     found = False
     values: dict[str, str] = {}
@@ -80,8 +74,6 @@ def parse_landing(body: str) -> LandingSpec:
             values.setdefault(match.group(1).lower(), _unwrap(match.group(2)))
     return LandingSpec(
         present=found,
-        merge=values.get("merge", ""),
-        suite=values.get("suite", ""),
         repo=values.get("repo", ""),
         worktree=values.get("worktree", ""),
     )
@@ -294,7 +286,7 @@ def gate_terms(store: Path, phase_slug: str, *, store_dir: Path | None = None) -
     if worktree.is_dir():
         terms.append(_descent_term(worktree, head))
 
-    policy = suite.load_suite_policy(store, store_dir=store_dir)
+    policy = suite.load_suite_policy(store)
     if policy.gate == "required" and policy.mode not in ("none", ""):
         suite_ok = any(
             _is_suite_run(r, phase_slug)
@@ -335,51 +327,5 @@ def missing_terms(terms: Sequence[Term]) -> list[Term]:
     return [term for term in terms if not term.holds]
 
 
-def landing_for(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> LandingSpec:
-    """The parsed Landing section of the phase body (absent when the phase has none)."""
-    for record in open_store(store, store=store_dir).list("score:phase"):
-        if record["subject"] == phase_slug and record["lifecycle_state"] != "superseded":
-            return parse_landing(record.get("body", ""))
-    raise LookupError(f"phase {phase_slug!r} not found")
-
-
 def format_missing(terms: Sequence[Term]) -> list[str]:
     return [f"missing {t.name}" + (f": {t.detail}" if t.detail else "") for t in terms]
-
-
-def run_merge(command: str, repo: Path) -> int:
-    sys.stdout.flush()
-    sys.stderr.flush()
-    return subprocess.run(command, shell=True, cwd=repo, check=False).returncode
-
-
-def land(store: Path, phase_slug: str, *, store_dir: Path | None = None) -> int:
-    """Run the gate, then the Landing `merge:` command in the Landing repo.
-
-    Returns 1 when the gate fails (nothing runs), 2 when the phase is unknown,
-    names no `merge:` line, or its repo is missing, 3 when the merge command
-    exits non-zero, else 0.
-    """
-    try:
-        terms = gate_terms(store, phase_slug, store_dir=store_dir)
-        landing = landing_for(store, phase_slug, store_dir=store_dir)
-    except LookupError as exc:
-        print(f"orchestra land: {exc}", file=sys.stderr)
-        return 2
-    missing = missing_terms(terms)
-    if missing:
-        for line in format_missing(missing):
-            print(f"orchestra land: {phase_slug}: {line}", file=sys.stderr)
-        return 1
-    if not landing.merge:
-        print(f"orchestra land: {phase_slug}: Landing names no merge: line", file=sys.stderr)
-        return 2
-    repo = landing_repo(store, landing)
-    if not repo.is_dir():
-        print(f"orchestra land: {phase_slug}: Landing repo {repo} is missing", file=sys.stderr)
-        return 2
-    code = run_merge(landing.merge, repo)
-    if code != 0:
-        print(f"orchestra land: {phase_slug}: merge command exited {code}", file=sys.stderr)
-        return MERGE_FAILED
-    return 0

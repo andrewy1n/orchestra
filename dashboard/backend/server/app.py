@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import TypeAdapter
 
 from dashboard.backend import store
 from dashboard.backend.server import schemas
@@ -21,24 +22,24 @@ MISSING_BUILD = (
 )
 
 
-ERRORS: dict[int | str, dict] = {
+ERRORS: dict[int | str, dict[str, object]] = {
     400: {"model": schemas.ErrorBody},
     404: {"model": schemas.ErrorBody},
     409: {"model": schemas.ErrorBody},
 }
 
 
-def create_app(target: Project):
+def create_app(target: Project) -> FastAPI:
     """Return a FastAPI app serving the read/write API (and built UI) for ``target``."""
     app = FastAPI(title="orchestra dashboard")
     reader = Reader(target)
 
     @app.exception_handler(store.ModelError)
-    async def _model_error(_request, exc: store.ModelError) -> JSONResponse:
+    async def _model_error(_request: Request, exc: store.ModelError) -> JSONResponse:
         return JSONResponse({"error": str(exc)}, status_code=404)
 
     @app.exception_handler(WriteError)
-    async def _write_error(_request, exc: WriteError) -> JSONResponse:
+    async def _write_error(_request: Request, exc: WriteError) -> JSONResponse:
         return JSONResponse({"error": exc.message}, status_code=exc.status)
 
     @app.get("/api/token", response_model=schemas.TokenResponse, responses=ERRORS)
@@ -85,16 +86,12 @@ def create_app(target: Project):
 
     @app.post("/api/needs", response_model=schemas.OkResponse, responses=ERRORS)
     async def write_needs(request: Request) -> schemas.OkResponse:
-        body = await request.json()
-        if not isinstance(body, dict):
-            raise WriteError("JSON body must be an object", 400)
+        body = _json_object(await request.json())
         return reader.write_needs(body)
 
     @app.post("/api/backlog", response_model=schemas.OkResponse, responses=ERRORS)
     async def write_backlog(request: Request) -> schemas.OkResponse:
-        body = await request.json()
-        if not isinstance(body, dict):
-            raise WriteError("JSON body must be an object", 400)
+        body = _json_object(await request.json())
         return reader.write_backlog(body)
 
     if DIST.is_dir():
@@ -106,3 +103,9 @@ def create_app(target: Project):
             return HTMLResponse(MISSING_BUILD)
 
     return app
+
+
+def _json_object(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise WriteError("JSON body must be an object", 400)
+    return TypeAdapter(dict[str, object]).validate_python(value)

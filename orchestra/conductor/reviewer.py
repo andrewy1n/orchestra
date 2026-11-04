@@ -95,6 +95,7 @@ FIXABLE_FINDING_KINDS = frozenset(
         "invariant-violation",
     }
 )
+REVIEWER_SEVERITIES = frozenset({"blocker", "major", "minor", "judgment"})
 
 
 def _short_kind(record_type: str) -> str:
@@ -161,12 +162,18 @@ def _record_text(record: ReviewerRecord) -> str:
     return "\n\n".join(parts)
 
 
+def _record_matches_phase(record: ReviewerRecord, phase: str) -> bool:
+    payload = record.get("payload")
+    return isinstance(payload, Mapping) and payload.get("phase") == phase
+
+
 def build_reviewer_brief(
     *,
     records: Sequence[ReviewerRecord],
     phase_diff: str,
     base: str = "main",
     phase_head: str = "HEAD",
+    phase: str | None = None,
 ) -> str:
     """Compose the reviewer brief from allowed records plus the phase diff.
 
@@ -174,6 +181,8 @@ def build_reviewer_brief(
     even if present in ``records``.
     """
     allowed = filter_reviewer_records(records)
+    if phase is not None:
+        allowed = [record for record in allowed if _record_matches_phase(record, phase)]
     sections: list[str] = [
         "# Reviewer brief",
         "",
@@ -285,6 +294,53 @@ def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
                 integration[key] = km.group(1).strip()
 
     return {"verdict": verdict, "findings": findings, "integration": integration}
+
+
+def validate_reviewer_output(text: str) -> ParsedReviewerOutput:
+    """Require a complete, internally consistent host reviewer response."""
+    raw = _strip_fence(text)
+    for section in ("verdict", "findings", "integration"):
+        if len(re.findall(rf"(?im)^\s*{section}:\s*", raw)) != 1:
+            raise ValueError(f"reviewer output must contain exactly one {section}: section")
+    findings_match = re.search(r"(?is)^\s*findings:\s*(.*?)^\s*integration:\s*", raw, re.MULTILINE)
+    if findings_match is None:
+        raise ValueError("reviewer output has a malformed findings section")
+    findings_block = findings_match.group(1).strip()
+    finding_markers = re.findall(r"(?m)^\s*-\s+task:\s*", findings_block)
+    if findings_block not in {"", "[]", "-"} and not finding_markers:
+        raise ValueError("reviewer findings must be an empty list or structured finding entries")
+    parsed = parse_reviewer_output(raw)
+    if len(finding_markers) != len(parsed["findings"]):
+        raise ValueError("reviewer findings contain malformed entries")
+    verdict = parsed["verdict"]
+    if verdict not in {"PASS", "NEEDS_WORK"}:
+        raise ValueError("reviewer output must contain verdict: PASS or NEEDS_WORK")
+    if verdict == "PASS" and parsed["findings"]:
+        raise ValueError("reviewer PASS must not include findings")
+    if verdict == "NEEDS_WORK" and not parsed["findings"]:
+        raise ValueError("reviewer NEEDS_WORK must include at least one finding")
+    integration_match = re.search(r"(?im)^\s*integration:\s*", raw)
+    if integration_match is None:
+        raise ValueError("reviewer output is missing integration section")
+    integration = raw[integration_match.end() :]
+    for field_name in ("interfaces", "assumptions", "invariants", "conflicts"):
+        if len(re.findall(rf"(?im)^\s*{field_name}:\s*", integration)) != 1:
+            raise ValueError(f"reviewer integration must contain exactly one {field_name}: field")
+        if field_name != "conflicts" and not parsed["integration"][field_name].strip():
+            raise ValueError(f"reviewer integration {field_name} must not be empty")
+    for finding in parsed["findings"]:
+        if any(
+            not finding[field].strip()
+            for field in ("task", "kind", "expected", "observed", "severity")
+        ):
+            raise ValueError(
+                "reviewer findings must include task, kind, expected, observed, and severity"
+            )
+        if finding["kind"] not in FIXABLE_FINDING_KINDS:
+            raise ValueError(f"reviewer finding has unsupported kind: {finding['kind']}")
+        if finding["severity"] not in REVIEWER_SEVERITIES:
+            raise ValueError(f"reviewer finding has unsupported severity: {finding['severity']}")
+    return parsed
 
 
 def verdict_to_result(verdict: str) -> str:

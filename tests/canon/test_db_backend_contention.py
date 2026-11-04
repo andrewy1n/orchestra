@@ -35,7 +35,7 @@ def test_same_revision_has_one_winner_with_normalized_body(request: pytest.Fixtu
     assert sorted(outcome[0] for outcome in outcomes) == ["ok", "stale"], outcomes
     winner = next(body for outcome, body in outcomes if outcome == "ok")
     stored = store.backend.read_record("contract:setting", first["id"])
-    assert stored["body"] == winner + "\n"
+    assert stored.get("body") == winner + "\n"
     chain = dict(store.backend.iter_chains())[first["id"]]
     assert len(chain) == 2
     assert fold(chain) == stored

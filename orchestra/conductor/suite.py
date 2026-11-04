@@ -1,6 +1,6 @@
 """Phase-level suite runner: policy, background tmux, check-run, gate, fix routing.
 
-Parent session loads ``phase_gate.suite`` from the store config, starts the
+Parent session loads ``[suite]`` from ``orchestra.toml``, starts the
 configured command in a detached tmux window in the phase worktree when mode
 is smoke/full, polls for completion, and records one ``tuner:check-run`` with
 ``evidence_kind: integration`` and subject ``<phase>-suite``. Does not
@@ -14,11 +14,12 @@ import shlex
 import subprocess
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
@@ -61,7 +62,7 @@ def _revision_matches(check_revision: str, phase_head: str) -> bool:
 
 @dataclass(frozen=True)
 class SuitePolicy:
-    """Configured ``phase_gate.suite`` after consumer defaults are applied."""
+    """Configured project suite policy after consumer defaults are applied."""
 
     mode: str = "none"
     command: str = ""
@@ -108,7 +109,7 @@ def normalize_suite_policy(
     *,
     source_path: str | None = None,
 ) -> SuitePolicy:
-    """Apply consumer defaults to a raw ``phase_gate.suite`` object.
+    """Apply consumer defaults to a parsed suite table.
 
     Missing / empty → mode=none (skip). When mode!=none and command is set,
     omitted gate defaults to required.
@@ -140,32 +141,16 @@ def normalize_suite_policy(
     )
 
 
-def load_suite_policy(start: Path | None = None, *, store_dir: Path | None = None) -> SuitePolicy:
-    """Load ``phase_gate.suite`` from store config under ``settings.conductor``.
-
-    A missing store, key, or malformed value yields the consumer default
-    (mode=none, skip). Agents must not waive or override this policy; change
-    the store config instead.
-    """
+def load_suite_policy(start: Path | None = None) -> SuitePolicy:
+    """Load the required suite policy from the project root config."""
     root = start or Path.cwd()
-    try:
-        project = open_store(root, store=store_dir)
-        data = project.config()
-    except (StoreBindingError, StoreError, OSError, ValueError, TypeError):
-        return normalize_suite_policy(None)
-    settings = data.get("settings")
-    conductor = settings.get("conductor") if isinstance(settings, dict) else None
-    phase_gate = conductor.get("phase_gate") if isinstance(conductor, dict) else None
-    suite_raw = phase_gate.get("suite") if isinstance(phase_gate, dict) else None
-    if not isinstance(suite_raw, dict):
-        return normalize_suite_policy(None)
-    return normalize_suite_policy(suite_raw, source_path=str(project.store_path))
-
-
-def with_landing_command(policy: SuitePolicy, landing_suite: str) -> SuitePolicy:
-    """Policy whose command is the Landing ``suite:`` line; mode and gate stay."""
-    command = landing_suite.strip()
-    return replace(policy, command=command) if command else policy
+    suite_config = load_project_config(root).suite
+    return SuitePolicy(
+        mode=suite_config.mode,
+        command=suite_config.command,
+        gate=suite_config.gate,
+        source_path=str(root / "orchestra.toml"),
+    )
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -369,8 +354,6 @@ def start_suite_background(
     log_dir: Path | None = None,
     suite_command: str | None = None,
     policy: SuitePolicy | None = None,
-    store_root: Path | None = None,
-    store_dir: Path | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
     runner: Callable[..., object] | None = None,
@@ -382,9 +365,7 @@ def start_suite_background(
     On dirty-pass refusal, returns a ``SuiteResult`` with ``refuse=True``.
     """
     work = worktree.resolve()
-    resolved_policy = (
-        policy if policy is not None else load_suite_policy(store_root or work, store_dir=store_dir)
-    )
+    resolved_policy = policy if policy is not None else load_suite_policy(work)
     head = phase_head or git_head(work)
 
     if not resolved_policy.run_locally and suite_command is None:

@@ -53,6 +53,10 @@ def _git(cwd: Path, *args: str) -> str:
 
 def _init(root: Path) -> None:
     root.mkdir(parents=True)
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+    )
     _git(root, "init", "-q", "-b", "main")
     _git(root, "config", "user.email", "test@example.com")
     _git(root, "config", "user.name", "test")

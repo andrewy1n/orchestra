@@ -4,6 +4,7 @@ from conftest import advance, make_task
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.derive import attach_derived_all, compute_derived, compute_inverse
+from orchestra.canon.types import Record
 
 
 def derived_of(project, record):
@@ -99,9 +100,18 @@ def test_a_dependency_lists_its_dependents_in_referenced_by(project):
 
 
 def test_compute_inverse_sorts_sources():
-    records = [
-        {"id": "rec-b", "relationships": {"supersedes": ["rec-x"]}},
-        {"id": "rec-a", "relationships": {"supersedes": ["rec-x"]}},
+    records: list[Record] = [
+        {
+            "id": rid,
+            "record_type": "score:work-item",
+            "subject": rid,
+            "payload": {},
+            "lifecycle_state": "active",
+            "relationships": {"supersedes": ["rec-x"]},
+            "revision": "sha256:pending",
+            "recorded_at": "2026-01-01T00:00:00+00:00",
+        }
+        for rid in ("rec-b", "rec-a")
     ]
     assert compute_inverse(records) == {"rec-x": {"supersedes": ["rec-a", "rec-b"]}}
 
@@ -109,11 +119,17 @@ def test_compute_inverse_sorts_sources():
 def test_derived_values_are_never_persisted(project):
     task = make_task(project, "a")
     attached = attach_derived_all(project.records(), project.derived())
-    assert attached[0]["derived"] == {"ready": True, "wave": 1}
-    assert "derived" not in project.get(task["id"])
+    assert attached[0].get("derived") == {"ready": True, "wave": 1}
+    stored = project.get(task["id"])
+    assert stored is not None
+    assert stored.get("derived") is None
     backend = open_backend(project.store_path)
     assert all("derived" not in record for record in backend.iter_records())
-    assert all("derived" not in op["record"] for _, ops in backend.iter_chains() for op in ops)
+    assert all(
+        op["record"] is not None and "derived" not in op["record"]
+        for _, ops in backend.iter_chains()
+        for op in ops
+    )
 
 
 def test_list_filters_on_derived_values(cli, project):

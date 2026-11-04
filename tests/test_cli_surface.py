@@ -1,4 +1,4 @@
-"""The CLI exposes the reviewer, suite, and store surface skills call by name.
+"""The CLI exposes the reviewer, suite, landing, and store surfaces.
 
 A skill must be able to run the phase-end reviewer, the configured suite, and
 store-bound ``canon`` calls with ``orchestra`` alone. These tests
@@ -57,6 +57,20 @@ def make_design(path: Path, suite_policy: dict | None = None) -> Path:
     if suite_policy is not None:
         settings["conductor"] = {"phase_gate": {"suite": suite_policy}}
     config.write_text(json.dumps({"format": "canon/1", "schemas": {}, "settings": settings}))
+    suite_text = ""
+    if suite_policy is not None:
+        suite_text = (
+            "\n[suite]\n"
+            f"mode = {json.dumps(suite_policy.get('mode', 'none'))}\n"
+            f"command = {json.dumps(suite_policy.get('command', ''))}\n"
+            f"gate = {json.dumps(suite_policy.get('gate', 'required'))}\n"
+        )
+    (path / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n'
+        f"{suite_text}",
+        encoding="utf-8",
+    )
     return config
 
 
@@ -79,7 +93,7 @@ def test_top_level_help_names_the_runtime_surface(capsys):
         cli.main(["--help"])
     assert exit_info.value.code == 0
     text = capsys.readouterr().out
-    for name in ("analyze", "review-brief", "suite", "store"):
+    for name in ("analyze", "review-brief", "land", "suite", "store"):
         assert name in text
 
 
@@ -161,6 +175,7 @@ def test_suite_policy_smoke(tmp_path, capsys):
 def test_suite_start_smoke(tmp_path, monkeypatch, capsys):
     work = tmp_path / "worktree"
     work.mkdir()
+    make_design(work)
     started = suite.SuiteStart(
         session_name="orchestra-suite-p1",
         worktree=work,

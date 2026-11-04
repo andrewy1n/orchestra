@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import threading
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Mapping
 
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StoreError
@@ -27,7 +27,7 @@ def change_token(target: Project) -> str:
 
 
 @contextlib.contextmanager
-def pinned_token(token: str) -> Iterator[None]:
+def pinned_token(token: str) -> Generator[None, None, None]:
     _pin.token = token
     try:
         yield

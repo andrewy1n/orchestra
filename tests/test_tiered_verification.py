@@ -1,4 +1,4 @@
-"""Suite background runner, phase_gate.suite policy, gate, and fix clustering."""
+"""Suite background runner, project suite policy, gate, and fix clustering."""
 
 from __future__ import annotations
 
@@ -154,8 +154,10 @@ def test_runner_records_suite_check_run_payload_fields():
         "tests/test_bar.py::test_b",
     ]
     assert payload["criterion_id"] == suite_subject(PHASE)
-    assert payload["criterion_id"].endswith("-suite")
-    assert not payload["criterion_id"].endswith("-tier2")
+    criterion_id = payload["criterion_id"]
+    assert isinstance(criterion_id, str)
+    assert criterion_id.endswith("-suite")
+    assert not criterion_id.endswith("-tier2")
 
 
 def test_suite_record_writes_runner_orchestra():
@@ -329,7 +331,7 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
     )
     flat = _skill_flat()
     assert "suite" in flat
-    assert "phase_gate.suite" in flat or "phase_gate" in flat
+    assert "orchestra.toml" in flat or "suite policy" in flat
     assert "blocks" in flat
 
 
@@ -380,7 +382,9 @@ def test_advisory_gate_does_not_block_merge_on_suite_fail():
         effort="workflow-loop",
         suite=suite,
     )
-    assert "advisory" in finding["claim"]
+    claim = finding["claim"]
+    assert isinstance(claim, str)
+    assert "advisory" in claim
     assert finding["needs"] == "none"
     routed = route_suite_failures(
         suite.failing_node_ids,
@@ -505,7 +509,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
 def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
     text = _skill_text()
     flat = _skill_flat()
-    assert "Do not waive `phase_gate.suite`" in flat
+    assert "Do not waive suite policy" in flat
     assert (
         "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
         in flat
@@ -523,7 +527,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
 def test_execute_phase_documents_no_agent_waiver_of_suite_policy():
     flat = _skill_flat()
     assert "not waive" in flat
-    assert "phase_gate.suite" in flat or "phase_gate" in flat
+    assert "orchestra.toml" in flat or "suite policy" in flat
     assert "contract" in flat
     # red-first remains tdd-only; suite never red-first
     assert "never red-first" in flat

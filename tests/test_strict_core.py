@@ -10,7 +10,7 @@ import pytest
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 ROOT = Path(__file__).resolve().parents[1]
 STRICT_ROOTS = (
@@ -39,29 +39,17 @@ def _probe_project(tmp_path: Path) -> Path:
     basedpyright = tool_config["basedpyright"]
     assert isinstance(basedpyright, dict)
     strict = basedpyright["strict"]
-    environments = basedpyright["executionEnvironments"]
     assert isinstance(strict, list)
-    assert isinstance(environments, list)
+    report_explicit_any = basedpyright["reportExplicitAny"]
     config = [
         "[tool.basedpyright]",
         'typeCheckingMode = "standard"',
         'pythonVersion = "3.10"',
         'include = ["orchestra"]',
         "strict = [" + ", ".join(json.dumps(root) for root in strict) + "]",
+        f"reportExplicitAny = {json.dumps(report_explicit_any)}",
         "",
     ]
-    for environment in environments:
-        assert isinstance(environment, dict)
-        config.extend(
-            [
-                "[[tool.basedpyright.executionEnvironments]]",
-                f"root = {json.dumps(environment['root'])}",
-                'extraPaths = ["."]',
-            ]
-        )
-        if "reportExplicitAny" in environment:
-            config.append(f"reportExplicitAny = {json.dumps(environment['reportExplicitAny'])}")
-        config.append("")
     (tmp_path / "pyproject.toml").write_text("\n".join(config), encoding="utf-8")
     return tmp_path
 
@@ -108,15 +96,16 @@ def test_strict_core_roots_reject_unannotated_parameters(root: str, tmp_path: Pa
     assert result.returncode != 0, result.stdout
 
 
-def test_any_remains_allowed_outside_strict_roots(tmp_path: Path) -> None:
+def test_any_is_rejected_outside_strict_roots(tmp_path: Path) -> None:
     project = _probe_project(tmp_path)
-    probe = _probe_path(project, "orchestra")
+    probe = _probe_path(project, "tests")
     probe.write_text(
         "from typing import Any\n\ndef value(item: Any) -> Any:\n    return item\n",
         encoding="utf-8",
     )
     result = _typecheck(project, probe)
-    assert result.returncode == 0, result.stdout
+    assert result.returncode != 0, result.stdout
+    assert "reportExplicitAny" in result.stdout, result.stdout
 
 
 def test_strict_core_roots_have_explicit_any_errors() -> None:
@@ -125,24 +114,14 @@ def test_strict_core_roots_have_explicit_any_errors() -> None:
     basedpyright = tool["basedpyright"]
     assert isinstance(basedpyright, dict)
     strict = basedpyright["strict"]
-    environments = basedpyright["executionEnvironments"]
     assert isinstance(strict, list)
-    assert isinstance(environments, list)
+    assert basedpyright["reportExplicitAny"] == "error"
     for root in STRICT_ROOTS:
-        assert root in strict
-        assert any(
-            isinstance(environment, dict)
-            and environment.get("root") == root
-            and environment.get("reportExplicitAny") == "error"
-            for environment in environments
-        )
+        assert any(root == scope or root.startswith(f"{scope}/") for scope in strict)
 
 
 def test_strict_core_baseline_has_no_target_entries() -> None:
-    baseline = json.loads((ROOT / ".basedpyright" / "baseline.json").read_text(encoding="utf-8"))
-    files = baseline.get("files", {})
-    assert isinstance(files, dict)
-    assert not any(any(root in path for root in STRICT_ROOTS) for path in files)
+    assert not (ROOT / ".basedpyright" / "baseline.json").exists()
 
 
 def test_tests_and_scripts_remain_standard() -> None:

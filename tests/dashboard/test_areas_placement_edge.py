@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 from dashboard.backend.areas import _home_area
+from orchestra.canon.types import Record
 
 
-def _idea(status: str, **refs: str) -> dict:
-    return {"subject": "refund-flow", "payload": {"status": status, **refs}}
+def _idea(status: str, **refs: str) -> Record:
+    return {
+        "id": "rec-idea",
+        "record_type": "composer:idea",
+        "subject": "refund-flow",
+        "payload": {"status": status, **refs},
+        "lifecycle_state": "current",
+        "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+    }
 
 
 def test_r14_promoted_idea_falls_back_to_its_own_area_when_the_placement_area_is_empty():

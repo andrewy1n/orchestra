@@ -13,7 +13,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, TypeGuard, runtime_checkable
 
 from installer.allowlist import IGNORE_NAMES, IGNORE_SUFFIXES, is_allowed
 from installer.model import (
@@ -29,11 +29,30 @@ REGISTRATION = ".orchestra-install.json"
 SCHEMA_VERSION = 1
 
 
+def _is_string_object(value: object) -> TypeGuard[dict[str, object]]:
+    if not isinstance(value, dict):
+        return False
+    return all(
+        isinstance(key, str)
+        for key in value  # pyright: ignore[reportUnknownVariableType]  # Each decoded key is checked below.
+    )
+
+
+def _is_string_list(value: object) -> TypeGuard[list[str]]:
+    if not isinstance(value, list):
+        return False
+    return all(
+        isinstance(item, str)
+        for item in value  # pyright: ignore[reportUnknownVariableType]  # Each decoded entry is checked below.
+    )
+
+
 @runtime_checkable
 class Adapter(Protocol):
     """The five lifecycle methods every host adapter exposes."""
 
     provider: Provider
+    marker: Path
 
     def detect(self) -> bool: ...
 
@@ -109,7 +128,7 @@ class BaseAdapter:
 
     def plan(self, *, uninstall: bool = False) -> Plan:
         if uninstall:
-            previous = self._read_marker()
+            previous = self.read_marker()
             if previous is None:
                 return Plan(
                     provider=self.provider,
@@ -119,18 +138,18 @@ class BaseAdapter:
                     uninstall=True,
                     note="not installed",
                 )
-            actions = tuple(
-                Action(kind="remove", destination=self.root / entry)
-                for entry in previous["entries"]
+            entries = self._marker_entries(previous)
+            remove_actions = tuple(
+                Action(kind="remove", destination=self.root / entry) for entry in entries
             )
-            actions += (Action(kind="remove", destination=self.marker),)
+            remove_actions += (Action(kind="remove", destination=self.marker),)
             return Plan(
                 provider=self.provider,
                 scope=self.scope,
                 mode=self.mode,
                 root=self.root,
-                actions=actions,
-                entries=tuple(previous["entries"]),
+                actions=remove_actions,
+                entries=tuple(entries),
                 uninstall=True,
             )
 
@@ -175,8 +194,8 @@ class BaseAdapter:
 
     def apply(self, plan: Plan) -> ApplyResult:
         self.root.mkdir(parents=True, exist_ok=True)
-        previous = self._read_marker()
-        previous_entries = tuple(previous["entries"]) if previous else ()
+        previous = self.read_marker()
+        previous_entries = tuple(self._marker_entries(previous)) if previous else ()
 
         applied: list[str] = []
         unchanged: list[str] = []
@@ -226,7 +245,7 @@ class BaseAdapter:
 
     def verify(self) -> VerifyResult:
         problems: list[str] = []
-        marker = self._read_marker()
+        marker = self.read_marker()
         if marker is None:
             return VerifyResult(
                 provider=self.provider,
@@ -246,7 +265,7 @@ class BaseAdapter:
         desired = self.desired_entries()
         generated = self.generated_entries()
         wanted = set(desired) | set(generated)
-        recorded = marker["entries"]
+        recorded = self._marker_entries(marker)
         missing = [entry for entry in wanted if entry not in recorded]
         stale = [entry for entry in recorded if entry not in wanted]
         if missing:
@@ -273,16 +292,16 @@ class BaseAdapter:
         )
 
     def remove(self) -> RemoveResult:
-        marker = self._read_marker()
+        marker = self.read_marker()
         if marker is None:
             return RemoveResult(provider=self.provider, root=self.root, skipped=True)
         removed: list[str] = []
         parents = {
             (self.root / entry).parent
-            for entry in marker["entries"]
+            for entry in self._marker_entries(marker)
             if (self.root / entry).parent != self.root
         }
-        for entry in sorted(marker["entries"], reverse=True):
+        for entry in sorted(self._marker_entries(marker), reverse=True):
             destination = self.root / entry
             if destination.exists() or destination.is_symlink():
                 self._remove_entry(destination)
@@ -299,6 +318,13 @@ class BaseAdapter:
         )
 
     # -- generic helpers ------------------------------------------------
+
+    @staticmethod
+    def _marker_entries(marker: dict[str, object]) -> list[str]:
+        entries = marker["entries"]
+        if not _is_string_list(entries):
+            raise ValueError("registration entries are invalid")
+        return entries
 
     def desired_entries(self) -> dict[str, Path]:
         """Allowlisted source paths keyed by destination-relative path."""
@@ -329,7 +355,7 @@ class BaseAdapter:
         """
         return {}
 
-    def registration_extra(self) -> dict:
+    def registration_extra(self) -> dict[str, object]:
         """Extra marker fields an adapter needs for verify/remove."""
         return {}
 
@@ -374,17 +400,17 @@ class BaseAdapter:
         elif destination.is_dir():
             shutil.rmtree(destination)
 
-    def _read_marker(self) -> dict | None:
+    def read_marker(self) -> dict[str, object] | None:
         if not self.marker.is_file() or self.marker.is_symlink():
             return None
         try:
             marker = json.loads(self.marker.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return None
-        if marker.get("schema") != SCHEMA_VERSION:
+        if not _is_string_object(marker) or marker.get("schema") != SCHEMA_VERSION:
             return None
         entries = marker.get("entries")
-        if not isinstance(entries, list) or not all(isinstance(entry, str) for entry in entries):
+        if not _is_string_list(entries):
             return None
         marker["entries"] = sorted(set(entries))
         return marker

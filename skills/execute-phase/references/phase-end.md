@@ -5,8 +5,8 @@ no same-focus `planned`/`in_progress` work-items remain (or the
 incidental task is closed). Order:
 
 last implementation wave → closing verification → analyze → reviewer →
-integration-report from reviewer `integration` → suite (per
-`phase_gate.suite`) → phase gate → phase close.
+integration-report from reviewer `integration` → suite (per `[suite]` in
+`orchestra.toml`) → phase gate → phase close.
 
 After the last implementation wave's execution-reports, return to
 execute-phase step 3 for the closing verification task. Do **not**
@@ -105,8 +105,9 @@ phase head: leave phase `in_progress` and stop (or fix/escalate).
 ## Suite
 
 After reviewer passes and the integration-report is written. Do not
-waive `phase_gate.suite` — a human changes `settings.conductor.phase_gate` in
-`.canon/config.json` instead. Load with `orchestra suite policy`. Missing / `mode=none` → skip.
+waive suite policy — a human changes `[suite]` in the root
+`orchestra.toml` instead. Load with `orchestra suite policy`. An omitted
+`[suite]` section or `mode=none` → skip.
 `mode=external` or `gate=deferred` → do not run locally (`deferred` =
 Landing human stop). For `smoke`/`full` with a `command`: run via
 `orchestra suite start` / `poll` / `collect` / `record` in the phase
@@ -204,9 +205,6 @@ canon list --type tuner:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
 
-canon list --type tuner:finding --where payload.effort=<focus> \
-  --where payload.needs=human
-```
 
 User signs an unsigned manual check:
 

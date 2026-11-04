@@ -8,13 +8,14 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import status_cli, view_cli
+from orchestra import plugin_cli, status_cli, view_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import gate, reviewer, suite
+from orchestra.conductor import gate, land, reviewer, suite
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
+from orchestra.conductor.github_pr import GitHubPRError
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
@@ -34,6 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     sub.add_parser(
         "verify",
         add_help=False,
@@ -223,6 +225,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Phase head revision (default: HEAD)",
     )
     review_brief.add_argument(
+        "--phase",
+        default=None,
+        help="Include records for this phase only",
+    )
+    review_brief.add_argument(
         "--store",
         default=None,
         metavar="DIR",
@@ -280,21 +287,6 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    land_parser = sub.add_parser(
-        "land",
-        help="Run the phase gate, then the Landing merge: command",
-    )
-    land_parser.add_argument("phase", help="Phase slug")
-    land_parser.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-
     suite_parser = sub.add_parser(
         "suite",
         help="Phase suite: configured policy, background run, collect, record",
@@ -303,23 +295,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_policy = suite_sub.add_parser(
         "policy",
-        help="Print the configured phase_gate.suite policy as JSON",
+        help="Print the configured orchestra.toml suite policy as JSON",
     )
     suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
-    suite_policy.add_argument(
-        "--phase",
-        default=None,
-        help="Phase slug; a Landing suite: line replaces the configured command",
-    )
-    suite_policy.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
 
     suite_start = suite_sub.add_parser(
         "start",
@@ -332,16 +310,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override the configured suite command",
     )
-    suite_start.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-
     suite_poll = suite_sub.add_parser(
         "poll",
         help="Return the suite result when the background job finished, else 'running'",
@@ -378,6 +346,19 @@ def _build_parser() -> argparse.ArgumentParser:
             "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
         ),
     )
+
+    land = sub.add_parser(
+        "land",
+        help="Open the configured pull request with the phase proof packet and wait for CI",
+    )
+    land.add_argument("--phase", required=True, help="Phase slug")
+    land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
+    land.add_argument("--base", default="main", help="Pull request base branch")
+    land.add_argument("--remote", default="origin", help="Git remote to publish")
+    land.add_argument(
+        "--poll-interval", type=float, default=10, help="CI polling interval in seconds"
+    )
+    land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
 
     store = sub.add_parser(
         "store",
@@ -573,6 +554,7 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
             phase_diff=phase_diff,
             base=args.base,
             phase_head=args.phase_head,
+            phase=args.phase,
         )
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra review-brief: {exc}", file=sys.stderr)
@@ -625,7 +607,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, Path.cwd())
         terms = gate.gate_terms(location.root, args.phase, store_dir=location.store)
-    except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+    except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
         return 2
     missing = gate.missing_terms(terms)
@@ -645,30 +627,10 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
-def _cmd_land(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, Path.cwd())
-        return gate.land(location.root, args.phase, store_dir=location.store)
-    except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra land: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-
-
-def _phase_suite_policy(location: StoreLocation, phase_slug: str | None) -> suite.SuitePolicy:
-    policy = suite.load_suite_policy(location.root, store_dir=location.store)
-    if not phase_slug:
-        return policy
-    try:
-        landing = gate.landing_for(location.root, phase_slug, store_dir=location.store)
-    except (LookupError, OSError, StoreBindingError, StoreError, ValueError):
-        return policy
-    return suite.with_landing_command(policy, landing.suite)
-
-
 def _cmd_suite_policy(args: argparse.Namespace) -> int:
     try:
-        policy = _phase_suite_policy(resolve_location(args.store, _cwd(args)), args.phase)
-    except (OSError, RuntimeError, StoreBindingError) as exc:
+        policy = suite.load_suite_policy(_cwd(args))
+    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
         print(f"orchestra suite policy: {exc}", file=sys.stderr)
         return 2
     _print_json(_policy_document(policy))
@@ -677,12 +639,8 @@ def _cmd_suite_policy(args: argparse.Namespace) -> int:
 
 def _cmd_suite_start(args: argparse.Namespace) -> int:
     try:
-        location = resolve_location(args.store, _cwd(args))
         outcome = suite.start_suite_background(
             worktree=_cwd(args),
-            store_root=location.root,
-            store_dir=location.store,
-            policy=_phase_suite_policy(location, args.phase),
             phase_slug=args.phase,
             phase_head=args.phase_head,
             session_name=args.session,
@@ -769,6 +727,64 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
         return 2
     _print_json({"ok": True, "op": "suite-record", "record": record})
     return 0
+
+
+def _cmd_land(args: argparse.Namespace) -> int:
+    work = _cwd(args).resolve()
+    try:
+        project = open_store(work)
+        head = git_head(work)
+        packets = project.list("conductor:proof-packet")
+        packet = next(
+            (
+                record
+                for record in reversed(packets)
+                if record["subject"] == args.phase and record["payload"].get("revision") == head
+            ),
+            None,
+        )
+        if packet is None:
+            raise ValueError(f"no proof packet for phase {args.phase!r} at HEAD {head}")
+        body = packet.get("body")
+        if not isinstance(body, str):
+            raise ValueError("phase proof packet has no body")
+        result = land.dispatch_land(
+            work,
+            body,
+            base=args.base,
+            remote=args.remote,
+            poll_interval_s=args.poll_interval,
+            timeout_s=args.timeout,
+        )
+    except (
+        GitHubPRError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+        TimeoutError,
+        ValueError,
+    ) as exc:
+        print(f"orchestra land: {exc}", file=sys.stderr)
+        return 2
+    _print_json(
+        {
+            "ok": result.result == "success",
+            "op": "land",
+            "pull_request": {
+                "number": result.number,
+                "url": result.url,
+                "head_sha": result.head_sha,
+            },
+            "checks": [
+                {"name": check.name, "status": check.status, "conclusion": check.conclusion}
+                for check in result.checks
+            ],
+            "statuses": result.statuses,
+            "result": result.result,
+        }
+    )
+    return 0 if result.result == "success" else 1
 
 
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
@@ -937,6 +953,10 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["verify"]:
+        if argv[1:2] == ["plugins"]:
+            from orchestra.plugin_verify_cli import main as plugins_main
+
+            return plugins_main(argv[2:])
         from orchestra.tuner.cli import main as verify_main
 
         return verify_main(argv[1:])
@@ -988,8 +1008,6 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_analyze(args)
     if args.command == "gate":
         return _cmd_gate(args)
-    if args.command == "land":
-        return _cmd_land(args)
     if args.command == "suite":
         if args.action == "policy":
             return _cmd_suite_policy(args)
@@ -1000,6 +1018,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "collect":
             return _cmd_suite_collect(args)
         return _cmd_suite_record(args)
+    if args.command == "land":
+        return _cmd_land(args)
     if args.command == "store":
         if args.action == "path":
             return _cmd_store_path(args)
@@ -1012,6 +1032,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_place(args)
     if args.command == "status":
         return status_cli.run(args)
+    if args.command == "plugins":
+        return plugin_cli.run(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")

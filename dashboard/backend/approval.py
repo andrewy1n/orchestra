@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from dashboard.backend import store
 from dashboard.backend.dismiss import (
@@ -18,9 +17,9 @@ from dashboard.backend.dismiss import (
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.landing import rev_parse_token
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
-from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
@@ -78,7 +77,7 @@ def _section(body: str, heading: str) -> str:
     return "\n".join(collected).strip()
 
 
-def _cli_json(target: Project, *args: str) -> Record | dict[str, Any]:
+def _cli_json(target: Project, *args: str) -> Record | None:
     record_id = None
     record_type = None
     items = list(args)
@@ -93,12 +92,8 @@ def _cli_json(target: Project, *args: str) -> Record | dict[str, Any]:
         else:
             index += 1
     if not record_id:
-        return {}
-    try:
-        record = store.stored_record(target, record_id, record_type)
-    except StoreError:
-        return {}
-    return record if isinstance(record, dict) else {}
+        return None
+    return store.stored_record(target, record_id, record_type)
 
 
 def _git_head(root: Path) -> str:
@@ -121,8 +116,8 @@ def _revisions_match(checked: str, head: str) -> bool:
     return head.startswith(checked) or checked.startswith(head[: max(len(checked), 7)])
 
 
-def _finding_evidence(item: NeedsYouItem, record: Record | dict[str, Any]) -> list[tuple[str, str]]:
-    payload = record_payload(record) if record else {}
+def _finding_evidence(item: NeedsYouItem, record: Record | None) -> list[tuple[str, str]]:
+    payload: PlanningPayload = record_payload(record) if record else {}
     claim = (payload.get("claim") or item.text or "").strip()
     basis = (payload.get("basis") or "").strip()
     body = (record.get("body") if record else None) or item.body or ""
@@ -142,9 +137,9 @@ def _check_evidence(
     target: Project,
     item: NeedsYouItem,
     root: Path,
-    record: Record | dict[str, Any],
+    record: Record | None,
 ) -> list[tuple[str, str]]:
-    payload = record_payload(record) if record else {}
+    payload: PlanningPayload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
     checked_rev = str(payload.get("revision") or "").strip()
     head = _git_head(root)

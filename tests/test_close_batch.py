@@ -17,13 +17,21 @@ import importlib
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import TypeGuard
 
 import helpers as h
 import pytest
 from conftest import REPO_ROOT, build_store
 
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close_batch
+from orchestra.conductor.close_batch import (
+    AcceptanceLoader,
+    AmendmentLister,
+    CheckRunLoader,
+)
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
@@ -31,78 +39,153 @@ RUNNER = "orchestra"
 ORCHESTRA_RUNNER = "orchestra"
 
 
-def _tdd_pass_only_entry(**extra):
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-cr",
-        "result": "pass",
+def _is_json_object(value: object) -> TypeGuard[JsonObject]:
+    return isinstance(value, dict)
+
+
+def _op_payload(operation: JsonObject) -> JsonObject:
+    payload = operation.get("payload")
+    if not _is_json_object(payload):
+        raise AssertionError("operation payload must be an object")
+    return payload
+
+
+def _record(
+    record_id: str,
+    payload: JsonObject,
+    *,
+    body: str = "",
+    record_type: str = "tuner:check-run",
+    subject: str | None = None,
+) -> Record:
+    return {
+        "id": record_id,
+        "record_type": record_type,
+        "subject": subject if subject is not None else record_id,
+        "payload": payload,
+        "lifecycle_state": "recorded",
+        "relationships": {},
+        "revision": "sha256:test",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+        "body": body,
     }
-    entry.update(extra)
+
+
+def _tdd_pass_only_entry(
+    *,
+    criterion_id: str = "rec-ac1",
+    check_run_id: str = "rec-runner-cr",
+    result: str = "pass",
+    signed_by: str = "",
+) -> dict[str, object]:
+    entry: dict[str, object] = {
+        "criterion_id": criterion_id,
+        "method": "tdd",
+        "check_run_id": check_run_id,
+        "result": result,
+    }
+    if signed_by:
+        entry["signed_by"] = signed_by
     return entry
 
 
-def _tdd_with_dirty_red(**extra):
+def _tdd_with_dirty_red(
+    *,
+    criterion_id: str = "rec-ac1",
+    check_run_id: str = "rec-runner-green",
+    result: str = "pass",
+    revision: str = "deadbeef",
+    red_check_run_id: str = "rec-runner-red",
+    red_result: str = "fail",
+    red_runner: str = RUNNER,
+    red_revision: str = "dirty",
+    red_diff_sha256: str = "a" * 64,
+    red_body: str = "",
+    red_failing_node_ids: str = "",
+    signed_by: str = "",
+) -> dict[str, object]:
     """Valid fail→pass via dirty red + diff_sha256 (no git ancestry needed)."""
-    entry = {
-        "criterion_id": "rec-ac1",
+    entry: dict[str, object] = {
+        "criterion_id": criterion_id,
         "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        "revision": "deadbeef",
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": "dirty",
-        "red_runner": RUNNER,
-        "red_diff_sha256": "a" * 64,
+        "check_run_id": check_run_id,
+        "result": result,
+        "revision": revision,
+        "red_check_run_id": red_check_run_id,
+        "red_result": red_result,
+        "red_revision": red_revision,
+        "red_runner": red_runner,
+        "red_diff_sha256": red_diff_sha256,
     }
-    entry.update(extra)
+    if signed_by:
+        entry["signed_by"] = signed_by
+    if red_body:
+        entry["red_body"] = red_body
+    if red_failing_node_ids:
+        entry["red_failing_node_ids"] = red_failing_node_ids
     return entry
 
 
-def _request(**overrides):
-    base = {
-        "subject": "task-1",
-        "effort": "effort-1",
-        "work_item_id": "rec-wi",
-        "transition": "done",
-        "execution_report_id": "rec-er",
-        "acceptance_ids": ["rec-ac1"],
-        "criteria": [_tdd_with_dirty_red()],
-        "finding": None,
+def _request(
+    *,
+    subject: str = "task-1",
+    effort: str = "effort-1",
+    work_item_id: str = "rec-wi",
+    transition: str = "done",
+    execution_report_id: str | None = "rec-er",
+    acceptance_ids: list[str] | None = None,
+    criteria: list[Mapping[str, object]] | None = None,
+    finding: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    return {
+        "subject": subject,
+        "effort": effort,
+        "work_item_id": work_item_id,
+        "transition": transition,
+        "execution_report_id": execution_report_id,
+        "acceptance_ids": acceptance_ids or ["rec-ac1"],
+        "criteria": criteria or [_tdd_with_dirty_red()],
+        "finding": finding,
     }
-    base.update(overrides)
-    return base
 
 
-def _matching_loader(request: dict):
+def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
     """Echo request-carried check-run fields as store records (unit-test hook)."""
-    by_id: dict[str, dict] = {}
-    for entry in request.get("criteria", []):
+    parsed_request = close_batch._parse_close_request(request)
+    by_id: dict[str, Record] = {}
+    for entry in parsed_request.get("criteria", []):
         cid = entry.get("check_run_id")
         if cid:
-            payload = {
+            payload: JsonObject = {
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("result"),
-                "runner": entry.get("runner", RUNNER),
-                "revision": entry.get("revision", "deadbeef"),
+                "runner": entry["runner"] if close_batch._entry_has(entry, "runner") else RUNNER,
+                "revision": (
+                    entry["revision"] if close_batch._entry_has(entry, "revision") else "deadbeef"
+                ),
                 "method": entry.get("method"),
             }
-            by_id[cid] = {"id": cid, "payload": payload}
+            by_id[cid] = _record(cid, payload)
         red_id = entry.get("red_check_run_id")
         if red_id:
-            red_payload = {
+            red_payload: JsonObject = {
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("red_result", "fail"),
-                "runner": entry.get("red_runner", RUNNER),
-                "revision": entry.get("red_revision", "dirty"),
+                "runner": (
+                    entry["red_runner"] if close_batch._entry_has(entry, "red_runner") else RUNNER
+                ),
+                "revision": (
+                    entry["red_revision"]
+                    if close_batch._entry_has(entry, "red_revision")
+                    else "dirty"
+                ),
                 "method": "tdd",
             }
-            if "red_diff_sha256" in entry:
+            if close_batch._entry_has(entry, "red_diff_sha256"):
                 red_payload["diff_sha256"] = entry["red_diff_sha256"]
-            by_id[red_id] = {"id": red_id, "payload": red_payload}
+            by_id[red_id] = _record(red_id, red_payload)
 
-    def load(check_run_id: str) -> dict:
+    def load(check_run_id: str) -> Record:
         if check_run_id not in by_id:
             raise LookupError(check_run_id)
         return by_id[check_run_id]
@@ -110,12 +193,25 @@ def _matching_loader(request: dict):
     return load
 
 
-def _build(request: dict, *, cwd: Path | None = None, load_check_run=None, **kwargs):
+def _build(
+    request: Mapping[str, object],
+    *,
+    cwd: Path | None = None,
+    load_check_run: CheckRunLoader | None = None,
+    load_acceptance: AcceptanceLoader | None = None,
+    list_oracle_amendments: AmendmentLister | None = None,
+) -> list[JsonObject]:
     """build_batch with a matching store loader unless one is supplied."""
     loader = load_check_run
     if loader is None and request.get("transition") == "done":
         loader = _matching_loader(request)
-    return close_batch.build_batch(request, cwd=cwd, load_check_run=loader, **kwargs)
+    return close_batch.build_batch(
+        request,
+        cwd=cwd,
+        load_check_run=loader,
+        load_acceptance=load_acceptance,
+        list_oracle_amendments=list_oracle_amendments,
+    )
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -147,7 +243,7 @@ def _ancestry_repo(tmp_path: Path) -> tuple[Path, str, str]:
 
 
 def _run_script(
-    request: dict,
+    request: Mapping[str, object],
     tmp_path: Path,
     *,
     cwd: Path | None = None,
@@ -179,13 +275,13 @@ def _run_script(
     return result, out_path
 
 
-def _manual_request(**overrides):
-    base = {
+def _manual_request(*, execution_report_id: str | None = "rec-er") -> dict[str, object]:
+    return {
         "subject": "task-1",
         "effort": "effort-1",
         "work_item_id": "rec-wi",
         "transition": "done",
-        "execution_report_id": "rec-er",
+        "execution_report_id": execution_report_id,
         "acceptance_ids": ["rec-ac1"],
         "criteria": [
             {
@@ -198,8 +294,6 @@ def _manual_request(**overrides):
         ],
         "finding": None,
     }
-    base.update(overrides)
-    return base
 
 
 # -- build_batch: pure policy tests -----------------------------------
@@ -223,9 +317,10 @@ def test_manual_pass_batch_is_one_check_run_then_the_transition():
     check_run = ops[0]
     assert check_run["type"] == "tuner:check-run"
     assert check_run["subject"] == "task-1"
-    assert check_run["payload"]["result"] == "pass"
-    assert check_run["payload"]["method"] == "manual"
-    assert check_run["payload"]["informed_by"] == ["rec-ac1", "rec-er"]
+    payload = _op_payload(check_run)
+    assert payload["result"] == "pass"
+    assert payload["method"] == "manual"
+    assert payload["informed_by"] == ["rec-ac1", "rec-er"]
 
 
 def test_refuses_done_with_failing_criterion_and_no_finding():
@@ -288,14 +383,14 @@ def test_finding_permits_the_close_and_needs_is_forced_to_human():
     )
     ops = _build(request)
     finding_op = next(op for op in ops if op["type"] == "tuner:finding")
-    assert finding_op["payload"]["needs"] == "human"
+    assert _op_payload(finding_op)["needs"] == "human"
     assert ops[-1]["op"] == "update" and ops[-1]["transition"] == "done"
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
 
 def test_no_execution_report_omits_the_second_informed_by_on_manual():
     ops = _build(_manual_request(execution_report_id=None))
-    assert ops[0]["payload"]["informed_by"] == ["rec-ac1"]
+    assert _op_payload(ops[0])["informed_by"] == ["rec-ac1"]
 
 
 def test_criteria_entry_outside_acceptance_ids_is_malformed():
@@ -314,6 +409,19 @@ def test_missing_top_level_field_is_malformed_not_refused():
 def test_invented_tdd_with_signed_by_is_malformed():
     request = _request(criteria=[_tdd_with_dirty_red(signed_by="agent")])
     with pytest.raises(close_batch.CloseRequestError, match="signed_by"):
+        _build(request)
+
+
+def test_criterion_cannot_supply_provided_fields_marker() -> None:
+    entry = _tdd_with_dirty_red(signed_by="agent")
+    entry["_provided_fields"] = ["criterion_id", "method", "result"]
+    with pytest.raises(close_batch.CloseRequestError, match="reserved"):
+        _build(_request(criteria=[entry]))
+
+
+def test_wrong_type_criterion_field_is_malformed() -> None:
+    request = _request(criteria=[{"criterion_id": "rec-ac1", "method": "manual", "revision": 123}])
+    with pytest.raises(close_batch.CloseRequestError, match=r"revision.*string"):
         _build(request)
 
 
@@ -724,7 +832,7 @@ def test_red_first_request_resolves_red_from_store_loader():
     request = _request(criteria=[_tdd_with_dirty_red()])
     seen: list[str] = []
 
-    def tracking_loader(check_run_id: str) -> dict:
+    def tracking_loader(check_run_id: str) -> Record:
         seen.append(check_run_id)
         return _matching_loader(request)(check_run_id)
 
@@ -817,7 +925,7 @@ def test_red_first_order_dirty_red_requires_nonempty_diff_sha256():
 
 def test_red_first_order_dirty_red_without_digest_refused():
     entry = _tdd_with_dirty_red()
-    del entry["red_diff_sha256"]
+    entry.pop("red_diff_sha256")
     # Store red is dirty without digest when request omits red_diff_sha256.
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
         _build(_request(criteria=[entry]))
@@ -836,7 +944,7 @@ def test_red_first_escape_permits_tdd_done_without_red_and_forces_human():
     )
     ops = _build(request)
     finding_op = next(op for op in ops if op["type"] == "tuner:finding")
-    assert finding_op["payload"]["needs"] == "human"
+    assert _op_payload(finding_op)["needs"] == "human"
     assert ops[-1]["transition"] == "done"
 
 
@@ -853,7 +961,9 @@ def test_red_first_other_methods_check_closes_without_red_check_run_id():
     )
     ops = _build(request)
     assert ops[-1]["transition"] == "done"
-    assert "red_check_run_id" not in request["criteria"][0]
+    assert not close_batch._entry_has(
+        close_batch._parse_close_request(request)["criteria"][0], "red_check_run_id"
+    )
 
 
 def test_red_first_other_methods_manual_closes_without_red_check_run_id():
@@ -868,7 +978,7 @@ def test_red_first_other_methods_manual_closes_without_red_check_run_id():
 def test_store_authority_refuses_fabricated_check_run_id():
     request = _request(criteria=[_tdd_with_dirty_red()])
 
-    def missing(_cid: str) -> dict:
+    def missing(_cid: str) -> Record:
         raise LookupError("fabricated")
 
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
@@ -880,7 +990,7 @@ def test_store_authority_refuses_fabricated_red_check_run_id():
     request = _request(criteria=[_tdd_with_dirty_red()])
     base = _matching_loader(request)
 
-    def green_only(cid: str) -> dict:
+    def green_only(cid: str) -> Record:
         if cid == "rec-runner-red":
             raise LookupError(cid)
         return base(cid)
@@ -894,13 +1004,10 @@ def test_store_authority_mismatch_result_refuses():
     request = _request(criteria=[_tdd_with_dirty_red()])
     base = _matching_loader(request)
 
-    def wrong_result(cid: str) -> dict:
+    def wrong_result(cid: str) -> Record:
         rec = base(cid)
         if cid == "rec-runner-green":
-            rec = {
-                "id": cid,
-                "payload": {**rec["payload"], "result": "fail"},
-            }
+            rec = _record(cid, {**rec["payload"], "result": "fail"})
         return rec
 
     with pytest.raises(close_batch.CloseRefused, match="mismatch") as excinfo:
@@ -912,13 +1019,10 @@ def test_store_authority_mismatch_revision_refuses():
     request = _request(criteria=[_tdd_with_dirty_red()])
     base = _matching_loader(request)
 
-    def wrong_revision(cid: str) -> dict:
+    def wrong_revision(cid: str) -> Record:
         rec = base(cid)
         if cid == "rec-runner-green":
-            rec = {
-                "id": cid,
-                "payload": {**rec["payload"], "revision": "otherrev"},
-            }
+            rec = _record(cid, {**rec["payload"], "revision": "otherrev"})
         return rec
 
     with pytest.raises(close_batch.CloseRefused, match="mismatch") as excinfo:
@@ -941,14 +1045,11 @@ def test_red_store_refuses_when_store_red_is_not_fail():
     request = _request(criteria=[_tdd_with_dirty_red()])
     base = _matching_loader(request)
 
-    def red_pass(cid: str) -> dict:
+    def red_pass(cid: str) -> Record:
         rec = base(cid)
         if cid == "rec-runner-red":
             # Request still says fail — mismatch on result.
-            return {
-                "id": cid,
-                "payload": {**rec["payload"], "result": "pass"},
-            }
+            return _record(cid, {**rec["payload"], "result": "pass"})
         return rec
 
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
@@ -1174,16 +1275,21 @@ def _oracle_acceptance(
     *,
     test_ids: str = ORACLE_NODE,
     oracle_hashes: list[str] = ORACLE_HASHES_V1,
-):
-    return {
-        "id": "rec-ac1",
-        "payload": {
-            "method": "tdd",
-            "test_ids": [test_ids] if isinstance(test_ids, str) else test_ids,
-            "oracle_hashes": oracle_hashes,
-            "effort": "effort-1",
-        },
+) -> Record:
+    hash_values: list[JsonValue] = []
+    hash_values.extend(oracle_hashes)
+    payload: JsonObject = {
+        "method": "tdd",
+        "test_ids": [test_ids] if isinstance(test_ids, str) else test_ids,
+        "oracle_hashes": hash_values,
+        "effort": "effort-1",
     }
+    return _record(
+        "rec-ac1",
+        payload,
+        record_type="score:acceptance",
+        subject="task-1",
+    )
 
 
 def _assertion_red_fields(**extra):
@@ -1196,15 +1302,16 @@ def _assertion_red_fields(**extra):
 
 
 def _oracle_loader(
-    request: dict,
+    request: Mapping[str, object],
     *,
-    acceptance: dict | None = None,
-    amendments: list | None = None,
-):
+    acceptance: Record | None = None,
+    amendments: list[Record] | None = None,
+) -> tuple[CheckRunLoader, AcceptanceLoader, AmendmentLister]:
     """Store loader + acceptance/amendment hooks for oracle unit tests."""
     base = _matching_loader(request)
-    by_id = {}
-    for entry in request.get("criteria", []):
+    by_id: dict[str, Record] = {}
+    parsed_request = close_batch._parse_close_request(request)
+    for entry in parsed_request.get("criteria", []):
         cid = entry.get("check_run_id")
         if cid:
             rec = base(cid)
@@ -1213,33 +1320,31 @@ def _oracle_loader(
         if red_id:
             rec = base(red_id)
             payload = dict(rec["payload"])
-            if "red_failing_node_ids" in entry:
+            if close_batch._entry_has(entry, "red_failing_node_ids"):
                 payload["failing_node_ids"] = entry["red_failing_node_ids"]
-            by_id[red_id] = {
-                "id": red_id,
-                "payload": payload,
-                "body": entry.get("red_body", ""),
-            }
+            by_id[red_id] = _record(red_id, payload, body=entry.get("red_body", ""))
 
-    def load(check_run_id: str) -> dict:
+    def load(check_run_id: str) -> Record:
         if check_run_id not in by_id:
             raise LookupError(check_run_id)
         return by_id[check_run_id]
 
     acc = acceptance if acceptance is not None else _oracle_acceptance()
 
-    def load_acceptance(acceptance_id: str) -> dict:
+    def load_acceptance(acceptance_id: str) -> Record:
         if acceptance_id != acc["id"] and acceptance_id != "rec-ac1":
             raise LookupError(acceptance_id)
         return acc
 
-    def list_amendments(acceptance_id: str) -> list:
+    def list_amendments(acceptance_id: str) -> list[Record]:
         return list(amendments or [])
 
     return load, load_acceptance, list_amendments
 
 
-def _build_oracle(request: dict, *, cwd: Path, acceptance=None, amendments=None):
+def _build_oracle(
+    request: Mapping[str, object], *, cwd: Path, acceptance=None, amendments=None
+) -> list[JsonObject]:
     load, load_acc, list_am = _oracle_loader(request, acceptance=acceptance, amendments=amendments)
     return close_batch.build_batch(
         request,
@@ -1743,7 +1848,10 @@ def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
             self.generic_visit(node)
             self._function_depth -= 1
 
-        visit_AsyncFunctionDef = visit_FunctionDef
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+            self._function_depth += 1
+            self.generic_visit(node)
+            self._function_depth -= 1
 
         def visit_Import(self, node: ast.Import) -> None:
             local = self._function_depth > 0
@@ -1800,19 +1908,16 @@ def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
     monkeypatch.setattr(module, attr, fn)
 
 
-def _claim_gate_acceptance(claim_id: str = CLAIM_ID) -> dict:
-    return {
-        "id": "rec-ac1",
-        "subject": "claim-gate-close",
-        "payload": {
-            "method": "check",
-            "effort": "effort-1",
-            "claim": claim_id,
-        },
-    }
+def _claim_gate_acceptance(claim_id: str = CLAIM_ID) -> Record:
+    return _record(
+        "rec-ac1",
+        {"method": "check", "effort": "effort-1", "claim": claim_id},
+        record_type="score:acceptance",
+        subject="claim-gate-close",
+    )
 
 
-def _claim_gate_check_request() -> dict:
+def _claim_gate_check_request() -> dict[str, object]:
     return _request(
         criteria=[
             {
@@ -1953,16 +2058,8 @@ def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
         lambda *args, **kwargs: {"result": "pass"},
     )
 
-    def load_acceptance(_aid):
-        return {
-            "id": "rec-ac1",
-            "subject": "claim-gate-close",
-            "payload": {
-                "method": "check",
-                "effort": "effort-1",
-                "claim": CLAIM_ID,
-            },
-        }
+    def load_acceptance(_aid: str) -> Record:
+        return _claim_gate_acceptance()
 
     request = _claim_gate_check_request()
     with pytest.raises(close_batch.CloseRefused) as excinfo:
@@ -1990,16 +2087,13 @@ def test_claim_gate_ignores_payload_claim_id(tmp_path, monkeypatch):
     _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
     _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
 
-    def load_acceptance(_aid):
-        return {
-            "id": "rec-ac1",
-            "subject": "claim-gate-close",
-            "payload": {
-                "method": "check",
-                "effort": "effort-1",
-                "claim_id": CLAIM_ID,
-            },
-        }
+    def load_acceptance(_aid: str) -> Record:
+        return _record(
+            "rec-ac1",
+            {"method": "check", "effort": "effort-1", "claim_id": CLAIM_ID},
+            record_type="score:acceptance",
+            subject="claim-gate-close",
+        )
 
     ops = _build(
         _claim_gate_check_request(),
@@ -2029,12 +2123,13 @@ def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, mon
         lambda *args, **kwargs: {"result": "fail"},
     )
 
-    def load_acceptance(_aid):
-        return {
-            "id": "rec-ac1",
-            "subject": CLAIM_ID,
-            "payload": {"method": "check", "effort": "effort-1", "claim": ""},
-        }
+    def load_acceptance(_aid: str) -> Record:
+        return _record(
+            "rec-ac1",
+            {"method": "check", "effort": "effort-1", "claim": ""},
+            record_type="score:acceptance",
+            subject=CLAIM_ID,
+        )
 
     ops = _build(
         _claim_gate_check_request(),
@@ -2050,7 +2145,7 @@ def test_claim_gate_refuses_when_acceptance_cannot_be_loaded(tmp_path):
     repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
 
-    def missing(_aid):
+    def missing(_aid: str) -> Record:
         raise LookupError(_aid)
 
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
@@ -2075,16 +2170,13 @@ def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
         lambda *args, **kwargs: {"result": "pass"},
     )
 
-    def load_acceptance(_aid):
-        return {
-            "id": "rec-ac1",
-            "subject": "claim-gate-close",
-            "payload": {
-                "method": "check",
-                "effort": "effort-1",
-                "claim": unknown,
-            },
-        }
+    def load_acceptance(_aid: str) -> Record:
+        return _record(
+            "rec-ac1",
+            {"method": "check", "effort": "effort-1", "claim": unknown},
+            record_type="score:acceptance",
+            subject="claim-gate-close",
+        )
 
     with pytest.raises(close_batch.CloseRefused, match=unknown):
         _build(

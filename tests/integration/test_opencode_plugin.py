@@ -84,8 +84,18 @@ def api(
     )
 
 
+def _group(pattern: str, text: str) -> str:
+    match = re.search(pattern, text)
+    if match is None:
+        raise AssertionError(f"missing pattern {pattern!r}")
+    return match.group(1)
+
+
 def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
-    version = subprocess.run([OPENCODE, "--version"], capture_output=True, text=True)
+    if OPENCODE is None:
+        pytest.skip("opencode is not installed")
+    opencode = OPENCODE
+    version = subprocess.run([opencode, "--version"], capture_output=True, text=True)
     match = re.search(r"(?:^|\s)v?(\d+)\.\d+\.\d+", version.stdout)
     if not match or match.group(1) != "2":
         pytest.skip("this test requires OpenCode V2")
@@ -115,7 +125,7 @@ def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
 
     with server_log.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(
-            [OPENCODE, "serve", "--port", "0", "--print-logs"],
+            [opencode, "serve", "--port", "0", "--print-logs"],
             cwd=str(project),
             env=env,
             stdout=log,
@@ -126,16 +136,16 @@ def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
             server_log,
             ("server listening on http://", "server password "),
         )
-        url = re.search(r"server listening on (http://\S+)", text).group(1)
-        password = re.search(r"server password (\S+)", text).group(1)
+        url = _group(r"server listening on (http://\S+)", text)
+        password = _group(r"server password (\S+)", text)
 
         # Booting a location loads its plugins. Wait for that to finish before
         # creating a session so the plugin cannot miss session.created.
-        ready = api(OPENCODE, env, url, password, "GET", "/api/plugin")
+        ready = api(opencode, env, url, password, "GET", "/api/plugin")
         assert ready.returncode == 0, ready.stdout + ready.stderr
 
         created = api(
-            OPENCODE,
+            opencode,
             env,
             url,
             password,
@@ -150,7 +160,7 @@ def test_installed_opencode_plugin_loads_and_emits_hooks(tmp_path: Path):
         wait_for(hook_log, (f"hook-start {project}",))
 
         deleted = api(
-            OPENCODE,
+            opencode,
             env,
             url,
             password,

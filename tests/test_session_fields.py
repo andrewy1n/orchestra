@@ -2,20 +2,27 @@ import json
 
 from orchestra.sessions.session_fields import session_fields
 from orchestra.sessions.session_metrics import read_events
+from orchestra.sessions.session_types import JsonValue, TranscriptEvent
 
 
-def base(type_, ts, **extra):
-    return {
+def base(type_: str, ts: str, **extra: JsonValue) -> TranscriptEvent:
+    event: TranscriptEvent = {
         "type": type_,
         "timestamp": ts,
         "sessionId": "s-1",
         "cwd": "/w",
         "gitBranch": "feat/x",
-        **extra,
     }
+    if "message" in extra:
+        event["message"] = extra["message"]
+    if "isMeta" in extra:
+        event["isMeta"] = extra["isMeta"]
+    if "attributionSkill" in extra:
+        event["attributionSkill"] = extra["attributionSkill"]
+    return event
 
 
-def tool_use(name, **inp):
+def tool_use(name: str, **inp: JsonValue) -> dict[str, JsonValue]:
     return {
         "message": {
             "role": "assistant",
@@ -24,8 +31,7 @@ def tool_use(name, **inp):
     }
 
 
-EVENTS = [
-    {"type": "mode", "mode": "normal"},
+EVENTS: list[TranscriptEvent] = [
     base("user", "2026-09-22T06:00:00.000Z", message={"role": "user", "content": "do it"}),
     base("assistant", "2026-09-22T06:00:05.000Z", **tool_use("Skill", skill="orchestra:init")),
     base(
@@ -101,7 +107,7 @@ def test_transcript_without_cost_state_reports_null_cost():
 
 
 def test_cost_state_with_non_numeric_total_keeps_earlier_numeric_cost():
-    events = [
+    events: list[TranscriptEvent] = [
         {"type": "cost-state", "totalCostUSD": 0.5},
         {"type": "cost-state", "totalCostUSD": None},
     ]

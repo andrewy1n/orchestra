@@ -1,50 +1,23 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
-from canon_support import make_project
 
-from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project
 from orchestra.conductor.suite import load_suite_policy
 
 
-def test_suite_policy_reads_project_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    project = make_project(tmp_path / "repo")
-    calls: list[Project] = []
-
-    def config(target: Project) -> dict[str, Any]:
-        calls.append(target)
-        return {
-            "settings": {
-                "conductor": {
-                    "phase_gate": {
-                        "suite": {
-                            "mode": "full",
-                            "command": "pytest -q",
-                            "gate": "advisory",
-                        }
-                    }
-                }
-            }
-        }
-
-    monkeypatch.setattr(Project, "config", config)
-    policy = load_suite_policy(project.project_root)
+def test_suite_policy_reads_project_config(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]\n\n'
+        '[suite]\nmode = "full"\ncommand = "pytest -q"\ngate = "advisory"\n'
+    )
+    policy = load_suite_policy(root)
     assert (policy.mode, policy.command, policy.gate) == ("full", "pytest -q", "advisory")
-    assert calls == [project]
-    assert policy.source_path == str(project.store_path)
+    assert policy.source_path == str(root / "orchestra.toml")
 
 
-def test_suite_policy_defaults_when_project_config_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    project = make_project(tmp_path / "repo")
-
-    def config(target: Project) -> dict[str, Any]:
-        raise StoreError("backend unavailable")
-
-    monkeypatch.setattr(Project, "config", config)
-    policy = load_suite_policy(project.project_root)
-    assert (policy.mode, policy.command, policy.gate) == ("none", "", "required")
-    assert policy.source_path is None
+def test_missing_project_config_is_an_error(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="required project config is missing"):
+        load_suite_policy(tmp_path)

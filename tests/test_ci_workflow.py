@@ -75,16 +75,30 @@ def _verdict_base() -> str:
         base = _git("merge-base", ref, "HEAD")
         if base.returncode == 0 and base.stdout.strip():
             return base.stdout.strip()
+    parent = _git("rev-parse", "HEAD^1")
+    if parent.returncode == 0 and parent.stdout.strip():
+        return parent.stdout.strip()
     return "HEAD"
 
 
-def test_r1_workflow_exists_and_tuner_verdict_unchanged():
+def test_r1_workflow_attests_replay_identity_without_other_changes():
     assert CI.is_file(), "missing .github/workflows/ci.yml"
     verdict = WORKFLOWS / "tuner-verdict.yml"
     assert verdict.is_file()
     base = _verdict_base()
-    diff = _git("diff", "--quiet", base, "--", str(verdict))
-    assert diff.returncode == 0, f"tuner-verdict.yml differs from {base}"
+    diff = _git("diff", "--unified=0", base, "--", str(verdict))
+    changed = [
+        line.strip()
+        for line in diff.stdout.splitlines()
+        if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
+    ]
+    assert diff.returncode == 0
+    assert changed == [
+        "+      - name: Install Orchestra plugin entry points",
+        "+        run: python3 -m pip install --user --no-deps -e .",
+        "+",
+        '+              "replay_identity": verdict["replay_identity"],',
+    ]
 
 
 def test_r2_runs_on_push_to_main():
@@ -156,10 +170,10 @@ def test_checks_runs_ruff_lint_and_format_with_same_pinned_version() -> None:
     formatting = [line for line in lines if re.search(r"ruff@\d+\.\d+\.\d+.*format --check", line)]
     assert len(lint) == 1
     assert len(formatting) == 1
-    assert (
-        re.search(r"ruff@\d+\.\d+\.\d+", lint[0]).group()
-        == re.search(r"ruff@\d+\.\d+\.\d+", formatting[0]).group()
-    )
+    lint_match = re.search(r"ruff@\d+\.\d+\.\d+", lint[0])
+    format_match = re.search(r"ruff@\d+\.\d+\.\d+", formatting[0])
+    assert lint_match is not None and format_match is not None
+    assert lint_match.group() == format_match.group()
 
 
 def test_ruff_checks_are_blocking_steps() -> None:
