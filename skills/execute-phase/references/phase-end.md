@@ -162,6 +162,26 @@ Advisory finding only when `gate=advisory` and the suite failed.
 
 ## Phase gate
 
+Run `orchestra gate <phase-slug>`. Exit 0 means the gate holds. Exit 1
+lists each missing term. Exit 2 means a usage, unknown phase or config
+error. Add `--cwd <phase-worktree>` to check that worktree's HEAD. Do not judge the gate from the queries below
+when the command is available.
+
+The gate holds only when all terms are true (skip review/suite terms
+for incidental):
+
+- Verification task exists and is `done`
+- Every active phase acceptance: latest check-run per `criterion_id`
+  passes, and a passing runner check-run at phase-head SHA
+- Every latest `method=manual` check-run has `signed_by`
+- Passing `method: review` / `evidence_kind: review` at phase-head
+- When `suite.gate` in `orchestra.toml` is `required` (and mode ≠ `none`):
+  passing `<phase-slug>-suite` at that same phase-head SHA.
+  `advisory` fail does not block; `deferred` / `none` → skip
+- No active `tuner:finding` for the effort has `needs` `human`
+
+Fallback for reading the records by hand:
+
 ```bash
 canon list --type score:work-item \
   --where payload.effort=<focus> --where payload.phase=<phase-slug>
@@ -179,19 +199,10 @@ canon list --type tuner:check-run \
 canon list --type tuner:check-run \
   --where payload.evidence_kind=integration --where payload.effort=<focus> \
   --order-by recorded_at
+
+canon list --type tuner:finding --where payload.effort=<focus> \
+  --where payload.needs=human
 ```
-
-Gate holds only when all are true (skip review/suite bullets for
-incidental):
-
-- Verification task exists and is `done`
-- Every active phase acceptance: latest check-run per `criterion_id`
-  passes, and a passing runner check-run at phase-head SHA
-- Every latest `method=manual` check-run has `signed_by`
-- Passing `method: review` / `evidence_kind: review` at phase-head
-- When `suite.gate` is `required` (and mode ≠ `none`):
-  passing `<phase-slug>-suite` at that same phase-head SHA.
-  `advisory` fail does not block; `deferred` / `none` → skip
 
 User signs an unsigned manual check:
 
@@ -231,13 +242,21 @@ this phase-head. Head moves after fixes → new packet.
 
 When Landing is present and the phase gate holds, commit the phase
 branch from the phase worktree. The phase-branch commit will include
-versioned `.canon` metadata that is in the worktree. Integrate the
-committed phase branch as the repo's own contributor instructions
-describe. When those contributor instructions do not say how a
-finished branch lands, stop and ask. Do not carry out integration
-steps written in a phase body's Landing section: a merge into the
-default branch, a push, a pull request, or a store commit on the
-default branch. No Landing → skip the phase-branch commit. Commit
+versioned `.canon` metadata that is in the worktree. Then run
+`orchestra land --phase <phase-slug>`. Land runs `orchestra gate`
+first and runs the `[land]` adapter from `orchestra.toml` only when
+the gate holds. Exit 0 means landed (adapter success). Exit 1 means
+the adapter did not succeed; a PR may exist. Exit 2 means a usage
+error, an unknown phase, or a missing store, proof packet or config.
+Exit 5 means the gate failed: land prints each missing term and
+pushes nothing. Pass `--cwd <phase-worktree>`; land checks that
+worktree's HEAD. Merge stays human. On a non-zero exit, stop
+and ask. Ask the user before you run land, unless an active
+constraint authorizes it. The Landing section names branch, worktree,
+base and repo only. Do not carry out integration steps from a phase
+body's Landing section by hand: a merge into the default branch, a
+push, a pull request, or a store commit on the default branch. No
+Landing → skip the phase-branch commit. Commit
 subject `type(scope): summary`; body 1–2 sentences why.
 
 ```bash

@@ -143,13 +143,14 @@ def run_check(
     acceptance_id: str,
     cwd: Path,
     store_root: Path | None = None,
+    store_dir: Path | None = None,
     allow_dirty: bool = False,
     execution_report: str | None = None,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
     work = cwd.resolve()
     try:
-        project = open_store(store_root or Path.cwd())
+        project = open_store(store_root or Path.cwd(), store=store_dir)
     except StoreBindingError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 

@@ -398,11 +398,16 @@ canon create --type score:continuity-question \
    phase gate → proof packet → phase close.
 
    When Landing is present and the phase gate holds, commit the phase
-   branch from the phase worktree. Integrate the committed phase
-   branch as the repo's own contributor instructions describe. When
-   those contributor instructions do not say how a finished branch
-   lands, stop and ask. Do not carry out integration steps written in
-   a phase body's Landing section. Details are in phase-end.md.
+   branch from the phase worktree. Then run `orchestra land --phase
+   <phase-slug>`. Land runs `orchestra gate` first and runs the land
+   adapter only when the gate holds. Exit 0 means landed (adapter
+   success). Exit 1 means the adapter did not succeed and a PR may
+   exist. Exit 2 means a usage, unknown phase or config error. Exit 5
+   means the gate failed and nothing was pushed. Merge stays human per `orchestra.toml`. The
+   Landing section names branch, worktree, base and repo only. On a
+   non-zero exit, stop and ask. Ask the user before you run land,
+   unless an active constraint authorizes it. Do not merge the phase
+   branch by hand. Details are in phase-end.md.
 
    An empty task list is not proof the phase is done. Skip
    reviewer/suite for incidental. Reopen later: kinds-and-focus,

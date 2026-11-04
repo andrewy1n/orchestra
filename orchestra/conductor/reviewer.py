@@ -467,6 +467,9 @@ def _revision_matches(check_revision: str, phase_head: str) -> bool:
     return longer.startswith(shorter) and len(shorter) >= 7
 
 
+revision_matches = _revision_matches
+
+
 def phase_review_gate_holds(
     *,
     check_runs: Sequence[ReviewerRecord],

@@ -307,9 +307,11 @@ The phase body includes a `## Landing` section with branch
 `phase/<phase-slug>`, worktree
 `<repo>/.worktrees/<phase-slug>`, base `main`. When Landing is
 present and the phase gate holds, commit the phase branch from the
-phase worktree. Integrate the committed phase branch as the repo's
-own contributor instructions describe. When those contributor
-instructions do not say how a finished branch lands, stop and ask.
+phase worktree. Then run `orchestra land --phase <phase-slug>`. Land
+runs `orchestra gate` first and runs the land adapter only when the
+gate holds. The Landing section names branch, worktree, base and repo
+only. `orchestra.toml` `[land]` and `[suite]` configure the adapter and
+the suite. Merge stays human. On a non-zero exit, stop and ask.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 
@@ -433,10 +435,17 @@ subcommands and shells to `canon` for store reads/writes:
 | `analyze` | Check a phase's specification, work-items, and acceptances for consistency; exits 1 on errors. |
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
-| `land` | Publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
+| `gate` | Check every phase-end term, against `--cwd`'s HEAD when given; exit 1 and name each missing term. |
+| `land` | Run the phase gate, then publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
 
-`orchestra land --phase <phase> --cwd <phase-worktree>` requires a
+`orchestra land --phase <phase> --cwd <phase-worktree>` runs
+`orchestra gate <phase>` first. When the gate fails, it prints each
+missing term, exits 5, and pushes nothing. It checks the HEAD of
+`--cwd` and reads the suite policy from that worktree's
+`orchestra.toml`. Exit codes: 0 landed (adapter success), 1 the adapter
+did not succeed (a PR may exist), 2 usage error, unknown phase or
+config error, 5 the gate failed and nothing was pushed. It requires a
 proof packet for that phase at the worktree's current commit and
 `[land].adapter = "github-pr"` in `orchestra.toml`. It pushes the branch,
 opens the PR with the packet body, and reports the completed check runs
@@ -499,6 +508,13 @@ Binding files are JSON: `{"store":"local"}` or `{"store":"global"}`.
 A set binding that points at a path without `config.json` fails; it does
 not fall through to the other store. This repository pins local in
 `.canon/store-binding.json`.
+
+`orchestra` phase-end verbs (`check`, `analyze`, `review-brief`, `gate`,
+`land`, `suite`) take `--store` to name a store repo root. They resolve
+the root from `--store`, then `$ORCHESTRA_STORE`, then the cwd. An
+explicit `--store` or `$ORCHESTRA_STORE` beats `$CANON_STORE`: the verb
+opens the store that root's binding names. It does not change the
+process environment, so child commands see `$CANON_STORE` unchanged.
 
 If a personal shell function wraps `canon` and forces
 `--store ~/.canon/<name>`, it bypasses this binding for bare CLI

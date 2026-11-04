@@ -278,6 +278,7 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
     github = FakeGitHub()
     monkeypatch.setattr(github_pr, "GitHubREST", lambda _root, _remote, _config: github)
     monkeypatch.setattr(github_pr.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
 
     result = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
 

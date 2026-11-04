@@ -666,6 +666,7 @@ def phase_suite_gate_holds(
 def record_suite_check_run(
     *,
     store_root: Path,
+    store_dir: Path | None = None,
     phase_slug: str,
     effort: str,
     suite: SuiteResult,
@@ -689,7 +690,7 @@ def record_suite_check_run(
             "\n## Failing node IDs\n\n" + "\n".join(f"- {n}" for n in suite.failing_node_ids)
         )
     try:
-        project = open_store(store_root)
+        project = open_store(store_root, store=store_dir)
         return project.create(
             record_type="tuner:check-run",
             subject=subject,

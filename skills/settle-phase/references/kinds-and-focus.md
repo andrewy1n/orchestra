@@ -29,9 +29,11 @@ The phase body includes a `## Landing` section with branch
 `phase/<phase-slug>`, worktree
 `<repo>/.worktrees/<phase-slug>`, base `main`. When Landing is
 present and the phase gate holds, commit the phase branch from the
-phase worktree. Integrate the committed phase branch as the repo's
-own contributor instructions describe. When those contributor
-instructions do not say how a finished branch lands, stop and ask.
+phase worktree. Then run `orchestra land --phase <phase-slug>`. Land
+runs `orchestra gate` first and runs the land adapter only when the
+gate holds. The Landing section names branch, worktree, base and repo
+only. `orchestra.toml` `[land]` and `[suite]` configure the adapter and
+the suite. Merge stays human. On a non-zero exit, stop and ask.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 
