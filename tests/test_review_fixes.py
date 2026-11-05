@@ -9,8 +9,7 @@ from test_wave_end import _world as _end_world
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.cli import _close_task
-from orchestra.conductor import land_task, wave
+from orchestra.conductor import land_task, task_close, wave
 from orchestra.conductor.check import run_check
 
 
@@ -34,8 +33,10 @@ def test_r11_review_fix_closes_a_task_whose_requirements_are_verified_without_ow
     project, repo, tree = _world(tmp_path)
     acceptance = project.resolve("score:acceptance", "a")
     assert run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo).exit_code == 0
-    landed = land_task.LandedTask("a", PHASE, "", "rev", "report", (), str(EVIDENCE["result"]))
-    assert _close_task(project, landed) == "done"
+    landed = land_task.LandedTask(
+        "a", PHASE, "", "rev", "report", (), str(EVIDENCE["result"]), str(EVIDENCE["verdict"])
+    )
+    assert task_close.close(project, landed, frozenset({"R1"})).state == "done"
 
 
 def test_r13_review_fix_start_conflict_opens_a_question_and_starts_nothing(

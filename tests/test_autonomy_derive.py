@@ -78,3 +78,28 @@ def test_r13_a_new_phase_makes_a_dormant_effort_active_again() -> None:
     assert effort_dormant(records, "e", NOW)
     records.append(_phase(0, "planned"))
     assert not effort_dormant(records, "e", NOW)
+
+
+def _question(age_days: float, state: str, blocking: bool = True) -> Record:
+    return _record(
+        "score:continuity-question",
+        "e",
+        {"owner": "user", "blocking": blocking, "scope": "human:t"},
+        age_days,
+        state,
+    )
+
+
+def test_a_new_question_scoped_by_subject_reactivates_a_quiet_effort() -> None:
+    records = [_goal(30), _phase(30, "done"), _question(0, "answered", blocking=False)]
+    assert not effort_dormant(records, "e", NOW)
+
+
+def test_an_unresolved_blocking_question_keeps_an_old_effort_awake() -> None:
+    records = [_goal(30), _phase(30, "done"), _question(20, "open")]
+    assert not effort_dormant(records, "e", NOW)
+
+
+def test_an_old_answered_question_does_not_reactivate_an_effort() -> None:
+    records = [_goal(30), _phase(30, "done"), _question(20, "answered")]
+    assert effort_dormant(records, "e", NOW)

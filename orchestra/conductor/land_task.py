@@ -24,6 +24,7 @@ class CheckResult:
     subject: str
     check_run_id: str
     exit_code: int
+    message: str = ""
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,8 @@ class LandedTask:
     report_id: str
     checks: tuple[CheckResult, ...]
     evidence_result: str
+    verdict: str = ""
+    needs_human: bool = False
 
 
 def _text(record: Record, key: str) -> str:
@@ -53,7 +56,29 @@ def work_item(project: Project, task: str) -> Record:
     return found[0]
 
 
+def _verify_evidence_revision(tree: Path, claimed: object) -> None:
+    if not isinstance(claimed, str) or not claimed:
+        return
+    resolved = run_git(
+        tree, "rev-parse", "--verify", f"{claimed}^{{commit}}", capture_output=True, text=True
+    )
+    head = git_head(tree)
+    if resolved.returncode != 0 or resolved.stdout.strip() != head:
+        raise LandError(
+            f"evidence revision {claimed!r} is not the worktree HEAD {head[:12]}; "
+            "return fresh evidence for the current tree"
+        )
+
+
 def _commit(tree: Path, phase: str, task: str) -> str:
+    staged = run_git(
+        tree, "diff", "--cached", "--name-only", "--", ".canon", capture_output=True, text=True
+    )
+    if staged.stdout.strip():
+        raise LandError(
+            f"staged .canon changes would enter the task commit; unstage them: "
+            f"{staged.stdout.split()[0]}"
+        )
     status = run_git(
         tree, "status", "--porcelain", "--", ".", ":!.canon", capture_output=True, text=True
     )
@@ -88,6 +113,8 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
     phase = _text(item, "phase")
     tree = Path(_text(item, "write_root") or str(repo))
     closing = closes_phase(item, phase_items(project.records(), phase))
+    if tree.is_dir():
+        _verify_evidence_revision(tree, evidence.get("revision"))
     commit = "" if closing or not tree.is_dir() else _commit(tree, phase, task)
     try:
         revision = git_head(tree)
@@ -111,6 +138,7 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
             acceptance_id=acceptance["id"],
             cwd=tree,
             store_root=project.project_root,
+            store_dir=project.store_path,
             execution_report=report["id"],
         )
         checks.append(
@@ -119,6 +147,17 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
                 acceptance["subject"],
                 outcome.record["id"] if outcome.record else "",
                 outcome.exit_code,
+                outcome.message,
             )
         )
-    return LandedTask(task, phase, commit, revision, report["id"], tuple(checks), result)
+    return LandedTask(
+        task,
+        phase,
+        commit,
+        revision,
+        report["id"],
+        tuple(checks),
+        result,
+        str(evidence["verdict"]),
+        evidence.get("needs_human") is True,
+    )

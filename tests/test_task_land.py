@@ -195,6 +195,6 @@ def test_r11_closes_the_task_when_its_requirements_are_verified(tmp_path: Path) 
 def test_r11_leaves_the_task_in_progress_when_a_check_fails(tmp_path: Path) -> None:
     project, repo, _ = _world(tmp_path, verify_command="false")
     result = _land_cli(repo, _evidence_file(tmp_path))
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == 1, result.stderr
     assert json.loads(result.stdout)["state"] == "in_progress"
     assert project.resolve("score:work-item", "a")["lifecycle_state"] == "in_progress"
