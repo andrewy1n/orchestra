@@ -7,6 +7,11 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
+from orchestra.score.requirements import (
+    acceptance_requirement_ids,
+    phase_requirements,
+    phase_weight,
+)
 
 RequirementState = Literal["verified", "failed", "unverified"]
 
@@ -75,6 +80,8 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
     ]
+    if phase_weight(records, phase) == "light":
+        return [rid for rid, _ in phase_requirements(records, phase)]
     spec = _latest(specs)
     sources = [spec] if spec is not None else _phase_work_items(records, phase)
     ids: list[str] = []
@@ -110,7 +117,7 @@ def _derive_requirement(
         if r["record_type"] == ACCEPTANCE
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
-        and _text(r, "requirement") == requirement
+        and requirement in acceptance_requirement_ids(r)
     ]
     acceptance_ids = tuple(a["id"] for a in acceptances)
     latest_runs: list[Record] = []

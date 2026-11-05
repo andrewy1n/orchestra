@@ -6,18 +6,23 @@ from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.requirements import (
+    acceptance_requirement_ids,
+    phase_requirements,
+    phase_weight,
+    requirement_body_problems,
+    requirements_in_body,
+)
 
 MARKER = "[NEEDS CLARIFICATION"
 _CODE_SPAN = re.compile(r"`[^`]*`")
-_REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 _COMPOUND = re.compile(r"\band\b|;")
 
-RecordData: TypeAlias = Record | Mapping[str, JsonValue]
+RecordData: TypeAlias = Record
 
 
 def _payload(record: RecordData) -> Mapping[str, JsonValue]:
-    payload = record.get("payload")
-    return payload if isinstance(payload, dict) else {}
+    return record["payload"]
 
 
 def _requirements(record: RecordData) -> list[str]:
@@ -32,18 +37,15 @@ def _requirements(record: RecordData) -> list[str]:
 
 
 def _recorded_at(record: RecordData) -> str:
-    recorded_at = record.get("recorded_at")
-    return recorded_at if isinstance(recorded_at, str) else ""
+    return record["recorded_at"]
 
 
 def _body(record: RecordData) -> str:
-    body = record.get("body")
-    return body if isinstance(body, str) else ""
+    return record.get("body", "")
 
 
 def _subject(record: RecordData) -> str:
-    subject = record.get("subject")
-    return subject if isinstance(subject, str) else ""
+    return record["subject"]
 
 
 @dataclass(frozen=True)
@@ -68,18 +70,6 @@ class Report:
         return not any(f.severity == "error" for f in self.findings)
 
 
-def _requirements_section(body: str) -> list[tuple[str, str]]:
-    lines: list[str] = []
-    inside = False
-    for line in body.splitlines():
-        if line.startswith("## "):
-            inside = line[3:].strip() == "Requirements"
-        elif inside:
-            lines.append(line.strip())
-    matches = (_REQUIREMENT_LINE.match(line) for line in lines)
-    return [(m.group(1), m.group(2)) for m in matches if m]
-
-
 def _has_marker(body: str) -> bool:
     return MARKER in _CODE_SPAN.sub("", body)
 
@@ -95,8 +85,9 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
         ]
 
     report = Report(phase=phase, stage=stage)
+    light = phase_weight(list(records), phase) == "light"
     specs = of_type("score:specification", "active")
-    if not specs:
+    if not specs and not light:
         report.findings.append(
             Finding(
                 "error",
@@ -106,7 +97,6 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
             )
         )
         return report
-    spec = specs[0]
     designs = of_type("score:design", "active")
     items = of_type("score:work-item", "planned", "in_progress", "done")
     acceptances = of_type("score:acceptance", "active")
@@ -114,46 +104,54 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
     def add(severity: str, code: str, subject: str, message: str) -> None:
         report.findings.append(Finding(severity, code, subject, message))
 
-    spec_subject = _subject(spec)
-    listed = _requirements(spec)
-    body_lines = _requirements_section(_body(spec))
-    body_ids = [rid for rid, _ in body_lines]
-
-    for rid in listed:
-        if rid not in body_ids:
-            add(
-                "error",
-                "spec-id-not-in-body",
-                spec_subject,
-                f"{rid} is listed in the specification but absent from ## Requirements",
-            )
-    for rid in dict.fromkeys(body_ids):
-        if rid not in listed:
-            add(
-                "error",
-                "body-id-not-in-spec",
-                spec_subject,
-                f"{rid} is in ## Requirements but absent from the specification requirements",
-            )
+    if light:
+        subject = phase
+        body_lines = phase_requirements(list(records), phase)
+        listed = [rid for rid, _ in body_lines]
+        marked = [
+            r for r in records if r.get("record_type") == "score:phase" and _subject(r) == phase
+        ]
+        documents = marked
+        for problem in requirement_body_problems(_body(marked[0]) if marked else ""):
+            add("error", "light-requirements-invalid", subject, problem)
+    else:
+        spec = specs[0]
+        subject = _subject(spec)
+        listed = _requirements(spec)
+        body_lines = requirements_in_body(_body(spec))
+        body_ids = [rid for rid, _ in body_lines]
+        for rid in listed:
+            if rid not in body_ids:
+                add(
+                    "error",
+                    "spec-id-not-in-body",
+                    subject,
+                    f"{rid} is listed in the specification but absent from ## Requirements",
+                )
+        for rid in dict.fromkeys(body_ids):
+            if rid not in listed:
+                add(
+                    "error",
+                    "body-id-not-in-spec",
+                    subject,
+                    f"{rid} is in ## Requirements but absent from the specification requirements",
+                )
+        documents = [spec, *designs]
 
     carried = {rid for item in items for rid in _requirements(item)}
-    named = [_payload(acceptance).get("requirement") for acceptance in acceptances]
+    named = {rid for acceptance in acceptances for rid in acceptance_requirement_ids(acceptance)}
     for rid in listed:
         if rid not in carried:
-            add(
-                "error",
-                "requirement-no-work-item",
-                spec_subject,
-                f"{rid} is carried by no work-item",
-            )
+            add("error", "requirement-no-work-item", subject, f"{rid} is carried by no work-item")
         if rid not in named:
             add(
                 "error",
                 "requirement-no-acceptance",
-                spec_subject,
+                subject,
                 f"{rid} is named by no active acceptance",
             )
 
+    source = "the phase body" if light else "the specification"
     for item in items:
         for rid in _requirements(item):
             if rid not in listed:
@@ -161,19 +159,27 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     "error",
                     "work-item-unknown-requirement",
                     _subject(item),
-                    f"work-item names {rid}, which the specification does not list",
+                    f"work-item names {rid}, which {source} does not list",
                 )
     for acceptance in acceptances:
-        rid = _payload(acceptance).get("requirement")
-        if rid and rid not in listed:
+        ids = acceptance_requirement_ids(acceptance)
+        for rid in ids:
+            if rid not in listed:
+                add(
+                    "error",
+                    "acceptance-unknown-requirement",
+                    _subject(acceptance),
+                    f"acceptance names {rid}, which {source} does not list",
+                )
+        if not light and (len(ids) > 1 or "requirements" in _payload(acceptance)):
             add(
                 "error",
-                "acceptance-unknown-requirement",
+                "full-phase-multi-requirement",
                 _subject(acceptance),
-                f"acceptance names {rid}, which the specification does not list",
+                "a full-phase acceptance names exactly one requirement",
             )
 
-    for record in (spec, *designs):
+    for record in documents:
         if _has_marker(_body(record)):
             add(
                 "error",
@@ -187,7 +193,7 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
             add(
                 "warning",
                 "compound-requirement",
-                spec_subject,
+                subject,
                 f"{rid} joins clauses with 'and' or ';'",
             )
 

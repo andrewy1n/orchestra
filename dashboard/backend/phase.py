@@ -31,10 +31,11 @@ from dashboard.backend.task import (
     task_rows,
 )
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.derive import release_ready as derive_release_ready
+from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
@@ -80,6 +81,33 @@ def _requirement_texts(body: str) -> dict[str, str]:
         if sep and ident.strip():
             texts[ident.strip()] = text.strip()
     return texts
+
+
+def light_specification(phase: str, effort: str, phases: list[Record]) -> Record | None:
+    record = next(
+        (r for r in phases if r["subject"] == phase and record_payload(r).get("weight") == "light"),
+        None,
+    )
+    if record is None:
+        return None
+    body = record.get("body", "")
+    payload: JsonObject = {
+        "phase": phase,
+        "effort": effort,
+        "weight": "light",
+        "requirements": [rid for rid, _ in requirements_in_body(body)],
+    }
+    return {
+        "id": record["id"],
+        "record_type": "score:specification",
+        "subject": record["subject"],
+        "payload": payload,
+        "lifecycle_state": "active",
+        "relationships": record["relationships"],
+        "revision": record["revision"],
+        "recorded_at": record["recorded_at"],
+        "body": body,
+    }
 
 
 def _oldest_first(records: list[Record]) -> list[Record]:
@@ -168,18 +196,30 @@ def _latest_requirement_check(
     acceptances: list[Record],
     checks: list[Record],
 ) -> CheckRun | None:
-    acceptance_ids = {
-        record["id"]
+    live = [
+        record
         for record in acceptances
         if record.get("lifecycle_state") not in INACTIVE_STATES
         and record_payload(record).get("phase") == phase
+    ]
+    single_ids = {record["id"] for record in live}
+    listed_ids = {
+        record["id"]
+        for record in live
+        if "requirements" in record_payload(record)
+        and requirement in acceptance_requirement_ids(record)
     }
     matched = [
         record
         for record in checks
         if record.get("lifecycle_state") not in INACTIVE_STATES
-        and record_payload(record).get("requirement") == requirement
-        and record_payload(record).get("criterion_id") in acceptance_ids
+        and (
+            record_payload(record).get("criterion_id") in listed_ids
+            or (
+                record_payload(record).get("requirement") == requirement
+                and record_payload(record).get("criterion_id") in single_ids
+            )
+        )
     ]
     record = newest_record(matched)
     return check_from(record) if record else None
@@ -596,8 +636,11 @@ def phase_evidence(
     assessments: list[Record],
     reports: list[Record],
     releases: list[Record],
+    phases: list[Record] | None = None,
 ) -> PhaseEvidence | None:
-    spec = newest_record(_for_phase(specs, phase, effort))
+    spec = light_specification(phase, effort, phases or []) or newest_record(
+        _for_phase(specs, phase, effort)
+    )
     if spec is None:
         return None
     spec_ids = record_payload(spec).get("requirements") or []
@@ -861,6 +904,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         by_effort("conductor:assessment").get(effort, []),
         by_effort("conductor:integration-report").get(effort, []),
         by_effort("conductor:release").get(effort, []),
+        snapshot_phases,
     )
     decisions = [
         RelatedRecord("decision", r["id"], r["subject"], record_payload(r).get("choice", ""))
@@ -968,7 +1012,9 @@ def load_requirement_detail(
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
     latest = newest_record(active)
-    spec = newest_record(_for_phase(specs, phase, effort))
+    spec = light_specification(phase, effort, listed("score:phase")) or newest_record(
+        _for_phase(specs, phase, effort)
+    )
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [
         task
@@ -984,7 +1030,7 @@ def load_requirement_detail(
     acceptances = [
         record
         for record in _for_phase(listed("score:acceptance"), phase, effort)
-        if record_payload(record).get("requirement") == requirement
+        if requirement in acceptance_requirement_ids(record)
     ]
     acceptances.sort(key=recorded_at)
     check_records = listed("tuner:check-run")

@@ -183,6 +183,14 @@ def _structured_phases(specs: list[Record]) -> set[tuple[str, str]]:
     return found
 
 
+def _light_phases(phase_records: list[Record]) -> set[tuple[str, str]]:
+    return {
+        (record_payload(record).get("effort") or "", record["subject"])
+        for record in live_records(phase_records)
+        if record_payload(record).get("weight") == "light"
+    }
+
+
 def _needs_route(record: Record) -> bool:
     payload = record_payload(record)
     status, nxt, confidence = (
@@ -497,7 +505,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
     releases = listed["conductor:release"]
     backlog_by_effort = records_by_effort(listed.get("composer:idea") or [])
     decisions = remap_records(list_records(target, "score:decision"), aliases) if designs else []
-    structured = _structured_phases(specs)
+    structured = _structured_phases(specs) | _light_phases(listed["score:phase"])
     specs_by_effort = records_by_effort(specs)
     designs_by_effort = records_by_effort(designs)
     assessments_by_effort = records_by_effort(assessments)
@@ -548,6 +556,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 assessments_by_effort.get(effort, []),
                 integrations_by_effort.get(effort, []),
                 releases_by_effort.get(effort, []),
+                phases.get(effort, []),
             )
             if evidence is not None:
                 evidence_by_phase[phase] = evidence

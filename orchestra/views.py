@@ -10,6 +10,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
 from orchestra.derive import phase_progress, release_ready, requirement_status, task_assignment
+from orchestra.score.requirements import phase_requirements
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -664,8 +665,10 @@ def _orientation(work_item: Record, records: list[Record]) -> str:
         if sections.get(name):
             lines += [f"### Work item {name}", "", sections[name], ""]
     phase = payload.get("phase")
-    spec = _phase_record(records, "score:specification", phase)
-    spec_lines = _requirement_lines(_body_sections(spec).get("Requirements", "")) if spec else {}
+    spec_lines = {
+        rid: f"{rid}: {text}"
+        for rid, text in phase_requirements(records, phase if isinstance(phase, str) else "")
+    }
     description_lines = _requirement_lines(sections.get("Description", ""))
     requirements = [
         spec_lines.get(rid) or description_lines.get(rid) or rid

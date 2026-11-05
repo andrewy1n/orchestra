@@ -38,6 +38,15 @@ Do not write work-items, acceptance, or code in this skill. That is
 - The user decides. Do not record a choice the user did not make. If
   the user says "your call", record your recommendation and say so in
   the Rationale.
+- **Light weight.** A phase is light when its planned work is about 4
+  tasks or fewer and no option changes the architecture. Say the
+  weight and why, and let the user override it either way. Set payload
+  `weight` on the phase (`light` | `full`; missing means `full`). A
+  light phase writes no `score:specification` and no `score:design`:
+  its phase body keeps `## Requirements` (one atomic `Rn:` line per
+  id), `## Proof`, and `## Landing`. Write a `score:decision` in a
+  light phase only when the user picked between options. Verification,
+  the reviewer, frozen oracles, and red-first stay the same.
 - Skip trivia. A decision is a choice a later reader would otherwise
   re-open. The design names those decisions; it does not replace them.
 - Every required section of a specification or design is present. A
@@ -91,7 +100,8 @@ canon list --type score:design --where payload.phase=<phase-slug> --state active
 4. Iterate until the user settles each open choice. Narrow follow-up
    questions are fine; do not reopen choices already recorded as
    decisions unless the user asks.
-5. Structured work only, before the decision step: one
+5. Full structured work only (skip for a light phase), before the
+   decision step: one
    `score:specification` whose subject is the phase slug. Payload
    `requirements` is the stable ids as a JSON array (`["R1","R2"]`). The
    Requirements section uses those ids (`R1: …`). Each id is
@@ -147,8 +157,9 @@ canon supersede --type score:decision --id <decision-id> \
   --body-file "<decision-body.md>"
 ```
 
-7. Structured work only, after the decisions, so `decisions` names
-   them: one `score:design` with the same subject (the phase slug).
+7. Full structured work only (skip for a light phase), after the
+   decisions, so `decisions` names them: one `score:design` with the
+   same subject (the phase slug).
    Payload `decisions` is those decision subjects as a JSON array.
    Required sections hold the architecture, interfaces, invariants,
    assumptions, tradeoffs, and risks. Decisions remain the choices a
