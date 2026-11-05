@@ -123,3 +123,16 @@ def test_requirement_detail_reads_a_light_phase_body(tmp_path: Path) -> None:
     detail = load_requirement_detail(project, "e", "p", "R2")
     assert detail.text == "Second behavior."
     assert detail.status == "verified"
+
+
+def test_light_phase_ignores_an_old_active_specification() -> None:
+    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    old_spec = _record(
+        "score:specification",
+        "p",
+        {"phase": "p", "effort": "e", "weight": "full", "requirements": ["R9"]},
+        "## Requirements\n\nR9: Stale behavior.\n",
+    )
+    evidence = phase_evidence("p", "e", [old_spec], [], [], [], [], [], [], [], [], [phase])
+    assert evidence is not None
+    assert [row.id for row in evidence.requirements] == ["R1", "R2"]

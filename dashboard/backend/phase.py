@@ -638,8 +638,8 @@ def phase_evidence(
     releases: list[Record],
     phases: list[Record] | None = None,
 ) -> PhaseEvidence | None:
-    spec = newest_record(_for_phase(specs, phase, effort)) or light_specification(
-        phase, effort, phases or []
+    spec = light_specification(phase, effort, phases or []) or newest_record(
+        _for_phase(specs, phase, effort)
     )
     if spec is None:
         return None
@@ -1012,8 +1012,8 @@ def load_requirement_detail(
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
     latest = newest_record(active)
-    spec = newest_record(_for_phase(specs, phase, effort)) or light_specification(
-        phase, effort, listed("score:phase")
+    spec = light_specification(phase, effort, listed("score:phase")) or newest_record(
+        _for_phase(specs, phase, effort)
     )
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [

@@ -86,12 +86,12 @@ orchestra wave start <phase-slug>
 orchestra task land <task-slug> --evidence <file>
 ```
 
-   It commits the task worktree (excluding `.canon`), writes the
-   execution-report, runs every active acceptance through
-   `orchestra check`, and closes the work-item when every requirement is
-   verified; else it leaves it `in_progress`. Findings, manual
-   check-runs, and the suite check-run stay parent writes (`verify-work`). When the claim is in `.tuner/manifest.json`, run
-   `orchestra verify verdict` before `done`.
+   It commits the worktree (excluding `.canon`), writes the
+   execution-report, runs every active acceptance, and closes the
+   work-item only when the close policy passes (red-first, oracle freeze,
+   verified requirements, verdict `pass`, no `needs_human`). Exit 1 means
+   a failed check or refusal; exit 3 means a human decision is pending.
+   Stop on non-zero. Findings and manual or suite check-runs stay parent writes.
 5. For a mid-flight term change, message the subagent and record a
    `conductor:assignment-amendment` ([mechanics.md](references/mechanics.md)).
 6. End the wave:

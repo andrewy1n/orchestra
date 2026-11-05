@@ -84,3 +84,31 @@ def test_full_phase_multi_requirement_acceptance_is_an_error() -> None:
         _acceptance(requirements=["R1", "R2"]),
     ]
     assert "full-phase-multi-requirement" in _codes(records)
+
+
+def _light_body_codes(body: str) -> set[str]:
+    return _codes([_phase("light", body), _item("R1"), _acceptance(requirement="R1")])
+
+
+def test_light_phase_rejects_a_malformed_requirement_line() -> None:
+    assert "light-requirements-invalid" in _light_body_codes(
+        "## Requirements\n\nR1: One.\nR2 - Two.\n"
+    )
+
+
+def test_light_phase_rejects_a_missing_requirements_section() -> None:
+    assert "light-requirements-invalid" in _light_body_codes("## Problem\n\nNothing.\n")
+
+
+def test_light_phase_rejects_an_empty_requirements_section() -> None:
+    assert "light-requirements-invalid" in _light_body_codes("## Requirements\n\nNone yet.\n")
+
+
+def test_light_phase_rejects_a_duplicate_requirement_id() -> None:
+    assert "light-requirements-invalid" in _light_body_codes(
+        "## Requirements\n\nR1: One.\nR1: Again.\n"
+    )
+
+
+def test_light_phase_rejects_a_requirement_with_no_text() -> None:
+    assert "light-requirements-invalid" in _light_body_codes("## Requirements\n\nR1:\n")

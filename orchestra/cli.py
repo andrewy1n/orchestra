@@ -13,7 +13,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, wave
+from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
@@ -688,7 +688,7 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
         repo = wave.repo_root(_cwd(args))
-        result = wave.start(project, repo, args.phase)
+        result = wave.start(project, repo, args.phase, wave.worktree_root(_cwd(args)))
         records = project.records()
         briefs = {t.task: views.render_brief(t.task, records) for t in result.tasks}
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
@@ -716,20 +716,6 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
         print(f"## {t.task} ({t.executor}) {t.write_root}\n")
         print(briefs[t.task])
     return 0
-
-
-def _close_task(project: Project, landed: land_task.LandedTask) -> str:
-    records = project.records()
-    item = land_task.work_item(project, landed.task)
-    wanted = item["payload"].get("requirements")
-    required = [r for r in wanted if isinstance(r, str)] if isinstance(wanted, list) else []
-    statuses = requirement_status(records, landed.phase)
-    checks_pass = all(c.exit_code == 0 for c in landed.checks) and bool(landed.checks or required)
-    verified = all(r in statuses and statuses[r].status == "verified" for r in required)
-    if landed.evidence_result == "pass" and checks_pass and verified:
-        project.update(item["id"], record_type="score:work-item", transition="done")
-        return "done"
-    return "in_progress"
 
 
 def _cmd_wave_end(args: argparse.Namespace) -> int:
@@ -772,7 +758,12 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         project = open_store(location.root, store=location.store)
         repo = wave.repo_root(_cwd(args))
         landed = land_task.land(project, repo, args.task, Path(args.evidence))
-        state = _close_task(project, landed)
+        statuses = requirement_status(project.records(), landed.phase)
+        closure = task_close.close(
+            project,
+            landed,
+            frozenset(r for r, s in statuses.items() if s.status == "verified"),
+        )
     except (
         EvidenceError,
         land_task.LandError,
@@ -792,12 +783,19 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
                 "revision": landed.revision,
                 "execution_report": landed.report_id,
                 "check_runs": [c.check_run_id for c in landed.checks],
-                "state": state,
+                "state": closure.state,
+                "reasons": list(closure.reasons),
+                "question": closure.question_id,
             }
         )
     else:
-        print(f"{landed.task}: {state} (report {landed.report_id}, revision {landed.revision})")
-    return 0
+        print(
+            f"{landed.task}: {closure.state} (report {landed.report_id}, "
+            f"revision {landed.revision})"
+        )
+        for reason in closure.reasons:
+            print(f"  {reason}", file=sys.stderr)
+    return closure.code
 
 
 def _cmd_analyze(args: argparse.Namespace) -> int:
