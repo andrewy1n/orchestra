@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from orchestra.conductor.check import parse_failing_node_ids
+import subprocess
+from pathlib import Path
+
+from canon_support import create, make_project
+
+from orchestra.conductor.check import parse_failing_node_ids, run_check
 
 SPACED = "tests/test_effort_brief.py::test_r3_sections[Success measure]"
 DASHED = "tests/test_a.py::test_x[left - right]"
@@ -34,3 +39,41 @@ def test_parse_still_reads_unspaced_ids_in_order_without_duplicates() -> None:
         "tests/test_a.py::test_one",
         "tests/test_b.py::TestCls::test_two",
     ]
+
+
+def test_check_run_stores_the_whole_spaced_node_id(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "base",
+        ],
+        check=True,
+    )
+    create(project, "score:effort", "ef", {"goal": "g", "kind": "deliver"})
+    acceptance = create(
+        project,
+        "score:acceptance",
+        "spaced",
+        {
+            "method": "check",
+            "phase": "",
+            "effort": "ef",
+            "verify_command": f"printf 'FAILED {SPACED} - AssertionError\\n'; exit 1",
+        },
+    )
+    outcome = run_check(
+        acceptance_id=acceptance["id"], cwd=tmp_path, store_root=tmp_path, allow_dirty=True
+    )
+    assert outcome.exit_code == 1
+    assert outcome.record is not None
+    assert outcome.record["payload"]["failing_node_ids"] == [SPACED]
