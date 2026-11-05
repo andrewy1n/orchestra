@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -192,3 +194,40 @@ def test_wave_end_skips_a_task_that_is_not_closed(tmp_path: Path) -> None:
     result = wave.end(project, repo, PHASE)
     assert result.merged == ()
     assert result.skipped == (("a", "task is not closed"),)
+
+
+def test_a_retried_land_at_the_same_revision_reuses_the_execution_report(tmp_path: Path) -> None:
+    project, repo, _ = _world(tmp_path)
+    _set_acceptance(project, method="tdd")
+    evidence = _evidence_file(tmp_path)
+    land_task.land(project, repo, "a", evidence)
+    land_task.land(project, repo, "a", evidence)
+    reports = [r for r in project.list("conductor:execution-report") if r["subject"] == "a"]
+    assert len(reports) == 1
+
+
+def test_oracle_backed_tdd_with_a_red_run_and_a_frozen_oracle_closes_the_task(
+    tmp_path: Path,
+) -> None:
+    oracle = "def test_x():\n    from pathlib import Path\n    assert Path('impl.txt').exists()\n"
+    command = f"{sys.executable} -m pytest -q test_oracle.py"
+    project, repo, tree = _world(tmp_path, verify_command=command)
+    (tree / "test_oracle.py").write_text(oracle)
+    _git(tree, "add", "test_oracle.py")
+    _git(tree, "commit", "-qm", "freeze oracle")
+    digest = hashlib.sha256(oracle.encode()).hexdigest()
+    _set_acceptance(
+        project,
+        method="tdd",
+        test_ids=["test_oracle.py::test_x"],
+        oracle_hashes=[f"test_oracle.py:sha256:{digest}"],
+    )
+    acceptance = project.resolve("score:acceptance", "a")
+    red = run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo)
+    assert red.exit_code != 0
+    time.sleep(1.1)
+    (tree / "impl.txt").write_text("done\n")
+    result = _land_cli(repo, _evidence_file(tmp_path))
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["state"] == "done"
+    assert project.resolve("score:work-item", "a")["lifecycle_state"] == "done"
