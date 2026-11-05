@@ -10,6 +10,7 @@ from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
     phase_weight,
+    requirement_body_problems,
     requirements_in_body,
 )
 
@@ -111,6 +112,8 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
             r for r in records if r.get("record_type") == "score:phase" and _subject(r) == phase
         ]
         documents = marked
+        for problem in requirement_body_problems(_body(marked[0]) if marked else ""):
+            add("error", "light-requirements-invalid", subject, problem)
     else:
         spec = specs[0]
         subject = _subject(spec)
