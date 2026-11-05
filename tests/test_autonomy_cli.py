@@ -10,7 +10,7 @@ from canon_support import REPO, create, make_project
 
 from orchestra.canon.project import Project
 
-GATES = "Plan-review gates for every phase are preauthorized; plan and execute each phase without stopping."
+GATES = "Plan-review gates for every phase are preauthorized; plan and execute each phase without asking."
 PROMOTE = "Plan and promote each next phase without asking once the current one closes."
 UNRELATED = "The code lives in this plugin repo under scripts/ and skills/."
 

@@ -92,8 +92,8 @@ def test_r08_review_fix_apply_never_lowers_a_level(tmp_path: Path) -> None:
             "effort": "alpha",
         },
     )
-    mappings, skipped = autonomy.plan_migration(project)
-    assert skipped == []
+    mappings, notes = autonomy.plan_migration(project)
+    assert notes == []
     assert autonomy.apply_migration(project, mappings) == {"alpha": "auto-plan"}
     assert project.resolve("score:effort", "alpha")["payload"]["autonomy"] == "auto-phases"
     retired = project.resolve("score:constraint", "alpha-gates")["payload"]["statement"]

@@ -24,22 +24,51 @@ class Mapping:
     level: str
 
 
-_RESTRICTION = re.compile(
-    r"\b(not|never|no|don't|cannot|can't|unless|except|forbid|forbidden)\b"
-    r"|\bmust ask\b|\bask first\b|\bask before\b"
+_PHASES = r"(?:[\w-]+ )?phases?"
+_GATE = re.compile(
+    rf"plan-review gates?(?: for (?:every|each|all) {_PHASES})? (?:are|is) pre-?authorized(?: by the user)?"
 )
-_SCOPED = re.compile(r"\bfor\b[^.;]*\bonly\b")
+_EXECUTE = re.compile(r"plan and execute each (?:[\w-]+ )?phase without asking")
+_EXECUTE_THROUGH = re.compile(r"plan each phase and automatically execute through [\w, -]+")
+_PROMOTE = re.compile(
+    r"plan and promote each next phase without asking(?: once the current one closes)?"
+)
+_STOPS = (
+    re.compile(
+        r"stop (?:only )?for failures, needs-human findings,? (?:pushes, and merges|or a push or merge)"
+    ),
+    re.compile(r"(?:pr )?merges? (?:still )?(?:needs?|requires?) (?:user )?approval"),
+)
+_MENTIONS = ("preauthorized", "pre-authorized", "without asking", "automatically execute")
+
+
+def _clauses(statement: str) -> list[str]:
+    text = " ".join(statement.lower().replace("\u2019", "'").split())
+    return [part.strip() for part in re.split(r"[;.]", text) if part.strip()]
 
 
 def classify(statement: str) -> str | None:
-    text = " ".join(statement.lower().split())
-    if text.startswith("retired:") or _RESTRICTION.search(text) or _SCOPED.search(text):
-        return None
-    if "without asking" in text and ("next phase" in text or "promote" in text):
+    clauses = _clauses(statement)
+    promote = gate = False
+    for clause in clauses:
+        if _PROMOTE.fullmatch(clause):
+            promote = True
+        elif (
+            _GATE.fullmatch(clause)
+            or _EXECUTE.fullmatch(clause)
+            or _EXECUTE_THROUGH.fullmatch(clause)
+        ):
+            gate = True
+        elif not any(stop.fullmatch(clause) for stop in _STOPS):
+            return None
+    if promote:
         return "auto-phases"
-    if "plan-review" in text and "preauthorized" in text:
-        return "auto-plan"
-    return None
+    return "auto-plan" if gate else None
+
+
+def mentions_autonomy(statement: str) -> bool:
+    text = " ".join(statement.lower().split())
+    return not text.startswith("retired:") and any(word in text for word in _MENTIONS)
 
 
 def _text(record: Record, key: str) -> str:
@@ -85,19 +114,26 @@ def resolve_effort(record: Record, known: set[str]) -> str:
 def plan_migration(project: Project) -> tuple[list[Mapping], list[str]]:
     known = _known_efforts(project)
     mappings: list[Mapping] = []
-    skipped: list[str] = []
+    notes: list[str] = []
     for record in project.list("score:constraint"):
         if record["lifecycle_state"] != "active":
             continue
-        level = classify(_text(record, "statement"))
+        statement = _text(record, "statement")
+        level = classify(statement)
         if level is None:
+            if mentions_autonomy(statement):
+                notes.append(
+                    f"{record['subject']}: mentions autonomy but is not a recognised grant; left alone"
+                )
             continue
         effort = resolve_effort(record, known)
         if effort:
             mappings.append(Mapping(record["id"], record["subject"], effort, level))
         else:
-            skipped.append(record["subject"])
-    return sorted(mappings, key=lambda m: (m.effort, m.constraint)), sorted(skipped)
+            notes.append(
+                f"{record['subject']}: grants autonomy but covers no known effort; left alone"
+            )
+    return sorted(mappings, key=lambda m: (m.effort, m.constraint)), sorted(notes)
 
 
 def strongest(mappings: list[Mapping]) -> dict[str, str]:
