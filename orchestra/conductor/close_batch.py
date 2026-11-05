@@ -575,26 +575,29 @@ def _approved_amendment_covers_tree(
     return False
 
 
-def _manifest_claim_ids(cwd: Path) -> set[str] | None:
-    """Claim ids in ``.tuner/manifest.json``, or None when it is absent.
-
-    An empty set means the manifest exists but lists no usable claims, so a
-    non-empty ``payload.claim`` is not listed and must refuse.
-    """
+def _manifest_claim_ids(cwd: Path) -> set[str]:
+    """Return valid claim ids from the repository manifest."""
     path = cwd / ".tuner" / "manifest.json"
     if not path.is_file():
-        return None
+        raise CloseRefused("claim manifest is missing")
     try:
         data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return set()
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise CloseRefused(f"claim manifest is unreadable or invalid: {exc}") from exc
     claims = data.get("claims") if isinstance(data, dict) else None
     if not isinstance(claims, list):
-        return set()
+        raise CloseRefused("claim manifest is invalid: claims must be a list")
     ids: set[str] = set()
     for claim in claims:
-        if isinstance(claim, dict) and claim.get("id"):
-            ids.add(str(claim["id"]))
+        if not _is_object(claim):
+            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
+        raw_claim_id = claim.get("id")
+        if not isinstance(raw_claim_id, str):
+            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
+        claim_id = raw_claim_id.strip()
+        if not claim_id or claim_id in ids:
+            raise CloseRefused("claim manifest is invalid: claim ids must be non-empty and unique")
+        ids.add(claim_id)
     return ids
 
 
@@ -658,9 +661,7 @@ def _enforce_claim_gates(
     An acceptance that cannot be loaded refuses, and so does a claim id
     that the manifest does not list. An empty claim is not gated.
     """
-    claim_ids = _manifest_claim_ids(cwd)
-    if claim_ids is None:
-        return
+    claim_ids: set[str] | None = None
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
         acceptance = acceptances[entry["criterion_id"]]
@@ -668,6 +669,8 @@ def _enforce_claim_gates(
         claim_id = str(payload.get("claim") or "").strip()
         if not claim_id:
             continue
+        if claim_ids is None:
+            claim_ids = _manifest_claim_ids(cwd)
         if claim_id not in claim_ids:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: claim {claim_id!r} is not "
@@ -714,7 +717,7 @@ def _enforce_oracle_gates(
         )
 
     failing_nodes = record_payload(red_record).get("failing_node_ids")
-    test_ids = record_payload(acceptance)["test_ids"]
+    test_ids = record_payload(acceptance).get("test_ids") or []
     if (
         not isinstance(failing_nodes, list)
         or not failing_nodes

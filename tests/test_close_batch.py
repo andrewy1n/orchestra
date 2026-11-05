@@ -2012,6 +2012,42 @@ def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeyp
     assert ops[-1]["transition"] == "done"
 
 
+def test_claim_gate_binds_verdict_to_green_close_revision(tmp_path, monkeypatch):
+    repo, green_revision = _oracle_repo(tmp_path)
+    _write_manifest_claim(repo)
+    verdict_revisions: list[str] = []
+
+    def verdict(_cwd, revision, _base, _claim_ids):
+        verdict_revisions.append(revision)
+        return {"result": "pass"}
+
+    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", verdict)
+    _patch_tuner(
+        monkeypatch,
+        "orchestra.tuner.binding",
+        "recheck",
+        lambda *_args, **_kwargs: {"result": "pass"},
+    )
+
+    request = _claim_gate_check_request()
+
+    def load_green(check_run_id: str) -> Record:
+        record = _matching_loader(request)(check_run_id)
+        return _record(
+            check_run_id,
+            {**record["payload"], "revision": green_revision},
+        )
+
+    _build(
+        request,
+        cwd=repo,
+        load_check_run=load_green,
+        load_acceptance=lambda _aid: _claim_gate_acceptance(),
+    )
+
+    assert verdict_revisions == [green_revision]
+
+
 def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
     """Claim id may live in payload.claim when subject is a task slug."""
     repo, _sha = _oracle_repo(tmp_path)
@@ -2122,6 +2158,55 @@ def test_claim_gate_refuses_when_acceptance_cannot_be_loaded(tmp_path):
 
     with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
         _build(_claim_gate_check_request(), cwd=repo, load_acceptance=missing)
+
+
+def test_claim_gate_refuses_when_manifest_is_missing(tmp_path):
+    repo, _sha = _oracle_repo(tmp_path)
+
+    with pytest.raises(close_batch.CloseRefused, match="manifest is missing"):
+        _build(
+            _claim_gate_check_request(),
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+
+
+@pytest.mark.parametrize(
+    "content",
+    ["{", json.dumps({"claims": "invalid"}), json.dumps({"claims": [{"id": 3}]})],
+)
+def test_claim_gate_refuses_invalid_manifest(tmp_path, content: str):
+    repo, _sha = _oracle_repo(tmp_path)
+    manifest = repo / ".tuner" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(content, encoding="utf-8")
+
+    with pytest.raises(
+        close_batch.CloseRefused, match=r"manifest is (unreadable or invalid|invalid)"
+    ):
+        _build(
+            _claim_gate_check_request(),
+            cwd=repo,
+            load_acceptance=lambda _aid: _claim_gate_acceptance(),
+        )
+
+
+def test_acceptance_without_claim_does_not_require_manifest(tmp_path):
+    repo, _sha = _oracle_repo(tmp_path)
+    acceptance = _record(
+        "rec-ac1",
+        {"method": "check", "effort": "effort-1"},
+        record_type="score:acceptance",
+        subject="claim-gate-close",
+    )
+
+    ops = _build(
+        _claim_gate_check_request(),
+        cwd=repo,
+        load_acceptance=lambda _aid: acceptance,
+    )
+
+    assert ops[-1]["transition"] == "done"
 
 
 def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
