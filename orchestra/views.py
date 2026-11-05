@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
+from orchestra.derive import phase_progress, release_ready, requirement_status, task_assignment
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -63,6 +64,8 @@ class View:
     order_by: str | None = None
     show_lifecycle_state: bool = False
     show_derived: tuple[str, ...] = ()
+    show_assignment: bool = False
+    show_phase_derived: bool = False
     tally_type: str | None = None
     tally_field: str = "result"
 
@@ -142,6 +145,7 @@ HANDOFF = View(
         ),
     ),
     group_by="effort",
+    show_assignment=True,
 )
 
 HOOK_ROLE_NAMES = (
@@ -177,6 +181,8 @@ PLAN = View(
     ),
     group_by="phase",
     order_by="ordinal",
+    show_assignment=True,
+    show_phase_derived=True,
 )
 
 VERIFICATION = View(
@@ -207,6 +213,8 @@ STATUS = View(
     order_by="ordinal",
     show_lifecycle_state=True,
     show_derived=("ready", "wave"),
+    show_assignment=True,
+    show_phase_derived=True,
     tally_type="tuner:check-run",
 )
 
@@ -232,6 +240,8 @@ ROADMAP = View(
 VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
 
 EFFORT_TYPE = "score:effort"
+WORK_ITEM_TYPE = "score:work-item"
+RELEASE_TYPE = "conductor:release"
 
 
 def subject_related(parent: str, other: str) -> bool:
@@ -336,7 +346,61 @@ def _group_sort_key(
     return key
 
 
-def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
+def _assignment_bits(record: Record, records: list[Record]) -> list[str]:
+    if record["record_type"] != WORK_ITEM_TYPE:
+        return []
+    assignment = task_assignment(record, records)
+    if assignment is None:
+        return []
+    bits: list[str] = []
+    if assignment.assignee:
+        bits.append(f"assignee: {assignment.assignee}")
+    if assignment.write_root:
+        bits.append(f"write root: {assignment.write_root}")
+    return bits
+
+
+def _phase_derived_lines(records: list[Record], phase: str) -> list[str]:
+    progress = phase_progress(records, phase)
+    statuses = requirement_status(records, phase)
+    if progress.total == 0 and not statuses:
+        return []
+    lines: list[str] = []
+    if progress.total:
+        counts = ", ".join(f"{state}: {count}" for state, count in progress.counts.items())
+        lines += ["### Progress", f"- {progress.done}/{progress.total} done ({counts})"]
+        if progress.in_progress:
+            lines.append(f"- in progress: {', '.join(progress.in_progress)}")
+        lines.append("")
+    if statuses:
+        lines.append("### Requirements")
+        for requirement, status in statuses.items():
+            suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
+            lines.append(f"- **{requirement}**: {status.status}{suffix}")
+        lines.append("")
+        lines += ["### Release", f"- {_release_state(records, phase)}", ""]
+    return lines
+
+
+def _release_state(records: list[Record], phase: str) -> str:
+    written = sorted(
+        (
+            r
+            for r in records
+            if r["record_type"] == RELEASE_TYPE
+            and r.get("lifecycle_state") == "current"
+            and record_payload(r).get("phase") == phase
+        ),
+        key=lambda r: r.get("recorded_at", ""),
+    )
+    if written:
+        return str(record_payload(written[-1]).get("state", "ready"))
+    return "ready" if release_ready(records, phase) else "not ready"
+
+
+def _status_bits(
+    record: Record, view: View, tally: list[Record], records: list[Record]
+) -> list[str]:
     bits: list[str] = []
     if view.show_lifecycle_state:
         bits.append(f"state: {record.get('lifecycle_state')}")
@@ -344,6 +408,8 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
         value = _derived_value(record, name)
         if value is not None:
             bits.append(f"{name}: {value}")
+    if view.show_assignment:
+        bits.extend(_assignment_bits(record, records))
     if view.tally_type:
         subject = record.get("subject", "")
         passed = failed = 0
@@ -408,6 +474,7 @@ def _group_lines(
     name: str,
     group: dict[str, list[Record]],
     tally: list[Record],
+    records: list[Record],
     *,
     link: bool = True,
 ) -> list[str]:
@@ -421,8 +488,12 @@ def _group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            lines.append(_record_line(record, role, _status_bits(record, view, tally), link))
+            lines.append(
+                _record_line(record, role, _status_bits(record, view, tally, records), link)
+            )
         lines.append("")
+    if view.show_phase_derived:
+        lines += _phase_derived_lines(records, name)
     return lines
 
 
@@ -440,7 +511,7 @@ def render_view(view: View, records: list[Record], *, effort: str | None = None)
         lines += ["_No matching records._", ""]
         return "\n".join(lines)
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += _group_lines(view, name, groups[name], tally)
+        lines += _group_lines(view, name, groups[name], tally, records)
     return "\n".join(lines)
 
 
@@ -676,7 +747,7 @@ def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
     rest = sorted(n for n in groups if n not in live)
     sections: list[tuple[str, str]] = []
     for name in (*stamped, *unstamped, *rest):
-        lines = _group_lines(HOOK_VIEW, name, groups[name], [], link=False)
+        lines = _group_lines(HOOK_VIEW, name, groups[name], [], records, link=False)
         label = name or ", ".join(_group_subjects(groups[name]))
         sections.append((label, "\n".join(lines).rstrip()))
     return sections

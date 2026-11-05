@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
+from orchestra.derive import WORK_ITEM, task_assignment
 from orchestra.sessions.session_types import RecordMetadata
 
 DEFAULT_TYPES = (
@@ -49,10 +50,10 @@ def _utc(ts: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _metadata(raw: Record, store: str) -> RecordMetadata:
+def _metadata(raw: Record, store: str, siblings: list[Record]) -> RecordMetadata:
     payload = raw.get("payload", {})
     effort = payload.get("effort")
-    return {
+    row: RecordMetadata = {
         "id": raw["id"],
         "record_type": raw["record_type"],
         "subject": raw.get("subject"),
@@ -61,21 +62,34 @@ def _metadata(raw: Record, store: str) -> RecordMetadata:
         "lifecycle_state": raw.get("lifecycle_state"),
         "store": store,
     }
+    if raw["record_type"] == WORK_ITEM:
+        assignment = task_assignment(raw, siblings)
+        if assignment is not None and assignment.assignee:
+            row["assignee"] = assignment.assignee
+        if assignment is not None and assignment.write_root:
+            row["write_root"] = assignment.write_root
+    return row
+
+
+def _metadata_rows(raws: list[Record], store: str) -> list[RecordMetadata]:
+    try:
+        return [_metadata(raw, store, raws) for raw in raws]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RecordReadError(f"cannot read records ({type(exc).__name__})") from None
 
 
 def _read_open_store(root: str, types: Iterable[str] | None) -> list[RecordMetadata]:
     project = open_store(root)
-    rows: list[RecordMetadata] = []
+    raws: list[Record] = []
     chosen = types if types is not None else DEFAULT_TYPES
     for record_type in chosen:
         try:
-            records = project.list(record_type)
-            rows.extend(_metadata(record, project.project_root.name) for record in records)
+            raws.extend(project.list(record_type))
         except (StoreError, OSError, KeyError, TypeError, ValueError) as exc:
             raise RecordReadError(
                 f"cannot read records of type {record_type} ({type(exc).__name__})"
             ) from None
-    return rows
+    return _metadata_rows(raws, project.project_root.name)
 
 
 def read_records(
@@ -87,7 +101,7 @@ def read_records(
         return _read_open_store(root, types)
     store = os.path.basename(os.path.abspath(root))
     store_path = os.path.join(os.path.expanduser("~"), ".canon", store)
-    rows: list[RecordMetadata] = []
+    raws: list[Record] = []
     for record_type in types if types is not None else DEFAULT_TYPES:
         argv = [
             "record-list",
@@ -102,9 +116,9 @@ def read_records(
         ]
         try:
             records = json.loads(run(argv))["records"]
-            rows.extend(_metadata(record, store) for record in records)
+            raws.extend(records)
         except Exception as exc:
             raise RecordReadError(
                 f"cannot read records of type {record_type} ({type(exc).__name__})"
             ) from None
-    return rows
+    return _metadata_rows(raws, store)
