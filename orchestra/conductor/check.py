@@ -11,7 +11,7 @@ from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.model_types import PlanningPayload
@@ -24,6 +24,7 @@ from orchestra.conductor.policy import (
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
 OUTPUT_BODY_CHARS = 8000
+_CLI_EXIT = {"pass": 0, "fail": 1, "blocked": 2}
 
 
 @dataclass
@@ -32,6 +33,7 @@ class CheckOutcome:
     stdout: str
     message: str = ""
     record: Record | None = None
+    reused: bool = False
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -138,6 +140,25 @@ def parse_failing_node_ids(output: str) -> list[str]:
     return ordered
 
 
+def _find_identical_check_run(
+    project: Project,
+    *,
+    criterion_id: str,
+    revision: str,
+    result: str,
+) -> Record | None:
+    matches = [
+        record
+        for record in project.list("tuner:check-run")
+        if record["payload"].get("criterion_id") == criterion_id
+        and record["payload"].get("revision") == revision
+        and record["payload"].get("result") == result
+    ]
+    if not matches:
+        return None
+    return max(matches, key=lambda record: record["recorded_at"])
+
+
 def run_check(
     *,
     acceptance_id: str,
@@ -209,6 +230,26 @@ def run_check(
     if decision.refuse:
         return CheckOutcome(exit_code=3, stdout="", message=decision.refuse_message)
 
+    if decision.revision != "dirty":
+        try:
+            existing = _find_identical_check_run(
+                project,
+                criterion_id=acceptance["id"],
+                revision=decision.revision,
+                result=result,
+            )
+        except (StoreError, OSError) as exc:
+            return CheckOutcome(exit_code=4, stdout="", message=str(exc))
+        if existing is not None:
+            return CheckOutcome(
+                exit_code=_CLI_EXIT[result],
+                stdout="",
+                message=f"check-run {existing['id']} reused result={result} "
+                f"revision={decision.revision}",
+                record=existing,
+                reused=True,
+            )
+
     check_payload: JsonObject = {
         "criterion_id": acceptance["id"],
         "revision": decision.revision,
@@ -251,9 +292,8 @@ def run_check(
     except (StoreError, ValidationError, OSError) as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
-    cli_exit = {"pass": 0, "fail": 1, "blocked": 2}[result]
     return CheckOutcome(
-        exit_code=cli_exit,
+        exit_code=_CLI_EXIT[result],
         stdout="",
         message=f"check-run {record['id']} result={result} revision={decision.revision}",
         record=record,
