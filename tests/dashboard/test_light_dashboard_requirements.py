@@ -24,7 +24,7 @@ def _record(
         "lifecycle_state": state,
         "relationships": {},
         "revision": f"r{n}",
-        "recorded_at": f"2026-11-01T00:00:{n:02d}Z",
+        "recorded_at": f"2026-11-01T00:00:{n:02d}+00:00",
         "body": body,
     }
 
