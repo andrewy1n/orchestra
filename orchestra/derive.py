@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Literal
 
 from orchestra.canon import record_payload
@@ -16,6 +17,8 @@ from orchestra.score.requirements import (
 RequirementState = Literal["verified", "failed", "unverified"]
 
 WORK_ITEM = "score:work-item"
+EFFORT = "score:effort"
+PHASE = "score:phase"
 ACCEPTANCE = "score:acceptance"
 SPECIFICATION = "score:specification"
 CHECK_RUN = "tuner:check-run"
@@ -23,6 +26,8 @@ ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
 
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
+DORMANT_AFTER = timedelta(days=7)
+Autonomy = Literal["gated", "auto-plan", "auto-phases"]
 
 
 @dataclass(frozen=True)
@@ -216,3 +221,48 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
     if assignee is None and write_root is None:
         return None
     return TaskAssignment(assignee=assignee, write_root=write_root)
+
+
+def _goal(records: list[Record], effort: str) -> Record | None:
+    return _latest(
+        [
+            r
+            for r in records
+            if r["record_type"] == EFFORT
+            and r["subject"] == effort
+            and r["lifecycle_state"] != "superseded"
+        ]
+    )
+
+
+def effort_autonomy(records: list[Record], effort: str) -> Autonomy:
+    goal = _goal(records, effort)
+    level = _text(goal, "autonomy") if goal is not None else None
+    if level == "auto-plan":
+        return "auto-plan"
+    if level == "auto-phases":
+        return "auto-phases"
+    return "gated"
+
+
+def _parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def effort_dormant(records: list[Record], effort: str, now: datetime) -> bool:
+    goal = _goal(records, effort)
+    if goal is None or _text(goal, "status") == "closed":
+        return False
+    for record in records:
+        if (
+            record["record_type"] == PHASE
+            and _text(record, "effort") == effort
+            and record["lifecycle_state"] in ("planned", "in_progress")
+        ):
+            return False
+    touched = [
+        _parse_time(r["recorded_at"])
+        for r in records
+        if _text(r, "effort") == effort or (r["record_type"] == EFFORT and r["subject"] == effort)
+    ]
+    return bool(touched) and now - max(touched) >= DORMANT_AFTER
