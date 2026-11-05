@@ -98,7 +98,7 @@ def test_r08_apply_retires_each_migrated_constraint_naming_the_replacing_field(
     project = _world(tmp_path)
     assert _cli(tmp_path, "--migrate", "--apply").returncode == 0
     statements = {
-        r["subject"]: r["payload"]["statement"]
+        r["subject"]: str(r["payload"]["statement"])
         for r in project.list("score:constraint")
         if r["lifecycle_state"] == "active"
     }
