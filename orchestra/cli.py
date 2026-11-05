@@ -13,9 +13,11 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import gate, land, reviewer, suite
+from orchestra.conductor import gate, land, land_task, reviewer, suite, wave
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
+from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
+from orchestra.derive import requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
@@ -255,6 +257,18 @@ def _build_parser() -> argparse.ArgumentParser:
     wave_start.add_argument("--json", action="store_true", help="Print one JSON object")
     wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+    task = sub.add_parser("task", help="Land one finished task")
+    task_sub = task.add_subparsers(dest="action", required=True)
+    task_land = task_sub.add_parser(
+        "land", help="Commit a task worktree, record its evidence, run its checks, close it"
+    )
+    task_land.add_argument("task", nargs="?", help="Work-item subject")
+    task_land.add_argument("--evidence", default=None, help="Evidence JSON file")
+    task_land.add_argument("--schema", action="store_true", help="Print the evidence JSON schema")
+    task_land.add_argument("--json", action="store_true", help="Print one JSON object")
+    task_land.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    task_land.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
     analyze = sub.add_parser(
         "analyze",
@@ -607,8 +621,6 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
 
 
 def _cmd_wave_start(args: argparse.Namespace) -> int:
-    from orchestra.conductor import wave
-
     try:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
@@ -640,6 +652,60 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
     for t in result.tasks:
         print(f"## {t.task} ({t.executor}) {t.write_root}\n")
         print(briefs[t.task])
+    return 0
+
+
+def _close_task(project: Project, landed: land_task.LandedTask) -> str:
+    records = project.records()
+    item = land_task.work_item(project, landed.task)
+    wanted = item["payload"].get("requirements")
+    required = [r for r in wanted if isinstance(r, str)] if isinstance(wanted, list) else []
+    statuses = requirement_status(records, landed.phase)
+    checks_pass = bool(landed.checks) and all(c.exit_code == 0 for c in landed.checks)
+    verified = all(r in statuses and statuses[r].status == "verified" for r in required)
+    if landed.evidence_result == "pass" and checks_pass and verified:
+        project.update(item["id"], record_type="score:work-item", transition="done")
+        return "done"
+    return "in_progress"
+
+
+def _cmd_task_land(args: argparse.Namespace) -> int:
+    if args.schema:
+        _print_json(EVIDENCE_SCHEMA)
+        return 0
+    if not args.task or not args.evidence:
+        print("orchestra task land: a task and --evidence are required", file=sys.stderr)
+        return 2
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        repo = wave.repo_root(_cwd(args))
+        landed = land_task.land(project, repo, args.task, Path(args.evidence))
+        state = _close_task(project, landed)
+    except (
+        EvidenceError,
+        land_task.LandError,
+        wave.WaveError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+    ) as exc:
+        print(f"orchestra task land: {args.task}: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json(
+            {
+                "task": landed.task,
+                "commit": landed.commit,
+                "revision": landed.revision,
+                "execution_report": landed.report_id,
+                "check_runs": [c.check_run_id for c in landed.checks],
+                "state": state,
+            }
+        )
+    else:
+        print(f"{landed.task}: {state} (report {landed.report_id}, revision {landed.revision})")
     return 0
 
 
@@ -1101,6 +1167,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_review_brief(args)
     if args.command == "wave":
         return _cmd_wave_start(args)
+    if args.command == "task":
+        return _cmd_task_land(args)
     if args.command == "analyze":
         return _cmd_analyze(args)
     if args.command == "gate":
