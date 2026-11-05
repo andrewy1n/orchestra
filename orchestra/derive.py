@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -11,6 +12,7 @@ from orchestra.canon.types import Record
 RequirementState = Literal["verified", "failed", "unverified"]
 
 WORK_ITEM = "score:work-item"
+PHASE = "score:phase"
 ACCEPTANCE = "score:acceptance"
 SPECIFICATION = "score:specification"
 CHECK_RUN = "tuner:check-run"
@@ -18,6 +20,7 @@ ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
 
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
+_REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,52 @@ def _latest(records: list[Record]) -> Record | None:
     return latest
 
 
+def acceptance_requirement_ids(record: Record) -> list[str]:
+    payload = record_payload(record)
+    listed = payload.get("requirements")
+    if isinstance(listed, list):
+        return [item for item in listed if isinstance(item, str) and item]
+    single = payload.get("requirement")
+    return [single] if isinstance(single, str) and single else []
+
+
+def requirements_in_body(body: str) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    inside = False
+    for line in body.splitlines():
+        if line.startswith("## "):
+            inside = line[3:].strip() == "Requirements"
+        elif inside:
+            match = _REQUIREMENT_LINE.match(line.strip())
+            if match:
+                found.append((match.group(1), match.group(2)))
+    return found
+
+
+def _phase_record(records: list[Record], phase: str) -> Record | None:
+    return _latest([r for r in records if r["record_type"] == PHASE and r["subject"] == phase])
+
+
+def phase_weight(records: list[Record], phase: str) -> Literal["light", "full"]:
+    record = _phase_record(records, phase)
+    return "light" if record is not None and _text(record, "weight") == "light" else "full"
+
+
+def phase_requirements(records: list[Record], phase: str) -> list[tuple[str, str]]:
+    if phase_weight(records, phase) == "light":
+        record = _phase_record(records, phase)
+        return requirements_in_body(record.get("body", "")) if record is not None else []
+    specs = [
+        r
+        for r in records
+        if r["record_type"] == SPECIFICATION
+        and r["lifecycle_state"] == "active"
+        and _text(r, "phase") == phase
+    ]
+    spec = _latest(specs)
+    return requirements_in_body(spec.get("body", "")) if spec is not None else []
+
+
 def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
     return [
         r
@@ -75,6 +124,8 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
     ]
+    if phase_weight(records, phase) == "light":
+        return [rid for rid, _ in phase_requirements(records, phase)]
     spec = _latest(specs)
     sources = [spec] if spec is not None else _phase_work_items(records, phase)
     ids: list[str] = []
@@ -110,7 +161,7 @@ def _derive_requirement(
         if r["record_type"] == ACCEPTANCE
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
-        and _text(r, "requirement") == requirement
+        and requirement in acceptance_requirement_ids(r)
     ]
     acceptance_ids = tuple(a["id"] for a in acceptances)
     latest_runs: list[Record] = []
