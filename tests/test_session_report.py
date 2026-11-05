@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from orchestra.canon import record
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
 from orchestra.sessions import session_report
 
@@ -240,6 +241,41 @@ def test_without_flag_output_is_unchanged_and_reader_is_not_called(
     out = capsys.readouterr().out
     assert out == run(tmp_path).stdout
     assert all("records" not in json.loads(line) for line in out.splitlines())
+
+
+def test_records_read_failure_keeps_rows_and_returns_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    good_cwd = tmp_path / "good"
+    bad_cwd = tmp_path / "bad"
+    transcripts = tmp_path / "logs"
+    write(
+        transcripts / "project" / "good.jsonl",
+        [{"type": "user", "cwd": str(good_cwd), "sessionId": "good"}],
+    )
+    write(
+        transcripts / "project" / "bad.jsonl",
+        [{"type": "user", "cwd": str(bad_cwd), "sessionId": "bad"}],
+    )
+
+    class _Project:
+        def __init__(self, cwd: Path) -> None:
+            self.store_path = cwd
+
+        def list(self, record_type: str):
+            if self.store_path == bad_cwd:
+                raise StoreError("store read failed")
+            return []
+
+    monkeypatch.setattr(session_report, "open_store", lambda cwd: _Project(Path(cwd)))
+
+    result = session_report.main(["--records", str(transcripts)])
+
+    captured = capsys.readouterr()
+    rows = [json.loads(line) for line in captured.out.splitlines()]
+    assert result == 2
+    assert {row["session_id"] for row in rows} == {"good", "bad"}
+    assert "RecordReadError" in captured.err
 
 
 def _report_count(transcripts: Path, cwd: Path) -> dict[str, int]:

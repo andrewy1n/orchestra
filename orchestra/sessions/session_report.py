@@ -78,9 +78,12 @@ def summarize(path: Path) -> SessionSummary:
     return {**fields, "tools": box["tools"], "bad_lines": stats.bad_lines}
 
 
-def _read_all(rows: Sequence[SessionReport]) -> tuple[dict[str, str], list[RecordMetadata]]:
+def _read_all(
+    rows: Sequence[SessionReport],
+) -> tuple[dict[str, str], list[RecordMetadata], list[str]]:
     stores_by_cwd: dict[str, str] = {}
     by_store: dict[str, list[RecordMetadata]] = {}
+    failures: list[str] = []
     cwds = {cwd for row in rows if isinstance((cwd := row.get("cwd")), str) and cwd}
     for cwd in sorted(cwds):
         try:
@@ -89,9 +92,11 @@ def _read_all(rows: Sequence[SessionReport]) -> tuple[dict[str, str], list[Recor
             if key not in by_store:
                 by_store[key] = read_project_records(project)
             stores_by_cwd[cwd] = key
-        except Exception:
+        except Exception as exc:
+            failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
             continue
-    return stores_by_cwd, [record for records in by_store.values() for record in records]
+    records = [record for store_records in by_store.values() for record in store_records]
+    return stores_by_cwd, records, failures
 
 
 def _record_summary(
@@ -120,9 +125,9 @@ def _is_session_report(row: SessionOutput) -> TypeGuard[SessionReport]:
     return "session_id" in row
 
 
-def _attach_records(rows: list[SessionOutput]) -> None:
+def _attach_records(rows: list[SessionOutput]) -> list[str]:
     sessions = [row for row in rows if _is_session_report(row) and row.get("session_id")]
-    stores_by_cwd, records = _read_all(sessions)
+    stores_by_cwd, records, failures = _read_all(sessions)
     by_store: dict[str, dict[str, RecordMetadata]] = {}
     for rec in records:
         by_store.setdefault(rec["store"], {})[rec["id"]] = rec
@@ -135,6 +140,7 @@ def _attach_records(rows: list[SessionOutput]) -> None:
         by_id = by_store.get(stores_by_cwd.get(cwd, ""), {}) if isinstance(cwd, str) else {}
         hit = joined[session_id]
         row["records"] = _record_summary(hit["records"], by_id, hit["ambiguous"])
+    return failures
 
 
 def main(argv: list[str]) -> int:
@@ -163,9 +169,12 @@ def main(argv: list[str]) -> int:
         else:
             print(json.dumps(row), flush=True)
     if with_records:
-        _attach_records(rows)
+        failures = _attach_records(rows)
         for row in rows:
             print(json.dumps(row), flush=True)
+        if failures:
+            print("orchestra sessions report: " + "; ".join(failures), file=sys.stderr)
+            return 2
     return 0
 
 

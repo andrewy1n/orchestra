@@ -552,7 +552,7 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
 
 def _load_review_records(
     location: StoreLocation,
-) -> tuple[list[Record], list[str]]:
+) -> list[Record]:
     """Read the reviewer-allowed kinds from the opened store."""
     project = location.open()
     records: list[Record] = []
@@ -565,15 +565,15 @@ def _load_review_records(
             failures.append(f"{record_type}: {exc}")
             continue
         records.extend(row for row in rows if isinstance(row, dict))  # pyright: ignore[reportUnnecessaryIsInstance]
-    if not records and failures:
+    if failures:
         raise RuntimeError("; ".join(failures))
-    return records, failures
+    return records
 
 
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records, failures = _load_review_records(resolve_location(args.store, work))
+        records = _load_review_records(resolve_location(args.store, work))
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
@@ -585,8 +585,6 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra review-brief: {exc}", file=sys.stderr)
         return 2
-    for failure in failures:
-        print(f"orchestra review-brief: skipped {failure}", file=sys.stderr)
     if args.out == "-":
         print(brief, end="" if brief.endswith("\n") else "\n")
         return 0

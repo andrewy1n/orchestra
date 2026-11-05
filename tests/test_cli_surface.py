@@ -20,6 +20,7 @@ from conftest import REPO_ROOT, git, make_git_repo
 sys.path.insert(0, str(REPO_ROOT))
 
 from orchestra import cli
+from orchestra.canon.errors import StoreError
 from orchestra.conductor import suite
 
 # Every runtime call a skill makes must be one of these named commands.
@@ -156,6 +157,40 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     assert "main..abc1234" in out
     assert "SECRET_BUILDER_NOTES" not in out
     assert calls
+
+
+def test_review_brief_refuses_partial_records_on_read_failure(tmp_path, monkeypatch, capsys):
+    destination = tmp_path / "brief.md"
+
+    class _Project:
+        def list(self, record_type: str):
+            if record_type == "score:acceptance":
+                raise StoreError("unavailable")
+            if record_type == "score:work-item":
+                return [{"record_type": record_type, "subject": "task"}]
+            return []
+
+    monkeypatch.setattr(cli, "open_store", lambda _directory: _Project())
+
+    code, out, err = run(
+        [
+            "review-brief",
+            "--cwd",
+            str(tmp_path),
+            "--base",
+            "main",
+            "--phase-head",
+            "abc1234",
+            "--out",
+            str(destination),
+        ],
+        capsys,
+    )
+
+    assert code == 2
+    assert out == ""
+    assert "score:acceptance" in err
+    assert not destination.exists()
 
 
 def test_suite_policy_smoke(tmp_path, capsys):
