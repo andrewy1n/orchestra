@@ -123,6 +123,10 @@ def landing_surfaces() -> list[tuple[str, str]]:
             "skills/execute-phase/SKILL.md",
             _included("execute-phase", "skills/execute-phase/SKILL.md"),
         ),
+        (
+            "skills/execute-phase/references/mechanics.md",
+            _included("execute-phase", "skills/execute-phase/references/mechanics.md"),
+        ),
         ("skills/plan-phase/SKILL.md", _included("plan-phase", "skills/plan-phase/SKILL.md")),
         ("shared/kinds-and-focus.md", _landing_paragraph(shared)),
         ("skills/kinds-and-focus.md", _landing_paragraph(top_kinds)),
@@ -210,7 +214,7 @@ def test_r7_omits_store_commit_on_default_branch() -> None:
 def test_r8_phase_commit_includes_canon_metadata() -> None:
     """R8: The phase-branch commit includes versioned .canon metadata in the worktree."""
     surfaces = dict(landing_surfaces())
-    skill = surfaces["skills/execute-phase/SKILL.md"]
+    skill = surfaces["skills/execute-phase/references/mechanics.md"]
     phase_end = surfaces["skills/execute-phase/references/phase-end.md"]
     close = _phase_end_close(phase_end)
     assert "git -C <repo>/.worktrees/<phase-slug>--<task-slug> add -A -- . ':!.canon'" in skill

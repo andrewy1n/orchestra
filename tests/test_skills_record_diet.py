@@ -18,7 +18,7 @@ def _text(name: str) -> str:
 
 
 def _skill_md(name: str) -> str:
-    return (h.REPO_ROOT / "skills" / name / "SKILL.md").read_text()
+    return (h.REPO_ROOT / "skills" / name / "references" / "mechanics.md").read_text()
 
 
 def _flat(text: str) -> str:
