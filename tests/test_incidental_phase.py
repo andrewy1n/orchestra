@@ -11,7 +11,13 @@ from canon_support import create, make_project, seed_effort
     [
         (
             "score:work-item",
-            {"title": "Tweak", "phase": "", "kind": "incidental", "assignee": "", "effort": "alpha"},
+            {
+                "title": "Tweak",
+                "phase": "",
+                "kind": "incidental",
+                "assignee": "",
+                "effort": "alpha",
+            },
         ),
         (
             "score:acceptance",
