@@ -40,6 +40,12 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   rules.
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text, not a re-summary field.
+- An oracle-backed acceptance is created once, with `test_ids` and
+  `oracle_hashes` in the same create. Never create it and then update
+  it to freeze. Run the oracle author (step 8) before the batch.
+- Write all work-items and acceptances of the phase through one
+  `canon apply` call (step 9). Do not run `canon create` one by one for
+  them.
 - Do not write `conductor:assessment` or `conductor:integration-report`.
 - Lifecycle only: `planned` → `in_progress` → `done` / `withdrawn`.
   Never write `stage`, `live`, `ready`, or `wave`. This skill creates
@@ -72,8 +78,8 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 - Decisions change via `supersede`, never `update` to `superseded`.
 - Parent writes records. Only subagent here: phase-scoped
   **oracle-author** (step 8, deliver/repair) — tests only, no
-  `canon`. Parent runs `orchestra check` and freezes
-  fields. Never hand Approach / implementation hints to the
+  `canon`. Parent runs the tests and writes the freeze fields in the
+  acceptance create. Never hand Approach / implementation hints to the
   oracle-author. Freeze only after assertion-level red.
 - Never supersede another subject's goal or position.
 
@@ -84,7 +90,8 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
    assessments, add missing task(s) for the uncovered requirement
    (shapes in [task-shapes.md](references/task-shapes.md), including
    `depends_on` and a verification-task edge via `update --payload`
-   with the full `depends_on` array when needed), re-open plan review
+   with the full `depends_on` array when needed; write the new
+   records through one `canon apply`, step 9), re-open plan review
    for the delta:
 
 ```bash
@@ -152,35 +159,68 @@ canon update --type score:phase --id <phase-id> \
    and ask. Missing phase record →
    `create` first (`init` step 7), then `update`. Skip for incidental.
 
-   Then create this phase's position (`subject` = phase slug,
-   `scope` always `phase`). Update during the phase with `supersede`.
-   Leave the effort position alone until the phase closes.
+   Write a phase `score:position` (`subject` = phase slug, `scope`
+   always `phase`) only for a note a person must read, such as a human
+   stop or a collision warning. Phase progress is derived from
+   work-item states; do not write a position for it. Update a note
+   with `supersede`. Leave the effort position alone until the phase
+   closes.
 
 ```bash
 canon create --type score:position \
   --subject "<phase-slug>" \
-  --payload '{"position":"<what this phase is doing now>","scope":"phase","effort":"<effort-slug>","phase":"<phase-slug>"}'
+  --payload '{"position":"<note a person must read>","scope":"phase","effort":"<effort-slug>","phase":"<phase-slug>"}'
 ```
 
 4. For each durable choice, `create --type score:decision` with
    `choice`, `alternatives`, `phase`, `effort` and body
    `## Rationale` / `## Counter-argument`. Skip trivia.
-5. Independent tasks (or the one incidental): create work-item +
+5. Independent tasks (or the one incidental): draft work-item +
    acceptance(s) — see [task-shapes.md](references/task-shapes.md)
-   (Independent task).
-6. Dependent tasks: create with `depends_on` in the payload — see
+   (Independent task). Drafting writes no record.
+6. Dependent tasks: draft with `depends_on` in the payload — see
    [task-shapes.md](references/task-shapes.md) (Dependent task).
 7. Verification task last (`deliver`/`repair`) — see
    [task-shapes.md](references/task-shapes.md) (Verification task).
 8. Oracle author (`deliver`/`repair` only) — see
-   [oracle-author.md](references/oracle-author.md).
-9. Validate:
+   [oracle-author.md](references/oracle-author.md). It runs before any
+   acceptance exists. Its result fills `test_ids` and `oracle_hashes`
+   in the drafted acceptances.
+9. Write the batch. Put every drafted record in one NDJSON file and
+   run `canon apply` once. Each line is `{"op":"create","type":...,
+   "subject":...,"payload":{...},"body":...}` (`body` only for a
+   work-item). Order the lines: each prerequisite work-item before the
+   work-items that list it in `depends_on`, the verification task
+   last, and a work-item before its acceptances. Example with one
+   oracle-backed acceptance:
+
+```bash
+cat > /tmp/plan-batch.ndjson <<'EOF'
+{"op":"create","type":"score:work-item","subject":"<task-slug>","payload":{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1"],"decisions":["<decision>"]},"body":"## Description\n\nR1: <observable behavior>\n\n## Approach\n\n<implementation recipe>"}
+{"op":"create","type":"score:acceptance","subject":"<task-slug>","payload":{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}}
+{"op":"create","type":"score:work-item","subject":"verify-<phase-slug>","payload":{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1"],"decisions":["<decision>"],"depends_on":["<task-slug>"]},"body":"## Description\n\nProve the phase exit criteria hold together.\n\n## Approach\n\n<implementation recipe>"}
+{"op":"create","type":"score:acceptance","subject":"verify-<phase-slug>","payload":{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R1"}}
+EOF
+canon apply /tmp/plan-batch.ndjson
+```
+
+   `canon apply` prints `{"ok", "applied", "failed", "results"}`. It
+   does not stop at a failed line: later lines still run, and a line
+   that depends on a failed line fails too. On `"ok": false`, print
+   each failed entry of `results` and the input line with the same
+   `line` number. Fix the failing line, then apply a file that holds
+   only the failed lines in the same order. Never re-apply lines that
+   succeeded.
+   After the apply, run `orchestra check --acceptance <acceptance-id>
+   --cwd <repo-or-worktree>` for each oracle-backed acceptance. The
+   runner records the red check-run that close needs; expect `fail`.
+10. Validate:
 
 ```bash
 canon validate
 ```
 
-10. Show the user the focus task list (`orchestra view plan --effort <focus>`), with the verification task and
+11. Show the user the focus task list (`orchestra view plan --effort <focus>`), with the verification task and
     which exit criterion each of its acceptances covers. Query
     `derived.ready`/`wave` directly if useful (plan view omits them):
 
@@ -189,7 +229,7 @@ canon list --type score:work-item \
   --where payload.effort=<effort-slug> --where payload.phase=<current-phase-slug>
 ```
 
-11. Open the plan review gate (skip incidental). Do not open until:
+12. Open the plan review gate (skip incidental). Do not open until:
     each work-item has `## Approach`; wave executors agree; phase body
     has size, human stops, collision notes, `## Proof`, and
     `## Landing`; and for deliver/repair each intended oracle-backed

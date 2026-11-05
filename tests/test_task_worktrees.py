@@ -174,16 +174,15 @@ def test_r23_phase_close_deletes_task_branches_contained_in_the_phase_branch():
     )
 
 
-def test_r24_orientation_names_the_task_worktree_as_the_write_root():
+def test_r24_in_progress_update_and_dispatch_prompt_name_the_task_worktree_as_the_write_root():
     text = _flat(SKILL)
-    assert (
-        "The assignment orientation names that task worktree as the executor's write root." in text
-    )
+    assert "`write_root` is the executor's write root." in text
+    assert "The dispatch prompt names the write root." in text
 
 
-def test_r25_orientation_does_not_tell_the_executor_to_avoid_git_add():
+def test_r25_dispatch_prompt_does_not_tell_the_executor_to_avoid_git_add():
     text = _flat(SKILL)
-    assert "The assignment orientation does not tell the executor to avoid `git add -A`." in text
+    assert "The dispatch prompt does not tell the executor to avoid `git add -A`." in text
 
 
 def test_r26_no_empty_commit_when_a_task_has_nothing_to_commit():

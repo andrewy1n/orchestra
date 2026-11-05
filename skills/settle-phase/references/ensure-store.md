@@ -32,7 +32,9 @@ the newest backup and creates one when it is older than 24 hours.
 
 These are named commands, not files inside a checkout:
 
-- `canon` writes and reads store records.
+- `canon` writes and reads store records. `canon apply <file>` runs
+  many create, update, supersede, and correct operations from NDJSON
+  in one call.
 - `orchestra handoff`, `orchestra view plan|status|verification`, and
   `orchestra brief <work-item>` print derived views. They write no
   files.
@@ -57,7 +59,7 @@ A payload field that names another record holds that record's
 **subject**, never its `rec-…` id. This covers `effort`, `milestone`,
 `phase`, `work_item`, `assignment`, `acceptance`, and each entry of
 `depends_on`. For example, an execution-report sets
-`"assignment":"<task-slug>"`.
+`"work_item":"<task-slug>"`.
 
 `canon` checks every reference when it writes. A write fails when no
 record of the target type has that subject. Write the target record

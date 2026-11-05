@@ -12,9 +12,10 @@ canon list --type score:work-item --state in_progress \
 ```
 
 For each result, load the latest `conductor:assessment` (structured) or
-latest `tuner:check-run` (simple). Retry when assessment `next` is
+latest `tuner:check-run` (simple). A written non-verified assessment
+wins over derivation. Retry when assessment `next` is
 `execute`, or check-run `result` is `fail`. Skip a task whose executor
-is still running for the current assignment, or that has an open
+is still running for its current dispatch, or that has an open
 blocking `continuity-question` with `scope` `retry:<task-slug>`.
 
 Re-dispatch with the same `payload.executor` as the prior wave
@@ -30,7 +31,7 @@ Defaults (override in the phase body's run facts):
 - `retry_max_fix_tasks`: 3 fix work-items created for the phase
 
 Omit a key → use the default. If cumulative time cannot be computed
-from assignment / execution-report timestamps, use re-dispatch count
+from execution-report timestamps, use re-dispatch count
 only. `attempts` is that count (absent → 0).
 
 When a per-task or per-phase fix-task budget is exhausted, do not
@@ -72,17 +73,20 @@ canon update --type tuner:finding --id <finding-id> \
 ## Amendment, attempts, re-dispatch
 
 For each retryable task still inside budget: record an
-`assignment-amendment` whose `## Correction` quotes the failing
-check-run evidence (runner output tail) and the assessment's
-`## Reason` when present; set `attempts` to prior+1 (absent → 0, so
-first re-dispatch writes `1`); create a fresh `conductor:assignment`
-and dispatch as in execute-phase steps 4–5 (same executor mode).
-Work-item stays `in_progress` — never reopen `done`.
+`assignment-amendment` keyed to the work-item whose `## Correction`
+quotes the failing check-run evidence (runner output tail) and the
+assessment's `## Reason` when present; set `attempts` to prior+1
+(absent → 0, so first re-dispatch writes `1`) in a work-item update
+that also carries `assignee` and `write_root`. Write no new
+`conductor:assignment`.
+Dispatch as in execute-phase steps 4–5 (same executor mode), with the
+brief and territory notes. Work-item stays `in_progress` — never
+reopen `done`.
 
 ```bash
 canon create --type conductor:assignment-amendment \
   --subject "<task-slug>" \
-  --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
+  --payload '{"work_item":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
 
 Re-dispatch after failure.
@@ -97,16 +101,7 @@ Re-dispatch after failure.
 
 canon update --type score:work-item --id <id> \
   --expected-revision <revision> \
-  --payload '{"attempts":1}'
-
-canon create --type conductor:assignment \
-  --subject "<task-slug>" \
-  --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
-  --body "## Orientation
-
-Re-dispatch attempt <attempts>. Same territory and executor mode as the prior wave.
-
-<quoted work-item Description/Approach, requirement texts by id, design, and decisions as in step 4>"
+  --payload '{"attempts":1,"assignee":"<assignee>","write_root":"<write-root>"}'
 ```
 
 Then dispatch with that mode through execution-report + `verify-work`.

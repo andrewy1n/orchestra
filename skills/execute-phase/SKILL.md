@@ -3,8 +3,7 @@ name: execute-phase
 description: >-
   Dispatches orchestra work-items whose derived.ready is true, in
   dependency order, each wave inline in this session or as one
-  subagent per task, recording an assignment and execution-report
-  per dispatch. Parent session writes records; subagents return
+  subagent per task, recording an execution-report per dispatch. Parent session writes records; subagents return
   evidence only. Use when the user asks to execute a phase, run
   ready work, or continue after engage.
 ---
@@ -29,15 +28,20 @@ Orchestra moves a work-item to `in_progress` (step 4) and to `done`
 `derived.ready` / `derived.wave` are engine-computed from `depends_on`
 — never write them.
 
-Each dispatch is recorded: `conductor:assignment`, optional
-`conductor:assignment-amendment`, then `conductor:execution-report`
-(evidence verbatim). Executors take method / verify_command /
-findings / constraints from `orchestra brief <task-slug>` — not from
-retyping those into the assignment. The assignment's `## Orientation`
-carries territory/concurrency notes and quotes (verbatim, by id)
-work-item Description/Approach, linked requirement text, design
-Invariants/Assumptions, and named decisions. Do not paraphrase claims
-or treat empty/legacy `criterion` as the lead claim.
+Each dispatch is recorded by the `in_progress` update of the
+work-item (it carries `assignee` and `write_root`) and by a
+`conductor:execution-report` (evidence verbatim). Write no
+`conductor:assignment`. Executors take method / verify_command /
+findings / constraints from `orchestra brief <task-slug>`. The brief
+renders `## Orientation`: it quotes (verbatim, by id) work-item
+Description/Approach, linked requirement text, design
+Invariants/Assumptions, and named decisions. The dispatch prompt adds
+territory and concurrency notes only. Do not paraphrase claims or
+treat empty/legacy `criterion` as the lead claim.
+
+Write a phase `score:position` only for a human-readable note. Phase
+progress is derived from work-item states. The effort position still
+changes at phase close.
 
 ## Steps
 
@@ -147,89 +151,52 @@ git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phas
    transition. Follow `## Approach` in the brief; do not ask the user
    for an implementation recipe when it is present.
 4. When the wave agrees, transition each task to `in_progress` and set
-   `assignee` (`inline` for inline; a short label for subagent).
-   Assignment `executor` is that assignee; work-item
-   `payload.executor` is only the wave mode. Use `--expected-revision`
-   from `list`/`get`:
+   `assignee` (`inline` for inline; a short label for subagent) and
+   `write_root` in the same update. `write_root` is the executor's
+   write root. For a task other than the work-item that depends_on
+   every other phase work-item, it is
+   `<repo>/.worktrees/<phase-slug>--<task-slug>`. For the work-item
+   that depends_on every other phase work-item, it is
+   `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`. When
+   Landing is absent, it is the current checkout. Work-item
+   `payload.executor` is only the wave mode. Use
+   `--expected-revision` from `list`/`get`:
 
 ```bash
 canon update --type score:work-item --id <id> \
   --transition in_progress \
   --expected-revision <revision> \
-  --payload '{"assignee":"<assignee>"}'
+  --payload '{"assignee":"<assignee>","write_root":"<write-root>"}'
 ```
 
-   Print the brief with `orchestra brief <task-slug>`, then create the
-   assignment. Orientation
-   quotes only (copy, do not paraphrase):
-
-   - work-item `## Description` and `## Approach`
-   - each id in `requirements`: from specification `## Requirements`
-     when present, else that id's line in the work-item Description
-   - design `## Invariants` / `## Assumptions` when a phase design exists
-   - each named decision's subject and `choice` when `decisions` is set
-
-   Omit absent records. Do not restate `criterion`, `verify_command`,
-   or findings — brief already has those.
-
-   The assignment orientation names that task worktree as the
-   executor's write root. The assignment orientation does not tell the
-   executor to avoid `git add -A`. For a task other than the work-item
-   that depends_on every other phase work-item, that write root is
-   `<repo>/.worktrees/<phase-slug>--<task-slug>`. For the work-item
-   that depends_on every other phase work-item, the write root is
-   `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`. When
-   Landing is absent, the write root is the current checkout.
-
-   If any active acceptance is **oracle-backed** (non-empty `test_ids`
-   and `oracle_hashes`), list those frozen paths in Orientation and
-   forbid editing them. Pushback → oracle amendment path below; never
-   silently rewrite a frozen oracle.
+   Print the brief. It quotes the work-item `## Description` and
+   `## Approach`, each requirement by id, the phase design
+   `## Invariants` / `## Assumptions`, and each named decision. Write
+   no assignment record.
 
 ```bash
-canon list --type score:specification \
-  --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
-  --state active --full
-
-canon list --type score:design \
-  --where payload.effort=<focus> --where payload.phase=<current-phase-slug> \
-  --state active --full
-
-canon list --type score:decision \
-  --where payload.effort=<focus> --state active --full
-
 orchestra brief <task-slug>
+```
 
-canon create --type conductor:assignment \
-  --subject "<task-slug>" \
-  --payload '{"work_item":"<task-slug>","executor":"<assignee>","effort":"<focus>"}' \
-  --body "## Orientation
+   Write territory and concurrency notes for the dispatch prompt. The
+   dispatch prompt names the write root. The dispatch prompt does not
+   tell the executor to avoid `git add -A`. Do not restate
+   `criterion`, `verify_command`, or findings — brief already has
+   those.
 
-<territory split / concurrency warning / operational context>
+   If any active acceptance is **oracle-backed** (non-empty `test_ids`
+   and `oracle_hashes`), list those frozen paths in the dispatch
+   prompt and forbid editing them. Pushback → oracle amendment path
+   below; never silently rewrite a frozen oracle. Add this section to
+   the dispatch prompt, and omit it when no acceptance is
+   oracle-backed:
 
-Write root: `<repo>/.worktrees/<phase-slug>--<task-slug>` for a task other than the work-item that depends_on every other phase work-item. Write root: `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>` for that work-item. Current checkout when Landing is absent.
-
-### Work-item (quote)
-
-<verbatim ## Description and ## Approach from the work-item>
-
-### Requirements (quote by id)
-
-<R1: … verbatim from specification or work-item Description>
-
-### Design / decisions (quote)
-
-<quoted design Invariants and Assumptions>
-
-<quoted named decisions>
-
+```text
 ### Frozen oracle (do not edit)
 
 Files listed in acceptance oracle_hashes for this task are frozen.
-Do not edit them. An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`. orchestra verify verdict accepts or rejects it. A non-zero exit means the acceptance is not done."
+Do not edit them. An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`. orchestra verify verdict accepts or rejects it. A non-zero exit means the acceptance is not done.
 ```
-
-   Omit the Frozen oracle section when no acceptance is oracle-backed.
 
    **Oracle amendment (parent only):** do not edit the frozen file; do
    not `create`/`supersede` `tuner:oracle-amendment` or update
@@ -255,7 +222,7 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
      work-item; current checkout when Landing is absent) — plus task
      `subject`/title, `kind`, focus `effort`
    - the output of `orchestra brief <task-slug>` — verbatim
-   - assignment `## Orientation` from step 4
+   - the territory notes from step 4, the frozen oracle paths when any
    - kind instruction:
      - `deliver` / `incidental` — implement (except verification task)
      - `repair` — reproduce, observe, name root cause if found, then fix
@@ -319,13 +286,14 @@ EOF
    ```
 
 6. Mid-flight term changes (not status pings): message the subagent
-   directly (it cannot read the store) and record the amendment.
-   Inline: record the same amendment and keep implementing:
+   directly (it cannot read the store) and record the amendment,
+   keyed to the work-item. Inline: record the same amendment and keep
+   implementing:
 
 ```bash
 canon create --type conductor:assignment-amendment \
   --subject "<task-slug>" \
-  --payload '{"assignment":"<task-slug>","effort":"<focus>"}' \
+  --payload '{"work_item":"<task-slug>","effort":"<focus>"}' \
   --body "## Correction
 
 <the correction, as sent to the executor>"
@@ -338,7 +306,7 @@ canon create --type conductor:assignment-amendment \
 ```bash
 canon create --type conductor:execution-report \
   --subject "<task-slug>" \
-  --payload '{"work_item":"<task-slug>","assignment":"<task-slug>","result":"<pass|fail|blocked|abandoned>","verdict":"<pass|fail|delta|inconclusive>","revision":"<git sha or dirty>"}' \
+  --payload '{"work_item":"<task-slug>","result":"<pass|fail|blocked|abandoned>","verdict":"<pass|fail|delta|inconclusive>","revision":"<git sha or dirty>"}' \
   --body "<the evidence block, verbatim>"
 ```
 
@@ -434,8 +402,12 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 
 - Write a plan document as authority
 - Let subagents write records (any executor mode) — store is single-writer
-- Restate `criterion` / verify_command / findings in Orientation, or
-  paraphrase work-item / requirement claims — quote by id; brief owns the rest
+- Restate `criterion` / verify_command / findings in the dispatch prompt, or
+  paraphrase work-item / requirement claims — brief owns the quotes
+- Write a `conductor:assignment`; the `in_progress` update carries
+  `assignee` and `write_root`
+- Write a phase `score:position` for progress; write one only for a
+  human-readable note
 - Skip `conductor:execution-report` and derive check-runs from chat memory
 - Ask for an implementation recipe when `## Approach` is present
 - Spawn a subagent for `inline`, or spawn when the wave disagrees on executor
