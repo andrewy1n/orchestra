@@ -32,6 +32,7 @@ from orchestra.conductor.check import (
     parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
+from orchestra.conductor.revision import revision_matches as _revision_matches
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
@@ -47,17 +48,6 @@ DEFAULT_SUITE_POLICY = {"mode": "none", "command": "", "gate": "required"}
 
 # Fallback when policy command is empty but mode is smoke/full (legacy README).
 FAST_SUITE_CMD = "uv run pytest tests -q -n 4"
-
-
-def _revision_matches(check_revision: str, phase_head: str) -> bool:
-    a = check_revision.strip().lower()
-    b = phase_head.strip().lower()
-    if not a or not b:
-        return False
-    if a == b:
-        return True
-    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
-    return longer.startswith(shorter) and len(shorter) >= 7
 
 
 @dataclass(frozen=True)

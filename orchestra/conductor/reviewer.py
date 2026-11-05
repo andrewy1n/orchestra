@@ -15,6 +15,7 @@ from typing import TypeAlias, TypedDict
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.revision import revision_matches
 
 ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
 
@@ -455,21 +456,6 @@ def should_rerun_reviewer(*, fix_tasks_created: int, reviewer_rerun_used: bool) 
     return bool(fix_tasks_created) and not reviewer_rerun_used
 
 
-def _revision_matches(check_revision: str, phase_head: str) -> bool:
-    a = (check_revision or "").strip().lower()
-    b = (phase_head or "").strip().lower()
-    if not a or not b:
-        return False
-    if a == b:
-        return True
-    # Allow abbreviated SHAs either direction.
-    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
-    return longer.startswith(shorter) and len(shorter) >= 7
-
-
-revision_matches = _revision_matches
-
-
 def phase_review_gate_holds(
     *,
     check_runs: Sequence[ReviewerRecord],
@@ -484,7 +470,7 @@ def phase_review_gate_holds(
             continue
         if result != "pass":
             continue
-        if _revision_matches(revision, phase_head):
+        if revision_matches(revision, phase_head):
             return True
     return False
 
