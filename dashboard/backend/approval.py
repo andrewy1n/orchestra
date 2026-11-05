@@ -21,6 +21,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.revision import revision_matches
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 
@@ -108,14 +109,6 @@ def _short(sha: str, n: int = 7) -> str:
     return value[:n] if len(value) > n else value
 
 
-def _revisions_match(checked: str, head: str) -> bool:
-    if not checked or not head:
-        return False
-    if checked == head:
-        return True
-    return head.startswith(checked) or checked.startswith(head[: max(len(checked), 7)])
-
-
 def _finding_evidence(item: NeedsYouItem, record: Record | None) -> list[tuple[str, str]]:
     payload: PlanningPayload = record_payload(record) if record else {}
     claim = (payload.get("claim") or item.text or "").strip()
@@ -156,7 +149,7 @@ def _check_evidence(
     rev_line = f"**Revision.** check `{_short(checked_rev)}` · HEAD `{_short(head) or 'unknown'}`"
     if checked_rev and head and not checked_rev.startswith("sha256:"):
         rev_line += (
-            " · matches HEAD" if _revisions_match(checked_rev, head) else " · **differs from HEAD**"
+            " · matches HEAD" if revision_matches(checked_rev, head) else " · **differs from HEAD**"
         )
     parts = [
         f"**Acceptance.** {acceptance_text}" if acceptance_text else "",
