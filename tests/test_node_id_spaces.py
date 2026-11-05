@@ -113,3 +113,12 @@ def test_harden_a_very_long_single_line_parses_in_linear_time() -> None:
     result = parse_failing_node_ids("FAILED " + "a::" * 20000 + " z\n")
     assert time.monotonic() - start < 1.0
     assert result == ["a::" * 20000 + ""]
+
+
+def test_harden_a_nested_bracket_followed_by_a_separator_stays_whole() -> None:
+    line = "FAILED a.py::t[[left] - right] - AssertionError\n"
+    assert parse_failing_node_ids(line) == ["a.py::t[[left] - right]"]
+
+
+def test_harden_a_nested_bracket_without_a_message_stays_whole() -> None:
+    assert parse_failing_node_ids("FAILED a.py::t[[left] - right]\n") == ["a.py::t[[left] - right]"]
