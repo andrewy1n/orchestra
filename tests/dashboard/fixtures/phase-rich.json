@@ -108,25 +108,26 @@
       "subject": "p-work",
       "tasks": [
         {
-          "assignee": "",
+          "assignee": "subagent",
           "attempts": 0,
           "depends_on": [],
           "estimate_minutes": null,
           "executor": "subagent",
           "id": "<score:work-item:task-running>",
-          "last_record_at": null,
+          "last_record_at": "<timestamp>",
           "phase": "p-work",
           "retry_budget": 2,
-          "running_since": null,
+          "running_since": "<timestamp>",
           "size": "",
           "status": "running",
           "subject": "task-running",
           "title": "title of task-running",
           "waits_on": [],
-          "wave": 1
+          "wave": 1,
+          "write_root": ""
         },
         {
-          "assignee": "",
+          "assignee": "subagent",
           "attempts": 1,
           "depends_on": [],
           "estimate_minutes": 30,
@@ -141,7 +142,8 @@
           "subject": "task-ready",
           "title": "title of task-ready",
           "waits_on": [],
-          "wave": 1
+          "wave": 1,
+          "write_root": ""
         },
         {
           "assignee": "",
@@ -163,7 +165,8 @@
           "waits_on": [
             "task-ready"
           ],
-          "wave": 2
+          "wave": 2,
+          "write_root": ""
         }
       ],
       "title": "title of p-work"

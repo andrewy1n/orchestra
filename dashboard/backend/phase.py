@@ -33,6 +33,8 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.derive import RequirementStatus, phase_progress, requirement_status
+from orchestra.derive import release_ready as derive_release_ready
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
@@ -57,6 +59,7 @@ class PhaseRow:
     suite: str = ""
     milestone: str = ""
     milestone_title: str = ""
+    in_progress: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -332,6 +335,7 @@ def phase_rows(
             )
         )
         elapsed_minutes, unset_estimates = phase_elapsed(task_rows(members))
+        progress = phase_progress(tasks, record["subject"])
         body = record.get("body") or ""
         rows.append(
             PhaseRow(
@@ -339,8 +343,8 @@ def phase_rows(
                 title=payload.get("title", ""),
                 ordinal=payload.get("ordinal", 0),
                 state=record["lifecycle_state"],
-                done=sum(t["lifecycle_state"] == "done" for t in members),
-                total=len(members),
+                done=progress.done,
+                total=progress.total,
                 id=record["id"],
                 awaiting_signoff=awaiting,
                 evidence=evidence_by_phase.get(record["subject"]),
@@ -350,6 +354,7 @@ def phase_rows(
                 unset_estimates=unset_estimates,
                 suite=suite_status_label(record["subject"], checks or []),
                 milestone=payload.get("milestone") or "",
+                in_progress=progress.in_progress,
             )
         )
     rows.sort(key=lambda row: (row.ordinal, row.subject))
@@ -475,6 +480,35 @@ class RequirementDetail:
     assessments: tuple[AssessmentView, ...]
 
 
+def _requirement_view(
+    written: Record | None, derived: RequirementStatus | None
+) -> tuple[str, str, str]:
+    payload = record_payload(written) if written is not None else None
+    written_status = payload.get("status", "") if payload is not None else ""
+    if payload is not None and written_status != "verified":
+        return written_status, payload.get("next", ""), payload.get("confidence", "")
+    confidence = payload.get("confidence", "") if payload is not None else ""
+    if derived is not None and derived.status == "verified":
+        return "verified", "", confidence
+    if payload is not None:
+        return written_status, "", confidence
+    return "unassessed", "", ""
+
+
+def _derivation_pool(
+    specs: list[Record],
+    acceptances: list[Record],
+    checks: list[Record],
+    assessments: list[Record],
+) -> list[Record]:
+    return [
+        *live_records(specs),
+        *live_records(acceptances),
+        *live_records(checks),
+        *live_records(assessments),
+    ]
+
+
 def _stage(
     phase: str,
     effort: str,
@@ -486,6 +520,7 @@ def _stage(
     assessments: list[Record],
     reports: list[Record],
     releases: list[Record],
+    derived_ready: bool = False,
 ) -> tuple[str, bool]:
     latest_release = newest_record(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
@@ -505,6 +540,8 @@ def _stage(
             return LOOP_NEXT.index(nxt) if nxt in LOOP_NEXT else len(LOOP_NEXT)
 
         return record_payload(min(non_verified, key=rank)).get("next", ""), False
+    if derived_ready:
+        return "release", True
     if spec_ids and all(
         record_payload(latest.get(req) or {}).get("status") == "verified" for req in spec_ids
     ):
@@ -567,16 +604,14 @@ def phase_evidence(
         for (record_phase, requirement), record in latest_assessment_map(assessments).items()
         if record_phase == phase
     }
+    pool = _derivation_pool([spec], acceptances, checks, assessments)
+    derived = requirement_status(pool, phase)
+    ready = derive_release_ready(pool, phase)
     rows: list[RequirementRow] = []
     for requirement in spec_ids:
-        assessment = latest.get(requirement)
-        if assessment is None:
-            status, nxt, confidence = "unassessed", "", ""
-        else:
-            payload = record_payload(assessment)
-            status = payload.get("status", "")
-            nxt = "" if status == "verified" else payload.get("next", "")
-            confidence = payload.get("confidence", "")
+        status, nxt, confidence = _requirement_view(
+            latest.get(requirement), derived.get(requirement)
+        )
         traced = _traced_records(tasks, phase, requirement)
         check = _latest_requirement_check(requirement, phase, acceptances, checks)
         rows.append(
@@ -614,6 +649,7 @@ def phase_evidence(
         assessments,
         reports,
         releases,
+        ready,
     )
     latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
@@ -887,7 +923,15 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         body=item.get("body") or "",
         decisions=decisions,
         constraints=constraints,
-        tasks=[t for t in task_rows(tasks, phases=[record]) if t.phase == phase_subject],
+        tasks=[
+            t
+            for t in task_rows(
+                tasks,
+                remap_records(list_records(target, "conductor:assignment"), aliases),
+                phases=[record],
+            )
+            if t.phase == phase_subject
+        ],
         evidence=evidence,
         spec_body=(spec.get("body") or "") if spec else "",
         design_body=(design.get("body") or "") if design else "",
@@ -921,13 +965,6 @@ def load_requirement_detail(
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
     latest = newest_record(active)
-    if latest is None:
-        status, nxt = "unassessed", ""
-    else:
-        status, nxt = (
-            record_payload(latest).get("status", ""),
-            record_payload(latest).get("next", ""),
-        )
     spec = newest_record(_for_phase(specs, phase, effort))
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [
@@ -947,7 +984,18 @@ def load_requirement_detail(
         if record_payload(record).get("requirement") == requirement
     ]
     acceptances.sort(key=recorded_at)
-    check_map = latest_checks(listed("tuner:check-run"))
+    check_records = listed("tuner:check-run")
+    check_map = latest_checks(check_records)
+    pool = _derivation_pool(
+        [spec] if spec is not None else [],
+        _for_phase(listed("score:acceptance"), phase, effort),
+        check_records,
+        active,
+    )
+    status, nxt, _ = _requirement_view(latest, requirement_status(pool, phase).get(requirement))
+    if latest is not None and status == record_payload(latest).get("status", ""):
+        nxt = record_payload(latest).get("next", "")
+    assignments = listed("conductor:assignment")
     return RequirementDetail(
         phase,
         requirement,
@@ -955,7 +1003,7 @@ def load_requirement_detail(
         status,
         nxt,
         _choices(subjects, listed("score:decision")),
-        tuple(row for row in task_rows(traced) if row.phase == phase),
+        tuple(row for row in task_rows(traced, assignments) if row.phase == phase),
         tuple(
             AcceptanceRow(
                 record["id"],

@@ -30,7 +30,8 @@
       "subject": "task-next",
       "timeline": [],
       "title": "title of task-next",
-      "wave": 2
+      "wave": 2,
+      "write_root": ""
     }
   },
   "status": 200

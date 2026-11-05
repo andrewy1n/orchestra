@@ -21,7 +21,8 @@
       "subject": "b-task",
       "timeline": [],
       "title": "title of b-task",
-      "wave": 1
+      "wave": 1,
+      "write_root": ""
     }
   },
   "status": 200

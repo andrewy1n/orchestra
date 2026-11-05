@@ -67,6 +67,7 @@ def phase_summary(phase: PhaseRow) -> schemas.PhaseSummary:
         verified=verified,
         requirements=requirements,
         release_ready=release_ready,
+        in_progress=list(phase.in_progress),
     )
 
 

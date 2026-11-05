@@ -46,6 +46,7 @@ class TaskRow(Model):
     last_record_at: Timestamp | None
     attempts: int
     retry_budget: int
+    write_root: str
 
 
 class MilestoneRow(Model):
@@ -77,6 +78,7 @@ class PhaseSummary(Model):
     verified: int | None
     requirements: int | None
     release_ready: bool
+    in_progress: list[str]
 
 
 class NeedsYouSummary(Model):
@@ -239,6 +241,7 @@ class TaskDetail(Model):
     estimate_minutes: int | None
     executor: str
     agent_work: list[AgentWork]
+    write_root: str
 
 
 class TaskResponse(Model):
@@ -364,6 +367,8 @@ class JournalItem(Model):
     text: str
     open: bool
     task_id: str
+    assignee: str
+    write_root: str
 
 
 class JournalResponse(Model):

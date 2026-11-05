@@ -35,7 +35,8 @@
           "subject": "b-task",
           "title": "title of b-task",
           "waits_on": [],
-          "wave": 1
+          "wave": 1,
+          "write_root": ""
         }
       ],
       "title": "title of b-one"

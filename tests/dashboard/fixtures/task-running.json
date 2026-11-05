@@ -16,7 +16,7 @@
           "report": null
         }
       ],
-      "assignee": "",
+      "assignee": "subagent",
       "blocks": [],
       "body": "## Description\n\nplaceholder text for Description.\n",
       "decisions": [],
@@ -43,7 +43,8 @@
         }
       ],
       "title": "title of task-running",
-      "wave": 1
+      "wave": 1,
+      "write_root": ""
     }
   },
   "status": 200

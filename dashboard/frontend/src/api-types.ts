@@ -430,6 +430,8 @@ export interface components {
         };
         /** JournalItem */
         JournalItem: {
+            /** Assignee */
+            assignee: string;
             /** Id */
             id: string;
             /** Open */
@@ -446,6 +448,8 @@ export interface components {
             task_id: string;
             /** Text */
             text: string;
+            /** Write Root */
+            write_root: string;
         };
         /** JournalResponse */
         JournalResponse: {
@@ -618,6 +622,8 @@ export interface components {
             elapsed_minutes: number | null;
             /** Id */
             id: string;
+            /** In Progress */
+            in_progress: string[];
             /** Milestone */
             milestone: string;
             /** Milestone Title */
@@ -812,6 +818,8 @@ export interface components {
             title: string;
             /** Wave */
             wave: number | null;
+            /** Write Root */
+            write_root: string;
         };
         /** TaskResponse */
         TaskResponse: {
@@ -851,6 +859,8 @@ export interface components {
             waits_on: string[];
             /** Wave */
             wave: number | null;
+            /** Write Root */
+            write_root: string;
         };
         /** TimelineEvent */
         TimelineEvent: {

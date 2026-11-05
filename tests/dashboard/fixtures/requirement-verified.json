@@ -40,7 +40,7 @@
       "status": "verified",
       "tasks": [
         {
-          "assignee": "",
+          "assignee": "subagent",
           "attempts": 1,
           "depends_on": [],
           "estimate_minutes": 30,
@@ -55,7 +55,8 @@
           "subject": "task-ready",
           "title": "title of task-ready",
           "waits_on": [],
-          "wave": 1
+          "wave": 1,
+          "write_root": ""
         }
       ],
       "text": ""
