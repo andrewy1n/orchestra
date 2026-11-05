@@ -21,6 +21,7 @@
             "text": "park-too"
           }
         ],
+        "dormant": false,
         "effort": "alpha",
         "finished": false,
         "goal": "ship alpha",
@@ -258,6 +259,7 @@
       {
         "area": "",
         "backlog": [],
+        "dormant": false,
         "effort": "beta",
         "finished": false,
         "goal": "ship beta",
