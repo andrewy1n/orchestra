@@ -117,10 +117,10 @@ def test_reviewer_brief_excludes_execution_report_check_run_and_assessment():
             "criterion": MARKER_ACCEPT,
         },
         {
-            "record_type": "score:requirement",
+            "record_type": "score:specification",
             "subject": "phase-reviewer",
-            "title": "R2",
-            "body": MARKER_REQ,
+            "title": "phase-reviewer specification",
+            "body": f"## Requirements\n\nR2: {MARKER_REQ}",
         },
         {
             "record_type": "score:design",

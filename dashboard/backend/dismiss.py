@@ -1,14 +1,7 @@
-"""Dismiss human Needs-you items via the canon library.
-
-Human-gate clears always pass the displayed record revision as
-``--expected-revision`` (never ``@current``). ``correct`` has no
-expected-revision flag, so sign-off guards the revision with a ``get``
-before writing.
-"""
+"""Dismiss human Needs-you items via the Canon library."""
 
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass
 
@@ -29,14 +22,10 @@ HUMAN_DISMISSIBLE = frozenset(
 
 DEFAULT_SIGNER_ENV = "ORCHESTRA_SIGNED_BY"
 
-# Actions for dismiss_command / dismiss_item.
 ACTION_APPROVE = "approve"
 ACTION_REJECT = "reject"
 ACTION_SIGN = "sign"
 ACTION_ACCEPT = "accept"
-
-# ``correct`` does not accept --expected-revision; guard via get instead.
-CORRECT_SUPPORTS_EXPECTED_REVISION = False
 
 STALE_MESSAGE = "Item changed since opened (stale revision); refresh and try again."
 
@@ -60,48 +49,18 @@ def is_dismissible(kind: str) -> bool:
 
 
 def default_signer() -> str:
-    return (
-        os.environ.get(DEFAULT_SIGNER_ENV)
-        or os.environ.get("USER")
-        or os.environ.get("USERNAME")
-        or "dashboard"
-    )
+    signer = os.environ.get(DEFAULT_SIGNER_ENV, "").strip()
+    if not signer:
+        raise DismissError(f"{DEFAULT_SIGNER_ENV} is required")
+    return signer
 
 
-def _operation(args: list[str]) -> dict[str, JsonValue]:
-    operation: dict[str, JsonValue] = {"op": args[0]}
-    index = 1
-    while index < len(args):
-        flag = args[index]
-        if index + 1 >= len(args):
-            break
-        value = args[index + 1]
-        index += 2
-        if flag == "--type":
-            operation["type"] = value
-        elif flag == "--id":
-            operation["id"] = value
-        elif flag == "--subject":
-            operation["subject"] = value
-        elif flag == "--transition":
-            operation["transition"] = value
-        elif flag == "--expected-revision":
-            operation["expected_revision"] = value
-        elif flag == "--payload":
-            operation["payload"] = json.loads(value)
-        elif flag == "--body":
-            operation["body"] = value
-    return operation
-
-
-def _write(target: Project, args: list[str]) -> None:
-    operation = _operation(args)
-    label = " ".join(args[:3])
+def _write(target: Project, operation: dict[str, JsonValue]) -> None:
+    label = f"{operation['op']} --type {operation['type']}"
     try:
-        results = target.apply([operation])
+        (result,) = target.apply([operation])
     except OSError as exc:
         raise DismissError(f"cannot apply {operation.get('op')}: {exc}") from exc
-    result = results[0] if results else {"ok": False, "message": "no result"}
     if result.get("ok"):
         return
     if result.get("error") == "stale_write":
@@ -143,31 +102,25 @@ def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
     return resolved
 
 
-def _question_approve_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "score:continuity-question"
-    args = [
-        "update",
-        "--type",
-        record_type,
-        "--id",
-        item.id,
-        "--transition",
-        "answered",
-        "--expected-revision",
-        _displayed_revision(item),
-    ]
+def _question_approve(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
+    operation: dict[str, JsonValue] = {
+        "op": "update",
+        "type": item.record_type or "score:continuity-question",
+        "id": item.id,
+        "transition": "answered",
+        "expected_revision": _displayed_revision(item),
+    }
     if note:
-        args.extend(["--payload", json.dumps({"answer": note})])
-    return args
+        operation["payload"] = {"answer": note}
+    return operation
 
 
-def _question_reject_args(item: NeedsYouItem, note: str | None) -> list[str]:
+def _question_reject(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
     """Leave the continuity-question open; create a needs:human routing finding."""
-    _displayed_revision(item)  # require displayed revision even though create has none
     scope = item.text or item.subject
     rationale = (note or "").strip() or "Rejected from dashboard Needs-you"
     claim = f"Plan rejected for {scope}; route to settle-phase or plan-phase"
-    payload = {
+    payload: dict[str, JsonValue] = {
         "claim": claim,
         "basis": rationale,
         "needs": "human",
@@ -182,79 +135,41 @@ def _question_reject_args(item: NeedsYouItem, note: str | None) -> list[str]:
         "## Follow-up\n\n"
         f"{rationale}"
     )
-    subject = f"plan-rejected:{scope}"[:120]
-    return [
-        "create",
-        "--type",
-        "tuner:finding",
-        "--subject",
-        subject,
-        "--payload",
-        json.dumps(payload),
-        "--body",
-        body,
-    ]
+    subject = "plan-rejected:" + "-".join(scope.split())
+    subject = subject[:120]
+    return {
+        "op": "create",
+        "type": "tuner:finding",
+        "subject": subject,
+        "payload": payload,
+        "body": body,
+    }
 
 
-def _finding_accept_args(item: NeedsYouItem, note: str | None) -> list[str]:
-    record_type = item.record_type or "tuner:finding"
-    payload: dict[str, str] = {"needs": "none"}
+def _finding_accept(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
+    payload: dict[str, JsonValue] = {"needs": "none"}
     if note:
         payload["resolution_note"] = note
-    return [
-        "update",
-        "--type",
-        record_type,
-        "--id",
-        item.id,
-        "--expected-revision",
-        _displayed_revision(item),
-        "--payload",
-        json.dumps(payload),
-    ]
+    return {
+        "op": "update",
+        "type": item.record_type or "tuner:finding",
+        "id": item.id,
+        "expected_revision": _displayed_revision(item),
+        "payload": payload,
+    }
 
 
-def _check_sign_args(item: NeedsYouItem, signer: str, note: str | None) -> list[str]:
-    # correct has no --expected-revision; revision is guarded in dismiss_item.
-    record_type = item.record_type or "tuner:check-run"
-    _displayed_revision(item)
-    payload: dict[str, str] = {"signed_by": signer}
+def _check_sign(item: NeedsYouItem, signer: str, note: str | None) -> dict[str, JsonValue]:
+    payload: dict[str, JsonValue] = {"signed_by": signer}
     if note:
         payload["signed_note"] = note
-    return [
-        "correct",
-        "--type",
-        record_type,
-        "--id",
-        item.id,
-        "--payload",
-        json.dumps(payload),
-    ]
-
-
-def dismiss_command(
-    item: NeedsYouItem,
-    *,
-    signer: str | None = None,
-    action: str | None = None,
-    note: str | None = None,
-) -> list[str]:
-    """Return the canon argv (after root/store) for this item.
-
-    Never emits ``--expected-revision @current``. Approve/accept/sign include
-    note fields when ``note`` is provided. Reject returns a ``create`` finding
-    argv and does not answer the continuity-question.
-    """
-    if not is_dismissible(item.kind):
-        raise DismissRefused(f"cannot dismiss {item.kind}")
-    resolved = _resolve_action(item, action)
-    if resolved == ACTION_APPROVE:
-        return _question_approve_args(item, note)
-    if resolved == ACTION_REJECT:
-        return _question_reject_args(item, note)
-    if resolved == ACTION_ACCEPT:
-        return _finding_accept_args(item, note)
-    return _check_sign_args(item, signer or default_signer(), note)
+    return {
+        "op": "correct",
+        "type": item.record_type or "tuner:check-run",
+        "id": item.id,
+        "expected_revision": _displayed_revision(item),
+        "payload": payload,
+    }
 
 
 def _current_revision(target: Project, item: NeedsYouItem) -> str:
@@ -286,16 +201,17 @@ def dismiss_item(
     action: str | None = None,
     note: str | None = None,
 ) -> None:
-    """Invoke canon to clear a human-dismissible Needs-you item.
-
-    Raises DismissRefused for non-human kinds and DismissError when the CLI
-    fails or the displayed revision is stale. Does not retry with ``@current``.
-    """
-    args = dismiss_command(item, signer=signer, action=action, note=note)
-    if "@current" in args:
-        raise DismissError("internal error: dismiss refused to use @current")
+    if not is_dismissible(item.kind):
+        raise DismissRefused(f"cannot dismiss {item.kind}")
     resolved = _resolve_action(item, action)
-    # correct has no --expected-revision; reject create has none — guard both.
-    if resolved in (ACTION_SIGN, ACTION_REJECT):
+    if resolved == ACTION_REJECT:
         _assert_revision_current(target, item)
-    _write(target, list(args))
+    if resolved == ACTION_APPROVE:
+        operation = _question_approve(item, note)
+    elif resolved == ACTION_REJECT:
+        operation = _question_reject(item, note)
+    elif resolved == ACTION_ACCEPT:
+        operation = _finding_accept(item, note)
+    else:
+        operation = _check_sign(item, signer or default_signer(), note)
+    _write(target, operation)

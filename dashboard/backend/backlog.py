@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from dashboard.backend.snapshot import BacklogItem
@@ -40,40 +39,6 @@ def prompt(item: BacklogItem, effort: str | None = None) -> str:
     )
 
 
-def _operation(args: list[str]) -> dict[str, JsonValue]:
-    operation: dict[str, JsonValue] = {"op": args[0]}
-    index = 1
-    while index < len(args):
-        flag = args[index]
-        if index + 1 >= len(args):
-            break
-        value = args[index + 1]
-        index += 2
-        if flag == "--type":
-            operation["type"] = value
-        elif flag == "--id":
-            operation["id"] = value
-        elif flag == "--expected-revision":
-            operation["expected_revision"] = value
-        elif flag == "--payload":
-            operation["payload"] = json.loads(value)
-    return operation
-
-
-def _write(target: Project, args: list[str]) -> None:
-    operation = _operation(args)
-    label = " ".join(args[:3])
-    try:
-        results = target.apply([operation])
-    except OSError as exc:
-        raise BacklogError(f"cannot apply {operation.get('op')}: {exc}") from exc
-    result = results[0] if results else {"ok": False, "message": "no result"}
-    if result.get("ok"):
-        return
-    detail = str(result.get("message") or result.get("error") or "apply failed")
-    raise BacklogError(f"{label} failed: {detail.splitlines()[0]}")
-
-
 def _successor_payload(
     item: BacklogItem, status: str, *, phase: str | None = None
 ) -> dict[str, JsonValue]:
@@ -86,37 +51,30 @@ def _successor_payload(
     return payload
 
 
-def _supersede_args(item: BacklogItem, status: str, *, phase: str | None = None) -> list[str]:
+def _supersede(
+    target: Project, item: BacklogItem, status: str, *, phase: str | None = None
+) -> None:
     if not is_backlog(item):
         raise BacklogRefused(f"cannot act on {item.record_type or 'non-backlog'}")
-    return [
-        "supersede",
-        "--type",
-        BACKLOG_TYPE,
-        "--id",
-        item.id,
-        "--expected-revision",
-        "@current",
-        "--payload",
-        json.dumps(_successor_payload(item, status, phase=phase)),
-    ]
-
-
-def promote_command(item: BacklogItem, *, phase: str | None = None) -> list[str]:
-    """Return canon argv to supersede status=promoted."""
-    return _supersede_args(item, "promoted", phase=phase)
-
-
-def dismiss_command(item: BacklogItem) -> list[str]:
-    """Return canon argv to supersede status=dismissed."""
-    return _supersede_args(item, "dismissed")
+    operation: dict[str, JsonValue] = {
+        "op": "supersede",
+        "type": BACKLOG_TYPE,
+        "id": item.id,
+        "expected_revision": "@current",
+        "payload": _successor_payload(item, status, phase=phase),
+    }
+    try:
+        (result,) = target.apply([operation])
+    except OSError as exc:
+        raise BacklogError(f"cannot apply supersede: {exc}") from exc
+    if not result["ok"]:
+        detail = str(result.get("message") or result.get("error") or "apply failed")
+        raise BacklogError(f"supersede --type {BACKLOG_TYPE} failed: {detail.splitlines()[0]}")
 
 
 def promote_item(target: Project, item: BacklogItem, *, phase: str | None = None) -> None:
-    """Supersede an open backlog item to promoted."""
-    _write(target, promote_command(item, phase=phase))
+    _supersede(target, item, "promoted", phase=phase)
 
 
 def dismiss_item(target: Project, item: BacklogItem) -> None:
-    """Supersede an open backlog item to dismissed."""
-    _write(target, dismiss_command(item))
+    _supersede(target, item, "dismissed")

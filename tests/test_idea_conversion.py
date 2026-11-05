@@ -11,6 +11,7 @@ from pathlib import Path
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.migrate import apply_steps
+from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue
 
@@ -155,7 +156,7 @@ def test_rename_backlog_records_to_ideas_preserves_content_and_history():
 
     renames: dict[str, JsonValue] = {_LEGACY_TYPE: _IDEA_TYPE}
     step: JsonObject = {"rename_type": renames}
-    rewritten = apply_steps(store, [step])
+    rewritten = apply_steps(store, [step], discover()[_COMPOSER].module)
     assert rewritten == 3
 
     project = open_store(root)

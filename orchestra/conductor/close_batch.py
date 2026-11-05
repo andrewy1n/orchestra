@@ -18,8 +18,7 @@ field mismatches refuse the batch.
 For `method` `tdd` on a `done` transition, the request must also carry
 red-first evidence (`red_check_run_id` and copied fail fields). The red
 check-run is resolved from the store the same way; ancestry uses the
-store's revisions (or a dirty red with `diff_sha256`), unless the
-request includes a finding escape.
+store's revisions (or a dirty red with `diff_sha256`), with a non-empty diff digest.
 
 For `method` `manual`, the request carries `result` / `revision` /
 `signed_by` and this script emits one `tuner:check-run` create per
@@ -41,6 +40,7 @@ import argparse
 import contextlib
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
@@ -49,14 +49,14 @@ from typing import TypedDict, TypeGuard
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
-from orchestra.canon.project import open_store
+from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
-_HASH_SEP = ":sha256:"
 
 CheckRunLoader = Callable[[str], Record]
 AcceptanceLoader = Callable[[str], Record]
@@ -112,15 +112,6 @@ class OracleAdapterUnavailable(Exception):
 
     An installed Orchestra CLI serves every other subcommand without tuner
     importable; this gate refuses clearly when the import fails.
-    """
-
-
-class AcceptanceStoreUnavailable(LookupError):
-    """No acceptance store in the unit-test hook.
-
-    ``build_batch`` callers that inject ``load_check_run`` without a store get
-    this sentinel instead of a real lookup failure, so the claim gate can skip
-    rather than refuse a close the test did not mean to gate.
     """
 
 
@@ -268,7 +259,7 @@ def default_load_check_run(
     """Load a check-run from the store opened for the primary cwd."""
     try:
         return _open_project(store_root).get(check_run_id, "tuner:check-run")
-    except StoreError as exc:
+    except (StoreBindingError, StoreError, OSError) as exc:
         raise LookupError(str(exc)) from exc
 
 
@@ -280,7 +271,7 @@ def default_load_acceptance(
     """Load an acceptance from the store opened for the primary cwd."""
     try:
         return _open_project(store_root).get(acceptance_id, "score:acceptance")
-    except StoreError as exc:
+    except (StoreBindingError, StoreError, OSError) as exc:
         raise LookupError(str(exc)) from exc
 
 
@@ -307,53 +298,12 @@ def default_list_oracle_amendments(
     return matched
 
 
-def parse_oracle_hashes(raw: list[str] | str | None) -> dict[str, str]:
-    """Parse ``relpath:sha256:<hex>`` entries into ``{relpath: sha256:<hex>}``."""
-    if not raw:
-        return {}
-    parts = raw.split(",") if isinstance(raw, str) else list(raw)
-    out: dict[str, str] = {}
-    for part in parts:
-        chunk = str(part).strip()
-        if not chunk:
-            continue
-        idx = chunk.find(_HASH_SEP)
-        if idx <= 0:
-            continue
-        relpath = chunk[:idx]
-        digest = chunk[idx + 1 :]  # keep leading "sha256:"
-        if relpath and digest.startswith("sha256:"):
-            out[relpath] = digest
-    return out
-
-
-def is_oracle_backed(acceptance_payload: PlanningPayload) -> bool:
-    """True when acceptance has freeze fields: non-empty test_ids and parseable hashes.
-
-    ``oracle_hashes`` must parse to at least one ``relpath:sha256:<hex>`` entry.
-    Placeholder or unparseable strings are treated as legacy (gates skipped).
-    """
-    if not acceptance_payload.get("test_ids"):
-        return False
-    hashes = acceptance_payload.get("oracle_hashes")
-    if isinstance(hashes, str):
-        return bool(parse_oracle_hashes(hashes))
-    if not isinstance(hashes, list):
-        return False
-    return bool(parse_oracle_hashes(hashes))
-
-
 def _sha256_digest(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
 def hash_file_at_revision(cwd: Path, revision: str, relpath: str) -> str:
     """Content hash of ``relpath`` at a store-backed check-run revision."""
-    if revision == "dirty":
-        path = cwd / relpath
-        if not path.is_file():
-            raise FileNotFoundError(relpath)
-        return _sha256_digest(path.read_bytes())
     result: subprocess.CompletedProcess[bytes] = run_git(
         cwd, "show", f"{revision}:{relpath}", capture_output=True
     )  # pyright: ignore[reportAssignmentType]  # No text or encoding options are passed.
@@ -474,8 +424,7 @@ def _resolve_red_check_run(
     if not red_id:
         raise CloseRefused(
             f"criterion {criterion_id!r}: tdd done close requires "
-            "red_check_run_id (runner-produced fail preceding the green), "
-            "or a finding escape naming the missing red"
+            "red_check_run_id (runner-produced fail preceding the green)"
         )
 
     record = _load_check_run(
@@ -617,32 +566,40 @@ def _approved_amendment_covers_tree(
         payload = record_payload(record)
         if str(payload.get("status") or "") != "approved":
             continue
-        new_hashes = parse_oracle_hashes(payload.get("new_hashes"))
+        try:
+            new_hashes = parse_hashes(payload.get("new_hashes"))
+        except ValueError as exc:
+            raise CloseRefused(
+                f"approved oracle-amendment {record['id']!r} has invalid new_hashes: {exc}"
+            ) from exc
         if new_hashes and new_hashes == tree_hashes:
             return True
     return False
 
 
-def _manifest_claim_ids(cwd: Path) -> set[str] | None:
-    """Claim ids in ``.tuner/manifest.json``, or None when it is absent.
-
-    An empty set means the manifest exists but lists no usable claims, so a
-    non-empty ``payload.claim`` is not listed and must refuse.
-    """
+def _manifest_claim_ids(cwd: Path) -> set[str]:
+    """Return valid claim ids from the repository manifest."""
     path = cwd / ".tuner" / "manifest.json"
     if not path.is_file():
-        return None
+        raise CloseRefused("claim manifest is missing")
     try:
         data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return set()
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise CloseRefused(f"claim manifest is unreadable or invalid: {exc}") from exc
     claims = data.get("claims") if isinstance(data, dict) else None
     if not isinstance(claims, list):
-        return set()
+        raise CloseRefused("claim manifest is invalid: claims must be a list")
     ids: set[str] = set()
     for claim in claims:
-        if isinstance(claim, dict) and claim.get("id"):
-            ids.add(str(claim["id"]))
+        if not _is_object(claim):
+            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
+        raw_claim_id = claim.get("id")
+        if not isinstance(raw_claim_id, str):
+            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
+        claim_id = raw_claim_id.strip()
+        if not claim_id or claim_id in ids:
+            raise CloseRefused("claim manifest is invalid: claim ids must be non-empty and unique")
+        ids.add(claim_id)
     return ids
 
 
@@ -698,7 +655,7 @@ def _enforce_claim_gates(
     *,
     green_by_criterion: dict[JsonValue, Mapping[str, object]],
     cwd: Path,
-    load_acceptance: AcceptanceLoader,
+    acceptances: Mapping[str, Record],
 ) -> None:
     """Manifest-backed acceptances need tuner verdict and recheck on done.
 
@@ -706,24 +663,16 @@ def _enforce_claim_gates(
     An acceptance that cannot be loaded refuses, and so does a claim id
     that the manifest does not list. An empty claim is not gated.
     """
-    claim_ids = _manifest_claim_ids(cwd)
-    if claim_ids is None:
-        return
+    claim_ids: set[str] | None = None
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
-        try:
-            acceptance = load_acceptance(str(criterion_id))
-        except AcceptanceStoreUnavailable:
-            continue
-        except LookupError as exc:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: acceptance could not be "
-                "loaded; cannot run the claim gate"
-            ) from exc
+        acceptance = acceptances[entry["criterion_id"]]
         payload = record_payload(acceptance)
         claim_id = str(payload.get("claim") or "").strip()
         if not claim_id:
             continue
+        if claim_ids is None:
+            claim_ids = _manifest_claim_ids(cwd)
         if claim_id not in claim_ids:
             raise CloseRefused(
                 f"criterion {criterion_id!r}: claim {claim_id!r} is not "
@@ -749,22 +698,15 @@ def _enforce_oracle_gates(
     green_payload: Mapping[str, object],
     red_record: Record,
     cwd: Path,
-    load_acceptance: AcceptanceLoader,
+    acceptance: Record,
     list_oracle_amendments: AmendmentLister,
 ) -> None:
-    """Refuse oracle-backed tdd done on hash drift or non-assertion red.
-
-    Legacy acceptances without freeze fields skip these gates.
-    """
-    criterion_id = entry.get("criterion_id")
+    criterion_id = entry["criterion_id"]
     try:
-        acceptance = load_acceptance(str(criterion_id))
-    except LookupError:
-        return
-
-    acceptance_payload = record_payload(acceptance)
-    if not is_oracle_backed(acceptance_payload):
-        return
+        acceptance_payload = record_payload(acceptance)
+        frozen = parse_freeze(acceptance_payload)
+    except ValueError as exc:
+        raise CloseRefused(f"criterion {criterion_id!r}: incomplete oracle freeze: {exc}") from exc
 
     try:
         assertion_red = _assertion_level_red(red_record)
@@ -777,16 +719,23 @@ def _enforce_oracle_gates(
             "import/collection-only red is refused"
         )
 
-    frozen = parse_oracle_hashes(acceptance_payload.get("oracle_hashes"))
-    if not frozen:
+    failing_nodes = record_payload(red_record).get("failing_node_ids")
+    test_ids = record_payload(acceptance).get("test_ids") or []
+    if (
+        not isinstance(failing_nodes, list)
+        or not failing_nodes
+        or any(node not in test_ids for node in failing_nodes)
+    ):
         raise CloseRefused(
-            f"criterion {criterion_id!r}: oracle_hashes freeze field is empty or unparseable"
+            f"criterion {criterion_id!r}: assertion red must identify frozen test ids"
         )
 
     green_revision = green_payload.get("revision")
-    if not green_revision:
+    if not isinstance(green_revision, str) or not re.fullmatch(
+        r"(?:[0-9a-f]{40}|[0-9a-f]{64})", green_revision
+    ):
         raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for oracle freeze hash check"
+            f"criterion {criterion_id!r}: green revision must be a pinned commit for the freeze check"
         )
 
     try:
@@ -846,39 +795,15 @@ def build_batch(
 
         loader = _store_check_run
 
-    # Unit tests inject load_check_run without a store: skip oracle store
-    # lookups unless the caller also injects acceptance/amendment hooks.
-    acceptance_loader: AcceptanceLoader
-    if load_acceptance is not None:
-        acceptance_loader = load_acceptance
-    elif load_check_run is None:
+    def acceptance_loader(acceptance_id: str) -> Record:
+        if load_acceptance is not None:
+            return load_acceptance(acceptance_id)
+        return default_load_acceptance(acceptance_id, store_root=resolved_store)
 
-        def _store_acceptance(acceptance_id: str) -> Record:
-            return default_load_acceptance(acceptance_id, store_root=resolved_store)
-
-        acceptance_loader = _store_acceptance
-    else:
-
-        def _unavailable_acceptance(_acceptance_id: str) -> Record:
-            raise AcceptanceStoreUnavailable("acceptance store not available in unit test hook")
-
-        acceptance_loader = _unavailable_acceptance
-
-    amendment_lister: AmendmentLister
-    if list_oracle_amendments is not None:
-        amendment_lister = list_oracle_amendments
-    elif load_check_run is None:
-
-        def _store_amendments(acceptance_id: str) -> list[Record]:
-            return default_list_oracle_amendments(acceptance_id, store_root=resolved_store)
-
-        amendment_lister = _store_amendments
-    else:
-
-        def _no_amendments(_acceptance_id: str) -> list[Record]:
-            return []
-
-        amendment_lister = _no_amendments
+    def amendment_lister(acceptance_id: str) -> list[Record]:
+        if list_oracle_amendments is not None:
+            return list_oracle_amendments(acceptance_id)
+        return default_list_oracle_amendments(acceptance_id, store_root=resolved_store)
 
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
@@ -942,7 +867,27 @@ def build_batch(
     # Store authority for done closes: resolve every runner check-run id.
     green_by_criterion: dict[JsonValue, Mapping[str, object]] = {}
     if transition == "done":
+        acceptances: dict[str, Record] = {}
+        for aid in acceptance_ids:
+            try:
+                acceptances[aid] = acceptance_loader(aid)
+            except (LookupError, StoreBindingError, StoreError, OSError) as exc:
+                raise CloseRefused(
+                    f"criterion {aid!r}: acceptance could not be loaded: {exc}"
+                ) from exc
+        passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
+        for aid, acceptance in acceptances.items():
+            if record_payload(acceptance).get("method") == "tdd" and aid not in passed_ids:
+                raise CloseRefused(f"criterion {aid!r}: TDD close requires a passing criterion")
         for entry in criteria:
+            aid = entry["criterion_id"]
+            _match_field(
+                criterion_id=aid,
+                label="acceptance",
+                field="method",
+                requested=entry["method"],
+                stored=record_payload(acceptances[aid]).get("method"),
+            )
             if entry.get("method") not in RUNNER_METHODS:
                 continue
             green_by_criterion[entry.get("criterion_id")] = _resolve_green_check_run(
@@ -952,10 +897,9 @@ def build_batch(
             criteria,
             green_by_criterion=green_by_criterion,
             cwd=work_cwd,
-            load_acceptance=acceptance_loader,
+            acceptances=acceptances,
         )
 
-    if transition == "done" and not finding:
         for entry in criteria:
             if entry.get("method") != "tdd":
                 continue
@@ -974,7 +918,7 @@ def build_batch(
                 green_payload=green_payload,
                 red_record=red_record,
                 cwd=work_cwd,
-                load_acceptance=acceptance_loader,
+                acceptance=acceptances[entry["criterion_id"]],
                 list_oracle_amendments=amendment_lister,
             )
 

@@ -43,6 +43,10 @@ class StoreBindingError(Exception):
     """The selected store is missing, unbound, or not a local/global binding."""
 
 
+class NoArtifactStoreError(StoreBindingError):
+    """No local or global artifact store is bound to a project."""
+
+
 @dataclass(frozen=True)
 class Binding:
     """The binding that won: a local or global place, and where that choice came from.
@@ -232,6 +236,15 @@ class Project:
             results.append(result)
         return results
 
+    def apply_at_snapshot(self, operations: Iterable[JsonObject], change_token: str) -> None:
+        """Apply a batch atomically only if its source snapshot is still current."""
+        store, schemas = self._session()
+        with store.transaction():
+            if store.change_token() != change_token:
+                raise StaleWriteError("store changed since the snapshot")
+            for operation in operations:
+                _apply_operation(store, schemas, operation)
+
     def _session(self) -> tuple[Backend, SchemaSet]:
         store = open_backend(self.store_path)
         config = store.load_config()
@@ -279,7 +292,7 @@ def _open_bound(root: Path) -> Project:
     if _has_config(home):
         return _open(root, home, Binding("global", "default"))
 
-    raise StoreBindingError(
+    raise NoArtifactStoreError(
         f"No artifact store for {root}: neither {local} nor {home} has config.json"
     )
 

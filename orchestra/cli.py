@@ -390,6 +390,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the resolved root, store, and binding as JSON",
     )
+    recover = store_sub.add_parser(
+        "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
+    )
+    recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
+    recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
     store_run = store_sub.add_parser(
         "run",
         help="Run a library read or write against the opened store",
@@ -506,6 +511,8 @@ def _suite_result_document(result: suite.SuiteResult) -> dict[str, object]:
 
 
 def _suite_exit_code(result: suite.SuiteResult) -> int:
+    if result.skipped:
+        return suite.SKIPPED_EXIT_CODE
     if result.refuse or result.result == "blocked":
         return 2
     if result.result == "fail":
@@ -525,6 +532,8 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
     head = args.phase_head or git_head(work)
     log_path = work / ".suite" / f"{name}.log"
     exit_path = work / ".suite" / f"{name}.exit"
+    skip_path = work / ".suite" / f"{name}.skipped"
+    skipped = skip_path.is_file()
     started = time.monotonic()
     if log_path.is_file():
         started -= max(0.0, time.time() - log_path.stat().st_ctime)
@@ -536,12 +545,14 @@ def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
         log_path=log_path,
         exit_path=exit_path,
         started_monotonic=started,
+        skipped=skipped,
+        skip_reason=skip_path.read_text(encoding="utf-8") if skipped else "",
     )
 
 
 def _load_review_records(
     location: StoreLocation,
-) -> tuple[list[Record], list[str]]:
+) -> list[Record]:
     """Read the reviewer-allowed kinds from the opened store."""
     project = location.open()
     records: list[Record] = []
@@ -554,15 +565,15 @@ def _load_review_records(
             failures.append(f"{record_type}: {exc}")
             continue
         records.extend(row for row in rows if isinstance(row, dict))  # pyright: ignore[reportUnnecessaryIsInstance]
-    if not records and failures:
+    if failures:
         raise RuntimeError("; ".join(failures))
-    return records, failures
+    return records
 
 
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records, failures = _load_review_records(resolve_location(args.store, work))
+        records = _load_review_records(resolve_location(args.store, work))
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
@@ -574,8 +585,6 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     except (OSError, RuntimeError, StoreBindingError) as exc:
         print(f"orchestra review-brief: {exc}", file=sys.stderr)
         return 2
-    for failure in failures:
-        print(f"orchestra review-brief: skipped {failure}", file=sys.stderr)
     if args.out == "-":
         print(brief, end="" if brief.endswith("\n") else "\n")
         return 0
@@ -603,12 +612,10 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
             {
                 "phase": report.phase,
                 "stage": report.stage,
-                "skipped": report.skipped,
+                "skipped": False,
                 "findings": [f.to_dict() for f in report.findings],
             }
         )
-    elif report.skipped:
-        print(f"{args.phase}: skipped, no active specification")
     else:
         for f in report.findings:
             print(f"{f.severity} {f.code} {f.subject}: {f.message}")
@@ -684,7 +691,7 @@ def _cmd_suite_start(args: argparse.Namespace) -> int:
             "policy": _policy_document(outcome.policy) if outcome.policy else None,
         }
     )
-    return 0
+    return suite.SKIPPED_EXIT_CODE if outcome.skipped else 0
 
 
 def _cmd_suite_poll(args: argparse.Namespace) -> int:
@@ -731,6 +738,9 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 3
+        if result.skipped:
+            print(result.skip_reason, file=sys.stderr)
+            return suite.SKIPPED_EXIT_CODE
         location = resolve_location(args.store, work)
         record = suite.record_suite_check_run(
             store_root=location.root,
@@ -1048,6 +1058,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "land":
         return _cmd_land(args)
     if args.command == "store":
+        if args.action == "recover-evidence":
+            from orchestra.canon.validation import ValidationError
+            from orchestra.conductor.evidence_recovery import recover_evidence
+
+            try:
+                report = recover_evidence(open_store(_cwd(args)), apply=args.apply)
+            except (OSError, StoreBindingError, StoreError, ValidationError) as exc:
+                print(f"orchestra store recover-evidence: {exc}", file=sys.stderr)
+                return 2
+            _print_json(report)
+            return 1 if report["fresh_proof_required"] else 0
         if args.action == "path":
             return _cmd_store_path(args)
         if args.action == "run":

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.canon.project import StoreBindingError
+from orchestra.canon.project import NoArtifactStoreError, StoreBindingError
 
 _PATH_ATTRS = ("store_path", "store", "store_root", "path", "root")
 
@@ -279,6 +279,14 @@ def test_r9_store_argument_missing_config(tmp_path, monkeypatch):
         open_store(repo, store=explicit)
     assert file_set(home) == before_home
     assert file_set(local_store(repo)) == before_local
+
+
+def test_no_artifact_store_uses_specific_error(tmp_path, monkeypatch):
+    open_store = load_open_store()
+    prepared_home(tmp_path, monkeypatch)
+    repo = git_repo(tmp_path / "repo")
+    with pytest.raises(NoArtifactStoreError):
+        open_store(repo)
 
 
 def test_r10_env_missing_config(tmp_path, monkeypatch):

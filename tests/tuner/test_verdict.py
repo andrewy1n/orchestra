@@ -9,6 +9,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from orchestra.tuner.amendment import canonical_payload
 
 VERIFY = [sys.executable, str(Path(__file__).resolve().parents[2] / "bin" / "orchestra"), "verify"]
@@ -189,8 +191,11 @@ def _run(
     *,
     process_cwd: Path | None = None,
     flag_cwd: Path | None = None,
+    require_trail: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     cmd = [*VERIFY, "verdict"]
+    if require_trail:
+        cmd.append("--require-trail")
     if flag_cwd is not None:
         cmd.extend(["--cwd", str(flag_cwd)])
     cmd.extend(["--at", at])
@@ -778,3 +783,25 @@ def test_verdict_skips_confirmation_on_failed_claim(tmp_path: Path) -> None:
     base_rows = [row for row in rows if row["behavior"] == "error"]
     assert base_rows == [{"n": 1, "behavior": "error", "ids": [NODE], "wrote": "error"}]
     assert all(row["n"] == 1 for row in rows)
+
+
+@pytest.mark.parametrize(
+    ("head_app", "expected_result"), [(APP_GREEN, "pass"), (APP_STILL_RED, "fail")]
+)
+def test_requested_trail_failure_preserved_trail_verdict(
+    tmp_path: Path, head_app: bytes, expected_result: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "subject"
+    base, head = _repo(root, base_app=APP_RED, head_app=head_app)
+    broken = tmp_path / "broken-store"
+    broken.mkdir()
+    (broken / "config.json").write_text("{}")
+    (broken / "canon.db").write_bytes(b"invalid database")
+    monkeypatch.setenv("CANON_STORE", str(broken))
+    default = _run(root, head, base)
+    requested = _run(root, head, base, require_trail=True)
+    assert default.returncode == (0 if expected_result == "pass" else 1)
+    assert requested.returncode == 2
+    assert "required observation trail" in requested.stderr
+    assert _payload(requested) == _payload(default)
+    assert _payload(requested)["result"] == expected_result

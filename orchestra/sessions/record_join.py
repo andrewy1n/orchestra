@@ -1,6 +1,5 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
-from pathlib import PurePosixPath
 from typing import overload
 
 from orchestra.sessions.session_types import (
@@ -36,7 +35,11 @@ def _window(session: SessionFields) -> tuple[datetime, datetime] | None:
     return start, end
 
 
-def join(sessions: Sequence[SessionFields], records: list[RecordMetadata]) -> RecordJoinResult:
+def join(
+    sessions: Sequence[SessionFields],
+    records: list[RecordMetadata],
+    stores_by_cwd: Mapping[str, str],
+) -> RecordJoinResult:
     by_session: dict[str, RecordJoinBucket] = {
         s["session_id"]: {"records": [], "ambiguous": []}
         for s in sessions
@@ -48,8 +51,8 @@ def join(sessions: Sequence[SessionFields], records: list[RecordMetadata]) -> Re
         if not isinstance(session_id, str):
             continue
         cwd = session.get("cwd")
-        name = PurePosixPath(cwd if isinstance(cwd, str) else "").name
-        windows.append((session_id, name, _window(session)))
+        if isinstance(cwd, str) and cwd in stores_by_cwd:
+            windows.append((session_id, stores_by_cwd[cwd], _window(session)))
     unattached: list[str] = []
     for rec in records:
         when = _parse(rec["recorded_at"])

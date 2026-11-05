@@ -1,11 +1,4 @@
-"""Adapter protocol plus the generic skills-directory implementation.
-
-Native adapters for Claude Code, Cursor, and OpenCode live in
-:mod:`installer.adapters.native` and register themselves with
-:func:`installer.adapters.register_adapter`. Non-native matrix rows delegate to
-:class:`installer.adapters.tail.SkillsCliAdapter`; anything else keeps the
-generic behaviour here.
-"""
+"""Adapter protocol plus the generic skills-directory implementation."""
 
 from __future__ import annotations
 

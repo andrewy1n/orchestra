@@ -1,108 +1,58 @@
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from orchestra.sessions.record_reader import DEFAULT_TYPES, RecordReadError, read_records
-
-BODY = "SECRET BODY TEXT"
-
-
-def _row(id_, rtype, effort=None):
-    payload = {"title": "x", "notes": BODY}
-    if effort:
-        payload["effort"] = effort
-    return {
-        "id": id_,
-        "record_type": rtype,
-        "subject": "rj-record-reader",
-        "lifecycle_state": "open",
-        "revision": 1,
-        "payload": payload,
-        "recorded_at": "2026-09-30T12:30:00+00:00",
-        "derived": {"ready": True},
-        "body_excerpt": BODY,
-    }
+from orchestra.canon import record
+from orchestra.canon.project import open_store
+from orchestra.sessions.record_reader import RecordReadError, read_project_records
 
 
-class _Stub:
-    def __init__(self, by_type: dict[str, list[dict]]) -> None:
-        self.by_type = by_type
-        self.calls: list[list[str]] = []
-
-    def __call__(self, argv: list[str]) -> str:
-        self.calls.append(argv)
-        rtype = argv[argv.index("--type") + 1]
-        rows = self.by_type.get(rtype, [])
-        return json.dumps({"records": rows, "count": len(rows)})
-
-
-def _stub(by_type: dict[str, list[dict]]) -> _Stub:
-    return _Stub(by_type)
-
-
-def test_yields_metadata_with_utc_times_and_no_body():
-    run = _stub({"score:work-item": [_row("wi-1", "score:work-item", "session-analysis")]})
-    rows = read_records("/tmp/proj-x", types=["score:work-item"], run=run)
-    assert rows == [
+def test_production_reader_returns_only_session_metadata(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = open_store(store)
+    monkeypatch.setattr(record, "now", lambda: "2026-09-30T05:30:00-07:00")
+    effort = project.create(
+        record_type="score:effort",
+        subject="reader",
+        payload={"goal": "private goal", "kind": "repair"},
+        body="private body",
+    )
+    phase = project.create(
+        record_type="score:phase",
+        subject="review-reader",
+        payload={"effort": "reader", "title": "private title", "ordinal": 1},
+        body="## Problem\nOne\n## Approach\nTwo\n## Exit criteria\nThree",
+    )
+    token = project.change_token()
+    assert read_project_records(project, ["score:phase"]) == [
         {
-            "id": "wi-1",
-            "record_type": "score:work-item",
-            "subject": "rj-record-reader",
-            "effort": "session-analysis",
-            "recorded_at": rows[0]["recorded_at"],
-            "lifecycle_state": "open",
-            "store": "proj-x",
+            "id": phase["id"],
+            "record_type": "score:phase",
+            "subject": "review-reader",
+            "effort": "reader",
+            "recorded_at": datetime(2026, 9, 30, 12, 30, tzinfo=timezone.utc),
+            "lifecycle_state": "planned",
+            "store": str(project.store_path),
         }
     ]
-    recorded_at = rows[0]["recorded_at"]
-    assert isinstance(recorded_at, datetime)
-    assert recorded_at.utcoffset() == timedelta(0)
-    assert recorded_at.tzinfo == timezone.utc
-    assert BODY not in json.dumps(rows, default=str)
+    assert {row["id"]: row["effort"] for row in read_project_records(project)} == {
+        effort["id"]: None,
+        phase["id"]: "reader",
+    }
+    assert project.change_token() == token
 
 
-def test_effort_is_none_when_payload_has_none():
-    run = _stub({"tuner:finding": [_row("f-1", "tuner:finding")]})
-    assert read_records("/tmp/p", types=["tuner:finding"], run=run)[0]["effort"] is None
+def test_production_reader_reports_the_unreadable_type(store: Path) -> None:
+    project = open_store(store)
+    with pytest.raises(RecordReadError, match="absent:kind"):
+        read_project_records(project, ["absent:kind"])
 
 
-def test_command_is_read_only_list_per_type_with_root():
-    run = _stub({})
-    read_records("/tmp/p", types=["project:a", "project:b"], run=run)
-    assert len(run.calls) == 2
-    for argv, t in zip(run.calls, ["project:a", "project:b"], strict=False):
-        assert "--read-only" in argv
-        assert argv[argv.index("--root") + 1] == "/tmp/p"
-        assert argv.index("--read-only") < argv.index("list")
-        assert argv[argv.index("--type") + 1] == t
-
-
-def test_store_is_resolved_under_home_artifacts_by_root_basename():
-    run = _stub({})
-    read_records("/tmp/proj-x", types=["project:a"], run=run)
-    argv = run.calls[0]
-    assert argv[argv.index("--store") + 1] == str(Path.home() / ".canon" / "proj-x")
-
-
-def test_default_types_cover_project_types():
-    run = _stub({})
-    read_records("/tmp/p", run=run)
-    assert [a[a.index("--type") + 1] for a in run.calls] == list(DEFAULT_TYPES)
-    assert "score:work-item" in DEFAULT_TYPES
-
-
-def test_failure_names_type_not_content():
-    def run(argv):
-        raise RuntimeError(BODY)
-
-    with pytest.raises(RecordReadError) as err:
-        read_records("/tmp/p", types=["score:decision"], run=run)
-    assert "score:decision" in str(err.value)
-    assert BODY not in str(err.value)
-
-
-def test_invalid_json_names_type():
-    with pytest.raises(RecordReadError, match="score:phase"):
-        read_records("/tmp/p", types=["score:phase"], run=lambda argv: "not json")
+def test_production_reader_error_omits_private_content(store: Path) -> None:
+    project = open_store(store)
+    (project.store_path / "config.json").write_text('{"format": "private-format"}')
+    with pytest.raises(RecordReadError, match="score:phase") as failure:
+        read_project_records(project, ["score:phase"])
+    assert "private-format" not in str(failure.value)

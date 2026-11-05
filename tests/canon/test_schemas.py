@@ -410,6 +410,18 @@ class TestMigration:
         config = json.loads((repo / ".canon" / "config.json").read_text())
         assert config["schemas"]["gamma"] == "1.0.0"
 
+    def test_missing_type_mapping_is_refused(self, cli, site, repo, migrating):
+        target = copy.deepcopy(GAMMA_V2)
+        target["migrations"][0]["rename_type"] = {}
+        site.publish(target)
+
+        result = cli("schemas", "sync")
+
+        assert result.code == 4
+        assert "no valid target type mapping" in result.json["message"]
+        config = json.loads((repo / ".canon" / "config.json").read_text())
+        assert config["schemas"]["gamma"] == "1.0.0"
+
     def test_migration_chains_across_several_majors(self, cli, site, repo, migrating):
         _, report, *_ = migrating
         v3 = copy.deepcopy(GAMMA_V2)

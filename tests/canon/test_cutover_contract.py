@@ -18,6 +18,7 @@ from orchestra.canon.migrate import migration_path, transform
 from orchestra.canon.modules import discover
 from orchestra.canon.project import open_store
 from orchestra.canon.revision import compute_revision, with_revision
+from orchestra.canon.schema import SchemaError
 from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.types import JsonObject, Record
@@ -308,10 +309,23 @@ def test_migration_path_retains_numeric_version_coercion() -> None:
 def test_transform_retains_nonstring_rename_type_target() -> None:
     record = _record(EFFORT_ID, "alpha:config", "legacy", {"title": "item"})
     step: JsonObject = {"rename_type": {"alpha:config": 42}}
+    module: JsonObject = {"namespace": "alpha", "types": {"config": {"fields": {}}}}
 
-    moved = transform(record, [step])
+    moved = transform(record, [step], module)
 
     assert moved["record_type"] == 42
+
+
+def test_transform_rejects_unmapped_enum_values() -> None:
+    record = _record(EFFORT_ID, "gamma:execution-report", "legacy", {"result": "unknown"})
+    module: JsonObject = {
+        "namespace": "gamma",
+        "types": {"execution-report": {"fields": {"result": {"enum": ["done", "bad"]}}}},
+    }
+    step: JsonObject = {"map_enum": {"gamma:execution-report.result": {"ok": "done"}}}
+
+    with pytest.raises(SchemaError, match="enum value 'unknown' has no migration mapping"):
+        transform(record, [step], module)
 
 
 def test_transfer_nonobject_error_has_no_empty_identity_prefix(tmp_path: Path) -> None:

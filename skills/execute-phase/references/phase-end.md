@@ -224,7 +224,8 @@ changed. Read `## Proof` on the phase for `kind` (default `claims`).
 `base` = Landing base (or merge-base with main); `revision` =
 phase-head. Machine = pointers only. With
 `.tuner/manifest.json`, also `orchestra verify trail` and
-`orchestra verify audit --base <base> --head <revision>` into Machine/Attention.
+`orchestra verify audit --base <base> --head <revision> --require-trail`
+into Machine/Attention.
 
 ```bash
 canon create --type conductor:proof-packet \

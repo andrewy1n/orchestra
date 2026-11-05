@@ -1,11 +1,4 @@
-"""The generic tail adapter: delegate a non-native host to ``npx skills``.
-
-Every provider whose matrix row has ``kind: skills`` uses this adapter. It
-runs ``npx skills add -a <profile>`` once per install and records the profile
-in the host registration, so the report and a later ``--uninstall`` can name
-it. When ``npx`` is unavailable (or exits non-zero) the adapter falls back to
-a plain skills-directory install and says so; installation still succeeds.
-"""
+"""Install a provider through its configured skills CLI profile."""
 
 from __future__ import annotations
 
@@ -58,20 +51,6 @@ class SkillsCliAdapter(BaseAdapter):
             "delegate": f"npx skills add -a {self.profile}",
         }
 
-    def _run(self) -> subprocess.CompletedProcess[str] | None:
-        self.base.mkdir(parents=True, exist_ok=True)
-        try:
-            return subprocess.run(
-                list(self.command()),
-                cwd=str(self.base),
-                capture_output=True,
-                text=True,
-            )
-        except OSError:
-            return None
-
-    # -- protocol -------------------------------------------------------
-
     def plan(self, *, uninstall: bool = False) -> Plan:
         if uninstall:
             return super().plan(uninstall=uninstall)
@@ -89,30 +68,20 @@ class SkillsCliAdapter(BaseAdapter):
         )
 
     def apply(self, plan: Plan) -> ApplyResult:
-        completed = self._run()
-        if completed is not None and completed.returncode == 0:
-            self.root.mkdir(parents=True, exist_ok=True)
-            self._write_marker(())
-            return ApplyResult(
-                provider=self.provider,
-                root=self.root,
-                note=f"delegated to {self.delegate_label()}",
-            )
-
-        reason = (
-            "npx is not available" if completed is None else f"npx exited {completed.returncode}"
+        self.base.mkdir(parents=True, exist_ok=True)
+        completed = subprocess.run(
+            self.command(), cwd=self.base, capture_output=True, text=True, check=False
         )
-        fallback = BaseAdapter.apply(self, BaseAdapter.plan(self))
+        if completed.returncode != 0:
+            raise ValueError(
+                f"{self.delegate_label()} exited {completed.returncode}: {completed.stderr.strip()}"
+            )
+        self.root.mkdir(parents=True, exist_ok=True)
+        self._write_marker(())
         return ApplyResult(
             provider=self.provider,
             root=self.root,
-            applied=fallback.applied,
-            unchanged=fallback.unchanged,
-            removed=fallback.removed,
-            note=(
-                f"{reason}; fell back to a skills directory install at {self.root} "
-                f"(profile: {self.profile})"
-            ),
+            note=f"delegated to {self.delegate_label()}",
         )
 
     def verify(self) -> VerifyResult:

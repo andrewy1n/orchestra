@@ -1,6 +1,7 @@
 import io
 import json
 import re
+from pathlib import Path
 from typing import TypeGuard
 
 import pytest
@@ -533,3 +534,20 @@ def test_r12_plain_start_context_matches_claude_budget_and_content(repo, monkeyp
     assert plain == claude
     assert len(plain) <= HOOK_BUDGET
     assert ID_LINK.search(plain) is None
+
+
+@pytest.mark.parametrize("command", ["hook-start", "hook-stop"])
+@pytest.mark.parametrize("raw", ["{", "[]", "null"])
+def test_malformed_hook_input(
+    command: str,
+    raw: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO(raw))
+    assert cli.main([command, "--claude"]) == 2
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert "hook input" in captured.err
