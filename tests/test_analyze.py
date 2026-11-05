@@ -205,6 +205,13 @@ def test_r7_phase_without_specification_exits_zero_and_says_skipped(store, cli, 
     assert "skipped" in (result.stdout + result.stderr)
 
 
+def test_close_refuses_phase_without_active_specification(store, cli, resolved_contract):
+    seed_phase(cli, resolved_contract, with_spec=False)
+    code, report = analyze_json(store, "--stage", "close")
+    assert code == 1
+    assert codes(report, "error") == {"active-specification-required"}
+
+
 def test_r8_spec_id_missing_from_body_is_error(store, cli, resolved_contract):
     seed_phase(cli, resolved_contract, ids=("R1", "R2", "R3"), body_ids=("R1", "R2"))
     code, report = analyze_json(store)

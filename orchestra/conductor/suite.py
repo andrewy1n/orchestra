@@ -514,11 +514,7 @@ def is_suite_check_run(run: Mapping[str, JsonValue], *, phase_slug: str | None =
     if phase_slug:
         expected = suite_subject(phase_slug)
         legacy = f"{phase_slug.strip()}{LEGACY_SUBJECT_SUFFIX}"
-        return (
-            subject in (expected, legacy)
-            or criterion in (expected, legacy)
-            or is_suite_subject(subject)
-        )
+        return subject in (expected, legacy) or criterion in (expected, legacy)
     return is_suite_subject(subject) or is_suite_subject(criterion)
 
 

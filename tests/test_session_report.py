@@ -276,6 +276,7 @@ def test_records_read_failure_keeps_rows_and_returns_nonzero(
     assert result == 2
     assert {row["session_id"] for row in rows} == {"good", "bad"}
     assert "RecordReadError" in captured.err
+    assert "records" not in next(row for row in rows if row["session_id"] == "bad")
 
 
 def _report_count(transcripts: Path, cwd: Path) -> dict[str, int]:

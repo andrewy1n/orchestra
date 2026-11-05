@@ -80,10 +80,11 @@ def summarize(path: Path) -> SessionSummary:
 
 def _read_all(
     rows: Sequence[SessionReport],
-) -> tuple[dict[str, str], list[RecordMetadata], list[str]]:
+) -> tuple[dict[str, str], list[RecordMetadata], list[str], set[str]]:
     stores_by_cwd: dict[str, str] = {}
     by_store: dict[str, list[RecordMetadata]] = {}
     failures: list[str] = []
+    failed_cwds: set[str] = set()
     cwds = {cwd for row in rows if isinstance((cwd := row.get("cwd")), str) and cwd}
     for cwd in sorted(cwds):
         try:
@@ -95,12 +96,14 @@ def _read_all(
         except StoreBindingError as exc:
             if not str(exc).startswith("No artifact store for "):
                 failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+                failed_cwds.add(cwd)
             continue
         except Exception as exc:
             failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+            failed_cwds.add(cwd)
             continue
     records = [record for store_records in by_store.values() for record in store_records]
-    return stores_by_cwd, records, failures
+    return stores_by_cwd, records, failures, failed_cwds
 
 
 def _record_summary(
@@ -131,7 +134,7 @@ def _is_session_report(row: SessionOutput) -> TypeGuard[SessionReport]:
 
 def _attach_records(rows: list[SessionOutput]) -> list[str]:
     sessions = [row for row in rows if _is_session_report(row) and row.get("session_id")]
-    stores_by_cwd, records, failures = _read_all(sessions)
+    stores_by_cwd, records, failures, failed_cwds = _read_all(sessions)
     by_store: dict[str, dict[str, RecordMetadata]] = {}
     for rec in records:
         by_store.setdefault(rec["store"], {})[rec["id"]] = rec
@@ -141,6 +144,8 @@ def _attach_records(rows: list[SessionOutput]) -> list[str]:
         if not isinstance(session_id, str):
             continue
         cwd = row.get("cwd")
+        if isinstance(cwd, str) and cwd in failed_cwds:
+            continue
         by_id = by_store.get(stores_by_cwd.get(cwd, ""), {}) if isinstance(cwd, str) else {}
         hit = joined[session_id]
         row["records"] = _record_summary(hit["records"], by_id, hit["ambiguous"])

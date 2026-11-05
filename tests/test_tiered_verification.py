@@ -384,6 +384,25 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
         )
         is False
     )
+    wrong_phase = [
+        *runs_ok[:-1],
+        {**runs_ok[-1], "subject": "another-phase-suite", "criterion_id": "another-phase-suite"},
+    ]
+    assert not phase_suite_gate_holds(
+        acceptances=[acc_a, acc_b],
+        check_runs=wrong_phase,
+        phase_head=HEAD,
+        phase_slug=PHASE,
+        policy=policy,
+    )
+    stale = [*runs_ok[:-1], {**runs_ok[-1], "revision": "stale-head"}]
+    assert not phase_suite_gate_holds(
+        acceptances=[acc_a, acc_b],
+        check_runs=stale,
+        phase_head=HEAD,
+        phase_slug=PHASE,
+        policy=policy,
+    )
     flat = _skill_flat()
     assert "suite" in flat
     assert "orchestra.toml" in flat or "suite policy" in flat
