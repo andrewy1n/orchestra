@@ -157,6 +157,36 @@ def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path,
     return tree, branch
 
 
+def _effort(phase_rec: Record, phase: str) -> str:
+    effort = record_payload(phase_rec).get("effort")
+    return effort if isinstance(effort, str) else phase
+
+
+def _open_question(project: Project, effort: str, scope: str) -> Record | None:
+    for record in project.list("score:continuity-question"):
+        payload = record_payload(record)
+        if (
+            record["subject"] == effort
+            and payload.get("scope") == scope
+            and payload.get("blocking") is True
+            and record["lifecycle_state"] == "open"
+        ):
+            return record
+    return None
+
+
+def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Record:
+    effort = _effort(phase_rec, phase)
+    existing = _open_question(project, effort, scope)
+    if existing is not None:
+        return existing
+    return project.create(
+        record_type="score:continuity-question",
+        subject=effort,
+        payload={"owner": "user", "blocking": True, "scope": scope},
+    )
+
+
 def start(project: Project, repo: Path, phase: str) -> WaveStart:
     records = project.records()
     derived = project.derived(records)
@@ -165,13 +195,20 @@ def start(project: Project, repo: Path, phase: str) -> WaveStart:
     executor = check_executors(chosen)
     landing = has_landing(phase_rec)
     items = phase_items(records, phase)
-    started: list[StartedTask] = []
+    prepared: list[tuple[Record, str, str]] = []
     for item in chosen:
         if landing:
-            tree, branch = _prepare(repo, phase, item, closes_phase(item, items))
-            write_root = str(tree)
+            try:
+                tree, branch = _prepare(repo, phase, item, closes_phase(item, items))
+            except WaveError as exc:
+                _block(project, phase_rec, phase, f"merge:{item['subject']}")
+                started_names = ", ".join(i["subject"] for i, _, _ in prepared) or "none"
+                raise WaveError(f"{exc}; prepared before the conflict: {started_names}") from exc
+            prepared.append((item, str(tree), branch))
         else:
-            write_root, branch = str(repo), ""
+            prepared.append((item, str(repo), ""))
+    started: list[StartedTask] = []
+    for item, write_root, branch in prepared:
         project.update(
             item["id"],
             record_type="score:work-item",
@@ -202,17 +239,17 @@ def _acceptances(records: list[Record], task: str, phase: str) -> list[Record]:
     ]
 
 
-def _passes(records: list[Record], acceptance: Record) -> bool:
+def _passes(records: list[Record], acceptance: Record, tip: str) -> bool:
     runs = [
         r
         for r in records
         if r["record_type"] == "tuner:check-run"
         and record_payload(r).get("criterion_id") == acceptance["id"]
     ]
-    return (
-        bool(runs)
-        and record_payload(max(runs, key=lambda r: r["recorded_at"])).get("result") == "pass"
-    )
+    if not runs:
+        return False
+    latest = record_payload(max(runs, key=lambda r: r["recorded_at"]))
+    return latest.get("result") == "pass" and latest.get("revision") == tip
 
 
 def end(project: Project, repo: Path, phase: str) -> WaveEnd:
@@ -220,7 +257,7 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     items = phase_items(records, phase)
     phase_tree = repo / ".worktrees" / phase
     phase_branch = f"phase/{phase}"
-    effort = record_payload(phase_record(records, phase)).get("effort")
+    phase_rec = phase_record(records, phase)
     merged: list[str] = []
     skipped: list[tuple[str, str]] = []
     for item in sorted(items, key=lambda r: r["subject"]):
@@ -240,16 +277,18 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if already.returncode == 0:
             continue
         acceptances = _acceptances(records, task, phase)
-        if not acceptances or not all(_passes(records, a) for a in acceptances):
+        tip = _git(repo, "rev-parse", branch)
+        if not acceptances or not all(_passes(records, a, tip) for a in acceptances):
             skipped.append((task, "checks did not pass"))
             continue
         result = run_git(phase_tree, "merge", "--no-edit", branch, capture_output=True, text=True)
         if result.returncode != 0:
-            question = project.create(
-                record_type="score:continuity-question",
-                subject=effort if isinstance(effort, str) else phase,
-                payload={"owner": "user", "blocking": True, "scope": f"merge:{task}"},
-            )
+            unmerged = run_git(phase_tree, "ls-files", "--unmerged", capture_output=True, text=True)
+            if not unmerged.stdout.strip():
+                raise WaveError(
+                    f"git merge {branch} failed: {result.stderr.strip() or result.stdout.strip()}"
+                )
+            question = _block(project, phase_rec, phase, f"merge:{task}")
             return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
         merged.append(task)
     return WaveEnd(phase, tuple(merged), tuple(skipped), "", "")

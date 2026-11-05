@@ -31,5 +31,5 @@ def test_r17_execute_phase_calls_the_three_verbs() -> None:
     text = EXECUTE.read_text()
     for verb in ("orchestra wave start", "orchestra task land", "orchestra wave end"):
         assert verb in text
-    assert "git branch task/" not in text
+    assert "git branch task/" not in text and "git merge task/" not in text
     assert "git worktree add" not in text

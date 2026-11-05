@@ -669,7 +669,7 @@ def _close_task(project: Project, landed: land_task.LandedTask) -> str:
     wanted = item["payload"].get("requirements")
     required = [r for r in wanted if isinstance(r, str)] if isinstance(wanted, list) else []
     statuses = requirement_status(records, landed.phase)
-    checks_pass = bool(landed.checks) and all(c.exit_code == 0 for c in landed.checks)
+    checks_pass = all(c.exit_code == 0 for c in landed.checks) and bool(landed.checks or required)
     verified = all(r in statuses and statuses[r].status == "verified" for r in required)
     if landed.evidence_result == "pass" and checks_pass and verified:
         project.update(item["id"], record_type="score:work-item", transition="done")

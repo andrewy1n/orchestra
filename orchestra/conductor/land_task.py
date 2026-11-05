@@ -59,7 +59,9 @@ def _commit(tree: Path, phase: str, task: str) -> str:
     )
     if not status.stdout.strip():
         return ""
-    run_git(tree, "add", "-A", "--", ".", ":!.canon", check=True)
+    added = run_git(tree, "add", "-A", "--", ".", ":!.canon", capture_output=True, text=True)
+    if added.returncode != 0:
+        raise LandError(f"git add failed: {added.stderr.strip() or added.stdout.strip()}")
     committed = run_git(
         tree, "commit", "-q", "-m", f"feat({phase}): {task}", capture_output=True, text=True
     )
