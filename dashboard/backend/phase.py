@@ -35,6 +35,7 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import (
     RequirementStatus,
+    acceptance_requirement_ids,
     phase_progress,
     requirement_status,
     requirements_in_body,
@@ -205,12 +206,12 @@ def _latest_requirement_check(
         for record in acceptances
         if record.get("lifecycle_state") not in INACTIVE_STATES
         and record_payload(record).get("phase") == phase
+        and requirement in acceptance_requirement_ids(record)
     }
     matched = [
         record
         for record in checks
         if record.get("lifecycle_state") not in INACTIVE_STATES
-        and record_payload(record).get("requirement") == requirement
         and record_payload(record).get("criterion_id") in acceptance_ids
     ]
     record = newest_record(matched)
@@ -1020,7 +1021,7 @@ def load_requirement_detail(
     acceptances = [
         record
         for record in _for_phase(listed("score:acceptance"), phase, effort)
-        if record_payload(record).get("requirement") == requirement
+        if requirement in acceptance_requirement_ids(record)
     ]
     acceptances.sort(key=recorded_at)
     check_records = listed("tuner:check-run")

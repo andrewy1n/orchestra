@@ -68,3 +68,13 @@ def test_light_phase_failing_multi_requirement_check_verifies_no_listed_id() -> 
 def test_full_phase_without_a_specification_has_no_evidence() -> None:
     phase = _record("score:phase", "p", {"effort": "e", "weight": "full"}, _BODY, "in_progress")
     assert _evidence(phase, ["pass"]) is None
+
+
+def test_light_phase_multi_requirement_check_is_attached_to_each_listed_row() -> None:
+    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    evidence = _evidence(phase, ["pass"])
+    assert evidence is not None
+    attached = {row.id: row.latest_check for row in evidence.requirements}
+    assert attached["R1"] is not None
+    assert attached["R2"] is not None
+    assert attached["R1"].result == "pass"

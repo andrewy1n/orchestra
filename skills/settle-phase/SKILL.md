@@ -158,7 +158,8 @@ canon supersede --type score:decision --id <decision-id> \
 ```
 
 7. Full structured work only (skip for a light phase), after the
-   decisions, so `decisions` names them: one `score:design` with the same subject (the phase slug).
+   decisions, so `decisions` names them: one `score:design` with the
+   same subject (the phase slug).
    Payload `decisions` is those decision subjects as a JSON array.
    Required sections hold the architecture, interfaces, invariants,
    assumptions, tradeoffs, and risks. Decisions remain the choices a
