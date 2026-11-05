@@ -1,6 +1,6 @@
 {
   "namespace": "score",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "types": {
     "brief": {
       "purpose": "Why, for whom, and how success is measured for an effort",
@@ -119,7 +119,8 @@
           "type": "string"
         },
         "phase": {
-          "ref": "score:phase"
+          "ref": "score:phase",
+          "optional": true
         },
         "kind": {
           "type": "string"
@@ -192,7 +193,8 @@
           ]
         },
         "phase": {
-          "ref": "score:phase"
+          "ref": "score:phase",
+          "optional": true
         },
         "effort": {
           "ref": "score:effort"
