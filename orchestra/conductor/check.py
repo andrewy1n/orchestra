@@ -114,11 +114,9 @@ def _body_tail(output: str) -> str:
     return output[-OUTPUT_BODY_CHARS:]
 
 
-_NODE_ID_RE = re.compile(r"(?:FAILED|ERROR)\s+(\S+::\S+)")
-_SUMMARY_NODE_RE = re.compile(
-    r"^(?:FAILED|ERROR)\s+(\S+::\S+)",
-    re.MULTILINE,
-)
+_NODE = r"(\S+::[^\[\s]*(?:\[.*?\])?)(?= - |$)"
+_NODE_ID_RE = re.compile(rf"(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
+_SUMMARY_NODE_RE = re.compile(rf"^(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
 
 
 def parse_failing_node_ids(output: str) -> list[str]:
