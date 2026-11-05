@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 HAND_INTEGRATION = (
@@ -29,7 +30,7 @@ def _assert_lands(text: str) -> None:
 
 
 def test_execute_phase_calls_orchestra_land() -> None:
-    _assert_lands((SKILLS / "execute-phase" / "SKILL.md").read_text())
+    _assert_lands(skill_text("execute-phase"))
 
 
 def test_phase_end_calls_orchestra_land() -> None:
@@ -38,8 +39,8 @@ def test_phase_end_calls_orchestra_land() -> None:
 
 def test_landing_section_has_no_merge_or_suite_command() -> None:
     texts = [
-        (SKILLS / "plan-phase" / "SKILL.md").read_text(),
-        (SKILLS / "execute-phase" / "SKILL.md").read_text(),
+        skill_text("plan-phase"),
+        skill_text("execute-phase"),
         (SKILLS / "execute-phase" / "references" / "phase-end.md").read_text(),
         (REPO_ROOT / "shared" / "kinds-and-focus.md").read_text(),
         (REPO_ROOT / "README.md").read_text(),
@@ -61,7 +62,7 @@ def test_landing_section_has_no_merge_or_suite_command() -> None:
 
 
 def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
-    flat = _flat((SKILLS / "execute-phase" / "SKILL.md").read_text())
+    flat = _flat(skill_text("execute-phase"))
     assert "merge task/<phase-slug>/<task-slug>" in flat
 
 

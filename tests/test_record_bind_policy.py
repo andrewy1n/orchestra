@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
@@ -149,7 +150,7 @@ def missing_earned_rule(text: str) -> list[str]:
 def skill_linkage_paths() -> list[Path]:
     found: list[Path] = []
     for path in (VERIFY, EXECUTE):
-        text = path.read_text()
+        text = skill_text(path.parent.name)
         if _LINKAGE.search(text) and _AFF_BIND.search(text):
             found.append(path)
     return found
@@ -203,10 +204,10 @@ def tuner_policy_switches() -> list[str]:
 
 def policy_gaps() -> list[str]:
     gaps: list[str] = []
-    record = missing_record_versus_bind(VERIFY.read_text())
+    record = missing_record_versus_bind(skill_text("verify-work"))
     if record:
         gaps.append("verify-work missing: " + "; ".join(record))
-    earned = missing_earned_rule(EXECUTE.read_text())
+    earned = missing_earned_rule(skill_text("execute-phase"))
     if earned:
         gaps.append("execute-phase missing: " + "; ".join(earned))
     if not skill_linkage_paths():
@@ -218,12 +219,12 @@ def policy_gaps() -> list[str]:
 
 
 def test_verify_work_names_when_to_record_an_observation_versus_tuner_bind():
-    missing = missing_record_versus_bind(VERIFY.read_text())
+    missing = missing_record_versus_bind(skill_text("verify-work"))
     assert not missing, "verify-work missing: " + "; ".join(missing)
 
 
 def test_execute_phase_names_when_bind_or_recheck_before_a_claim_is_earned():
-    missing = missing_earned_rule(EXECUTE.read_text())
+    missing = missing_earned_rule(skill_text("execute-phase"))
     assert not missing, "execute-phase missing: " + "; ".join(missing)
 
 

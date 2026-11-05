@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
@@ -27,7 +28,7 @@ _QUOTED_COMMIT_RE = re.compile(r'commit -m "([^"]*)"')
 
 
 def _text() -> str:
-    return re.sub(r"\s+", " ", SKILL.read_text())
+    return re.sub(r"\s+", " ", skill_text("execute-phase"))
 
 
 def _body_names_task_slug(message: str) -> bool:
@@ -64,7 +65,8 @@ def _fence_commits(fence: str) -> list[str]:
 
 def commit_messages(path: Path) -> list[str]:
     messages: list[str] = []
-    for fence in _FENCE_RE.findall(path.read_text()):
+    body = skill_text("execute-phase") if path == SKILL else path.read_text()
+    for fence in _FENCE_RE.findall(body):
         messages.extend(_fence_commits(fence))
     return messages
 

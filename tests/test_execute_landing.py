@@ -5,13 +5,14 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 from test_phase_landing import MERGE_STEP, PUSH_STEP, STORE_COMMIT_STEP, affirmative_matches
 
 SKILLS = REPO_ROOT / "skills"
 
 
 def _raw(name: str) -> str:
-    return (SKILLS / name / "SKILL.md").read_text()
+    return skill_text(name)
 
 
 def _text(name: str) -> str:

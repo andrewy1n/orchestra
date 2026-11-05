@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 PHASE_END = REPO_ROOT / "skills" / "execute-phase" / "references" / "phase-end.md"
@@ -15,7 +16,8 @@ _OTHER = f"a task other than {_VERIFICATION}"
 
 
 def _flat(path: Path) -> str:
-    return re.sub(r"\s+", " ", path.read_text())
+    body = skill_text("execute-phase") if path == SKILL else path.read_text()
+    return re.sub(r"\s+", " ", body)
 
 
 def test_r1_landing_creates_a_task_branch_except_the_verification_task():

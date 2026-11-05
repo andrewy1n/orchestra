@@ -141,7 +141,7 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
 
     assert "orchestra suite record" in execute
 
-    verify = VERIFY.read_text()
+    verify = skill_text("verify-work")
     manual = [
         inv
         for inv in extract_invocations(verify)
@@ -162,10 +162,10 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
 def test_migrated_skills_pass_the_scanner():
     violations = scan_skills(SKILLS)
     assert not violations, "\n".join(violations)
-    assert _AMENDMENT_SENTENCE in EXECUTE.read_text()
+    assert _AMENDMENT_SENTENCE in skill_text("execute-phase")
     assert (
         "a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts"
-        in " ".join(VERIFY.read_text().split())
+        in " ".join(skill_text("verify-work").split())
     )
 
 
@@ -174,7 +174,7 @@ def test_execute_phase_and_verify_work_run_tuner_verdict():
         (EXECUTE, _NOT_DONE),
         (VERIFY, "run `orchestra verify verdict`; non-zero → not done."),
     ):
-        text = path.read_text()
+        text = skill_text(path.parent.name)
         assert "orchestra verify verdict" in text, path
         assert ".tuner/manifest.json" in text, path
         assert not_done in " ".join(text.split()), path
