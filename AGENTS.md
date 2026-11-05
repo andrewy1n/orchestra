@@ -90,3 +90,10 @@ The dashboard UI lives in `dashboard/frontend`. Run the commands below from that
 - Put tests beside the source as `*.test.ts`.
 - Do not format by hand. Let the formatter do it.
 - Before you close a task, run `npm run lint`, `npm run check`, and `npm test`.
+
+## Cursor Cloud specific instructions
+
+- From the repo root, `UV_PYTHON=3.10 uv sync --locked --group dev` matches CI (Python 3.10). Then run `npm ci` in `dashboard/frontend` (Node 22). `uv` and `node` are on `/usr/local/bin`.
+- Boot starts the dashboard API at http://127.0.0.1:8765 (`dashboard/bin/web --port 8765`) and the Vite dev server at http://127.0.0.1:5173. Both bind loopback. Vite proxies `/api` to the API. The API ignores `--host` and always binds 127.0.0.1.
+- `uv run canon` and `uv run orchestra` are the checkout commands. Store metadata is `.canon/`; the SQLite file is `~/.canon/<repo-name>/canon.db`.
+- `npm run e2e` in `dashboard/frontend` needs `npx playwright install --with-deps chromium` first. That browser install is not part of the default setup.
