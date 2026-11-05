@@ -121,16 +121,26 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
     except RuntimeError as exc:
         raise LandError(str(exc)) from exc
     result = str(evidence["result"])
-    report = project.create(
-        record_type="conductor:execution-report",
-        subject=task,
-        payload={
-            "work_item": task,
-            "result": result,
-            "verdict": str(evidence["verdict"]),
-            "revision": revision,
-        },
-        body=evidence_body(evidence),
+    payload: JsonObject = {
+        "work_item": task,
+        "result": result,
+        "verdict": str(evidence["verdict"]),
+        "revision": revision,
+    }
+    body = evidence_body(evidence)
+    repeats = [
+        r
+        for r in project.list("conductor:execution-report")
+        if r["subject"] == task
+        and str(r.get("body") or "").strip() == body.strip()
+        and all(record_payload(r).get(key) == value for key, value in payload.items())
+    ]
+    report = (
+        repeats[-1]
+        if repeats
+        else project.create(
+            record_type="conductor:execution-report", subject=task, payload=payload, body=body
+        )
     )
     checks: list[CheckResult] = []
     for acceptance in sorted(acceptances_for(project, task, phase), key=lambda r: r["subject"]):
