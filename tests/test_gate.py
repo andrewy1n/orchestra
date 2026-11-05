@@ -399,6 +399,36 @@ def test_gate_names_missing_suite_at_a_stale_head(phase: Phase) -> None:
     assert phase.missing() == ["suite-at-head"]
 
 
+@pytest.mark.parametrize(
+    ("checked", "head", "expected"),
+    [
+        pytest.param(" abcdef0 ", "ABCDEF0123", True, id="whitespace-and-case"),
+        pytest.param("abcd", "ABCD", True, id="exact-short"),
+        pytest.param("abcdef0", "abcdef0123", True, id="seven-prefix"),
+        pytest.param("abcdef0123", "abcdef0", True, id="reverse-seven-prefix"),
+        pytest.param("abcdef", "abcdef0123", False, id="six-prefix"),
+        pytest.param("", "abcdef0123", False, id="empty-checked"),
+        pytest.param("abcdef0", "", False, id="empty-head"),
+        pytest.param("abcdef0123", "ghijklmnop", False, id="unrelated"),
+    ],
+)
+def test_gate_terms_revision_policy_matrix(
+    phase: Phase,
+    checked: str,
+    head: str,
+    expected: bool,
+) -> None:
+    phase.review(revision=head)
+    phase.check_run(revision=checked)
+    phase.set_suite_policy("required")
+    phase.suite_run(revision=checked)
+
+    terms = {term.name: term for term in gate.gate_terms(phase.store, PHASE)}
+
+    assert terms[f"acceptance-runner-at-head:{PHASE}-ac"].holds is expected
+    assert terms["suite-at-head"].holds is expected
+
+
 def test_gate_names_every_missing_term_at_once(store: Path, cli: Cli) -> None:
     phase = seed(store, cli, verification="planned", review=False, runner_check=False)
     phase.finding()
