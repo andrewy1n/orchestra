@@ -36,6 +36,16 @@ needs the same finding escape as unmet criteria. `check` and
 Verify asks what happened. Assess asks what that means and what is
 next. A check-run has no `level` and no `next`.
 
+Verified status is derived, not written: `orchestra view verification`
+reports a requirement `verified` when its acceptances have passing
+check-runs at head. Write a `conductor:assessment` only for a
+non-verified status (`failed`, `insufficient`, `blocked`). A written
+non-verified assessment wins over derivation.
+
+Write the records for one task through one `canon apply` call (step
+8). The `canon create`, `update`, and `supersede` commands in this
+skill show the payload of each batch line; do not run them one by one.
+
 ## Mechanical oracle verify
 
 An acceptance is **oracle-backed** when `test_ids` and `oracle_hashes`
@@ -51,8 +61,9 @@ mechanical — not agent prose:
   accepts
 
 Treat as verified only when those hold. Frozen hashes are close
-authority — do not mark `verified` from narrative. Parent alone
-writes assessments. Do not `create`/`supersede`
+authority — do not treat a requirement as `verified` from narrative.
+When they do not hold, write an `insufficient` assessment so the
+derived `verified` does not stand. Parent alone writes assessments. Do not `create`/`supersede`
 `tuner:oracle-amendment`. Wire close-batch with green
 `check_run_id`, request-carried red fields, and the acceptance id —
 do not invent hash or red fields. When the claim is in
@@ -61,8 +72,9 @@ do not invent hash or red fields. When the claim is in
 ## Two modes
 
 A phase with an active `score:specification` is **structured**:
-verify → [assess.md](references/assess.md) → `conductor:release`
-`state` `ready` only when every requirement is verified. No
+verify → [assess.md](references/assess.md), which writes an assessment
+only for a non-verified status. Release `ready` is derived when
+every requirement is verified; write no `conductor:release`. No
 specification for this phase, and incidental work, are **simple**:
 pass/fail check-runs only — no assessment or release. `kind`
 `incidental` is simple even if another phase has a specification.
@@ -84,7 +96,8 @@ canon list --type score:specification --subject "<phase-slug>" --state active
    command, test name, diff, or metric table in its body; re-run when
    cheap. No execution-report (verified in this session without
    dispatch) → skip to step 2.
-2. Capture diagnose/eval facts **before** closing:
+2. Capture diagnose/eval facts **before** closing. Each is a line of
+   the step-8 batch, ordered before the work-item transition:
 
    - `repair` — useful observations → `tuner:investigation-observation`;
      known root cause → `tuner:finding` with `## Evidence`,
@@ -167,7 +180,8 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    Skip `check-run` only when `evaluate` is inconclusive or purely
    comparative with no binary gate — then a finding is required; do
    not transition to `done` unless the user accepts that finding.
-4. For `manual` only, when a binary result exists:
+4. For `manual` only, when a binary result exists (a line of the
+   step-8 batch):
 
 ```bash
 canon create --type tuner:check-run \
@@ -193,14 +207,16 @@ canon correct --type tuner:check-run --id <check-run-id> \
    manual create). Still no `level`/`next`.
 
    **Structured work:** after check-runs, follow
-   [assess.md](references/assess.md) before step 5.
+   [assess.md](references/assess.md) before step 5. Assess adds batch
+   lines for non-verified requirements only.
    **Simple work:** skip Assess; use
    [close-batch.md](references/close-batch.md) for the `done` batch
    (steps 3–5), or the manual transitions below.
 
 5. On **pass** (simple: binary gate met or evaluate finding accepted;
-   structured: Assess `verified` for each requirement this work-item
-   covers), orchestra moves the work-item to `done`:
+   structured: no written non-verified assessment and every
+   requirement this work-item covers derives `verified`), orchestra
+   moves the work-item to `done` (the last line of the step-8 batch):
 
 ```bash
 canon update --type score:work-item --id <id> \
@@ -248,7 +264,35 @@ canon update --type score:work-item --id <id> \
   --transition withdrawn --expected-revision <revision>
 ```
 
-8. Run `canon validate`. To show state, print `orchestra view
+8. Write the batch. Collect every record from steps 2 to 7 for this
+   task into one NDJSON file and run `canon apply` once. Runner
+   check-runs from `orchestra check` already exist; do not repeat
+   them. Each line is `{"op": ..., "type": ..., ...}`: `create` takes
+   `subject`, `payload`, `body`; `update` takes `id`, `transition` or
+   `payload`, `expected_revision`; `supersede` takes `id`, `payload`,
+   `body`, `expected_revision`. Use `"expected_revision": "@current"`
+   when the record was read earlier in this session. Put the
+   work-item transition on the last line. Example for a repair task
+   that passes with a finding and a manual check-run:
+
+```bash
+cat > /tmp/verify-batch.ndjson <<'EOF'
+{"op":"create","type":"tuner:finding","subject":"<task-slug>","payload":{"claim":"<cause>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"<effort-slug>","needs":"none"},"body":"## Evidence\n\n<output>\n\n## Consequence\n\n<meaning>\n\n## Follow-up\n\nnone"}
+{"op":"create","type":"tuner:check-run","subject":"<task-slug>","payload":{"criterion_id":"<acceptance-record-id>","revision":"<git sha>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}}
+{"op":"update","type":"score:work-item","id":"<work-item-id>","transition":"done","expected_revision":"@current"}
+EOF
+canon apply /tmp/verify-batch.ndjson
+```
+
+   `canon apply` prints `{"ok", "applied", "failed", "results"}`. It
+   does not stop at a failed line: later lines still run. On
+   `"ok": false`, print each failed entry of `results` and the
+   input line with the same `line` number, then fix that line and
+   apply a file with the failed lines only. Never re-apply lines that
+   succeeded. If a finding, assessment, or check-run line failed
+   while the transition line applied, fix and apply the failed line
+   at once.
+9. Run `canon validate`. To show state, print `orchestra view
    verification --effort <focus>`.
 
 ## Close
@@ -290,16 +334,20 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Close another focus's work-item
 - Skip `orchestra close-batch` and hand-assemble apply NDJSON for a
   multi-criterion close
+- Run `canon create`, `update`, or `supersede` one by one for the
+  records of one task; write them through one `canon apply`
+- Write a `conductor:assessment` for a `verified` status; verified is
+  derived (the one exception is in assess.md, Clearing)
 - Put `level` or `next` on a check-run
 - Treat a failing concurrency test as proof the design is wrong
 - Send every failure to `execute`; escalate by failure count; insert
   `plan`/`integration` under a repeated implementation failure
-- Write `conductor:release` with `state` other than `ready`, or deploy
+- Write `conductor:release`; release `ready` is derived. Never deploy
 - Write assessment or release for incidental / no-specification phases
 - Tell the parent to run a suite the acceptance does not name
 - Edit the tree from a verification task when its check fails
 - Route `manual` through `orchestra check`
-- Mark oracle-backed `verified` without mechanical oracle verify
+- Let oracle-backed `verified` stand without mechanical oracle verify
 - Invent `oracle_hashes` or a signed amendment; `create`/`supersede`
   `tuner:oracle-amendment`
 - Treat a non-zero `orchestra verify verdict` as done

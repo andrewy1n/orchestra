@@ -8,7 +8,7 @@ work uses `orchestra check` (or a `manual` create) with `requirement`
 
 Use once every active acceptance has a runner-produced check-run
 (`tdd`/`check`) or a judged `manual` result, and any diagnose/eval
-records from step 2 are written. It still leaves `in_progress` on
+records from step 2 are in hand. It still leaves `in_progress` on
 `fail` (step 6) or drives `withdrawn` (step 7) — `close` covers the
 `done` path, including the deliberate "done anyway" path that needs
 a `finding`. It **refuses** the batch (prints unmet criteria, writes
@@ -173,10 +173,15 @@ orchestra close-batch \
 5. Only after exit `0`, apply — one `tuner:check-run` create per
    `manual` criterion (`informed_by` acceptance + execution-report);
    `tdd`/`check` check-runs already exist from `orchestra check`. Then
-   the `finding` if given, then the work-item transition:
+   the `finding` if given, then the work-item transition. Insert the
+   step 2 lines (observation, finding) and any `failed-attempt` line
+   above the final `update` line first, so one `canon apply` writes
+   every record for the task. On `"ok": false`, print each failed
+   `results` entry and the input line with the same `line` number
+   (verify-work step 8):
 
 ```bash
 canon apply /tmp/close-batch.ndjson
 ```
 
-6. Validate (verify-work step 8).
+6. Validate (verify-work step 9).

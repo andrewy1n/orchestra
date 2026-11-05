@@ -4,13 +4,17 @@ Skip for simple work (no phase specification, and incidental).
 Structured work runs Assess after check-runs and before verify-work
 step 5.
 
-Write one `conductor:assessment` per requirement the check-runs speak
-to. Subject is `<phase-slug>-<requirement-id>`. Reason names the
+Write a `conductor:assessment` only for a requirement whose status is
+non-verified: `failed`, `insufficient`, or `blocked`. A requirement
+whose acceptances have passing check-runs at head is `verified` in
+`orchestra view verification`; write no assessment for it. A written non-verified assessment wins over derivation.
+
+Subject is `<phase-slug>-<requirement-id>`. Reason names the
 cause in words — the check-run does not. Payload: `requirement`,
-`status`, `level` (omit only when `status` is `verified`), `next`,
-`confidence` (`high` when `verified`, else `low`), `phase`, `effort`,
+`status`, `level`, `next`, `confidence` (`low`), `phase`, `effort`,
 `missing`. Body sections, all non-empty: `## Evidence`, `## Missing`,
-`## Reason`.
+`## Reason`. Add each assessment as a line of the verify-work step-8
+batch (`canon apply`); the commands below show each line's payload.
 
 List the active assessment for that subject. Create when none;
 supersede when one is active (`supersede` keeps the subject). Compare
@@ -34,7 +38,7 @@ failure to execute:
 | integration-report `fail`, otherwise | `failed` | `integration` | `integrate` |
 | `insufficient` (the criterion was not exercised) | `insufficient` | `verification` | `verify` |
 | `level` `environment` or `unknown` | `blocked` | `environment` or `unknown` | `verify` |
-| every check the requirement needs passed | `verified` | omit | `release` |
+| every check the requirement needs passed (derived, write nothing) | `verified` | omit | `release` |
 
 A row is `failed` when check-run `result` is `fail` and the cause
 column matches. Read the phase integration report before using
@@ -115,14 +119,22 @@ canon create --type conductor:assessment \
 <environment or unknown; not the task's code>"
 ```
 
-When `status` is `verified`, omit `level`; `next` is `release`;
-`confidence` is `high`; `missing` is empty. For **oracle-backed**
-requirements, write `verified` only after mechanical oracle verify
-holds; name those facts in `## Evidence`.
+When the requirement derives `verified`, write nothing. For
+**oracle-backed** requirements, `verified` holds only after mechanical
+oracle verify holds. When it does not hold, write an `insufficient`
+assessment with `missing` `oracle` so the derived status does not
+stand.
+
+A written non-verified assessment keeps winning until it is
+superseded. Clearing: when the check-runs for a requirement now pass
+and an active non-verified assessment exists for it, supersede that
+assessment with `status` `verified` (omit `level`; `next` `release`;
+`confidence` `high`; `missing` empty). This is the only write with
+`verified`. Never `create` an assessment with `status` `verified`.
 
 ```bash
-canon create --type conductor:assessment \
-  --subject "<phase-slug>-<requirement-id>" \
+canon supersede --type conductor:assessment --id <assessment-id> \
+  --expected-revision <revision> \
   --payload '{"requirement":"<requirement-id>","status":"verified","next":"release","confidence":"high","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
   --body "## Evidence
 
@@ -134,7 +146,7 @@ none
 
 ## Reason
 
-<why the evidence is sufficient for this requirement>"
+<the earlier cause is resolved>"
 ```
 
 ## Evidence escalation
@@ -150,8 +162,8 @@ did not increase. Do not escalate by failure count. `plan` and
 implementation failure.
 
 First implementation failure still uses `next` `execute`. When the
-previous cause is resolved and the requirement passes → `verified`,
-omit `level`.
+previous cause is resolved and the requirement passes, clear the
+assessment as above.
 
 ```bash
 canon supersede --type conductor:assessment --id <assessment-id> \
@@ -210,19 +222,16 @@ canon update --type tuner:finding --id <finding-id> \
 
 ## Release
 
-When every assessment for the phase is `verified`, create
-`conductor:release` with `state` `ready`. Every specification
-requirement id must have an active `verified` assessment. Do not
-write `merged`, `deployed`, or any other state. Do not deploy.
+Release `ready` is derived: it holds when every specification
+requirement derives `verified`. Write no
+`conductor:release`. Do not write `merged`, `deployed`, or any other
+state. Do not deploy.
 
 ```bash
-canon list --type conductor:assessment --where payload.phase=<phase-slug> --state active --full
-
-canon create --type conductor:release \
-  --subject "<phase-slug>" \
-  --payload '{"state":"ready","phase":"<phase-slug>","effort":"<effort-slug>"}'
+orchestra view verification --effort <effort-slug>
 ```
 
-Leave the work-item `in_progress` when any assessment for its
-requirements is not `verified`. Go to verify-work step 5 only when
-each of those assessments is `verified`.
+Leave the work-item `in_progress` when any requirement it covers is
+not `verified`. Go to verify-work step 5 only when each of those
+requirements derives `verified` and no non-verified assessment is
+active for it.
