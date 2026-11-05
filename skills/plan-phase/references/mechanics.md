@@ -247,8 +247,8 @@ canon create --type score:continuity-question \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
 
-    The effort's autonomy setting may skip this gate for a light
-    phase; until `effort-autonomy` lands the gate stays on.
+    The effort's `autonomy` skips this gate at `auto-plan` and
+    `auto-phases`; `gated` or a missing level keeps it.
     Ask approve / change / send back to `settle-phase`. Change tasks
     on request. On approval, answer the question; only then may
     `execute-phase` run:
