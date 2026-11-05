@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import plugin_cli, status_cli, view_cli
+from orchestra import plugin_cli, status_cli, view_cli, views
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
@@ -244,6 +244,17 @@ def _build_parser() -> argparse.ArgumentParser:
         default="-",
         help="Brief path, or '-' for stdout (default)",
     )
+
+    wave = sub.add_parser("wave", help="Start and end the waves of a phase")
+    wave_sub = wave.add_subparsers(dest="action", required=True)
+    wave_start = wave_sub.add_parser(
+        "start",
+        help="Cut task branches and worktrees for the next ready wave and mark it in progress",
+    )
+    wave_start.add_argument("phase", help="Phase slug")
+    wave_start.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
     analyze = sub.add_parser(
         "analyze",
@@ -592,6 +603,43 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(brief, encoding="utf-8")
     print(destination)
+    return 0
+
+
+def _cmd_wave_start(args: argparse.Namespace) -> int:
+    from orchestra.conductor import wave
+
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        repo = wave.repo_root(_cwd(args))
+        result = wave.start(project, repo, args.phase)
+        records = project.records()
+        briefs = {t.task: views.render_brief(t.task, records) for t in result.tasks}
+    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra wave start: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json(
+            {
+                "phase": result.phase,
+                "wave": result.wave,
+                "tasks": [
+                    {
+                        "task": t.task,
+                        "executor": t.executor,
+                        "write_root": t.write_root,
+                        "branch": t.branch,
+                        "brief": briefs[t.task],
+                    }
+                    for t in result.tasks
+                ],
+            }
+        )
+        return 0
+    for t in result.tasks:
+        print(f"## {t.task} ({t.executor}) {t.write_root}\n")
+        print(briefs[t.task])
     return 0
 
 
@@ -1051,6 +1099,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     if args.command == "review-brief":
         return _cmd_review_brief(args)
+    if args.command == "wave":
+        return _cmd_wave_start(args)
     if args.command == "analyze":
         return _cmd_analyze(args)
     if args.command == "gate":
