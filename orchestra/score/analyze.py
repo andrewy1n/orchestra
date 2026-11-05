@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
 from orchestra.canon.types import JsonValue, Record
-from orchestra.derive import (
+from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
     phase_weight,

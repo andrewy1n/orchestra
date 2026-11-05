@@ -9,13 +9,8 @@ from dataclasses import dataclass, replace
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
-from orchestra.derive import (
-    phase_progress,
-    phase_requirements,
-    release_ready,
-    requirement_status,
-    task_assignment,
-)
+from orchestra.derive import phase_progress, release_ready, requirement_status, task_assignment
+from orchestra.score.requirements import phase_requirements
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})

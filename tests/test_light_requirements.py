@@ -3,7 +3,11 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.derive import acceptance_requirement_ids, phase_requirements, phase_weight
+from orchestra.score.requirements import (
+    acceptance_requirement_ids,
+    phase_requirements,
+    phase_weight,
+)
 
 _CLOCK = itertools.count()
 

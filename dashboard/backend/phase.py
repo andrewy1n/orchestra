@@ -33,14 +33,9 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.derive import (
-    RequirementStatus,
-    acceptance_requirement_ids,
-    phase_progress,
-    requirement_status,
-    requirements_in_body,
-)
+from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.derive import release_ready as derive_release_ready
+from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 COUNTED_TASK_STATES = ("planned", "in_progress", "done")
