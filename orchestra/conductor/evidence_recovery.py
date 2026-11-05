@@ -10,6 +10,7 @@ from orchestra.canon.index import RecordIndex
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.check import RUNNER
+from orchestra.conductor.oracle_freeze import parse_freeze
 from orchestra.tuner.manifest import ManifestError, hash_oracle_files, load_manifest, resolve_commit
 from orchestra.tuner.oracle_red import is_assertion_level_red
 
@@ -22,20 +23,11 @@ class RecoveryReport(TypedDict):
 
 
 def _valid_freeze(payload: JsonObject) -> bool:
-    nodes = get_list(payload, "test_ids") or []
-    hashes = get_list(payload, "oracle_hashes") or []
-    if not nodes or not all(isinstance(node, str) and "::" in node for node in nodes):
+    try:
+        parse_freeze(payload)
+    except ValueError:
         return False
-    files: set[str] = set()
-    for entry in hashes:
-        if not isinstance(entry, str) or not (
-            match := re.fullmatch(r"(.+):sha256:[0-9a-f]{64}", entry)
-        ):
-            return False
-        if match[1] in files:
-            return False
-        files.add(match[1])
-    return all(isinstance(node, str) and node.split("::", 1)[0] in files for node in nodes)
+    return True
 
 
 def _original_freeze(cwd: Path, acceptance: Record, runs: list[Record]) -> JsonObject | None:

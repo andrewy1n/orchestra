@@ -152,58 +152,35 @@ def test_close_batch_refuses_invented_check_fail_without_check_run_id():
 
 
 def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
+    acceptance = _check_run("rec-ac1", {"method": "check"})
+    green = _check_run(
+        "rec-green",
+        {
+            "criterion_id": "rec-ac1",
+            "result": "pass",
+            "runner": "orchestra",
+            "revision": "abcdef01",
+            "method": "check",
+        },
+    )
     request = {
         "subject": "task-1",
         "effort": "effort-1",
         "work_item_id": "rec-wi",
         "transition": "done",
-        "execution_report_id": "rec-er",
         "acceptance_ids": ["rec-ac1"],
         "criteria": [
             {
                 "criterion_id": "rec-ac1",
-                "method": "tdd",
-                "check_run_id": "rec-runner-cr",
+                "method": "check",
+                "check_run_id": "rec-green",
                 "result": "pass",
-                "revision": "abc123",
-                "red_check_run_id": "rec-red-cr",
-                "red_result": "fail",
-                "red_revision": "dirty",
-                "red_runner": "orchestra",
-                "red_diff_sha256": "c" * 64,
             }
         ],
-        "finding": None,
     }
-
-    def loader(cid: str) -> Record:
-        entry = request["criteria"][0]
-        if cid == entry["check_run_id"]:
-            return _check_run(
-                cid,
-                {
-                    "criterion_id": entry["criterion_id"],
-                    "result": entry["result"],
-                    "runner": "orchestra",
-                    "revision": entry["revision"],
-                    "method": "tdd",
-                },
-            )
-        if cid == entry["red_check_run_id"]:
-            return _check_run(
-                cid,
-                {
-                    "criterion_id": entry["criterion_id"],
-                    "result": entry["red_result"],
-                    "runner": entry["red_runner"],
-                    "revision": entry["red_revision"],
-                    "diff_sha256": entry["red_diff_sha256"],
-                    "method": "tdd",
-                },
-            )
-        raise LookupError(cid)
-
-    ops = close_batch.build_batch(request, load_check_run=loader)
+    ops = close_batch.build_batch(
+        request, load_acceptance=lambda _: acceptance, load_check_run=lambda _: green
+    )
     assert [op["op"] for op in ops] == ["update"]
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
@@ -230,7 +207,8 @@ def test_close_batch_still_creates_manual_check_runs(
                 }
             ],
             "finding": None,
-        }
+        },
+        load_acceptance=lambda _: _check_run("rec-ac1", {"method": "manual"}),
     )
     assert ops[0]["type"] == "tuner:check-run"
     payload = ops[0].get("payload")

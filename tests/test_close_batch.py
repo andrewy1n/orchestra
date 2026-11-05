@@ -183,7 +183,8 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
             }
             if close_batch._entry_has(entry, "red_diff_sha256"):
                 red_payload["diff_sha256"] = entry["red_diff_sha256"]
-            by_id[red_id] = _record(red_id, red_payload)
+            red_payload["failing_node_ids"] = [ORACLE_NODE]
+            by_id[red_id] = _record(red_id, red_payload, body=ASSERTION_RED_BODY)
 
     def load(check_run_id: str) -> Record:
         if check_run_id not in by_id:
@@ -205,11 +206,21 @@ def _build(
     loader = load_check_run
     if loader is None and request.get("transition") == "done":
         loader = _matching_loader(request)
+    parsed = close_batch._parse_close_request(request)
+
+    def matched_acceptance(aid: str) -> Record:
+        for entry in parsed["criteria"]:
+            if entry["criterion_id"] == aid:
+                if entry["method"] == "tdd":
+                    return _oracle_acceptance()
+                return _record(aid, {"method": entry["method"]}, record_type="score:acceptance")
+        raise LookupError(aid)
+
     return close_batch.build_batch(
         request,
         cwd=cwd,
         load_check_run=loader,
-        load_acceptance=load_acceptance,
+        load_acceptance=load_acceptance or matched_acceptance,
         list_oracle_amendments=list_oracle_amendments,
     )
 
@@ -231,6 +242,10 @@ def _ancestry_repo(tmp_path: Path) -> tuple[Path, str, str]:
     _git(repo, "init")
     _git(repo, "config", "user.email", "test@example.com")
     _git(repo, "config", "user.name", "Test")
+    probe = repo / ORACLE_REL
+    probe.parent.mkdir()
+    probe.write_bytes(ORACLE_CONTENT_V1)
+    _git(repo, "add", ORACLE_REL)
     (repo / "f.txt").write_text("red\n")
     _git(repo, "add", "f.txt")
     _git(repo, "commit", "-m", "red")
@@ -299,8 +314,9 @@ def _manual_request(*, execution_report_id: str | None = "rec-er") -> dict[str, 
 # -- build_batch: pure policy tests -----------------------------------
 
 
-def test_all_pass_runner_batch_is_only_the_transition():
-    ops = _build(_request())
+def test_all_pass_runner_batch_is_only_the_transition(tmp_path: Path) -> None:
+    repo, green = _oracle_repo(tmp_path)
+    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
     assert [op["op"] for op in ops] == ["update"]
     assert ops[-1] == {
         "op": "update",
@@ -579,73 +595,7 @@ def _seed_runner_check_run(
     return json.loads(created.stdout)["record"]
 
 
-def test_end_to_end_all_pass_closes_the_work_item_to_done(cli, store, resolved_contract, tmp_path):
-    defs = h.record_defs_by_id(resolved_contract)
-    subject = "demo-close-task"
-    effort = "demo-effort"
-    work_item, acceptance, execution_report = _build_work_item_family(cli, defs, subject, effort)
-    red_digest = "b" * 64
-    red_cr = _seed_runner_check_run(
-        cli,
-        defs,
-        subject,
-        acceptance,
-        execution_report,
-        result="fail",
-        revision="dirty",
-        diff_sha256=red_digest,
-    )
-    green_cr = _seed_runner_check_run(cli, defs, subject, acceptance, execution_report)
-
-    request = {
-        "subject": subject,
-        "effort": effort,
-        "work_item_id": work_item["id"],
-        "transition": "done",
-        "execution_report_id": execution_report["id"],
-        "acceptance_ids": [acceptance["id"]],
-        "criteria": [
-            {
-                "criterion_id": acceptance["id"],
-                "method": "tdd",
-                "check_run_id": green_cr["id"],
-                "result": "pass",
-                "revision": "deadbeef",
-                "red_check_run_id": red_cr["id"],
-                "red_result": "fail",
-                "red_revision": "dirty",
-                "red_runner": RUNNER,
-                "red_diff_sha256": red_digest,
-            }
-        ],
-        "finding": None,
-    }
-    result, out_path = _run_script(request, tmp_path, process_cwd=store)
-    assert result.returncode == 0, result.stderr
-
-    apply_result = cli("apply", str(out_path))
-    assert apply_result.returncode == 0, apply_result.stdout + apply_result.stderr
-    applied = json.loads(apply_result.stdout)
-    assert applied["ok"] is True
-    assert applied["applied"] == 1
-    assert applied["failed"] == 0
-
-    final_work_item = json.loads(
-        cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout
-    )
-    assert final_work_item["lifecycle_state"] == "done"
-
-    check_runs = json.loads(
-        cli("list", "--type", "tuner:check-run", "--subject", subject, "--full").stdout
-    )["records"]
-    assert len(check_runs) == 2
-    by_id = {cr["id"]: cr for cr in check_runs}
-    assert by_id[green_cr["id"]]["payload"]["result"] == "pass"
-    assert by_id[green_cr["id"]]["payload"].get("runner") == "orchestra"
-    assert by_id[red_cr["id"]]["payload"]["result"] == "fail"
-
-
-def test_end_to_end_refusal_leaves_the_work_item_in_progress(
+def test_refused_close_state_leaves_the_work_item_in_progress(
     cli, store, resolved_contract, tmp_path
 ):
     defs = h.record_defs_by_id(resolved_contract)
@@ -808,8 +758,9 @@ def test_red_first_pass_only_cli_exits_2(tmp_path):
     assert not out_path.exists()
 
 
-def test_red_first_request_accepts_fail_then_pass_with_dirty_red():
-    ops = _build(_request(criteria=[_tdd_with_dirty_red()]))
+def test_red_first_request_accepts_fail_then_pass_with_dirty_red(tmp_path: Path) -> None:
+    repo, green = _oracle_repo(tmp_path)
+    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
     assert ops[-1]["transition"] == "done"
 
 
@@ -827,16 +778,17 @@ def test_red_first_request_refuses_red_result_not_fail():
     assert "fail" in str(excinfo.value).lower()
 
 
-def test_red_first_request_resolves_red_from_store_loader():
+def test_red_first_request_resolves_red_from_store_loader(tmp_path: Path) -> None:
     """Red-first uses the injectable store loader (production path is aa.get)."""
-    request = _request(criteria=[_tdd_with_dirty_red()])
+    repo, green = _oracle_repo(tmp_path)
+    request = _request(criteria=[_tdd_with_dirty_red(revision=green)])
     seen: list[str] = []
 
     def tracking_loader(check_run_id: str) -> Record:
         seen.append(check_run_id)
         return _matching_loader(request)(check_run_id)
 
-    ops = _build(request, load_check_run=tracking_loader)
+    ops = _build(request, cwd=repo, load_check_run=tracking_loader)
     assert ops[-1]["transition"] == "done"
     assert "rec-runner-green" in seen
     assert "rec-runner-red" in seen
@@ -931,7 +883,7 @@ def test_red_first_order_dirty_red_without_digest_refused():
         _build(_request(criteria=[entry]))
 
 
-def test_red_first_escape_permits_tdd_done_without_red_and_forces_human():
+def test_finding_cannot_waive_required_tdd_evidence():
     request = _request(
         criteria=[_tdd_pass_only_entry()],
         finding={
@@ -942,10 +894,8 @@ def test_red_first_escape_permits_tdd_done_without_red_and_forces_human():
             "body": "## Evidence\n\nno red\n\n## Consequence\n\ngap\n\n## Follow-up\n\nre-verify",
         },
     )
-    ops = _build(request)
-    finding_op = next(op for op in ops if op["type"] == "tuner:finding")
-    assert _op_payload(finding_op)["needs"] == "human"
-    assert ops[-1]["transition"] == "done"
+    with pytest.raises(close_batch.CloseRefused, match="red_check_run_id"):
+        _build(request)
 
 
 def test_red_first_other_methods_check_closes_without_red_check_run_id():
@@ -1036,8 +986,9 @@ def test_cli_store_authority_fabricated_writes_no_batch(tmp_path):
     assert not out_path.exists()
 
 
-def test_red_store_resolves_and_accepts_dirty_red():
-    ops = _build(_request(criteria=[_tdd_with_dirty_red()]))
+def test_red_store_resolves_and_accepts_dirty_red(tmp_path: Path) -> None:
+    repo, green = _oracle_repo(tmp_path)
+    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
     assert ops[-1]["transition"] == "done"
 
 
@@ -1090,7 +1041,7 @@ def test_missing_green_revision_refuses_with_sha_red(tmp_path):
     # Matching loader still plants a store revision; request omission must refuse.
     loader = _matching_loader(_request(criteria=[{**entry, "revision": green_sha}]))
     with pytest.raises(close_batch.CloseRefused, match="green revision"):
-        close_batch.build_batch(_request(criteria=[entry]), cwd=repo, load_check_run=loader)
+        _build(_request(criteria=[entry]), cwd=repo, load_check_run=loader)
 
 
 def test_tdd_revision_without_red_is_request_error():
@@ -1109,8 +1060,9 @@ def test_tdd_revision_without_red_is_request_error():
         _build(request)
 
 
-def test_revision_allowed_tdd_with_red_fields():
-    ops = _build(_request(criteria=[_tdd_with_dirty_red()]))
+def test_revision_allowed_tdd_with_red_fields(tmp_path: Path) -> None:
+    repo, green = _oracle_repo(tmp_path)
+    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
     assert ops[-1]["transition"] == "done"
 
 
@@ -1321,7 +1273,7 @@ def _oracle_loader(
             rec = base(red_id)
             payload = dict(rec["payload"])
             if close_batch._entry_has(entry, "red_failing_node_ids"):
-                payload["failing_node_ids"] = entry["red_failing_node_ids"]
+                payload["failing_node_ids"] = json.loads(entry["red_failing_node_ids"])
             by_id[red_id] = _record(red_id, payload, body=entry.get("red_body", ""))
 
     def load(check_run_id: str) -> Record:
@@ -1508,26 +1460,39 @@ def test_freeze_hash_refuses_requested_amendment_not_approved(tmp_path):
         )
 
 
-def test_oracle_legacy_without_freeze_fields_skips_gates(tmp_path):
-    """Legacy acceptances without test_ids/oracle_hashes keep claim-witnesses path."""
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(revision=green_sha)
-    # Import-only red body would refuse if oracle gates ran; legacy skips them.
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        red_body=IMPORT_RED_BODY,
-        red_failing_node_ids=json.dumps(["tests/test_oracle_probe.py"]),
-    )
-    acceptance = {
-        "id": "rec-ac1",
-        "payload": {"method": "tdd", "effort": "effort-1"},
-    }
-    ops = _build_oracle(
-        _request(criteria=[entry]),
-        cwd=repo,
-        acceptance=acceptance,
-    )
-    assert ops[-1]["transition"] == "done"
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {"oracle_hashes": []},
+        {"test_ids": []},
+        {"test_ids": ["test.py"]},
+        {"oracle_hashes": [*ORACLE_HASHES_V1, "malformed"]},
+        {"oracle_hashes": [*ORACLE_HASHES_V1, *ORACLE_HASHES_V2]},
+        {"oracle_hashes": [f"{ORACLE_REL}:sha256:123"]},
+        {"oracle_hashes": ORACLE_HASHES_V1[0]},
+        {"test_ids": ["other.py::test_other"]},
+    ],
+)
+def test_incomplete_freeze_refuses(tmp_path: Path, patch: JsonObject) -> None:
+    repo, green = _oracle_repo(tmp_path)
+    acc = _oracle_acceptance()
+    acc["payload"].update(patch)
+    entry = _tdd_with_dirty_red(revision=green, **_assertion_red_fields())
+    with pytest.raises(close_batch.CloseRefused, match="incomplete oracle freeze"):
+        _build_oracle(_request(criteria=[entry]), cwd=repo, acceptance=acc)
+
+
+def test_unavailable_tdd_acceptance_refuses_without_manifest(tmp_path: Path) -> None:
+    def missing(aid: str) -> Record:
+        raise LookupError(aid)
+
+    with pytest.raises(close_batch.CloseRefused, match="acceptance could not be loaded"):
+        _build(_request(), cwd=tmp_path, load_acceptance=missing)
+
+
+def test_unavailable_tdd_acceptance_cannot_downgrade_method() -> None:
+    with pytest.raises(close_batch.CloseRefused, match="method mismatch"):
+        _build(_manual_request(), load_acceptance=lambda _: _oracle_acceptance())
 
 
 # -- CLI: oracle freeze / assertion-level via real orchestra close-batch ------
@@ -1675,6 +1640,11 @@ def test_cli_oracle_freeze_happy_path_writes_batch(cli, store, resolved_contract
     ops = [json.loads(line) for line in out_path.read_text().splitlines() if line.strip()]
     assert ops[-1]["transition"] == "done"
 
+    applied = cli("apply", str(out_path))
+    assert applied.returncode == 0, applied.stdout + applied.stderr
+    final = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
+    assert final["lifecycle_state"] == "done"
+
 
 def test_cli_oracle_refuses_freeze_hash_drift_without_amendment(
     cli, store, resolved_contract, tmp_path
@@ -1723,6 +1693,8 @@ def test_cli_oracle_refuses_freeze_hash_drift_without_amendment(
     result, out_path = _run_script(request, tmp_path, cwd=repo, process_cwd=store)
     assert result.returncode == 2
     assert not out_path.exists()
+    current = json.loads(cli("get", "--type", "score:work-item", "--id", work_item["id"]).stdout)
+    assert current["lifecycle_state"] == "in_progress"
     msg = (result.stderr + result.stdout).lower()
     assert "hash" in msg or "oracle" in msg or "freeze" in msg
 
