@@ -2,6 +2,7 @@
   "body": {
     "open": [
       {
+        "assignee": "",
         "id": "<tuner:finding:human-finding>",
         "open": true,
         "phase": null,
@@ -9,9 +10,11 @@
         "recorded_at": "<timestamp>",
         "subject": "human-finding",
         "task_id": "",
-        "text": "a human must decide · needs human"
+        "text": "a human must decide · needs human",
+        "write_root": ""
       },
       {
+        "assignee": "",
         "id": "<score:continuity-question:alpha:port-choice>",
         "open": true,
         "phase": null,
@@ -19,9 +22,11 @@
         "recorded_at": "<timestamp>",
         "subject": "alpha",
         "task_id": "",
-        "text": "port-choice · open"
+        "text": "port-choice · open",
+        "write_root": ""
       },
       {
+        "assignee": "",
         "id": "<score:continuity-question:alpha:which backend>",
         "open": true,
         "phase": null,
@@ -29,9 +34,11 @@
         "recorded_at": "<timestamp>",
         "subject": "alpha",
         "task_id": "",
-        "text": "which backend · open"
+        "text": "which backend · open",
+        "write_root": ""
       },
       {
+        "assignee": "subagent",
         "id": "<tuner:investigation-observation:task-ready-observed>",
         "open": true,
         "phase": "p-work",
@@ -39,11 +46,13 @@
         "recorded_at": "<timestamp>",
         "subject": "task-ready-observed",
         "task_id": "<score:work-item:task-ready>",
-        "text": "the shape drifted"
+        "text": "the shape drifted",
+        "write_root": ""
       }
     ],
     "rest": [
       {
+        "assignee": "subagent",
         "id": "<tuner:finding:task-ready-claim>",
         "open": false,
         "phase": "p-work",
@@ -51,9 +60,11 @@
         "recorded_at": "<timestamp>",
         "subject": "task-ready-claim",
         "task_id": "<score:work-item:task-ready>",
-        "text": "the shape is stable · needs none"
+        "text": "the shape is stable · needs none",
+        "write_root": ""
       },
       {
+        "assignee": "subagent",
         "id": "<conductor:failed-attempt:task-ready-failed>",
         "open": false,
         "phase": "p-work",
@@ -61,9 +72,11 @@
         "recorded_at": "<timestamp>",
         "subject": "task-ready-failed",
         "task_id": "<score:work-item:task-ready>",
-        "text": "run the slow suite · don't retry · retry when the suite is split"
+        "text": "run the slow suite · don't retry · retry when the suite is split",
+        "write_root": ""
       },
       {
+        "assignee": "subagent",
         "id": "<conductor:assignment-amendment:task-ready-a1-fix>",
         "open": false,
         "phase": "p-work",
@@ -71,7 +84,8 @@
         "recorded_at": "<timestamp>",
         "subject": "task-ready-a1-fix",
         "task_id": "<score:work-item:task-ready>",
-        "text": "use the new fixture name. · task-ready"
+        "text": "use the new fixture name. · task-ready",
+        "write_root": ""
       }
     ]
   },

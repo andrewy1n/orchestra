@@ -2473,7 +2473,7 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
         "s-opentask": "execute",
         "s-integrate": "integrate",
         "s-verify": "verify",
-        "s-assess": "assess",
+        "s-assess": "release",
     }
     flags = {
         phase.subject: phase.evidence.release_ready
@@ -2483,6 +2483,7 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     assert flags["s-ready"] is True
     assert flags["s-verified"] is False
     assert flags["s-nextrelease"] is False
+    assert flags["s-assess"] is True
     assert view.release_ready is True
 
 

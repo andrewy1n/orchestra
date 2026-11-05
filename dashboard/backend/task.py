@@ -21,6 +21,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.derive import task_assignment
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -45,6 +46,7 @@ class TaskRow:
     last_record_at: datetime | None = None
     attempts: int = 0
     retry_budget: int = DEFAULT_RETRY_MAX_REDISPATCHES
+    write_root: str = ""
 
 
 @dataclass(frozen=True)
@@ -150,6 +152,7 @@ class TaskDetail:
     estimate_minutes: int | None = None
     executor: str = "subagent"
     agent_work: tuple[AgentWork, ...] = ()
+    write_root: str = ""
 
 
 RELATED_TEXT = {
@@ -227,10 +230,19 @@ def _task_status(record: Record) -> str | None:
     return {"in_progress": "running", "done": "done", "withdrawn": "withdrawn"}.get(state)
 
 
+def assigned_to(record: Record, assignments: list[Record]) -> tuple[str, str]:
+    found = task_assignment(record, assignments)
+    if found is None:
+        return "", ""
+    return found.assignee or "", found.write_root or ""
+
+
 def _assigned_at(assignments: list[Record], record: Record) -> datetime | None:
     names = {record["id"], record["subject"]}
     stamps = [recorded_at(a) for a in assignments if record_payload(a).get("work_item") in names]
-    return max(stamps, default=None)
+    if stamps:
+        return max(stamps)
+    return recorded_at(record) if any(assigned_to(record, [])) else None
 
 
 def _task_assignments(assignments: list[Record], record: Record) -> list[Record]:
@@ -291,6 +303,7 @@ def task_rows(
             continue
         payload = record_payload(record)
         depends_on = [by_subject[ref] for ref in _depends(record) if ref in by_subject]
+        assignee, write_root = assigned_to(record, assignments)
         running_since = _assigned_at(assignments, record) if status == "running" else None
         others = [s for s in subjects if s != record["subject"]]
         last_record_at = (
@@ -305,7 +318,8 @@ def task_rows(
                 subject=record["subject"],
                 title=payload.get("title", ""),
                 phase=phase,
-                assignee=payload.get("assignee", ""),
+                assignee=assignee,
+                write_root=write_root,
                 wave=derived_values(record).get("wave"),
                 status=status,
                 waits_on=tuple(
@@ -517,6 +531,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         for r in of_type.get(record_type, [])
     ]
     status = _task_status(mine) or mine["lifecycle_state"]
+    assignee, write_root = assigned_to(item, assignments)
     return TaskDetail(
         id=work_item_id,
         subject=slug,
@@ -525,7 +540,8 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         status=status,
         phase=payload.get("phase", ""),
         wave=derived_values(mine).get("wave"),
-        assignee=payload.get("assignee", ""),
+        assignee=assignee,
+        write_root=write_root,
         body=item.get("body") or "",
         depends_on=_linked(
             [by_subject[ref].id for ref in _depends(item) if ref in by_subject], rows
@@ -536,9 +552,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         acceptances=acceptances,
         timeline=_timeline(assignments, amendments, reports, checks),
         related=related,
-        running_since=max(map(recorded_at, assignments), default=None)
-        if status == "running"
-        else None,
+        running_since=_assigned_at(assignments, mine) if status == "running" else None,
         requirements=tuple(payload.get("requirements") or ()),
         decisions=tuple(payload.get("decisions") or ()),
         size=_size(payload),

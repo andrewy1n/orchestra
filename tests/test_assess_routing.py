@@ -93,13 +93,18 @@ def test_routing_table_chooses_next_from_the_evidence():
 
     by_next = {
         (inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
-        for inv in _writes("verify-work", "conductor:assessment")
+        for inv in _writes("verify-work", "conductor:assessment", {"create"})
     }
     assert ("implementation", "execute", "failed") in by_next
-    assert ("design", "design", "failed") in by_next
     assert ("verification", "verify", "insufficient") in by_next
     assert ("environment", "verify", "blocked") in by_next
-    assert (None, "release", "verified") in by_next
+    assert not [status for _, _, status in by_next if status == "verified"]
+    superseded = {
+        (inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
+        for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
+    }
+    assert ("design", "design", "failed") in superseded
+    assert not [status for _, _, status in superseded if status == "verified"]
 
 
 def test_evidence_escalation_ladder():
@@ -137,21 +142,16 @@ def test_evidence_escalation_ladder():
     assert findings[0]["payload"]["needs"] == "human"
 
 
-def test_release_ready_only_when_every_requirement_is_verified():
+def test_release_ready_is_derived_and_never_written():
     text = _text("verify-work")
     flat = _normalized(text)
     assert "## Release" in text
-    assert "When every assessment for the phase is `verified`" in flat
-    assert "Every specification requirement id must have an active `verified` assessment." in flat
+    assert "Release `ready` is derived" in flat
+    assert "it holds when every specification requirement derives `verified`" in flat
+    assert "Write no `conductor:release`." in flat
     assert "Do not write `merged`, `deployed`, or any other state." in flat
     assert "Do not deploy." in flat
-    releases = _writes("verify-work", "conductor:release", {"create"})
-    assert len(releases) == 1
-    assert releases[0]["payload"]["state"] == "ready"
-    assert set(releases[0]["payload"]) >= {"state", "phase", "effort"}
-    for inv in extract_invocations(text):
-        if inv["type"] == "conductor:release" and inv["payload"]:
-            assert inv["payload"]["state"] == "ready"
+    assert not _writes("verify-work", "conductor:release", {"create", "supersede"})
 
 
 def test_two_modes_skip_assessment_and_release():

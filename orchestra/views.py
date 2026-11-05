@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
+from orchestra.derive import phase_progress, release_ready, requirement_status, task_assignment
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -62,6 +64,9 @@ class View:
     order_by: str | None = None
     show_lifecycle_state: bool = False
     show_derived: tuple[str, ...] = ()
+    show_assignment: bool = False
+    show_phase_derived: bool = False
+    phase_derived_section: bool = False
     tally_type: str | None = None
     tally_field: str = "result"
 
@@ -142,6 +147,7 @@ HANDOFF = View(
         ),
     ),
     group_by="effort",
+    show_assignment=True,
 )
 
 HOOK_ROLE_NAMES = (
@@ -177,6 +183,8 @@ PLAN = View(
     ),
     group_by="phase",
     order_by="ordinal",
+    show_assignment=True,
+    show_phase_derived=True,
 )
 
 VERIFICATION = View(
@@ -197,6 +205,7 @@ VERIFICATION = View(
         FINDING_OPEN,
     ),
     group_by="subject",
+    phase_derived_section=True,
 )
 
 STATUS = View(
@@ -207,6 +216,8 @@ STATUS = View(
     order_by="ordinal",
     show_lifecycle_state=True,
     show_derived=("ready", "wave"),
+    show_assignment=True,
+    show_phase_derived=True,
     tally_type="tuner:check-run",
 )
 
@@ -232,6 +243,8 @@ ROADMAP = View(
 VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
 
 EFFORT_TYPE = "score:effort"
+WORK_ITEM_TYPE = "score:work-item"
+RELEASE_TYPE = "conductor:release"
 
 
 def subject_related(parent: str, other: str) -> bool:
@@ -336,7 +349,68 @@ def _group_sort_key(
     return key
 
 
-def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
+def _assignment_bits(record: Record, records: list[Record]) -> list[str]:
+    if record["record_type"] != WORK_ITEM_TYPE:
+        return []
+    assignment = task_assignment(record, records)
+    if assignment is None:
+        return []
+    bits: list[str] = []
+    if assignment.assignee:
+        bits.append(f"assignee: {assignment.assignee}")
+    if assignment.write_root:
+        bits.append(f"write root: {assignment.write_root}")
+    return bits
+
+
+def _effort_pool(records: list[Record], effort: str | None) -> list[Record]:
+    if effort is None:
+        return records
+    return [r for r in records if effort_of(r) in (None, effort)]
+
+
+def _phase_derived_lines(records: list[Record], phase: str, effort: str | None = None) -> list[str]:
+    records = _effort_pool(records, effort)
+    progress = phase_progress(records, phase)
+    statuses = requirement_status(records, phase)
+    if progress.total == 0 and not statuses:
+        return []
+    lines: list[str] = []
+    if progress.total:
+        counts = ", ".join(f"{state}: {count}" for state, count in progress.counts.items())
+        lines += ["### Progress", f"- {progress.done}/{progress.total} done ({counts})"]
+        if progress.in_progress:
+            lines.append(f"- in progress: {', '.join(progress.in_progress)}")
+        lines.append("")
+    if statuses:
+        lines.append("### Requirements")
+        for requirement, status in statuses.items():
+            suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
+            lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
+        lines.append("")
+        lines += ["### Release", f"- {_release_state(records, phase)}", ""]
+    return lines
+
+
+def _release_state(records: list[Record], phase: str) -> str:
+    written = sorted(
+        (
+            r
+            for r in records
+            if r["record_type"] == RELEASE_TYPE
+            and r.get("lifecycle_state") == "current"
+            and record_payload(r).get("phase") == phase
+        ),
+        key=lambda r: r.get("recorded_at", ""),
+    )
+    if written:
+        return str(record_payload(written[-1]).get("state", "ready"))
+    return "ready" if release_ready(records, phase) else "not ready"
+
+
+def _status_bits(
+    record: Record, view: View, tally: list[Record], records: list[Record]
+) -> list[str]:
     bits: list[str] = []
     if view.show_lifecycle_state:
         bits.append(f"state: {record.get('lifecycle_state')}")
@@ -344,6 +418,8 @@ def _status_bits(record: Record, view: View, tally: list[Record]) -> list[str]:
         value = _derived_value(record, name)
         if value is not None:
             bits.append(f"{name}: {value}")
+    if view.show_assignment:
+        bits.extend(_assignment_bits(record, records))
     if view.tally_type:
         subject = record.get("subject", "")
         passed = failed = 0
@@ -408,8 +484,10 @@ def _group_lines(
     name: str,
     group: dict[str, list[Record]],
     tally: list[Record],
+    records: list[Record],
     *,
     link: bool = True,
+    effort: str | None = None,
 ) -> list[str]:
     lines = [f"## {name}", ""]
     for role in view.roles:
@@ -421,8 +499,12 @@ def _group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            lines.append(_record_line(record, role, _status_bits(record, view, tally), link))
+            lines.append(
+                _record_line(record, role, _status_bits(record, view, tally, records), link)
+            )
         lines.append("")
+    if view.show_phase_derived:
+        lines += _phase_derived_lines(records, name, effort)
     return lines
 
 
@@ -440,8 +522,30 @@ def render_view(view: View, records: list[Record], *, effort: str | None = None)
         lines += ["_No matching records._", ""]
         return "\n".join(lines)
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += _group_lines(view, name, groups[name], tally)
+        lines += _group_lines(view, name, groups[name], tally, records, effort=effort)
+    if view.phase_derived_section:
+        lines += _phase_section_lines(groups, records, effort)
     return "\n".join(lines)
+
+
+def _phase_section_lines(
+    groups: dict[str, dict[str, list[Record]]], records: list[Record], effort: str | None
+) -> list[str]:
+    phases = sorted(
+        {
+            str(phase)
+            for group in groups.values()
+            for items in group.values()
+            for record in items
+            if (phase := record_payload(record).get("phase"))
+        }
+    )
+    lines: list[str] = []
+    for phase in phases:
+        derived = _phase_derived_lines(records, phase, effort)
+        if derived:
+            lines += [f"## Phase {phase}", "", *derived]
+    return lines
 
 
 BRIEF_ROLES = (
@@ -495,6 +599,101 @@ def _brief_block(record: Record, role: Role) -> str:
     return "\n".join(lines)
 
 
+_SECTION_HEADING = re.compile(r"^## (.+?)\s*$")
+_REQUIREMENT_ID_LINE = re.compile(r"^(R\d+):\s*(.*)$")
+
+
+def _body_sections(record: Record) -> dict[str, str]:
+    body = record.get("body") or ""
+    sections: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line in body.splitlines():
+        heading = _SECTION_HEADING.match(line)
+        if heading:
+            current = sections.setdefault(heading.group(1), [])
+        elif current is not None:
+            current.append(line)
+    return {name: "\n".join(lines).strip() for name, lines in sections.items()}
+
+
+def _requirement_lines(text: str) -> dict[str, str]:
+    lines: dict[str, str] = {}
+    for line in text.splitlines():
+        match = _REQUIREMENT_ID_LINE.match(line.strip())
+        if match:
+            lines[match.group(1)] = line.strip()
+    return lines
+
+
+def _string_list(value: JsonValue) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _phase_record(records: list[Record], record_type: str, phase: JsonValue) -> Record | None:
+    return next(
+        (
+            r
+            for r in records
+            if r["record_type"] == record_type
+            and r.get("lifecycle_state") == "active"
+            and record_payload(r).get("phase") == phase
+        ),
+        None,
+    )
+
+
+def _brief_acceptance_in_scope(work_item: Record, record: Record) -> bool:
+    own = record_payload(work_item)
+    payload = record_payload(record)
+    return payload.get("effort") == own.get("effort") and payload.get("phase") == own.get("phase")
+
+
+def _orientation(work_item: Record, records: list[Record]) -> str:
+    payload = record_payload(work_item)
+    sections = _body_sections(work_item)
+    lines = ["## Orientation", ""]
+    for name in ("assignee", "write_root"):
+        value = payload.get(name)
+        if not _empty(value):
+            lines.append(f"**{name}**: {_display(value)}")
+    if len(lines) > 2:
+        lines.append("")
+    for name in ("Description", "Approach"):
+        if sections.get(name):
+            lines += [f"### Work item {name}", "", sections[name], ""]
+    phase = payload.get("phase")
+    spec = _phase_record(records, "score:specification", phase)
+    spec_lines = _requirement_lines(_body_sections(spec).get("Requirements", "")) if spec else {}
+    description_lines = _requirement_lines(sections.get("Description", ""))
+    requirements = [
+        spec_lines.get(rid) or description_lines.get(rid) or rid
+        for rid in _string_list(payload.get("requirements"))
+    ]
+    if requirements:
+        lines += ["### Requirements", "", *(f"- {text}" for text in requirements), ""]
+    design = _phase_record(records, "score:design", phase)
+    if design:
+        design_sections = _body_sections(design)
+        for name in ("Invariants", "Assumptions"):
+            if design_sections.get(name):
+                lines += [f"### Design {name}", "", design_sections[name], ""]
+    decisions: list[str] = []
+    for name in _string_list(payload.get("decisions")):
+        decision = next(
+            (r for r in records if r["record_type"] == "score:decision" and r["subject"] == name),
+            None,
+        )
+        choice = record_payload(decision).get("choice") if decision else None
+        decisions.append(f"- {name}: {_display(choice)}" if not _empty(choice) else f"- {name}")
+    if decisions:
+        lines += ["### Decisions", "", *decisions, ""]
+    if len(lines) == 2:
+        lines += ["_None._", ""]
+    return "\n".join(lines)
+
+
 def render_brief(subject: str, records: list[Record]) -> str:
     work_role = BRIEF_ROLES[0]
     work_item = next(
@@ -510,7 +709,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     if work_item is None:
         raise ViewError(f"no work item found for subject {subject!r}")
     effort = record_payload(work_item).get("effort", "")
-    sections: list[str] = []
+    sections: list[str] = [_orientation(work_item, records)]
     for role in BRIEF_ROLES:
         selected = sorted(
             (
@@ -519,6 +718,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
                 if r["record_type"] == role.record_type
                 and role.select(r)
                 and _brief_in_scope(role, subject, effort, r)
+                and (role.name != "acceptance" or _brief_acceptance_in_scope(work_item, r))
             ),
             key=lambda r: (r.get("subject") or "", r.get("id") or ""),
         )
@@ -580,7 +780,7 @@ def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
     rest = sorted(n for n in groups if n not in live)
     sections: list[tuple[str, str]] = []
     for name in (*stamped, *unstamped, *rest):
-        lines = _group_lines(HOOK_VIEW, name, groups[name], [], link=False)
+        lines = _group_lines(HOOK_VIEW, name, groups[name], [], records, link=False)
         label = name or ", ".join(_group_subjects(groups[name]))
         sections.append((label, "\n".join(lines).rstrip()))
     return sections

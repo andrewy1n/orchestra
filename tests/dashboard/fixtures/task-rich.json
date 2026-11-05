@@ -45,7 +45,7 @@
           }
         }
       ],
-      "assignee": "",
+      "assignee": "subagent",
       "blocks": [
         {
           "id": "<score:work-item:task-next>",
@@ -126,7 +126,8 @@
         }
       ],
       "title": "title of task-ready",
-      "wave": 1
+      "wave": 1,
+      "write_root": ""
     }
   },
   "status": 200

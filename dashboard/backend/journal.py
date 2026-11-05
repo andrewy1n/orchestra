@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from dashboard.backend import records, store
+from dashboard.backend.task import assigned_to
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
@@ -41,6 +42,8 @@ class JournalItem:
     text: str
     open: bool
     task_id: str = ""
+    assignee: str = ""
+    write_root: str = ""
 
 
 def _soft_list(
@@ -297,6 +300,16 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
             )
         )
 
+    tasks_by_record_id = {task["id"]: task for task in tasks}
+    assigned: dict[str, tuple[str, str]] = {}
+    for index, item in enumerate(items):
+        task = tasks_by_record_id.get(item.task_id)
+        if task is None:
+            continue
+        if task["id"] not in assigned:
+            assigned[task["id"]] = assigned_to(task, assignments_listed)
+        assignee, write_root = assigned[task["id"]]
+        items[index] = replace(item, assignee=assignee, write_root=write_root)
     return items
 
 

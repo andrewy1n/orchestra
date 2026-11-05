@@ -128,6 +128,7 @@
             "done": 0,
             "elapsed_minutes": null,
             "id": "<score:phase:route-phase>",
+            "in_progress": [],
             "milestone": "",
             "milestone_title": "",
             "ordinal": 2,
@@ -148,6 +149,7 @@
             "done": 0,
             "elapsed_minutes": null,
             "id": "<score:phase:merge-phase>",
+            "in_progress": [],
             "milestone": "",
             "milestone_title": "",
             "ordinal": 3,
@@ -168,6 +170,9 @@
             "done": 0,
             "elapsed_minutes": 30,
             "id": "<score:phase:p-work>",
+            "in_progress": [
+              "task-running"
+            ],
             "milestone": "m-first",
             "milestone_title": "first milestone",
             "ordinal": 1,
@@ -188,7 +193,7 @@
         "release_ready": false,
         "tasks": [
           {
-            "assignee": "",
+            "assignee": "subagent",
             "attempts": 0,
             "depends_on": [],
             "estimate_minutes": null,
@@ -203,10 +208,11 @@
             "subject": "task-running",
             "title": "title of task-running",
             "waits_on": [],
-            "wave": 1
+            "wave": 1,
+            "write_root": ""
           },
           {
-            "assignee": "",
+            "assignee": "subagent",
             "attempts": 1,
             "depends_on": [],
             "estimate_minutes": 30,
@@ -221,7 +227,8 @@
             "subject": "task-ready",
             "title": "title of task-ready",
             "waits_on": [],
-            "wave": 1
+            "wave": 1,
+            "write_root": ""
           },
           {
             "assignee": "",
@@ -243,7 +250,8 @@
             "waits_on": [
               "task-ready"
             ],
-            "wave": 2
+            "wave": 2,
+            "write_root": ""
           }
         ]
       },
@@ -262,6 +270,7 @@
             "done": 0,
             "elapsed_minutes": null,
             "id": "<score:phase:b-one>",
+            "in_progress": [],
             "milestone": "",
             "milestone_title": "",
             "ordinal": 1,
@@ -297,7 +306,8 @@
             "subject": "b-task",
             "title": "title of b-task",
             "waits_on": [],
-            "wave": 1
+            "wave": 1,
+            "write_root": ""
           }
         ]
       }

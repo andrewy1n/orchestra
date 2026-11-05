@@ -166,6 +166,10 @@
         "attempts": {
           "type": "integer",
           "optional": true
+        },
+        "write_root": {
+          "type": "string",
+          "optional": true
         }
       },
       "sections": [

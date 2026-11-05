@@ -691,6 +691,10 @@
       },
       "JournalItem": {
         "properties": {
+          "assignee": {
+            "title": "Assignee",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -729,6 +733,10 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "write_root": {
+            "title": "Write Root",
+            "type": "string"
           }
         },
         "required": [
@@ -739,7 +747,9 @@
           "recorded_at",
           "text",
           "open",
-          "task_id"
+          "task_id",
+          "assignee",
+          "write_root"
         ],
         "title": "JournalItem",
         "type": "object"
@@ -1232,6 +1242,13 @@
             "title": "Id",
             "type": "string"
           },
+          "in_progress": {
+            "items": {
+              "type": "string"
+            },
+            "title": "In Progress",
+            "type": "array"
+          },
           "milestone": {
             "title": "Milestone",
             "type": "string"
@@ -1321,7 +1338,8 @@
           "stage",
           "verified",
           "requirements",
-          "release_ready"
+          "release_ready",
+          "in_progress"
         ],
         "title": "PhaseSummary",
         "type": "object"
@@ -1784,6 +1802,10 @@
               }
             ],
             "title": "Wave"
+          },
+          "write_root": {
+            "title": "Write Root",
+            "type": "string"
           }
         },
         "required": [
@@ -1807,7 +1829,8 @@
           "size",
           "estimate_minutes",
           "executor",
-          "agent_work"
+          "agent_work",
+          "write_root"
         ],
         "title": "TaskDetail",
         "type": "object"
@@ -1923,6 +1946,10 @@
               }
             ],
             "title": "Wave"
+          },
+          "write_root": {
+            "title": "Write Root",
+            "type": "string"
           }
         },
         "required": [
@@ -1941,7 +1968,8 @@
           "executor",
           "last_record_at",
           "attempts",
-          "retry_budget"
+          "retry_budget",
+          "write_root"
         ],
         "title": "TaskRow",
         "type": "object"

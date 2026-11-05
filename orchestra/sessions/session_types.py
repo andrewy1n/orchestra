@@ -35,7 +35,12 @@ class SessionFields(TypedDict):
     skills: dict[str, int]
 
 
-class RecordMetadata(TypedDict):
+class _OptionalRecordMetadata(TypedDict, total=False):
+    assignee: str
+    write_root: str
+
+
+class RecordMetadata(_OptionalRecordMetadata):
     id: str
     record_type: str
     subject: str | None
@@ -66,7 +71,16 @@ class ToolMetrics(TypedDict):
     totals: ToolCount
 
 
-class SessionRecordSummary(TypedDict):
+class TaskAssignmentSummary(TypedDict, total=False):
+    assignee: str
+    write_root: str
+
+
+class _OptionalRecordSummary(TypedDict, total=False):
+    assignments: dict[str, TaskAssignmentSummary]
+
+
+class SessionRecordSummary(_OptionalRecordSummary):
     total: int
     by_type: dict[str, int]
     efforts: list[str]

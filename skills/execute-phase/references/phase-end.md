@@ -275,9 +275,9 @@ At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-
 
 At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
 
-Close the phase; close phase position (`subject` = phase slug,
-`status: closed`); update effort position narrative (`subject` =
-focus). Keep `scope` identical to the predecessor's. Set `phase`
+Close the phase; close the phase position (`subject` = phase slug,
+`status: closed`) only when a note position exists; update effort
+position narrative (`subject` = focus). Keep `scope` identical to the predecessor's. Set `phase`
 to the next phase the narrative names — pointer only; current phase is still derived from `score:phase`
 state:
 

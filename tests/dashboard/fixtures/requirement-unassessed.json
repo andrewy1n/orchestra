@@ -25,7 +25,8 @@
           "subject": "task-next",
           "title": "title of task-next",
           "waits_on": [],
-          "wave": 2
+          "wave": 2,
+          "write_root": ""
         }
       ],
       "text": ""

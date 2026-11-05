@@ -1016,7 +1016,17 @@ def main(argv: list[str] | None = None) -> int:
             timeout=args.timeout,
         )
         if outcome.record is not None:
-            print(json.dumps({"ok": True, "op": "check", "record": outcome.record}, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "op": "check",
+                        "record": outcome.record,
+                        "reused": outcome.reused,
+                    },
+                    indent=2,
+                )
+            )
         if outcome.message:
             print(outcome.message, file=sys.stderr)
         return outcome.exit_code

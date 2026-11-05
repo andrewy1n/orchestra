@@ -49,8 +49,13 @@
       "purpose": "A mid-flight correction to an assignment already in progress",
       "lifecycle": "event",
       "fields": {
+        "work_item": {
+          "ref": "score:work-item",
+          "optional": true
+        },
         "assignment": {
-          "ref": "conductor:assignment"
+          "ref": "conductor:assignment",
+          "optional": true
         },
         "effort": {
           "ref": "score:effort"
@@ -68,7 +73,8 @@
           "ref": "score:work-item"
         },
         "assignment": {
-          "ref": "conductor:assignment"
+          "ref": "conductor:assignment",
+          "optional": true
         },
         "result": {
           "type": "string"

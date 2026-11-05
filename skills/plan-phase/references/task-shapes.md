@@ -16,9 +16,15 @@ and still stamp `requirements` / `requirement`. Omit `criterion` (or
 `<task-slug>-<short suffix>`. `incidental` may omit `requirements`,
 `decisions`, and `requirement`.
 
+Every `canon create` below shows one line of the plan batch. Write
+the lines through one `canon apply` (plan-phase step 9), not one by
+one. An oracle-backed acceptance carries `test_ids` and
+`oracle_hashes` in its create payload. Create it once; never update it
+afterwards to freeze.
+
 ## Independent task
 
-Use `create --body-file` when Description needs more than a few lines.
+Put the Description in `body` of the batch line.
 
 ```bash
 canon create --type score:work-item \
@@ -35,15 +41,17 @@ R2: <observable behavior>
 
 canon create --type score:acceptance \
   --subject "<task-slug>" \
-  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R1>","requirement":"R1"}'
+  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}'
 
 canon create --type score:acceptance \
   --subject "<task-slug>-perf" \
   --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R2>","requirement":"R2"}'
 ```
 
-Drop the second acceptance when there is only one requirement. A task
-needs at least one `score:work-item` and one `score:acceptance`.
+Drop `test_ids` and `oracle_hashes` for an acceptance that is not
+oracle-backed. Drop the second acceptance when there is only one
+requirement. A task needs at least one `score:work-item` and one
+`score:acceptance`.
 
 Set `kind` and `phase` from the effort (`phase` is `""` when
 incidental). Set `executor` to `inline` or `subagent` (same within a

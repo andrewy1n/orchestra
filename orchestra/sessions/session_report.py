@@ -24,6 +24,7 @@ from orchestra.sessions.session_types import (
     SessionRecordSummary,
     SessionReport,
     SessionSummary,
+    TaskAssignmentSummary,
     ToolMetrics,
     TranscriptEvent,
 )
@@ -114,7 +115,7 @@ def _record_summary(
     by_type: dict[str, int] = {}
     for rec in matched:
         by_type[rec["record_type"]] = by_type.get(rec["record_type"], 0) + 1
-    return {
+    summary: SessionRecordSummary = {
         "total": len(matched),
         "by_type": by_type,
         "efforts": sorted({r["effort"] for r in matched if r["effort"]}),
@@ -127,6 +128,26 @@ def _record_summary(
         ),
         "ambiguous": len(ambiguous),
     }
+    assignments = _assignments(matched)
+    if assignments:
+        summary["assignments"] = assignments
+    return summary
+
+
+def _assignments(matched: list[RecordMetadata]) -> dict[str, TaskAssignmentSummary]:
+    assignments: dict[str, TaskAssignmentSummary] = {}
+    for rec in matched:
+        subject = rec["subject"]
+        if rec["record_type"] != "score:work-item" or not subject:
+            continue
+        entry: TaskAssignmentSummary = {}
+        if "assignee" in rec:
+            entry["assignee"] = rec["assignee"]
+        if "write_root" in rec:
+            entry["write_root"] = rec["write_root"]
+        if entry:
+            assignments[subject] = entry
+    return assignments
 
 
 def _is_session_report(row: SessionOutput) -> TypeGuard[SessionReport]:

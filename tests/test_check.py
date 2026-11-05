@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import helpers as h
 from conftest import REPO_ROOT, git, run_cli
 
+from orchestra.conductor.close_batch import build_batch
 from orchestra.conductor.policy import (
     dirty_pass_decision,
     manual_refuse_message,
@@ -52,6 +55,7 @@ def _seed_acceptance(
     method: str = "tdd",
     requirement: str = "R1",
     commit: bool = True,
+    extra_payload: dict | None = None,
 ) -> dict:
     defs = h.record_defs_by_id(resolved_contract)
     phase_subject = f"phase-{subject}"
@@ -69,6 +73,7 @@ def _seed_acceptance(
         "effort": "workflow-loop",
         "verify_command": verify_command,
         "requirement": requirement,
+        **(extra_payload or {}),
     }
     result = cli(
         "create",
@@ -567,6 +572,183 @@ def test_empty_verify_command_refused_no_record(store, cli, resolved_contract):
     assert "empty" in combined or "verify_command" in combined
     after = _list_check_runs(store)
     assert len(after) == len(before)
+
+
+# --- check-run reuse ---------------------------------------------------------
+
+
+def _untrack_store_db(store: Path) -> None:
+    result = git(store, "update-index", "--assume-unchanged", ".canon/canon.db")
+    assert result.returncode == 0, result.stderr
+
+
+def _flag_command(flag: Path) -> str:
+    return f"test -f {flag}"
+
+
+def _run_check_json(store: Path, acceptance_id: str) -> tuple[int, dict]:
+    _untrack_store_db(store)
+    result = _run_tuner("check", "--acceptance", acceptance_id, cwd=store)
+    assert result.stdout.strip(), result.stderr
+    return result.returncode, json.loads(result.stdout)
+
+
+def test_check_reuses_identical_check_run(store, cli, resolved_contract):
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="reuse-task", verify_command="true"
+    )
+    code_first, first = _run_check_json(store, acceptance["id"])
+    assert code_first == 0
+    assert first["reused"] is False
+    before = _list_check_runs(store)
+    code_second, second = _run_check_json(store, acceptance["id"])
+    assert code_second == 0
+    assert second["reused"] is True
+    assert second["record"]["id"] == first["record"]["id"]
+    assert len(_list_check_runs(store)) == len(before)
+
+
+def test_check_reuses_identical_failing_check_run(store, cli, resolved_contract):
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="reuse-fail-task", verify_command="false"
+    )
+    code_first, first = _run_check_json(store, acceptance["id"])
+    code_second, second = _run_check_json(store, acceptance["id"])
+    assert code_first == code_second == 1
+    assert second["reused"] is True
+    assert second["record"]["id"] == first["record"]["id"]
+    assert len(_list_check_runs(store)) == 1
+
+
+def test_check_writes_for_dirty_revision_every_time(store, cli, resolved_contract):
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="dirty-no-reuse", verify_command="false"
+    )
+    (store / "dirt.txt").write_text("dirty\n")
+    _, first = _run_check_json(store, acceptance["id"])
+    _, second = _run_check_json(store, acceptance["id"])
+    assert first["record"]["payload"]["revision"] == "dirty"
+    assert second["reused"] is False
+    assert second["record"]["id"] != first["record"]["id"]
+    assert len(_list_check_runs(store)) == 2
+
+
+def test_check_writes_for_new_revision(store, cli, resolved_contract):
+    acceptance = _seed_acceptance(
+        store, cli, resolved_contract, subject="new-revision-task", verify_command="true"
+    )
+    _, first = _run_check_json(store, acceptance["id"])
+    (store / "next.txt").write_text("next\n")
+    new_head = _commit_all(store, "next revision")
+    code, second = _run_check_json(store, acceptance["id"])
+    assert code == 0
+    assert second["reused"] is False
+    assert second["record"]["id"] != first["record"]["id"]
+    assert second["record"]["payload"]["revision"] == new_head
+    assert len(_list_check_runs(store)) == 2
+
+
+def test_check_writes_for_changed_result(store, cli, resolved_contract, tmp_path):
+    flag = tmp_path / "flag"
+    acceptance = _seed_acceptance(
+        store,
+        cli,
+        resolved_contract,
+        subject="changed-result-task",
+        verify_command=_flag_command(flag),
+    )
+    code_red, red = _run_check_json(store, acceptance["id"])
+    flag.write_text("ok\n")
+    code_green, green = _run_check_json(store, acceptance["id"])
+    assert code_red == 1
+    assert code_green == 0
+    assert green["reused"] is False
+    assert green["record"]["id"] != red["record"]["id"]
+    assert green["record"]["payload"]["revision"] == red["record"]["payload"]["revision"]
+    assert green["record"]["payload"]["result"] == "pass"
+    assert len(_list_check_runs(store)) == 2
+
+
+def test_check_writes_when_latest_result_differs(store, cli, resolved_contract, tmp_path):
+    flag = tmp_path / "flag"
+    acceptance = _seed_acceptance(
+        store,
+        cli,
+        resolved_contract,
+        subject="pass-fail-pass-task",
+        verify_command=_flag_command(flag),
+    )
+    flag.write_text("ok\n")
+    _, first_pass = _run_check_json(store, acceptance["id"])
+    time.sleep(1.1)
+    flag.unlink()
+    _, fail = _run_check_json(store, acceptance["id"])
+    time.sleep(1.1)
+    flag.write_text("ok\n")
+    code, second_pass = _run_check_json(store, acceptance["id"])
+    assert code == 0
+    assert fail["reused"] is False
+    assert second_pass["reused"] is False
+    assert second_pass["record"]["id"] not in {first_pass["record"]["id"], fail["record"]["id"]}
+    assert len(_list_check_runs(store)) == 3
+    time.sleep(1.1)
+    _, again = _run_check_json(store, acceptance["id"])
+    assert again["reused"] is True
+    assert again["record"]["id"] == second_pass["record"]["id"]
+
+
+def test_red_first_gate_after_reuse(store, cli, resolved_contract, tmp_path):
+    flag = tmp_path / "flag"
+    probe = store / "probe_red_first_reuse.py"
+    probe.write_text(
+        "from pathlib import Path\n\n\n"
+        "def test_red_first_reuse_probe():\n"
+        f"    assert Path({str(flag)!r}).exists()\n",
+        encoding="utf-8",
+    )
+    node = f"{probe.name}::test_red_first_reuse_probe"
+    digest = hashlib.sha256(probe.read_bytes()).hexdigest()
+    acceptance = _seed_acceptance(
+        store,
+        cli,
+        resolved_contract,
+        subject="red-first-reuse-task",
+        verify_command=f"python3 -B -m pytest -p no:cacheprovider {probe.name} -q",
+        extra_payload={"test_ids": [node], "oracle_hashes": [f"{probe.name}:sha256:{digest}"]},
+    )
+    _, red = _run_check_json(store, acceptance["id"])
+    _, red_again = _run_check_json(store, acceptance["id"])
+    assert red["record"]["payload"]["result"] == "fail"
+    assert red_again["reused"] is True
+    flag.write_text("ok\n")
+    _, green = _run_check_json(store, acceptance["id"])
+    assert green["reused"] is False
+    revision = green["record"]["payload"]["revision"]
+    request = {
+        "subject": "red-first-reuse-task",
+        "effort": "workflow-loop",
+        "work_item_id": "rec-wi",
+        "transition": "done",
+        "execution_report_id": None,
+        "acceptance_ids": [acceptance["id"]],
+        "criteria": [
+            {
+                "criterion_id": acceptance["id"],
+                "method": "tdd",
+                "check_run_id": green["record"]["id"],
+                "result": "pass",
+                "revision": revision,
+                "red_check_run_id": red_again["record"]["id"],
+                "red_result": "fail",
+                "red_revision": revision,
+                "red_runner": "orchestra",
+            }
+        ],
+        "finding": None,
+    }
+    ops = build_batch(request, cwd=store, store_root=store)
+    assert ops[-1]["transition"] == "done"
+    assert red_again["record"]["id"] == red["record"]["id"]
 
 
 # --- entry / bin -------------------------------------------------------------

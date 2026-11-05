@@ -79,13 +79,16 @@ user, or the only live `score:effort` subject). Then:
   `score:position` that belongs to another effort.
 - Task-scoped records (`work-item`, `acceptance`, `check-run`,
   `decision`, `failed-attempt`, `investigation-observation`, `finding`,
-  `assignment`, `assignment-amendment`, `execution-report`) use
-  `subject` = task slug and `payload.effort` = focus.
+  `assignment-amendment`, `execution-report`) use
+  `subject` = task slug and `payload.effort` = focus. Skills write no
+  `assignment`; the `in_progress` work-item update carries `assignee`
+  and `write_root`.
 - Goal, the effort position, and continuity-question use `subject` =
-  focus. A running phase also has its own position: `subject` = phase
-  slug, `scope` = `phase`, `payload.effort` = focus. Each chat writes
-  only its own phase's position; the effort position changes when a
-  phase closes.
+  focus. A phase has its own position only for a note a person must
+  read: `subject` = phase slug, `scope` = `phase`, `payload.effort` =
+  focus. Phase progress is derived from work-item states. Each chat
+  writes only its own phase's position; the effort position changes
+  when a phase closes.
 
 An effort is a product area or objective, not one ask. New work in
 an area a live goal already covers is a new phase of that effort. A
