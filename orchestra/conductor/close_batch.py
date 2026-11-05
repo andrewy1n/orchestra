@@ -701,7 +701,8 @@ def _enforce_oracle_gates(
 ) -> None:
     criterion_id = entry["criterion_id"]
     try:
-        frozen = parse_freeze(acceptance["payload"])
+        acceptance_payload = record_payload(acceptance)
+        frozen = parse_freeze(acceptance_payload)
     except ValueError as exc:
         raise CloseRefused(f"criterion {criterion_id!r}: incomplete oracle freeze: {exc}") from exc
 
