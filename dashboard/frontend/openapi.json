@@ -575,6 +575,10 @@
             "title": "Backlog",
             "type": "array"
           },
+          "dormant": {
+            "title": "Dormant",
+            "type": "boolean"
+          },
           "effort": {
             "title": "Effort",
             "type": "string"
@@ -635,6 +639,7 @@
           "kind",
           "area",
           "finished",
+          "dormant",
           "release_ready",
           "phases",
           "milestones",

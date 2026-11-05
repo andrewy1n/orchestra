@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
-from orchestra.derive import phase_progress, release_ready, requirement_status, task_assignment
+from orchestra.derive import (
+    effort_dormant,
+    phase_progress,
+    release_ready,
+    requirement_status,
+    task_assignment,
+)
 from orchestra.score.requirements import phase_requirements
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
@@ -509,9 +517,33 @@ def _group_lines(
     return lines
 
 
-def render_view(view: View, records: list[Record], *, effort: str | None = None) -> str:
+def clock() -> datetime:
+    override = os.environ.get("ORCHESTRA_NOW")
+    if override:
+        moment = datetime.fromisoformat(override.replace("Z", "+00:00"))
+        return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
+
+
+def dormant_efforts(records: list[Record], now: datetime | None = None) -> list[str]:
+    moment = now or clock()
+    slugs = sorted({r["subject"] for r in records if r["record_type"] == GOAL.record_type})
+    return [slug for slug in slugs if effort_dormant(records, slug, moment)]
+
+
+def render_view(
+    view: View,
+    records: list[Record],
+    *,
+    effort: str | None = None,
+    dormant: Collection[str] = (),
+) -> str:
     tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
-    groups = _group_records(view, records, effort)
+    groups = {
+        name: group
+        for name, group in _group_records(view, records, effort).items()
+        if name not in dormant
+    }
 
     lines = [
         f"# {view.title}",
@@ -521,11 +553,12 @@ def render_view(view: View, records: list[Record], *, effort: str | None = None)
     ]
     if not groups:
         lines += ["_No matching records._", ""]
-        return "\n".join(lines)
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
         lines += _group_lines(view, name, groups[name], tally, records, effort=effort)
-    if view.phase_derived_section:
+    if groups and view.phase_derived_section:
         lines += _phase_section_lines(groups, records, effort)
+    if dormant:
+        lines += [f"Dormant: {', '.join(sorted(dormant))}", ""]
     return "\n".join(lines)
 
 
@@ -773,9 +806,15 @@ def _group_subjects(group: dict[str, list[Record]]) -> list[str]:
     return sorted({str(r.get("subject", "")) for items in group.values() for r in items})
 
 
-def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
-    live = live_efforts(records)
-    groups = _group_records(HOOK_VIEW, records, None)
+def hook_handoff_sections(
+    records: list[Record], dormant: Collection[str] = ()
+) -> list[tuple[str, str]]:
+    live = live_efforts(records) - set(dormant)
+    groups = {
+        name: group
+        for name, group in _group_records(HOOK_VIEW, records, None).items()
+        if name not in dormant
+    }
     stamps = _position_recorded_at(records)
     stamped = sorted(n for n in groups if n in live and n in stamps)
     stamped.sort(key=stamps.__getitem__, reverse=True)
@@ -789,8 +828,10 @@ def hook_handoff_sections(records: list[Record]) -> list[tuple[str, str]]:
     return sections
 
 
-def hook_constraints(records: list[Record], limit: int) -> tuple[list[Record], int]:
-    live = live_efforts(records)
+def hook_constraints(
+    records: list[Record], limit: int, dormant: Collection[str] = ()
+) -> tuple[list[Record], int]:
+    live = live_efforts(records) - set(dormant)
     role = next(r for r in BRIEF_ROLES if r.name == "constraint")
     matches = sorted(
         (

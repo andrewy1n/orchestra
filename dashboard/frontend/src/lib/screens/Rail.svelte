@@ -90,7 +90,7 @@
                   item.needs > 0 ? "text-[var(--warn)]" : "text-muted-foreground",
                 ]}
               >
-                {kinds.get(item.key)}{#if item.finished} · finished{/if}{#if item.needs}
+                {kinds.get(item.key)}{#if item.finished} · finished{/if}{#if item.dormant} · dormant{/if}{#if item.needs}
                   · {item.needs} needs you{/if}
               </span>
             {:else if item.needs > 0}

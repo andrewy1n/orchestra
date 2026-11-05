@@ -141,9 +141,10 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     `## Landing`; and each intended oracle-backed tdd acceptance has
     non-empty `test_ids` and `oracle_hashes`. Run `orchestra analyze
     <phase-slug>` first. Refuse plan review while it exits 1. Fix each
-    error finding, then run it again. Then create a blocking
+    error finding, then run it again. If the effort's `autonomy` is
+    `auto-plan` or `auto-phases`, skip the gate and go to `execute-phase`.
+    Otherwise (`gated` or missing) create a blocking
     `score:continuity-question` with scope
-    `plan-review:<current-phase-slug>`. Until `effort-autonomy` lands
-    the gate stays on, even for a light phase. Ask approve / change / send back to
+    `plan-review:<current-phase-slug>`. Ask approve / change / send back to
     `settle-phase`. On approval, answer the question; only then may
     `execute-phase` run.
