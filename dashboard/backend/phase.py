@@ -201,18 +201,30 @@ def _latest_requirement_check(
     acceptances: list[Record],
     checks: list[Record],
 ) -> CheckRun | None:
-    acceptance_ids = {
-        record["id"]
+    live = [
+        record
         for record in acceptances
         if record.get("lifecycle_state") not in INACTIVE_STATES
         and record_payload(record).get("phase") == phase
+    ]
+    single_ids = {record["id"] for record in live}
+    listed_ids = {
+        record["id"]
+        for record in live
+        if "requirements" in record_payload(record)
         and requirement in acceptance_requirement_ids(record)
     }
     matched = [
         record
         for record in checks
         if record.get("lifecycle_state") not in INACTIVE_STATES
-        and record_payload(record).get("criterion_id") in acceptance_ids
+        and (
+            record_payload(record).get("criterion_id") in listed_ids
+            or (
+                record_payload(record).get("requirement") == requirement
+                and record_payload(record).get("criterion_id") in single_ids
+            )
+        )
     ]
     record = newest_record(matched)
     return check_from(record) if record else None
