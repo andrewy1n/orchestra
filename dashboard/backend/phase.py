@@ -1005,7 +1005,9 @@ def load_requirement_detail(
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
     latest = newest_record(active)
-    spec = newest_record(_for_phase(specs, phase, effort))
+    spec = newest_record(_for_phase(specs, phase, effort)) or light_specification(
+        phase, effort, listed("score:phase")
+    )
     text = _requirement_texts(spec.get("body") or "").get(requirement, "") if spec else ""
     traced = [
         task
