@@ -6,9 +6,7 @@ Native adapters register by provider id:
     class ClaudeAdapter(BaseAdapter):
         ...
 
-A ``kind: skills`` matrix row uses :class:`SkillsCliAdapter` without a
-registration line. Everything else keeps :class:`GenericSkillsAdapter`, so a
-new matrix row works before its native adapter exists.
+Skills and directory rows select their adapters by kind.
 """
 
 from __future__ import annotations
@@ -50,15 +48,14 @@ def build_adapter(
     mode: str,
     source_root: Path,
 ) -> Adapter:
-    """Instantiate the registered adapter, the skills-CLI tail, or the generic one.
-
-    Native rows win by id. A ``kind: skills`` row delegates to
-    :class:`SkillsCliAdapter` without needing a registration line, so adding a
-    tail host is a matrix edit. Anything else keeps the generic behaviour.
-    """
-    factory = _REGISTRY.get(provider.id)
-    if factory is None:
-        factory = SkillsCliAdapter if provider.kind == "skills" else GenericSkillsAdapter
+    if provider.kind == "skills":
+        factory = SkillsCliAdapter
+    elif provider.kind == "directory":
+        factory = GenericSkillsAdapter
+    elif provider.native and provider.id in _REGISTRY:
+        factory = _REGISTRY[provider.id]
+    else:
+        raise ValueError(f"no {provider.kind!r} adapter for {provider.id!r}")
     return factory(
         provider,
         base=base,

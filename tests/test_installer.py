@@ -149,7 +149,7 @@ def run_install(
     project: Path,
     source: Path,
     home: Path | None = None,
-    npx_exit: int = 0,
+    npx_exit: int | None = 0,
 ) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
@@ -157,7 +157,7 @@ def run_install(
     )
     env["ORCHESTRA_INSTALL_SOURCE"] = str(source)
     stub, log = npx_paths(project)
-    env["ORCHESTRA_NPX"] = str(stub)
+    env["ORCHESTRA_NPX"] = str(stub if npx_exit is not None else stub.with_name("missing-npx"))
     env["ORCHESTRA_NPX_LOG"] = str(log)
     env["ORCHESTRA_NPX_EXIT"] = str(npx_exit)
     if home is not None:
@@ -857,15 +857,60 @@ def test_tail_dry_run_reports_the_profile_without_delegating(source, project, ho
     assert not home.exists()
 
 
-def test_tail_falls_back_when_npx_fails(source, project, home):
+@pytest.mark.parametrize("npx_exit", [None, 7])
+def test_failed_skills_delegation(
+    source: Path, project: Path, home: Path, npx_exit: int | None
+) -> None:
     proc = run_install(
-        "--only", "codex", "--home", str(home), project=project, source=source, npx_exit=1
+        "--only",
+        "codex",
+        "--home",
+        str(home),
+        "--copy",
+        project=project,
+        source=source,
+        npx_exit=npx_exit,
     )
-    assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "fell back" in proc.stdout
-    assert "profile: codex" in proc.stdout
-    assert (home / ".codex" / "skills" / "init" / "SKILL.md").is_file()
-    assert "verified: ok" in proc.stdout
+    assert proc.returncode != 0
+    assert "codex" in proc.stderr
+    assert ("missing-npx" if npx_exit is None else "7") in proc.stderr
+    assert not (home / ".codex").exists()
+    assert "installed codex" not in proc.stdout
+
+
+def test_explicit_directory_adapter(
+    source: Path, project: Path, home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from installer import matrix
+    from orchestra.cli import main
+
+    manifest = project / "providers.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "providers": [
+                    {
+                        "id": "example",
+                        "name": "Example",
+                        "kind": "directory",
+                        "project_root": ".example",
+                        "global_root": ".example",
+                    }
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(matrix, "MATRIX_PATH", manifest)
+    monkeypatch.setenv("ORCHESTRA_INSTALL_SOURCE", str(source))
+    monkeypatch.setenv("ORCHESTRA_NPX", str(project / "must-not-run"))
+    assert main(["install", "--only", "example", "--home", str(home), "--copy"]) == 0
+    root = home / ".example"
+    assert (root / "skills/init/SKILL.md").is_file()
+    assert not (root / "skills/init").is_symlink()
+    marker = json.loads((root / MARKER).read_text())
+    assert "skills/init" in marker["entries"]
+    assert "delegate" not in marker
 
 
 def test_tail_uninstall_names_the_profile_it_leaves_behind(source, project, home):

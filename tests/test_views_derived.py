@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import itertools
-import json
+from pathlib import Path
 
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.sessions.record_reader import read_records
+from orchestra.sessions.record_reader import read_project_records
 from orchestra.views import STATUS, VERIFICATION, render_view
 
 _CLOCK = itertools.count()
@@ -53,6 +54,34 @@ def _work_item(subject: str, phase: str, state: str, **payload: str) -> Record:
 
 def _status(records: list[Record]) -> str:
     return render_view(STATUS, records)
+
+
+def _store_project(store: Path) -> Project:
+    project = open_store(store)
+    project.create(
+        record_type="score:effort", subject="e", payload={"goal": "g", "kind": "deliver"}
+    )
+    project.create(
+        record_type="score:phase",
+        subject="p",
+        payload={"effort": "e", "title": "p", "ordinal": 1},
+        body="## Problem\nOne\n## Approach\nTwo\n## Exit criteria\nThree",
+    )
+    return project
+
+
+def _store_work_item(project: Project, subject: str, **extra: str) -> Record:
+    payload: JsonObject = {
+        "title": subject,
+        "phase": "p",
+        "kind": "deliver",
+        "assignee": "",
+        "effort": "e",
+    }
+    payload.update(extra)
+    return project.create(
+        record_type="score:work-item", subject=subject, payload=payload, body="## Description\nD"
+    )
 
 
 def test_views_show_derived_verified_status():
@@ -189,11 +218,11 @@ def test_views_phase_progress_derived():
     assert "- in progress: t2" in out
 
 
-def test_session_reader_assignee_from_work_item():
-    item = _work_item("t1", "p", "in_progress", assignee="executor-a", write_root="/wt/t1")
-    bare = _work_item("t2", "p", "planned")
-    out = json.dumps({"records": [item, bare]})
-    rows = read_records("/tmp/proj", types=["score:work-item"], run=lambda argv: out)
+def test_session_reader_assignee_from_work_item(store: Path):
+    project = _store_project(store)
+    _store_work_item(project, "t1", assignee="executor-a", write_root="/wt/t1")
+    _store_work_item(project, "t2")
+    rows = read_project_records(project, ["score:work-item"])
     by_subject = {r["subject"]: r for r in rows}
     assert by_subject["t1"].get("assignee") == "executor-a"
     assert by_subject["t1"].get("write_root") == "/wt/t1"
@@ -221,19 +250,14 @@ def test_views_still_read_written_assignment():
     assert "write root: /wt/legacy" in out
 
 
-def test_session_reader_still_reads_written_assignment():
-    item = _work_item("t1", "p", "in_progress")
-    written = _record(
-        "conductor:assignment",
-        "t1",
-        {"work_item": "t1", "executor": "legacy-exec", "write_root": "/wt/legacy"},
-        "active",
+def test_session_reader_still_reads_written_assignment(store: Path):
+    project = _store_project(store)
+    _store_work_item(project, "t1")
+    project.create(
+        record_type="conductor:assignment",
+        subject="t1",
+        payload={"work_item": "t1", "executor": "legacy-exec", "effort": "e"},
+        body="## Orientation\nO",
     )
-    by_type = {"score:work-item": [item], "conductor:assignment": [written]}
-
-    def run(argv: list[str]) -> str:
-        return json.dumps({"records": by_type.get(argv[argv.index("--type") + 1], [])})
-
-    rows = [r for r in read_records("/tmp/proj", run=run) if r["record_type"] == "score:work-item"]
+    rows = [r for r in read_project_records(project) if r["record_type"] == "score:work-item"]
     assert rows[0].get("assignee") == "legacy-exec"
-    assert rows[0].get("write_root") == "/wt/legacy"

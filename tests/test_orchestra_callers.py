@@ -329,7 +329,7 @@ def _oracle_request() -> tuple[dict, Record]:
             "method": "tdd",
             "effort": "effort-1",
             "test_ids": ["tests/test_oracle_probe.py::test_expected_behavior"],
-            "oracle_hashes": f"tests/test_oracle_probe.py:sha256:{digest}",
+            "oracle_hashes": [f"tests/test_oracle_probe.py:sha256:{digest}"],
         },
     }
 

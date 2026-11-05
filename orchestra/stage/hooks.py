@@ -43,11 +43,10 @@ def _is_json_array(value: object) -> TypeGuard[list[JsonValue]]:
 
 
 def read_hook_input(stream: TextIO) -> JsonObject:
-    try:
-        value: object = json.load(stream)
-    except Exception:
-        return {}
-    return value if _is_json_object(value) else {}
+    value: object = json.load(stream)
+    if not _is_json_object(value):
+        raise ValueError("expected a JSON object")
+    return value
 
 
 def _root_from_hook(data: JsonObject, fmt: str) -> Path:
@@ -227,7 +226,11 @@ def _block(fmt: str, message: str) -> JsonObject:
 
 
 def run(command: str, fmt: str, stdin: TextIO | None = None) -> int:
-    data = read_hook_input(stdin if stdin is not None else sys.stdin)
+    try:
+        data = read_hook_input(stdin if stdin is not None else sys.stdin)
+    except (ValueError, OSError) as exc:
+        print(f"{command}: invalid hook input: {exc}", file=sys.stderr)
+        return 2
     handler = cmd_start if command == "hook-start" else cmd_stop
     out = handler(fmt, data)
     if out is not None:

@@ -9,6 +9,9 @@ from test_hooks import (
     full_handoff,
 )
 
+from orchestra.canon.types import Record
+from orchestra.views import hook_handoff_sections
+
 
 @pytest.fixture(autouse=True)
 def baseline_dir(tmp_path, monkeypatch):
@@ -33,7 +36,7 @@ def not_shown_line(ctx):
     return lines[0] if lines else ""
 
 
-def test_r14_needs_human_finding_without_effort_reaches_start_context(repo, monkeypatch, capsys):
+def test_r14_needs_human_finding_reaches_start_context(repo, monkeypatch, capsys):
     create(
         repo,
         "tuner:finding",
@@ -42,13 +45,28 @@ def test_r14_needs_human_finding_without_effort_reaches_start_context(repo, monk
             "claim": "Orphan claim needing a person",
             "basis": "b",
             "invalidated_when": "never",
-            "effort": "",
+            "effort": "alpha",
             "needs": "human",
         },
     )
     assert "orphan-risk" in full_handoff(repo)
     ctx = claude_context(repo, monkeypatch, capsys)
     assert "orphan-risk" in ctx or "orphan-risk" in not_shown_line(ctx)
+
+
+def test_legacy_finding_without_effort_is_not_shown_in_hook() -> None:
+    finding: Record = {
+        "id": "rec-legacy",
+        "record_type": "tuner:finding",
+        "subject": "orphan-risk",
+        "payload": {"claim": "Orphan risk", "needs": "human", "effort": ""},
+        "lifecycle_state": "asserted",
+        "relationships": {},
+        "body": "",
+        "recorded_at": "2026-01-01T00:00:00+00:00",
+        "revision": "sha256:legacy",
+    }
+    assert hook_handoff_sections([finding]) == []
 
 
 def test_r14_blocking_question_with_non_effort_subject_reaches_start_context(
@@ -65,7 +83,7 @@ def test_r14_blocking_question_with_non_effort_subject_reaches_start_context(
     assert "q-1" in ctx or "q-1" in not_shown_line(ctx)
 
 
-def test_r14_effortless_items_reach_start_context_when_efforts_are_crowded_out(
+def test_r14_findings_and_effortless_questions_reach_start_context_when_efforts_are_crowded_out(
     repo, monkeypatch, capsys
 ):
     crowd_store(repo)
@@ -77,7 +95,7 @@ def test_r14_effortless_items_reach_start_context_when_efforts_are_crowded_out(
             "claim": "Orphan claim needing a person",
             "basis": "b",
             "invalidated_when": "never",
-            "effort": "",
+            "effort": "alpha",
             "needs": "human",
         },
     )
@@ -92,7 +110,7 @@ def test_r14_effortless_items_reach_start_context_when_efforts_are_crowded_out(
     assert "q-1" in handoff
     ctx = claude_context(repo, monkeypatch, capsys)
     named = not_shown_line(ctx)
-    assert "orphan-risk" in ctx or "orphan-risk" in named
+    assert "alpha" in ctx or "alpha" in named
     assert "q-1" in ctx or "q-1" in named
 
 

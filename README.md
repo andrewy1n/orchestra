@@ -235,10 +235,10 @@ npx skills add -a cline
 npx skills add -a windsurf
 ```
 
-If `npx` is unavailable or exits non-zero, the adapter falls back to a plain
-skills-directory install and says so. The registration records the profile;
-`--uninstall` removes the registration and leaves the profile managed by
-`npx skills`.
+A missing or failing `npx` stops installation for that provider. After successful
+delegation, the registration records the profile. `--uninstall` removes the
+registration and leaves the profile managed by `npx skills`. To install the
+allowlisted payload directly, select `kind: directory` in the provider matrix.
 
 ### Scope and flags
 
@@ -553,8 +553,8 @@ uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner
 
 Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
 run apart from the orchestra tests. CI runs the same three commands as
-parallel jobs. When the configured suite `command` is empty, the suite
-falls back to `uv run pytest tests -q -n 4`.
+parallel jobs. A local suite in `smoke` or `full` mode requires a non-empty command.
+A skipped local start returns status 4.
 
 These three commands are the **phase-level suite** configured in the root
 `orchestra.toml` under `[suite]`.

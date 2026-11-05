@@ -61,7 +61,6 @@ class Finding:
 class Report:
     phase: str
     stage: str
-    skipped: bool = False
     findings: list[Finding] = field(default_factory=list)
 
     @property
@@ -98,7 +97,14 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
     report = Report(phase=phase, stage=stage)
     specs = of_type("score:specification", "active")
     if not specs:
-        report.skipped = True
+        report.findings.append(
+            Finding(
+                "error",
+                "active-specification-required",
+                phase,
+                "an active specification is required to analyze this phase",
+            )
+        )
         return report
     spec = specs[0]
     designs = of_type("score:design", "active")

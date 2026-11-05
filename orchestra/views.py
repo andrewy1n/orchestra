@@ -121,6 +121,7 @@ HANDOFF = View(
             ("claim", "needs"),
             _all(
                 _payload_is("needs", "human"),
+                _payload_truthy("effort"),
                 _state("asserted", "supported", "disputed"),
             ),
         ),

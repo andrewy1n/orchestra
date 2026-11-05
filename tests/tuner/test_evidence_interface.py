@@ -69,9 +69,10 @@ def _seed_verdict_subject(root: Path) -> tuple[str, str]:
     return base, head
 
 
-def _verdict(root: Path, base: str, head: str) -> subprocess.CompletedProcess[str]:
+def _verdict(root: Path, base: str, head: str, *flags: str) -> subprocess.CompletedProcess[str]:
     return _tuner(
         "verdict",
+        *flags,
         "--cwd",
         str(root),
         "--base",
@@ -225,7 +226,7 @@ def test_r4_verdict_trail_and_subsequent_verdict_pass(store: Path) -> None:
     base, head = _seed_verdict_subject(store)
     before = _list_evidence_observations(store)
 
-    first = _verdict(store, base, head)
+    first = _verdict(store, base, head, "--require-trail")
     assert first.returncode == 0, first.stdout + first.stderr
     assert _payload(first)["result"] == "pass"
 
@@ -248,3 +249,10 @@ def test_r4_verdict_trail_and_subsequent_verdict_pass(store: Path) -> None:
     second = _verdict(store, base, head)
     assert second.returncode == 0, second.stdout + second.stderr
     assert _payload(second)["result"] == "pass"
+
+
+def test_requested_trail_read_reports_unavailable_store(tmp_path: Path) -> None:
+    result = _tuner("trail", "--cwd", str(tmp_path))
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr.strip()

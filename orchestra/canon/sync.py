@@ -100,7 +100,7 @@ def _sync_locked(store: Backend, installed: dict[str, InstalledModule]) -> JsonO
     migrated = 0
     for namespace, module, snapshot, steps in plan:
         if steps:
-            migrated += apply_steps(store, steps)
+            migrated += apply_steps(store, steps, module.module)
         old_text = store.read_snapshot(namespace) if snapshot else None
         if old_text != module.text:
             store.write_snapshot(namespace, module.text)

@@ -6,13 +6,14 @@ import json
 import queue
 import sys
 import threading
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import TypeGuard
 
+from orchestra.canon.project import NoArtifactStoreError, StoreBindingError, open_store
 from orchestra.sessions.record_join import join
-from orchestra.sessions.record_reader import read_records, subprocess_runner
+from orchestra.sessions.record_reader import read_project_records
 from orchestra.sessions.session_fields import session_fields
 from orchestra.sessions.session_metrics import ReadStats, read_events
 from orchestra.sessions.session_tools import tool_metrics
@@ -78,25 +79,33 @@ def summarize(path: Path) -> SessionSummary:
     return {**fields, "tools": box["tools"], "bad_lines": stats.bad_lines}
 
 
-def _store_root() -> Path:
-    return Path.home() / ".canon"
-
-
 def _read_all(
     rows: Sequence[SessionReport],
-    run: Callable[[list[str]], str],
-    store_root: Path,
-) -> list[RecordMetadata]:
-    records: list[RecordMetadata] = []
+) -> tuple[dict[str, str], list[RecordMetadata], list[str], set[str]]:
+    stores_by_cwd: dict[str, str] = {}
+    by_store: dict[str, list[RecordMetadata]] = {}
+    failures: list[str] = []
+    failed_cwds: set[str] = set()
     cwds = {cwd for row in rows if isinstance((cwd := row.get("cwd")), str) and cwd}
     for cwd in sorted(cwds):
-        if not (store_root / Path(cwd).name).is_dir():
-            continue
         try:
-            records.extend(read_records(cwd, run=run))
-        except Exception:
+            project = open_store(cwd)
+            key = str(project.store_path)
+            if key not in by_store:
+                by_store[key] = read_project_records(project)
+            stores_by_cwd[cwd] = key
+        except NoArtifactStoreError:
             continue
-    return records
+        except StoreBindingError as exc:
+            failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+            failed_cwds.add(cwd)
+            continue
+        except Exception as exc:
+            failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+            failed_cwds.add(cwd)
+            continue
+    records = [record for store_records in by_store.values() for record in store_records]
+    return stores_by_cwd, records, failures, failed_cwds
 
 
 def _record_summary(
@@ -145,30 +154,27 @@ def _is_session_report(row: SessionOutput) -> TypeGuard[SessionReport]:
     return "session_id" in row
 
 
-def _attach_records(
-    rows: list[SessionOutput],
-    run: Callable[[list[str]], str],
-    store_root: Path,
-) -> None:
+def _attach_records(rows: list[SessionOutput]) -> list[str]:
     sessions = [row for row in rows if _is_session_report(row) and row.get("session_id")]
-    records = _read_all(sessions, run, store_root)
-    by_id: dict[str, RecordMetadata] = {}
+    stores_by_cwd, records, failures, failed_cwds = _read_all(sessions)
+    by_store: dict[str, dict[str, RecordMetadata]] = {}
     for rec in records:
-        by_id.setdefault(rec["id"], rec)
-    joined = join(sessions, records)["by_session"]
+        by_store.setdefault(rec["store"], {})[rec["id"]] = rec
+    joined = join(sessions, records, stores_by_cwd)["by_session"]
     for row in sessions:
         session_id = row["session_id"]
         if not isinstance(session_id, str):
             continue
+        cwd = row.get("cwd")
+        if isinstance(cwd, str) and cwd in failed_cwds:
+            continue
+        by_id = by_store.get(stores_by_cwd.get(cwd, ""), {}) if isinstance(cwd, str) else {}
         hit = joined[session_id]
         row["records"] = _record_summary(hit["records"], by_id, hit["ambiguous"])
+    return failures
 
 
-def main(
-    argv: list[str],
-    run: Callable[[list[str]], str] = subprocess_runner,
-    store_root: Path | None = None,
-) -> int:
+def main(argv: list[str]) -> int:
     with_records = "--records" in argv
     args = [a for a in argv if a != "--records"]
     root = Path(args[0]) if args else Path.home() / ".claude" / "projects"
@@ -194,9 +200,12 @@ def main(
         else:
             print(json.dumps(row), flush=True)
     if with_records:
-        _attach_records(rows, run, store_root or _store_root())
+        failures = _attach_records(rows)
         for row in rows:
             print(json.dumps(row), flush=True)
+        if failures:
+            print("orchestra sessions report: " + "; ".join(failures), file=sys.stderr)
+            return 2
     return 0
 
 

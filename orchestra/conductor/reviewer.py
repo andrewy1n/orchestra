@@ -80,7 +80,6 @@ ALLOWED_KINDS = frozenset(
     {
         "work-item",
         "acceptance",
-        "requirement",
         "specification",
         "design",
     }
@@ -201,11 +200,10 @@ def build_reviewer_brief(
     heading = {
         "work-item": "Work items",
         "acceptance": "Acceptance criteria",
-        "requirement": "Requirements",
         "specification": "Specification",
         "design": "Design / invariants",
     }
-    for kind in ("work-item", "acceptance", "requirement", "specification", "design"):
+    for kind in ("work-item", "acceptance", "specification", "design"):
         items = by_kind.get(kind) or []
         if not items:
             continue

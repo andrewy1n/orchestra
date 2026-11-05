@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -54,6 +55,7 @@ def _seed_acceptance(
     method: str = "tdd",
     requirement: str = "R1",
     commit: bool = True,
+    extra_payload: dict | None = None,
 ) -> dict:
     defs = h.record_defs_by_id(resolved_contract)
     phase_subject = f"phase-{subject}"
@@ -71,6 +73,7 @@ def _seed_acceptance(
         "effort": "workflow-loop",
         "verify_command": verify_command,
         "requirement": requirement,
+        **(extra_payload or {}),
     }
     result = cli(
         "create",
@@ -696,15 +699,26 @@ def test_check_writes_when_latest_result_differs(store, cli, resolved_contract, 
 
 def test_red_first_gate_after_reuse(store, cli, resolved_contract, tmp_path):
     flag = tmp_path / "flag"
+    probe = store / "probe_red_first_reuse.py"
+    probe.write_text(
+        "from pathlib import Path\n\n\n"
+        "def test_red_first_reuse_probe():\n"
+        f"    assert Path({str(flag)!r}).exists()\n",
+        encoding="utf-8",
+    )
+    node = f"{probe.name}::test_red_first_reuse_probe"
+    digest = hashlib.sha256(probe.read_bytes()).hexdigest()
     acceptance = _seed_acceptance(
         store,
         cli,
         resolved_contract,
         subject="red-first-reuse-task",
-        verify_command=_flag_command(flag),
+        verify_command=f"python3 -B -m pytest -p no:cacheprovider {probe.name} -q",
+        extra_payload={"test_ids": [node], "oracle_hashes": [f"{probe.name}:sha256:{digest}"]},
     )
     _, red = _run_check_json(store, acceptance["id"])
     _, red_again = _run_check_json(store, acceptance["id"])
+    assert red["record"]["payload"]["result"] == "fail"
     assert red_again["reused"] is True
     flag.write_text("ok\n")
     _, green = _run_check_json(store, acceptance["id"])

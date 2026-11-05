@@ -9,7 +9,7 @@ from pathlib import Path
 
 from orchestra.canon.types import JsonObject
 from orchestra.tuner.attestation import emit, verify
-from orchestra.tuner.audit import AuditError, run_audit
+from orchestra.tuner.audit import AuditError, AuditTrailError, run_audit
 from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
 from orchestra.tuner.binding import BindingError, bind_observation, recheck, unbind
 from orchestra.tuner.evidence_kind import TEMPLATES
@@ -203,6 +203,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Probe declaration JSON (default: .tuner/probes.json at head)",
     )
 
+    for command in (verdict, audit):
+        command.add_argument(
+            "--require-trail",
+            action="store_true",
+            help="Return an operational error if the observation trail cannot be saved",
+        )
+
     trail = sub.add_parser(
         "trail",
         help="List evidence-observations from the artifact store as JSON",
@@ -289,13 +296,16 @@ def main(argv: list[str] | None = None) -> int:
         result = payload["result"]
         if not isinstance(result, str):
             raise TypeError("verdict result must be a string")
-        maybe_record_verdict_observation(
+        recorded = maybe_record_verdict_observation(
             work,
             at=args.at,
             base=args.base,
             claim_ids=args.claim_ids,
             result=result,
         )
+        if args.require_trail and not recorded:
+            print("required observation trail could not be persisted", file=sys.stderr)
+            return 2
         return 0 if result == "pass" else 1
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
@@ -379,7 +389,12 @@ def main(argv: list[str] | None = None) -> int:
                 mutants_path=args.mutants,
                 max_mutants=args.max_mutants,
                 probes_path=args.probes,
+                require_trail=args.require_trail,
             )
+        except AuditTrailError as exc:
+            print(json.dumps(exc.report, separators=(",", ":")))
+            print(exc, file=sys.stderr)
+            return 2
         except (AuditError, ManifestError) as exc:
             print(exc, file=sys.stderr)
             return 2

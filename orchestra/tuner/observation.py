@@ -82,8 +82,6 @@ def record_observation(
         raise
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
-    if not isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Preserve runtime handling of malformed record returns.
-        raise RuntimeError("create did not return a record")
     return record
 
 
@@ -97,10 +95,10 @@ def maybe_record_observation(
     claim_ids: Sequence[str] = (),
     replay: str | None = None,
     subject: str | None = None,
-) -> None:
-    """Best-effort record; failures go to stderr and never raise."""
+) -> bool:
+    """Return whether the observation was stored."""
     try:
-        record_observation(
+        record = record_observation(
             cwd,
             technique=technique,
             base_rev=base_rev,
@@ -110,8 +108,10 @@ def maybe_record_observation(
             replay=replay,
             subject=subject,
         )
+        return record is not None
     except Exception as exc:
         print(f"observation record skipped: {exc}", file=sys.stderr)
+        return False
 
 
 def record_verdict_observation(
@@ -152,12 +152,16 @@ def maybe_record_verdict_observation(
     base: str | None,
     claim_ids: Sequence[str],
     result: str,
-) -> None:
-    """Best-effort record; failures go to stderr and never raise."""
+) -> bool:
+    """Return whether the verdict observation was stored."""
     try:
-        record_verdict_observation(cwd, at=at, base=base, claim_ids=claim_ids, result=result)
+        record = record_verdict_observation(
+            cwd, at=at, base=base, claim_ids=claim_ids, result=result
+        )
+        return record is not None
     except Exception as exc:
         print(f"observation record skipped: {exc}", file=sys.stderr)
+        return False
 
 
 def _claim_ids_of(item: Mapping[str, object]) -> list[str]:
@@ -194,8 +198,6 @@ def list_observations(
 ) -> list[Record]:
     """List evidence-observations from the subject store as plain dicts."""
     root = Path(cwd)
-    if not store_usable(root):
-        return []
     try:
         items = list(_project(root).list(record_type=_OBS_TYPE))
     except RuntimeError:

@@ -54,6 +54,13 @@ their response. They do not call `canon`.
   strings, f-strings, module paths and entry points. Run the affected
   tests before you go on.
 
+## Design
+
+- Use a fallback only when the product contract defines a substitute. Report
+  required read failures as failures, not as empty or successful results.
+- Exercise the owning production API in regression tests. Use temporary stores
+  and mock only boundaries outside the behavior under test.
+
 ## Git
 
 - `main` is protected. Never push to it. Push a branch and open a PR.

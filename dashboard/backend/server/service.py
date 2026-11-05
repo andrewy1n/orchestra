@@ -305,7 +305,7 @@ class Reader:
                 item,
                 action=action,
                 note=note,
-                signer=dismiss.default_signer(),
+                signer=dismiss.default_signer() if action == "sign" else None,
             )
         except dismiss.DismissRefused as exc:
             raise WriteError(str(exc), 400) from exc

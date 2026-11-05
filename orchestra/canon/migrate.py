@@ -8,7 +8,7 @@ from orchestra.canon.backend import Backend
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import with_revision
 from orchestra.canon.schema import SchemaError
-from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.types import JsonObject, JsonValue, Record, get_list, get_object, get_string
 
 _Migration = TypedDict(
     "_Migration",
@@ -43,15 +43,21 @@ def migration_path(module: JsonObject, old_major: int, new_major: int) -> list[J
     return path
 
 
-def _map_value(mapping: dict[str, JsonValue], value: JsonValue) -> JsonValue:
+def _map_value(
+    mapping: dict[str, JsonValue], value: JsonValue, allowed: list[str] | None
+) -> JsonValue:
     if isinstance(value, str):
-        return mapping.get(value, value)
+        if value in mapping:
+            return mapping[value]
+        if allowed is None or value in allowed:
+            return value
+        raise SchemaError(f"enum value {value!r} has no migration mapping")
     if isinstance(value, list):
-        return [_map_value(mapping, item) for item in value]
+        return [_map_value(mapping, item, allowed) for item in value]
     return value
 
 
-def transform(record: Record, steps: list[JsonObject]) -> Record:
+def transform(record: Record, steps: list[JsonObject], target_module: JsonObject) -> Record:
     out: Record = record.copy()
     payload = dict(out.get("payload") or {})
     typed_steps: list[_Migration] = steps  # pyright: ignore[reportAssignmentType]  # Schema validation supplies migration objects; runtime values remain unaltered.
@@ -68,7 +74,13 @@ def transform(record: Record, steps: list[JsonObject]) -> Record:
         for key, mapping in map_enum.items():
             record_type, field = key.rsplit(".", 1)
             if record_type == out["record_type"] and field in payload:
-                payload[field] = _map_value(mapping, payload[field])
+                types = get_object(target_module, "types") or {}
+                type_def = get_object(types, record_type.split(":", 1)[1])
+                fields = get_object(type_def, "fields") if type_def is not None else None
+                enum_form = get_object(fields, field) if fields is not None else None
+                values = get_list(enum_form, "enum") if enum_form is not None else None
+                allowed = [value for value in values or [] if isinstance(value, str)]
+                payload[field] = _map_value(mapping, payload[field], allowed)
     out["payload"] = payload
     return out
 
@@ -79,18 +91,31 @@ def _changed(before: Record, after: Record) -> bool:
     )
 
 
-def apply_steps(store: Backend, steps: list[JsonObject]) -> int:
+def apply_steps(store: Backend, steps: list[JsonObject], target_module: JsonObject) -> int:
     """Rewrite every record and history snapshot the steps touch. Returns the live record count."""
-    for snapshot in list(store.read_history()):
-        moved = transform(snapshot, steps)
+    snapshots = list(store.read_history())
+    records = list(store.iter_records())
+    namespace = get_string(target_module, "namespace")
+    target_types = get_object(target_module, "types") or {}
+    if namespace is None:
+        raise SchemaError("migration target namespace is missing")
+    valid_types = [f"{namespace}:{name}" for name in target_types]
+    for record in [*snapshots, *records]:
+        moved = transform(record, steps, target_module)
+        record_type = record["record_type"]
+        moved_type = moved["record_type"]
+        if record_type.startswith(f"{namespace}:") and moved_type not in valid_types:
+            raise SchemaError(f"{record_type}: migration has no valid target type mapping")
+    for snapshot in snapshots:
+        moved = transform(snapshot, steps, target_module)
         if not _changed(snapshot, moved):
             continue
         moved = with_revision(prepare_record(moved))
         store.archive_history(moved)
         store.delete_history_snapshot(snapshot["record_type"], snapshot["id"], snapshot["revision"])
     rewritten = 0
-    for record in list(store.iter_records()):
-        moved = transform(record, steps)
+    for record in records:
+        moved = transform(record, steps, target_module)
         if not _changed(record, moved):
             continue
         moved = with_revision(prepare_record(moved))
