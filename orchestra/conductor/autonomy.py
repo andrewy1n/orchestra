@@ -24,9 +24,7 @@ class Mapping:
     level: str
 
 
-_SLUGS = r"[\w-]+(?:, [\w-]+)*(?:,? and [\w-]+)?"
 _EXECUTE = re.compile(r"plan and execute each phase without asking")
-_EXECUTE_THROUGH = re.compile(rf"plan each phase and automatically execute through {_SLUGS}")
 _PROMOTE = re.compile(
     r"plan and promote each next phase without asking(?: once the current one closes)?"
 )
@@ -35,9 +33,6 @@ _STOPS = (
         r"stop (?:only )?for failures, needs-human findings,? (?:pushes, and merges|or a push or merge)"
     ),
     re.compile(r"(?:pr )?merges? (?:still )?(?:needs?|requires?) (?:user )?approval"),
-)
-_RESTRICTIVE = frozenset(
-    {"never", "not", "only", "unless", "but", "except", "no", "ask", "otherwise", "if", "when"}
 )
 _MENTIONS = ("preauthorized", "pre-authorized", "without asking", "automatically execute")
 
@@ -59,10 +54,6 @@ def classify(statement: str, effort: str = "") -> str | None:
     for clause in _clauses(statement):
         if _PROMOTE.fullmatch(clause):
             promote = True
-        elif _EXECUTE_THROUGH.fullmatch(clause):
-            if _RESTRICTIVE & set(re.findall(r"[\w-]+", clause.split(" through ", 1)[1])):
-                return None
-            gate = True
         elif gate_pattern.fullmatch(clause) or _EXECUTE.fullmatch(clause):
             gate = True
         elif not any(stop.fullmatch(clause) for stop in _STOPS):

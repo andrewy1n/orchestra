@@ -187,7 +187,18 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
     )
 
 
-def start(project: Project, repo: Path, phase: str) -> WaveStart:
+def worktree_root(cwd: Path) -> Path:
+    result = run_git(cwd, "rev-parse", "--show-toplevel", capture_output=True, text=True)
+    if result.returncode != 0:
+        raise WaveError(f"not a git worktree: {cwd}")
+    return Path(result.stdout.strip())
+
+
+def block(project: Project, phase: str, scope: str) -> Record:
+    return _block(project, phase_record(project.records(), phase), phase, scope)
+
+
+def start(project: Project, repo: Path, phase: str, workdir: Path | None = None) -> WaveStart:
     records = project.records()
     derived = project.derived(records)
     phase_rec = phase_record(records, phase)
@@ -206,7 +217,7 @@ def start(project: Project, repo: Path, phase: str) -> WaveStart:
                 raise WaveError(f"{exc}; prepared before the conflict: {started_names}") from exc
             prepared.append((item, str(tree), branch))
         else:
-            prepared.append((item, str(repo), ""))
+            prepared.append((item, str(workdir or repo), ""))
     started: list[StartedTask] = []
     for item, write_root, branch in prepared:
         project.update(
@@ -264,6 +275,9 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         task = item["subject"]
         branch = f"task/{phase}/{task}"
         if closes_phase(item, items) or not _branch_exists(repo, branch):
+            continue
+        if item["lifecycle_state"] != "done":
+            skipped.append((task, "task is not closed"))
             continue
         already = run_git(
             repo,

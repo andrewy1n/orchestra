@@ -81,6 +81,8 @@ def _land(project: Project, repo: Path, slug: str, file: str, text: str) -> None
         )
     )
     land_task.land(project, repo, slug, evidence)
+    item = project.resolve("score:work-item", slug)
+    project.update(item["id"], record_type="score:work-item", transition="done")
 
 
 def test_r12_merges_passing_task_branches_in_task_slug_order(tmp_path: Path) -> None:

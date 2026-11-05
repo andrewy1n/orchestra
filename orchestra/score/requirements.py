@@ -48,6 +48,38 @@ def requirements_in_body(body: str) -> list[tuple[str, str]]:
     return found
 
 
+_REQUIREMENT_LIKE = re.compile(r"^(?:[-*]\s*)?R\d+\b")
+
+
+def requirement_body_problems(body: str) -> list[str]:
+    problems: list[str] = []
+    has_section = False
+    inside = False
+    seen: set[str] = set()
+    for line in body.splitlines():
+        if line.startswith("## "):
+            inside = line[3:].strip() == "Requirements"
+            has_section = has_section or inside
+            continue
+        stripped = line.strip()
+        if not inside or not _REQUIREMENT_LIKE.match(stripped):
+            continue
+        match = _REQUIREMENT_LINE.match(stripped)
+        if match is None:
+            problems.append(f"malformed requirement line: {stripped!r}")
+        elif not match.group(2).strip():
+            problems.append(f"{match.group(1)} has no requirement text")
+        elif match.group(1) in seen:
+            problems.append(f"{match.group(1)} is listed more than once")
+        else:
+            seen.add(match.group(1))
+    if not has_section:
+        problems.append("the body has no ## Requirements section")
+    elif not seen and not problems:
+        problems.append("## Requirements lists no requirement ids")
+    return problems
+
+
 def _phase_record(records: Sequence[Record], phase: str) -> Record | None:
     return _latest([r for r in records if r["record_type"] == PHASE and r["subject"] == phase])
 
