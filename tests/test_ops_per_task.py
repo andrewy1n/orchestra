@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -47,6 +48,7 @@ def _world(tmp_path: Path, weight: str = "light") -> Project:
                 "assignee": "",
                 "effort": "ef",
                 "requirements": ["R1"],
+                **({"depends_on": ["a"]} if slug == "b" else {}),
             },
             "## Description\n\nR1: One.\n\n## Approach\n\nDo.",
         )
@@ -144,10 +146,10 @@ def test_r04_check_loop_needs_a_light_phase_reports_and_a_passing_review(
 ) -> None:
     project = _world(tmp_path)
     monkeypatch.chdir(tmp_path)
-    assert _script().main([PHASE, "--check-loop"]) == 1
+    assert _script().main([PHASE, "--check-loop", "--at", "abc"]) == 1
     assert "no passing review check-run" in capsys.readouterr().err
     _review(project)
-    assert _script().main([PHASE, "--check-loop"]) == 0
+    assert _script().main([PHASE, "--check-loop", "--at", "abc"]) == 0
 
 
 def test_r04_check_loop_rejects_a_full_phase_with_a_specification(
@@ -164,6 +166,92 @@ def test_r04_check_loop_rejects_a_full_phase_with_a_specification(
         "## Requirements\n\nR1: One.\n\n## Acceptance criteria\n\nx\n\n## Constraints\n\nx\n\n## Non-goals\n\nx\n\n## Invariants\n\nx\n\n## Assumptions\n\nx",
     )
     monkeypatch.chdir(tmp_path)
-    assert _script().main([PHASE, "--check-loop"]) == 1
+    assert _script().main([PHASE, "--check-loop", "--at", "abc"]) == 1
     err = capsys.readouterr().err
     assert "not light" in err and "score:specification" in err
+
+
+def _loop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> tuple[int, str]:
+    monkeypatch.chdir(tmp_path)
+    status = _script().main([PHASE, "--check-loop", "--at", "abc"])
+    return status, capsys.readouterr().err
+
+
+def test_r04_check_loop_rejects_a_failing_execution_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _world(tmp_path)
+    _review(project)
+    time.sleep(1.1)
+    create(
+        project,
+        "conductor:execution-report",
+        "a",
+        {"work_item": "a", "result": "fail", "verdict": "fail", "revision": "abc"},
+        "evidence: bad",
+    )
+    status, err = _loop(monkeypatch, tmp_path, capsys)
+    assert status == 1 and "latest execution report is fail" in err
+
+
+def test_r04_check_loop_rejects_a_failing_current_acceptance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _world(tmp_path)
+    _review(project)
+    time.sleep(1.1)
+    acceptance = project.resolve("score:acceptance", "a")
+    create(
+        project,
+        "tuner:check-run",
+        "a",
+        {
+            "criterion_id": acceptance["id"],
+            "revision": "abc",
+            "result": "fail",
+            "effort": "ef",
+            "method": "check",
+            "signed_by": "",
+        },
+        "bad",
+    )
+    status, err = _loop(monkeypatch, tmp_path, capsys)
+    assert status == 1 and "no current passing check-run" in err
+
+
+def test_r04_check_loop_rejects_a_review_for_another_revision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _world(tmp_path)
+    _review(project)
+    monkeypatch.chdir(tmp_path)
+    assert _script().main([PHASE, "--check-loop", "--at", "def"]) == 1
+    assert "passing review is for abc" in capsys.readouterr().err
+
+
+def test_r04_check_loop_needs_a_closing_verification_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _world(tmp_path)
+    _review(project)
+    record = project.resolve("score:work-item", "b")
+    project.update(record["id"], record_type="score:work-item", payload={"depends_on": []})
+    status, err = _loop(monkeypatch, tmp_path, capsys)
+    assert status == 1 and "no closing verification task" in err
+
+
+def test_r04_a_superseded_task_counts_once_and_keeps_its_operations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _world(tmp_path)
+    _review(project)
+    before, tasks_before = _script().count_operations(project, PHASE)
+    record = project.resolve("score:work-item", "a")
+    project.supersede(record["id"], record_type="score:work-item", payload={"title": "a2"})
+    after, tasks_after = _script().count_operations(project, PHASE)
+    assert tasks_after == tasks_before == 2
+    assert after["score:work-item"] > before["score:work-item"]
+    _, err = _loop(monkeypatch, tmp_path, capsys)
+    assert "superseded" not in err
