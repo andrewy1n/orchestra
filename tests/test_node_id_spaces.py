@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
 from canon_support import create, make_project
@@ -77,3 +78,38 @@ def test_check_run_stores_the_whole_spaced_node_id(tmp_path: Path) -> None:
     assert outcome.exit_code == 1
     assert outcome.record is not None
     assert outcome.record["payload"]["failing_node_ids"] == [SPACED]
+
+
+def test_harden_unspaced_ids_parse_on_crlf_and_trailing_blank_lines() -> None:
+    assert parse_failing_node_ids("FAILED a.py::t\r\n") == ["a.py::t"]
+    assert parse_failing_node_ids("FAILED a.py::t   \n") == ["a.py::t"]
+    assert parse_failing_node_ids("FAILED a.py::t[a b]\r\n") == ["a.py::t[a b]"]
+    assert parse_failing_node_ids("FAILED a.py::t[a b]  \n") == ["a.py::t[a b]"]
+
+
+def test_harden_an_unclosed_bracket_still_parses_as_before() -> None:
+    assert parse_failing_node_ids("FAILED a.py::t[a\n") == ["a.py::t[a"]
+
+
+def test_harden_double_colons_inside_brackets_and_a_closing_bracket_in_the_message() -> None:
+    assert parse_failing_node_ids("FAILED a.py::T::t[x::y z] - assert [1] == [2]\n") == [
+        "a.py::T::t[x::y z]"
+    ]
+
+
+def test_harden_a_nested_class_with_a_spaced_id_stays_whole() -> None:
+    line = "FAILED tests/t.py::TestCls::TestInner::test_x[Success measure] - AssertionError\n"
+    assert parse_failing_node_ids(line) == [
+        "tests/t.py::TestCls::TestInner::test_x[Success measure]"
+    ]
+
+
+def test_harden_an_error_line_without_a_double_colon_yields_nothing() -> None:
+    assert parse_failing_node_ids("ERROR a.py - ImportError\n") == []
+
+
+def test_harden_a_very_long_single_line_parses_in_linear_time() -> None:
+    start = time.monotonic()
+    result = parse_failing_node_ids("FAILED " + "a::" * 20000 + " z\n")
+    assert time.monotonic() - start < 1.0
+    assert result == ["a::" * 20000 + ""]

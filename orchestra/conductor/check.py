@@ -114,7 +114,8 @@ def _body_tail(output: str) -> str:
     return output[-OUTPUT_BODY_CHARS:]
 
 
-_NODE = r"(\S+::[^\[\s]*(?:\[.*?\])?)(?= - |$)"
+_BRACKETED = r"[^\s:\[]+(?:::[^\s:\[]+)+(?:\[.*?\])?(?= - |[ \t]*\r?$)"
+_NODE = rf"({_BRACKETED}|\S+::\S+)"
 _NODE_ID_RE = re.compile(rf"(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
 _SUMMARY_NODE_RE = re.compile(rf"^(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
 
