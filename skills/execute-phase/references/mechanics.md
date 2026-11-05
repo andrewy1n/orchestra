@@ -442,3 +442,11 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
   with method `tdd`/`check` (those come from `orchestra check`). Suite
   (`orchestra suite record`) and `manual`/`review` stay parent writes
 - Let a subagent sign an amendment or write `test_ids` / `oracle_hashes`
+
+
+## Do not (moved from SKILL.md)
+
+- Re-dispatch after retry budget exhaustion without `scope:
+  retry:<task-slug>`; skip the retryable `in_progress` pass
+- Put a whole-suite command on a per-task `verify_command`; let the
+  reviewer call `canon`

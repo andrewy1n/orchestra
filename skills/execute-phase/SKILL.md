@@ -118,7 +118,11 @@ orchestra wave end <phase-slug>
    you run land, unless an active constraint authorizes it. On a
    non-zero exit, stop and ask. Do not merge the phase branch by hand.
    Do not push from phase close.
-8. Run `canon validate`. Record-versus-bind commands: [mechanics.md](references/mechanics.md).
+8. After a phase closes, read the effort's `autonomy`. At `auto-phases`,
+   plan and promote the next phase without asking (`plan-phase`); at
+   `gated` and `auto-plan`, ask first. At every level, stop for a failed
+   check, a needs-human finding, a push, or a merge.
+9. Run `canon validate`. Record-versus-bind commands: [mechanics.md](references/mechanics.md).
 
 ## Do not
 
@@ -141,10 +145,6 @@ orchestra wave end <phase-slug>
   resolve a merge conflict
 - Let the verification executor edit the tree; reopen `done` (create a
   fix work-item and `depends_on` instead)
-- Re-dispatch after retry budget exhaustion without `scope:
-  retry:<task-slug>`; skip the retryable `in_progress` pass
-- Put a whole-suite command on a per-task `verify_command`; let the
-  reviewer call `canon`
 - Let an executor edit frozen oracle files, sign an amendment, or write
   `test_ids` / `oracle_hashes`; `create`/`correct` a task check-run
   with method `tdd`/`check` (those come from `orchestra check`)
