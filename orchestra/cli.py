@@ -557,7 +557,7 @@ def _load_review_records(
     project = location.open()
     records: list[Record] = []
     failures: list[str] = []
-    for kind in sorted(reviewer.ALLOWED_KINDS - {"requirement"}):
+    for kind in sorted(reviewer.ALLOWED_KINDS):
         record_type = f"score:{kind}"
         try:
             rows = project.list(record_type)
@@ -612,12 +612,10 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
             {
                 "phase": report.phase,
                 "stage": report.stage,
-                "skipped": report.skipped,
+                "skipped": False,
                 "findings": [f.to_dict() for f in report.findings],
             }
         )
-    elif report.skipped:
-        print(f"{args.phase}: skipped, no active specification")
     else:
         for f in report.findings:
             print(f"{f.severity} {f.code} {f.subject}: {f.message}")

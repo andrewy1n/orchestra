@@ -187,7 +187,9 @@ def test_migration_replay(store: Path) -> None:
     assert migrated["payload"] == {**run["payload"], "criterion_id": "gates-suite"}
     assert project.get(run["id"]) == run
     after = project.records()
-    assert _run(store, apply=True)["recoverable"] == []
+    report = _run(store, apply=True)
+    assert report["recoverable"] == []
+    assert report["applied"] is False
     assert project.records() == after
 
 

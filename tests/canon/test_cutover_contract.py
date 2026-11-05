@@ -309,8 +309,9 @@ def test_migration_path_retains_numeric_version_coercion() -> None:
 def test_transform_retains_nonstring_rename_type_target() -> None:
     record = _record(EFFORT_ID, "alpha:config", "legacy", {"title": "item"})
     step: JsonObject = {"rename_type": {"alpha:config": 42}}
+    module: JsonObject = {"namespace": "alpha", "types": {"config": {"fields": {}}}}
 
-    moved = transform(record, [step])
+    moved = transform(record, [step], module)
 
     assert moved["record_type"] == 42
 

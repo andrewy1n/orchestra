@@ -87,7 +87,7 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
     token = project.change_token()
     index = RecordIndex(project.records())
     report: RecoveryReport = {
-        "applied": apply,
+        "applied": False,
         "recoverable": [],
         "fresh_proof_required": [],
         "historical": [],
@@ -178,4 +178,5 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
     report["recoverable"] = [str(op["id"]) for op in ops]
     if apply and ops:
         project.apply_at_snapshot(ops, token)
+        report["applied"] = True
     return report

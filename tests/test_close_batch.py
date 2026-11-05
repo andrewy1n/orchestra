@@ -1434,6 +1434,32 @@ def test_oracle_amendment_approved_allows_new_hashes(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
+def test_oracle_amendment_with_invalid_hashes_refuses_with_amendment_id(tmp_path):
+    repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
+    entry = _tdd_with_dirty_red(
+        revision=green_sha,
+        **_assertion_red_fields(),
+    )
+    amendment = {
+        "id": "rec-am-malformed",
+        "lifecycle_state": "active",
+        "payload": {
+            "acceptance": "rec-ac1",
+            "status": "approved",
+            "new_hashes": ["not-a-hash"],
+            "effort": "effort-1",
+        },
+    }
+
+    with pytest.raises(close_batch.CloseRefused, match=r"rec-am-malformed.*new_hashes"):
+        _build_oracle(
+            _request(criteria=[entry]),
+            cwd=repo,
+            acceptance=_oracle_acceptance(oracle_hashes=ORACLE_HASHES_V1),
+            amendments=[amendment],
+        )
+
+
 def test_freeze_hash_refuses_requested_amendment_not_approved(tmp_path):
     repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
     entry = _tdd_with_dirty_red(

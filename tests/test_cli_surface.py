@@ -167,7 +167,11 @@ def test_review_brief_reads_only_stored_record_kinds(tmp_path, monkeypatch, caps
             calls.append(record_type)
             return []
 
-    monkeypatch.setattr(cli, "open_store", lambda _directory: _Project())
+    class _Location:
+        def open(self):
+            return _Project()
+
+    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
     code, out, err = run(
         [
             "review-brief",
@@ -196,7 +200,11 @@ def test_review_brief_refuses_partial_records_on_read_failure(tmp_path, monkeypa
                 return [{"record_type": record_type, "subject": "task"}]
             return []
 
-    monkeypatch.setattr(cli, "open_store", lambda _directory: _Project())
+    class _Location:
+        def open(self):
+            return _Project()
+
+    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
 
     code, out, err = run(
         [

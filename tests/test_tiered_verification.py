@@ -25,6 +25,7 @@ from orchestra.conductor.suite import (
     advisory_finding_payload,
     build_suite_check_run_payload,
     cluster_by_module,
+    is_suite_subject,
     module_fix_subject,
     parse_failing_node_ids,
     phase_suite_gate_holds,
@@ -178,7 +179,8 @@ def test_background_tmux_start_is_non_blocking(tmp_path: Path):
 def test_suite_subject_uses_suite_suffix_not_tier2():
     assert suite_subject(PHASE) == f"{PHASE}-suite"
     assert suite_subject(f"{PHASE}-suite") == f"{PHASE}-suite"
-    assert suite_subject(f"{PHASE}-tier2") == f"{PHASE}-suite"
+    assert suite_subject(f"{PHASE}-tier2") == f"{PHASE}-tier2-suite"
+    assert not is_suite_subject(f"{PHASE}-tier2")
 
 
 def test_runner_records_suite_check_run_payload_fields():

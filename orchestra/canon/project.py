@@ -43,6 +43,10 @@ class StoreBindingError(Exception):
     """The selected store is missing, unbound, or not a local/global binding."""
 
 
+class NoArtifactStoreError(StoreBindingError):
+    """No local or global artifact store is bound to a project."""
+
+
 @dataclass(frozen=True)
 class Binding:
     """The binding that won: a local or global place, and where that choice came from.
@@ -288,7 +292,7 @@ def _open_bound(root: Path) -> Project:
     if _has_config(home):
         return _open(root, home, Binding("global", "default"))
 
-    raise StoreBindingError(
+    raise NoArtifactStoreError(
         f"No artifact store for {root}: neither {local} nor {home} has config.json"
     )
 

@@ -35,7 +35,6 @@ from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
-LEGACY_SUBJECT_SUFFIX = "-tier2"
 METHOD = "check"
 
 SKIPPED_EXIT_CODE = 4
@@ -114,14 +113,12 @@ def suite_subject(phase_slug: str) -> str:
         raise ValueError("phase_slug is required")
     if slug.endswith(SUBJECT_SUFFIX):
         return slug
-    if slug.endswith(LEGACY_SUBJECT_SUFFIX):
-        return slug[: -len(LEGACY_SUBJECT_SUFFIX)] + SUBJECT_SUFFIX
     return f"{slug}{SUBJECT_SUFFIX}"
 
 
 def is_suite_subject(subject: str) -> bool:
     text = (subject or "").strip()
-    return text.endswith(SUBJECT_SUFFIX) or text.endswith(LEGACY_SUBJECT_SUFFIX)
+    return text.endswith(SUBJECT_SUFFIX)
 
 
 def cluster_by_module(node_ids: Sequence[str]) -> dict[str, list[str]]:

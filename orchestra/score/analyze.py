@@ -61,7 +61,6 @@ class Finding:
 class Report:
     phase: str
     stage: str
-    skipped: bool = False
     findings: list[Finding] = field(default_factory=list)
 
     @property

@@ -627,7 +627,7 @@ def test_structured_dismiss(
             if row["subject"].startswith("plan-rejected:")
         )
         assert routed["payload"]["basis"] == note
-        assert note in routed["body"]
+        assert note in routed.get("body", "")
         answered = target.get(question.id, question.record_type)
         assert answered["lifecycle_state"] == "answered"
         assert answered["payload"]["answer"] == note

@@ -57,9 +57,7 @@ def _map_value(
     return value
 
 
-def transform(
-    record: Record, steps: list[JsonObject], target_module: JsonObject | None = None
-) -> Record:
+def transform(record: Record, steps: list[JsonObject], target_module: JsonObject) -> Record:
     out: Record = record.copy()
     payload = dict(out.get("payload") or {})
     typed_steps: list[_Migration] = steps  # pyright: ignore[reportAssignmentType]  # Schema validation supplies migration objects; runtime values remain unaltered.
@@ -76,15 +74,12 @@ def transform(
         for key, mapping in map_enum.items():
             record_type, field = key.rsplit(".", 1)
             if record_type == out["record_type"] and field in payload:
-                allowed: list[str] | None = None
-                if target_module is not None:
-                    types = get_object(target_module, "types") or {}
-                    type_def = get_object(types, record_type.split(":", 1)[1])
-                    fields = get_object(type_def, "fields") if type_def is not None else None
-                    enum_form = get_object(fields, field) if fields is not None else None
-                    values = get_list(enum_form, "enum") if enum_form is not None else None
-                    if values is not None:
-                        allowed = [value for value in values if isinstance(value, str)]
+                types = get_object(target_module, "types") or {}
+                type_def = get_object(types, record_type.split(":", 1)[1])
+                fields = get_object(type_def, "fields") if type_def is not None else None
+                enum_form = get_object(fields, field) if fields is not None else None
+                values = get_list(enum_form, "enum") if enum_form is not None else None
+                allowed = [value for value in values or [] if isinstance(value, str)]
                 payload[field] = _map_value(mapping, payload[field], allowed)
     out["payload"] = payload
     return out
@@ -96,24 +91,21 @@ def _changed(before: Record, after: Record) -> bool:
     )
 
 
-def apply_steps(
-    store: Backend, steps: list[JsonObject], target_module: JsonObject | None = None
-) -> int:
+def apply_steps(store: Backend, steps: list[JsonObject], target_module: JsonObject) -> int:
     """Rewrite every record and history snapshot the steps touch. Returns the live record count."""
     snapshots = list(store.read_history())
     records = list(store.iter_records())
-    if target_module is not None:
-        namespace = get_string(target_module, "namespace")
-        target_types = get_object(target_module, "types") or {}
-        if namespace is None:
-            raise SchemaError("migration target namespace is missing")
-        valid_types = [f"{namespace}:{name}" for name in target_types]
-        for record in [*snapshots, *records]:
-            moved = transform(record, steps, target_module)
-            record_type = record["record_type"]
-            moved_type = moved["record_type"]
-            if record_type.startswith(f"{namespace}:") and moved_type not in valid_types:
-                raise SchemaError(f"{record_type}: migration has no valid target type mapping")
+    namespace = get_string(target_module, "namespace")
+    target_types = get_object(target_module, "types") or {}
+    if namespace is None:
+        raise SchemaError("migration target namespace is missing")
+    valid_types = [f"{namespace}:{name}" for name in target_types]
+    for record in [*snapshots, *records]:
+        moved = transform(record, steps, target_module)
+        record_type = record["record_type"]
+        moved_type = moved["record_type"]
+        if record_type.startswith(f"{namespace}:") and moved_type not in valid_types:
+            raise SchemaError(f"{record_type}: migration has no valid target type mapping")
     for snapshot in snapshots:
         moved = transform(snapshot, steps, target_module)
         if not _changed(snapshot, moved):

@@ -11,7 +11,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import NoArtifactStoreError, StoreBindingError, open_store
 from orchestra.sessions.record_join import join
 from orchestra.sessions.record_reader import read_project_records
 from orchestra.sessions.session_fields import session_fields
@@ -93,10 +93,11 @@ def _read_all(
             if key not in by_store:
                 by_store[key] = read_project_records(project)
             stores_by_cwd[cwd] = key
+        except NoArtifactStoreError:
+            continue
         except StoreBindingError as exc:
-            if not str(exc).startswith("No artifact store for "):
-                failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
-                failed_cwds.add(cwd)
+            failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+            failed_cwds.add(cwd)
             continue
         except Exception as exc:
             failures.append(f"{cwd}: {type(exc).__name__}: {exc}")

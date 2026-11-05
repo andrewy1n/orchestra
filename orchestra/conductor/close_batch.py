@@ -568,8 +568,10 @@ def _approved_amendment_covers_tree(
             continue
         try:
             new_hashes = parse_hashes(payload.get("new_hashes"))
-        except ValueError:
-            continue
+        except ValueError as exc:
+            raise CloseRefused(
+                f"approved oracle-amendment {record['id']!r} has invalid new_hashes: {exc}"
+            ) from exc
         if new_hashes and new_hashes == tree_hashes:
             return True
     return False
