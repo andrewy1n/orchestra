@@ -24,12 +24,9 @@ class Mapping:
     level: str
 
 
-_PHASES = r"(?:[\w-]+ )?phases?"
-_GATE = re.compile(
-    rf"plan-review gates?(?: for (?:every|each|all) {_PHASES})? (?:are|is) pre-?authorized(?: by the user)?"
-)
-_EXECUTE = re.compile(r"plan and execute each (?:[\w-]+ )?phase without asking")
-_EXECUTE_THROUGH = re.compile(r"plan each phase and automatically execute through [\w, -]+")
+_SLUGS = r"[\w-]+(?:, [\w-]+)*(?:,? and [\w-]+)?"
+_EXECUTE = re.compile(r"plan and execute each phase without asking")
+_EXECUTE_THROUGH = re.compile(rf"plan each phase and automatically execute through {_SLUGS}")
 _PROMOTE = re.compile(
     r"plan and promote each next phase without asking(?: once the current one closes)?"
 )
@@ -39,7 +36,16 @@ _STOPS = (
     ),
     re.compile(r"(?:pr )?merges? (?:still )?(?:needs?|requires?) (?:user )?approval"),
 )
+_RESTRICTIVE = frozenset(
+    {"never", "not", "only", "unless", "but", "except", "no", "ask", "otherwise", "if", "when"}
+)
 _MENTIONS = ("preauthorized", "pre-authorized", "without asking", "automatically execute")
+
+
+def _gate(effort: str) -> re.Pattern[str]:
+    named = rf"(?:{re.escape(effort.lower())} )?" if effort else ""
+    scope = rf"(?: for (?:every|each|all) {named}phases?)?"
+    return re.compile(rf"plan-review gates?{scope} (?:are|is) pre-?authorized(?: by the user)?")
 
 
 def _clauses(statement: str) -> list[str]:
@@ -47,17 +53,17 @@ def _clauses(statement: str) -> list[str]:
     return [part.strip() for part in re.split(r"[;.]", text) if part.strip()]
 
 
-def classify(statement: str) -> str | None:
-    clauses = _clauses(statement)
+def classify(statement: str, effort: str = "") -> str | None:
+    gate_pattern = _gate(effort)
     promote = gate = False
-    for clause in clauses:
+    for clause in _clauses(statement):
         if _PROMOTE.fullmatch(clause):
             promote = True
-        elif (
-            _GATE.fullmatch(clause)
-            or _EXECUTE.fullmatch(clause)
-            or _EXECUTE_THROUGH.fullmatch(clause)
-        ):
+        elif _EXECUTE_THROUGH.fullmatch(clause):
+            if _RESTRICTIVE & set(re.findall(r"[\w-]+", clause.split(" through ", 1)[1])):
+                return None
+            gate = True
+        elif gate_pattern.fullmatch(clause) or _EXECUTE.fullmatch(clause):
             gate = True
         elif not any(stop.fullmatch(clause) for stop in _STOPS):
             return None
@@ -119,20 +125,18 @@ def plan_migration(project: Project) -> tuple[list[Mapping], list[str]]:
         if record["lifecycle_state"] != "active":
             continue
         statement = _text(record, "statement")
-        level = classify(statement)
+        effort = resolve_effort(record, known)
+        level = classify(statement, effort)
+        subject = record["subject"]
         if level is None:
             if mentions_autonomy(statement):
                 notes.append(
-                    f"{record['subject']}: mentions autonomy but is not a recognised grant; left alone"
+                    f"{subject}: mentions autonomy but is not a recognised grant; left alone"
                 )
-            continue
-        effort = resolve_effort(record, known)
-        if effort:
-            mappings.append(Mapping(record["id"], record["subject"], effort, level))
+        elif effort:
+            mappings.append(Mapping(record["id"], subject, effort, level))
         else:
-            notes.append(
-                f"{record['subject']}: grants autonomy but covers no known effort; left alone"
-            )
+            notes.append(f"{subject}: grants autonomy but covers no known effort; left alone")
     return sorted(mappings, key=lambda m: (m.effort, m.constraint)), sorted(notes)
 
 

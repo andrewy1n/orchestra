@@ -61,7 +61,7 @@ def test_r07_review_fix_a_restricting_or_scoped_statement_grants_nothing(stateme
     ],
 )
 def test_r07_review_fix_the_real_grants_still_map(statement: str, level: str) -> None:
-    assert autonomy.classify(statement) == level
+    assert autonomy.classify(statement, "record-diet") == level
 
 
 def test_r07_review_fix_the_effort_comes_from_applies_to_or_the_subject_suffix() -> None:
