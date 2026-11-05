@@ -29,6 +29,11 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 - Same `subject` (task slug) for a work-item and its acceptance(s).
   `payload.effort` = focus; `payload.phase` = current phase slug (must
   match a real `score:phase` subject) or `""` for incidental.
+- A light phase (payload `weight` `light`) has no specification or
+  design: take requirement ids and text from `## Requirements` in the
+  phase body, and one acceptance may carry `requirements` (a JSON
+  array of ids) instead of `requirement` when one check proves them
+  all. A full phase keeps one `requirement` per acceptance.
 - Several acceptances: first uses task slug; extras use
   `<task-slug>-<short suffix>`. Do not pick a task slug that is a
   prefix of another in the same phase.
@@ -249,6 +254,8 @@ canon create --type score:continuity-question \
   --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}'
 ```
 
+    The effort's autonomy setting may skip this gate for a light
+    phase; until `effort-autonomy` lands the gate stays on.
     Ask approve / change / send back to `settle-phase`. Change tasks
     on request. On approval, answer the question; only then may
     `execute-phase` run:
