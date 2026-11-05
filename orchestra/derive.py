@@ -24,6 +24,7 @@ SPECIFICATION = "score:specification"
 CHECK_RUN = "tuner:check-run"
 ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
+QUESTION = "score:continuity-question"
 
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
 DORMANT_AFTER = timedelta(days=7)
@@ -260,9 +261,17 @@ def effort_dormant(records: list[Record], effort: str, now: datetime) -> bool:
             and record["lifecycle_state"] in ("planned", "in_progress")
         ):
             return False
+    questions = [r for r in records if r["record_type"] == QUESTION and r["subject"] == effort]
+    if any(
+        r["lifecycle_state"] == "open" and record_payload(r).get("blocking") is True
+        for r in questions
+    ):
+        return False
     touched = [
         _parse_time(r["recorded_at"])
         for r in records
-        if _text(r, "effort") == effort or (r["record_type"] == EFFORT and r["subject"] == effort)
+        if _text(r, "effort") == effort
+        or (r["record_type"] == EFFORT and r["subject"] == effort)
+        or r in questions
     ]
     return bool(touched) and now - max(touched) >= DORMANT_AFTER

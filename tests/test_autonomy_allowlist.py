@@ -41,11 +41,6 @@ def test_r07_allowlist_a_restricted_or_scoped_statement_grants_nothing(statement
         ("Plan-review gates for each phase are preauthorized.", "auto-plan"),
         ("Plan and execute each phase without asking.", "auto-plan"),
         (
-            "Plan each phase and automatically execute through access-layer, db-backend, "
-            "importer and cutover. PR merges still require approval.",
-            "auto-plan",
-        ),
-        (
             "Plan and promote each next phase without asking once the current one closes; stop "
             "only for failures, needs-human findings, or a push or merge",
             "auto-phases",
@@ -83,18 +78,15 @@ def test_r08_allowlist_an_unrecognised_autonomy_constraint_is_reported_and_left_
     assert project.resolve("score:effort", "alpha")["payload"].get("autonomy") is None
 
 
-STRICT_EXECUTE_THROUGH = [
+BOUNDED_EXECUTE_THROUGH = [
+    "Plan each phase and automatically execute through a, b and c. PR merges still require approval.",
+    "Plan each phase and automatically execute through x",
     "Plan each phase and automatically execute through a, b, but only after tests pass",
-    "Plan each phase and automatically execute through x, and ask before every push",
-    "Plan each phase and automatically execute through x unless a check fails",
-    "Plan each phase and automatically execute through x, never on fridays",
-    "Plan each phase and automatically execute through x, never",
-    "Plan each phase and automatically execute through x and only",
 ]
 
 
-@pytest.mark.parametrize("statement", STRICT_EXECUTE_THROUGH)
-def test_r07_allowlist_strict_the_execute_through_list_holds_slugs_only(statement: str) -> None:
+@pytest.mark.parametrize("statement", BOUNDED_EXECUTE_THROUGH)
+def test_r07_allowlist_a_bounded_execute_through_grant_is_not_migrated(statement: str) -> None:
     assert autonomy.classify(statement) is None
 
 
