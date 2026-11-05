@@ -78,9 +78,9 @@ def _parse(text: str) -> subprocess.CompletedProcess[str]:
 
 
 def _rejected(result: subprocess.CompletedProcess[str]) -> None:
-    assert result.returncode != 0
-    assert "invalid choice: 'spawn'" not in result.stdout
-    assert "invalid choice: 'spawn'" not in result.stderr
+    assert result.returncode != 0, "expected refusal"
+    assert "invalid choice: 'spawn'" not in result.stdout, "expected refusal"
+    assert "invalid choice: 'spawn'" not in result.stderr, "expected refusal"
 
 
 def _ok_line(result: subprocess.CompletedProcess[str], line: str) -> None:

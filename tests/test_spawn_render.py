@@ -97,9 +97,9 @@ def _render(
 
 
 def _rejected(result: subprocess.CompletedProcess[str]) -> None:
-    assert result.returncode != 0
-    assert "invalid choice: 'spawn'" not in result.stdout
-    assert "invalid choice: 'spawn'" not in result.stderr
+    assert result.returncode != 0, "\nexpected refusal"
+    assert "invalid choice: 'spawn'" not in result.stdout, "\nexpected refusal"
+    assert "invalid choice: 'spawn'" not in result.stderr, "\nexpected refusal"
 
 
 def _payload(result: subprocess.CompletedProcess[str]) -> dict[str, object]:
@@ -171,7 +171,9 @@ def test_r3_claude_brief() -> None:
 
 def test_r4_cursor_orientation() -> None:
     body = _spec()
-    prompt = _prompt(_payload(_render("cursor", body)))
+    rendered = _render("cursor", body)
+    assert rendered.returncode == 0, "\nexpected render"
+    prompt = _prompt(_payload(rendered))
     _unchanged(
         _section(prompt, "## Orientation", "## Kind"),
         _text(body, "orientation"),
@@ -180,7 +182,9 @@ def test_r4_cursor_orientation() -> None:
 
 def test_r5_claude_orientation() -> None:
     body = _spec()
-    prompt = _prompt(_payload(_render("claude", body)))
+    rendered = _render("claude", body)
+    assert rendered.returncode == 0, "\nexpected render"
+    prompt = _prompt(_payload(rendered))
     _unchanged(
         _section(prompt, "## Orientation", "## Kind"),
         _text(body, "orientation"),

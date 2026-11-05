@@ -164,7 +164,7 @@ def test_r27_submit_render() -> None:
 
 def test_r28_send_message() -> None:
     step = re.sub(r"\s+", " ", _step(6))
-    assert "orchestra spawn message" in step
+    assert "orchestra spawn message" in step, "expected refusal"
     start = step.index("orchestra spawn message")
     window = step[max(0, start - 80) : start + len("orchestra spawn message") + 80]
     assert "send" in window
@@ -172,7 +172,7 @@ def test_r28_send_message() -> None:
 
 def test_r29_record_parse() -> None:
     step = re.sub(r"\s+", " ", _step(7))
-    assert "orchestra spawn parse" in step
+    assert "orchestra spawn parse" in step, "expected refusal"
     start = step.index("orchestra spawn parse")
     window = step[max(0, start - 160) : start + 200]
     assert "execution-report" in window
