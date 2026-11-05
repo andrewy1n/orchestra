@@ -98,8 +98,6 @@ def bind_observation(
         raise
     except Exception as exc:
         raise BindingError(str(exc)) from exc
-    if not isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Preserve runtime handling of malformed record returns.
-        raise BindingError("create did not return a record")
     return record
 
 
