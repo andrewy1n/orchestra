@@ -258,6 +258,14 @@ def _build_parser() -> argparse.ArgumentParser:
     wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
+    wave_end = wave_sub.add_parser(
+        "end", help="Merge each passing task branch into the phase branch in task-slug order"
+    )
+    wave_end.add_argument("phase", help="Phase slug")
+    wave_end.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_end.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    wave_end.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
     task = sub.add_parser("task", help="Land one finished task")
     task_sub = task.add_subparsers(dest="action", required=True)
     task_land = task_sub.add_parser(
@@ -667,6 +675,34 @@ def _close_task(project: Project, landed: land_task.LandedTask) -> str:
         project.update(item["id"], record_type="score:work-item", transition="done")
         return "done"
     return "in_progress"
+
+
+def _cmd_wave_end(args: argparse.Namespace) -> int:
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        result = wave.end(project, wave.repo_root(_cwd(args)), args.phase)
+    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra wave end: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json(
+            {
+                "phase": result.phase,
+                "merged": list(result.merged),
+                "skipped": [{"task": t, "reason": why} for t, why in result.skipped],
+                "conflict": result.conflict,
+                "question": result.question_id,
+            }
+        )
+    else:
+        for task_slug in result.merged:
+            print(f"merged task/{result.phase}/{task_slug}")
+        for task_slug, why in result.skipped:
+            print(f"skipped {task_slug}: {why}")
+        if result.conflict:
+            print(f"conflict merging {result.conflict}; question {result.question_id}")
+    return 1 if result.conflict else 0
 
 
 def _cmd_task_land(args: argparse.Namespace) -> int:
@@ -1166,7 +1202,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "review-brief":
         return _cmd_review_brief(args)
     if args.command == "wave":
-        return _cmd_wave_start(args)
+        return _cmd_wave_start(args) if args.action == "start" else _cmd_wave_end(args)
     if args.command == "task":
         return _cmd_task_land(args)
     if args.command == "analyze":
