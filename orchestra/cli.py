@@ -13,7 +13,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import gate, land, land_task, reviewer, suite, wave
+from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, wave
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
@@ -246,6 +246,21 @@ def _build_parser() -> argparse.ArgumentParser:
         default="-",
         help="Brief path, or '-' for stdout (default)",
     )
+
+    effort = sub.add_parser("effort", help="Effort settings")
+    effort_sub = effort.add_subparsers(dest="action", required=True)
+    autonomy = effort_sub.add_parser(
+        "autonomy", help="Set an effort's autonomy level, or migrate autonomy constraints"
+    )
+    autonomy.add_argument("effort", nargs="?", help="Effort slug")
+    autonomy.add_argument("level", nargs="?", help="gated, auto-plan, or auto-phases")
+    autonomy.add_argument(
+        "--migrate", action="store_true", help="Map autonomy constraints to levels"
+    )
+    autonomy.add_argument("--apply", action="store_true", help="With --migrate, write the changes")
+    autonomy.add_argument("--json", action="store_true", help="Print one JSON object")
+    autonomy.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    autonomy.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
     wave = sub.add_parser("wave", help="Start and end the waves of a phase")
     wave_sub = wave.add_subparsers(dest="action", required=True)
@@ -625,6 +640,37 @@ def _cmd_review_brief(args: argparse.Namespace) -> int:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(brief, encoding="utf-8")
     print(destination)
+    return 0
+
+
+def _cmd_effort_autonomy(args: argparse.Namespace) -> int:
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        if args.migrate:
+            mappings = autonomy.plan_migration(project)
+            applied = autonomy.apply_migration(project, mappings) if args.apply else {}
+            rows = [
+                {"constraint": m.constraint, "effort": m.effort, "level": m.level} for m in mappings
+            ]
+            if args.json:
+                _print_json({"mappings": rows, "applied": bool(args.apply), "levels": applied})
+            else:
+                for row in rows:
+                    print(f"{row['constraint']}: {row['effort']} -> {row['level']}")
+                print("applied" if args.apply else "dry run; pass --apply to write")
+            return 0
+        if not args.effort or not args.level:
+            print("orchestra effort autonomy: an effort and a level are required", file=sys.stderr)
+            return 2
+        record = autonomy.set_autonomy(project, args.effort, args.level)
+    except (autonomy.AutonomyError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra effort autonomy: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json({"effort": args.effort, "autonomy": args.level, "record": record["id"]})
+    else:
+        print(f"{args.effort}: autonomy {args.level}")
     return 0
 
 
@@ -1203,6 +1249,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_review_brief(args)
     if args.command == "wave":
         return _cmd_wave_start(args) if args.action == "start" else _cmd_wave_end(args)
+    if args.command == "effort":
+        return _cmd_effort_autonomy(args)
     if args.command == "task":
         return _cmd_task_land(args)
     if args.command == "analyze":
