@@ -406,6 +406,8 @@ def test_gate_names_missing_suite_at_a_stale_head(phase: Phase) -> None:
         pytest.param("abcd", "ABCD", True, id="exact-short"),
         pytest.param("abcdef0", "abcdef0123", True, id="seven-prefix"),
         pytest.param("abcdef0123", "abcdef0", True, id="reverse-seven-prefix"),
+        pytest.param("abcdef01", "abcdef0123", True, id="longer-prefix"),
+        pytest.param("abcdef0123", "abcdef01", True, id="reverse-longer-prefix"),
         pytest.param("abcdef", "abcdef0123", False, id="six-prefix"),
         pytest.param("", "abcdef0123", False, id="empty-checked"),
         pytest.param("abcdef0", "", False, id="empty-head"),
