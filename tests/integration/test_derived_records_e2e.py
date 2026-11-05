@@ -214,25 +214,47 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Run]:
     second_check = world.check(acceptance["id"])
     after_second_check = world.counts()
 
-    world.create(
+    report = world.create(
         "conductor:execution-report",
         IMPL,
         {"work_item": IMPL, "result": "pass", "verdict": "pass", "revision": head},
         "subject: dr\nresult: pass\n",
     )
-    batch = world.store / "close.ndjson"
-    batch.write_text(
+    green = json.loads(first_check.stdout)["record"]
+    request = world.store / "close-request.json"
+    request.write_text(
         json.dumps(
             {
-                "op": "update",
-                "type": "score:work-item",
-                "id": impl["id"],
+                "subject": IMPL,
+                "effort": EFFORT,
+                "work_item_id": impl["id"],
                 "transition": "done",
-                "expected_revision": "@current",
+                "execution_report_id": report["id"],
+                "acceptance_ids": [acceptance["id"]],
+                "criteria": [
+                    {
+                        "criterion_id": acceptance["id"],
+                        "method": "check",
+                        "check_run_id": green["id"],
+                        "result": "pass",
+                    }
+                ],
+                "finding": None,
             }
         )
-        + "\n"
     )
+    batch = world.store / "close.ndjson"
+    built = world.run(
+        "orchestra",
+        "close-batch",
+        "--input",
+        str(request),
+        "--out",
+        str(batch),
+        "--cwd",
+        str(world.code),
+    )
+    assert built.returncode == 0, built.stdout + built.stderr
     applied = world.run("canon", "apply", str(batch))
     assert applied.returncode == 0, applied.stdout + applied.stderr
     assert json.loads(applied.stdout)["ok"] is True

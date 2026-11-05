@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -117,7 +118,26 @@ def _spec(cli, defs, *requirements: str) -> dict:
     )
 
 
-def _acceptance_with_run(cli, defs, requirement: str, result: str) -> None:
+def _add_run(cli, defs, acceptance: dict, requirement: str, result: str, name: str) -> None:
+    _record(
+        cli,
+        defs,
+        "tuner:check-run",
+        name,
+        {
+            "criterion_id": acceptance["id"],
+            "revision": "dirty",
+            "result": result,
+            "effort": EFFORT,
+            "method": "check",
+            "signed_by": "ayin",
+            "requirement": requirement,
+            "evidence_kind": "unit",
+        },
+    )
+
+
+def _acceptance_with_run(cli, defs, requirement: str, result: str) -> dict:
     acceptance = _record(
         cli,
         defs,
@@ -132,22 +152,8 @@ def _acceptance_with_run(cli, defs, requirement: str, result: str) -> None:
             "requirement": requirement,
         },
     )
-    _record(
-        cli,
-        defs,
-        "tuner:check-run",
-        f"run-{requirement}",
-        {
-            "criterion_id": acceptance["id"],
-            "revision": "dirty",
-            "result": result,
-            "effort": EFFORT,
-            "method": "check",
-            "signed_by": "ayin",
-            "requirement": requirement,
-            "evidence_kind": "unit",
-        },
-    )
+    _add_run(cli, defs, acceptance, requirement, result, f"run-{requirement}")
+    return acceptance
 
 
 def _snapshot_effort(store: Path) -> snapshot_mod.EffortView:
@@ -222,6 +228,43 @@ def test_written_failed_assessment_wins_over_passing_check(store, cli, defs):
     assert detail.evidence is not None
     assert [(r.status, r.next) for r in detail.evidence.requirements] == [("failed", "execute")]
     assert detail.evidence.release_ready is False
+
+
+def _assess(cli, defs, status: str) -> None:
+    _record(
+        cli,
+        defs,
+        "conductor:assessment",
+        f"{PHASE}-R1",
+        {
+            "requirement": "R1",
+            "phase": PHASE,
+            "effort": EFFORT,
+            "missing": "",
+            "confidence": "high",
+            "status": status,
+            "next": "execute",
+            "level": "implementation",
+        },
+    )
+
+
+def test_stale_non_verified_assessment_yields_to_newer_passes(store, cli, defs):
+    _seed_phase(cli, defs)
+    _spec(cli, defs, "R1")
+    acceptance = _acceptance_with_run(cli, defs, "R1", "pass")
+    time.sleep(1.1)
+    _assess(cli, defs, "blocked")
+    detail = phase_mod.load_phase_detail(open_store(store), EFFORT, PHASE)
+    assert detail.evidence is not None
+    assert [r.status for r in detail.evidence.requirements] == ["blocked"]
+    time.sleep(1.1)
+    _add_run(cli, defs, acceptance, "R1", "pass", "run-R1-again")
+    detail = phase_mod.load_phase_detail(open_store(store), EFFORT, PHASE)
+    assert detail.evidence is not None
+    assert [r.status for r in detail.evidence.requirements] == ["verified"]
+    requirement = phase_mod.load_requirement_detail(open_store(store), EFFORT, PHASE, "R1")
+    assert requirement.status == "verified"
 
 
 def test_snapshot_release_ready_derived(store, cli, defs):

@@ -27,6 +27,7 @@ class RequirementStatus:
     acceptance_ids: tuple[str, ...] = ()
     check_run_ids: tuple[str, ...] = ()
     assessment_id: str | None = None
+    assessed: str | None = None
 
 
 @dataclass(frozen=True)
@@ -138,21 +139,35 @@ def _derive_requirement(
     )
 
 
+def _passes_after(derived: RequirementStatus, written: Record, by_id: dict[str, Record]) -> bool:
+    if derived.status != "verified":
+        return False
+    return all(
+        by_id[run_id]["recorded_at"] > written["recorded_at"] for run_id in derived.check_run_ids
+    )
+
+
 def requirement_status(
     records: list[Record], phase: str, head: str | None = None
 ) -> dict[str, RequirementStatus]:
+    by_id = {r["id"]: r for r in records}
     statuses: dict[str, RequirementStatus] = {}
     for requirement in _phase_requirement_ids(records, phase):
         derived = _derive_requirement(records, phase, requirement, head)
         written = _written_assessment(records, phase, requirement)
         written_status = _text(written, "status") if written is not None else None
-        if written is not None and written_status not in (None, "verified"):
+        if (
+            written is not None
+            and written_status not in (None, "verified")
+            and not _passes_after(derived, written, by_id)
+        ):
             derived = RequirementStatus(
                 requirement=requirement,
                 status="failed" if written_status == "failed" else "unverified",
                 acceptance_ids=derived.acceptance_ids,
                 check_run_ids=derived.check_run_ids,
                 assessment_id=written["id"],
+                assessed=written_status,
             )
         statuses[requirement] = derived
     return statuses

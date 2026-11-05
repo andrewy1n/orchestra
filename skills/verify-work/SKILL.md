@@ -38,9 +38,10 @@ next. A check-run has no `level` and no `next`.
 
 Verified status is derived, not written: `orchestra view verification`
 reports a requirement `verified` when its acceptances have passing
-check-runs at head. Write a `conductor:assessment` only for a
-non-verified status (`failed`, `insufficient`, `blocked`). A written
-non-verified assessment wins over derivation.
+check-runs. Write a `conductor:assessment` only for a non-verified
+status (`failed`, `insufficient`, `blocked`). A written non-verified
+assessment wins over derivation until every acceptance for the
+requirement has a passing check-run recorded after it.
 
 Write the records for one task through one `canon apply` call (step
 8). The `canon create`, `update`, and `supersede` commands in this
@@ -337,7 +338,7 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Run `canon create`, `update`, or `supersede` one by one for the
   records of one task; write them through one `canon apply`
 - Write a `conductor:assessment` for a `verified` status; verified is
-  derived (the one exception is in assess.md, Clearing)
+  derived
 - Put `level` or `next` on a check-run
 - Treat a failing concurrency test as proof the design is wrong
 - Send every failure to `execute`; escalate by failure count; insert

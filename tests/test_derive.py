@@ -138,6 +138,31 @@ def test_written_non_verified_assessment_wins():
     assert not release_ready(records, "p")
 
 
+def test_stale_non_verified_assessment_yields_to_newer_passes():
+    a1 = _acceptance("a1", "p", "R1")
+    a2 = _acceptance("a2", "p", "R1")
+    records = [_spec("p", "R1"), a1, a2, _check_run(a1, "pass")]
+    assessment = _assessment("p", "R1", "blocked")
+    records.append(assessment)
+    assert requirement_status(records, "p")["R1"].assessment_id == assessment["id"]
+    records.append(_check_run(a2, "pass"))
+    assert requirement_status(records, "p")["R1"].assessment_id == assessment["id"]
+    records.append(_check_run(a1, "pass"))
+    status = requirement_status(records, "p")["R1"]
+    assert status.status == "verified"
+    assert status.assessment_id is None
+    assert release_ready(records, "p")
+
+
+def test_stale_assessment_with_newer_failure_still_wins():
+    a1 = _acceptance("a1", "p", "R1")
+    assessment = _assessment("p", "R1", "insufficient")
+    records = [_spec("p", "R1"), a1, assessment, _check_run(a1, "pass"), _check_run(a1, "fail")]
+    status = requirement_status(records, "p")["R1"]
+    assert status.assessment_id == assessment["id"]
+    assert status.assessed == "insufficient"
+
+
 def test_release_ready():
     a1 = _acceptance("a1", "p", "R1")
     a2 = _acceptance("a2", "p", "R2")

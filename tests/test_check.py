@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import helpers as h
@@ -663,6 +664,34 @@ def test_check_writes_for_changed_result(store, cli, resolved_contract, tmp_path
     assert green["record"]["payload"]["revision"] == red["record"]["payload"]["revision"]
     assert green["record"]["payload"]["result"] == "pass"
     assert len(_list_check_runs(store)) == 2
+
+
+def test_check_writes_when_latest_result_differs(store, cli, resolved_contract, tmp_path):
+    flag = tmp_path / "flag"
+    acceptance = _seed_acceptance(
+        store,
+        cli,
+        resolved_contract,
+        subject="pass-fail-pass-task",
+        verify_command=_flag_command(flag),
+    )
+    flag.write_text("ok\n")
+    _, first_pass = _run_check_json(store, acceptance["id"])
+    time.sleep(1.1)
+    flag.unlink()
+    _, fail = _run_check_json(store, acceptance["id"])
+    time.sleep(1.1)
+    flag.write_text("ok\n")
+    code, second_pass = _run_check_json(store, acceptance["id"])
+    assert code == 0
+    assert fail["reused"] is False
+    assert second_pass["reused"] is False
+    assert second_pass["record"]["id"] not in {first_pass["record"]["id"], fail["record"]["id"]}
+    assert len(_list_check_runs(store)) == 3
+    time.sleep(1.1)
+    _, again = _run_check_json(store, acceptance["id"])
+    assert again["reused"] is True
+    assert again["record"]["id"] == second_pass["record"]["id"]
 
 
 def test_red_first_gate_after_reuse(store, cli, resolved_contract, tmp_path):

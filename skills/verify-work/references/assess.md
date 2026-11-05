@@ -6,8 +6,10 @@ step 5.
 
 Write a `conductor:assessment` only for a requirement whose status is
 non-verified: `failed`, `insufficient`, or `blocked`. A requirement
-whose acceptances have passing check-runs at head is `verified` in
-`orchestra view verification`; write no assessment for it. A written non-verified assessment wins over derivation.
+whose acceptances have passing check-runs is `verified` in
+`orchestra view verification`; write no assessment for it. A written
+non-verified assessment wins over derivation until newer passing
+check-runs for every acceptance supersede it.
 
 Subject is `<phase-slug>-<requirement-id>`. Reason names the
 cause in words — the check-run does not. Payload: `requirement`,
@@ -125,29 +127,10 @@ oracle verify holds. When it does not hold, write an `insufficient`
 assessment with `missing` `oracle` so the derived status does not
 stand.
 
-A written non-verified assessment keeps winning until it is
-superseded. Clearing: when the check-runs for a requirement now pass
-and an active non-verified assessment exists for it, supersede that
-assessment with `status` `verified` (omit `level`; `next` `release`;
-`confidence` `high`; `missing` empty). This is the only write with
-`verified`. Never `create` an assessment with `status` `verified`.
-
-```bash
-canon supersede --type conductor:assessment --id <assessment-id> \
-  --expected-revision <revision> \
-  --payload '{"requirement":"<requirement-id>","status":"verified","next":"release","confidence":"high","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
-  --body "## Evidence
-
-<the passing check-runs for this requirement; for oracle-backed: assertion-level red id, green id, hash match or approved oracle-amendment id>
-
-## Missing
-
-none
-
-## Reason
-
-<the earlier cause is resolved>"
-```
+A written non-verified assessment wins until every acceptance for the
+requirement has a passing check-run recorded after it. Then the derived
+`verified` status stands. Write no clearing assessment. Never write an
+assessment with `status` `verified`.
 
 ## Evidence escalation
 

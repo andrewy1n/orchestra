@@ -104,7 +104,7 @@ def test_routing_table_chooses_next_from_the_evidence():
         for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
     }
     assert ("design", "design", "failed") in superseded
-    assert (None, "release", "verified") in superseded
+    assert not [status for _, _, status in superseded if status == "verified"]
 
 
 def test_evidence_escalation_ladder():

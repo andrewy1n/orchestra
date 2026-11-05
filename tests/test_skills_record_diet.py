@@ -92,13 +92,12 @@ def test_verify_work_assesses_only_non_verified() -> None:
     creates = _invocations(text, "create", "conductor:assessment")
     assert creates
     assert all(inv["payload"]["status"] != "verified" for inv in creates)
-    verified = [
+    assert not [
         inv
         for inv in _invocations(text, "supersede", "conductor:assessment")
         if inv["payload"]["status"] == "verified"
     ]
-    assert len(verified) == 1
-    assert "Never `create` an assessment with `status` `verified`." in flat
+    assert "Never write an assessment with `status` `verified`." in flat
     assert not _invocations(text, "create", "conductor:release")
 
 

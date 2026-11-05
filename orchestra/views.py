@@ -66,6 +66,7 @@ class View:
     show_derived: tuple[str, ...] = ()
     show_assignment: bool = False
     show_phase_derived: bool = False
+    phase_derived_section: bool = False
     tally_type: str | None = None
     tally_field: str = "result"
 
@@ -203,6 +204,7 @@ VERIFICATION = View(
         FINDING_OPEN,
     ),
     group_by="subject",
+    phase_derived_section=True,
 )
 
 STATUS = View(
@@ -360,7 +362,14 @@ def _assignment_bits(record: Record, records: list[Record]) -> list[str]:
     return bits
 
 
-def _phase_derived_lines(records: list[Record], phase: str) -> list[str]:
+def _effort_pool(records: list[Record], effort: str | None) -> list[Record]:
+    if effort is None:
+        return records
+    return [r for r in records if effort_of(r) in (None, effort)]
+
+
+def _phase_derived_lines(records: list[Record], phase: str, effort: str | None = None) -> list[str]:
+    records = _effort_pool(records, effort)
     progress = phase_progress(records, phase)
     statuses = requirement_status(records, phase)
     if progress.total == 0 and not statuses:
@@ -376,7 +385,7 @@ def _phase_derived_lines(records: list[Record], phase: str) -> list[str]:
         lines.append("### Requirements")
         for requirement, status in statuses.items():
             suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
-            lines.append(f"- **{requirement}**: {status.status}{suffix}")
+            lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
         lines.append("")
         lines += ["### Release", f"- {_release_state(records, phase)}", ""]
     return lines
@@ -477,6 +486,7 @@ def _group_lines(
     records: list[Record],
     *,
     link: bool = True,
+    effort: str | None = None,
 ) -> list[str]:
     lines = [f"## {name}", ""]
     for role in view.roles:
@@ -493,7 +503,7 @@ def _group_lines(
             )
         lines.append("")
     if view.show_phase_derived:
-        lines += _phase_derived_lines(records, name)
+        lines += _phase_derived_lines(records, name, effort)
     return lines
 
 
@@ -511,8 +521,30 @@ def render_view(view: View, records: list[Record], *, effort: str | None = None)
         lines += ["_No matching records._", ""]
         return "\n".join(lines)
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += _group_lines(view, name, groups[name], tally, records)
+        lines += _group_lines(view, name, groups[name], tally, records, effort=effort)
+    if view.phase_derived_section:
+        lines += _phase_section_lines(groups, records, effort)
     return "\n".join(lines)
+
+
+def _phase_section_lines(
+    groups: dict[str, dict[str, list[Record]]], records: list[Record], effort: str | None
+) -> list[str]:
+    phases = sorted(
+        {
+            str(phase)
+            for group in groups.values()
+            for items in group.values()
+            for record in items
+            if (phase := record_payload(record).get("phase"))
+        }
+    )
+    lines: list[str] = []
+    for phase in phases:
+        derived = _phase_derived_lines(records, phase, effort)
+        if derived:
+            lines += [f"## Phase {phase}", "", *derived]
+    return lines
 
 
 BRIEF_ROLES = (

@@ -5,7 +5,7 @@ import json
 
 from orchestra.canon.types import JsonObject, Record
 from orchestra.sessions.record_reader import read_records
-from orchestra.views import STATUS, render_view
+from orchestra.views import STATUS, VERIFICATION, render_view
 
 _CLOCK = itertools.count()
 
@@ -81,22 +81,100 @@ def test_views_show_release_ready_when_every_requirement_verified():
 
 def test_views_written_non_verified_assessment_wins_over_derivation():
     a1 = _acceptance("a1", "p", "R1")
+    run = _check_run(a1, "pass")
     assessment = _record(
         "conductor:assessment",
         "p",
         {"phase": "p", "requirement": "R1", "status": "unverified"},
         "active",
     )
-    records = [
-        _spec("p", "R1"),
-        a1,
-        _check_run(a1, "pass"),
-        assessment,
-        _work_item("t1", "p", "done"),
-    ]
+    records = [_spec("p", "R1"), a1, run, assessment, _work_item("t1", "p", "done")]
     out = _status(records)
     assert "- **R1**: unverified" in out
     assert f"assessment: {assessment['id']}" in out
+
+
+def test_verification_view_shows_derived_status():
+    a1 = _acceptance("a1", "p", "R1")
+    a2 = _acceptance("a2", "p", "R2")
+    records = [
+        _spec("p", "R1", "R2"),
+        a1,
+        a2,
+        _check_run(a1, "pass"),
+        _check_run(a2, "fail"),
+    ]
+    out = render_view(VERIFICATION, records)
+    assert "- **R1**: verified" in out
+    assert "- **R2**: failed" in out
+    assert "### Release\n- not ready" in out
+
+
+def test_views_show_written_assessment_status_name():
+    a1 = _acceptance("a1", "p", "R1")
+    a2 = _acceptance("a2", "p", "R2")
+    a3 = _acceptance("a3", "p", "R3")
+    records = [
+        _spec("p", "R1", "R2", "R3"),
+        a1,
+        a2,
+        a3,
+        _check_run(a1, "pass"),
+        _check_run(a2, "pass"),
+        _check_run(a3, "pass"),
+        _work_item("t1", "p", "done"),
+    ]
+    for requirement, status in (("R1", "failed"), ("R2", "blocked"), ("R3", "insufficient")):
+        records.append(
+            _record(
+                "conductor:assessment",
+                "p",
+                {"phase": "p", "requirement": requirement, "status": status},
+                "active",
+            )
+        )
+    for view in (STATUS, VERIFICATION):
+        out = render_view(view, records)
+        assert "- **R1**: failed" in out
+        assert "- **R2**: blocked" in out
+        assert "- **R3**: insufficient" in out
+
+
+def test_views_derivation_scoped_to_effort():
+    a1 = _record(
+        "score:acceptance", "a1", {"phase": "p", "requirement": "R1", "effort": "e1"}, "active"
+    )
+    a2 = _record(
+        "score:acceptance", "a2", {"phase": "p", "requirement": "R1", "effort": "e2"}, "active"
+    )
+    spec1 = _record(
+        "score:specification",
+        "p-spec-1",
+        {"phase": "p", "requirements": ["R1"], "effort": "e1"},
+        "active",
+    )
+    spec2 = _record(
+        "score:specification",
+        "p-spec-2",
+        {"phase": "p", "requirements": ["R1"], "effort": "e2"},
+        "active",
+    )
+    records = [
+        spec1,
+        spec2,
+        a1,
+        a2,
+        _check_run(a1, "pass"),
+        _work_item("t1", "p", "done", effort="e1"),
+        _work_item("t2", "p", "planned", effort="e2"),
+        _work_item("t3", "p", "planned", effort="e2"),
+    ]
+    e1 = render_view(STATUS, records, effort="e1")
+    e2 = render_view(STATUS, records, effort="e2")
+    assert "- 1/1 done" in e1
+    assert "- **R1**: verified" in e1
+    assert "- 0/2 done" in e2
+    assert "- **R1**: unverified" in e2
 
 
 def test_views_phase_progress_derived():

@@ -485,7 +485,10 @@ def _requirement_view(
 ) -> tuple[str, str, str]:
     payload = record_payload(written) if written is not None else None
     written_status = payload.get("status", "") if payload is not None else ""
-    if payload is not None and written_status != "verified":
+    superseded = (
+        derived is not None and derived.status == "verified" and derived.assessment_id is None
+    )
+    if payload is not None and written_status != "verified" and not superseded:
         return written_status, payload.get("next", ""), payload.get("confidence", "")
     confidence = payload.get("confidence", "") if payload is not None else ""
     if derived is not None and derived.status == "verified":

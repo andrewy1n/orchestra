@@ -147,16 +147,28 @@ def _find_identical_check_run(
     revision: str,
     result: str,
 ) -> Record | None:
+    records = project.records()
+    corrected = {
+        record_id
+        for record_id, values in project.derived(records).items()
+        if values.get("corrected")
+    }
     matches = [
         record
-        for record in project.list("tuner:check-run")
-        if record["payload"].get("criterion_id") == criterion_id
+        for record in records
+        if record["record_type"] == "tuner:check-run"
+        and record["lifecycle_state"] not in ("superseded", "retracted")
+        and record["id"] not in corrected
+        and record["payload"].get("criterion_id") == criterion_id
         and record["payload"].get("revision") == revision
-        and record["payload"].get("result") == result
     ]
     if not matches:
         return None
-    return max(matches, key=lambda record: record["recorded_at"])
+    newest = max(record["recorded_at"] for record in matches)
+    latest = [record for record in matches if record["recorded_at"] == newest]
+    if any(record["payload"].get("result") != result for record in latest):
+        return None
+    return latest[0]
 
 
 def run_check(
