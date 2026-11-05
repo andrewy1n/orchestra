@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
@@ -494,6 +495,101 @@ def _brief_block(record: Record, role: Role) -> str:
     return "\n".join(lines)
 
 
+_SECTION_HEADING = re.compile(r"^## (.+?)\s*$")
+_REQUIREMENT_ID_LINE = re.compile(r"^(R\d+):\s*(.*)$")
+
+
+def _body_sections(record: Record) -> dict[str, str]:
+    body = record.get("body") or ""
+    sections: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line in body.splitlines():
+        heading = _SECTION_HEADING.match(line)
+        if heading:
+            current = sections.setdefault(heading.group(1), [])
+        elif current is not None:
+            current.append(line)
+    return {name: "\n".join(lines).strip() for name, lines in sections.items()}
+
+
+def _requirement_lines(text: str) -> dict[str, str]:
+    lines: dict[str, str] = {}
+    for line in text.splitlines():
+        match = _REQUIREMENT_ID_LINE.match(line.strip())
+        if match:
+            lines[match.group(1)] = line.strip()
+    return lines
+
+
+def _string_list(value: JsonValue) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _phase_record(records: list[Record], record_type: str, phase: JsonValue) -> Record | None:
+    return next(
+        (
+            r
+            for r in records
+            if r["record_type"] == record_type
+            and r.get("lifecycle_state") == "active"
+            and record_payload(r).get("phase") == phase
+        ),
+        None,
+    )
+
+
+def _brief_acceptance_in_scope(work_item: Record, record: Record) -> bool:
+    own = record_payload(work_item)
+    payload = record_payload(record)
+    return payload.get("effort") == own.get("effort") and payload.get("phase") == own.get("phase")
+
+
+def _orientation(work_item: Record, records: list[Record]) -> str:
+    payload = record_payload(work_item)
+    sections = _body_sections(work_item)
+    lines = ["## Orientation", ""]
+    for name in ("assignee", "write_root"):
+        value = payload.get(name)
+        if not _empty(value):
+            lines.append(f"**{name}**: {_display(value)}")
+    if len(lines) > 2:
+        lines.append("")
+    for name in ("Description", "Approach"):
+        if sections.get(name):
+            lines += [f"### Work item {name}", "", sections[name], ""]
+    phase = payload.get("phase")
+    spec = _phase_record(records, "score:specification", phase)
+    spec_lines = _requirement_lines(_body_sections(spec).get("Requirements", "")) if spec else {}
+    description_lines = _requirement_lines(sections.get("Description", ""))
+    requirements = [
+        spec_lines.get(rid) or description_lines.get(rid) or rid
+        for rid in _string_list(payload.get("requirements"))
+    ]
+    if requirements:
+        lines += ["### Requirements", "", *(f"- {text}" for text in requirements), ""]
+    design = _phase_record(records, "score:design", phase)
+    if design:
+        design_sections = _body_sections(design)
+        for name in ("Invariants", "Assumptions"):
+            if design_sections.get(name):
+                lines += [f"### Design {name}", "", design_sections[name], ""]
+    decisions: list[str] = []
+    for name in _string_list(payload.get("decisions")):
+        decision = next(
+            (r for r in records if r["record_type"] == "score:decision" and r["subject"] == name),
+            None,
+        )
+        choice = record_payload(decision).get("choice") if decision else None
+        decisions.append(f"- {name}: {_display(choice)}" if not _empty(choice) else f"- {name}")
+    if decisions:
+        lines += ["### Decisions", "", *decisions, ""]
+    if len(lines) == 2:
+        lines += ["_None._", ""]
+    return "\n".join(lines)
+
+
 def render_brief(subject: str, records: list[Record]) -> str:
     work_role = BRIEF_ROLES[0]
     work_item = next(
@@ -509,7 +605,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     if work_item is None:
         raise ViewError(f"no work item found for subject {subject!r}")
     effort = record_payload(work_item).get("effort", "")
-    sections: list[str] = []
+    sections: list[str] = [_orientation(work_item, records)]
     for role in BRIEF_ROLES:
         selected = sorted(
             (
@@ -518,6 +614,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
                 if r["record_type"] == role.record_type
                 and role.select(r)
                 and _brief_in_scope(role, subject, effort, r)
+                and (role.name != "acceptance" or _brief_acceptance_in_scope(work_item, r))
             ),
             key=lambda r: (r.get("subject") or "", r.get("id") or ""),
         )
