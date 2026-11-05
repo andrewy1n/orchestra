@@ -79,6 +79,7 @@ def effort_summary(view: EffortView) -> schemas.EffortSummary:
         kind=view.kind,
         area=view.area,
         finished=view.finished,
+        dormant=view.dormant,
         release_ready=view.release_ready,
         phases=[phase_summary(phase) for phase in view.phases],
         milestones=[schemas.MilestoneRow.model_validate(row) for row in view.milestones],

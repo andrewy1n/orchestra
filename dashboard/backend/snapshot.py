@@ -40,6 +40,7 @@ from dashboard.backend.task import TaskRow, task_rows
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.derive import effort_dormant
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -122,6 +123,7 @@ class EffortView:
     journal_open: list[JournalItem] = field(default_factory=list)
     backlog: list[BacklogItem] = field(default_factory=list)
     area: str = ""
+    dormant: bool = False
 
     @property
     def finished(self) -> bool:
@@ -534,6 +536,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         record["subject"]: record_payload(record).get("area") or ""
         for record in live_records(listed[PLACEMENT_TYPE])
     }
+    every_record = [record for records in listed.values() for record in records]
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -607,6 +610,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 journal_open=journal_open,
                 backlog=_backlog_items(backlog_by_effort.get(effort, [])),
                 area=areas.get(effort, ""),
+                dormant=effort_dormant(every_record, effort, now),
             )
         )
     efforts.sort(key=lambda view: view.finished)

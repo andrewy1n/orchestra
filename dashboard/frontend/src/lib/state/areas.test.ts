@@ -13,6 +13,7 @@ function effort(
 		kind: "deliver",
 		area: "",
 		finished: false,
+		dormant: false,
 		phases: [],
 		tasks: [],
 		needs_you: [],
@@ -107,6 +108,18 @@ describe("railItems", () => {
 		expect(rail.items.map((i) => [i.key, i.href, i.current, i.needs])).toEqual([
 			["invoices", "#/effort/invoices", false, 2],
 			["refunds", "#/effort/refunds", true, 0],
+		]);
+	});
+
+	it("marks a dormant effort in the rail", () => {
+		const quiet = snapshotOf([
+			effort({ effort: "invoices", area: "billing" }),
+			effort({ effort: "refunds", area: "billing", dormant: true }),
+		]);
+		const rail = railItems(parseRoute(effortHref("invoices")), quiet, areas);
+		expect(rail.items.map((i) => [i.key, i.dormant])).toEqual([
+			["invoices", false],
+			["refunds", true],
 		]);
 	});
 

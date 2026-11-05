@@ -20,6 +20,7 @@ export interface RailItem {
 	href: string;
 	current: boolean;
 	finished: boolean;
+	dormant: boolean;
 	needs: number;
 }
 
@@ -147,6 +148,7 @@ export function railItems(
 				href: areaHref(area.subject),
 				current: area.subject === subject,
 				finished: false,
+				dormant: false,
 				needs: areaRollup(efforts, area).needs,
 			})),
 		};
@@ -164,6 +166,7 @@ export function railItems(
 					href: phaseHref(effort.effort, row.subject),
 					current: row.subject === phase.subject,
 					finished: row.state === "done",
+					dormant: false,
 					needs: 0,
 				})),
 		};
@@ -189,6 +192,7 @@ export function railItems(
 			href: effortHref(view.effort),
 			current: view.effort === current.effort,
 			finished: view.finished,
+			dormant: view.dormant,
 			needs: view.needs_you.length,
 		})),
 	};

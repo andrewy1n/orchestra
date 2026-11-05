@@ -112,6 +112,7 @@ class EffortSummary(Model):
     kind: str
     area: str
     finished: bool
+    dormant: bool
     release_ready: bool
     phases: list[PhaseSummary]
     milestones: list[MilestoneRow]

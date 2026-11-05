@@ -390,6 +390,8 @@ export interface components {
             area: string;
             /** Backlog */
             backlog: components["schemas"]["BacklogSummary"][];
+            /** Dormant */
+            dormant: boolean;
             /** Effort */
             effort: string;
             /** Finished */
