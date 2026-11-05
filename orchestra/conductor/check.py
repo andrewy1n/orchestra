@@ -114,15 +114,19 @@ def _body_tail(output: str) -> str:
     return output[-OUTPUT_BODY_CHARS:]
 
 
-_NODE_ID_RE = re.compile(r"(?:FAILED|ERROR)\s+(\S+::\S+)")
-_SUMMARY_NODE_RE = re.compile(
-    r"^(?:FAILED|ERROR)\s+(\S+::\S+)",
-    re.MULTILINE,
-)
+_BALANCED = r"\[(?:[^\[\]]|\[[^\[\]]*\])*\]"
+_BRACKETED = rf"[^\s:\[]+(?:::[^\s:\[]+)+(?:{_BALANCED}|\[.*?\])?(?= - |[ \t]*\r?$)"
+_NODE = rf"({_BRACKETED}|\S+::\S+)"
+_NODE_ID_RE = re.compile(rf"(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
+_SUMMARY_NODE_RE = re.compile(rf"^(?:FAILED|ERROR)\s+{_NODE}", re.MULTILINE)
 
 
 def parse_failing_node_ids(output: str) -> list[str]:
-    """Extract pytest node ids from failure/error lines (stable order, unique)."""
+    """Extract pytest node ids from failure/error lines (stable order, unique).
+
+    Brackets balance to two levels; a deeper or unbalanced parameter falls back to the first
+    closing bracket followed by a separator.
+    """
     seen: set[str] = set()
     ordered: list[str] = []
     for match in _SUMMARY_NODE_RE.finditer(output or ""):
