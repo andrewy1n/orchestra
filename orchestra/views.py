@@ -520,7 +520,8 @@ def _group_lines(
 def clock() -> datetime:
     override = os.environ.get("ORCHESTRA_NOW")
     if override:
-        return datetime.fromisoformat(override.replace("Z", "+00:00"))
+        moment = datetime.fromisoformat(override.replace("Z", "+00:00"))
+        return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
     return datetime.now(timezone.utc)
 
 

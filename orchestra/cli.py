@@ -648,16 +648,25 @@ def _cmd_effort_autonomy(args: argparse.Namespace) -> int:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
         if args.migrate:
-            mappings = autonomy.plan_migration(project)
+            mappings, skipped = autonomy.plan_migration(project)
             applied = autonomy.apply_migration(project, mappings) if args.apply else {}
             rows = [
                 {"constraint": m.constraint, "effort": m.effort, "level": m.level} for m in mappings
             ]
             if args.json:
-                _print_json({"mappings": rows, "applied": bool(args.apply), "levels": applied})
+                _print_json(
+                    {
+                        "mappings": rows,
+                        "skipped": skipped,
+                        "applied": bool(args.apply),
+                        "levels": applied,
+                    }
+                )
             else:
                 for row in rows:
                     print(f"{row['constraint']}: {row['effort']} -> {row['level']}")
+                for subject in skipped:
+                    print(f"{subject}: grants autonomy but covers no known effort; left alone")
                 print("applied" if args.apply else "dry run; pass --apply to write")
             return 0
         if not args.effort or not args.level:

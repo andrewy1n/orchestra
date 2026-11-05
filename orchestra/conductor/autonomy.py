@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from orchestra.canon import record_payload
@@ -23,9 +24,16 @@ class Mapping:
     level: str
 
 
+_RESTRICTION = re.compile(
+    r"\b(not|never|no|don't|cannot|can't|unless|except|forbid|forbidden)\b"
+    r"|\bmust ask\b|\bask first\b|\bask before\b"
+)
+_SCOPED = re.compile(r"\bfor\b[^.;]*\bonly\b")
+
+
 def classify(statement: str) -> str | None:
     text = " ".join(statement.lower().split())
-    if text.startswith("retired:"):
+    if text.startswith("retired:") or _RESTRICTION.search(text) or _SCOPED.search(text):
         return None
     if "without asking" in text and ("next phase" in text or "promote" in text):
         return "auto-phases"
@@ -59,16 +67,37 @@ def set_autonomy(project: Project, effort: str, level: str) -> Record:
     ]
 
 
-def plan_migration(project: Project) -> list[Mapping]:
+def _known_efforts(project: Project) -> set[str]:
+    return {
+        r["subject"] for r in project.list("score:effort") if r["lifecycle_state"] != "superseded"
+    }
+
+
+def resolve_effort(record: Record, known: set[str]) -> str:
+    for field in ("effort", "applies_to"):
+        value = _text(record, field)
+        if value in known:
+            return value
+    suffixes = [e for e in known if record["subject"] == e or record["subject"].endswith("-" + e)]
+    return max(suffixes, key=len) if suffixes else ""
+
+
+def plan_migration(project: Project) -> tuple[list[Mapping], list[str]]:
+    known = _known_efforts(project)
     mappings: list[Mapping] = []
+    skipped: list[str] = []
     for record in project.list("score:constraint"):
         if record["lifecycle_state"] != "active":
             continue
         level = classify(_text(record, "statement"))
-        effort = _text(record, "effort")
-        if level is not None and effort:
+        if level is None:
+            continue
+        effort = resolve_effort(record, known)
+        if effort:
             mappings.append(Mapping(record["id"], record["subject"], effort, level))
-    return sorted(mappings, key=lambda m: (m.effort, m.constraint))
+        else:
+            skipped.append(record["subject"])
+    return sorted(mappings, key=lambda m: (m.effort, m.constraint)), sorted(skipped)
 
 
 def strongest(mappings: list[Mapping]) -> dict[str, str]:
@@ -84,7 +113,7 @@ def apply_migration(project: Project, mappings: list[Mapping]) -> dict[str, str]
     levels = strongest(mappings)
     for effort, level in levels.items():
         current = _text(_goal(project, effort), "autonomy") or "gated"
-        if current != level:
+        if LEVELS.index(level) > LEVELS.index(current):
             set_autonomy(project, effort, level)
     for mapping in mappings:
         project.supersede(

@@ -536,7 +536,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         record["subject"]: record_payload(record).get("area") or ""
         for record in live_records(listed[PLACEMENT_TYPE])
     }
-    every_record = [record for records in listed.values() for record in records]
+    every_record = target.records()
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
