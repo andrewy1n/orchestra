@@ -112,10 +112,10 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
             "criterion": "Tabs render both filters.",
         },
         {
-            "record_type": "score:requirement",
-            "subject": "R6",
-            "title": "R6",
-            "body": "Name commands, not modules.",
+            "record_type": "score:specification",
+            "subject": "tabs-spec",
+            "title": "Tabs specification",
+            "body": "## Requirements\n\nR6: Name commands, not modules.",
         },
         {
             "record_type": "conductor:execution-report",
@@ -157,6 +157,32 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
     assert "main..abc1234" in out
     assert "SECRET_BUILDER_NOTES" not in out
     assert calls
+
+
+def test_review_brief_reads_only_stored_record_kinds(tmp_path, monkeypatch, capsys):
+    calls: list[str] = []
+
+    class _Project:
+        def list(self, record_type: str):
+            calls.append(record_type)
+            return []
+
+    monkeypatch.setattr(cli, "open_store", lambda _directory: _Project())
+    code, out, err = run(
+        [
+            "review-brief",
+            "--cwd",
+            str(tmp_path),
+            "--base",
+            "main",
+            "--phase-head",
+            "abc1234",
+        ],
+        capsys,
+    )
+    assert code == 0, err
+    assert out.startswith("# Reviewer brief")
+    assert "score:requirement" not in calls
 
 
 def test_review_brief_refuses_partial_records_on_read_failure(tmp_path, monkeypatch, capsys):

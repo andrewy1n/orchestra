@@ -557,7 +557,7 @@ def _load_review_records(
     project = location.open()
     records: list[Record] = []
     failures: list[str] = []
-    for kind in sorted(reviewer.ALLOWED_KINDS):
+    for kind in sorted(reviewer.ALLOWED_KINDS - {"requirement"}):
         record_type = f"score:{kind}"
         try:
             rows = project.list(record_type)
