@@ -395,6 +395,17 @@ def test_phase_gate_required_blocks_on_missing_or_failing_suite():
         phase_slug=PHASE,
         policy=policy,
     )
+    legacy = [
+        *runs_ok[:-1],
+        {**runs_ok[-1], "subject": f"{PHASE}-tier2", "criterion_id": f"{PHASE}-tier2"},
+    ]
+    assert not phase_suite_gate_holds(
+        acceptances=[acc_a, acc_b],
+        check_runs=legacy,
+        phase_head=HEAD,
+        phase_slug=PHASE,
+        policy=policy,
+    )
     stale = [*runs_ok[:-1], {**runs_ok[-1], "revision": "stale-head"}]
     assert not phase_suite_gate_holds(
         acceptances=[acc_a, acc_b],

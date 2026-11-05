@@ -198,16 +198,9 @@ def add_check_run(
     return _create(cli, "tuner:check-run", acceptance["subject"], payload)
 
 
-def test_r7_phase_without_specification_exits_zero_and_says_skipped(store, cli, resolved_contract):
+def test_phase_without_active_specification_refuses_analysis(store, cli, resolved_contract):
     seed_phase(cli, resolved_contract, with_spec=False)
-    result = run_analyze(store)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "skipped" in (result.stdout + result.stderr)
-
-
-def test_close_refuses_phase_without_active_specification(store, cli, resolved_contract):
-    seed_phase(cli, resolved_contract, with_spec=False)
-    code, report = analyze_json(store, "--stage", "close")
+    code, report = analyze_json(store)
     assert code == 1
     assert codes(report, "error") == {"active-specification-required"}
 

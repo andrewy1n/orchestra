@@ -98,17 +98,14 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
     report = Report(phase=phase, stage=stage)
     specs = of_type("score:specification", "active")
     if not specs:
-        if stage == "close":
-            report.findings.append(
-                Finding(
-                    "error",
-                    "active-specification-required",
-                    phase,
-                    "an active specification is required to close this phase",
-                )
+        report.findings.append(
+            Finding(
+                "error",
+                "active-specification-required",
+                phase,
+                "an active specification is required to analyze this phase",
             )
-        else:
-            report.skipped = True
+        )
         return report
     spec = specs[0]
     designs = of_type("score:design", "active")
