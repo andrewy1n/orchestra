@@ -16,17 +16,16 @@ Each term is one line of the "Phase gate" list in execute-phase's phase-end.md.
 from __future__ import annotations
 
 import re
-import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import open_store
 from orchestra.canon.query import order_by_recorded_at
 from orchestra.canon.types import Record
 from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import RUNNER, git_head
+from orchestra.tools import Git
 
 INACTIVE_FINDING_STATES = frozenset({"refuted", "retracted"})
 METADATA_DIR = ".canon/"
@@ -99,10 +98,6 @@ def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path
     return landing_repo(store, landing) / ".worktrees" / phase_slug
 
 
-def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return run_git(cwd, *args, capture_output=True, text=True, check=False)
-
-
 def _descent_term(worktree: Path, reviewed: str) -> Term:
     name = "head-descends-from-review"
     if not reviewed:
@@ -111,10 +106,10 @@ def _descent_term(worktree: Path, reviewed: str) -> Term:
         head = git_head(worktree)
     except (OSError, RuntimeError) as exc:
         return Term(name, False, f"cannot resolve the worktree HEAD: {exc}")
-    ancestry = _git(worktree, "merge-base", "--is-ancestor", reviewed, head)
-    if ancestry.returncode != 0:
+    git = Git(worktree)
+    if git.run("merge-base", "--is-ancestor", reviewed, head).returncode != 0:
         return Term(name, False, f"worktree HEAD {head} does not descend from {reviewed}")
-    diff = _git(worktree, "diff", "--name-only", "--no-renames", "-z", f"{reviewed}..{head}")
+    diff = git.run("diff", "--name-only", "--no-renames", "-z", f"{reviewed}..{head}")
     if diff.returncode != 0:
         return Term(name, False, f"git diff {reviewed}..{head} failed")
     changed = [path for path in diff.stdout.split("\0") if path]

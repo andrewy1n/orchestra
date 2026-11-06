@@ -10,10 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject
-from orchestra.tools import CliTool, ToolError, Version, run_subprocess
+from orchestra.tools import CliTool, Git, ToolError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
 
@@ -75,9 +74,14 @@ def open_pull_request(
     if not math.isfinite(timeout_s) or timeout_s <= 0:
         raise GitHubPRError("CI timeout must be a positive finite number")
 
-    branch = _git(project_root, "symbolic-ref", "--short", "HEAD")
-    head_sha = _git(project_root, "rev-parse", "HEAD")
-    if _git(project_root, "status", "--porcelain"):
+    git = Git(project_root)
+    try:
+        branch = git.current_branch()
+        head_sha = git.head()
+        dirty = git.status_porcelain()
+    except ToolError as error:
+        raise GitHubPRError(_git_error_message(error)) from error
+    if dirty:
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
     github = client or GitHubGh(project_root, remote, adapter_config)
@@ -140,21 +144,10 @@ def _final_result(checks: Sequence[GitHubCheck]) -> str:
     return "fail" if failed else "success"
 
 
-def _git(root: Path, *args: str) -> str:
-    try:
-        completed = run_git(
-            root,
-            *args,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
-        raise GitHubPRError("git executable not found") from exc
-    if completed.returncode != 0:
-        detail = (completed.stderr or completed.stdout).strip()
-        raise GitHubPRError(detail or f"git command failed: {' '.join(args)}")
-    return completed.stdout.strip()
+def _git_error_message(error: ToolError) -> str:
+    if error.returncode is None:
+        return "git executable not found"
+    return error.stderr.strip() or f"git command failed: {' '.join(error.argv[1:])}"
 
 
 _REPOSITORY = re.compile(r"[^/\s]+/[^/\s]+")
@@ -192,7 +185,10 @@ class GitHubGh(CliTool):
 
     def push_branch(self, remote: str, branch: str) -> None:
         self._check_version()
-        _git(self.root, "push", "--set-upstream", remote, branch)
+        try:
+            Git(self.root).push(remote, branch)
+        except ToolError as error:
+            raise GitHubPRError(_git_error_message(error)) from error
 
     def _repository_flags(self) -> list[str]:
         return ["-R", self._repository] if self._repository else []
