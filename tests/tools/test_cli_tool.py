@@ -38,6 +38,8 @@ class FakeRun:
         text: bool,
         check: bool,
     ) -> subprocess.CompletedProcess[str]:
+        if list(argv)[1:] == ["--version"]:
+            return subprocess.CompletedProcess(list(argv), 0, f"{argv[0]} version 1.0.0\n", "")
         self.argv = list(argv)
         self.kwargs = {
             "cwd": cwd,
