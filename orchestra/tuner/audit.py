@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
 import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools.cli_tool import RunFn, run_subprocess
+from orchestra.tools.command import Command, CommandResult
 from orchestra.tools.git import Git
 from orchestra.tuner.manifest import (
     DEFAULT_RUNNER,
@@ -268,7 +269,13 @@ def _probe_diffs(
     return diffs
 
 
-def _run_probe(worktree: Path, probe: JsonObject) -> JsonObject:
+def _probe_result(argv: Sequence[str], proc: CommandResult) -> JsonObject:
+    if proc.missing:
+        return {"exit_code": 127, "stdout": "", "stderr": f"{argv[0]}: not found"}
+    return {"exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
+
+
+def _run_probe(worktree: Path, probe: JsonObject, *, run: RunFn = run_subprocess) -> JsonObject:
     kind = str(probe.get("kind", "cli"))
     if kind == "cli":
         argv = probe.get("argv")
@@ -277,18 +284,7 @@ def _run_probe(worktree: Path, probe: JsonObject) -> JsonObject:
         argv_strings = [item for item in argv if isinstance(item, str) and item]
         if len(argv_strings) != len(argv):
             return {"exit_code": 2, "stdout": "", "stderr": "invalid argv"}
-        proc = subprocess.run(
-            argv_strings,
-            cwd=str(worktree),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return {
-            "exit_code": proc.returncode,
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-        }
+        return _probe_result(argv_strings, Command(run=run).run(argv_strings, cwd=worktree))
     if kind == "function":
         target = str(probe.get("target", ""))
         args = probe.get("args", [])
@@ -301,18 +297,8 @@ def _run_probe(worktree: Path, probe: JsonObject) -> JsonObject:
             "fn = getattr(mod, attr)\n"
             f"print(json.dumps(fn(*{args!r}), default=str))\n"
         )
-        proc = subprocess.run(
-            ["python3", "-c", script],
-            cwd=str(worktree),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return {
-            "exit_code": proc.returncode,
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-        }
+        argv = ["python3", "-c", script]
+        return _probe_result(argv, Command(run=run).run(argv, cwd=worktree))
     return {"exit_code": 2, "stdout": "", "stderr": f"unknown probe kind {kind!r}"}
 
 
