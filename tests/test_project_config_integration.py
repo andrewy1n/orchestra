@@ -254,17 +254,14 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
         def push_branch(self, remote: str, branch: str) -> None:
             self.events.append(f"push:{remote}:{branch}")
 
-        def repository(self) -> str:
-            return "owner/repo"
-
         def create_pull_request(
-            self, repository: str, head: str, base: str, title: str, body: str
+            self, head: str, base: str, title: str, body: str
         ) -> tuple[int, str]:
-            self.events.append(f"create:{repository}:{head}:{base}:{title}")
+            self.events.append(f"create:{head}:{base}:{title}")
             self.body = body
             return 42, "https://github.com/owner/repo/pull/42"
 
-        def checks(self, repository: str, commit: str) -> tuple[GitHubCheck, ...]:
+        def checks(self, number: int) -> tuple[GitHubCheck, ...]:
             self.poll += 1
             return (
                 (GitHubCheck("CI", "in_progress", None),)
@@ -272,11 +269,8 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
                 else (GitHubCheck("CI", "completed", "success"),)
             )
 
-        def statuses(self, repository: str, commit: str) -> tuple[str, ...]:
-            return ("pending",) if self.poll == 1 else ("success",)
-
     github = FakeGitHub()
-    monkeypatch.setattr(github_pr, "GitHubREST", lambda _root, _remote, _config: github)
+    monkeypatch.setattr(github_pr, "GitHubGh", lambda _root, _remote, _config: github)
     monkeypatch.setattr(github_pr.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
 

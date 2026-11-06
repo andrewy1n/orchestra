@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import math
-import os
 import re
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
 
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import load_project_config
-from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.canon.types import JsonObject
 from orchestra.tools import CliTool, ToolError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
@@ -46,150 +41,11 @@ class GitHubPRError(RuntimeError):
 class GitHubClient(Protocol):
     def push_branch(self, remote: str, branch: str) -> None: ...
 
-    def repository(self) -> str: ...
-
     def create_pull_request(
-        self, repository: str, head: str, base: str, title: str, body: str
+        self, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]: ...
 
-    def checks(self, repository: str, revision: str) -> tuple[GitHubCheck, ...]: ...
-
-    def statuses(self, repository: str, revision: str) -> tuple[str, ...]: ...
-
-
-class GitHubREST:
-    def __init__(
-        self,
-        root: Path,
-        remote: str = "origin",
-        adapter_config: JsonObject | None = None,
-    ) -> None:
-        self.root = root
-        self.adapter_config = adapter_config or {}
-        configured_remote = self.adapter_config.get("remote", remote)
-        if not isinstance(configured_remote, str) or not configured_remote:
-            raise GitHubPRError("land.config.remote must be a non-empty string")
-        self.remote = configured_remote
-        token_env = self.adapter_config.get("token_env", "GITHUB_TOKEN")
-        if not isinstance(token_env, str) or not token_env:
-            raise GitHubPRError("land.config.token_env must be a non-empty string")
-        self.token = os.environ.get(token_env) or os.environ.get("GH_TOKEN")
-        if not self.token:
-            raise GitHubPRError(f"set {token_env} or GH_TOKEN to use the GitHub API")
-
-    def push_branch(self, remote: str, branch: str) -> None:
-        _git(self.root, "push", "--set-upstream", remote, branch)
-
-    def repository(self) -> str:
-        configured_repository = self.adapter_config.get("repository")
-        if configured_repository is not None:
-            if (
-                not isinstance(configured_repository, str)
-                or len(configured_repository.split("/")) != 2
-            ):
-                raise GitHubPRError("land.config.repository must use owner/repository format")
-            return configured_repository
-        remote_url = _git(self.root, "remote", "get-url", self.remote)
-        parsed = urlparse(remote_url)
-        if parsed.hostname == "github.com":
-            repository = parsed.path.lstrip("/")
-        elif parsed.scheme == "" and remote_url.startswith("git@github.com:"):
-            repository = remote_url.removeprefix("git@github.com:")
-        else:
-            raise GitHubPRError(f"unsupported GitHub remote URL: {remote_url}")
-        repository = repository.removesuffix(".git").strip("/")
-        if len(repository.split("/")) != 2:
-            raise GitHubPRError(f"cannot determine owner/repository from remote: {remote_url}")
-        return repository
-
-    def create_pull_request(
-        self, repository: str, head: str, base: str, title: str, body: str
-    ) -> tuple[int, str]:
-        response = self._request(
-            "POST",
-            f"repos/{repository}/pulls",
-            {"title": title, "head": head, "base": base, "body": body},
-        )
-        number = response.get("number")
-        url = response.get("html_url")
-        if not isinstance(number, int) or not isinstance(url, str):
-            raise GitHubPRError("GitHub returned a pull request without number and URL")
-        return number, url
-
-    def checks(self, repository: str, revision: str) -> tuple[GitHubCheck, ...]:
-        result: list[GitHubCheck] = []
-        for page in self._pages(f"repos/{repository}/commits/{revision}/check-runs"):
-            checks = page.get("check_runs")
-            if not isinstance(checks, list):
-                raise GitHubPRError("GitHub returned malformed check runs")
-            for check in checks:
-                if not isinstance(check, dict):
-                    raise GitHubPRError("GitHub returned a malformed check run")
-                name, status, conclusion = (
-                    check.get("name"),
-                    check.get("status"),
-                    check.get("conclusion"),
-                )
-                if not isinstance(name, str) or not isinstance(status, str):
-                    raise GitHubPRError("GitHub returned a malformed check run")
-                result.append(
-                    GitHubCheck(name, status, conclusion if isinstance(conclusion, str) else None)
-                )
-        return tuple(result)
-
-    def statuses(self, repository: str, revision: str) -> tuple[str, ...]:
-        response = self._request("GET", f"repos/{repository}/commits/{revision}/status")
-        values = response.get("statuses")
-        if not isinstance(values, list):
-            raise GitHubPRError("GitHub returned malformed commit statuses")
-        statuses: list[str] = []
-        for value in values:
-            if not isinstance(value, dict):
-                raise GitHubPRError("GitHub returned a malformed commit status")
-            state = value.get("state")
-            if not isinstance(state, str):
-                raise GitHubPRError("GitHub returned a commit status without state")
-            statuses.append(state)
-        return tuple(statuses)
-
-    def _pages(self, path: str) -> tuple[JsonObject, ...]:
-        pages: list[JsonObject] = []
-        page = 1
-        while True:
-            response = self._request("GET", f"{path}?per_page=100&page={page}")
-            pages.append(response)
-            check_runs = response.get("check_runs")
-            if not isinstance(check_runs, list):
-                raise GitHubPRError("GitHub returned malformed check runs")
-            if len(check_runs) < 100:
-                return tuple(pages)
-            page += 1
-
-    def _request(self, method: str, path: str, body: dict[str, str] | None = None) -> JsonObject:
-        encoded_path = quote(path, safe="/?=&")
-        data = json.dumps(body).encode("utf-8") if body is not None else None
-        request = Request(
-            f"https://api.github.com/{encoded_path}",
-            data=data,
-            method=method,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {self.token}",
-                "X-GitHub-Api-Version": "2022-11-28",
-                **({"Content-Type": "application/json"} if data is not None else {}),
-            },
-        )
-        try:
-            with urlopen(request, timeout=30) as response:
-                payload: JsonValue = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise GitHubPRError(f"GitHub API returned HTTP {exc.code}: {detail}") from exc
-        except (URLError, OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise GitHubPRError(f"GitHub API request failed: {exc}") from exc
-        if not isinstance(payload, dict):
-            raise GitHubPRError("GitHub returned a non-object API response")
-        return payload
+    def checks(self, number: int) -> tuple[GitHubCheck, ...]: ...
 
 
 def open_pull_request(
@@ -224,68 +80,64 @@ def open_pull_request(
     if _git(project_root, "status", "--porcelain"):
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
-    github = client or GitHubREST(project_root, remote, adapter_config)
-    github.push_branch(remote, branch)
-    repository = github.repository()
+    github = client or GitHubGh(project_root, remote, adapter_config)
     pr_title = title or f"{branch}: phase proof"
-    number, url = github.create_pull_request(repository, branch, base, pr_title, proof_packet)
     sleep_fn = sleep if sleep is not None else time.sleep
     monotonic_fn = monotonic if monotonic is not None else time.monotonic
-    checks, statuses = wait_for_checks(
-        github,
-        repository,
-        head_sha,
-        poll_interval_s=poll_interval_s,
-        timeout_s=timeout_s,
-        sleep=sleep_fn,
-        monotonic=monotonic_fn,
-    )
+    try:
+        github.push_branch(remote, branch)
+        number, url = github.create_pull_request(branch, base, pr_title, proof_packet)
+        checks = wait_for_checks(
+            github,
+            number,
+            poll_interval_s=poll_interval_s,
+            timeout_s=timeout_s,
+            sleep=sleep_fn,
+            monotonic=monotonic_fn,
+        )
+    except ToolError as error:
+        raise GitHubPRError(_tool_error_message(error)) from error
     return GitHubPRResult(
         number=number,
         url=url,
         head_sha=head_sha,
         checks=checks,
-        statuses=statuses,
-        result=_final_result(checks, statuses),
+        statuses=(),
+        result=_final_result(checks),
     )
 
 
 def wait_for_checks(
     client: GitHubClient,
-    repository: str,
-    revision: str,
+    number: int,
     *,
     poll_interval_s: float,
     timeout_s: float,
     sleep: Callable[[float], None],
     monotonic: Callable[[], float],
-) -> tuple[tuple[GitHubCheck, ...], tuple[str, ...]]:
+) -> tuple[GitHubCheck, ...]:
     deadline = monotonic() + timeout_s
     while True:
-        checks = client.checks(repository, revision)
-        statuses = client.statuses(repository, revision)
-        if (
-            (checks or statuses)
-            and all(check.status == "completed" for check in checks)
-            and all(status != "pending" for status in statuses)
-        ):
-            return checks, statuses
+        checks = client.checks(number)
+        if checks and all(check.status == "completed" for check in checks):
+            return checks
         remaining = deadline - monotonic()
         if remaining <= 0:
             pending = [check.name for check in checks if check.status != "completed"]
-            pending.extend(f"commit status: {status}" for status in statuses if status == "pending")
             raise TimeoutError(
                 "GitHub checks did not complete before timeout: " + ", ".join(pending)
             )
         sleep(min(poll_interval_s, remaining))
 
 
-def _final_result(checks: Sequence[GitHubCheck], statuses: Sequence[str]) -> str:
-    failed_checks = any(
-        check.conclusion not in ("success", "neutral", "skipped") for check in checks
-    )
-    failed_statuses = any(status != "success" for status in statuses)
-    return "fail" if failed_checks or failed_statuses else "success"
+def _tool_error_message(error: ToolError) -> str:
+    stderr = error.stderr.strip()
+    return f"{error}: {stderr}" if stderr else str(error)
+
+
+def _final_result(checks: Sequence[GitHubCheck]) -> str:
+    failed = any(check.conclusion not in ("success", "neutral", "skipped") for check in checks)
+    return "fail" if failed else "success"
 
 
 def _git(root: Path, *args: str) -> str:
@@ -337,6 +189,10 @@ class GitHubGh(CliTool):
         ):
             raise GitHubPRError("land.config.repository must use owner/repository format")
         self._repository: str | None = repository
+
+    def push_branch(self, remote: str, branch: str) -> None:
+        self._check_version()
+        _git(self.root, "push", "--set-upstream", remote, branch)
 
     def _repository_flags(self) -> list[str]:
         return ["-R", self._repository] if self._repository else []
