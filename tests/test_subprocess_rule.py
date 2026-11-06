@@ -17,8 +17,6 @@ ALLOWLIST: frozenset[str] = frozenset(
         "installer/runner.py",
         "orchestra/canon/git_backend.py",
         "orchestra/conductor/check.py",
-        "orchestra/conductor/close_batch.py",
-        "orchestra/conductor/gate.py",
         "orchestra/conductor/suite.py",
         "orchestra/stage/hooks.py",
         "orchestra/tuner/audit.py",

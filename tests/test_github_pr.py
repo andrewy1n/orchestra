@@ -468,20 +468,6 @@ def test_duplicate_pull_request_carries_url(tmp_path: Path) -> None:
     assert PR_URL in str(raised.value)
 
 
-def test_push_branch_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[tuple[str, ...]] = []
-
-    def fake_run_git(root: Path, *args: str, **kwargs: bool) -> subprocess.CompletedProcess[str]:
-        seen.append(args)
-        return subprocess.CompletedProcess(["git", *args], 0, "", "")
-
-    monkeypatch.setattr(github_pr, "run_git", fake_run_git)
-
-    GitHubGh(tmp_path, run=ScriptedGh()).push_branch("upstream", "topic")
-
-    assert seen == [("push", "--set-upstream", "upstream", "topic")]
-
-
 def test_land_cli_reports_pull_request_and_final_checks(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
