@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.10"
@@ -23,6 +25,20 @@ jobs:
       - run: uv sync --locked --group dev
       - run: python3 scripts/build_skills.py --check
       - run: python3 scripts/check_orchestra_plugin_names.py
+      - name: Check Python type and lint policy
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base="$PR_BASE"
+          else
+            base="$PUSH_BASE"
+          fi
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
+          fi
+          python3 scripts/check_lint_config.py --base "$base"
       - run: uvx ruff@0.13.1 check .
       - run: uvx ruff@0.13.1 format --check .
 

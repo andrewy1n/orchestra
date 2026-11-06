@@ -84,6 +84,34 @@ def test_r1_workflow_installs_plugins_and_attests_replay_identity() -> None:
     assert '"replay_identity": verdict["replay_identity"],' in verdict_run
 
 
+def test_lint_config_guard_runs_on_pull_requests_and_pushes() -> None:
+    trigger = triggers()
+
+    assert "pull_request" in trigger
+    assert "push" in trigger
+
+
+def test_lint_config_guard_is_a_blocking_checks_step() -> None:
+    steps = job("checks")["steps"]
+    assert isinstance(steps, list)
+    checkout = next(
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("uses") == "actions/checkout@v4"
+    )
+    assert isinstance(checkout, dict)
+    assert checkout.get("with", {}).get("fetch-depth") == 0
+    guard = next(
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Check Python type and lint policy"
+    )
+    assert isinstance(guard, dict)
+    assert "continue-on-error" not in guard or guard["continue-on-error"] is False
+    assert "scripts/check_lint_config.py --base" in str(guard.get("run", ""))
+    assert set(guard.get("env", {})) == {"PR_BASE", "PUSH_BASE"}
+
+
 def _step_run(steps: list[object], key: str, value: str) -> str:
     for step in steps:
         if not isinstance(step, dict):
