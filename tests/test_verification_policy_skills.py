@@ -74,7 +74,7 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
         assert "verification-policy.md" in path.read_text()
 
 
-def test_hash_only_amendments_do_not_require_a_manifest_claim() -> None:
+def test_all_frozen_changes_keep_parent_amendment_approval() -> None:
     text = (REPO_ROOT / "skills/execute-phase/SKILL.md").read_text()
-    assert "Hash-only changes require a parent-approved oracle amendment." in text
+    assert "All frozen changes require a parent-approved oracle amendment." in text
     assert "For manifest" in text

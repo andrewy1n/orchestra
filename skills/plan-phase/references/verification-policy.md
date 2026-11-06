@@ -49,6 +49,8 @@ Do not silently change selected policy when authoring cannot meet its contract.
 The parent remains the only store writer. Require explicit parent approval before changing an acceptance's method or oracle policy.
 The executor reports a proposed change and its reason. It does not weaken the verification contract itself.
 Frozen file changes use the existing oracle amendment approval path.
+Every frozen hash change requires a parent-approved `tuner:oracle-amendment` record, including changes to manifest claims.
+The parent creates or supersedes that record with the acceptance subject, effort, phase, old hashes, new hashes, and approval reason.
 Close-batch accepts approved `tuner:oracle-amendment` records whose new hashes match the green tree.
 For manifest claims, the parent also uses the signed manifest and verdict path.
 Unfrozen tests can change during implementation, but the declared TDD red-first contract still applies.

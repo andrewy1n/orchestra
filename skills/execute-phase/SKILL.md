@@ -74,7 +74,7 @@ orchestra wave start <phase-slug>
    edit)" section from [mechanics.md](references/mechanics.md) to the
    prompt, listing those paths. Omit it when none is oracle-backed.
    Unfrozen tdd tests can be written during execution; record red before green.
-   Hash-only changes require a parent-approved oracle amendment. For manifest
+   All frozen changes require a parent-approved oracle amendment. For manifest
    claims, the parent adds a signed amendment in `.tuner/manifest.json`, then
    runs `orchestra verify verdict --cwd <repo-or-worktree> --at <revision>
    <claim-id>`. Follow [policy](../plan-phase/references/verification-policy.md).

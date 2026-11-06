@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -8,12 +9,20 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-from test_verification_methods import PROBE, close_request, green, run_acceptance, setup_acceptance
+from test_verification_methods import (
+    NODE,
+    PROBE,
+    close_request,
+    green,
+    run_acceptance,
+    setup_acceptance,
+)
 
 from orchestra.canon import record
 from orchestra.canon.project import Project
 from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.types import JsonObject, Record
+from orchestra.derive import release_ready
 
 
 def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -153,3 +162,61 @@ def test_task_land_closes_unfrozen_tdd_with_recorded_red(
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["state"] == "done"
     assert project.get(item["id"])["lifecycle_state"] == "done"
+
+
+def test_task_land_closes_a_phase_with_mixed_methods_and_policies(tmp_path: Path) -> None:
+    project, first = setup_acceptance(tmp_path, "tdd", "none")
+    phase = project.list("score:phase")[0]
+    requirements = ["R1", "R2", "R3", "R4"]
+    body = "## Problem\n\nMixed proof.\n\n## Approach\n\nCheck each contract.\n\n## Exit criteria\n\nAll pass.\n\n## Requirements\n\n"
+    body += "\n".join(f"{rid}: Contract {rid} passes." for rid in requirements)
+    project.update(phase["id"], payload={"weight": "light"}, body=body)
+    first = project.update(first["id"], payload={"requirement": "R1"})
+    acceptances = [first]
+    for i, (method, policy) in enumerate(
+        [("check", "none"), ("tdd", "frozen"), ("check", "frozen")], start=2
+    ):
+        payload: JsonObject = {
+            "method": method,
+            "oracle_policy": policy,
+            "phase": "p1",
+            "effort": "alpha",
+            "verify_command": first["payload"]["verify_command"],
+            "requirement": f"R{i}",
+        }
+        if policy == "frozen":
+            payload["test_ids"] = [NODE]
+            payload["oracle_hashes"] = [
+                "test_probe.py:sha256:" + hashlib.sha256(PROBE.encode()).hexdigest()
+            ]
+        acceptances.append(
+            project.create(
+                record_type="score:acceptance", subject=f"probe-contract-{i}", payload=payload
+            )
+        )
+    item = _task(project)
+    task_payload: JsonObject = {"requirements": [*requirements], "write_root": str(tmp_path)}
+    project.update(item["id"], payload=task_payload)
+    for acceptance in acceptances:
+        if acceptance["payload"]["method"] == "tdd":
+            assert run_acceptance(project, acceptance)["payload"]["result"] == "fail"
+    passed = green(project, first)
+    path = tmp_path.with_suffix(".mixed-evidence.json")
+    path.write_text(
+        json.dumps(
+            {
+                "subject": "probe",
+                "kind": "repair",
+                "result": "pass",
+                "verdict": "pass",
+                "evidence": "Run all four contracts in one phase.",
+            }
+        )
+    )
+    result = _cli(tmp_path, "task", "land", "probe", "--evidence", str(path), "--json")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["state"] == "done"
+    assert project.get(item["id"])["lifecycle_state"] == "done"
+    revision = passed["payload"]["revision"]
+    assert isinstance(revision, str)
+    assert release_ready(project.records(), "p1", head=revision)

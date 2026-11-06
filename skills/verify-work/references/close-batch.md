@@ -16,8 +16,8 @@ nothing) when `transition` is `done`, a criterion is unmet/unchecked,
 and no `finding` was given. It also refuses a pass-only `tdd` `done`
 without valid request-carried red evidence (and no `finding`). For
 oracle-backed `tdd`, do not close when the claim is in
-`.tuner/manifest.json` and `orchestra verify verdict` exits non-zero. Do not
-`create`/`supersede` `tuner:oracle-amendment`. Close-batch still
+`.tuner/manifest.json` and `orchestra verify verdict` exits non-zero. Only the parent creates or approves
+`tuner:oracle-amendment` records for frozen hash changes. Close-batch still
 refuses without a qualifying assertion-level red for frozen tests.
 Do not hand-write the batch to route around a refusal.
 

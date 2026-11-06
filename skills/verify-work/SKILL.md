@@ -145,5 +145,5 @@ trail`. Command forms: [mechanics.md](references/mechanics.md).
   from a verification task; tell the parent to run a suite the
   acceptance does not name
 - Let oracle-backed `verified` stand without mechanical oracle verify;
-  invent `oracle_hashes` or a signed amendment; `create`/`supersede`
+  invent `oracle_hashes` or amendment approval; let an executor write
   `tuner:oracle-amendment`; treat non-zero `verify verdict` as done

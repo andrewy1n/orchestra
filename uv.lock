@@ -220,6 +220,7 @@ dev = [
     { name = "pytest-xdist" },
     { name = "pyyaml" },
     { name = "setuptools" },
+    { name = "tomli" },
     { name = "wheel" },
 ]
 
@@ -241,6 +242,7 @@ dev = [
     { name = "pytest-xdist" },
     { name = "pyyaml" },
     { name = "setuptools" },
+    { name = "tomli", specifier = ">=2" },
     { name = "wheel" },
 ]
 

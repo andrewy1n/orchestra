@@ -60,8 +60,8 @@ mechanical — not agent prose:
 Treat as verified only when those hold. Frozen hashes are close
 authority — do not treat a requirement as `verified` from narrative.
 When they do not hold, write an `insufficient` assessment so the
-derived `verified` does not stand. Parent alone writes assessments. Do not `create`/`supersede`
-`tuner:oracle-amendment`. Wire close-batch with green
+derived `verified` does not stand. Parent alone writes assessments and approved `tuner:oracle-amendment` records.
+Executors never create or approve these records. Wire close-batch with green
 `check_run_id`, request-carried red fields, and the acceptance id —
 do not invent hash or red fields. When the claim is in
 `.tuner/manifest.json`, run `orchestra verify verdict`; non-zero → not done.
@@ -347,6 +347,6 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Edit the tree from a verification task when its check fails
 - Route `manual` through `orchestra check`
 - Let oracle-backed `verified` stand without mechanical oracle verify
-- Invent `oracle_hashes` or a signed amendment; `create`/`supersede`
+- Invent `oracle_hashes` or amendment approval; let an executor write
   `tuner:oracle-amendment`
 - Treat a non-zero `orchestra verify verdict` as done
