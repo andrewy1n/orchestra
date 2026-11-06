@@ -98,7 +98,7 @@ def _cli_json(target: Project, *args: str) -> Record | None:
     return store.stored_record(target, record_id, record_type)
 
 
-def _git_head(root: Path) -> str:
+def _head_sha(root: Path) -> str:
     try:
         return Git(root, timeout=2).head()
     except ToolError:
@@ -138,7 +138,7 @@ def _check_evidence(
     payload: PlanningPayload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
     checked_rev = str(payload.get("revision") or "").strip()
-    head = _git_head(root)
+    head = _head_sha(root)
     acceptance_text = ""
     criterion_id = str(payload.get("criterion_id") or "").strip()
     if criterion_id:
