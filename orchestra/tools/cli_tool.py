@@ -200,12 +200,12 @@ class CliTool:
             )
         return result
 
-    def _execute_bytes(
+    def _run_bytes(
         self, args: Sequence[str], input: bytes | None
     ) -> subprocess.CompletedProcess[bytes]:
         argv = [self.executable, *args]
         try:
-            result = self._run(
+            return self._run(
                 argv,
                 cwd=self._cwd,
                 input=input,
@@ -221,10 +221,15 @@ class CliTool:
             raise ToolError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
             ) from error
+
+    def _execute_bytes(
+        self, args: Sequence[str], input: bytes | None
+    ) -> subprocess.CompletedProcess[bytes]:
+        result = self._run_bytes(args, input)
         if result.returncode != 0:
             raise ToolError(
-                f"{argv[0]} exited with code {result.returncode}",
-                argv,
+                f"{self.executable} exited with code {result.returncode}",
+                [self.executable, *args],
                 result.returncode,
                 result.stderr.decode("utf-8", errors="replace"),
             )
