@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 from xml.etree.ElementTree import Element
 
+from orchestra.tools.cli_tool import RunFn, run_subprocess
+from orchestra.tools.command import Command
+
 
 def run_tests(
     worktree: Path | str,
     test_ids: Sequence[str],
     runner: Sequence[str],
+    *,
+    run: RunFn = run_subprocess,
 ) -> dict[str, str]:
     """Start ``runner`` in ``worktree`` and return each id's JUnit outcome.
 
@@ -28,13 +32,7 @@ def run_tests(
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
     env.pop("PYTEST_ADDOPTS", None)
-    subprocess.run(
-        _expand(runner, test_ids, report),
-        cwd=worktree,
-        env=env,
-        check=False,
-        capture_output=True,
-    )
+    Command(run=run).run(_expand(runner, test_ids, report), cwd=Path(worktree), env=env)
     grouped = _read_report(report)
     return {test_id: _collapse(grouped.get(test_id, ())) for test_id in test_ids}
 
