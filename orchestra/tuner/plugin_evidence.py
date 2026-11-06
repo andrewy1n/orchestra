@@ -13,7 +13,6 @@ from orchestra.canon.extensions import (
     resolve_plugin,
     validate_plugin_config,
 )
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import (
     CONFIG_PATH,
     PluginName,
@@ -22,6 +21,7 @@ from orchestra.canon.project_config import (
     load_project_config_at_revision,
 )
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools.git import Git
 from orchestra.tuner.manifest import ManifestError, load_allowlist, resolve_commit, runner_digest
 from orchestra.tuner.plugins import PluginContext, PluginResult, dispatch_plugins
 from orchestra.tuner.sign import sign
@@ -249,17 +249,10 @@ def _canonical_json(value: JsonValue) -> bytes:
 
 
 def _config_digest(root: Path | str, commit: str) -> str:
-    completed = run_git(
-        root,
-        "show",
-        f"{commit}:{CONFIG_PATH}",
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if completed.returncode != 0:
+    blob = Git(Path(root)).show_bytes(commit, CONFIG_PATH)
+    if blob is None:
         raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {commit}")
-    return _digest(completed.stdout.encode("utf-8"))
+    return _digest(blob)
 
 
 def _digest(payload: bytes) -> str:
