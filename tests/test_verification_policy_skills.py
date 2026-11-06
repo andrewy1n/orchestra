@@ -72,3 +72,9 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
     for name in ("settle-phase", "plan-phase", "execute-phase", "verify-work"):
         path: Path = REPO_ROOT / "skills" / name / "SKILL.md"
         assert "verification-policy.md" in path.read_text()
+
+
+def test_hash_only_amendments_do_not_require_a_manifest_claim() -> None:
+    text = (REPO_ROOT / "skills/execute-phase/SKILL.md").read_text()
+    assert "Hash-only changes require a parent-approved oracle amendment." in text
+    assert "For manifest" in text

@@ -44,8 +44,8 @@ mechanical, not agent prose. Treat as verified only when all hold:
   revision (`orchestra verify assertion-red <check-run.json>`)
 - Green check-run at head whose `revision` descends from red
 - At green, oracle file contents match frozen `oracle_hashes`, or a
-  signed amendment in `.tuner/manifest.json` that `orchestra verify verdict`
-  accepts
+  parent-approved oracle amendment. Manifest claims also require their
+  signed amendment and `orchestra verify verdict` checks
 
 Frozen hashes are close authority: never mark `verified` from
 narrative; otherwise write an `insufficient` assessment (parent only).

@@ -193,10 +193,12 @@ orchestra brief <task-slug>
 ### Frozen oracle (do not edit)
 
 Files listed in acceptance oracle_hashes for this task are frozen.
-Do not edit them. An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`. orchestra verify verdict accepts or rejects it. A non-zero exit means the acceptance is not done.
+Do not edit them. Report proposed hash or test-id changes to the parent for oracle amendment approval. Manifest claims also require their signed amendment and verdict checks.
 ```
 
-   **Oracle amendment (parent only):** do not edit the frozen file; do
+   **Oracle amendment (parent only):** hash-only acceptances require an
+   approved `tuner:oracle-amendment` with hashes matching the green tree.
+   For manifest claims, do not edit the frozen file; do
    not `create`/`supersede` `tuner:oracle-amendment` or update
    acceptance `oracle_hashes`/`test_ids`. Parent adds a signed
    amendment in `.tuner/manifest.json`, then:

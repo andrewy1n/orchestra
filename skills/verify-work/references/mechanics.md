@@ -54,8 +54,8 @@ mechanical — not agent prose:
 - Green check-run at head whose `revision` equals or descends from
   that red (same ancestry rules)
 - At green, oracle file contents match frozen `oracle_hashes`, or a
-  signed amendment in `.tuner/manifest.json` that `orchestra verify verdict`
-  accepts
+  parent-approved oracle amendment. Manifest claims also require their
+  signed amendment and `orchestra verify verdict` checks
 
 Treat as verified only when those hold. Frozen hashes are close
 authority — do not treat a requirement as `verified` from narrative.
