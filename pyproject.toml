@@ -89,7 +89,7 @@ v1 = "orchestra.canon.extensions:PLUGIN_API_VERSION"
 "unit__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJydW5uZXIiOnsidHlwZSI6ImFycmF5In19LCJyZXF1aXJlZCI6WyJydW5uZXIiXX0" = "orchestra.tuner.plugins:UnitPlugin"
 "review__eyJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.review_technique:ReviewTechnique"
 "none__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.land:NoneAdapter"
-"github-pr__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXBvc2l0b3J5Ijp7InR5cGUiOiJzdHJpbmcifSwidG9rZW5fZW52Ijp7InR5cGUiOiJzdHJpbmcifSwicmVtb3RlIjp7InR5cGUiOiJzdHJpbmcifX0sImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZX0" = "orchestra.conductor.land:GitHubPRAdapter"
+"github-pr__eyJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsInByb3BlcnRpZXMiOnsicmVtb3RlIjp7InR5cGUiOiJzdHJpbmcifSwicmVwb3NpdG9yeSI6eyJ0eXBlIjoic3RyaW5nIn19LCJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.land:GitHubPRAdapter"
 
 [tool.ruff]
 line-length = 100
