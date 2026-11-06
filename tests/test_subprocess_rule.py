@@ -3,27 +3,28 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Collection, Mapping
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_DIRS = ("orchestra", "installer", "dashboard", "scripts")
 EXCLUDED_PARTS = ("node_modules",)
 EXCLUDED_PREFIXES = ("orchestra/tools/",)
-ALLOWLIST: frozenset[str] = frozenset(
-    {
-        "dashboard/frontend/e2e/serve.py",
-        "installer/adapters/tail.py",
-        "installer/runner.py",
-        "orchestra/conductor/check.py",
-        "orchestra/conductor/suite.py",
-        "orchestra/stage/hooks.py",
-        "orchestra/tuner/audit.py",
-        "orchestra/tuner/runner.py",
-        "orchestra/tuner/sign.py",
-        "scripts/check_lint_config.py",
-        "scripts/wheel_smoke.py",
-    }
-)
+ALLOWLIST: dict[str, str] = {
+    "installer/runner.py": "installer runs before orchestra is installed",
+    "installer/adapters/tail.py": "installer runs before orchestra is installed",
+    "scripts/check_lint_config.py": "CI script run with bare python3",
+    "scripts/wheel_smoke.py": "CI script run with bare python3",
+    "dashboard/frontend/e2e/serve.py": "starts a long-lived Popen server",
+}
+
+
+def validate_allowlist(mapping: Mapping[str, str]) -> None:
+    empty = sorted(path for path, reason in mapping.items() if not reason.strip())
+    if empty:
+        raise ValueError(f"allowlist entries without a reason: {', '.join(empty)}")
 
 
 def _imports_subprocess(path: Path) -> bool:
@@ -56,14 +57,14 @@ def subprocess_importers(repo_root: Path) -> frozenset[str]:
     return frozenset(found)
 
 
-def violations(importers: frozenset[str], allowlist: frozenset[str]) -> list[str]:
+def violations(importers: frozenset[str], allowlist: Collection[str]) -> list[str]:
     messages = [
         f"{path}: imports subprocess; call external programs through CliTool"
-        for path in sorted(importers - allowlist)
+        for path in sorted(importers - frozenset(allowlist))
     ]
     messages.extend(
         f"{path}: allowlisted but no longer imports subprocess; remove it from ALLOWLIST"
-        for path in sorted(allowlist - importers)
+        for path in sorted(frozenset(allowlist) - importers)
     )
     return messages
 
@@ -132,3 +133,24 @@ def test_git_modules_not_allowlisted() -> None:
         "dashboard/backend/landing.py",
     }
     assert migrated.isdisjoint(ALLOWLIST)
+
+
+def test_allowlist_entries_have_reasons() -> None:
+    validate_allowlist(ALLOWLIST)
+
+
+def test_empty_reason_fails() -> None:
+    with pytest.raises(ValueError, match=r"scripts/x\.py"):
+        validate_allowlist({"scripts/x.py": "  "})
+    with pytest.raises(ValueError, match=r"scripts/y\.py"):
+        validate_allowlist({"scripts/y.py": ""})
+
+
+def test_allowlist_is_exactly_the_five_standalone_files() -> None:
+    assert set(ALLOWLIST) == {
+        "installer/runner.py",
+        "installer/adapters/tail.py",
+        "scripts/check_lint_config.py",
+        "scripts/wheel_smoke.py",
+        "dashboard/frontend/e2e/serve.py",
+    }
