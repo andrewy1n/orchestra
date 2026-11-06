@@ -10,6 +10,7 @@ by agents. The move to one repo is planned in
 |---|---|
 | `orchestra/` | CLI, views, sessions, store access |
 | `orchestra/canon/` | Record store and the `canon` CLI |
+| `orchestra/tools/` | `CliTool`, the base for CLI wrappers |
 | `orchestra/tuner/` | Evidence layer behind `orchestra verify` |
 | `orchestra/score/` | Work planning: the `score` schema module |
 | `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |
@@ -32,6 +33,10 @@ their response. They do not call `canon`.
 
 - Tests build temporary stores. Never write to a real `.canon/` store in
   a test.
+- Call external programs through `CliTool` from `orchestra.tools`. Do not
+  import `subprocess` in new code; the allowlist in
+  `tests/test_subprocess_rule.py` lists the existing exceptions and shrinks
+  as callers migrate.
 - Do not add comments that explain a change. Comment only a fact the
   code cannot show.
 - Use Conventional Commits. Keep the subject short and imperative.

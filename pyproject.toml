@@ -24,6 +24,7 @@ canon = "orchestra.canon.cli:main"
 # with the checkout on PYTHONPATH in the source layout.
 packages = [
     "orchestra",
+    "orchestra.tools",
     "orchestra.canon",
     "orchestra.score",
     "orchestra.score.schemas",
