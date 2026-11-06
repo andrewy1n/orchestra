@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from urllib.request import Request, urlopen
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools import CliTool, Version, run_subprocess
+from orchestra.tools.cli_tool import RunFn
 
 
 @dataclass(frozen=True)
@@ -300,3 +303,62 @@ def _git(root: Path, *args: str) -> str:
         detail = (completed.stderr or completed.stdout).strip()
         raise GitHubPRError(detail or f"git command failed: {' '.join(args)}")
     return completed.stdout.strip()
+
+
+_REPOSITORY = re.compile(r"[^/\s]+/[^/\s]+")
+
+
+class GitHubGh(CliTool):
+    executable = "gh"
+    min_version = Version(2, 50)
+
+    def __init__(
+        self,
+        root: Path,
+        remote: str = "origin",
+        adapter_config: JsonObject | None = None,
+        *,
+        run: RunFn = run_subprocess,
+    ) -> None:
+        super().__init__(root, run=run)
+        self.root = root
+        self.remote = remote
+        repository = (adapter_config or {}).get("repository")
+        if repository is not None and (
+            not isinstance(repository, str) or not _REPOSITORY.fullmatch(repository)
+        ):
+            raise GitHubPRError("land.config.repository must use owner/repository format")
+        self._repository: str | None = repository
+
+    def _repository_flags(self) -> list[str]:
+        return ["-R", self._repository] if self._repository else []
+
+    def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
+        output = self._text(
+            "pr",
+            "create",
+            "--base",
+            base,
+            "--head",
+            head,
+            "--title",
+            title,
+            "--body-file",
+            "-",
+            *self._repository_flags(),
+            input=body,
+        )
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        if not lines:
+            raise GitHubPRError("gh pr create printed no pull request URL")
+        return self.pull_request(lines[-1])
+
+    def pull_request(self, ref: str) -> tuple[int, str]:
+        data = self._json("pr", "view", ref, "--json", "number,url", *self._repository_flags())
+        if not isinstance(data, dict):
+            raise GitHubPRError("gh pr view returned an unexpected shape")
+        number = data.get("number")
+        url = data.get("url")
+        if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
+            raise GitHubPRError("gh pr view returned an unexpected shape")
+        return number, url
