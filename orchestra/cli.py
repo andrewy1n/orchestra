@@ -21,7 +21,6 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
-from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
@@ -512,10 +511,12 @@ def _cwd(args: argparse.Namespace) -> Path:
 
 
 def _git_root(directory: Path) -> Path:
-    try:
-        return Git(directory).root()
-    except ToolError:
+    if not directory.is_dir():
         return directory.resolve()
+    result = Git(directory).run("rev-parse", "--show-toplevel")
+    if result.returncode != 0 or not result.stdout.strip():
+        return directory.resolve()
+    return Path(result.stdout.strip())
 
 
 def _print_json(payload: object) -> None:
