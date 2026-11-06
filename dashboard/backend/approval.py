@@ -15,13 +15,14 @@ from dashboard.backend.dismiss import (
     is_dismissible,
 )
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
-from dashboard.backend.landing import rev_parse_token
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.revision import revision_matches
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 
@@ -98,8 +99,10 @@ def _cli_json(target: Project, *args: str) -> Record | None:
 
 
 def _git_head(root: Path) -> str:
-    sha = rev_parse_token(root, "HEAD")
-    return (sha or "").strip()
+    try:
+        return Git(root, timeout=2).head()
+    except ToolError:
+        return ""
 
 
 def _short(sha: str, n: int = 7) -> str:

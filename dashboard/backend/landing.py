@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git, GitResult
 
 _TIMEOUT = 2
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
@@ -47,16 +47,10 @@ def _branch_name(section: str, subject: str) -> str:
     return f"phase/{subject}"
 
 
-def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+def _git(root: Path, *args: str) -> GitResult | None:
     try:
-        return run_git(
-            root,
-            *args,
-            capture_output=True,
-            text=True,
-            timeout=_TIMEOUT,
-        )
-    except (OSError, subprocess.SubprocessError):
+        return Git(root, timeout=_TIMEOUT).run(*args)
+    except ToolError:
         return None
 
 
