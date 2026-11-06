@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Literal, overload
 
 import pytest
 
+import orchestra.conductor.github_pr as github_pr
 from orchestra.conductor.github_pr import GitHubCheck, GitHubGh, GitHubPRError
-from orchestra.tools import CliTool, ToolError, Version
+from orchestra.tools import CliTool, Git, ToolError, Version
 from orchestra.tools.testing import scripted
 
 URL = "https://github.com/acme/widgets/pull/7"
@@ -31,19 +33,48 @@ VIEW_ARGV = ("gh", "pr", "view", URL, "--json", "number,url")
 
 class RecordingRun:
     def __init__(self) -> None:
-        self.inputs: list[tuple[tuple[str, ...], str | None]] = []
+        self.inputs: list[tuple[tuple[str, ...], str | bytes | None]] = []
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         key = tuple(argv)
         self.inputs.append((key, input))
         if key[1:] == ("--version",):
@@ -124,17 +155,46 @@ class FailingChecksRun:
     def __init__(self, stderr: str) -> None:
         self.stderr = stderr
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         key = tuple(argv)
         if key == ("gh", "--version"):
             return subprocess.CompletedProcess(list(key), 0, "gh version 2.50.0\n", "")
@@ -216,3 +276,28 @@ def test_no_checks_reported_returns_no_checks(tmp_path: Path) -> None:
 def test_other_tool_error_is_not_swallowed(tmp_path: Path) -> None:
     with pytest.raises(ToolError):
         GitHubGh(tmp_path, run=FailingChecksRun("HTTP 502")).checks(7)
+
+
+def test_push_branch_runs_git_push_through_git_client(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    push = ("git", "push", "--set-upstream", "origin", "branch")
+    run = scripted(Git, {push: ""})
+    monkeypatch.setattr(github_pr, "Git", lambda root: Git(root, run=run))
+    gh_run = scripted(GitHubGh, {})
+    GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
+    assert run.calls == [("git", "--version"), push]
+
+
+def test_push_branch_reports_timeout_cause(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def timing_out(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if list(argv)[1:] == ["--version"]:
+            return subprocess.CompletedProcess(list(argv), 0, "git version 2.40.0\n", "")
+        raise subprocess.TimeoutExpired(list(argv), 5.0)
+
+    monkeypatch.setattr(github_pr, "Git", lambda root: Git(root, run=timing_out))  # pyright: ignore[reportArgumentType]
+    gh_run = scripted(GitHubGh, {})
+    with pytest.raises(GitHubPRError) as info:
+        GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
+    assert "timed out" in str(info.value)
+    assert "not found" not in str(info.value)

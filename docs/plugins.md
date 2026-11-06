@@ -162,6 +162,8 @@ Every failure is a `ToolError`: a missing executable, a timeout, a non-zero exit
 
 A method returns a frozen dataclass. It parses the output of `self._text(...)` or `self._json(...)`, so callers never see raw argv or JSON.
 
+To run git, use the `Git` client in `orchestra.tools`. Do not call `git` yourself. `Git.run` returns the exit code and never raises on a non-zero exit. `Git.text` and the typed methods raise `ToolError`.
+
 ```python
 from dataclasses import dataclass
 from pathlib import Path

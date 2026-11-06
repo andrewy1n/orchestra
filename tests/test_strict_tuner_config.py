@@ -116,7 +116,7 @@ def test_import_boundary() -> None:
                 continue
             for module in modules:
                 if module.startswith("orchestra.") and not module.startswith(
-                    ("orchestra.canon", "orchestra.tuner")
+                    ("orchestra.canon", "orchestra.tools", "orchestra.tuner")
                 ):
                     violations.append(f"{path.relative_to(ROOT)}:{node.lineno}: {module}")
     assert violations == []

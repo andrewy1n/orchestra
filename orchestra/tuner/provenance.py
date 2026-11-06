@@ -6,11 +6,10 @@ Git is the only authority. No record store is read.
 from __future__ import annotations
 
 import os
-import subprocess
 import tempfile
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
+from orchestra.tools.git import Git, GitResult
 from orchestra.tuner.manifest import (
     ALLOWLIST_PATH,
     MANIFEST_PATH,
@@ -33,8 +32,9 @@ def check_provenance(
     allowlist: bytes,
 ) -> str | None:
     """Return the failure reason for ``claim``, or ``None`` when provenance holds."""
-    oracle = _oracle_commit(cwd, at_commit, list(claim.oracle_hashes))
-    if oracle is None or oracle == at_commit or not _is_ancestor(cwd, oracle, base_commit):
+    git = Git(Path(cwd))
+    oracle = _oracle_commit(git, at_commit, list(claim.oracle_hashes))
+    if oracle is None or oracle == at_commit or not _is_ancestor(git, oracle, base_commit):
         return AFTER
     allowed = {
         *claim.oracle_hashes,
@@ -42,33 +42,31 @@ def check_provenance(
         MANIFEST_PATH,
         ALLOWLIST_PATH,
     }
-    if not set(_changed_paths(cwd, oracle)) <= allowed:
+    if not set(_changed_paths(git, oracle)) <= allowed:
         return NON_ORACLE
-    if _shares_signer(cwd, at_commit, base_commit, oracle, allowlist):
+    if _shares_signer(git, at_commit, base_commit, oracle, allowlist):
         return SHARED_SIGNER
     return None
 
 
-def _git(
-    cwd: Path | str, *args: str, config: tuple[str, ...] = ()
-) -> subprocess.CompletedProcess[str]:
+def _run(git: Git, *args: str, config: tuple[str, ...] = ()) -> GitResult:
     prefix: list[str] = []
     for item in config:
         prefix.extend(["-c", item])
-    return run_git(cwd, "--no-pager", *prefix, *args, capture_output=True, text=True)
+    return git.run("--no-pager", *prefix, *args)
 
 
-def _oracle_commit(cwd: Path | str, at_commit: str, relpaths: list[str]) -> str | None:
+def _oracle_commit(git: Git, at_commit: str, relpaths: list[str]) -> str | None:
     if not relpaths:
         return None
-    listed = _git(cwd, "rev-list", at_commit)
+    listed = _run(git, "rev-list", at_commit)
     if listed.returncode != 0:
         return None
     order = {sha: index for index, sha in enumerate(listed.stdout.split())}
     newest: str | None = None
     for relpath in relpaths:
-        added = _git(
-            cwd,
+        added = _run(
+            git,
             "log",
             "--no-renames",
             "--diff-filter=A",
@@ -86,17 +84,17 @@ def _oracle_commit(cwd: Path | str, at_commit: str, relpaths: list[str]) -> str 
     return newest
 
 
-def _is_ancestor(cwd: Path | str, ancestor: str, descendant: str) -> bool:
-    return _git(cwd, "merge-base", "--is-ancestor", ancestor, descendant).returncode == 0
+def _is_ancestor(git: Git, ancestor: str, descendant: str) -> bool:
+    return _run(git, "merge-base", "--is-ancestor", ancestor, descendant).returncode == 0
 
 
-def _changed_paths(cwd: Path | str, commit: str) -> list[str]:
-    result = _git(cwd, "diff-tree", "--root", "-r", "--name-only", "--no-commit-id", "-z", commit)
+def _changed_paths(git: Git, commit: str) -> list[str]:
+    result = _run(git, "diff-tree", "--root", "-r", "--name-only", "--no-commit-id", "-z", commit)
     return [item for item in result.stdout.split("\0") if item]
 
 
 def _shares_signer(
-    cwd: Path | str,
+    git: Git,
     at_commit: str,
     base_commit: str,
     oracle: str,
@@ -107,17 +105,17 @@ def _shares_signer(
         with os.fdopen(handle, "wb") as out:
             out.write(allowlist)
         config = (f"gpg.ssh.allowedSignersFile={name}",)
-        oracle_signers = _principals(cwd, config, "-1", oracle)
+        oracle_signers = _principals(git, config, "-1", oracle)
         if not oracle_signers:
             return False
-        impl_signers = _principals(cwd, config, f"{base_commit}..{at_commit}")
+        impl_signers = _principals(git, config, f"{base_commit}..{at_commit}")
         return bool(oracle_signers & impl_signers)
     finally:
         os.unlink(name)
 
 
-def _principals(cwd: Path | str, config: tuple[str, ...], *revs: str) -> set[str]:
-    result = _git(cwd, "log", "--format=%G?%x09%GS", *revs, config=config)
+def _principals(git: Git, config: tuple[str, ...], *revs: str) -> set[str]:
+    result = _run(git, "log", "--format=%G?%x09%GS", *revs, config=config)
     principals: set[str] = set()
     for line in result.stdout.splitlines():
         status, _, principal = line.partition("\t")

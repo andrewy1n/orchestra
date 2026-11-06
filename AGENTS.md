@@ -10,7 +10,7 @@ by agents. The move to one repo is planned in
 |---|---|
 | `orchestra/` | CLI, views, sessions, store access |
 | `orchestra/canon/` | Record store and the `canon` CLI |
-| `orchestra/tools/` | `CliTool`, the base for CLI wrappers |
+| `orchestra/tools/` | `CliTool`, the base for CLI wrappers, and the `Git` client |
 | `orchestra/tuner/` | Evidence layer behind `orchestra verify` |
 | `orchestra/score/` | Work planning: the `score` schema module |
 | `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |

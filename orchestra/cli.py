@@ -10,7 +10,6 @@ from pathlib import Path
 
 from orchestra import plugin_cli, status_cli, view_cli, views
 from orchestra.canon.errors import StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
@@ -22,6 +21,7 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
+from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
 GATE_FAILED_EXIT = 5
@@ -511,16 +511,12 @@ def _cwd(args: argparse.Namespace) -> Path:
 
 
 def _git_root(directory: Path) -> Path:
-    result = run_git(
-        directory,
-        "rev-parse",
-        "--show-toplevel",
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0 and result.stdout.strip():
-        return Path(result.stdout.strip())
-    return directory.resolve()
+    if not directory.is_dir():
+        return directory.resolve()
+    result = Git(directory).run("rev-parse", "--show-toplevel")
+    if result.returncode != 0 or not result.stdout.strip():
+        return directory.resolve()
+    return Path(result.stdout.strip())
 
 
 def _print_json(payload: object) -> None:

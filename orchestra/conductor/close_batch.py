@@ -41,20 +41,19 @@ import contextlib
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TypedDict, TypeGuard
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
 from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
+from orchestra.tools import Git
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -237,16 +236,7 @@ def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
     """True when ancestor == descendant or ancestor is a git ancestor of descendant."""
     if ancestor == descendant:
         return True
-    result = run_git(
-        cwd,
-        "merge-base",
-        "--is-ancestor",
-        ancestor,
-        descendant,
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
+    return Git(cwd).run("merge-base", "--is-ancestor", ancestor, descendant).returncode == 0
 
 
 def _open_project(store_root: Path | None):
@@ -317,12 +307,10 @@ def _sha256_digest(data: bytes) -> str:
 
 def hash_file_at_revision(cwd: Path, revision: str, relpath: str) -> str:
     """Content hash of ``relpath`` at a store-backed check-run revision."""
-    result: subprocess.CompletedProcess[bytes] = run_git(
-        cwd, "show", f"{revision}:{relpath}", capture_output=True
-    )  # pyright: ignore[reportAssignmentType]  # No text or encoding options are passed.
-    if result.returncode != 0:
+    content = Git(cwd).show_bytes(revision, relpath)
+    if content is None:
         raise FileNotFoundError(relpath)
-    return _sha256_digest(result.stdout)
+    return _sha256_digest(content)
 
 
 def tree_oracle_hashes(
