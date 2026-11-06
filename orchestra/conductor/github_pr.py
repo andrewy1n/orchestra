@@ -44,6 +44,8 @@ class GitHubClient(Protocol):
         self, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]: ...
 
+    def head_sha(self, number: int) -> str: ...
+
     def checks(self, number: int) -> tuple[GitHubCheck, ...]: ...
 
 
@@ -94,6 +96,7 @@ def open_pull_request(
         checks = wait_for_checks(
             github,
             number,
+            head_sha=head_sha,
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
             sleep=sleep_fn,
@@ -115,6 +118,7 @@ def wait_for_checks(
     client: GitHubClient,
     number: int,
     *,
+    head_sha: str,
     poll_interval_s: float,
     timeout_s: float,
     sleep: Callable[[float], None],
@@ -123,6 +127,11 @@ def wait_for_checks(
     deadline = monotonic() + timeout_s
     while True:
         checks = client.checks(number)
+        current = client.head_sha(number)
+        if current != head_sha:
+            raise GitHubPRError(
+                f"pull request head changed from {head_sha} to {current} while waiting for checks"
+            )
         if checks and all(check.status == "completed" for check in checks):
             return checks
         remaining = deadline - monotonic()
@@ -222,6 +231,15 @@ class GitHubGh(CliTool):
         if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
             raise GitHubPRError("gh pr view returned an unexpected shape")
         return number, url
+
+    def head_sha(self, number: int) -> str:
+        data = self._json(
+            "pr", "view", str(number), "--json", "headRefOid", *self._repository_flags()
+        )
+        sha = data.get("headRefOid") if isinstance(data, dict) else None
+        if not isinstance(sha, str) or not sha:
+            raise GitHubPRError("gh pr view returned an unexpected shape")
+        return sha
 
     def checks(self, number: int) -> tuple[GitHubCheck, ...]:
         try:
