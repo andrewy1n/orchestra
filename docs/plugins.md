@@ -152,6 +152,64 @@ runner = ["acme-check", "--strict"]
 
 The example distribution registers `example-checks` and provides a replay implementation. Use its id to try the installed package.
 
+## Wrapping a CLI
+
+A plugin that runs an external program imports from `orchestra.tools`. Do not call `subprocess` directly.
+
+Subclass `CliTool`. Set `executable` and `min_version`. `CliTool` checks the version on the first command and raises `ToolVersionError` when the installed program is older than `min_version`. Call `self.require(version, feature)` at the start of one method to gate it on a newer version.
+
+Every failure is a `ToolError`: a missing executable, a timeout, a non-zero exit, or invalid JSON. Subclasses catch nothing.
+
+A method returns a frozen dataclass. It parses the output of `self._text(...)` or `self._json(...)`, so callers never see raw argv or JSON.
+
+```python
+from dataclasses import dataclass
+from pathlib import Path
+
+from orchestra.tools import CliTool, ToolError, Version
+
+
+@dataclass(frozen=True)
+class Status:
+    branch: str
+    dirty: bool
+
+
+class MyTool(CliTool):
+    executable = "mytool"
+    min_version = Version(1, 2)
+
+    def status(self) -> Status:
+        raw = self._json("status", "--json")
+        if not isinstance(raw, dict):
+            raise ToolError("unexpected status output", [self.executable, "status"], None, "")
+        return Status(branch=str(raw["branch"]), dirty=bool(raw["dirty"]))
+
+    def prune(self) -> str:
+        self.require(Version(1, 5), "prune")
+        return self._text("prune")
+```
+
+Tests inject a fake runner through `run=`. `scripted(MyTool, responses)` answers `mytool --version` with `min_version`, answers each key in `responses` with its text, and fails on any other call. Pass `version=` to script a different version.
+
+```python
+import pytest
+
+from orchestra.tools import ToolVersionError
+from orchestra.tools.testing import scripted
+
+
+def test_status_parses_json() -> None:
+    run = scripted(MyTool, {("mytool", "status", "--json"): '{"branch": "main", "dirty": false}'})
+    assert MyTool(Path("."), run=run).status() == Status(branch="main", dirty=False)
+
+
+def test_prune_needs_newer_version() -> None:
+    run = scripted(MyTool, {("mytool", "prune"): "ok"})
+    with pytest.raises(ToolVersionError):
+        MyTool(Path("."), run=run).prune()
+```
+
 ## Landing plugins
 
 Configure a landing adapter explicitly. Missing `[land]` settings raise an error when you run `orchestra land`.

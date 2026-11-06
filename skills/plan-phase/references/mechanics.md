@@ -27,6 +27,11 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   phase body, and one acceptance may carry `requirements` (a JSON
   array of ids) instead of `requirement` when one check proves them
   all. A full phase keeps one `requirement` per acceptance.
+  In a light phase the closing verification task's acceptance must
+  not name a requirement id that an earlier task's acceptance already
+  names. A shared id keeps the earlier task from closing in `task land`,
+  because the requirement is verified only when every acceptance that
+  names it passes. Cover exit criteria with checks that name no id.
 - Several acceptances: first uses task slug; extras use
   `<task-slug>-<short suffix>`. Do not pick a task slug that is a
   prefix of another in the same phase.
