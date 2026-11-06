@@ -108,9 +108,9 @@ def _git_starter_paths() -> list[str]:
 
 
 def _ssh_keygen_modules() -> list[str]:
-    root = ROOT / "orchestra" / "tuner"
+    root = ROOT / "orchestra"
     return sorted(
-        path.relative_to(root).as_posix()
+        path.relative_to(ROOT).as_posix()
         for path in root.rglob("*.py")
         if "ssh-keygen" in path.read_text(encoding="utf-8")
     )
@@ -298,9 +298,8 @@ def test_r7_git_head_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_r8_ssh_keygen_one_module() -> None:
-    """R8: The text ssh-keygen appears under orchestra/tuner/ in only one Python module."""
-    modules = _ssh_keygen_modules()
-    assert len(modules) == 1
+    """R8: The text ssh-keygen appears under orchestra/ only in orchestra/tools/ssh_keygen.py."""
+    assert _ssh_keygen_modules() == ["orchestra/tools/ssh_keygen.py"]
 
 
 def test_r9_claim_signature(tmp_path: Path) -> None:
