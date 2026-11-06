@@ -12,7 +12,6 @@ from typing import Literal
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
 from orchestra.canon.errors import StaleWriteError, StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
@@ -32,6 +31,8 @@ from orchestra.canon.validation import (
     validate_record,
     validate_store,
 )
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
 
 Location = Literal["local", "global"]
 _LOCAL_BINDING = "store-binding.local.json"
@@ -300,14 +301,8 @@ def _open_bound(root: Path) -> Project:
 def _project_root(directory: str | Path) -> Path:
     directory = Path(directory)
     try:
-        proc = run_git(
-            directory,
-            "rev-parse",
-            "--show-toplevel",
-            capture_output=True,
-            text=True,
-        )
-    except OSError:
+        proc = Git(directory).run("rev-parse", "--show-toplevel")
+    except ToolError:
         return directory.resolve()
     if proc.returncode != 0 or not proc.stdout.strip():
         return directory.resolve()
