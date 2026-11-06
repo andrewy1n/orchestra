@@ -6,7 +6,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, Protocol, TypeAlias
 
-from orchestra.tools.errors import ToolError
+from orchestra.tools.errors import ToolError, ToolVersionError
+from orchestra.tools.version import Version
+from orchestra.tools.version import parse_version as _parse_version
 
 JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -49,6 +51,7 @@ def run_subprocess(
 
 class CliTool:
     executable: ClassVar[str]
+    min_version: ClassVar[Version] = Version(0, 0)
 
     def __init__(
         self,
@@ -60,6 +63,47 @@ class CliTool:
         self._cwd: Path = cwd
         self._run: RunFn = run
         self._timeout: float = timeout
+        self._version: Version | None = None
+
+    @classmethod
+    def parse_version(cls, output: str) -> Version:
+        return _parse_version(output)
+
+    @property
+    def version(self) -> Version:
+        if self._version is None:
+            result = self._execute(["--version"], None)
+            try:
+                found = self.parse_version(result.stdout)
+            except ValueError as error:
+                raise ToolError(
+                    f"cannot parse {self.executable} version: {error}",
+                    [self.executable, "--version"],
+                    result.returncode,
+                    result.stderr,
+                ) from error
+            if found < self.min_version:
+                raise ToolVersionError(
+                    f"{self.executable} version {found} is below required {self.min_version}",
+                    [self.executable, "--version"],
+                    result.returncode,
+                    result.stderr,
+                )
+            self._version = found
+        return self._version
+
+    def _check_version(self) -> None:
+        _ = self.version
+
+    def require(self, version: Version, feature: str) -> None:
+        found = self.version
+        if found < version:
+            raise ToolVersionError(
+                f"{feature} needs {self.executable} {version} or newer, found {found}",
+                [self.executable],
+                None,
+                "",
+            )
 
     def _execute(self, args: Sequence[str], input: str | None) -> subprocess.CompletedProcess[str]:
         argv = [self.executable, *args]
@@ -89,9 +133,11 @@ class CliTool:
         return result
 
     def _text(self, *args: str, input: str | None = None) -> str:
+        self._check_version()
         return self._execute(args, input).stdout.strip()
 
     def _json(self, *args: str, input: str | None = None) -> JsonValue:
+        self._check_version()
         result = self._execute(args, input)
         try:
             return json.loads(result.stdout)
