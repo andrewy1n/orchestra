@@ -250,6 +250,10 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
             self.events: list[str] = []
             self.body = ""
             self.poll = 0
+            self.head = ""
+
+        def head_sha(self, number: int) -> str:
+            return self.head
 
         def push_branch(self, remote: str, branch: str) -> None:
             self.events.append(f"push:{remote}:{branch}")
@@ -270,6 +274,7 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
             )
 
     github = FakeGitHub()
+    github.head = revision
     monkeypatch.setattr(github_pr, "GitHubGh", lambda _root, _remote, _config: github)
     monkeypatch.setattr(github_pr.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])

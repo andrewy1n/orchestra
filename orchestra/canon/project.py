@@ -31,7 +31,6 @@ from orchestra.canon.validation import (
     validate_record,
     validate_store,
 )
-from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 Location = Literal["local", "global"]
@@ -300,10 +299,9 @@ def _open_bound(root: Path) -> Project:
 
 def _project_root(directory: str | Path) -> Path:
     directory = Path(directory)
-    try:
-        proc = Git(directory).run("rev-parse", "--show-toplevel")
-    except ToolError:
+    if not directory.is_dir():
         return directory.resolve()
+    proc = Git(directory).run("rev-parse", "--show-toplevel")
     if proc.returncode != 0 or not proc.stdout.strip():
         return directory.resolve()
     return Path(proc.stdout.strip()).resolve()

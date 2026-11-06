@@ -29,6 +29,11 @@ class FakeGitHub:
         self.events: list[str] = []
         self.body = ""
         self.check_batches: deque[tuple[GitHubCheck, ...]] = deque()
+        self.head = "abc"
+        self.heads: deque[str] = deque()
+
+    def head_sha(self, number: int) -> str:
+        return self.heads.popleft() if self.heads else self.head
 
     def push_branch(self, remote: str, branch: str) -> None:
         self.events.append(f"push:{remote}:{branch}")
@@ -50,11 +55,13 @@ class ScriptedGh:
         failures: dict[tuple[str, ...], tuple[int, str]] | None = None,
         responses: dict[tuple[str, ...], str] | None = None,
         missing: bool = False,
+        head_oid: str = "",
     ) -> None:
         self.version = version
         self.failures = failures or {}
         self.responses = responses or {}
         self.missing = missing
+        self.head_oid = head_oid
         self.calls: list[tuple[str, ...]] = []
 
     @overload
@@ -103,6 +110,10 @@ class ScriptedGh:
             raise FileNotFoundError(2, "No such file or directory", "gh")
         if key[1:] == ("--version",):
             return subprocess.CompletedProcess(list(key), 0, self.version, "")
+        if "headRefOid" in key:
+            return subprocess.CompletedProcess(
+                list(key), 0, json.dumps({"headRefOid": self.head_oid}), ""
+            )
         for prefix, (code, stderr) in self.failures.items():
             if key[: len(prefix)] == prefix:
                 return subprocess.CompletedProcess(list(key), code, "", stderr)
@@ -149,6 +160,8 @@ def _add_origin(root: Path) -> None:
 
 
 def _open(root: Path, client: GitHubClient) -> GitHubPRResult:
+    if isinstance(client, FakeGitHub):
+        client.head = _git(root, "rev-parse", "HEAD")
     return open_pull_request(
         root,
         "## Look\nProof packet body\n",
@@ -173,6 +186,7 @@ def _wait(
     checks = wait_for_checks(
         github,
         42,
+        head_sha="abc",
         poll_interval_s=2,
         timeout_s=timeout_s,
         sleep=sleeps.append,
@@ -216,6 +230,14 @@ def test_wait_polls_while_no_checks() -> None:
     assert checks == (GitHubCheck("CI", "completed", "success"),)
     assert sleeps == [2, 2]
     assert github.events == ["checks:42"] * 3
+
+
+def test_wait_rejects_changed_pull_request_head() -> None:
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
+    github.heads.append("def")
+
+    with pytest.raises(GitHubPRError, match="head changed"):
+        _wait(github)
 
 
 def test_wait_polls_while_incomplete() -> None:
@@ -283,6 +305,7 @@ def test_github_pr_waits_through_open_pull_request(tmp_path: Path) -> None:
     _write_project(root)
     github = _fake_with([(), (GitHubCheck("CI", "in_progress", None),)])
     github.check_batches.append((GitHubCheck("CI", "completed", "success"),))
+    github.head = _git(root, "rev-parse", "HEAD")
     sleeps: list[float] = []
 
     result = open_pull_request(
@@ -313,13 +336,14 @@ def test_github_pr_adapter_runs_through_dispatch_land(
     _git(root, "add", "orchestra.toml")
     _git(root, "commit", "-qm", "configure GitHub adapter")
     run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
         responses={
             ("gh", "pr", "create"): f"{PR_URL}\n",
             ("gh", "pr", "view"): VIEW_RESPONSE,
             ("gh", "pr", "checks"): json.dumps(
                 [{"name": "CI", "state": "FAILURE", "bucket": "fail"}]
             ),
-        }
+        },
     )
     configured: list[tuple[str, JsonObject]] = []
     real_gh = github_pr.GitHubGh
@@ -345,13 +369,14 @@ def test_adapter_statuses_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     _write_project(root)
     _add_origin(root)
     run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
         responses={
             ("gh", "pr", "create"): f"{PR_URL}\n",
             ("gh", "pr", "view"): VIEW_RESPONSE,
             ("gh", "pr", "checks"): json.dumps(
                 [{"name": "CI", "state": "SUCCESS", "bucket": "pass"}]
             ),
-        }
+        },
     )
     real_gh = github_pr.GitHubGh
     monkeypatch.setattr(
@@ -399,13 +424,14 @@ def test_open_pull_request_without_token(tmp_path: Path, monkeypatch: pytest.Mon
     for name in ("GITHUB_TOKEN", "GH_TOKEN"):
         monkeypatch.delenv(name, raising=False)
     run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
         responses={
             ("gh", "pr", "create"): f"{PR_URL}\n",
             ("gh", "pr", "view"): VIEW_RESPONSE,
             ("gh", "pr", "checks"): json.dumps(
                 [{"name": "CI", "state": "SUCCESS", "bucket": "pass"}]
             ),
-        }
+        },
     )
 
     result = _open(root, GitHubGh(root, run=run))
