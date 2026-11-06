@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from datetime import timedelta
@@ -170,8 +169,9 @@ def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
         project = _open_project(root)
         if project is None:
             return None
-        if open_backend(project.store_path).backup_due(timedelta(hours=24)):
-            subprocess.run(["canon", "backup"], cwd=root, check=True)
+        backend = open_backend(project.store_path)
+        if backend.backup_due(timedelta(hours=24)):
+            backend.backup()
         records = views.load_records(project)
         _save_baseline(project, root, data)
         dormant = views.dormant_efforts(records)
