@@ -2,28 +2,15 @@
 
 from __future__ import annotations
 
-import subprocess
 import tempfile
 from pathlib import Path
+
+from orchestra.tools import SshKeygen
 
 
 def sign(namespace: str, payload: bytes, key_path: Path | str) -> str:
     """Return the signature text for payload bytes in namespace."""
-    completed = subprocess.run(
-        [
-            "ssh-keygen",
-            "-Y",
-            "sign",
-            "-f",
-            str(key_path),
-            "-n",
-            namespace,
-        ],
-        input=payload,
-        check=True,
-        capture_output=True,
-    )
-    return completed.stdout.decode("utf-8")
+    return SshKeygen(Path.cwd(), timeout=None).sign(namespace, payload, Path(key_path))
 
 
 def verify(
@@ -45,26 +32,9 @@ def verify(
         sig_path = directory / "payload.sig"
         allowlist_path.write_bytes(allowlist_bytes)
         sig_path.write_bytes(sig_bytes)
+        keygen = SshKeygen(directory, timeout=None)
         for principal in principals:
-            completed = subprocess.run(
-                [
-                    "ssh-keygen",
-                    "-Y",
-                    "verify",
-                    "-f",
-                    str(allowlist_path),
-                    "-I",
-                    principal,
-                    "-n",
-                    namespace,
-                    "-s",
-                    str(sig_path),
-                ],
-                input=payload,
-                capture_output=True,
-                check=False,
-            )
-            if completed.returncode == 0:
+            if keygen.verify(allowlist_path, principal, namespace, sig_path, payload):
                 return True
     return False
 
