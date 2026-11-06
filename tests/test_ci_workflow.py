@@ -109,6 +109,10 @@ def test_lint_config_guard_is_a_blocking_checks_step() -> None:
     assert isinstance(guard, dict)
     assert "continue-on-error" not in guard or guard["continue-on-error"] is False
     assert "scripts/check_lint_config.py --base" in str(guard.get("run", ""))
+    run = str(guard.get("run", ""))
+    assert "git merge-base origin/main HEAD" in run
+    assert "git rev-parse HEAD^" not in run
+    assert "Comparing Python policy against" in run
     assert set(guard.get("env", {})) == {"PR_BASE", "PUSH_BASE"}
 
 

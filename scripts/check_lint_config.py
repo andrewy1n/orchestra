@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -11,9 +12,12 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-_MODES = {"off": 0, "basic": 1, "standard": 2, "strict": 3}
+_MODES = {"off": 0, "basic": 1, "standard": 2, "strict": 3, "recommended": 4, "all": 5}
 _SEVERITIES = {"none": 0, "off": 0, "information": 1, "warning": 2, "error": 3}
-_IGNORES = re.compile(r"#\s*pyright:\s*ignore(?!\[)", re.IGNORECASE)
+_SUPPRESSIONS = re.compile(
+    r"#\s*(?:pyright:\s*(?:ignore(?!\[)|(?:basic|standard|off)\b|report[\w.]+\s*=\s*(?:false|off|none)\b)|(?:ruff:\s*)?noqa(?:\s*:\s*)?(?:\s+#.*)?$)",
+    re.IGNORECASE,
+)
 _SKIP_DIRS = {".git", ".pytest_cache", ".venv", "node_modules", ".worktrees"}
 
 
@@ -95,13 +99,11 @@ def _compare_sections(base: dict[str, object], candidate: dict[str, object]) -> 
             elif _SEVERITIES.get(after, -1) < _SEVERITIES.get(before, -1):
                 failures.append(f"[tool.basedpyright].{key} is weaker")
 
-        before_exclude = _strings(base_pyright.get("exclude"))
-        after_exclude = _strings(candidate_pyright.get("exclude"))
-        if (
-            before_exclude is not None
-            and after_exclude is not None
-            and not after_exclude <= before_exclude
-        ):
+        before_exclude = _strings(base_pyright.get("exclude", []))
+        after_exclude = _strings(candidate_pyright.get("exclude", []))
+        if before_exclude is None or after_exclude is None:
+            failures.append("[tool.basedpyright].exclude must be a string list")
+        elif not after_exclude <= before_exclude:
             failures.append("[tool.basedpyright].exclude adds excluded paths")
 
         known_pyright = {"typeCheckingMode", "strict", "include", "exclude"}
@@ -208,6 +210,39 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], cwd=root, text=True, capture_output=True, check=False)
 
 
+def _files(root: Path) -> list[Path]:
+    found: list[Path] = []
+
+    def fail(error: OSError) -> None:
+        raise error
+
+    for directory, names, files in os.walk(root, onerror=fail):
+        names[:] = sorted(name for name in names if name not in _SKIP_DIRS)
+        parent = Path(directory)
+        found.extend(parent / name for name in sorted(files))
+    return sorted(found)
+
+
+def _check_override_configs(root: Path, paths: list[Path]) -> list[str]:
+    failures: list[str] = []
+    for path in paths:
+        relative = path.relative_to(root)
+        if path.name in {"pyrightconfig.json", "ruff.toml", ".ruff.toml"}:
+            failures.append(f"{relative} can override the root Python policy")
+        elif path.name == "pyproject.toml" and relative != Path("pyproject.toml"):
+            try:
+                config = _toml(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                failures.append(f"cannot read nested config {relative}: {exc}")
+                continue
+            tools = _nested(config, "tool")
+            if isinstance(tools, dict):
+                for name in ("ruff", "basedpyright"):
+                    if name in tools:
+                        failures.append(f"{relative} defines [tool.{name}] policy")
+    return failures
+
+
 def check(root: Path, base: str) -> list[str]:
     base_result = _git(root, "show", f"{base}:pyproject.toml")
     if base_result.returncode != 0:
@@ -218,22 +253,25 @@ def check(root: Path, base: str) -> list[str]:
     except (OSError, ValueError) as exc:
         return [f"cannot parse pyproject.toml: {exc}"]
 
-    failures = _compare_sections(base_config, current_config)
-    baseline = ".basedpyright/baseline.json"
-    if (root / baseline).is_file():
-        failures.append(f"{baseline} is not allowed")
+    try:
+        paths = _files(root)
+    except OSError as exc:
+        return [f"cannot scan repository files: {exc}"]
 
-    for path in root.rglob("*.py"):
-        if any(part in _SKIP_DIRS for part in path.relative_to(root).parts):
+    failures = _compare_sections(base_config, current_config)
+    failures.extend(_check_override_configs(root, paths))
+    for path in paths:
+        relative = path.relative_to(root)
+        if path.name == "baseline.json" and relative.parent.name == ".basedpyright":
+            failures.append(f"{relative} is not allowed")
+        if path.suffix not in {".py", ".pyi"}:
             continue
         try:
             for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                if _IGNORES.search(line):
-                    failures.append(
-                        f"{path.relative_to(root)}:{line_number} has an unruled pyright ignore"
-                    )
-        except (OSError, UnicodeDecodeError):
-            continue
+                if _SUPPRESSIONS.search(line):
+                    failures.append(f"{relative}:{line_number} has an unruled Python suppression")
+        except (OSError, UnicodeDecodeError) as exc:
+            failures.append(f"cannot read {relative}: {exc}")
     return failures
 
 
