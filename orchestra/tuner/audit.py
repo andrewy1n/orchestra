@@ -11,8 +11,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools.git import Git
 from orchestra.tuner.manifest import (
     DEFAULT_RUNNER,
     ManifestError,
@@ -209,12 +209,9 @@ def _claim_ids(root: Path, head_commit: str) -> set[str]:
 
 
 def _load_probes(root: Path, head_commit: str) -> list[JsonObject]:
-    proc = run_git(
-        root,
+    proc = Git(root).run(
         "show",
         f"{head_commit}:{PROBES_PATH}",
-        capture_output=True,
-        text=True,
     )
     if proc.returncode != 0:
         return []
@@ -340,8 +337,7 @@ def _claim_tests_and_runner(
 
 
 def _source_hunks(root: Path, base: str, head: str) -> list[_Hunk]:
-    proc = run_git(
-        root,
+    proc = Git(root).run(
         "diff",
         "-U0",
         base,
@@ -350,8 +346,6 @@ def _source_hunks(root: Path, base: str, head: str) -> list[_Hunk]:
         ".",
         ":(exclude).canon",
         ":(exclude).tuner",
-        capture_output=True,
-        text=True,
     )
     if proc.returncode != 0:
         raise AuditError(proc.stderr.strip() or "git diff failed")
@@ -548,8 +542,9 @@ def _plant_mutants(
 
 
 def _reset(worktree: Path) -> None:
-    run_git(worktree, "checkout", "--", ".", capture_output=True, check=False)
-    run_git(worktree, "clean", "-fd", capture_output=True, check=False)
+    git = Git(worktree)
+    git.run("checkout", "--", ".")
+    git.run("clean", "-fd")
 
 
 def _reverse_apply(worktree: Path, patch_text: str) -> bool:
@@ -557,14 +552,11 @@ def _reverse_apply(worktree: Path, patch_text: str) -> bool:
         handle.write(patch_text)
         patch_path = handle.name
     try:
-        proc = run_git(
-            worktree,
+        proc = Git(worktree).run(
             "apply",
             "-R",
             "--unidiff-zero",
             patch_path,
-            capture_output=True,
-            text=True,
         )
         return proc.returncode == 0
     finally:
@@ -574,14 +566,12 @@ def _reverse_apply(worktree: Path, patch_text: str) -> bool:
 def _checkout(cwd: Path, commit: str) -> tuple[Path, Path] | None:
     parent = Path(tempfile.mkdtemp(prefix="aff-audit-"))
     worktree = parent / "wt"
-    added = run_git(
-        cwd,
+    added = Git(cwd).run(
         "worktree",
         "add",
         "--detach",
         str(worktree),
         commit,
-        capture_output=True,
     )
     if added.returncode != 0:
         shutil.rmtree(parent, ignore_errors=True)
@@ -593,12 +583,10 @@ def _remove(cwd: Path, checked: tuple[Path, Path] | None) -> None:
     if checked is None:
         return
     parent, worktree = checked
-    run_git(
-        cwd,
+    Git(cwd).run(
         "worktree",
         "remove",
         "--force",
         str(worktree),
-        capture_output=True,
     )
     shutil.rmtree(parent, ignore_errors=True)
