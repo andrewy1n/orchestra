@@ -111,6 +111,7 @@ def run_subprocess(
 class CliTool:
     executable: ClassVar[str]
     min_version: ClassVar[Version] = Version(0, 0)
+    version_args: ClassVar[Sequence[str] | None] = ("--version",)
 
     def __init__(
         self,
@@ -132,21 +133,24 @@ class CliTool:
 
     @property
     def version(self) -> Version:
+        if self.version_args is None:
+            raise ToolError(f"{self.executable} has no version flag", [self.executable], None, "")
         if self._version is None:
-            result = self._execute(["--version"], None)
+            version_argv = [self.executable, *self.version_args]
+            result = self._execute(self.version_args, None)
             try:
                 found = self.parse_version(result.stdout)
             except ValueError as error:
                 raise ToolError(
                     f"cannot parse {self.executable} version: {error}",
-                    [self.executable, "--version"],
+                    version_argv,
                     result.returncode,
                     result.stderr,
                 ) from error
             if found < self.min_version:
                 raise ToolVersionError(
                     f"{self.executable} version {found} is below required {self.min_version}",
-                    [self.executable, "--version"],
+                    version_argv,
                     result.returncode,
                     result.stderr,
                 )
@@ -154,6 +158,8 @@ class CliTool:
         return self._version
 
     def _check_version(self) -> None:
+        if self.version_args is None:
+            return
         _ = self.version
 
     def require(self, version: Version, feature: str) -> None:

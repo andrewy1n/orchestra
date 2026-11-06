@@ -19,7 +19,9 @@ class FakeRun:
         stderr: str = "",
         returncode: int = 0,
         raises: BaseException | None = None,
+        version_returncode: int = 0,
     ) -> None:
+        self.version_returncode = version_returncode
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
@@ -69,7 +71,9 @@ class FakeRun:
         env: Mapping[str, str] | None,
     ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         if list(argv)[1:] == ["--version"]:
-            return subprocess.CompletedProcess(list(argv), 0, f"{argv[0]} version 1.0.0\n", "")
+            return subprocess.CompletedProcess(
+                list(argv), self.version_returncode, f"{argv[0]} version 1.0.0\n", ""
+            )
         self.argv = list(argv)
         self.kwargs = {
             "cwd": cwd,
@@ -110,8 +114,20 @@ class PythonTool(CliTool):
         return self._text(*args)
 
 
+class NoVersionTool(FakeTool):
+    version_args: ClassVar[Sequence[str] | None] = None
+
+
 def make(run: FakeRun, timeout: float = 30.0) -> FakeTool:
     return FakeTool(Path("/work"), run=run, timeout=timeout)
+
+
+def test_version_args_none_skips_version_check() -> None:
+    run = FakeRun(stdout="out\n", version_returncode=1)
+    tool = NoVersionTool(Path("/work"), run=run)
+    assert tool.text("a") == "out"
+    with pytest.raises(ToolError, match="faketool has no version flag"):
+        _ = tool.version
 
 
 def test_runs_executable_then_args() -> None:
