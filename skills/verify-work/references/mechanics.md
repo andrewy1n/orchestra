@@ -66,6 +66,8 @@ derived `verified` does not stand. Parent alone writes assessments. Do not `crea
 do not invent hash or red fields. When the claim is in
 `.tuner/manifest.json`, run `orchestra verify verdict`; non-zero → not done.
 
+For manifest claims, require a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts.
+
 ## Two modes
 
 A phase with an active `score:specification` is **structured**:
