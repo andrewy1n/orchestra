@@ -54,12 +54,14 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
+from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
 
 CheckRunLoader = Callable[[str], Record]
 AcceptanceLoader = Callable[[str], Record]
+PhaseLoader = Callable[[str], Record]
 AmendmentLister = Callable[[str], list[Record]]
 
 
@@ -273,6 +275,17 @@ def default_load_acceptance(
         return _open_project(store_root).get(acceptance_id, "score:acceptance")
     except (StoreBindingError, StoreError, OSError) as exc:
         raise LookupError(str(exc)) from exc
+
+
+def default_load_phase(phase: str, *, store_root: Path | None = None) -> Record:
+    records = [
+        record
+        for record in _open_project(store_root).list("score:phase")
+        if record["subject"] == phase and record["lifecycle_state"] != "superseded"
+    ]
+    if not records:
+        raise LookupError(f"phase {phase!r} not found")
+    return max(records, key=lambda record: record["recorded_at"])
 
 
 def default_list_oracle_amendments(
@@ -696,7 +709,7 @@ def _enforce_oracle_gates(
     entry: CriterionRequest,
     *,
     green_payload: Mapping[str, object],
-    red_record: Record,
+    red_record: Record | None,
     cwd: Path,
     acceptance: Record,
     list_oracle_amendments: AmendmentLister,
@@ -708,27 +721,30 @@ def _enforce_oracle_gates(
     except ValueError as exc:
         raise CloseRefused(f"criterion {criterion_id!r}: incomplete oracle freeze: {exc}") from exc
 
-    try:
-        assertion_red = _assertion_level_red(red_record)
-    except OracleAdapterUnavailable as exc:
-        raise CloseRefused(f"criterion {criterion_id!r}: {exc}") from exc
-    if not assertion_red:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: oracle-backed tdd requires "
-            "assertion-level red (fail with assertion failure); "
-            "import/collection-only red is refused"
-        )
+    if entry["method"] == "tdd":
+        if red_record is None:
+            raise CloseRefused(f"criterion {criterion_id!r}: frozen tdd requires red evidence")
+        try:
+            assertion_red = _assertion_level_red(red_record)
+        except OracleAdapterUnavailable as exc:
+            raise CloseRefused(f"criterion {criterion_id!r}: {exc}") from exc
+        if not assertion_red:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: oracle-backed tdd requires "
+                "assertion-level red (fail with assertion failure); "
+                "import/collection-only red is refused"
+            )
 
-    failing_nodes = record_payload(red_record).get("failing_node_ids")
-    test_ids = record_payload(acceptance).get("test_ids") or []
-    if (
-        not isinstance(failing_nodes, list)
-        or not failing_nodes
-        or any(node not in test_ids for node in failing_nodes)
-    ):
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: assertion red must identify frozen test ids"
-        )
+        failing_nodes = record_payload(red_record).get("failing_node_ids")
+        test_ids = record_payload(acceptance).get("test_ids") or []
+        if (
+            not isinstance(failing_nodes, list)
+            or not failing_nodes
+            or any(node not in test_ids for node in failing_nodes)
+        ):
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: assertion red must identify frozen test ids"
+            )
 
     green_revision = green_payload.get("revision")
     if not isinstance(green_revision, str) or not re.fullmatch(
@@ -767,6 +783,7 @@ def build_batch(
     store_root: str | Path | None = None,
     load_check_run: CheckRunLoader | None = None,
     load_acceptance: AcceptanceLoader | None = None,
+    load_phase: PhaseLoader | None = None,
     list_oracle_amendments: AmendmentLister | None = None,
 ) -> list[JsonObject]:
     parsed_request = _parse_close_request(request)
@@ -799,6 +816,33 @@ def build_batch(
         if load_acceptance is not None:
             return load_acceptance(acceptance_id)
         return default_load_acceptance(acceptance_id, store_root=resolved_store)
+
+    def oracle_policy(acceptance: Record) -> OraclePolicy:
+        payload = record_payload(acceptance)
+        phase_payload = None
+        phase = payload.get("phase")
+        if (
+            "oracle_policy" not in payload
+            and "test_ids" not in payload
+            and "oracle_hashes" not in payload
+            and isinstance(phase, str)
+            and phase
+        ):
+            try:
+                phase_record = (
+                    load_phase(phase)
+                    if load_phase is not None
+                    else default_load_phase(phase, store_root=resolved_store)
+                )
+                phase_payload = record_payload(phase_record)
+            except (LookupError, StoreBindingError, StoreError, OSError) as exc:
+                raise CloseRefused(f"phase {phase!r} policy unavailable: {exc}") from exc
+        try:
+            return resolve_oracle_policy(payload, phase_payload)
+        except ValueError as exc:
+            raise CloseRefused(
+                f"criterion {acceptance['id']!r}: incomplete oracle freeze or invalid policy: {exc}"
+            ) from exc
 
     def amendment_lister(acceptance_id: str) -> list[Record]:
         if list_oracle_amendments is not None:
@@ -875,6 +919,7 @@ def build_batch(
                 raise CloseRefused(
                     f"criterion {aid!r}: acceptance could not be loaded: {exc}"
                 ) from exc
+        policies = {aid: oracle_policy(acceptance) for aid, acceptance in acceptances.items()}
         passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
         for aid, acceptance in acceptances.items():
             if record_payload(acceptance).get("method") == "tdd" and aid not in passed_ids:
@@ -901,26 +946,27 @@ def build_batch(
         )
 
         for entry in criteria:
-            if entry.get("method") != "tdd":
+            if not _entry_passed(entry) or entry.get("method") not in RUNNER_METHODS:
                 continue
-            if not _entry_passed(entry):
-                continue
-            green_payload = green_by_criterion[entry.get("criterion_id")]
-            red_record, red_payload = _resolve_red_check_run(entry, loader=loader)
-            _enforce_red_first_from_store(
-                entry,
-                green_payload=green_payload,
-                red_payload=red_payload,
-                cwd=work_cwd,
-            )
-            _enforce_oracle_gates(
-                entry,
-                green_payload=green_payload,
-                red_record=red_record,
-                cwd=work_cwd,
-                acceptance=acceptances[entry["criterion_id"]],
-                list_oracle_amendments=amendment_lister,
-            )
+            green_payload = green_by_criterion[entry["criterion_id"]]
+            red_record = None
+            if entry["method"] == "tdd":
+                red_record, red_payload = _resolve_red_check_run(entry, loader=loader)
+                _enforce_red_first_from_store(
+                    entry,
+                    green_payload=green_payload,
+                    red_payload=red_payload,
+                    cwd=work_cwd,
+                )
+            if policies[entry["criterion_id"]] == "frozen":
+                _enforce_oracle_gates(
+                    entry,
+                    green_payload=green_payload,
+                    red_record=red_record,
+                    cwd=work_cwd,
+                    acceptance=acceptances[entry["criterion_id"]],
+                    list_oracle_amendments=amendment_lister,
+                )
 
     passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
     unmet = [aid for aid in acceptance_ids if aid not in passed_ids]

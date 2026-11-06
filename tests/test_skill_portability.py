@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 SHARED = ROOT / "shared"
 BUILD = ROOT / "scripts" / "build_skills.py"
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "verification-policy.md")
 
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
 _LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
