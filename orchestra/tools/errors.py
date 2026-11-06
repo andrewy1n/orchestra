@@ -19,3 +19,7 @@ class ToolError(RuntimeError):
 
 class ToolVersionError(ToolError):
     pass
+
+
+class ToolNotFoundError(ToolError):
+    pass

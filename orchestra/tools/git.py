@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from orchestra.tools.cli_tool import CliTool
-from orchestra.tools.errors import ToolError
+from orchestra.tools.cli_tool import CliTool, RunFn, run_subprocess
+from orchestra.tools.errors import ToolError, ToolNotFoundError
 from orchestra.tools.version import Version
 
 
@@ -22,11 +22,22 @@ class GitResult:
 class MergeResult:
     clean: bool
     unmerged: tuple[str, ...]
+    output: str = ""
 
 
 class Git(CliTool):
     executable: ClassVar[str] = "git"
     min_version: ClassVar[Version] = Version(2, 17)
+
+    def __init__(
+        self,
+        cwd: Path,
+        *,
+        run: RunFn = run_subprocess,
+        timeout: float | None = None,
+        env: Mapping[str, str] | None = None,
+    ) -> None:
+        super().__init__(cwd, run=run, timeout=timeout, env=env)
 
     def run(self, *args: str, input: str | None = None) -> GitResult:
         self._check_version()
@@ -43,7 +54,7 @@ class Git(CliTool):
                 env=self._env,
             )
         except OSError as error:
-            raise ToolError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
+            raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
             raise ToolError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
@@ -103,11 +114,12 @@ class Git(CliTool):
         return tuple(path for path in out.split("\0") if path)
 
     def merge(self, ref: str) -> MergeResult:
-        if self.run("merge", "--no-edit", ref).returncode == 0:
+        merged = self.run("merge", "--no-edit", ref)
+        if merged.returncode == 0:
             return MergeResult(True, ())
         listing = self.text("ls-files", "--unmerged")
         paths = (line.split("\t", 1)[1] for line in listing.splitlines() if "\t" in line)
-        return MergeResult(False, tuple(dict.fromkeys(paths)))
+        return MergeResult(False, tuple(dict.fromkeys(paths)), merged.stderr or merged.stdout)
 
     def push(self, remote: str, branch: str) -> None:
         self._checked("push", "--set-upstream", remote, branch)
@@ -133,7 +145,7 @@ class Git(CliTool):
                 env=self._env,
             )
         except OSError as error:
-            raise ToolError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
+            raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
             raise ToolError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""

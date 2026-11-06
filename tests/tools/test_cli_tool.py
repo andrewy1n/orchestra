@@ -35,7 +35,7 @@ class FakeRun:
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[True],
         check: bool,
@@ -49,7 +49,7 @@ class FakeRun:
         *,
         cwd: Path,
         input: bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[False],
         check: bool,
@@ -62,7 +62,7 @@ class FakeRun:
         *,
         cwd: Path,
         input: str | bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
@@ -256,3 +256,17 @@ def test_run_subprocess_bytes_round_trip(tmp_path: Path) -> None:
         env=None,
     )
     assert result.stdout == b"\xff\x00"
+
+
+def test_run_fn_accepts_no_timeout(tmp_path: Path) -> None:
+    result = run_subprocess(
+        [sys.executable, "-c", "print('ok')"],
+        cwd=tmp_path,
+        input=None,
+        timeout=None,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=None,
+    )
+    assert result.stdout.strip() == "ok"

@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, Literal, Protocol, TypeAlias, overload
 
-from orchestra.tools.errors import ToolError, ToolVersionError
+from orchestra.tools.errors import ToolError, ToolNotFoundError, ToolVersionError
 from orchestra.tools.version import Version
 from orchestra.tools.version import parse_version as _parse_version
 
@@ -21,7 +21,7 @@ class RunFn(Protocol):
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[True],
         check: bool,
@@ -35,7 +35,7 @@ class RunFn(Protocol):
         *,
         cwd: Path,
         input: bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[False],
         check: bool,
@@ -49,7 +49,7 @@ def run_subprocess(
     *,
     cwd: Path,
     input: str | None,
-    timeout: float,
+    timeout: float | None,
     capture_output: bool,
     text: Literal[True],
     check: bool,
@@ -63,7 +63,7 @@ def run_subprocess(
     *,
     cwd: Path,
     input: bytes | None,
-    timeout: float,
+    timeout: float | None,
     capture_output: bool,
     text: Literal[False],
     check: bool,
@@ -76,7 +76,7 @@ def run_subprocess(
     *,
     cwd: Path,
     input: str | bytes | None,
-    timeout: float,
+    timeout: float | None,
     capture_output: bool,
     text: bool,
     check: bool,
@@ -117,12 +117,12 @@ class CliTool:
         cwd: Path,
         *,
         run: RunFn = run_subprocess,
-        timeout: float = 30.0,
+        timeout: float | None = 30.0,
         env: Mapping[str, str] | None = None,
     ) -> None:
         self._cwd: Path = cwd
         self._run: RunFn = run
-        self._timeout: float = timeout
+        self._timeout: float | None = timeout
         self._env: Mapping[str, str] | None = env
         self._version: Version | None = None
 
@@ -180,7 +180,7 @@ class CliTool:
                 env=self._env,
             )
         except OSError as error:
-            raise ToolError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
+            raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
             raise ToolError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
@@ -210,7 +210,7 @@ class CliTool:
                 env=self._env,
             )
         except OSError as error:
-            raise ToolError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
+            raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
             raise ToolError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""

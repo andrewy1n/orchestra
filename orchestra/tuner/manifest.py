@@ -16,7 +16,7 @@ from typing import Literal
 
 from orchestra.canon.project_config import ProjectConfigError, load_project_config_at_revision
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tools.errors import ToolError
+from orchestra.tools.errors import ToolError, ToolNotFoundError
 from orchestra.tools.git import Git
 
 MANIFEST_PATH = ".tuner/manifest.json"
@@ -259,8 +259,10 @@ def _show_blob(cwd: Path | str, revision: str, relpath: str) -> bytes:
         raise FileNotFoundError(relpath)
     try:
         blob = Git(Path(cwd)).show_bytes(revision, relpath)
-    except ToolError as exc:
+    except ToolNotFoundError as exc:
         raise ManifestError("git is not available") from exc
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
     if blob is None:
         raise FileNotFoundError(relpath)
     return blob
@@ -269,8 +271,10 @@ def _show_blob(cwd: Path | str, revision: str, relpath: str) -> bytes:
 def _git_text(cwd: Path | str, *args: str) -> str:
     try:
         result = Git(Path(cwd)).run("--no-pager", *args)
-    except ToolError as exc:
+    except ToolNotFoundError as exc:
         raise ManifestError("git is not available") from exc
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
     if result.returncode != 0:
         raise ManifestError(result.stderr.strip() or f"git {' '.join(args)} failed")
     return result.stdout.strip()

@@ -249,10 +249,10 @@ def _canonical_json(value: JsonValue) -> bytes:
 
 
 def _config_digest(root: Path | str, commit: str) -> str:
-    blob = Git(Path(root)).show_bytes(commit, CONFIG_PATH)
-    if blob is None:
+    completed = Git(Path(root)).run("show", f"{commit}:{CONFIG_PATH}")
+    if completed.returncode != 0:
         raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {commit}")
-    return _digest(blob)
+    return _digest(completed.stdout.encode("utf-8"))
 
 
 def _digest(payload: bytes) -> str:

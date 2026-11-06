@@ -15,7 +15,7 @@ def test_git_root_raises_context_error_when_git_missing(tmp_path: Path) -> None:
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,

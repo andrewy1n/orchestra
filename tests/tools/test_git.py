@@ -35,7 +35,7 @@ class FakeGitRun:
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[True],
         check: bool,
@@ -49,7 +49,7 @@ class FakeGitRun:
         *,
         cwd: Path,
         input: bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[False],
         check: bool,
@@ -62,7 +62,7 @@ class FakeGitRun:
         *,
         cwd: Path,
         input: str | bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
@@ -240,3 +240,22 @@ def test_add_worktree(tmp_path: Path) -> None:
     run = scripted(Git, {("git", "worktree", "add", "/wt/feat", "feat"): ""})
     Git(tmp_path, run=run).add_worktree(Path("/wt/feat"), "feat")
     assert run.calls[-1] == ("git", "worktree", "add", "/wt/feat", "feat")
+
+
+def test_git_has_no_default_timeout(tmp_path: Path) -> None:
+    seen: list[float | None] = []
+
+    def run(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        timeout = kwargs["timeout"]
+        assert timeout is None or isinstance(timeout, float)
+        seen.append(timeout)
+        return subprocess.CompletedProcess(list(argv), 0, "git version 2.40.0\n", "")
+
+    Git(tmp_path, run=run).run("status")  # pyright: ignore[reportArgumentType]
+    assert seen == [None, None]
+
+
+def test_merge_result_carries_output(tmp_path: Path) -> None:
+    fake = FakeGitRun(by_subcommand={"merge": (1, "merge out"), "ls-files": (0, "")})
+    result = Git(tmp_path, run=fake).merge("topic")
+    assert result == MergeResult(False, (), "merge out")

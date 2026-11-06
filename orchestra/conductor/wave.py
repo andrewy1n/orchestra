@@ -42,7 +42,8 @@ def repo_root(cwd: Path) -> Path:
 
 
 def _wave_error(error: ToolError) -> WaveError:
-    return WaveError(f"git {' '.join(error.argv[1:])} failed: {error.stderr.strip()}")
+    detail = error.stderr.strip() or str(error)
+    return WaveError(f"git {' '.join(error.argv[1:])} failed: {detail}")
 
 
 def _branch_exists(repo: Path, branch: str) -> bool:
@@ -262,14 +263,16 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
             continue
         acceptances = _acceptances(records, task, phase)
-        tip = Git(repo).resolve(branch) or ""
+        tip = Git(repo).resolve(branch)
+        if tip is None:
+            raise WaveError(f"cannot resolve task branch {branch}")
         if not acceptances or not all(_passes(records, a, tip) for a in acceptances):
             skipped.append((task, "checks did not pass"))
             continue
         result = Git(phase_tree).merge(branch)
         if not result.clean:
             if not result.unmerged:
-                raise WaveError(f"git merge {branch} failed")
+                raise WaveError(f"git merge {branch} failed: {result.output.strip()}")
             question = _block(project, phase_rec, phase, f"merge:{task}")
             return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
         merged.append(task)

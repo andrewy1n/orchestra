@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal, TypeGuard
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tools.errors import ToolError
+from orchestra.tools.errors import ToolError, ToolNotFoundError
 from orchestra.tools.git import Git
 
 CONFIG_PATH = "orchestra.toml"
@@ -75,8 +75,10 @@ def load_project_config_at_revision(root: Path | str, revision: str) -> ProjectC
         config_result = git.run("show", f"{commit}:{CONFIG_PATH}")
         if config_result.returncode != 0:
             raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {revision}")
-    except ToolError as exc:
+    except ToolNotFoundError as exc:
         raise ProjectConfigError("git executable not found while loading project config") from exc
+    except ToolError as exc:
+        raise ProjectConfigError(exc.stderr.strip() or str(exc)) from exc
     return _parse_project_config(config_result.stdout, source=f"{CONFIG_PATH} at {commit}")
 
 

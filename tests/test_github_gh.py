@@ -42,7 +42,7 @@ class RecordingRun:
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[True],
         check: bool,
@@ -56,7 +56,7 @@ class RecordingRun:
         *,
         cwd: Path,
         input: bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[False],
         check: bool,
@@ -69,7 +69,7 @@ class RecordingRun:
         *,
         cwd: Path,
         input: str | bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
@@ -162,7 +162,7 @@ class FailingChecksRun:
         *,
         cwd: Path,
         input: str | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[True],
         check: bool,
@@ -176,7 +176,7 @@ class FailingChecksRun:
         *,
         cwd: Path,
         input: bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: Literal[False],
         check: bool,
@@ -189,7 +189,7 @@ class FailingChecksRun:
         *,
         cwd: Path,
         input: str | bytes | None,
-        timeout: float,
+        timeout: float | None,
         capture_output: bool,
         text: bool,
         check: bool,
@@ -278,3 +278,17 @@ def test_push_branch_runs_git_push_through_git_client(
     gh_run = scripted(GitHubGh, {})
     GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
     assert run.calls == [("git", "--version"), push]
+
+
+def test_push_branch_reports_timeout_cause(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def timing_out(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if list(argv)[1:] == ["--version"]:
+            return subprocess.CompletedProcess(list(argv), 0, "git version 2.40.0\n", "")
+        raise subprocess.TimeoutExpired(list(argv), 5.0)
+
+    monkeypatch.setattr(github_pr, "Git", lambda root: Git(root, run=timing_out))  # pyright: ignore[reportArgumentType]
+    gh_run = scripted(GitHubGh, {})
+    with pytest.raises(GitHubPRError) as info:
+        GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
+    assert "timed out" in str(info.value)
+    assert "not found" not in str(info.value)

@@ -12,7 +12,7 @@ from typing import Protocol
 
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject
-from orchestra.tools import CliTool, Git, ToolError, Version, run_subprocess
+from orchestra.tools import CliTool, Git, ToolError, ToolNotFoundError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
 
@@ -145,9 +145,9 @@ def _final_result(checks: Sequence[GitHubCheck]) -> str:
 
 
 def _git_error_message(error: ToolError) -> str:
-    if error.returncode is None:
+    if isinstance(error, ToolNotFoundError):
         return "git executable not found"
-    return error.stderr.strip() or f"git command failed: {' '.join(error.argv[1:])}"
+    return error.stderr.strip() or str(error)
 
 
 _REPOSITORY = re.compile(r"[^/\s]+/[^/\s]+")
