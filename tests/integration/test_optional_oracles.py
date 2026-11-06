@@ -8,9 +8,11 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-from test_verification_methods import close_request, green, run_acceptance, setup_acceptance
+from test_verification_methods import PROBE, close_request, green, run_acceptance, setup_acceptance
 
+from orchestra.canon import record
 from orchestra.canon.project import Project
+from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.types import JsonObject, Record
 
 
@@ -102,15 +104,15 @@ def test_cli_refuses_import_only_red_for_frozen_tdd(tmp_path: Path) -> None:
     project, acceptance = setup_acceptance(tmp_path, "tdd", "frozen", frozen=True)
     (tmp_path / "test_probe.py").write_text("import missing_oracle_module\n")
     red = run_acceptance(project, acceptance)
-    from test_verification_methods import PROBE
-
     (tmp_path / "test_probe.py").write_text(PROBE)
     result = _close_cli(project, acceptance, green(project, acceptance), red)
     assert result.returncode == 2
     assert "assertion-level red" in result.stderr
 
 
-def test_task_land_closes_unfrozen_tdd_with_recorded_red(tmp_path: Path) -> None:
+def test_task_land_closes_unfrozen_tdd_with_recorded_red(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     project, acceptance = setup_acceptance(tmp_path, "tdd", "none")
     phase = project.list("score:phase")[0]
     project.update(
@@ -121,8 +123,23 @@ def test_task_land_closes_unfrozen_tdd_with_recorded_red(tmp_path: Path) -> None
     item = _task(project)
     project.update(item["id"], payload={"requirements": ["R1"], "write_root": str(tmp_path)})
     acceptance = project.update(acceptance["id"], payload={"requirement": "R1"})
-    run_acceptance(project, acceptance)
-    green(project, acceptance)
+    ids = iter(
+        ["rec-ffffffff-ffff-4fff-8fff-ffffffffffff", "rec-00000000-0000-4000-8000-000000000000"]
+    )
+
+    def next_id(_store: SqliteBackend) -> str:
+        return next(ids)
+
+    def same_time() -> str:
+        return acceptance["recorded_at"]
+
+    with monkeypatch.context() as clock:
+        clock.setattr(SqliteBackend, "new_id", next_id)
+        clock.setattr(record, "now", same_time)
+        red = run_acceptance(project, acceptance)
+        passed = green(project, acceptance)
+    assert red["recorded_at"] == passed["recorded_at"]
+    assert red["id"] > passed["id"]
     evidence: JsonObject = {
         "subject": "probe",
         "kind": "repair",
