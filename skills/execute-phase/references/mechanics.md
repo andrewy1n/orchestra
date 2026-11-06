@@ -178,6 +178,10 @@ orchestra brief <task-slug>
    `criterion`, `verify_command`, or findings — brief already has
    those.
 
+   Unfrozen tdd tests can be written during execution. Record red through
+   `orchestra check` before implementation, then green. Require explicit
+   parent approval before changing method or oracle policy.
+
    If any active acceptance is **oracle-backed** (non-empty `test_ids`
    and `oracle_hashes`), list those frozen paths in the dispatch
    prompt and forbid editing them. Pushback → oracle amendment path

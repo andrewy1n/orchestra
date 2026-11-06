@@ -44,8 +44,9 @@ skill show the payload of each batch line; do not run them one by one.
 
 ## Mechanical oracle verify
 
-An acceptance is **oracle-backed** when `test_ids` and `oracle_hashes`
-are both non-empty. For oracle-backed `tdd`, verification is
+Select method separately from [oracle policy](../../plan-phase/references/verification-policy.md).
+Legacy non-empty `test_ids` and `oracle_hashes` remain **oracle-backed**.
+For frozen `check`, enforce green hashes without red. For frozen `tdd`, verification is
 mechanical — not agent prose:
 
 - Assertion-level red check-run for those frozen tests at a base

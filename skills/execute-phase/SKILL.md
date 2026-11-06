@@ -32,7 +32,6 @@ to `done` when every requirement it covers is verified. Never write
 method, verify_command, findings, and constraints from the brief.
 
 ## Steps
-
 1. Run `orchestra handoff` if the handoff was not injected. Resolve
    **focus**. Read `orchestra view plan --effort <focus>` and blocking
    `continuity-question`s for that subject. Do not dispatch while a
@@ -74,7 +73,8 @@ orchestra wave start <phase-slug>
    `test_ids` and `oracle_hashes`), add the "Frozen oracle (do not
    edit)" section from [mechanics.md](references/mechanics.md) to the
    prompt, listing those paths. Omit it when none is oracle-backed.
-   Pushback is an oracle amendment, never a silent rewrite. Only the
+   Unfrozen tdd tests can be written during execution; record red before green.
+   Pushback follows [policy](../plan-phase/references/verification-policy.md). Only the
    parent adds a signed amendment in `.tuner/manifest.json`, then runs
    `orchestra verify verdict --cwd <repo-or-worktree> --at <revision>
    <claim-id>`. Non-zero means not done: leave `in_progress`.
