@@ -74,6 +74,14 @@ def run_verify_command(
         return None, duration, out, True, False
     if result.missing:
         return None, duration, f"[orchestra check] command not found: {command!r}\n", False, True
+    if result.error:
+        return (
+            None,
+            duration,
+            f"[orchestra check] could not run command: {result.error}\n",
+            False,
+            True,
+        )
     return result.returncode, duration, result.output, False, False
 
 

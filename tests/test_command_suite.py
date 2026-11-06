@@ -82,3 +82,13 @@ def test_suite_start_runs_tmux_through_command(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="tmux not found: no-such-tmux-binary"):
         _start(tmp_path, work, tmux="no-such-tmux-binary")
+
+
+def test_suite_start_reports_non_missing_start_failure(tmp_path: Path) -> None:
+    work = _worktree(tmp_path)
+
+    def denied(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise PermissionError("denied")
+
+    with pytest.raises(RuntimeError, match=r"^cannot run tmux: denied$"):
+        _start(tmp_path, work, runner=denied)

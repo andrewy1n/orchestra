@@ -7,6 +7,7 @@ from typing import Literal, overload
 
 import pytest
 
+from orchestra.tools import ToolError
 from orchestra.tuner.audit import _run_probe
 from orchestra.tuner.runner import run_tests
 
@@ -103,3 +104,27 @@ def test_runner_drops_pythonpath_and_pytest_addopts(
     assert "PYTHONPATH" not in env
     assert "PYTEST_ADDOPTS" not in env
     assert env["KEEP_ME"] == "1"
+
+
+def _denied(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+    raise PermissionError("denied")
+
+
+def test_runner_raises_when_tests_cannot_start(tmp_path: Path) -> None:
+    with pytest.raises(ToolError, match=r"pytest.*denied"):
+        run_tests(tmp_path, ["t"], ["pytest", "{tests}"], run=_denied)  # pyright: ignore[reportArgumentType]
+
+
+def test_audit_probe_raises_for_non_missing_start_failure(tmp_path: Path) -> None:
+    probe = {"kind": "cli", "argv": ["tool"]}
+    with pytest.raises(ToolError, match="denied"):
+        _run_probe(tmp_path, probe, run=_denied)  # pyright: ignore[reportArgumentType]
+
+    def absent(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError("tool")
+
+    assert _run_probe(tmp_path, probe, run=absent) == {  # pyright: ignore[reportArgumentType]
+        "exit_code": 127,
+        "stdout": "",
+        "stderr": "tool: not found",
+    }

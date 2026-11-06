@@ -13,6 +13,7 @@ from pathlib import Path
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tools.cli_tool import RunFn, run_subprocess
 from orchestra.tools.command import Command, CommandResult
+from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 from orchestra.tuner.manifest import (
     DEFAULT_RUNNER,
@@ -272,6 +273,8 @@ def _probe_diffs(
 def _probe_result(argv: Sequence[str], proc: CommandResult) -> JsonObject:
     if proc.missing:
         return {"exit_code": 127, "stdout": "", "stderr": f"{argv[0]}: not found"}
+    if proc.error:
+        raise ToolError(proc.error, argv, None, proc.error)
     return {"exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
 
 

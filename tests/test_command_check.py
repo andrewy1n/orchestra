@@ -72,3 +72,18 @@ def test_check_reports_exit_duration_output_timeout_missing(tmp_path: Path) -> N
     assert code is None
     assert output == "[orchestra check] command not found: 'nope'\n"
     assert (timed_out, missing) == (False, True)
+
+
+def test_check_reports_could_not_run_command(tmp_path: Path) -> None:
+    def denied(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise PermissionError("denied")
+
+    code, _, output, timed_out, missing = run_verify_command(
+        "x",
+        cwd=tmp_path,
+        timeout=5,
+        run=denied,  # pyright: ignore[reportArgumentType]
+    )
+    assert code is None
+    assert output == "[orchestra check] could not run command: denied\n"
+    assert (timed_out, missing) == (False, True)

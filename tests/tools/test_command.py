@@ -119,7 +119,7 @@ def test_timeout_sets_timed_out(tmp_path: Path) -> None:
 
 def test_missing_executable_sets_missing(tmp_path: Path) -> None:
     result = Command(run=FakeRun(raises=FileNotFoundError("x"))).run(["x"], cwd=tmp_path)
-    assert result == CommandResult(None, "", "", False, True)
+    assert result == CommandResult(None, "", "", False, True, "x")
 
 
 def test_command_uses_injected_run(tmp_path: Path) -> None:
@@ -130,3 +130,17 @@ def test_command_uses_injected_run(tmp_path: Path) -> None:
     assert fake.kwargs["capture_output"] is True
     assert fake.kwargs["text"] is True
     assert fake.kwargs["check"] is False
+
+
+def test_os_error_text_kept_in_error(tmp_path: Path) -> None:
+    result = Command(run=FakeRun(raises=PermissionError("denied: /bin/x"))).run(["x"], cwd=tmp_path)
+    assert result == CommandResult(None, "", "", False, False, "denied: /bin/x")
+
+
+def test_missing_is_true_only_for_file_not_found(tmp_path: Path) -> None:
+    absent = Command(run=FakeRun(raises=FileNotFoundError("gone"))).run(["x"], cwd=tmp_path)
+    other = Command(run=FakeRun(raises=NotADirectoryError("bad cwd"))).run(["x"], cwd=tmp_path)
+    ok = Command(run=FakeRun()).run(["x"], cwd=tmp_path)
+    assert (absent.missing, absent.error) == (True, "gone")
+    assert (other.missing, other.returncode) == (False, None)
+    assert (ok.missing, ok.error) == (False, "")

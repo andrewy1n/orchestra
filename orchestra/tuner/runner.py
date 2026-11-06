@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 from xml.etree.ElementTree import Element
 
+from orchestra.tools import ToolError
 from orchestra.tools.cli_tool import RunFn, run_subprocess
 from orchestra.tools.command import Command
 
@@ -32,7 +33,10 @@ def run_tests(
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
     env.pop("PYTEST_ADDOPTS", None)
-    Command(run=run).run(_expand(runner, test_ids, report), cwd=Path(worktree), env=env)
+    argv = _expand(runner, test_ids, report)
+    result = Command(run=run).run(argv, cwd=Path(worktree), env=env)
+    if result.returncode is None:
+        raise ToolError(f"cannot run {argv[0]}: {result.error}", argv, None, result.error)
     grouped = _read_report(report)
     return {test_id: _collapse(grouped.get(test_id, ())) for test_id in test_ids}
 

@@ -23,6 +23,7 @@ class CommandResult:
     stderr: str
     timed_out: bool
     missing: bool
+    error: str = ""
 
     @property
     def output(self) -> str:
@@ -55,8 +56,10 @@ class Command:
             )
         except subprocess.TimeoutExpired as exc:
             return CommandResult(None, _text(exc.stdout), _text(exc.stderr), True, False)
-        except OSError:
-            return CommandResult(None, "", "", False, True)
+        except FileNotFoundError as exc:
+            return CommandResult(None, "", "", False, True, str(exc))
+        except OSError as exc:
+            return CommandResult(None, "", "", False, False, str(exc))
         return CommandResult(
             completed.returncode,
             _text(completed.stdout),

@@ -369,6 +369,8 @@ def start_suite_background(
     completed = Command(run=runner or run_subprocess).run(tmux_args, cwd=work)
     if completed.missing:
         raise RuntimeError(f"tmux not found: {tmux}")
+    if completed.error:
+        raise RuntimeError(f"cannot run tmux: {completed.error}")
     if completed.returncode != 0:
         raise RuntimeError(f"tmux exited {completed.returncode}: {completed.stderr.strip()}")
     return SuiteStart(
