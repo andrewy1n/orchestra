@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Literal, overload
 
 import pytest
 
@@ -31,8 +32,9 @@ VIEW_ARGV = ("gh", "pr", "view", URL, "--json", "number,url")
 
 class RecordingRun:
     def __init__(self) -> None:
-        self.inputs: list[tuple[tuple[str, ...], str | None]] = []
+        self.inputs: list[tuple[tuple[str, ...], str | bytes | None]] = []
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
@@ -41,9 +43,37 @@ class RecordingRun:
         input: str | None,
         timeout: float,
         capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float,
+        capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         key = tuple(argv)
         self.inputs.append((key, input))
         if key[1:] == ("--version",):
@@ -124,6 +154,7 @@ class FailingChecksRun:
     def __init__(self, stderr: str) -> None:
         self.stderr = stderr
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
@@ -132,9 +163,37 @@ class FailingChecksRun:
         input: str | None,
         timeout: float,
         capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float,
+        capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         key = tuple(argv)
         if key == ("gh", "--version"):
             return subprocess.CompletedProcess(list(key), 0, "gh version 2.50.0\n", "")

@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import subprocess
 from collections import deque
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Literal, overload
 
 import pytest
 
@@ -56,6 +57,7 @@ class ScriptedGh:
         self.missing = missing
         self.calls: list[tuple[str, ...]] = []
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
@@ -64,9 +66,37 @@ class ScriptedGh:
         input: str | None,
         timeout: float,
         capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float,
+        capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         key = tuple(argv)
         self.calls.append(key)
         if self.missing:

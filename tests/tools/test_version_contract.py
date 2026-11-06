@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Literal, overload
 
 import pytest
 
@@ -17,6 +17,7 @@ class RecordingRun:
         self.version_output = version_output
         self.calls: list[list[str]] = []
 
+    @overload
     def __call__(
         self,
         argv: Sequence[str],
@@ -25,9 +26,37 @@ class RecordingRun:
         input: str | None,
         timeout: float,
         capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float,
+        capture_output: bool,
         text: bool,
         check: bool,
-    ) -> subprocess.CompletedProcess[str]:
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
         self.calls.append(list(argv))
         stdout = self.version_output if list(argv)[1:] == ["--version"] else "ok\n"
         return subprocess.CompletedProcess(list(argv), 0, stdout, "")
