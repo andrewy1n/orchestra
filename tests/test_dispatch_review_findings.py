@@ -33,11 +33,11 @@ def test_pass_only_tdd_acceptance_does_not_close_the_task(tmp_path: Path) -> Non
     assert project.resolve("score:work-item", "a")["lifecycle_state"] == "in_progress"
 
 
-def test_tdd_acceptance_without_an_oracle_freeze_does_not_close_even_after_a_red_run(
+def test_frozen_tdd_without_freeze_metadata_does_not_close_after_red(
     tmp_path: Path,
 ) -> None:
     project, repo, tree = _world(tmp_path, verify_command="false")
-    _set_acceptance(project, method="tdd")
+    _set_acceptance(project, method="tdd", oracle_policy="frozen")
     acceptance = project.resolve("score:acceptance", "a")
     assert run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo).exit_code != 0
     time.sleep(1.1)

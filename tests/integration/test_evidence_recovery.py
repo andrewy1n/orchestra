@@ -200,3 +200,13 @@ def test_idempotent_apply_after_recovery(store: Path) -> None:
     token = project.change_token()
     _run(store, apply=True)
     assert project.change_token() == token
+
+
+def test_explicit_unfrozen_tdd_is_not_oracle_recovery_work(store: Path) -> None:
+    project, _, acc = _seed(store)
+    project.update(acc["id"], payload={"oracle_policy": "none"})
+    before = project.records()
+    report = _run(store, apply=True)
+    assert report["fresh_proof_required"] == []
+    assert report["recoverable"] == []
+    assert project.records() == before

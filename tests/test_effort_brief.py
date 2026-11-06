@@ -140,21 +140,21 @@ def test_r4_brief_with_four_sections_and_valid_effort_is_created(current_store):
     assert record["payload"]["effort"] == "alpha"
 
 
-def test_r5_module_version_is_1_3_0():
-    assert _module()["version"] == "1.3.0"
+def test_r5_module_version_is_1_4_0():
+    assert _module()["version"] == "1.4.0"
 
 
-def test_r6_sync_moves_the_snapshot_to_1_3_0(synced_store):
+def test_r6_sync_moves_the_snapshot_to_1_4_0(synced_store):
     root, sync = synced_store
     assert sync.returncode == 0, _output(sync)
-    assert _snapshot(root)["version"] == "1.3.0"
+    assert _snapshot(root)["version"] == "1.4.0"
 
 
-def test_r7_sync_moves_the_score_pin_to_1_3_0(synced_store):
+def test_r7_sync_moves_the_score_pin_to_1_4_0(synced_store):
     root, sync = synced_store
     assert sync.returncode == 0, _output(sync)
     config = json.loads((root / ".canon" / "config.json").read_text())
-    assert config["schemas"]["score"] == "1.3.0"
+    assert config["schemas"]["score"] == "1.4.0"
 
 
 def test_r8_validate_is_clean_for_a_prior_effort_after_sync(synced_store):

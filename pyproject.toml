@@ -66,6 +66,7 @@ dev = [
     "setuptools",
     "wheel",
     "basedpyright==1.40.2",
+    "tomli>=2",
 ]
 
 [project.entry-points."canon.schemas"]

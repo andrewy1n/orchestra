@@ -485,6 +485,28 @@ orchestra check --acceptance <id> --allow-dirty   # pass on dirty tree
 only), writes an `tuner:check-run` with revision and runner metadata,
 and refuses `method=manual` (use human `signed_by` sign-off instead).
 
+### Verification choices
+
+Choose the acceptance method separately from `oracle_policy`.
+
+| Method | Policy | Required evidence |
+|---|---|---|
+| `tdd` | `none` | Runner red before green |
+| `check` | `none` | Passing runner check |
+| `tdd` | `frozen` | Assertion-level red, green, matching hashes |
+| `check` | `frozen` | Green, matching hashes |
+| `manual` | `none` | Human sign-off |
+
+A phase can declare an oracle policy default. An acceptance can override it.
+New plans record the resolved policy on every acceptance. The default is `none`.
+Existing freeze metadata continues to select `frozen`. Frozen manual checks are invalid.
+Approved oracle amendments can authorize hash changes. Manifest claims keep their separate verification gates.
+
+Prefer TDD for behavior where red helps define the contract. Use checks for documentation,
+packaging, and final verification. Select frozen oracles for stable contracts that benefit
+from independent tests. Ordinary TDD tests can be written during execution.
+See [verification policy](skills/plan-phase/references/verification-policy.md).
+
 ## Web dashboard
 
 `dashboard/bin/web` runs the web dashboard through `uv` for the repo of the

@@ -35,16 +35,17 @@ acceptance for the requirement has a later passing check-run.
 
 ## Mechanical oracle verify
 
-An acceptance is **oracle-backed** when `test_ids` and `oracle_hashes`
-are both non-empty. For oracle-backed `tdd`, verification is
+Select method separately from [oracle policy](references/verification-policy.md).
+Legacy non-empty `test_ids` and `oracle_hashes` remain **oracle-backed**.
+For frozen `check`, enforce green hashes without red. For frozen `tdd`, verification is
 mechanical, not agent prose. Treat as verified only when all hold:
 
 - Assertion-level red check-run for the frozen tests at a base
   revision (`orchestra verify assertion-red <check-run.json>`)
 - Green check-run at head whose `revision` descends from red
 - At green, oracle file contents match frozen `oracle_hashes`, or a
-  signed amendment in `.tuner/manifest.json` that `orchestra verify verdict`
-  accepts
+  parent-approved oracle amendment. Manifest claims also require their
+  signed amendment and `orchestra verify verdict` checks
 
 Frozen hashes are close authority: never mark `verified` from
 narrative; otherwise write an `insufficient` assessment (parent only).
@@ -144,5 +145,5 @@ trail`. Command forms: [mechanics.md](references/mechanics.md).
   from a verification task; tell the parent to run a suite the
   acceptance does not name
 - Let oracle-backed `verified` stand without mechanical oracle verify;
-  invent `oracle_hashes` or a signed amendment; `create`/`supersede`
+  invent `oracle_hashes` or amendment approval; let an executor write
   `tuner:oracle-amendment`; treat non-zero `verify verdict` as done
