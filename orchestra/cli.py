@@ -754,7 +754,7 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         project = open_store(location.root, store=location.store)
         repo = wave.repo_root(_cwd(args))
         landed = land_task.land(project, repo, args.task, Path(args.evidence))
-        statuses = requirement_status(project.records(), landed.phase)
+        statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
         closure = task_close.close(
             project,
             landed,

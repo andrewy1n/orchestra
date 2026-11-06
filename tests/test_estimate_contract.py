@@ -24,7 +24,14 @@ def test_work_item_size_enum_is_optional():
 
 def test_phase_record_does_not_gain_size():
     phase = _record("phase")
-    assert phase["payload"] == ["title", "ordinal", "effort", "milestone", "weight"]
+    assert phase["payload"] == [
+        "title",
+        "ordinal",
+        "effort",
+        "milestone",
+        "weight",
+        "oracle_policy",
+    ]
     assert "milestone" in (phase.get("optional_payload") or [])
     assert "size" not in _fields(phase)
     assert "size" not in (phase.get("payload_enum") or {})

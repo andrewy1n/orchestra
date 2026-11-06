@@ -56,6 +56,7 @@ class PlanningPayload(TypedDict, total=False):
     observed_time: str
     old_hashes: list[str]
     oracle_hashes: list[str]
+    oracle_policy: str
     ordinal: int
     output_sha256: str
     owner: str

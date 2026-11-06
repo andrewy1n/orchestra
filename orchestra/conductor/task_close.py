@@ -80,6 +80,7 @@ def _policy_problem(
             cwd=tree,
             load_check_run=lambda cid: project.get(cid, "tuner:check-run"),
             load_acceptance=lambda aid: project.get(aid, "score:acceptance"),
+            load_phase=lambda phase: wave.phase_record(project.records(), phase),
             list_oracle_amendments=amendments,
         )
     except (CloseRefused, CloseRequestError) as exc:
