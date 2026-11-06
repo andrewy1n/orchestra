@@ -194,6 +194,15 @@ def test_non_list_output_raises(tmp_path: Path, output: str) -> None:
         GitHubGh(tmp_path, run=run).checks(7)
 
 
+def test_head_sha_reads_head_ref_oid(tmp_path: Path) -> None:
+    run = scripted(
+        GitHubGh, {("gh", "pr", "view", "42", "--json", "headRefOid"): '{"headRefOid": "abc123"}'}
+    )
+    client = GitHubGh(tmp_path, run=run)
+
+    assert client.head_sha(42) == "abc123"
+
+
 def test_empty_list_returns_no_checks(tmp_path: Path) -> None:
     run = scripted(GitHubGh, {CHECKS_ARGV: "[]"})
     assert GitHubGh(tmp_path, run=run).checks(7) == ()
