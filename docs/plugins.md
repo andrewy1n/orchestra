@@ -164,6 +164,8 @@ A method returns a frozen dataclass. It parses the output of `self._text(...)` o
 
 To run git, use the `Git` client in `orchestra.tools`. Do not call `git` yourself. `Git.run` returns the exit code and never raises on a non-zero exit. `Git.text` and the typed methods raise `ToolError`.
 
+When the program is data, such as a verify command or a test runner, use the `Command` class from `orchestra.tools`. It never raises for a non-zero exit, a timeout, or a missing executable. `SshKeygen` wraps `ssh-keygen` and sets `version_args = None`, because that tool has no version flag.
+
 ```python
 from dataclasses import dataclass
 from pathlib import Path
