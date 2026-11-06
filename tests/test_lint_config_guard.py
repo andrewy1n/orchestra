@@ -212,10 +212,10 @@ def test_unruled_pyright_ignore_fails(tmp_path: Path) -> None:
 
 def test_broad_python_suppressions_fail_in_py_and_pyi(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    (root / "sample.py").write_text("value = missing  # noqa\n", encoding="utf-8")
-    (root / "sample.pyi").write_text(
-        "value: int  # pyright: reportUnknownMemberType=false\n", encoding="utf-8"
-    )
+    noqa = "#" + " noqa"
+    pyright_setting = "#" + " pyright: reportUnknownMemberType=" + "false"
+    (root / "sample.py").write_text(f"value = missing  {noqa}\n", encoding="utf-8")
+    (root / "sample.pyi").write_text(f"value: int  {pyright_setting}\n", encoding="utf-8")
 
     result = _check(root)
 
@@ -226,9 +226,8 @@ def test_broad_python_suppressions_fail_in_py_and_pyi(tmp_path: Path) -> None:
 
 def test_pyright_mode_directives_and_ruff_noqa_fail(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    (root / "sample.py").write_text(
-        "# pyright: basic\n# pyright: off\n# ruff: noqa\n", encoding="utf-8"
-    )
+    directives = ["#" + " pyright: basic", "#" + " pyright: off", "#" + " ruff: noqa"]
+    (root / "sample.py").write_text("\n".join(directives) + "\n", encoding="utf-8")
 
     result = _check(root)
 
