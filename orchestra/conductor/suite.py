@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import re
 import shlex
-import subprocess
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -33,6 +32,8 @@ from orchestra.conductor.check import (
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 from orchestra.conductor.revision import revision_matches as _revision_matches
+from orchestra.tools.cli_tool import RunFn, run_subprocess
+from orchestra.tools.command import Command
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
@@ -287,7 +288,7 @@ def start_suite_background(
     policy: SuitePolicy | None = None,
     allow_dirty: bool = False,
     tmux: str = "tmux",
-    runner: Callable[..., subprocess.CompletedProcess[str]] | None = None,
+    runner: RunFn | None = None,
 ) -> SuiteStart | SuiteResult:
     """Start the suite in a detached tmux session; return immediately.
 
@@ -365,8 +366,11 @@ def start_suite_background(
         str(work),
         f"bash -lc {shlex.quote(inner)}",
     ]
-    run = runner or subprocess.run
-    completed = run(tmux_args, check=False, capture_output=True, text=True)
+    completed = Command(run=runner or run_subprocess).run(tmux_args, cwd=work)
+    if completed.missing:
+        raise RuntimeError(f"tmux not found: {tmux}")
+    if completed.error:
+        raise RuntimeError(f"cannot run tmux: {completed.error}")
     if completed.returncode != 0:
         raise RuntimeError(f"tmux exited {completed.returncode}: {completed.stderr.strip()}")
     return SuiteStart(

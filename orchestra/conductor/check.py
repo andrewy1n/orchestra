@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +18,7 @@ from orchestra.conductor.policy import (
     manual_refuse_message,
     map_process_outcome,
 )
-from orchestra.tools import Git
+from orchestra.tools import Command, Git, RunFn, run_subprocess
 
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
@@ -64,41 +63,26 @@ def run_verify_command(
     *,
     cwd: Path,
     timeout: float,
+    run: RunFn = run_subprocess,
 ) -> tuple[int | None, float, str, bool, bool]:
     """Return (exit_code, duration_s, combined_output, timed_out, missing)."""
     started = time.monotonic()
-    try:
-        proc = subprocess.run(
-            command,
-            shell=True,
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        duration = time.monotonic() - started
-        output = (proc.stdout or "") + (proc.stderr or "")
-        return proc.returncode, duration, output, False, False
-    except subprocess.TimeoutExpired as exc:
-        duration = time.monotonic() - started
-        out = ""
-        if exc.stdout:
-            out += (
-                exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode("utf-8", "replace")
-            )
-        if exc.stderr:
-            out += (
-                exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode("utf-8", "replace")
-            )
-        out += f"\n[orchestra check] timed out after {timeout}s\n"
+    result = Command(run=run).shell(command, cwd=cwd, timeout=timeout)
+    duration = time.monotonic() - started
+    if result.timed_out:
+        out = result.output + f"\n[orchestra check] timed out after {timeout}s\n"
         return None, duration, out, True, False
-    except FileNotFoundError:
-        duration = time.monotonic() - started
+    if result.missing:
         return None, duration, f"[orchestra check] command not found: {command!r}\n", False, True
-    except OSError as exc:
-        duration = time.monotonic() - started
-        # shell=True usually absorbs missing binaries as non-zero; treat other OS errors as blocked
-        return None, duration, f"[orchestra check] could not run command: {exc}\n", False, True
+    if result.error:
+        return (
+            None,
+            duration,
+            f"[orchestra check] could not run command: {result.error}\n",
+            False,
+            True,
+        )
+    return result.returncode, duration, result.output, False, False
 
 
 def output_sha256(output: str) -> str:

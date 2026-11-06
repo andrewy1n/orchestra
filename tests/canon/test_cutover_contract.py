@@ -148,18 +148,22 @@ def _run_start_hook(root: Path) -> None:
     hooks.cmd_start(hooks.CLAUDE, {"cwd": str(root), "session_id": "cutover"})
 
 
-def _backup_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
-    calls: list[list[str]] = []
-    original_run = subprocess.run
+def _backup_calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    calls: list[str] = []
+    original_open = hooks.open_backend
 
-    def run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
-        command = args[0]
-        if isinstance(command, list) and command[:2] == ["canon", "backup"]:
-            calls.append(command)
-            return subprocess.CompletedProcess(command, 0, "", "")
-        return original_run(*args, **kwargs)
+    def open_spy(*args, **kwargs):
+        backend = original_open(*args, **kwargs)
+        original_backup = backend.backup
 
-    monkeypatch.setattr(subprocess, "run", run)
+        def backup(keep: int = 14) -> str:
+            calls.append("backup")
+            return original_backup(keep)
+
+        backend.backup = backup
+        return backend
+
+    monkeypatch.setattr(hooks, "open_backend", open_spy)
     return calls
 
 

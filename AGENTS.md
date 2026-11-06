@@ -34,9 +34,12 @@ their response. They do not call `canon`.
 - Tests build temporary stores. Never write to a real `.canon/` store in
   a test.
 - Call external programs through `CliTool` from `orchestra.tools`. Do not
-  import `subprocess` in new code; the allowlist in
-  `tests/test_subprocess_rule.py` lists the existing exceptions and shrinks
-  as callers migrate.
+  import `subprocess` in new code. Only these files may import `subprocess`:
+  `installer/runner.py` and `installer/adapters/tail.py` (the installer runs
+  before orchestra is installed), `scripts/check_lint_config.py` and
+  `scripts/wheel_smoke.py` (CI scripts run with bare python3), and
+  `dashboard/frontend/e2e/serve.py` (starts a long-lived Popen server). The
+  allowlist in `tests/test_subprocess_rule.py` records each reason.
 - Do not add comments that explain a change. Comment only a fact the
   code cannot show.
 - Use Conventional Commits. Keep the subject short and imperative.

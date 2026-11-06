@@ -7,7 +7,7 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import helpers as h
@@ -35,6 +35,7 @@ from orchestra.conductor.suite import (
     start_suite_background,
     suite_subject,
 )
+from orchestra.tools.cli_tool import RunFn
 
 SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
@@ -50,14 +51,22 @@ def _skill_flat() -> str:
     return re.sub(r"\s+", " ", _skill_text())
 
 
-def _fake_tmux_runner(
-    calls: list[list[str]],
-) -> Callable[..., subprocess.CompletedProcess[str]]:
-    def runner(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(list(args))
-        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+def _fake_tmux_runner(calls: list[list[str]]) -> RunFn:
+    def runner(
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: bool,
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
 
-    return runner
+    return runner  # pyright: ignore[reportReturnType]
 
 
 def _git_worktree(tmp_path: Path) -> tuple[Path, str]:
