@@ -26,6 +26,7 @@ ALLOWLIST: frozenset[str] = frozenset(
         "orchestra/tuner/provenance.py",
         "orchestra/tuner/runner.py",
         "orchestra/tuner/sign.py",
+        "scripts/check_lint_config.py",
         "scripts/wheel_smoke.py",
     }
 )
