@@ -7,14 +7,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = REPO_ROOT / "orchestra"
-COMPONENTS = ("canon", "score", "composer", "conductor", "tuner", "stage")
+COMPONENTS = ("tools", "canon", "score", "composer", "conductor", "tuner", "stage")
 ALLOWED = {
-    "canon": {"canon"},
-    "score": {"canon", "score"},
-    "composer": {"canon", "score", "composer"},
-    "tuner": {"canon", "tuner"},
-    "conductor": {"canon", "score", "tuner", "conductor"},
-    "stage": {"canon", "score", "composer", "tuner", "conductor", "stage", "top"},
+    "tools": {"tools"},
+    "canon": {"tools", "canon"},
+    "score": {"tools", "canon", "score"},
+    "composer": {"tools", "canon", "score", "composer"},
+    "tuner": {"tools", "canon", "tuner"},
+    "conductor": {"tools", "canon", "score", "tuner", "conductor"},
+    "stage": {"tools", "canon", "score", "composer", "tuner", "conductor", "stage", "top"},
 }
 TOP_MODULES_STAGE_MAY_NOT_IMPORT = {"orchestra.cli"}
 
@@ -74,3 +75,15 @@ def test_scan_rejects_an_upward_import(tmp_path: Path):
         "orchestra/canon/leak.py:1: canon imports orchestra.conductor",
         "orchestra/stage/leak.py:1: stage imports orchestra.cli",
     ]
+
+
+def test_every_component_may_import_tools(tmp_path: Path):
+    for component in COMPONENTS:
+        if component == "tools":
+            continue
+        directory = tmp_path / "orchestra" / component
+        directory.mkdir(parents=True)
+        (directory / "uses_tools.py").write_text(
+            "from orchestra.tools import cli_tool\n", encoding="utf-8"
+        )
+    assert boundary_violations(tmp_path / "orchestra") == []
