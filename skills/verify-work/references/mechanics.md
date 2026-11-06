@@ -44,7 +44,7 @@ skill show the payload of each batch line; do not run them one by one.
 
 ## Mechanical oracle verify
 
-Select method separately from [oracle policy](../../plan-phase/references/verification-policy.md).
+Select method separately from [oracle policy](references/verification-policy.md).
 Legacy non-empty `test_ids` and `oracle_hashes` remain **oracle-backed**.
 For frozen `check`, enforce green hashes without red. For frozen `tdd`, verification is
 mechanical — not agent prose:

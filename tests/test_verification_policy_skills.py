@@ -6,7 +6,7 @@ from conftest import REPO_ROOT
 from helpers import skill_text
 from skill_extraction import extract_invocations
 
-POLICY = REPO_ROOT / "skills/plan-phase/references/verification-policy.md"
+POLICY = REPO_ROOT / "shared/verification-policy.md"
 
 
 def test_planning_examples_record_policy_separately_from_method() -> None:
@@ -71,7 +71,9 @@ def test_policy_covers_the_automated_method_policy_matrix() -> None:
 def test_all_workflow_stages_reference_the_same_policy() -> None:
     for name in ("settle-phase", "plan-phase", "execute-phase", "verify-work"):
         path: Path = REPO_ROOT / "skills" / name / "SKILL.md"
-        assert "verification-policy.md" in path.read_text()
+        assert "references/verification-policy.md" in path.read_text()
+        copy = path.parent / "references" / "verification-policy.md"
+        assert copy.read_text() == POLICY.read_text()
 
 
 def test_all_frozen_changes_keep_parent_amendment_approval() -> None:

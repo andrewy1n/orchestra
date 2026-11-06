@@ -5,6 +5,7 @@ Ordinary TDD does not require an oracle author or tests during planning.
 After drafting methods and policies, dispatch **one** phase-scoped
 oracle-author subagent for only the selected frozen acceptances.
 Run it before those acceptances exist.
+Never create it and then update it to freeze.
 
 Give it only original requirement / specification text, the method,
 and drafted acceptance subjects / requirement ids. Do **not** give it

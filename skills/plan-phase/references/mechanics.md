@@ -44,7 +44,7 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text, not a re-summary field.
 - Choose method separately from oracle policy. Follow
-  [verification-policy.md](verification-policy.md). Stamp resolved
+  [verification-policy.md](references/verification-policy.md). Stamp resolved
   `oracle_policy` on every new acceptance. Create selected freezes once.
 - Write all work-items and acceptances of the phase through one
   `canon apply` call (step 9). Do not run `canon create` one by one for
@@ -185,8 +185,8 @@ canon create --type score:position \
    [task-shapes.md](references/task-shapes.md) (Dependent task).
 7. Verification task last (`deliver`/`repair`) — see
    [task-shapes.md](references/task-shapes.md) (Verification task).
-8. Skip oracle authoring when no acceptance selects `frozen`. Otherwise
-   follow [oracle-author.md](oracle-author.md) for the selected frozen
+8. Oracle author: skip when no acceptance selects `frozen`. Otherwise
+   follow [oracle-author.md](references/oracle-author.md) for the selected frozen
    acceptances. Unfrozen tdd tests can start during execution.
 9. Write the batch. Put every drafted record in one NDJSON file and
    run `canon apply` once. Each line is `{"op":"create","type":...,

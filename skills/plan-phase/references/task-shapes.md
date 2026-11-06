@@ -18,7 +18,7 @@ and still stamp `requirements` / `requirement`. Omit `criterion` (or
 
 Every `canon create` below shows one line of the plan batch. Write
 the lines through one `canon apply` (plan-phase step 9), not one by
-one. Follow [verification-policy.md](verification-policy.md). Stamp the
+one. Follow [verification-policy.md](references/verification-policy.md). Stamp the
 resolved `oracle_policy` on every acceptance. A selected frozen acceptance
 carries `test_ids` and `oracle_hashes` in its create payload.
 
@@ -49,7 +49,7 @@ canon create --type score:acceptance \
 ```
 
 For selected frozen acceptances, use the complete example in
-[oracle-author.md](oracle-author.md). Ordinary tdd needs no freeze fields. Drop the second acceptance when there is only one
+[oracle-author.md](references/oracle-author.md). Ordinary tdd needs no freeze fields. Drop the second acceptance when there is only one
 requirement. A task needs at least one `score:work-item` and one
 `score:acceptance`.
 

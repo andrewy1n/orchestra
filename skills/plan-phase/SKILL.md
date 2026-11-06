@@ -120,7 +120,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    verification task last (`deliver`/`repair`). Shapes are in
    [task-shapes.md](references/task-shapes.md). Drafting writes no
    record.
-8. Skip oracle authoring when no acceptance selects `frozen`. Otherwise
+8. Oracle author: skip when no acceptance selects `frozen`. Otherwise
    follow [oracle-author.md](references/oracle-author.md) before creating
    selected frozen acceptances. Unfrozen tdd tests can start during execution.
 9. Write the batch. Put every drafted record in one NDJSON file and

@@ -48,7 +48,7 @@ Do not write work-items, acceptance, or code in this skill. That is
   light phase only when the user picked between options. Verification,
   the reviewer, selected frozen oracles, and TDD red-first stay the same.
   Choose method separately from oracle policy; follow
-  [verification-policy.md](../plan-phase/references/verification-policy.md).
+  [verification-policy.md](references/verification-policy.md).
 - Skip trivia. A decision is a choice a later reader would otherwise
   re-open. The design names those decisions; it does not replace them.
 - Every required section of a specification or design is present. A
