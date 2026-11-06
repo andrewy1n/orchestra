@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tools import CliTool, Version, run_subprocess
+from orchestra.tools import CliTool, ToolError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
 
@@ -307,6 +307,14 @@ def _git(root: Path, *args: str) -> str:
 
 _REPOSITORY = re.compile(r"[^/\s]+/[^/\s]+")
 
+_BUCKET_STATES: dict[str, tuple[str, str | None]] = {
+    "pass": ("completed", "success"),
+    "fail": ("completed", "failure"),
+    "pending": ("in_progress", None),
+    "skipping": ("completed", "skipped"),
+    "cancel": ("completed", "cancelled"),
+}
+
 
 class GitHubGh(CliTool):
     executable = "gh"
@@ -362,3 +370,33 @@ class GitHubGh(CliTool):
         if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
             raise GitHubPRError("gh pr view returned an unexpected shape")
         return number, url
+
+    def checks(self, number: int) -> tuple[GitHubCheck, ...]:
+        try:
+            data = self._json(
+                "pr",
+                "checks",
+                str(number),
+                "--json",
+                "name,state,bucket",
+                *self._repository_flags(),
+            )
+        except ToolError as error:
+            if "no checks reported" in error.stderr:
+                return ()
+            raise
+        if not isinstance(data, list):
+            raise GitHubPRError("gh pr checks returned an unexpected shape")
+        checks: list[GitHubCheck] = []
+        for item in data:
+            if not isinstance(item, dict):
+                raise GitHubPRError("gh pr checks returned an unexpected shape")
+            name = item.get("name")
+            bucket = item.get("bucket")
+            if not isinstance(name, str) or not isinstance(bucket, str):
+                raise GitHubPRError("gh pr checks returned an unexpected shape")
+            if bucket not in _BUCKET_STATES:
+                raise GitHubPRError(f"gh pr checks returned unknown bucket: {bucket}")
+            status, conclusion = _BUCKET_STATES[bucket]
+            checks.append(GitHubCheck(name, status, conclusion))
+        return tuple(checks)

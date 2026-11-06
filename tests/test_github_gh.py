@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.github_pr import GitHubGh, GitHubPRError
-from orchestra.tools import CliTool, Version
+from orchestra.conductor.github_pr import GitHubCheck, GitHubGh, GitHubPRError
+from orchestra.tools import CliTool, ToolError, Version
 from orchestra.tools.testing import scripted
 
 URL = "https://github.com/acme/widgets/pull/7"
@@ -111,3 +111,99 @@ def test_no_repository_flag_when_unset(tmp_path: Path) -> None:
 def test_invalid_repository_raises(tmp_path: Path, repository: str | int) -> None:
     with pytest.raises(GitHubPRError, match="owner/repository"):
         GitHubGh(tmp_path, adapter_config={"repository": repository})
+
+
+CHECKS_ARGV = ("gh", "pr", "checks", "7", "--json", "name,state,bucket")
+
+
+def _checks(bucket: str) -> str:
+    return json.dumps([{"name": "ci", "state": "X", "bucket": bucket}])
+
+
+class FailingChecksRun:
+    def __init__(self, stderr: str) -> None:
+        self.stderr = stderr
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | None,
+        timeout: float,
+        capture_output: bool,
+        text: bool,
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        key = tuple(argv)
+        if key == ("gh", "--version"):
+            return subprocess.CompletedProcess(list(key), 0, "gh version 2.50.0\n", "")
+        return subprocess.CompletedProcess(list(key), 1, "", self.stderr)
+
+
+def test_checks_command(tmp_path: Path) -> None:
+    run = scripted(GitHubGh, {CHECKS_ARGV: _checks("pass")})
+    GitHubGh(tmp_path, run=run).checks(7)
+    assert CHECKS_ARGV in run.calls
+
+
+def test_checks_repository_flag(tmp_path: Path) -> None:
+    argv = (*CHECKS_ARGV, "-R", "acme/widgets")
+    run = scripted(GitHubGh, {argv: _checks("pass")})
+    gh = GitHubGh(tmp_path, adapter_config={"repository": "acme/widgets"}, run=run)
+    assert len(gh.checks(7)) == 1
+
+
+def _one(tmp_path: Path, bucket: str) -> tuple[GitHubCheck, ...]:
+    run = scripted(GitHubGh, {CHECKS_ARGV: _checks(bucket)})
+    return GitHubGh(tmp_path, run=run).checks(7)
+
+
+def test_bucket_pass_maps_to_success(tmp_path: Path) -> None:
+    assert _one(tmp_path, "pass") == (GitHubCheck("ci", "completed", "success"),)
+
+
+def test_bucket_fail_maps_to_failure(tmp_path: Path) -> None:
+    assert _one(tmp_path, "fail") == (GitHubCheck("ci", "completed", "failure"),)
+
+
+def test_bucket_pending_maps_to_in_progress(tmp_path: Path) -> None:
+    assert _one(tmp_path, "pending") == (GitHubCheck("ci", "in_progress", None),)
+
+
+def test_bucket_skipping_maps_to_skipped(tmp_path: Path) -> None:
+    assert _one(tmp_path, "skipping") == (GitHubCheck("ci", "completed", "skipped"),)
+
+
+def test_bucket_cancel_maps_to_cancelled(tmp_path: Path) -> None:
+    assert _one(tmp_path, "cancel") == (GitHubCheck("ci", "completed", "cancelled"),)
+
+
+def test_unknown_bucket_raises(tmp_path: Path) -> None:
+    with pytest.raises(GitHubPRError, match="bucket"):
+        _one(tmp_path, "weird")
+
+
+@pytest.mark.parametrize(
+    "output",
+    ['{"name": "ci"}', '["ci"]', '[{"name": "ci"}]', '[{"name": 1, "bucket": "pass"}]'],
+)
+def test_non_list_output_raises(tmp_path: Path, output: str) -> None:
+    run = scripted(GitHubGh, {CHECKS_ARGV: output})
+    with pytest.raises(GitHubPRError):
+        GitHubGh(tmp_path, run=run).checks(7)
+
+
+def test_empty_list_returns_no_checks(tmp_path: Path) -> None:
+    run = scripted(GitHubGh, {CHECKS_ARGV: "[]"})
+    assert GitHubGh(tmp_path, run=run).checks(7) == ()
+
+
+def test_no_checks_reported_returns_no_checks(tmp_path: Path) -> None:
+    stderr = "no checks reported on the 'feat' branch\n"
+    assert GitHubGh(tmp_path, run=FailingChecksRun(stderr)).checks(7) == ()
+
+
+def test_other_tool_error_is_not_swallowed(tmp_path: Path) -> None:
+    with pytest.raises(ToolError):
+        GitHubGh(tmp_path, run=FailingChecksRun("HTTP 502")).checks(7)
