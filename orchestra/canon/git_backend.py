@@ -6,6 +6,10 @@ import subprocess
 from pathlib import Path
 from typing import Literal, overload
 
+from orchestra.tools.cli_tool import RunFn, run_subprocess
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
+
 
 class GitContextError(Exception):
     pass
@@ -32,17 +36,11 @@ def run_git(
     )
 
 
-def git_root(start: Path | None = None) -> Path:
+def git_root(start: Path | None = None, *, run: RunFn = run_subprocess) -> Path:
     start = start or Path.cwd()
     try:
-        result = run_git(
-            start,
-            "rev-parse",
-            "--show-toplevel",
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
+        result = Git(start, run=run).run("rev-parse", "--show-toplevel")
+    except ToolError as exc:
         raise GitContextError("git executable not found") from exc
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()

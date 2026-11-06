@@ -12,13 +12,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from orchestra.canon.errors import StaleWriteError, StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.metadata import MetadataFiles
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
 from orchestra.canon.record import prepare_record
 from orchestra.canon.revision import compute_revision, with_revision
 from orchestra.canon.types import JsonObject, Record, StoredOp
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
 
 
 def _decide_create(current: Record | None, record: Record) -> tuple[str, Record, JsonObject]:
@@ -80,14 +81,8 @@ class SqliteBackend:
     def global_data_root(config_root: Path) -> Path:
         repository_root = config_root.parent
         try:
-            result = run_git(
-                repository_root,
-                "rev-parse",
-                "--git-common-dir",
-                capture_output=True,
-                text=True,
-            )
-        except OSError:
+            result = Git(repository_root).run("rev-parse", "--git-common-dir")
+        except ToolError:
             result = None
         if result is not None and result.returncode == 0 and result.stdout.strip():
             common_dir = Path(result.stdout.strip())
