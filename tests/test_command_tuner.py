@@ -7,8 +7,9 @@ from typing import Literal, overload
 
 import pytest
 
+from orchestra.canon.types import JsonObject
 from orchestra.tools import ToolError
-from orchestra.tuner.audit import _run_probe
+from orchestra.tuner.audit import _probe_diffs, _run_probe
 from orchestra.tuner.runner import run_tests
 
 
@@ -123,8 +124,15 @@ def test_audit_probe_raises_for_non_missing_start_failure(tmp_path: Path) -> Non
     def absent(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         raise FileNotFoundError("tool")
 
-    assert _run_probe(tmp_path, probe, run=absent) == {  # pyright: ignore[reportArgumentType]
-        "exit_code": 127,
-        "stdout": "",
-        "stderr": "tool: not found",
-    }
+    with pytest.raises(ToolError, match="probe executable not found: tool"):
+        _run_probe(tmp_path, probe, run=absent)  # pyright: ignore[reportArgumentType]
+
+
+def test_missing_probe_executable_on_both_revisions_fails_the_audit(tmp_path: Path) -> None:
+    probe: JsonObject = {"id": "p1", "kind": "cli", "argv": ["no-such-probe-tool-xyz"]}
+    base, head = tmp_path / "base", tmp_path / "head"
+    base.mkdir()
+    head.mkdir()
+
+    with pytest.raises(ToolError, match="no-such-probe-tool-xyz"):
+        _probe_diffs(base, head, [probe], set())

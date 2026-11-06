@@ -272,7 +272,7 @@ def _probe_diffs(
 
 def _probe_result(argv: Sequence[str], proc: CommandResult) -> JsonObject:
     if proc.missing:
-        return {"exit_code": 127, "stdout": "", "stderr": f"{argv[0]}: not found"}
+        raise ToolError(f"probe executable not found: {argv[0]}", argv, None, "")
     if proc.error:
         raise ToolError(proc.error, argv, None, proc.error)
     return {"exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
