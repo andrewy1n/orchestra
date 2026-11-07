@@ -618,10 +618,31 @@ def _load_review_records(
     return records
 
 
+def _suite_refusal(location: StoreLocation, work: Path, phase: str, phase_head: str) -> str:
+    policy = suite.load_suite_policy(work)
+    if not policy.run_locally:
+        return ""
+    resolved = run_git(
+        work, "rev-parse", "--verify", f"{phase_head}^{{commit}}", capture_output=True, text=True
+    )
+    if resolved.returncode != 0:
+        raise RuntimeError(f"cannot resolve {phase_head}: {resolved.stderr.strip()}")
+    check_runs = [row for row in location.open().list("tuner:check-run") if isinstance(row, dict)]  # pyright: ignore[reportUnnecessaryIsInstance]
+    return suite.suite_ready_for_review(
+        policy, check_runs, phase_slug=phase, phase_head=resolved.stdout.strip()
+    )
+
+
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records = _load_review_records(resolve_location(args.store, work))
+        location = resolve_location(args.store, work)
+        if args.phase:
+            refusal = _suite_refusal(location, work, args.phase, args.phase_head)
+            if refusal:
+                print(f"orchestra review-brief: {refusal}", file=sys.stderr)
+                return 2
+        records = _load_review_records(location)
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
