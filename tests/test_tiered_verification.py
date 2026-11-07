@@ -585,7 +585,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
     assert "retry" in flat and "budget" in flat
 
 
-def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
+def test_execute_phase_documents_suite_policy_before_reviewer_and_check_run():
     text = _skill_text()
     flat = _skill_flat()
     assert "Do not waive suite policy" in flat
@@ -594,7 +594,7 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
         in flat
     )
     assert (
-        "closing verification → analyze → reviewer → integration-report → suite → phase gate"
+        "closing verification → analyze → suite → reviewer → integration-report → phase gate"
         in flat
     )
     assert "orchestra suite record" in text

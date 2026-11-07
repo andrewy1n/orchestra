@@ -91,7 +91,7 @@ def test_r21_execute_phase_runs_analyze_after_closing_verification_and_before_th
     around = _window(text, command).lower()
     assert "closing verification" in around
     assert "reviewer" in around
-    brief = text.index("orchestra review-brief --base")
+    brief = text.index("orchestra review-brief --phase")
     assert command.start() < brief
 
 
