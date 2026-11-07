@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+import json
+import subprocess
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -8,6 +10,7 @@ from conftest import git, make_git_repo
 
 from orchestra import cli
 from orchestra.canon.types import Record
+from orchestra.cli import main as cli_main
 from orchestra.conductor import suite
 
 PHASE = "p1"
@@ -153,3 +156,63 @@ def test_brief_check_reports_the_missing_subject() -> None:
     policy = suite.SuitePolicy(mode="full", command="true", gate="required")
     message = suite.suite_ready_for_review(policy, [], phase_slug=PHASE, phase_head="abc1234")
     assert message == f"no {PHASE}-suite check-run at abc1234"
+
+
+def test_review_brief_end_to_end(
+    repo: Path,
+    store: Path,
+    cli: Callable[..., subprocess.CompletedProcess[str]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_policy(repo, "full", "required")
+    argv = [
+        "review-brief",
+        "--cwd",
+        str(repo),
+        "--store",
+        str(store),
+        "--base",
+        "HEAD",
+        "--phase-head",
+        "HEAD",
+        "--phase",
+        PHASE,
+    ]
+    assert cli_main(argv) == 2
+    refused = capsys.readouterr()
+    assert f"{PHASE}-suite" in refused.err
+    assert refused.out == ""
+
+    effort = cli(
+        "create",
+        "--type",
+        "score:effort",
+        "--subject",
+        "workflow-loop",
+        "--payload",
+        json.dumps({"goal": "g", "kind": "deliver"}),
+    )
+    assert effort.returncode == 0, effort.stdout + effort.stderr
+    created = cli(
+        "create",
+        "--type",
+        "tuner:check-run",
+        "--subject",
+        f"{PHASE}-suite",
+        "--payload",
+        json.dumps(
+            {
+                "criterion_id": f"{PHASE}-suite",
+                "revision": head_of(repo),
+                "result": "pass",
+                "effort": "workflow-loop",
+                "method": "check",
+                "signed_by": "",
+                "evidence_kind": "integration",
+                "runner": "orchestra",
+            }
+        ),
+    )
+    assert created.returncode == 0, created.stdout + created.stderr
+    assert cli_main(argv) == 0
+    assert capsys.readouterr().out.startswith("# Reviewer brief")
