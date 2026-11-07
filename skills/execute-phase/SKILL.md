@@ -17,11 +17,11 @@ If missing, follow [ensure-store.md](references/ensure-store.md) then
 `verify-work` after each task finishes.
 
 Call `orchestra wave start`, `orchestra task land`, and `orchestra wave
-end`. Do not run the git and canon steps by hand. The by-hand steps
-are the manual fallback in [mechanics.md](references/mechanics.md).
+end`, not the git and canon steps by hand; the by-hand fallback is in
+[mechanics.md](references/mechanics.md).
 
 **Single-writer:** only this parent may write via `canon`. Subagents
-never write, in any executor mode. They return evidence as a JSON block.
+never write; they return evidence as a JSON block.
 
 Task lifecycle is `planned -> in_progress -> done` (or `withdrawn`).
 `wave start` moves a work-item to `in_progress`; `task land` moves it
@@ -100,13 +100,13 @@ orchestra task land <task-slug> --evidence <file>
 orchestra wave end <phase-slug>
 ```
 
-   It merges each passing task branch into `phase/<phase-slug>` in
-   task-slug order, in the phase worktree, and never a branch whose
-   checks did not pass. On a conflict it stops, leaves the conflict
-   unresolved, opens a blocking `continuity-question` with scope
-   `merge:<task-slug>`, and exits non-zero. Do not edit the markers, do
-   not abort the merge, and do not start the next wave. Otherwise go to
-   step 2. After the last wave, run the closing verification task.
+   It merges each passing task branch into `phase/<phase-slug>` in task-slug
+   order. On a conflict it opens a blocking `continuity-question` (scope
+   `merge:<task-slug>`) and exits non-zero; do not abort the merge or start the
+   next wave. Keep both changes, `git add` them, run `orchestra wave resolve
+   <phase-slug> <task-slug>`; if the tasks need competing behavior, leave the
+   question open and ask the user. Then go to step 2; the last wave runs the
+   closing verification task.
 7. When no same-focus `planned`/`in_progress` work-items remain (or
    incidental is closed), follow [phase-end.md](references/phase-end.md):
    closing verification, analyze, suite, reviewer, integration-report,
@@ -116,8 +116,8 @@ orchestra wave end <phase-slug>
    branch from the phase worktree. Then run `orchestra land --phase
    <phase-slug>`. Land runs `orchestra gate` first. Ask the user before
    you run land, unless an active constraint authorizes it. On a
-   non-zero exit, stop and ask. Do not merge the phase branch by hand.
-   Do not push from phase close.
+   non-zero exit, stop and ask. Do not merge the phase branch by hand
+   or push from phase close.
 8. After a phase closes, read the effort's `autonomy`. At `auto-phases`,
    plan and promote the next phase without asking (`plan-phase`); at
    `gated` and `auto-plan`, ask first. At every level, stop for a failed
@@ -142,7 +142,7 @@ orchestra wave end <phase-slug>
   worktree for the task that depends on every other phase task; write
   `.canon` off the primary checkout or in a task commit
 - Rebase a task branch, merge one whose check did not pass, or
-  resolve a merge conflict
+  resolve a merge conflict outside `orchestra wave resolve`
 - Let the verification executor edit the tree; reopen `done` (create a
   fix work-item and `depends_on` instead)
 - Let an executor edit frozen oracle files, sign an amendment, or write

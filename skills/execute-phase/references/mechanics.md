@@ -347,8 +347,11 @@ git -C <repo>/.worktrees/<phase-slug> merge task/<phase-slug>/<task-slug>
    blocking continuity question on the effort. Scope that question
    `merge:<task-slug>`. When a merge between a task branch and the
    phase branch conflicts, the parent does not start the next wave.
-   Leave the conflict markers. Do not edit them and do not abort the
-   merge.
+   Do not abort the merge. When both tasks can keep their behavior,
+   edit the conflicted files in the phase worktree to keep both changes, stage them with `git add`
+   and run `orchestra wave resolve <phase-slug> <task-slug>`. When the
+   two tasks need competing behavior, leave the question open and ask
+   the user.
 
 ```bash
 canon create --type score:continuity-question \
@@ -437,8 +440,9 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Skip the per-task commit when Landing is present and that task's
   code changed; create an empty commit when there is nothing to commit
 - Rebase a task branch, merge a task branch whose check did not pass,
-  resolve a task-branch merge conflict, or start the next wave while
-  that conflict is unresolved
+  resolve a task-branch merge conflict by any path other than
+  `orchestra wave resolve`, or start the next wave while that conflict
+  is unresolved
 - Do not push from phase close
 - Tell the executor to avoid `git add -A`
 - Let the verification executor edit the tree
