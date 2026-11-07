@@ -356,7 +356,7 @@ canon create --type score:continuity-question \
    incidental is closed), follow
    [phase-end.md](references/phase-end.md):
 
-   closing verification → analyze → reviewer → integration-report → suite →
+   closing verification → analyze → suite → reviewer → integration-report →
    phase gate → proof packet → phase close.
 
    When Landing is present and the phase gate holds, commit the phase
