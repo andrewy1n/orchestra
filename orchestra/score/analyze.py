@@ -180,7 +180,7 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     _subject(acceptance),
                     f"acceptance names {rid}, which {source} does not list",
                 )
-        if not light and (len(ids) > 1 or "requirements" in _payload(acceptance)):
+        if not light and (len(ids) > 1 or _payload(acceptance).get("requirements")):
             add(
                 "error",
                 "full-phase-multi-requirement",
