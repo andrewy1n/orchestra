@@ -109,7 +109,7 @@ orchestra wave end <phase-slug>
    step 2. After the last wave, run the closing verification task.
 7. When no same-focus `planned`/`in_progress` work-items remain (or
    incidental is closed), follow [phase-end.md](references/phase-end.md):
-   closing verification, analyze, reviewer, integration-report, suite,
+   closing verification, analyze, suite, reviewer, integration-report,
    phase gate, proof packet, phase close. Skip reviewer and suite for
    incidental. An empty task list is not proof the phase is done.
    When Landing is present and the phase gate holds, commit the phase
