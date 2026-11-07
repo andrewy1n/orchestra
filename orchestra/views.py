@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -11,6 +12,7 @@ from datetime import datetime, timezone
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.gate import parse_landing
 from orchestra.derive import (
     effort_dormant,
     phase_progress,
@@ -106,6 +108,7 @@ HANDOFF = View(
     (
         GOAL,
         POSITION,
+        Role("pending-phase-close", "score:phase", (), _state("in_progress")),
         Role(
             "latest-proof",
             "conductor:proof-packet",
@@ -162,6 +165,7 @@ HANDOFF = View(
 HOOK_ROLE_NAMES = (
     "goal",
     "position",
+    "pending-phase-close",
     "in-progress",
     "blocking-question",
     "needs-human",
@@ -482,10 +486,34 @@ def _group_records(
         for record in scoped:
             if record["record_type"] != role.record_type or not role.select(record):
                 continue
+            if role.name == "pending-phase-close":
+                progress = phase_progress(
+                    _effort_pool(scoped, effort_of(record)), record["subject"]
+                )
+                if not progress.total or progress.done != progress.total:
+                    continue
             key = _group_key(record, view, role)
             groups.setdefault(key, {r.name: [] for r in view.roles})
             groups[key][role.name].append(record)
     return groups
+
+
+def _phase_close_step(phase: Record, records: list[Record]) -> str:
+    slug = phase["subject"]
+    gate = f"Run `orchestra gate {shlex.quote(slug)}`."
+    has_packet = any(
+        record["record_type"] == "conductor:proof-packet"
+        and record["lifecycle_state"] == "recorded"
+        and record_payload(record).get("phase") == slug
+        and effort_of(record) == effort_of(phase)
+        for record in records
+    )
+    if not has_packet:
+        return f"{gate} After it passes, record the proof packet for any code or claim changes."
+    checks = "verify the proof packet covers the phase head"
+    if parse_landing(phase.get("body", "")).present:
+        checks += " and confirm landing"
+    return f"{gate} After it passes, {checks} before marking the phase done."
 
 
 def _group_lines(
@@ -508,9 +536,10 @@ def _group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            lines.append(
-                _record_line(record, role, _status_bits(record, view, tally, records), link)
-            )
+            bits = _status_bits(record, view, tally, records)
+            if role.name == "pending-phase-close":
+                bits.append(_phase_close_step(record, records))
+            lines.append(_record_line(record, role, bits, link))
         lines.append("")
     if view.show_phase_derived:
         lines += _phase_derived_lines(records, name, effort)
