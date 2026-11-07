@@ -53,8 +53,8 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   work-items and promotes the phase; `execute-phase` and `verify-work`
   move work-items.
 - Dependencies: `payload.depends_on`, a JSON array of work-item
-  subjects. Create each prerequisite first; canon rejects an unknown
-  subject.
+  subjects, prerequisites created first. Tasks that must rewrite the
+  same function get a `depends_on` edge.
 - Every `deliver`/`repair` phase ends with a **verification task**
   that `depends_on` every other work-item; at least one acceptance is
   an integration check through the real entry point (not whole-tree

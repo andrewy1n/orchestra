@@ -71,8 +71,10 @@ task's checks when it changes a shared contract or generated files.
 
 ## Dependent task
 
-Needs another same-phase task done first. Create the prerequisite
-first, then list its subject in `depends_on`:
+Needs another same-phase task done first. Two tasks that must rewrite
+the same function are dependent: the later one lists the earlier one in
+`depends_on`. Create the prerequisite first, then list its subject in
+`depends_on`:
 
 ```bash
 canon create --type score:work-item \

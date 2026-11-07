@@ -281,6 +281,18 @@ def _build_parser() -> argparse.ArgumentParser:
     wave_end.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     wave_end.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
+    wave_resolve = wave_sub.add_parser(
+        "resolve",
+        help="Finish a conflicted task merge once both tasks' work is kept",
+    )
+    wave_resolve.add_argument("phase", help="Phase slug")
+    wave_resolve.add_argument("task", help="Task slug whose merge conflicted")
+    wave_resolve.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_resolve.add_argument(
+        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
+    )
+    wave_resolve.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
     task = sub.add_parser("task", help="Land one finished task")
     task_sub = task.add_subparsers(dest="action", required=True)
     task_land = task_sub.add_parser(
@@ -757,6 +769,31 @@ def _cmd_wave_end(args: argparse.Namespace) -> int:
         if result.conflict:
             print(f"conflict merging {result.conflict}; question {result.question_id}")
     return 1 if result.conflict else 0
+
+
+def _cmd_wave_resolve(args: argparse.Namespace) -> int:
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        result = wave.resolve(project, wave.repo_root(_cwd(args)), args.phase, args.task)
+    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra wave resolve: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json(
+            {
+                "phase": result.phase,
+                "task": result.task,
+                "ready": result.ready,
+                "refusals": list(result.refusals),
+                "commit": result.commit,
+            }
+        )
+    elif result.ready:
+        print(f"resolved {result.task}: merge commit {result.commit}")
+    for reason in result.refusals:
+        print(f"orchestra wave resolve: {args.phase}: {reason}", file=sys.stderr)
+    return 0 if result.ready else 1
 
 
 def _cmd_task_land(args: argparse.Namespace) -> int:
@@ -1268,7 +1305,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "review-brief":
         return _cmd_review_brief(args)
     if args.command == "wave":
-        return _cmd_wave_start(args) if args.action == "start" else _cmd_wave_end(args)
+        if args.action == "start":
+            return _cmd_wave_start(args)
+        if args.action == "resolve":
+            return _cmd_wave_resolve(args)
+        return _cmd_wave_end(args)
     if args.command == "effort":
         return _cmd_effort_autonomy(args)
     if args.command == "task":
