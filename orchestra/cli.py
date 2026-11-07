@@ -618,15 +618,11 @@ def _suite_refusal(location: StoreLocation, work: Path, phase: str, phase_head: 
     policy = suite.load_suite_policy(work)
     if not policy.run_locally:
         return ""
-    resolved = run_git(
-        work, "rev-parse", "--verify", f"{phase_head}^{{commit}}", capture_output=True, text=True
-    )
-    if resolved.returncode != 0:
-        raise RuntimeError(f"cannot resolve {phase_head}: {resolved.stderr.strip()}")
+    resolved = Git(work).resolve(phase_head)
+    if resolved is None:
+        raise RuntimeError(f"cannot resolve {phase_head}")
     check_runs = [row for row in location.open().list("tuner:check-run") if isinstance(row, dict)]  # pyright: ignore[reportUnnecessaryIsInstance]
-    return suite.suite_ready_for_review(
-        policy, check_runs, phase_slug=phase, phase_head=resolved.stdout.strip()
-    )
+    return suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=resolved)
 
 
 def _cmd_review_brief(args: argparse.Namespace) -> int:
