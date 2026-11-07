@@ -4,9 +4,9 @@ Parent-only. Run after the closing verification task is `done`, when
 no same-focus `planned`/`in_progress` work-items remain (or the
 incidental task is closed). Order:
 
-last implementation wave → closing verification → analyze → reviewer →
-integration-report from reviewer `integration` → suite (per `[suite]` in
-`orchestra.toml`) → phase gate → phase close.
+last implementation wave → closing verification → analyze → suite (per
+`[suite]` in `orchestra.toml`) → reviewer → integration-report from
+reviewer `integration` → phase gate → phase close.
 
 After the last implementation wave's execution-reports, return to
 execute-phase step 3 for the closing verification task. Do **not**
@@ -27,12 +27,77 @@ orchestra analyze <phase-slug> --stage close
 Refuse to start the reviewer while it exits 1. Fix each error finding
 first, then run it again.
 
+## Suite
+
+After analyze exits 0 and before the reviewer starts. The suite runs at
+the phase head, so the review and the suite name the same revision. Do not
+waive suite policy — a human changes `[suite]` in the root
+`orchestra.toml` instead. Load with `orchestra suite policy`. An omitted
+`[suite]` section or `mode=none` → skip.
+`mode=external` or `gate=deferred` → do not run locally (`deferred` =
+Landing human stop). For `smoke`/`full` with a `command`: run via
+`orchestra suite start` / `poll` / `collect` / `record` in the phase
+worktree (tmux); one check-run at phase-head SHA, subject
+`<phase-slug>-suite`, `evidence_kind: integration`, with runner
+metadata. Dirty-only pass refused like `orchestra check`. Suite is
+never red-first.
+
+After a local run:
+
+- `gate=required` — missing/failing suite blocks merge. On fail, fix
+  work-items under retry budget (one subject per failing module);
+  never reopen `done`; no inline fix-and-rerun; re-run suite at new
+  head after fixes; budget exhausted → Needs you. Create the fix
+  work-items before the reviewer starts. The reviewer never sees a head
+  with a failing required suite.
+- `gate=advisory` — record check-run; on fail also a finding; do not
+  block merge; no fix-task storm.
+- `gate=deferred` — no local run; Landing human stop.
+
+When the suite fails, re-run each failing test id in a clean `main`
+worktree. Label every id `new` or `pre-existing` in the check-run basis
+or finding. A `pre-existing` label does not change the gate: `required`
+still blocks and `advisory` still does not. Put the pre-existing ids in
+front of the user; do not wait silently.
+
+Orphaned tmux: `tmux attach -t orchestra-suite-<phase-slug>` or
+inspect worktree `.suite/`; re-start if gone. Do not fix-and-rerun
+inside this step.
+
+```bash
+orchestra suite record \
+  --phase "<phase-slug>" \
+  --effort "<focus>" \
+  --cwd <phase-worktree>
+
+canon create --type tuner:finding \
+  --subject "suite-advisory-<phase-slug>" \
+  --payload '{"claim":"advisory suite fail for <phase-slug>-suite","basis":"<exit_code and failing node ids>","invalidated_when":"suite check-run passes at phase head, or human clears","effort":"<focus>","needs":"none"}' \
+  --body "## Evidence
+
+<suite output tail>
+
+## Consequence
+
+Advisory only — Landing is not blocked by this suite fail.
+
+## Follow-up
+
+Fix opportunistically or clear the finding; do not open a required-gate fix-task storm."
+```
+
+Advisory finding only when `gate=advisory` and the suite failed.
+
 ## Reviewer
 
 Reviewer writes no store records. Parent creates them.
 
 1. Build the restricted brief:
-   `orchestra review-brief --base <base> --phase-head <phase-head>`
+   `orchestra review-brief --phase <phase-slug> --base <base> --phase-head <phase-head>`
+   It refuses while the suite policy is unmet at the phase head: no
+   `<phase-slug>-suite` check-run, or a failed one under
+   `gate=required`. A fix task moves the head, so run the suite again
+   at the new head before the reviewer starts.
    (work-item Description/Approach, acceptances, requirements/
    invariants, `git diff <base>..<phase-head>` only — no
    execution-report, check-run, assessment, or assignment text).
@@ -101,64 +166,6 @@ canon create --type conductor:integration-report \
 
 On integration-report `fail`/`blocked`, or missing passing review at
 phase head: leave phase `in_progress` and stop (or fix/escalate).
-
-## Suite
-
-After reviewer passes and the integration-report is written. Do not
-waive suite policy — a human changes `[suite]` in the root
-`orchestra.toml` instead. Load with `orchestra suite policy`. An omitted
-`[suite]` section or `mode=none` → skip.
-`mode=external` or `gate=deferred` → do not run locally (`deferred` =
-Landing human stop). For `smoke`/`full` with a `command`: run via
-`orchestra suite start` / `poll` / `collect` / `record` in the phase
-worktree (tmux); one check-run at phase-head SHA, subject
-`<phase-slug>-suite`, `evidence_kind: integration`, with runner
-metadata. Dirty-only pass refused like `orchestra check`. Suite is
-never red-first.
-
-After a local run:
-
-- `gate=required` — missing/failing suite blocks merge. On fail, fix
-  work-items under retry budget (one subject per failing module);
-  never reopen `done`; no inline fix-and-rerun; re-run suite at new
-  head after fixes; budget exhausted → Needs you.
-- `gate=advisory` — record check-run; on fail also a finding; do not
-  block merge; no fix-task storm.
-- `gate=deferred` — no local run; Landing human stop.
-
-When the suite fails, re-run each failing test id in a clean `main`
-worktree. Label every id `new` or `pre-existing` in the check-run basis
-or finding. A `pre-existing` label does not change the gate: `required`
-still blocks and `advisory` still does not. Put the pre-existing ids in
-front of the user; do not wait silently.
-
-Orphaned tmux: `tmux attach -t orchestra-suite-<phase-slug>` or
-inspect worktree `.suite/`; re-start if gone. Do not fix-and-rerun
-inside this step.
-
-```bash
-orchestra suite record \
-  --phase "<phase-slug>" \
-  --effort "<focus>" \
-  --cwd <phase-worktree>
-
-canon create --type tuner:finding \
-  --subject "suite-advisory-<phase-slug>" \
-  --payload '{"claim":"advisory suite fail for <phase-slug>-suite","basis":"<exit_code and failing node ids>","invalidated_when":"suite check-run passes at phase head, or human clears","effort":"<focus>","needs":"none"}' \
-  --body "## Evidence
-
-<suite output tail>
-
-## Consequence
-
-Advisory only — Landing is not blocked by this suite fail.
-
-## Follow-up
-
-Fix opportunistically or clear the finding; do not open a required-gate fix-task storm."
-```
-
-Advisory finding only when `gate=advisory` and the suite failed.
 
 ## Phase gate
 
