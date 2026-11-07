@@ -232,3 +232,35 @@ def test_advisory_gate_ignores_an_advisory_finding(gate_phase: Phase) -> None:
 def test_advisory_gate_ignores_nothing_when_the_finding_needs_human(gate_phase: Phase) -> None:
     gate_phase.finding(needs="human")
     assert _orchestra(gate_phase.store, "gate", PHASE).returncode == 1
+
+
+def test_end_to_end_review_flow() -> None:
+    text = review(
+        "PASS",
+        finding_block(task="advisory-task", blocking="false", severity="minor"),
+        finding_block(task="solid-task"),
+        finding_block(task="hollow-task", trigger=None),
+    )
+    parsed = reviewer.validate_reviewer_output(text)
+    assert parsed["verdict"] == "NEEDS_WORK"
+    assert parsed["demoted"] == ["hollow-task:behavior-bug"]
+
+    findings: list[dict[str, JsonValue]] = [
+        {
+            "task": finding["task"],
+            "kind": finding["kind"],
+            "expected": finding["expected"],
+            "observed": finding["observed"],
+            "severity": finding["severity"],
+            "blocking": finding.get("blocking", True),
+        }
+        for finding in parsed["findings"]
+    ]
+    routing = reviewer.route_review_findings(findings, fix_budget_remaining=3)
+    assert routing.create_fix_flags == [False, True, False]
+
+    needs = [
+        reviewer.build_finding_payload(finding, effort="e", fix_task_created=flag)["needs"]
+        for finding, flag in zip(findings, routing.create_fix_flags, strict=True)
+    ]
+    assert needs == ["none", "none", "none"]
