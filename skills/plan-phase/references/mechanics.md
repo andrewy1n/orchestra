@@ -43,9 +43,9 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   rules.
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text, not a re-summary field.
-- An oracle-backed acceptance is created once, with `test_ids` and
-  `oracle_hashes` in the same create. Never create it and then update
-  it to freeze. Run the oracle author (step 8) before the batch.
+- Choose method separately from oracle policy. Follow
+  [verification-policy.md](references/verification-policy.md). Stamp resolved
+  `oracle_policy` on every new acceptance. Create selected freezes once.
 - Write all work-items and acceptances of the phase through one
   `canon apply` call (step 9). Do not run `canon create` one by one for
   them.
@@ -80,10 +80,10 @@ ready to specify tasks, use `init` first (`engage` if kind/focus unset).
   Landing → not ready for plan review. Incidental has no Landing.
 - Decisions change via `supersede`, never `update` to `superseded`.
 - Parent writes records. Only subagent here: phase-scoped
-  **oracle-author** (step 8, deliver/repair) — tests only, no
+  **oracle-author** (step 8, selected frozen acceptances) — tests only, no
   `canon`. Parent runs the tests and writes the freeze fields in the
   acceptance create. Never hand Approach / implementation hints to the
-  oracle-author. Freeze only after assertion-level red.
+  oracle-author. Frozen tdd requires assertion-level red; frozen check does not.
 - Never supersede another subject's goal or position.
 
 ## Steps
@@ -185,10 +185,9 @@ canon create --type score:position \
    [task-shapes.md](references/task-shapes.md) (Dependent task).
 7. Verification task last (`deliver`/`repair`) — see
    [task-shapes.md](references/task-shapes.md) (Verification task).
-8. Oracle author (`deliver`/`repair` only) — see
-   [oracle-author.md](references/oracle-author.md). It runs before any
-   acceptance exists. Its result fills `test_ids` and `oracle_hashes`
-   in the drafted acceptances.
+8. Oracle author: skip when no acceptance selects `frozen`. Otherwise
+   follow [oracle-author.md](references/oracle-author.md) for the selected frozen
+   acceptances. Unfrozen tdd tests can start during execution.
 9. Write the batch. Put every drafted record in one NDJSON file and
    run `canon apply` once. Each line is `{"op":"create","type":...,
    "subject":...,"payload":{...},"body":...}` (`body` only for a
@@ -200,9 +199,9 @@ canon create --type score:position \
 ```bash
 cat > /tmp/plan-batch.ndjson <<'EOF'
 {"op":"create","type":"score:work-item","subject":"<task-slug>","payload":{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1"],"decisions":["<decision>"]},"body":"## Description\n\nR1: <observable behavior>\n\n## Approach\n\n<implementation recipe>"}
-{"op":"create","type":"score:acceptance","subject":"<task-slug>","payload":{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}}
-{"op":"create","type":"score:work-item","subject":"verify-<phase-slug>","payload":{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1"],"decisions":["<decision>"],"depends_on":["<task-slug>"]},"body":"## Description\n\nProve the phase exit criteria hold together.\n\n## Approach\n\n<implementation recipe>"}
-{"op":"create","type":"score:acceptance","subject":"verify-<phase-slug>","payload":{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R1"}}
+{"op":"create","type":"score:acceptance","subject":"<task-slug>","payload":{"method":"tdd","oracle_policy":"frozen","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}}
+{"op":"create","type":"score:work-item","subject":"verify-<phase-slug>","payload":{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R2"],"decisions":["<decision>"],"depends_on":["<task-slug>"]},"body":"## Description\n\nProve the phase exit criteria hold together.\n\n## Approach\n\n<implementation recipe>"}
+{"op":"create","type":"score:acceptance","subject":"verify-<phase-slug>","payload":{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R2"}}
 EOF
 canon apply /tmp/plan-batch.ndjson
 ```
@@ -216,7 +215,7 @@ canon apply /tmp/plan-batch.ndjson
    succeeded.
    After the apply, run `orchestra check --acceptance <acceptance-id>
    --cwd <repo-or-worktree>` for each oracle-backed acceptance. The
-   runner records the red check-run that close needs; expect `fail`.
+   runner records evidence. Frozen tdd needs red; frozen check needs no red.
 10. Validate:
 
 ```bash
@@ -235,8 +234,8 @@ canon list --type score:work-item \
 12. Open the plan review gate (skip incidental). Do not open until:
     each work-item has `## Approach`; wave executors agree; phase body
     has size, human stops, collision notes, `## Proof`, and
-    `## Landing`; and for deliver/repair each intended oracle-backed
-    tdd acceptance has non-empty `test_ids` and `oracle_hashes`.
+    `## Landing`; and each selected frozen
+    acceptance has non-empty `test_ids` and `oracle_hashes`.
     Run the analyze check first:
 
 ```bash

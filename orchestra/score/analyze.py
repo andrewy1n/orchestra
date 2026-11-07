@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
@@ -161,7 +162,15 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     _subject(item),
                     f"work-item names {rid}, which {source} does not list",
                 )
+    phase_records = [
+        r for r in records if r["record_type"] == "score:phase" and r["subject"] == phase
+    ]
+    phase_payload = _payload(max(phase_records, key=_recorded_at)) if phase_records else None
     for acceptance in acceptances:
+        try:
+            resolve_oracle_policy(_payload(acceptance), phase_payload)
+        except ValueError as exc:
+            add("error", "oracle-policy-invalid", _subject(acceptance), str(exc))
         ids = acceptance_requirement_ids(acceptance)
         for rid in ids:
             if rid not in listed:

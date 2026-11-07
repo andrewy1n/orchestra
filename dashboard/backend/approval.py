@@ -15,13 +15,14 @@ from dashboard.backend.dismiss import (
     is_dismissible,
 )
 from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
-from dashboard.backend.landing import rev_parse_token
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.revision import revision_matches
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 
@@ -97,9 +98,11 @@ def _cli_json(target: Project, *args: str) -> Record | None:
     return store.stored_record(target, record_id, record_type)
 
 
-def _git_head(root: Path) -> str:
-    sha = rev_parse_token(root, "HEAD")
-    return (sha or "").strip()
+def _head_sha(root: Path) -> str:
+    try:
+        return Git(root, timeout=2).head()
+    except ToolError:
+        return ""
 
 
 def _short(sha: str, n: int = 7) -> str:
@@ -135,7 +138,7 @@ def _check_evidence(
     payload: PlanningPayload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
     checked_rev = str(payload.get("revision") or "").strip()
-    head = _git_head(root)
+    head = _head_sha(root)
     acceptance_text = ""
     criterion_id = str(payload.get("criterion_id") or "").strip()
     if criterion_id:

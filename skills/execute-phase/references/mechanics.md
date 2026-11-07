@@ -178,6 +178,10 @@ orchestra brief <task-slug>
    `criterion`, `verify_command`, or findings — brief already has
    those.
 
+   Unfrozen tdd tests can be written during execution. Record red through
+   `orchestra check` before implementation, then green. Require explicit
+   parent approval before changing method or oracle policy.
+
    If any active acceptance is **oracle-backed** (non-empty `test_ids`
    and `oracle_hashes`), list those frozen paths in the dispatch
    prompt and forbid editing them. Pushback → oracle amendment path
@@ -189,13 +193,18 @@ orchestra brief <task-slug>
 ### Frozen oracle (do not edit)
 
 Files listed in acceptance oracle_hashes for this task are frozen.
-Do not edit them. An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`. orchestra verify verdict accepts or rejects it. A non-zero exit means the acceptance is not done.
+Do not edit them. Report proposed hash or test-id changes to the parent for oracle amendment approval.
+For manifest claims:
+An oracle hash or test-id change is a signed amendment in `.tuner/manifest.json`.
+A non-zero exit means the acceptance is not done.
 ```
 
-   **Oracle amendment (parent only):** do not edit the frozen file; do
-   not `create`/`supersede` `tuner:oracle-amendment` or update
-   acceptance `oracle_hashes`/`test_ids`. Parent adds a signed
-   amendment in `.tuner/manifest.json`, then:
+   **Oracle amendment (parent only):** every frozen hash change requires an
+   approved `tuner:oracle-amendment` with hashes matching the green tree.
+   The parent creates or supersedes that record with the acceptance subject,
+   effort, phase, old_hashes, new_hashes, status approved, and Reason/Change.
+   Executors never create or approve these records. Do not replace acceptance
+   freeze fields. For manifest claims, Parent adds a signed amendment in `.tuner/manifest.json`, then:
 
 ```bash
 orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
@@ -437,7 +446,7 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Re-dispatch after retry budget exhaustion without `scope: retry:<task-slug>`
 - Skip the retryable `in_progress` pass
 - Put a whole-suite command on a per-task `verify_command`
-- Let an executor edit frozen oracle files; `create`/`supersede`
+- Let an executor edit frozen oracle files or write
   `tuner:oracle-amendment`; or `create`/`correct` a task check-run
   with method `tdd`/`check` (those come from `orchestra check`). Suite
   (`orchestra suite record`) and `manual`/`review` stay parent writes

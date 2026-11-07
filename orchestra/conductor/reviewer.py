@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeAlias, TypedDict
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.revision import revision_matches
+from orchestra.tools import Git
 
 ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
 
@@ -135,13 +135,7 @@ def git_phase_diff(
     phase_head: str = "HEAD",
 ) -> str:
     """Return `git diff <base>..<phase-head>` text (empty string on failure)."""
-    result = run_git(
-        cwd,
-        "diff",
-        f"{base}..{phase_head}",
-        capture_output=True,
-        text=True,
-    )
+    result = Git(cwd).run("diff", f"{base}..{phase_head}")
     if result.returncode != 0:
         return ""
     return result.stdout or ""

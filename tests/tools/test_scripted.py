@@ -26,6 +26,7 @@ def call(run: ScriptedRun, *argv: str) -> str:
         capture_output=True,
         text=True,
         check=False,
+        env=None,
     ).stdout
 
 
@@ -39,6 +40,7 @@ def test_replays_canned_stdout() -> None:
         capture_output=True,
         text=True,
         check=False,
+        env=None,
     )
     assert result.stdout == "clean\n"
     assert result.returncode == 0
@@ -69,3 +71,25 @@ def test_scripted_run_drives_cli_tool_round_trip() -> None:
     run = scripted(FakeTool, {("faketool", "status"): "clean\n"})
     assert FakeTool(Path("."), run=run).status() == "clean"
     assert run.calls == [("faketool", "--version"), ("faketool", "status")]
+
+
+def test_scripted_records_env() -> None:
+    run = scripted(FakeTool, {("faketool", "status"): "ok"})
+    env = {"A": "1"}
+    FakeTool(Path("."), run=run, env=env).status()
+    assert run.envs == [env, env]
+
+
+def test_scripted_serves_bytes_for_bytes_calls() -> None:
+    run = scripted(FakeTool, {("faketool", "blob"): b"\xff\x00"})
+    result = run(
+        ["faketool", "blob"],
+        cwd=Path("."),
+        input=b"in",
+        timeout=1.0,
+        capture_output=True,
+        text=False,
+        check=False,
+        env=None,
+    )
+    assert result.stdout == b"\xff\x00"

@@ -6,12 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.check import git_head, run_check
 from orchestra.conductor.evidence import evidence_body, parse_evidence
 from orchestra.conductor.wave import closes_phase, phase_items
+from orchestra.tools import Git
 
 
 class LandError(RuntimeError):
@@ -59,11 +59,9 @@ def work_item(project: Project, task: str) -> Record:
 def _verify_evidence_revision(tree: Path, claimed: object) -> None:
     if not isinstance(claimed, str) or not claimed:
         return
-    resolved = run_git(
-        tree, "rev-parse", "--verify", f"{claimed}^{{commit}}", capture_output=True, text=True
-    )
+    resolved = Git(tree).resolve(claimed)
     head = git_head(tree)
-    if resolved.returncode != 0 or resolved.stdout.strip() != head:
+    if resolved != head:
         raise LandError(
             f"evidence revision {claimed!r} is not the worktree HEAD {head[:12]}; "
             "return fresh evidence for the current tree"
@@ -71,25 +69,20 @@ def _verify_evidence_revision(tree: Path, claimed: object) -> None:
 
 
 def _commit(tree: Path, phase: str, task: str) -> str:
-    staged = run_git(
-        tree, "diff", "--cached", "--name-only", "--", ".canon", capture_output=True, text=True
-    )
+    git = Git(tree)
+    staged = git.run("diff", "--cached", "--name-only", "--", ".canon")
     if staged.stdout.strip():
         raise LandError(
             f"staged .canon changes would enter the task commit; unstage them: "
             f"{staged.stdout.split()[0]}"
         )
-    status = run_git(
-        tree, "status", "--porcelain", "--", ".", ":!.canon", capture_output=True, text=True
-    )
+    status = git.run("status", "--porcelain", "--", ".", ":!.canon")
     if not status.stdout.strip():
         return ""
-    added = run_git(tree, "add", "-A", "--", ".", ":!.canon", capture_output=True, text=True)
+    added = git.run("add", "-A", "--", ".", ":!.canon")
     if added.returncode != 0:
         raise LandError(f"git add failed: {added.stderr.strip() or added.stdout.strip()}")
-    committed = run_git(
-        tree, "commit", "-q", "-m", f"feat({phase}): {task}", capture_output=True, text=True
-    )
+    committed = git.run("commit", "-q", "-m", f"feat({phase}): {task}")
     if committed.returncode != 0:
         raise LandError(f"commit failed: {committed.stderr.strip() or committed.stdout.strip()}")
     return git_head(tree)

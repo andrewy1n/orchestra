@@ -11,7 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
+from orchestra.tools.git import Git
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EFFORT = "e2e-alpha"
@@ -57,13 +57,17 @@ def run(command: list[str], cwd: Path, env: dict[str, str]) -> None:
 
 
 def seed(store_root: Path, env: dict[str, str]) -> None:
+    git = Git(store_root, env=env)
     for args in (
         ("init", "-q"),
         ("config", "user.email", "e2e@example.com"),
         ("config", "user.name", "e2e"),
         ("commit", "--allow-empty", "-qm", "init"),
     ):
-        check(run_git(store_root, *args, env=env, capture_output=True, text=True))
+        result = git.run(*args)
+        if result.returncode != 0:
+            sys.stderr.write(result.stdout + result.stderr)
+            raise SystemExit(result.returncode)
     canon = [sys.executable, "-m", "orchestra.canon", "--root", str(store_root)]
 
     def create(

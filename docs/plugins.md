@@ -162,6 +162,8 @@ Every failure is a `ToolError`: a missing executable, a timeout, a non-zero exit
 
 A method returns a frozen dataclass. It parses the output of `self._text(...)` or `self._json(...)`, so callers never see raw argv or JSON.
 
+To run git, use the `Git` client in `orchestra.tools`. Do not call `git` yourself. `Git.run` returns the exit code and never raises on a non-zero exit. `Git.text` and the typed methods raise `ToolError`.
+
 ```python
 from dataclasses import dataclass
 from pathlib import Path
@@ -221,10 +223,9 @@ merge = "human"
 
 [land.config]
 repository = "acme/orchestra"
-token_env = "ORCHESTRA_GITHUB_TOKEN"
 ```
 
-The built-in GitHub adapter reads the token from `token_env` and uses `repository` when you set it. It reads the git remote when `repository` is absent.
+The built-in GitHub adapter uses the authenticated `gh` CLI. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
 
 Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
 

@@ -135,7 +135,8 @@ def test_oracle_backed_acceptance_one_create() -> None:
     assert len(oracle_backed) == 1
     assert oracle_backed[0]["payload"]["oracle_hashes"]
     shapes = (h.REPO_ROOT / "skills/plan-phase/references/task-shapes.md").read_text()
-    creates = _invocations(shapes, "create", "score:acceptance")
+    author = (h.REPO_ROOT / "skills/plan-phase/references/oracle-author.md").read_text()
+    creates = _invocations(shapes + "\n" + author, "create", "score:acceptance")
     assert any({"test_ids", "oracle_hashes"} <= set(inv["payload"]) for inv in creates)
 
 

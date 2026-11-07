@@ -41,9 +41,9 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   rules.
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text.
-- An oracle-backed acceptance is created once, with `test_ids` and
-  `oracle_hashes` in the same create. Never create it and then update
-  it to freeze. Run the oracle author (step 8) before the batch.
+- Choose `method` separately from `oracle_policy`; follow
+  [verification-policy.md](references/verification-policy.md). Stamp the
+  resolved policy on every new acceptance. Create selected freezes once.
 - Write all work-items and acceptances of the phase through one
   `canon apply` call (step 9). Do not run `canon create` one by one for
   them.
@@ -77,10 +77,10 @@ for the focus, use `init` first (`engage` if kind/focus unset).
 - Decisions change via `supersede`, never `update` to `superseded`.
   Never supersede another subject's goal or position.
 - Parent writes records. Only subagent here: phase-scoped
-  **oracle-author** (step 8, deliver/repair), tests only, no
+  **oracle-author** (step 8, selected frozen acceptances), tests only, no
   `canon`. Parent runs the tests and writes the freeze fields in the
   acceptance create. Never hand Approach / implementation hints to the
-  oracle-author. Freeze only after assertion-level red.
+  oracle-author. Frozen tdd requires assertion-level red; frozen check does not.
 
 ## Steps
 
@@ -120,9 +120,9 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    verification task last (`deliver`/`repair`). Shapes are in
    [task-shapes.md](references/task-shapes.md). Drafting writes no
    record.
-8. Oracle author (`deliver`/`repair` only), see
-   [oracle-author.md](references/oracle-author.md). It runs before any
-   acceptance exists and fills `test_ids` and `oracle_hashes`.
+8. Oracle author: skip when no acceptance selects `frozen`. Otherwise
+   follow [oracle-author.md](references/oracle-author.md) before creating
+   selected frozen acceptances. Unfrozen tdd tests can start during execution.
 9. Write the batch. Put every drafted record in one NDJSON file and
    run `canon apply` once (line shape and example in
    [mechanics.md](references/mechanics.md)). Order the lines: each
@@ -131,14 +131,14 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    acceptances. On `"ok": false`, fix the failed lines and apply only
    those. Never re-apply lines that succeeded. After the apply, run `orchestra check --acceptance <acceptance-id> --cwd
    <repo-or-worktree>` for each oracle-backed acceptance. The runner
-   records the red check-run that close needs; expect `fail`.
+   records evidence: expect red for frozen tdd; frozen check needs no red.
 10. Run `canon validate`. Show the user the focus task list
     (`orchestra view plan --effort <focus>`) and which exit criterion
     each acceptance covers.
 11. Open the plan review gate (skip incidental). Do not open until:
     each work-item has `## Approach`; wave executors agree; the phase
     body has size, human stops, collision notes, `## Proof`, and
-    `## Landing`; and each intended oracle-backed tdd acceptance has
+    `## Landing`; and each selected frozen acceptance has
     non-empty `test_ids` and `oracle_hashes`. Run `orchestra analyze
     <phase-slug>` first. Refuse plan review while it exits 1. Fix each
     error finding, then run it again. If the effort's `autonomy` is

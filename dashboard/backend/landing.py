@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
+from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git, GitResult
 
 _TIMEOUT = 2
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
@@ -47,16 +47,10 @@ def _branch_name(section: str, subject: str) -> str:
     return f"phase/{subject}"
 
 
-def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+def _probe(root: Path, *args: str) -> GitResult | None:
     try:
-        return run_git(
-            root,
-            *args,
-            capture_output=True,
-            text=True,
-            timeout=_TIMEOUT,
-        )
-    except (OSError, subprocess.SubprocessError):
+        return Git(root, timeout=_TIMEOUT).run(*args)
+    except ToolError:
         return None
 
 
@@ -72,7 +66,7 @@ def rev_parse_token(root: Path, *refs: str) -> str | None:
     """Joined stdout of `git rev-parse` for refs, or None on failure."""
     if not refs:
         return None
-    result = _git(root, "rev-parse", *refs)
+    result = _probe(root, "rev-parse", *refs)
     if result is None or result.returncode != 0:
         return None
     return result.stdout
@@ -94,11 +88,11 @@ def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
         return None
     branch = _branch_name(section, subject)
 
-    probe = _git(root, "rev-parse", "--git-dir")
+    probe = _probe(root, "rev-parse", "--git-dir")
     if probe is None or probe.returncode != 0:
         return None
 
-    exists_result = _git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
+    exists_result = _probe(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
     if exists_result is None:
         return None
     if exists_result.returncode != 0:
@@ -106,7 +100,7 @@ def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
 
     # Unique commits only: patch-equivalent tips (cherry-pick / rebased landing)
     # must not keep Needs you after the work is already on main.
-    cherry = _git(root, "cherry", "main", branch)
+    cherry = _probe(root, "cherry", "main", branch)
     if cherry is None or cherry.returncode != 0:
         return None
     ahead = sum(1 for line in cherry.stdout.splitlines() if line.startswith("+"))

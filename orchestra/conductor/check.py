@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
@@ -20,6 +19,7 @@ from orchestra.conductor.policy import (
     manual_refuse_message,
     map_process_outcome,
 )
+from orchestra.tools import Git
 
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
@@ -36,19 +36,15 @@ class CheckOutcome:
     reused: bool = False
 
 
-def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return run_git(cwd, *args, capture_output=True, text=True)
-
-
 def git_head(cwd: Path) -> str:
-    result = _git(cwd, "rev-parse", "HEAD")
+    result = Git(cwd).run("rev-parse", "HEAD")
     if result.returncode != 0:
         raise RuntimeError(f"git rev-parse HEAD failed: {result.stderr or result.stdout}")
     return result.stdout.strip()
 
 
 def git_is_dirty(cwd: Path) -> bool:
-    result = _git(cwd, "status", "--porcelain")
+    result = Git(cwd).run("status", "--porcelain")
     if result.returncode != 0:
         raise RuntimeError(f"git status failed: {result.stderr or result.stdout}")
     return bool(result.stdout.strip())
@@ -56,8 +52,9 @@ def git_is_dirty(cwd: Path) -> bool:
 
 def git_diff_sha256(cwd: Path) -> str:
     """Hash of staged+unstaged diff plus untracked file paths (stable enough for flagging)."""
-    diff = _git(cwd, "diff", "HEAD")
-    porcelain = _git(cwd, "status", "--porcelain")
+    git = Git(cwd)
+    diff = git.run("diff", "HEAD")
+    porcelain = git.run("status", "--porcelain")
     blob = (diff.stdout or "") + "\n" + (porcelain.stdout or "")
     return hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
 

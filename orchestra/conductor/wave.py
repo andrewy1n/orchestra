@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
+from orchestra.tools import Git, ToolError
 
 EXECUTORS = ("inline", "subagent")
 _LIVE = ("planned", "in_progress", "done")
@@ -35,41 +35,19 @@ class WaveStart:
 
 
 def repo_root(cwd: Path) -> Path:
-    result = run_git(
-        cwd,
-        "rev-parse",
-        "--path-format=absolute",
-        "--git-common-dir",
-        capture_output=True,
-        text=True,
-    )
+    result = Git(cwd).run("rev-parse", "--path-format=absolute", "--git-common-dir")
     if result.returncode != 0:
         raise WaveError(f"not a git repository: {cwd}")
     return Path(result.stdout.strip()).parent
 
 
-def _git(cwd: Path, *args: str) -> str:
-    result = run_git(cwd, *args, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise WaveError(
-            f"git {' '.join(args)} failed: {result.stderr.strip() or result.stdout.strip()}"
-        )
-    return result.stdout.strip()
+def _wave_error(error: ToolError) -> WaveError:
+    detail = error.stderr.strip() or str(error)
+    return WaveError(f"git {' '.join(error.argv[1:])} failed: {detail}")
 
 
 def _branch_exists(repo: Path, branch: str) -> bool:
-    return (
-        run_git(
-            repo,
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            f"refs/heads/{branch}",
-            capture_output=True,
-            text=True,
-        ).returncode
-        == 0
-    )
+    return Git(repo).resolve(f"refs/heads/{branch}") is not None
 
 
 def has_landing(phase_record: Record) -> bool:
@@ -144,16 +122,19 @@ def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path,
     branch = f"task/{phase}/{item['subject']}"
     tree = repo / ".worktrees" / f"{phase}--{item['subject']}"
     if not _branch_exists(repo, branch):
-        _git(repo, "branch", branch, phase_branch)
+        try:
+            Git(repo).create_branch(branch, phase_branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
     if not tree.exists():
-        _git(repo, "worktree", "add", str(tree), branch)
-    contains = run_git(
-        tree, "merge-base", "--is-ancestor", phase_branch, "HEAD", capture_output=True, text=True
-    )
-    if contains.returncode != 0:
-        merged = run_git(tree, "merge", "--no-edit", phase_branch, capture_output=True, text=True)
-        if merged.returncode != 0:
-            raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
+        try:
+            Git(repo).add_worktree(tree, branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
+    task_git = Git(tree)
+    behind = task_git.run("merge-base", "--is-ancestor", phase_branch, "HEAD").returncode != 0
+    if behind and not task_git.merge(phase_branch).clean:
+        raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
     return tree, branch
 
 
@@ -188,7 +169,7 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
 
 
 def worktree_root(cwd: Path) -> Path:
-    result = run_git(cwd, "rev-parse", "--show-toplevel", capture_output=True, text=True)
+    result = Git(cwd).run("rev-parse", "--show-toplevel")
     if result.returncode != 0:
         raise WaveError(f"not a git worktree: {cwd}")
     return Path(result.stdout.strip())
@@ -279,29 +260,19 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
-        already = run_git(
-            repo,
-            "merge-base",
-            "--is-ancestor",
-            branch,
-            phase_branch,
-            capture_output=True,
-            text=True,
-        )
-        if already.returncode == 0:
+        if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
             continue
         acceptances = _acceptances(records, task, phase)
-        tip = _git(repo, "rev-parse", branch)
+        tip = Git(repo).resolve(branch)
+        if tip is None:
+            raise WaveError(f"cannot resolve task branch {branch}")
         if not acceptances or not all(_passes(records, a, tip) for a in acceptances):
             skipped.append((task, "checks did not pass"))
             continue
-        result = run_git(phase_tree, "merge", "--no-edit", branch, capture_output=True, text=True)
-        if result.returncode != 0:
-            unmerged = run_git(phase_tree, "ls-files", "--unmerged", capture_output=True, text=True)
-            if not unmerged.stdout.strip():
-                raise WaveError(
-                    f"git merge {branch} failed: {result.stderr.strip() or result.stdout.strip()}"
-                )
+        result = Git(phase_tree).merge(branch)
+        if not result.clean:
+            if not result.unmerged:
+                raise WaveError(f"git merge {branch} failed: {result.output.strip()}")
             question = _block(project, phase_rec, phase, f"merge:{task}")
             return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
         merged.append(task)
