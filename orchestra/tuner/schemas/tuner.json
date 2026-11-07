@@ -1,6 +1,6 @@
 {
   "namespace": "tuner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": {
     "check-run": {
       "purpose": "That this criterion was tested at a revision",
@@ -158,6 +158,10 @@
         },
         "effort": {
           "ref": "score:effort"
+        },
+        "phase": {
+          "ref": "score:phase",
+          "optional": true
         },
         "needs": {
           "type": "string"

@@ -1,6 +1,6 @@
 {
   "namespace": "score",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "types": {
     "brief": {
       "purpose": "Why, for whom, and how success is measured for an effort",
@@ -165,6 +165,13 @@
           },
           "optional": true
         },
+        "source_reviews": {
+          "list": {
+            "ref": "score:step-review",
+            "pin": true
+          },
+          "optional": true
+        },
         "size": {
           "enum": [
             "XS",
@@ -305,6 +312,10 @@
         "scope": {
           "type": "string"
         },
+        "phase": {
+          "ref": "score:phase",
+          "optional": true
+        },
         "answer": {
           "type": "string",
           "optional": true
@@ -312,6 +323,93 @@
         "question": {
           "type": "string",
           "optional": true
+        }
+      }
+    },
+    "step-review": {
+      "purpose": "A reviewed workflow step and its approved inputs",
+      "lifecycle": "event",
+      "fields": {
+        "effort": {
+          "ref": "score:effort"
+        },
+        "phase": {
+          "ref": "score:phase"
+        },
+        "step": {
+          "enum": [
+            "spec",
+            "design",
+            "tasks",
+            "execute",
+            "verify"
+          ]
+        },
+        "reviewed_artifact": {
+          "ref": [
+            "score:specification",
+            "score:design",
+            "score:work-item",
+            "score:acceptance"
+          ],
+          "pin": true
+        },
+        "reviewed_revision": {
+          "type": "string"
+        },
+        "input_fingerprint": {
+          "type": "string"
+        },
+        "source_reviews": {
+          "list": {
+            "ref": "score:step-review",
+            "pin": true
+          }
+        },
+        "authority": {
+          "enum": [
+            "user-approval",
+            "explicit-delegation"
+          ]
+        },
+        "basis": {
+          "type": "string"
+        }
+      }
+    },
+    "run": {
+      "purpose": "A resumable workflow run with a fixed phase selection",
+      "lifecycle": "current",
+      "fields": {
+        "effort": {
+          "ref": "score:effort"
+        },
+        "operation": {
+          "enum": [
+            "phase",
+            "prepare",
+            "deliver",
+            "single-step"
+          ]
+        },
+        "phases": {
+          "list": {
+            "ref": "score:phase"
+          }
+        },
+        "requested_steps": {
+          "list": {
+            "enum": [
+              "spec",
+              "design",
+              "tasks",
+              "execute",
+              "verify"
+            ]
+          }
+        },
+        "definition_version": {
+          "type": "string"
         }
       }
     },

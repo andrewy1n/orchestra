@@ -215,6 +215,31 @@ def validate_record(
         raise ValidationError("; ".join(errors))
 
 
+def validate_phase_effort(record: Record, schemas: SchemaSet, index: RecordIndex) -> None:
+    type_def = schemas.types[record["record_type"]]
+    phase_form = type_def.fields.get("phase")
+    effort_form = type_def.fields.get("effort")
+    if phase_form is None or effort_form is None:
+        return
+    if "score:phase" not in ref_targets(phase_form):
+        return
+    if "score:effort" not in ref_targets(effort_form):
+        return
+    payload = record.get("payload")
+    phase_subject = payload.get("phase")
+    effort_subject = payload.get("effort")
+    if not isinstance(phase_subject, str) or not isinstance(effort_subject, str):
+        return
+    phase = index.resolve_subject("score:phase", phase_subject)
+    if phase is None:
+        return
+    phase_payload = phase.get("payload")
+    if phase_payload.get("effort") != effort_subject:
+        raise ValidationError(
+            f"{record['id']}: phase {phase_subject!r} belongs to a different effort"
+        )
+
+
 _SECTION_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$")
 
 
