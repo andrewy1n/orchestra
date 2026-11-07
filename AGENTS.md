@@ -87,6 +87,11 @@ While you edit, run the affected test files with `uv run pytest <files>`.
 Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
 trees.
 
+When a task changes shared skill references or their generator, include
+`tests/test_skill_portability.py` in that task's `verify_command`.
+Include the contract tests for the behavior the task changes. Run these
+tests in the task worktree before phase review.
+
 Before you close a task, run the test files for the code you changed.
 Run the three pytest commands in the README Testing section only at phase
 end, or when you change shared code (config, store, CLI entry points).

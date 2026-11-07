@@ -58,6 +58,8 @@ incidental). Set `executor` to `inline` or `subagent` (same within a
 wave). Every new work-item includes `size` and `estimate_minutes`.
 `method` is `tdd`, `check`, or `manual`; `verify_command` is the
 literal command (empty string for `manual` with no script).
+Include the project's affected compatibility tests in the implementation
+task's checks when it changes a shared contract or generated files.
 
 - `repair` — `verify_command` proves repro-gone plus a regression
   check, not "we investigated." Diagnose happens at execute/verify.
