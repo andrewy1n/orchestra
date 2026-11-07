@@ -434,6 +434,12 @@ def is_fixable_finding_kind(kind: str) -> bool:
     return (kind or "").strip() in FIXABLE_FINDING_KINDS
 
 
+def is_advisory_finding(finding: Mapping[str, JsonValue]) -> bool:
+    """True when the reviewer or the parser marked the finding non-blocking."""
+    severity = str(finding.get("severity") or "").strip().lower()
+    return finding.get("blocking") is False and severity != "judgment"
+
+
 def build_finding_payload(
     finding: Mapping[str, JsonValue],
     *,
@@ -442,15 +448,17 @@ def build_finding_payload(
 ) -> FindingPayload:
     """Parent-only finding payload for one NEEDS_WORK item."""
     severity = str(finding.get("severity") or "").strip().lower()
+    advisory = is_advisory_finding(finding)
     if severity == "judgment":
         needs = "human"
-    elif fix_task_created:
+    elif advisory or fix_task_created:
         needs = "none"
     else:
         needs = "human"
     kind = str(finding.get("kind") or "finding")
     task = str(finding.get("task") or "phase")
-    claim = f"{kind} on {task}: {finding.get('expected') or ''}".strip()
+    prefix = "advisory " if advisory else ""
+    claim = f"{prefix}{kind} on {task}: {finding.get('expected') or ''}".strip()
     basis = str(finding.get("observed") or "")
     return {
         "claim": claim,
@@ -489,7 +497,11 @@ def route_review_findings(
         kind = str(finding.get("kind") or "")
         severity = str(finding.get("severity") or "").strip().lower()
         task = str(finding.get("task") or "phase")
-        fixable = is_fixable_finding_kind(kind) and severity != "judgment"
+        fixable = (
+            is_fixable_finding_kind(kind)
+            and severity != "judgment"
+            and not is_advisory_finding(finding)
+        )
         if fixable:
             wanted_fixable += 1
         if fixable and remaining > 0:
