@@ -104,11 +104,18 @@ Reviewer writes no store records. Parent creates them.
 2. Host `reviewer` if available; else read-only/explore subagent
    with [reviewer.md](references/reviewer.md). Refuse reviewer
    store writes or tree mutation.
+   Orchestra derives the verdict from the findings. A finding is blocking
+   only with `blocking: true` plus `requirement`, `trigger` and
+   `consequence` (and `escape` for `missing-test`); otherwise it is
+   advisory. A `PASS` may list advisory findings. A `judgment` finding
+   always blocks.
 3. Create `tuner:check-run` (`method: review`,
    `evidence_kind: review`, `revision` = phase head; `PASS`→`pass`,
-   `NEEDS_WORK`→`fail`) and one `tuner:finding` per NEEDS_WORK
-   (`needs: none` when a fix task is created; `needs: human` for
-   `severity: judgment` or no fix).
+   `NEEDS_WORK`→`fail`) and one `tuner:finding` per finding.
+   Set `needs` by the finding type: an advisory finding gets `needs: none` and an `advisory` claim prefix,
+   creates no fix task, and does not block the phase gate; a blocking
+   finding gets `needs: none` when a fix task is created; `needs: human`
+   for `severity: judgment` or no fix.
 
 ```bash
 canon create --type tuner:check-run \
@@ -132,7 +139,7 @@ Phase merge is blocked until the finding is fixed or cleared.
 Create a fix work-item under the retry budget, or answer Needs you."
 ```
 
-4. Fixable NEEDS_WORK (`spec-gap`, `behavior-bug`, `missing-test`,
+4. Fixable blocking findings (`spec-gap`, `behavior-bug`, `missing-test`,
    `invariant-violation`, except `severity: judgment`) → fix
    work-items via [retry-loop.md](references/retry-loop.md) and
    `retry_max_fix_tasks`. Never reopen `done`. After fixes verify,

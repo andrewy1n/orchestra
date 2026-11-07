@@ -1,0 +1,266 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+from subprocess import CompletedProcess
+
+import pytest
+from test_gate import PHASE, Phase, _orchestra, seed
+
+from orchestra.canon.types import JsonValue
+from orchestra.conductor import reviewer
+
+ROOT = Path(__file__).resolve().parent.parent
+
+INTEGRATION = """integration:
+  interfaces: parser feeds routing
+  assumptions: none
+  invariants: parent is the single writer
+  conflicts:
+"""
+
+
+def finding_block(
+    *,
+    task: str = "task-a",
+    kind: str = "behavior-bug",
+    severity: str = "major",
+    blocking: str | None = "true",
+    requirement: str | None = "R2: findings carry a basis",
+    trigger: str | None = "a blocking finding omits its trigger",
+    consequence: str | None = "the phase blocks without a stated cause",
+    escape: str | None = None,
+) -> str:
+    lines = [
+        f"  - task: {task}",
+        f"    kind: {kind}",
+        "    expected: the spec holds",
+        "    observed: the diff differs",
+        f"    severity: {severity}",
+    ]
+    for key, value in (
+        ("blocking", blocking),
+        ("requirement", requirement),
+        ("trigger", trigger),
+        ("consequence", consequence),
+        ("escape", escape),
+    ):
+        if value is not None:
+            lines.append(f"    {key}: {value}")
+    return "\n".join(lines) + "\n"
+
+
+def review(verdict: str, *blocks: str) -> str:
+    body = "".join(blocks) if blocks else " []\n"
+    return f"verdict: {verdict}\nfindings:\n{body}{INTEGRATION}"
+
+
+def test_pass_with_only_advisory_findings_returns_pass() -> None:
+    text = review("NEEDS_WORK", finding_block(blocking="false", severity="minor"))
+    parsed = reviewer.validate_reviewer_output(text)
+    assert parsed["verdict"] == "PASS"
+    assert len(parsed["findings"]) == 1
+    assert parsed["findings"][0].get("blocking") is False
+
+
+def test_pass_with_only_advisory_findings_accepts_a_pass_verdict_line() -> None:
+    text = review("PASS", finding_block(blocking="false", severity="minor"))
+    assert reviewer.validate_reviewer_output(text)["verdict"] == "PASS"
+
+
+def test_blocking_finding_names_requirement() -> None:
+    text = review("NEEDS_WORK", finding_block(requirement=None))
+    parsed = reviewer.validate_reviewer_output(text)
+    assert parsed["findings"][0].get("blocking") is False
+    assert parsed["verdict"] == "PASS"
+
+
+def test_blocking_finding_with_requirement_stays_blocking() -> None:
+    parsed = reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block()))
+    assert parsed["findings"][0].get("requirement") == "R2: findings carry a basis"
+    assert parsed["findings"][0].get("blocking") is True
+    assert parsed["verdict"] == "NEEDS_WORK"
+
+
+def test_blocking_finding_names_trigger() -> None:
+    parsed = reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block(trigger=None)))
+    assert parsed["findings"][0].get("blocking") is False
+
+
+def test_blocking_finding_names_consequence() -> None:
+    parsed = reviewer.validate_reviewer_output(
+        review("NEEDS_WORK", finding_block(consequence=None))
+    )
+    assert parsed["findings"][0].get("blocking") is False
+
+
+def test_blocking_missing_test_finding_names_escape() -> None:
+    bare = finding_block(kind="missing-test", escape=None)
+    assert (
+        reviewer.validate_reviewer_output(review("NEEDS_WORK", bare))["findings"][0].get("blocking")
+        is False
+    )
+    full = finding_block(kind="missing-test", escape="a regression in routing passes every test")
+    parsed = reviewer.validate_reviewer_output(review("NEEDS_WORK", full))
+    assert parsed["findings"][0].get("blocking") is True
+    assert parsed["verdict"] == "NEEDS_WORK"
+
+
+def test_non_test_finding_needs_no_escape() -> None:
+    parsed = reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block(escape=None)))
+    assert parsed["findings"][0].get("blocking") is True
+
+
+def test_incomplete_blocking_finding_demotes_to_advisory_and_is_listed() -> None:
+    parsed = reviewer.validate_reviewer_output(
+        review("NEEDS_WORK", finding_block(task="task-b", trigger=None))
+    )
+    assert parsed["findings"][0].get("blocking") is False
+    assert parsed["demoted"] == ["task-b:behavior-bug"]
+
+
+def test_complete_blocking_finding_is_not_listed_as_demoted() -> None:
+    parsed = reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block()))
+    assert parsed["demoted"] == []
+
+
+def test_derives_verdict_from_findings_not_the_verdict_line() -> None:
+    blocking = review("PASS", finding_block())
+    assert reviewer.validate_reviewer_output(blocking)["verdict"] == "NEEDS_WORK"
+    advisory = review("NEEDS_WORK", finding_block(blocking="false", severity="minor"))
+    assert reviewer.validate_reviewer_output(advisory)["verdict"] == "PASS"
+    assert reviewer.validate_reviewer_output(review("NEEDS_WORK"))["verdict"] == "PASS"
+
+
+def test_derives_verdict_needs_work_for_a_judgment_finding() -> None:
+    text = review(
+        "PASS",
+        finding_block(
+            severity="judgment",
+            blocking="false",
+            requirement=None,
+            trigger=None,
+            consequence=None,
+        ),
+    )
+    parsed = reviewer.validate_reviewer_output(text)
+    assert parsed["verdict"] == "NEEDS_WORK"
+    assert parsed["findings"][0].get("blocking") is True
+
+
+def test_finding_without_a_blocking_line_is_rejected() -> None:
+    with pytest.raises(ValueError, match="blocking"):
+        reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block(blocking=None)))
+
+
+def test_finding_with_a_malformed_blocking_value_is_rejected() -> None:
+    with pytest.raises(ValueError, match="blocking"):
+        reviewer.validate_reviewer_output(review("NEEDS_WORK", finding_block(blocking="maybe")))
+
+
+def test_verdict_line_must_still_be_pass_or_needs_work() -> None:
+    with pytest.raises(ValueError, match="verdict"):
+        reviewer.validate_reviewer_output(review("MAYBE"))
+
+
+ADVISORY: dict[str, JsonValue] = {
+    "task": "task-a",
+    "kind": "missing-test",
+    "expected": "a test covers the edge",
+    "observed": "no test covers the edge",
+    "severity": "minor",
+    "blocking": False,
+}
+BLOCKING: dict[str, JsonValue] = {**ADVISORY, "severity": "major", "blocking": True}
+JUDGMENT: dict[str, JsonValue] = {**ADVISORY, "kind": "spec-gap", "severity": "judgment"}
+
+
+def test_judgment_severity_is_documented_for_choices_that_change_what_was_agreed() -> None:
+    for name in ("agents/reviewer.md", "agents/reviewer.prompt.md"):
+        text = " ".join((ROOT / name).read_text(encoding="utf-8").split())
+        assert "`judgment` finding is for a choice that changes what was agreed" in text
+
+
+def test_judgment_needs_human_and_creates_no_fix_task() -> None:
+    payload = reviewer.build_finding_payload(JUDGMENT, effort="e", fix_task_created=False)
+    assert payload["needs"] == "human"
+    routing = reviewer.route_review_findings([JUDGMENT], fix_budget_remaining=3)
+    assert routing.create_fix_flags == [False]
+
+
+def test_advisory_needs_none_and_says_advisory() -> None:
+    payload = reviewer.build_finding_payload(ADVISORY, effort="e", fix_task_created=False)
+    assert payload["needs"] == "none"
+    assert payload["claim"].startswith("advisory")
+
+
+def test_blocking_finding_without_a_fix_task_still_needs_human() -> None:
+    payload = reviewer.build_finding_payload(BLOCKING, effort="e", fix_task_created=False)
+    assert payload["needs"] == "human"
+    assert not payload["claim"].startswith("advisory")
+
+
+def test_advisory_no_fix_task_and_no_budget_use() -> None:
+    routing = reviewer.route_review_findings([ADVISORY, BLOCKING], fix_budget_remaining=1)
+    assert routing.create_fix_flags == [False, True]
+    assert routing.fix_subjects[0] == ""
+    assert routing.escalate is False
+
+
+def test_advisory_no_fix_task_when_budget_is_zero_does_not_escalate() -> None:
+    routing = reviewer.route_review_findings([ADVISORY], fix_budget_remaining=0)
+    assert routing.create_fix_flags == [False]
+    assert routing.escalate is False
+
+
+@pytest.fixture
+def gate_phase(store: Path, cli: Callable[..., CompletedProcess[str]]) -> Phase:
+    return seed(store, cli)
+
+
+def test_advisory_gate_ignores_an_advisory_finding(gate_phase: Phase) -> None:
+    payload = reviewer.build_finding_payload(ADVISORY, effort="gate-effort", fix_task_created=False)
+    gate_phase.create(
+        "tuner:finding",
+        "review-task-a-missing-test",
+        {**payload},
+        "## Evidence\n\ne\n\n## Consequence\n\nc\n\n## Follow-up\n\nf",
+    )
+    assert _orchestra(gate_phase.store, "gate", PHASE).returncode == 0
+
+
+def test_advisory_gate_ignores_nothing_when_the_finding_needs_human(gate_phase: Phase) -> None:
+    gate_phase.finding(needs="human")
+    assert _orchestra(gate_phase.store, "gate", PHASE).returncode == 1
+
+
+def test_end_to_end_review_flow() -> None:
+    text = review(
+        "PASS",
+        finding_block(task="advisory-task", blocking="false", severity="minor"),
+        finding_block(task="solid-task"),
+        finding_block(task="hollow-task", trigger=None),
+    )
+    parsed = reviewer.validate_reviewer_output(text)
+    assert parsed["verdict"] == "NEEDS_WORK"
+    assert parsed["demoted"] == ["hollow-task:behavior-bug"]
+
+    findings: list[dict[str, JsonValue]] = [
+        {
+            "task": finding["task"],
+            "kind": finding["kind"],
+            "expected": finding["expected"],
+            "observed": finding["observed"],
+            "severity": finding["severity"],
+            "blocking": finding.get("blocking", True),
+        }
+        for finding in parsed["findings"]
+    ]
+    routing = reviewer.route_review_findings(findings, fix_budget_remaining=3)
+    assert routing.create_fix_flags == [False, True, False]
+
+    needs = [
+        reviewer.build_finding_payload(finding, effort="e", fix_task_created=flag)["needs"]
+        for finding, flag in zip(findings, routing.create_fix_flags, strict=True)
+    ]
+    assert needs == ["none", "none", "none"]

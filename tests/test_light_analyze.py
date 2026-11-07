@@ -86,6 +86,19 @@ def test_full_phase_multi_requirement_acceptance_is_an_error() -> None:
     assert "full-phase-multi-requirement" in _codes(records)
 
 
+def test_full_phase_empty_requirements_list_names_none_and_defers_to_requirement() -> None:
+    spec = _record("score:specification", "p", {"phase": "p", "requirements": ["R1"]}, _BODY)
+    records = [
+        _phase("full"),
+        spec,
+        _item("R1"),
+        _acceptance(requirements=[], requirement="R1"),
+    ]
+    codes = _codes(records)
+    assert "full-phase-multi-requirement" not in codes
+    assert "requirement-no-acceptance" not in codes
+
+
 def _light_body_codes(body: str) -> set[str]:
     return _codes([_phase("light", body), _item("R1"), _acceptance(requirement="R1")])
 
