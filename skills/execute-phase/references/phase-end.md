@@ -112,8 +112,7 @@ Reviewer writes no store records. Parent creates them.
 3. Create `tuner:check-run` (`method: review`,
    `evidence_kind: review`, `revision` = phase head; `PASS`→`pass`,
    `NEEDS_WORK`→`fail`) and one `tuner:finding` per finding.
-   `orchestra.conductor.reviewer.build_finding_payload` sets `needs`:
-   an advisory finding gets `needs: none` and an `advisory` claim prefix,
+   Set `needs` by the finding type: an advisory finding gets `needs: none` and an `advisory` claim prefix,
    creates no fix task, and does not block the phase gate; a blocking
    finding gets `needs: none` when a fix task is created; `needs: human`
    for `severity: judgment` or no fix.
