@@ -13,6 +13,7 @@ from orchestra.score.requirements import (
     requirement_body_problems,
     requirements_in_body,
 )
+from orchestra.score.workflow_reviews import has_blocking_behavior_question
 
 MARKER = "[NEEDS CLARIFICATION"
 _CODE_SPAN = re.compile(r"`[^`]*`")
@@ -75,6 +76,9 @@ def _has_marker(body: str) -> bool:
 
 
 def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan") -> Report:
+    if stage not in ("spec", "design", "plan", "close"):
+        raise ValueError(f"unknown analysis stage {stage!r}")
+
     def of_type(record_type: str, *states: str) -> list[RecordData]:
         return [
             r
@@ -136,20 +140,44 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     subject,
                     f"{rid} is in ## Requirements but absent from the specification requirements",
                 )
-        documents = [spec, *designs]
-
-    carried = {rid for item in items for rid in _requirements(item)}
-    named = {rid for acceptance in acceptances for rid in acceptance_requirement_ids(acceptance)}
-    for rid in listed:
-        if rid not in carried:
-            add("error", "requirement-no-work-item", subject, f"{rid} is carried by no work-item")
-        if rid not in named:
+        if stage == "design" and not designs:
             add(
                 "error",
-                "requirement-no-acceptance",
-                subject,
-                f"{rid} is named by no active acceptance",
+                "active-design-required",
+                phase,
+                "an active design is required to analyze design",
             )
+            return report
+        documents = [spec] if stage == "spec" else [spec, *designs]
+
+    if stage in ("spec", "design") and has_blocking_behavior_question(list(records), phase):
+        add(
+            "error",
+            "blocking-behavior-question",
+            phase,
+            "a blocking behavior question keeps the specification unready",
+        )
+
+    if stage in ("plan", "close"):
+        carried = {rid for item in items for rid in _requirements(item)}
+        named = {
+            rid for acceptance in acceptances for rid in acceptance_requirement_ids(acceptance)
+        }
+        for rid in listed:
+            if rid not in carried:
+                add(
+                    "error",
+                    "requirement-no-work-item",
+                    subject,
+                    f"{rid} is carried by no work-item",
+                )
+            if rid not in named:
+                add(
+                    "error",
+                    "requirement-no-acceptance",
+                    subject,
+                    f"{rid} is named by no active acceptance",
+                )
 
     source = "the phase body" if light else "the specification"
     for item in items:
