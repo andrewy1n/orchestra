@@ -591,3 +591,22 @@ def test_session_start_survives_a_failed_close_sweep(tmp_path, monkeypatch):
     assert "Close sweep failed: gh is not installed" in context
     assert "# Project Handoff" in context
     assert landed.phase_tree.is_dir()
+
+
+class _NoBackup:
+    def backup_due(self, _age: object) -> bool:
+        return False
+
+
+def test_session_start_keeps_the_worktree_it_runs_in(tmp_path, monkeypatch):
+    landed = make_landed(tmp_path, shared_repo=True)
+    monkeypatch.setattr(hooks, "_open_project", lambda _root: landed.project)
+    monkeypatch.setattr(hooks, "open_backend", lambda _path: _NoBackup())
+    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("MERGED"))
+
+    out = _output(hooks.cmd_start(hooks.CLAUDE, {"cwd": str(landed.phase_tree)}))
+
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert landed.phase_tree.is_dir()
+    assert "Closed phase" not in context
+    assert "current directory" in context

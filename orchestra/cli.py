@@ -450,7 +450,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     close = sub.add_parser(
         "close",
-        help="Report a landed phase's pull request and check that its worktrees and branches can go",
+        help=(
+            "After the pull request merges, remove the phase worktrees and branches "
+            "and close the phase"
+        ),
+        description=(
+            "After the pull request merges, close removes the worktrees and branches of the "
+            "phase and closes the phase. Run it from the main checkout."
+        ),
     )
     close.add_argument("--phase", default=None, help="Phase slug")
     close.add_argument(
@@ -1150,9 +1157,9 @@ def _cmd_close(args: argparse.Namespace) -> int:
         repo = close.primary_checkout(work)
         states = close.github_states(repo)
         if args.all:
-            outcomes = close.close_all(project, repo, states)
+            outcomes = close.close_all(project, repo, states, work)
         else:
-            outcomes = (close.close_phase(project, repo, args.phase, states),)
+            outcomes = (close.close_phase(project, repo, args.phase, states, work),)
     except (
         close.CloseError,
         GitHubPRError,

@@ -46,7 +46,13 @@ def github_states(repo: Path) -> PullRequestStates:
     return GitHubGh(repo, "origin", load_project_config(repo).land_config)
 
 
-def close_phase(project: Project, repo: Path, phase: str, states: PullRequestStates) -> CloseResult:
+def close_phase(
+    project: Project,
+    repo: Path,
+    phase: str,
+    states: PullRequestStates,
+    cwd: Path | None = None,
+) -> CloseResult:
     landing = latest_landing(project.list("conductor:landing"), phase)
     if landing is None:
         raise CloseError(f"no landing record for phase {phase!r}; run orchestra land first")
@@ -59,7 +65,7 @@ def close_phase(project: Project, repo: Path, phase: str, states: PullRequestSta
     if state != "MERGED":
         message = f"pull request {number} is {state}; close waits for the merge"
         return CloseResult(phase, number, url, state, head_sha, False, (), message)
-    refusals = _refusals(repo, phase, head_sha)
+    refusals = _refusals(repo, phase, head_sha, cwd)
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
         return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
@@ -90,7 +96,7 @@ def pending_close(project: Project, repo: Path, phase: str) -> bool:
 
 
 def close_all(
-    project: Project, repo: Path, states: PullRequestStates
+    project: Project, repo: Path, states: PullRequestStates, cwd: Path | None = None
 ) -> tuple[CloseResult | str, ...]:
     """Close every landed phase that still has work to close; a failure becomes a message."""
     results: list[CloseResult | str] = []
@@ -98,7 +104,7 @@ def close_all(
         try:
             if not pending_close(project, repo, phase):
                 continue
-            results.append(close_phase(project, repo, phase, states))
+            results.append(close_phase(project, repo, phase, states, cwd))
         except (CloseError, StoreError, ToolError, RuntimeError, OSError, ValueError) as error:
             results.append(f"{phase}: {error}")
     return tuple(results)
@@ -115,11 +121,19 @@ def task_worktrees(repo: Path, phase: str) -> tuple[Path, ...]:
     return tuple(sorted(path for path in root.glob(f"{phase}--*") if path.is_dir()))
 
 
-def _refusals(repo: Path, phase: str, head_sha: str) -> tuple[str, ...]:
+def _refusals(repo: Path, phase: str, head_sha: str, cwd: Path | None) -> tuple[str, ...]:
     refusals: list[str] = []
     trees = [phase_worktree(repo, phase), *task_worktrees(repo, phase)]
+    here = cwd.resolve() if cwd is not None else None
     for tree in trees:
-        if tree.is_dir() and Git(tree).status_porcelain():
+        if not tree.is_dir():
+            continue
+        if here is not None and (here == tree.resolve() or tree.resolve() in here.parents):
+            refusals.append(
+                f"worktree {tree} holds the current directory {here}; "
+                "run close from the main checkout"
+            )
+        if Git(tree).status_porcelain():
             refusals.append(f"worktree {tree} has uncommitted changes")
     git = Git(repo)
     phase_branch = f"phase/{phase}"

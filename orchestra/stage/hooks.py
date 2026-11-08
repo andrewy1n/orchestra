@@ -170,7 +170,7 @@ def _close_sweep(project: Project, root: Path) -> list[str]:
         if not close.landed_phases(project):
             return []
         repo = close.primary_checkout(root)
-        results = close.close_all(project, repo, close.github_states(repo))
+        results = close.close_all(project, repo, close.github_states(repo), root)
     except Exception as exc:
         return [f"Close sweep failed: {exc}"]
     lines: list[str] = []

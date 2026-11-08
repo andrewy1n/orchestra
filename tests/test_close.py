@@ -231,3 +231,35 @@ def test_close_cli_exits_one_when_a_refusal_stands(
 
     assert code == 1
     assert str(landed.task_tree) in capsys.readouterr().err
+
+
+def test_close_refuses_a_worktree_holding_the_current_directory(landed: Landed) -> None:
+    inside = landed.phase_tree / "nested"
+    inside.mkdir()
+
+    result = close.close_phase(landed.project, landed.repo, PHASE, landed.states(), cwd=inside)
+
+    assert not result.ready
+    assert any(
+        str(landed.phase_tree) in line and "current directory" in line for line in result.refusals
+    )
+    assert landed.phase_tree.is_dir()
+    assert _git(landed.repo, "branch", "--list", f"phase/{PHASE}") != ""
+
+
+def test_close_from_the_main_checkout_still_closes(landed: Landed) -> None:
+    result = close.close_phase(landed.project, landed.repo, PHASE, landed.states(), cwd=landed.repo)
+
+    assert result.ready
+    assert not landed.phase_tree.exists()
+
+
+def test_close_help_says_what_close_does(capsys: pytest.CaptureFixture[str]) -> None:
+    from orchestra.cli import main
+
+    with pytest.raises(SystemExit):
+        main(["close", "--help"])
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "removes the worktrees and branches" in out
+    assert "After the pull request merges" in out
