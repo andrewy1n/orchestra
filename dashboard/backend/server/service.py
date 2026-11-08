@@ -110,12 +110,11 @@ class Cache:
         self.details: dict[tuple[str, ...], CachedResponse] = {}
 
     def current(self) -> Snapshot:
-        token = store.change_token(self.target)
         with self.lock:
+            token = store.change_token(self.target)
             if self.snapshot is not None and token == self.token:
                 return self.snapshot
-        snapshot = load_snapshot(self.target, token=token)
-        with self.lock:
+            snapshot = load_snapshot(self.target, token=token)
             if token != self.token:
                 self.details.clear()
             self.token = snapshot.token or token
@@ -123,8 +122,8 @@ class Cache:
             return snapshot
 
     def token_only(self) -> str:
-        token = store.change_token(self.target)
         with self.lock:
+            token = store.change_token(self.target)
             if token != self.token:
                 self.snapshot = None
                 self.details.clear()
