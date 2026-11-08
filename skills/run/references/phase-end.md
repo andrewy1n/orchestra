@@ -253,7 +253,12 @@ Body: `## Look`, `## Machine`, `## Attention`, `## Diff`
 and Attention in chat. Refuse "phase complete" without a packet at
 this phase-head. Head moves after fixes → new packet.
 
-## Commit the phase branch and stop
+## Land
+
+Land is a separate step after verify. Land runs only when the phase has
+a Landing section. Land runs only when the gate holds at the phase head
+and the proof packet exists at that head. Without a Landing section,
+skip this section.
 
 When Landing is present and the phase gate holds, commit the phase
 branch from the phase worktree. The phase-branch commit will include

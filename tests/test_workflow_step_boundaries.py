@@ -43,9 +43,10 @@ def test_verify_owns_phase_assessment_and_closure() -> None:
         "orchestra suite policy",
         "orchestra gate",
         "proof packet",
-        "orchestra land --phase",
+        "Land section of `phase-end.md`",
     ):
         assert token in text
+    assert "orchestra land" not in text
 
 
 def test_direct_steps_stop_before_unrequested_work() -> None:

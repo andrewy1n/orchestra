@@ -158,10 +158,7 @@ def _phase_end_close(phase_end: str) -> str:
 def test_r1_commits_phase_branch() -> None:
     """R1: When Landing is present and the phase gate holds, commit the phase branch from the phase worktree."""
     surfaces = dict(landing_surfaces())
-    for label in (
-        "skills/verify/references/phase-end.md",
-        "skills/verify/SKILL.md",
-    ):
+    for label in ("skills/verify/references/phase-end.md",):
         flat = _flat(surfaces[label]).lower()
         gate_at = flat.find(_GATE)
         assert gate_at != -1, label
@@ -193,7 +190,7 @@ def test_r4_omits_pull_request() -> None:
 def test_r5_follows_repo_instructions() -> None:
     """R5: Integrate the committed phase branch with `orchestra land`."""
     surfaces = dict(landing_surfaces())
-    for label in ("skills/verify/references/phase-end.md", "skills/verify/SKILL.md"):
+    for label in ("skills/verify/references/phase-end.md",):
         text = surfaces[label]
         assert _INTEGRATE in _flat(text).lower(), label
 
@@ -201,7 +198,7 @@ def test_r5_follows_repo_instructions() -> None:
 def test_r6_asks_when_silent() -> None:
     """R6: When land exits non-zero, stop and ask."""
     surfaces = dict(landing_surfaces())
-    for label in ("skills/verify/references/phase-end.md", "skills/verify/SKILL.md"):
+    for label in ("skills/verify/references/phase-end.md",):
         text = surfaces[label]
         assert _ASK in _flat(text).lower(), label
 
