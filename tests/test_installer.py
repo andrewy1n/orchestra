@@ -81,7 +81,7 @@ Fixture reviewer body. Read-only and no store writes.
 def source(tmp_path: Path) -> Path:
     """A repository-shaped tree with allowlisted and forbidden payloads."""
     root = tmp_path / "source"
-    for skill in ("init", "plan-phase"):
+    for skill in ("init", "tasks"):
         skill_dir = root / "skills" / skill
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text(
@@ -427,16 +427,16 @@ def test_idempotent_prunes_entries_removed_from_source(source, project, home):
         ).returncode
         == 0
     )
-    assert (home / ".claude" / "skills" / "plan-phase").is_dir()
+    assert (home / ".claude" / "skills" / "tasks").is_dir()
 
-    shutil.rmtree(source / "skills" / "plan-phase")
+    shutil.rmtree(source / "skills" / "tasks")
     rerun = run_install(
         "--only", "claude", "--home", str(home), "--copy", project=project, source=source
     )
     assert rerun.returncode == 0, rerun.stdout + rerun.stderr
-    assert not (home / ".claude" / "skills" / "plan-phase").exists()
+    assert not (home / ".claude" / "skills" / "tasks").exists()
     payload = json.loads((home / ".claude" / MARKER).read_text())
-    assert "skills/plan-phase" not in payload["entries"]
+    assert "skills/tasks" not in payload["entries"]
     assert len(markers(home)) == 1
 
 

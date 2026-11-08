@@ -1,4 +1,4 @@
-"""plan-phase records size and estimate_minutes on every new work-item."""
+"""tasks records size and estimate_minutes on every new work-item."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ SIZES = {"XS", "S", "M", "L", "XL"}
 
 
 def _text() -> str:
-    return skill_text("plan-phase")
+    return skill_text("tasks")
 
 
 def _flat(text: str) -> str:

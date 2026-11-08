@@ -46,7 +46,7 @@ def test_frozen_tdd_without_freeze_metadata_does_not_close_after_red(
     assert result.returncode == 1
     out = json.loads(result.stdout)
     assert out["state"] == "in_progress"
-    assert any("oracle freeze" in reason for reason in out["reasons"])
+    assert any("oracle" in reason.lower() for reason in out["reasons"])
 
 
 def test_tdd_acceptance_with_a_drifted_oracle_hash_does_not_close_the_task(tmp_path: Path) -> None:

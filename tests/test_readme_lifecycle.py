@@ -20,10 +20,7 @@ def test_two_modes():
     text = _lifecycle()
     assert "Decision two-modes is the rule." in text
     assert "Structured work is a phase with a specification." in text
-    assert (
-        "specify, design, plan, execute, integrate when a wave is parallel, "
-        "verify, assess, and release `ready`"
-    ) in text
+    assert ("spec, design, tasks, execute, verify, assess, and release `ready`") in text
     assert "Simple work is incidental, or a phase with no specification." in text
     assert "It runs execute, then verify as pass or fail." in text
     assert "skip assessment and release and keep pass/fail check-runs" in text
@@ -39,10 +36,11 @@ def test_verify_assess_split():
     assert "A failing test does not itself choose the stage." in text
     assert "implementation to execute" in text
     assert "design to design" in text
-    assert "plan to plan" in text
-    assert "specification to specify" in text
-    assert "integration to integrate or execute" in text
-    assert "insufficient evidence to verify" in text
+    assert "plan to tasks" in text
+    assert "specification to spec" in text
+    assert "integration to verify" in text
+    assert "persisted `specify`, `plan`, and `integrate` stage values" in text
+    assert "Insufficient evidence routes to verify" in text
 
 
 def test_escalation_ladder():

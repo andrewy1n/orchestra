@@ -97,7 +97,7 @@ def test_lint_config_guard_is_a_blocking_checks_step() -> None:
     checkout = next(
         step
         for step in steps
-        if isinstance(step, dict) and step.get("uses") == "actions/checkout@v4"
+        if isinstance(step, dict) and step.get("uses") == "actions/checkout@v5"
     )
     assert isinstance(checkout, dict)
     assert checkout.get("with", {}).get("fetch-depth") == 0

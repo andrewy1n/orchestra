@@ -10,7 +10,7 @@ POLICY = REPO_ROOT / "shared/verification-policy.md"
 
 
 def test_planning_examples_record_policy_separately_from_method() -> None:
-    invocations = extract_invocations(skill_text("plan-phase"))
+    invocations = extract_invocations(skill_text("tasks"))
     acceptances = [
         inv["payload"]
         for inv in invocations
@@ -31,7 +31,7 @@ def test_planning_examples_record_policy_separately_from_method() -> None:
 
 
 def test_verification_examples_own_distinct_exit_requirements() -> None:
-    text = (REPO_ROOT / "skills/plan-phase/references/task-shapes.md").read_text()
+    text = (REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
     implementation, verification = text.split("## Verification task")
 
     def requirements(section: str) -> set[str]:
@@ -69,7 +69,7 @@ def test_policy_covers_the_automated_method_policy_matrix() -> None:
 
 
 def test_all_workflow_stages_reference_the_same_policy() -> None:
-    for name in ("settle-phase", "plan-phase", "execute-phase", "verify-work"):
+    for name in ("spec", "tasks", "execute", "verify"):
         path: Path = REPO_ROOT / "skills" / name / "SKILL.md"
         assert "references/verification-policy.md" in path.read_text()
         copy = path.parent / "references" / "verification-policy.md"
@@ -77,6 +77,6 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
 
 
 def test_all_frozen_changes_keep_parent_amendment_approval() -> None:
-    text = (REPO_ROOT / "skills/execute-phase/SKILL.md").read_text()
+    text = (REPO_ROOT / "skills/execute/SKILL.md").read_text()
     assert "All frozen changes require a parent-approved oracle amendment." in text
     assert "For manifest" in text

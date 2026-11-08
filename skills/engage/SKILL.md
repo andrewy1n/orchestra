@@ -3,7 +3,7 @@ name: engage
 description: >-
   Classifies a software-engineering ask as deliver, repair, evaluate,
   or incidental, names the focus subject, and hands off to init,
-  settle-phase, plan-phase, execute-phase, or verify-work. The ask may
+  spec, tasks, execute, or verify. The ask may
   name a triaged `composer:idea` subject. Use when the user has work
   but has not named a phase skill, when the work is a bug, one-off,
   integration test, or metric comparison.
@@ -76,7 +76,7 @@ canon list --type composer:idea \
      writer) with `effort`, `status` `open`, and optional `source`.
    - **Start** — user starts a parked item: treat the ask as naming
      that idea's subject; go to step 4. Promotion to `promoted`
-     happens in `init` or `settle-phase`, not here.
+     happens in `init` or `spec`, not here.
    - **Dismiss** — user drops a parked item: supersede to `dismissed`.
 
 ```bash
@@ -106,19 +106,19 @@ canon list --type composer:idea \
    - When `payload.status` is not `open`, say so and stop.
    - When the idea has `payload.effort`, set **focus** to that
      effort. The ask is a new phase of that effort; hand off with
-     `settle-phase` and `phase: new` when records apply.
+     `spec` and `phase: new` when records apply.
    - When the idea has no effort, route to `init` for a new effort.
      Propose a focus slug from the idea subject. Ask the user to
      confirm.
    - When the idea's effort is closed, reopen it first
      (kinds-and-focus, Closing and reopening).
    - Set `idea: <idea-subject>` on the routing line.
-   - The idea path always routes through `settle-phase` with
+   - The idea path always routes through `spec` with
      `phase: new`, or through `init`. Do not skip them and do not send
-     the idea to `plan-phase` or the incidental shortcut, because
-     `settle-phase` and `init` promote the idea.
+     the idea to `tasks` or the incidental shortcut, because
+     `spec` and `init` promote the idea.
    - Engage writes nothing on this path. The idea stays `open` until
-     `init` or `settle-phase` promotes it. When the user stops before
+     `init` or `spec` promotes it. When the user stops before
      an effort or phase exists, the idea stays `open`.
 
    When this step does not apply, set `idea` to `none` on the routing
@@ -135,18 +135,18 @@ canon list --type composer:idea \
      phase → **no records**. Tell the user to do it in this chat.
      Stop.
    - `incidental` + may span chats or interrupts a live phase → records
-     on the **new** focus subject. Next: `plan-phase`.
+     on the **new** focus subject. Next: `tasks`.
    - `deliver` / `repair` / `evaluate` and no store or no goal for
-     this focus → `init` (new subject), then `settle-phase`, then
-     `plan-phase`.
-   - Existing effort and no phase covers the ask → `settle-phase`
-     with `phase: new`, then `plan-phase`.
-   - Tasks for this focus already exist → `execute-phase` or
-     `verify-work` if they only need a done-check.
-   - Otherwise → `settle-phase` if the phase has no decisions yet,
-     else `plan-phase`.
+     this focus → `init` (new subject), then `spec`, then
+     `tasks`.
+   - Existing effort and no phase covers the ask → `spec`
+     with `phase: new`, then `tasks`.
+   - Tasks for this focus already exist → `execute` or
+     `verify` if they only need a done-check.
+   - Otherwise → `spec` if the phase has no decisions yet,
+     else `tasks`.
 
-   Skip `settle-phase` (go straight to `plan-phase`) when the user
+   Skip `spec` (go straight to `tasks`) when the user
    already fixed the approach in this ask, or for `incidental`.
 7. Show the routing line, then follow that skill with focus and kind
    in context:

@@ -1,4 +1,4 @@
-"""plan-phase records a Landing section before plan review."""
+"""tasks records a Landing section before plan review."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def _landing_paragraph(text: str) -> str:
 
 
 def test_phase_body_names_landing_branch_worktree_base_and_close():
-    text = _flat(_text("plan-phase"))
+    text = _flat(_text("tasks"))
     for phrase in KEEP:
         assert phrase in text
     assert "No Landing → not ready for plan review. Incidental has no Landing." in text
@@ -66,9 +66,9 @@ def test_shared_docs_name_the_same_landing():
 
 
 def test_plan_review_stays_closed_until_landing_is_present():
-    flat = _flat(_text("plan-phase"))
-    gate = "Open the plan review gate (skip incidental). Do not open until:"
-    question_at = flat.rindex("canon create --type score:continuity-question")
-    gate_at = flat.rindex(gate)
+    flat = _flat((SKILLS / "tasks" / "SKILL.md").read_text())
+    gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
+    question_at = flat.index("canon create --type score:continuity-question")
+    gate_at = flat.index(gate)
     assert gate_at < question_at
-    assert "`## Landing`" in flat[gate_at:question_at]
+    assert "Landing" in flat[gate_at:question_at]

@@ -52,7 +52,7 @@ class SuitePolicy:
 
     @property
     def run_locally(self) -> bool:
-        """True when execute-phase should start the suite in the worktree."""
+        """True when verify should start the suite in the worktree."""
         if self.mode in ("none", ""):
             return False
         if self.gate == "deferred":
@@ -208,6 +208,7 @@ def advisory_finding_payload(
         "basis": f"exit_code={suite.exit_code}; failing: {nodes}",
         "invalidated_when": ("suite check-run passes at phase head, or human clears the finding"),
         "effort": effort,
+        "phase": phase_slug,
         "needs": "none",
     }
 

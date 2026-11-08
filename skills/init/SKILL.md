@@ -4,7 +4,7 @@ description: >-
   Adopts the current git repo into the orchestra store: live goal,
   and a score:phase record for every phase you can currently name. Does not write work-items or a plan
   document.
-  Specification and design are written by `settle-phase`, not `init`. Use
+  Specification and design are written by `spec`, not `init`. Use
   when starting this workflow on an existing or empty project, when
   adding a new effort subject, or when handoff has no goal or
   position.
@@ -19,13 +19,13 @@ plugin into the project.
 
 Skip this skill for incidental work that fits in the current chat.
 If `engage` already named a new focus, use that subject here.
-If the user already has this focus's tasks, use `plan-phase`.
+If the user already has this focus's tasks, use `tasks`.
 
 ## Rules
 
 - Records are the authority. Views are derived. Do not write a plan
   or roadmap file as authority.
-- Specification and design are written by `settle-phase`, not `init`.
+- Specification and design are written by `spec`, not `init`.
 - Interview for orientation, not an executable multi-phase plan. A
   phase record's body must have real content in every required
   section, but "not yet scoped" is real content for a phase that
@@ -33,13 +33,13 @@ If the user already has this focus's tasks, use `plan-phase`.
   for it.
 - Every phase you can currently name gets a `score:phase` record,
   `planned`, ordinal in sequence. None of them start `in_progress`
-  here — `plan-phase` promotes the one it's about to materialize work
+  here — `tasks` promotes the one it's about to materialize work
   for. Incidental work gets **no** phase record at all.
 - Each exit criterion states how it is verified: the command, test,
   or observation that proves it. A later phase may say "decide at
-  plan-phase" for the detail, but it still names the verification
+  tasks" for the detail, but it still names the verification
   gate: every acceptance passes and an integration check through the
-  real entry point passes. `plan-phase` turns each criterion into an
+  real entry point passes. `tasks` turns each criterion into an
   acceptance on the phase's verification task.
 - When the phases of a multi-phase effort only prove themselves
   together (a library plus its caller, a view plus its renderer),
@@ -65,7 +65,7 @@ If the user already has this focus's tasks, use `plan-phase`.
 3. Resolve **focus** (effort slug). If live goals already exist, show
    them. Keep them unless the user is replacing **that** subject.
    If a live goal covers the same area, the work is a new phase there
-   (`plan-phase`), not a new subject. Never rewrite a different goal.
+   (`tasks`), not a new subject. Never rewrite a different goal.
    If a closed goal has this subject or covers the area, reopen it
    (kinds-and-focus) instead of creating a new goal.
 4. Read cheap local evidence only: README, recent `git log`, existing
@@ -86,7 +86,7 @@ If the user already has this focus's tasks, use `plan-phase`.
    - **durable decisions / constraints** — already-made choices or
      confirmed non-negotiables; skip trivia
    Ask only what is still missing after the proposal. If the user
-   starts listing tasks or acceptance, stop and point to `plan-phase`.
+   starts listing tasks or acceptance, stop and point to `tasks`.
 6. Same `subject` for goal and position (the focus slug). Create
    `score:effort` for that subject only:
 
@@ -142,7 +142,7 @@ canon create --type score:milestone \
    1 across the effort (not per milestone). Include optional
    `milestone` when the phase belongs to one. Give a later phase's
    Approach/Exit-criteria a short honest placeholder ("decide at
-   plan-phase") rather than guessing detail — a plan-phase run for
+   tasks") rather than guessing detail — a tasks run for
    that phase will overwrite it. Use `--body-file` once the text is
    more than a couple of lines:
 
@@ -170,7 +170,7 @@ canon create --type score:phase \
    authority: which phase is actually current is still derived by
    querying `score:phase` for this effort with
    `lifecycle_state=in_progress` (nothing is `in_progress` yet this
-   early — `plan-phase` promotes it) — never read off this field.
+   early — `tasks` promotes it) — never read off this field.
    `position` is a short "where we are now" narrative (may name the
    current phase in prose) — do not restate the phase list, that's
    what the `score:phase` records are for. If a position already
@@ -229,7 +229,7 @@ canon create --type score:constraint \
 10. For each confirmed blocker: `create --type score:continuity-question`
     with `subject` = focus, `owner`, `blocking` true/false, `scope`.
 11. Do **not** create `work-item`, `acceptance`, `specification`, or
-    `design`. Specification and design are written by `settle-phase`,
+    `design`. Specification and design are written by `spec`,
     not `init`.
 12. Validate:
 
@@ -239,16 +239,16 @@ canon validate
 
 13. Show the user (`orchestra view plan --effort <focus>`): focus, kind, goal, milestones (if any), phase list
     (slug + title + lifecycle + milestone), any blockers. Next is
-    `settle-phase` then `plan-phase` when they want the current phase
+    `spec` then `tasks` when they want the current phase
     settled and tasked.
 
 ## Do not
 
 - Materialize future phases as work-items or full plans — a
   placeholder Problem/Approach/Exit-criteria body is enough
-- Write `score:specification` or `score:design` — `settle-phase`
+- Write `score:specification` or `score:design` — `spec`
   writes those
 - Write a roadmap document
 - Run research or planner subagents
 - Supersede another subject's live goal to "make room"
-- Transition any phase to `in_progress` here — that's `plan-phase`'s job
+- Transition any phase to `in_progress` here — that's `tasks`'s job

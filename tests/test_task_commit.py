@@ -1,4 +1,4 @@
-"""execute-phase requires a commit per task before verify.
+"""execute requires a commit per task before verify.
 
 Skill commit snippets use a Conventional Commits subject,
 ``type(scope): summary``, where type is feat, fix, docs, refactor, test,
@@ -15,7 +15,7 @@ from pathlib import Path
 from conftest import REPO_ROOT
 from helpers import skill_text
 
-SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "execute" / "SKILL.md"
 
 _TYPES = "feat|fix|docs|refactor|test|chore"
 _SUBJECT = re.compile(rf"^(?:{_TYPES})\([^()\s]+\): \S.*$")
@@ -28,7 +28,7 @@ _QUOTED_COMMIT_RE = re.compile(r'commit -m "([^"]*)"')
 
 
 def _text() -> str:
-    return re.sub(r"\s+", " ", skill_text("execute-phase"))
+    return re.sub(r"\s+", " ", skill_text("execute"))
 
 
 def _body_names_task_slug(message: str) -> bool:
@@ -65,7 +65,7 @@ def _fence_commits(fence: str) -> list[str]:
 
 def commit_messages(path: Path) -> list[str]:
     messages: list[str] = []
-    body = skill_text("execute-phase") if path == SKILL else path.read_text()
+    body = skill_text("execute") if path == SKILL else path.read_text()
     for fence in _FENCE_RE.findall(body):
         messages.extend(_fence_commits(fence))
     return messages

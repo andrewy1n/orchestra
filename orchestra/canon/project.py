@@ -28,6 +28,7 @@ from orchestra.canon.validation import (
     check_transition,
     reject_event_mutation,
     reject_supersede_via_update,
+    validate_phase_effort,
     validate_record,
     validate_store,
 )
@@ -470,6 +471,7 @@ def _create_record(
     index = RecordIndex(store.iter_records())
     _require_one_active(type_def, index, record)
     validate_record(schemas, record, index)
+    validate_phase_effort(record, schemas, index)
     return _persist_new(store, type_def, record)
 
 
@@ -506,7 +508,9 @@ def _update_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Record
     payload_updates = op.get("payload") or {}
     if payload_updates:
         record["payload"] = {**(record.get("payload") or {}), **_payload_object(payload_updates)}
-    validate_record(schemas, record, RecordIndex(store.iter_records()))
+    index = RecordIndex(store.iter_records())
+    validate_record(schemas, record, index)
+    validate_phase_effort(record, schemas, index)
     return store.write_record(
         record, expected_revision=_expected_revision(op, old), archive_prior=old
     )
@@ -542,6 +546,7 @@ def _supersede_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Mut
     index = RecordIndex(store.iter_records())
     _require_one_active(type_def, index, successor, ignore=old["id"])
     validate_record(schemas, successor, index)
+    validate_phase_effort(successor, schemas, index)
     old_updated = Record(**old)
     old_updated["lifecycle_state"] = SUPERSEDED
     old_updated["recorded_at"] = stamp
@@ -578,6 +583,7 @@ def _correct_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Mutat
         provenance=old.get("provenance"),
     )
     validate_record(schemas, successor, index)
+    validate_phase_effort(successor, schemas, index)
     stored = _persist_new(store, type_def, successor)
     return {"ok": True, "op": "correct", "record": stored, "predecessor": old}
 

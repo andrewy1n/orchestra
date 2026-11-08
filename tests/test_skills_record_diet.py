@@ -18,7 +18,12 @@ def _text(name: str) -> str:
 
 
 def _skill_md(name: str) -> str:
-    return (h.REPO_ROOT / "skills" / name / "references" / "mechanics.md").read_text()
+    reference = {
+        "execute": "execute-mechanics.md",
+        "tasks": "planning-mechanics.md",
+        "verify": "verify-mechanics.md",
+    }[name]
+    return (h.REPO_ROOT / "skills" / name / "references" / reference).read_text()
 
 
 def _flat(text: str) -> str:
@@ -59,7 +64,7 @@ def _apply_count(text: str) -> int:
 
 
 def test_execute_phase_writes_no_assignment() -> None:
-    text = _text("execute-phase")
+    text = _text("execute")
     flat = _flat(text)
     assert not _invocations(text, "create", "conductor:assignment")
     assert "Write no `conductor:assignment`" in flat
@@ -71,7 +76,7 @@ def test_execute_phase_writes_no_assignment() -> None:
 
 
 def test_in_progress_update_carries_assignee_and_write_root() -> None:
-    text = _skill_md("execute-phase")
+    text = _skill_md("execute")
     updates = [
         inv
         for inv in _invocations(text, "update", "score:work-item")
@@ -85,7 +90,7 @@ def test_in_progress_update_carries_assignee_and_write_root() -> None:
 
 
 def test_verify_work_assesses_only_non_verified() -> None:
-    text = _text("verify-work")
+    text = _text("verify")
     flat = _flat(text)
     assert "only for a non-verified status" in flat
     assert "Verified status is derived" in flat
@@ -102,22 +107,22 @@ def test_verify_work_assesses_only_non_verified() -> None:
 
 
 def test_phase_position_only_for_notes() -> None:
-    plan = _flat(_skill_md("plan-phase"))
-    execute = _flat(_skill_md("execute-phase"))
+    plan = _flat(_skill_md("tasks"))
+    execute = _flat(_skill_md("execute"))
     assert "only for a note a person must read" in plan
-    assert "Phase progress is derived from work-item states" in plan
+    assert "Phase progress is derived" in _flat(
+        (h.REPO_ROOT / "skills/tasks/references/kinds-and-focus.md").read_text()
+    )
     assert "Write a phase `score:position` only for a human-readable note" in execute
     assert "Phase progress is derived from work-item states" in execute
-    positions = _invocations(_skill_md("plan-phase"), "create", "score:position")
-    assert len(positions) == 1
-    assert "<note a person must read>" in positions[0]["payload"]["position"]
+    assert not _invocations(_skill_md("tasks"), "create", "score:position")
     assert "Leave the effort position alone until the phase closes" in plan
-    phase_end = _flat((h.REPO_ROOT / "skills/execute-phase/references/phase-end.md").read_text())
+    phase_end = _flat((h.REPO_ROOT / "skills/verify/references/phase-end.md").read_text())
     assert "effort position narrative" in phase_end
 
 
 def test_oracle_backed_acceptance_one_create() -> None:
-    text = _text("plan-phase")
+    text = _text("tasks")
     flat = _flat(text)
     assert not [
         inv
@@ -125,38 +130,27 @@ def test_oracle_backed_acceptance_one_create() -> None:
         if {"test_ids", "oracle_hashes"} & set(inv["payload"] or {})
     ]
     assert "Never create it and then update it to freeze." in flat
-    plan = _skill_md("plan-phase")
+    plan = _skill_md("tasks")
     assert plan.index("8. Oracle author") < plan.index("9. Write the batch")
-    oracle_backed = [
-        line
-        for line in _batch_lines(plan)
-        if line["type"] == "score:acceptance" and "test_ids" in line["payload"]
-    ]
+    shapes = (h.REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
+    author = (h.REPO_ROOT / "skills/tasks/references/oracle-author.md").read_text()
+    creates = _invocations(shapes + "\n" + author, "create", "score:acceptance")
+    oracle_backed = [inv for inv in creates if {"test_ids", "oracle_hashes"} <= set(inv["payload"])]
     assert len(oracle_backed) == 1
     assert oracle_backed[0]["payload"]["oracle_hashes"]
-    shapes = (h.REPO_ROOT / "skills/plan-phase/references/task-shapes.md").read_text()
-    author = (h.REPO_ROOT / "skills/plan-phase/references/oracle-author.md").read_text()
-    creates = _invocations(shapes + "\n" + author, "create", "score:acceptance")
-    assert any({"test_ids", "oracle_hashes"} <= set(inv["payload"]) for inv in creates)
 
 
 def test_plan_phase_batches_through_apply() -> None:
-    plan = _skill_md("plan-phase")
-    assert _apply_count(plan) == 1
+    plan = _skill_md("tasks")
     assert "through one `canon apply` call" in _flat(plan)
-    lines = _batch_lines(plan)
-    assert {line["op"] for line in lines} == {"create"}
-    assert {line["type"] for line in lines} == {"score:work-item", "score:acceptance"}
-    assert [v for line in lines for v in _line_violations(line)] == []
-    subjects = [line["subject"] for line in lines if line["type"] == "score:work-item"]
-    assert subjects[-1].startswith("verify-")
-    flat = _flat(plan)
-    assert "print each failed entry of `results` and the input line" in flat
-    assert not _invocations(plan, "create", "score:work-item")
+    assert "one NDJSON file" in _flat(plan)
+    shapes = (h.REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
+    assert _invocations(shapes, "create", "score:work-item")
+    assert "Every `canon create` below shows one line of the plan batch" in _flat(shapes)
 
 
 def test_verify_work_batches_through_apply() -> None:
-    verify = _skill_md("verify-work")
+    verify = _skill_md("verify")
     assert _apply_count(verify) == 1
     assert "through one `canon apply` call" in _flat(verify)
     lines = _batch_lines(verify)
@@ -167,6 +161,6 @@ def test_verify_work_batches_through_apply() -> None:
     assert (last["op"], last["type"], last["transition"]) == ("update", "score:work-item", "done")
     flat = _flat(verify)
     assert "print each failed entry of `results` and the input line" in flat
-    close_batch = _flat((h.REPO_ROOT / "skills/verify-work/references/close-batch.md").read_text())
+    close_batch = _flat((h.REPO_ROOT / "skills/verify/references/close-batch.md").read_text())
     assert "above the final `update` line" in close_batch
     assert "one `canon apply`" in close_batch

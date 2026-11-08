@@ -146,3 +146,31 @@ def test_r14_never_merges_a_task_branch_whose_checks_did_not_pass(tmp_path: Path
     assert result.merged == ("a",)
     assert result.skipped == (("b", "checks did not pass"),)
     assert not (repo / ".worktrees" / PHASE / "b.txt").exists()
+
+
+def test_pass_at_task_tip_ignores_later_failure_on_ancestor(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path, {"a": "true"})
+    _land(project, repo, "a", "a.txt", "a\n")
+    base = _git(repo, "rev-parse", "main")
+    acceptance = project.resolve("score:acceptance", "a")
+    project.create(
+        record_type="tuner:check-run",
+        subject="a",
+        payload={
+            "criterion_id": acceptance["id"],
+            "revision": base,
+            "result": "fail",
+            "effort": EFFORT,
+            "method": "check",
+            "signed_by": "",
+            "runner": "orchestra",
+            "exit_code": 1,
+        },
+        time="2099-01-01T00:00:00+00:00",
+    )
+
+    result = wave.end(project, repo, PHASE)
+
+    assert result.merged == ("a",)
+    assert not result.skipped
+    assert (repo / ".worktrees" / PHASE / "a.txt").exists()

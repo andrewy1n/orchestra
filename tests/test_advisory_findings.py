@@ -182,20 +182,26 @@ def test_judgment_severity_is_documented_for_choices_that_change_what_was_agreed
 
 
 def test_judgment_needs_human_and_creates_no_fix_task() -> None:
-    payload = reviewer.build_finding_payload(JUDGMENT, effort="e", fix_task_created=False)
+    payload = reviewer.build_finding_payload(
+        JUDGMENT, effort="e", phase_slug=PHASE, fix_task_created=False
+    )
     assert payload["needs"] == "human"
     routing = reviewer.route_review_findings([JUDGMENT], fix_budget_remaining=3)
     assert routing.create_fix_flags == [False]
 
 
 def test_advisory_needs_none_and_says_advisory() -> None:
-    payload = reviewer.build_finding_payload(ADVISORY, effort="e", fix_task_created=False)
+    payload = reviewer.build_finding_payload(
+        ADVISORY, effort="e", phase_slug=PHASE, fix_task_created=False
+    )
     assert payload["needs"] == "none"
     assert payload["claim"].startswith("advisory")
 
 
 def test_blocking_finding_without_a_fix_task_still_needs_human() -> None:
-    payload = reviewer.build_finding_payload(BLOCKING, effort="e", fix_task_created=False)
+    payload = reviewer.build_finding_payload(
+        BLOCKING, effort="e", phase_slug=PHASE, fix_task_created=False
+    )
     assert payload["needs"] == "human"
     assert not payload["claim"].startswith("advisory")
 
@@ -219,7 +225,9 @@ def gate_phase(store: Path, cli: Callable[..., CompletedProcess[str]]) -> Phase:
 
 
 def test_advisory_gate_ignores_an_advisory_finding(gate_phase: Phase) -> None:
-    payload = reviewer.build_finding_payload(ADVISORY, effort="gate-effort", fix_task_created=False)
+    payload = reviewer.build_finding_payload(
+        ADVISORY, effort="gate-effort", phase_slug=PHASE, fix_task_created=False
+    )
     gate_phase.create(
         "tuner:finding",
         "review-task-a-missing-test",
@@ -260,7 +268,9 @@ def test_end_to_end_review_flow() -> None:
     assert routing.create_fix_flags == [False, True, False]
 
     needs = [
-        reviewer.build_finding_payload(finding, effort="e", fix_task_created=flag)["needs"]
+        reviewer.build_finding_payload(
+            finding, effort="e", phase_slug=PHASE, fix_task_created=flag
+        )["needs"]
         for finding, flag in zip(findings, routing.create_fix_flags, strict=True)
     ]
     assert needs == ["none", "none", "none"]

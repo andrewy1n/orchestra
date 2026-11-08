@@ -32,9 +32,26 @@ runpy.run_module("orchestra.canon", run_name="__main__", alter_sys=True)
 
 
 def skill_text(name: str) -> str:
-    skill = REPO_ROOT / "skills" / name
-    parts = [skill / "SKILL.md", *sorted((skill / "references").glob("*.md"))]
-    return "\n\n".join(path.read_text() for path in parts)
+    names = {
+        "spec": ("spec", "design"),
+        "execute": ("execute", "run", "verify"),
+    }.get(name, (name,))
+    paths = [
+        path
+        for skill_name in names
+        for path in (
+            REPO_ROOT / "skills" / skill_name / "SKILL.md",
+            *sorted((REPO_ROOT / "skills" / skill_name / "references").glob("*.md")),
+        )
+    ]
+    parts: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        content = path.read_text()
+        if content not in seen:
+            parts.append(content)
+            seen.add(content)
+    return "\n\n".join(parts)
 
 
 def run_cli_48h_ago(store, *args: str) -> dict:

@@ -1,5 +1,5 @@
 """Tests for orchestra close-batch -- the batch builder behind the
-verify-work `close` procedure.
+verify `close` procedure.
 
 The pure `build_batch` tests exercise the refusal policy directly; the
 `test_end_to_end_*` tests drive the real `canon` CLI (via the
@@ -145,7 +145,7 @@ def _request(
         "execution_report_id": execution_report_id,
         "acceptance_ids": acceptance_ids or ["rec-ac1"],
         "criteria": criteria or [_tdd_with_dirty_red()],
-        "finding": finding,
+        "finding": {**finding, "phase": "phase-1"} if finding is not None else None,
     }
 
 
@@ -400,6 +400,7 @@ def test_finding_permits_the_close_and_needs_is_forced_to_human():
     ops = _build(request)
     finding_op = next(op for op in ops if op["type"] == "tuner:finding")
     assert _op_payload(finding_op)["needs"] == "human"
+    assert _op_payload(finding_op)["phase"] == "phase-1"
     assert ops[-1]["op"] == "update" and ops[-1]["transition"] == "done"
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
@@ -1315,6 +1316,24 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
     )
     # Dirty red skips ancestry; green revision is still the hash authority.
     ops = _build_oracle(_request(criteria=[entry]), cwd=repo)
+    assert ops[-1]["transition"] == "done"
+
+
+def test_non_oracle_tdd_acceptance_closes_without_oracle_freeze(tmp_path: Path) -> None:
+    repo, green_sha = _oracle_repo(tmp_path)
+    acceptance = _record(
+        "rec-ac1",
+        {"method": "tdd", "effort": "effort-1", "oracle_policy": "none"},
+        record_type="score:acceptance",
+        subject="task-1",
+    )
+
+    ops = _build_oracle(
+        _request(criteria=[_tdd_with_dirty_red(revision=green_sha)]),
+        cwd=repo,
+        acceptance=acceptance,
+    )
+
     assert ops[-1]["transition"] == "done"
 
 

@@ -29,7 +29,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 SHARED = ROOT / "shared"
 BUILD = ROOT / "scripts" / "build_skills.py"
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "verification-policy.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verification-policy.md")
+STEP_SHARED_DOCS = {
+    "record-mechanics.md": ("tasks", "execute", "verify", "run"),
+    "phase-end.md": ("verify", "run"),
+}
 
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
 _LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
@@ -271,6 +275,17 @@ def test_generated_references_are_byte_identical(doc: str):
     assert compat.read_bytes() == source, f"{compat} drifted from {SHARED / doc}"
 
 
+@pytest.mark.parametrize(
+    ("doc", "skill_name"),
+    [(doc, name) for doc, names in STEP_SHARED_DOCS.items() for name in names],
+)
+def test_step_references_are_byte_identical(doc: str, skill_name: str):
+    source = (SHARED / doc).read_bytes()
+    target = SKILLS / skill_name / "references" / doc
+    assert target.is_file(), f"{target} is missing"
+    assert target.read_bytes() == source, f"{target} drifted from {source}"
+
+
 def test_generated_check_passes_for_the_repository():
     result = run_build(ROOT, "--check")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -278,7 +293,7 @@ def test_generated_check_passes_for_the_repository():
 
 def test_execute_phase_carries_the_canonical_reviewer_prompt():
     prompt = ROOT / "agents" / "reviewer.prompt.md"
-    reference = SKILLS / "execute-phase" / "references" / "reviewer.md"
+    reference = SKILLS / "execute" / "references" / "reviewer.md"
     assert reference.is_file(), f"{reference} is missing"
     assert reference.read_bytes() == prompt.read_bytes(), f"{reference} drifted from {prompt}"
 

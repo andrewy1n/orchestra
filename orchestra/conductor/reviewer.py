@@ -65,6 +65,7 @@ class FindingPayload(TypedDict):
     basis: str
     invalidated_when: str
     effort: str
+    phase: str
     needs: str
 
 
@@ -444,6 +445,7 @@ def build_finding_payload(
     finding: Mapping[str, JsonValue],
     *,
     effort: str,
+    phase_slug: str,
     fix_task_created: bool,
 ) -> FindingPayload:
     """Parent-only finding payload for one NEEDS_WORK item."""
@@ -465,6 +467,7 @@ def build_finding_payload(
         "basis": basis,
         "invalidated_when": "fix lands and reviewer re-run passes, or human clears",
         "effort": effort,
+        "phase": phase_slug,
         "needs": needs,
     }
 

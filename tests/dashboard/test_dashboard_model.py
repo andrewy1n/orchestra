@@ -2841,7 +2841,7 @@ def test_gates_next_step_plan_review():
             ),
         ]
     )
-    assert gates.next_step(view, {}) == "review the human-gates plan (plan-phase)"
+    assert gates.next_step(view, {}) == "review the human-gates plan (tasks)"
 
 
 def test_gates_next_step_other_blocking():
@@ -2862,7 +2862,7 @@ def test_gates_next_step_merge_unmerged_done_phase():
         ]
     )
     landing = {"human-gates": Landing("phase/human-gates", True, 3, False)}
-    assert gates.next_step(view, landing) == "merge phase/human-gates (execute-phase)"
+    assert gates.next_step(view, landing) == "merge phase/human-gates (verify)"
 
 
 def test_gates_next_step_loop_route_and_unsigned():
@@ -2878,13 +2878,13 @@ def test_gates_next_step_loop_route_and_unsigned():
             ),
         ]
     )
-    assert gates.next_step(route_view, {}) == "design for R1 (settle-phase)"
+    assert gates.next_step(route_view, {}) == "design for R1 (design)"
     unsigned_view = _gates_view(
         needs_you=[
             snapshot_mod.NeedsYouItem("unsigned-check", "2", "as-dry-run", "criterion pass"),
         ]
     )
-    assert gates.next_step(unsigned_view, {}) == "sign off as-dry-run (verify-work)"
+    assert gates.next_step(unsigned_view, {}) == "sign off as-dry-run (verify)"
 
 
 def test_gates_next_step_running_and_ready():
@@ -2901,7 +2901,7 @@ def test_gates_next_step_running_and_ready():
             _gates_task("b", "p", "ready", wave=3),
         ]
     )
-    assert gates.next_step(ready, {}) == "execute-phase wave 3"
+    assert gates.next_step(ready, {}) == "execute wave 3"
 
 
 def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
@@ -2909,14 +2909,14 @@ def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
         phases=[_gates_phase("human-gates", "Human gates", 1, "in_progress")],
         tasks=[_gates_task("a", "human-gates", "done"), _gates_task("b", "human-gates", "done")],
     )
-    assert gates.next_step(close_view, {}) == "close human-gates (verify-work)"
+    assert gates.next_step(close_view, {}) == "close human-gates (verify)"
 
     settle_view = _gates_view(
         phases=[
             _gates_phase("human-gates", "Human gates", 1, "planned", decisions=()),
         ]
     )
-    assert gates.next_step(settle_view, {}) == "settle-phase human-gates"
+    assert gates.next_step(settle_view, {}) == "spec human-gates"
 
     plan_view = _gates_view(
         phases=[
@@ -2929,7 +2929,7 @@ def test_gates_next_step_close_in_progress_and_settle_or_plan_phase():
             ),
         ]
     )
-    assert gates.next_step(plan_view, {}) == "plan-phase human-gates"
+    assert gates.next_step(plan_view, {}) == "tasks human-gates"
 
 
 def test_gates_next_step_every_phase_done():

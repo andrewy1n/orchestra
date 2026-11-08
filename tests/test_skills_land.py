@@ -30,18 +30,18 @@ def _assert_lands(text: str) -> None:
 
 
 def test_execute_phase_calls_orchestra_land() -> None:
-    _assert_lands(skill_text("execute-phase"))
+    _assert_lands(skill_text("execute"))
 
 
 def test_phase_end_calls_orchestra_land() -> None:
-    _assert_lands((SKILLS / "execute-phase" / "references" / "phase-end.md").read_text())
+    _assert_lands((SKILLS / "verify" / "references" / "phase-end.md").read_text())
 
 
 def test_landing_section_has_no_merge_or_suite_command() -> None:
     texts = [
-        skill_text("plan-phase"),
-        skill_text("execute-phase"),
-        (SKILLS / "execute-phase" / "references" / "phase-end.md").read_text(),
+        skill_text("tasks"),
+        skill_text("execute"),
+        (SKILLS / "verify" / "references" / "phase-end.md").read_text(),
         (REPO_ROOT / "shared" / "kinds-and-focus.md").read_text(),
         (REPO_ROOT / "README.md").read_text(),
     ]
@@ -62,12 +62,12 @@ def test_landing_section_has_no_merge_or_suite_command() -> None:
 
 
 def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
-    flat = _flat(skill_text("execute-phase"))
+    flat = _flat(skill_text("execute"))
     assert "merge task/<phase-slug>/<task-slug>" in flat
 
 
 def test_phase_gate_terms_name_needs_human_and_orchestra_gate() -> None:
-    text = (SKILLS / "execute-phase" / "references" / "phase-end.md").read_text()
+    text = (SKILLS / "verify" / "references" / "phase-end.md").read_text()
     gate_section = _flat(text.split("## Phase gate", 1)[1].split("## Proof packet", 1)[0])
     assert "Run `orchestra gate <phase-slug>`" in gate_section
     assert "Exit 0 means the gate holds" in gate_section

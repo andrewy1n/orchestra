@@ -104,12 +104,11 @@ under [Install with the CLI](#install-with-the-cli). The installer runs that
 tail for a `kind: skills` row and records the profile in the registration.
 
 To install by hand, copy or symlink each generated skill directory into the
-host's skills directory: `engage`, `init`, `settle-phase`, `plan-phase`,
-`execute-phase`, `verify-work`, `triage-ideas`, and `analyze-sessions`. Every directory is
+host's skills directory: `engage`, `init`, `spec`, `design`, `tasks`,
+`execute`, `verify`, `run`, `triage-ideas`, and `analyze-sessions`. Every directory is
 self-contained: its `SKILL.md` and its `references/` folder travel together.
-The generated `references/` copies already contain `kinds-and-focus.md`,
-`ensure-store.md`, and `reviewer.md`, so no shared file needs to sit two
-levels above a `SKILL.md`. Install canon with `uv tool install` (above)
+The generated reference copies include the shared docs each skill uses. Each
+skill directory contains its required references. Install canon with `uv tool install` (above)
 so `canon` is on PATH.
 
 ## Install with the CLI
@@ -276,18 +275,23 @@ In whatever repo you are building:
 | `engage` | Classify kind + focus, then hand off |
 | `triage-ideas` | Assign a product area, create an area, or dismiss open ideas with no area |
 | `init` | First time on a repo, or a new effort subject |
-| `settle-phase` | Settle the approach for a phase (spec + design when structured) before planning |
-| `plan-phase` | Approach settled; write tasks, then wait for plan review |
-| `execute-phase` | Dispatch ready work in waves to subagents |
-| `verify-work` | Show a task is done (check-run and/or finding) |
+| `spec` | Define phase behavior and acceptance criteria |
+| `design` | Choose a technical approach for an approved specification |
+| `tasks` | Write requirement-linked tasks, then wait for plan review |
+| `execute` | Dispatch ready work in waves and land task evidence |
+| `verify` | Assess task or phase evidence and report the next step |
+| `run` | Compose a built-in phase playbook or run one selected step |
 
-On first use, `init`, `plan-phase`, or `engage` runs
+Managed upgrades remove the old `settle-phase`, `plan-phase`,
+`execute-phase`, and `verify-work` entry points. They add no aliases.
+
+On first use, `init`, `tasks`, or `engage` runs
 `canon init --schemas score,conductor,tuner` in that repo. The store is marked
 by `.canon/config.json`. Skills stay in the plugin. After a tool
 upgrade, run `canon schemas sync`.
 
 `init` writes goal, kind, and a `score:phase` record for every phase
-it can currently name (all `planned`) — not work-items. `plan-phase`
+it can currently name (all `planned`) — not work-items. `tasks`
 materializes this focus's tasks and promotes the current phase to
 `in_progress` with its real plan in the body.
 
@@ -297,7 +301,7 @@ are `depends_on` edges between work-items; readiness and wave are
 derived by the engine at read time (`derived.ready`, `derived.wave`) —
 nothing writes them.
 
-`plan-phase` sets each work-item's `executor` to `inline` or `subagent`.
+`tasks` sets each work-item's `executor` to `inline` or `subagent`.
 Every task in a wave uses the same executor. Missing `executor` means
 `subagent`. It records the implementation recipe and the phase run facts
 (size as `one sitting` or `more than one`, the human stops, and the areas
@@ -323,11 +327,11 @@ records. An interrupt or a chore that may span chats gets
 ## Lifecycle
 
 Decision two-modes is the rule. Structured work is a phase with a
-specification. It runs specify, design, plan, execute, integrate when a
-wave is parallel, verify, assess, and release `ready`. Simple work is
-incidental, or a phase with no specification. It runs execute, then
-verify as pass or fail. `settle-phase` writes a specification and a
-design only for structured work; simple work skips both. A phase with
+specification. It runs spec, design, tasks, execute, verify, assess, and
+release `ready`. Phase verification includes integration when a wave is
+parallel. Simple work is incidental, or a phase with no specification. It
+runs execute, then verify as pass or fail. Simple work skips specification
+and design records. A phase with
 no specification, and incidental work, skip assessment and release and
 keep pass/fail check-runs. `kind` `incidental` stays on that path even
 when a specification exists for some other phase.
@@ -341,18 +345,20 @@ what that evidence means and which stage is next. A failing test does
 not itself choose the stage. A failing concurrency test does not itself
 claim the design is wrong. Do not send every failure to execute.
 
-The routes are implementation to execute, design to design, plan to
-plan, specification to specify, integration to integrate or execute,
-and insufficient evidence to verify.
+Assessment keeps the persisted `specify`, `plan`, and `integrate` stage
+values. The skills route those values to `spec`, `tasks`, and `verify` at the
+workflow boundary. The mapping is implementation to execute, design to design,
+plan to tasks, specification to spec, and integration to verify.
+Insufficient evidence routes to verify until the criterion is exercised.
 
 | Evidence | Next |
 |---|---|
 | implementation: the cause is the task's code | `execute` |
 | design: the design cannot satisfy the requirement | `design` |
-| plan: no task covers the requirement | `plan` |
-| specification: the requirement is ambiguous or contradicted | `specify` |
+| plan: no task covers the requirement | `tasks` |
+| specification: the requirement is ambiguous or contradicted | `spec` |
 | integration: an integration-report `fail`, and a task must change | `execute` |
-| integration: an integration-report `fail`, otherwise | `integrate` |
+| integration: an integration-report `fail`, otherwise | `verify` |
 | insufficient evidence: the criterion was not exercised | `verify` |
 
 Decision evidence-escalation. The same level repeats only when evidence
@@ -371,7 +377,7 @@ state. Do not deploy.
 A `composer:idea` parks deferred work on an effort until it is
 promoted or dismissed. `engage` lists open ideas with an effort after
 naming focus. Park = create; promote = supersede to `promoted` then
-`settle-phase` with a new phase (or an incidental work-item when that
+`spec` with a new phase (or an incidental work-item when that
 kind fits); dismiss = supersede to `dismissed`.
 
 ```bash
@@ -404,10 +410,10 @@ the structured path integrates.
 - `engage`
 - `triage-ideas`
 - `init`
-- `settle-phase`
-- `plan-phase`
-- `execute-phase`
-- `verify-work`
+- `spec`
+- `tasks`
+- `execute`
+- `verify`
 - `analyze-sessions`
 
 Shared rules: [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
@@ -583,7 +589,7 @@ These three commands are the **phase-level suite** configured in the root
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer
-pass, `execute-phase` honors the configured suite policy — agents must
+pass, `execute` honors the configured suite policy — agents must
 not waive it; a human changes `[suite]` in `orchestra.toml` instead.
 
 `[suite]` fields:

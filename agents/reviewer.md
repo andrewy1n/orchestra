@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: >-
-  Read-only phase-end reviewer for orchestra. Compares phase specs, acceptances, invariants, and the phase diff to the tree. Returns structured PASS/NEEDS_WORK. Invoked by execute-phase after closing verification and before merge.
+  Read-only phase-end reviewer for orchestra. Compares phase specs, acceptances, invariants, and the phase diff to the tree. Returns structured PASS/NEEDS_WORK. Invoked by run after closing verification and before merge.
 tools: Read, Grep, Glob, Bash
 ---
 

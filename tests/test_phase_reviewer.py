@@ -42,7 +42,7 @@ def _finding_mapping(finding: object) -> dict[str, JsonValue]:
     }
 
 
-SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "execute" / "SKILL.md"
 
 # Unique markers so exclusion asserts cannot false-pass on incidental text.
 MARKER_EXEC = "UNIQUE_EXEC_REPORT_BODY_xyz789"
@@ -92,7 +92,7 @@ integration:
 
 
 def _skill_text() -> str:
-    return skill_text("execute-phase")
+    return skill_text("run")
 
 
 def _skill_flat() -> str:
@@ -240,7 +240,7 @@ def test_execute_phase_invokes_reviewer_after_verification_before_merge():
         (inv.get("payload") or {}).get("method") == "review"
         and (inv.get("payload") or {}).get("evidence_kind") == "review"
         for inv in creates
-    ), "execute-phase must parent-create method:review / evidence_kind:review check-run"
+    ), "execute must parent-create method:review / evidence_kind:review check-run"
 
 
 def test_parent_write_review_check_run_and_findings():
@@ -283,6 +283,7 @@ def test_parent_write_review_check_run_and_findings():
             build_finding_payload(
                 _finding_mapping(finding),
                 effort="workflow-loop",
+                phase_slug="workflow-skills-playbooks",
                 fix_task_created=create_fix,
             )
         )

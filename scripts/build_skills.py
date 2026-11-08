@@ -8,7 +8,7 @@ Two families of generated file:
   root also keeps generated copies at ``skills/<doc>`` for repo-local links
   such as the README.
 * ``agents/reviewer.prompt.md`` — the one authored reviewer prompt. Its bytes
-  become ``skills/execute-phase/references/reviewer.md`` (the prompt a
+  become ``skills/execute/references/reviewer.md`` (the prompt a
   skill hands a host subagent when the install provides no reviewer agent),
   and it is rendered into ``agents/reviewer.md`` with the frontmatter
   Claude Code reads. The rendering uses ``installer.agents`` so the checkout
@@ -26,14 +26,24 @@ import argparse
 import sys
 from pathlib import Path
 
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "verification-policy.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verification-policy.md")
+SKILL_SHARED_DOCS = {
+    "assess.md": ("verify",),
+    "close-batch.md": ("verify",),
+    "execute-mechanics.md": ("execute", "run"),
+    "record-mechanics.md": ("tasks", "execute", "verify", "run"),
+    "phase-end.md": ("verify", "run"),
+    "planning-mechanics.md": ("tasks",),
+    "retry-loop.md": ("execute", "run", "verify"),
+    "verify-mechanics.md": ("verify",),
+}
 SKILLS_DIRNAME = "skills"
 SHARED_DIRNAME = "shared"
 REFERENCES_DIRNAME = "references"
 
 REVIEWER_PROMPT = Path("agents") / "reviewer.prompt.md"
 REVIEWER_AGENT = Path("agents") / "reviewer.md"
-REVIEWER_SKILL = "execute-phase"
+REVIEWER_SKILLS = ("execute", "verify", "run")
 REVIEWER_REFERENCE = Path(REFERENCES_DIRNAME) / "reviewer.md"
 
 _CHECKOUT_ROOT = Path(__file__).resolve().parent.parent
@@ -64,11 +74,19 @@ def generated_pairs(root: Path) -> list[tuple[Path, Path]]:
             pairs.append((source, skill / REFERENCES_DIRNAME / doc))
         # Repo-local compatibility copies; still generated from shared/.
         pairs.append((source, root / SKILLS_DIRNAME / doc))
+    skills = {skill.name: skill for skill in skill_dirs(root)}
+    for doc, names in SKILL_SHARED_DOCS.items():
+        source = shared / doc
+        for name in names:
+            skill = skills.get(name)
+            if skill is not None:
+                pairs.append((source, skill / REFERENCES_DIRNAME / doc))
     # The reviewer prompt is handed to a host subagent that has no installed
     # reviewer agent; the skill directory must carry it verbatim.
-    reviewer_skill = root / SKILLS_DIRNAME / REVIEWER_SKILL
-    if reviewer_skill.is_dir():
-        pairs.append((root / REVIEWER_PROMPT, reviewer_skill / REVIEWER_REFERENCE))
+    for name in REVIEWER_SKILLS:
+        reviewer_skill = root / SKILLS_DIRNAME / name
+        if reviewer_skill.is_dir():
+            pairs.append((root / REVIEWER_PROMPT, reviewer_skill / REVIEWER_REFERENCE))
     return pairs
 
 
