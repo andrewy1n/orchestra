@@ -30,6 +30,10 @@ SKILLS = ROOT / "skills"
 SHARED = ROOT / "shared"
 BUILD = ROOT / "scripts" / "build_skills.py"
 SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md")
+STEP_SHARED_DOCS = {
+    "record-mechanics.md": ("tasks", "execute", "verify", "run"),
+    "phase-end.md": ("verify", "run"),
+}
 
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
 _LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
@@ -269,6 +273,17 @@ def test_generated_references_are_byte_identical(doc: str):
     compat = SKILLS / doc
     assert compat.is_file(), f"{compat} is missing"
     assert compat.read_bytes() == source, f"{compat} drifted from {SHARED / doc}"
+
+
+@pytest.mark.parametrize(
+    ("doc", "skill_name"),
+    [(doc, name) for doc, names in STEP_SHARED_DOCS.items() for name in names],
+)
+def test_step_references_are_byte_identical(doc: str, skill_name: str):
+    source = (SHARED / doc).read_bytes()
+    target = SKILLS / skill_name / "references" / doc
+    assert target.is_file(), f"{target} is missing"
+    assert target.read_bytes() == source, f"{target} drifted from {source}"
 
 
 def test_generated_check_passes_for_the_repository():

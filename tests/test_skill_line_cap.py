@@ -4,7 +4,15 @@ import pytest
 from conftest import REPO_ROOT
 
 LINE_CAP = 150
-CAPPED_SKILLS = ("execute-phase", "plan-phase", "verify-work")
+CAPPED_SKILLS = (
+    "execute-phase",
+    "plan-phase",
+    "verify-work",
+    "tasks",
+    "execute",
+    "verify",
+    "run",
+)
 EXECUTE = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
 
 
