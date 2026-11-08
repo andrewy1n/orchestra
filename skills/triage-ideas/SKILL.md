@@ -76,6 +76,6 @@ canon supersede --type composer:idea --id <id> \
 ## Do not
 
 - Set status `promoted` or supersede to `promoted`
-- Start `settle-phase`, `plan-phase`, or `execute-phase` from this skill
+- Start `spec`, `tasks`, or `execute` from this skill
 - Let subagents write records
 - Assign an area the user did not choose

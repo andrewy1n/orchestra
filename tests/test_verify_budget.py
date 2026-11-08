@@ -28,7 +28,7 @@ def _testing_section(name: str) -> str:
 
 
 def test_plan_phase_limits_verification_to_phase_checks():
-    text = _flat(_text("plan-phase"))
+    text = _flat(_text("tasks"))
     assert (
         "Acceptances come from phase exit criteria; at least one is an integration check through the real entry point."
         in text
@@ -36,25 +36,25 @@ def test_plan_phase_limits_verification_to_phase_checks():
 
 
 def test_plan_phase_rejects_whole_suite_and_unfiltered_app_file():
-    text = _flat(_text("plan-phase"))
+    text = _flat(_text("tasks"))
     assert "whole `tests` tree" in text
     assert "`tests/dashboard/test_web_dashboard.py` without a `-k` filter for this phase" in text
     assert "is not a verification acceptance" in text
 
 
 def test_verification_failure_does_not_edit():
-    execute = _flat(_text("execute-phase"))
+    execute = _flat(_text("execute"))
     assert "run phase checks; return `fail`; do not edit the tree" in execute
     assert "Let the verification executor edit the tree" in execute
 
-    verify = _flat(_text("verify-work"))
+    verify = _flat(_text("verify"))
     assert "When a verification check fails for that reason, same routing" in verify
     assert "a suite the acceptance does not name" in verify
 
 
 def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
     """Per-task verify_command stays scoped; phase-level suite is the full run."""
-    execute = _flat(_text("execute-phase"))
+    execute = _flat(_text("execute"))
     assert "Put a whole-suite command on a per-task `verify_command`" in execute
     assert "suite.gate" in execute
     assert "tier-2" not in execute and "tier2" not in execute
@@ -76,6 +76,6 @@ def test_per_task_verify_stays_scoped_while_phase_suite_is_documented():
 
 
 def test_plan_phase_still_rejects_whole_suite_on_verification_task():
-    text = _flat(_text("plan-phase"))
+    text = _flat(_text("tasks"))
     assert "whole `tests` tree" in text
     assert "is not a verification acceptance" in text

@@ -119,19 +119,19 @@ def _question_reject(item: NeedsYouItem, note: str | None) -> dict[str, JsonValu
     """Leave the continuity-question open; create a needs:human routing finding."""
     scope = item.text or item.subject
     rationale = (note or "").strip() or "Rejected from dashboard Needs-you"
-    claim = f"Plan rejected for {scope}; route to settle-phase or plan-phase"
+    claim = f"Plan rejected for {scope}; route to spec or tasks"
     payload: dict[str, JsonValue] = {
         "claim": claim,
         "basis": rationale,
         "needs": "human",
         "effort": item.subject,
-        "invalidated_when": "approach re-settled or plan-phase re-run",
+        "invalidated_when": "approach re-settled or tasks re-run",
     }
     body = (
         "## Evidence\n\n"
         f"Plan review rejected from the dashboard for {scope}.\n\n"
         "## Consequence\n\n"
-        "Continuity-question remains open; engage should route to settle-phase or plan-phase.\n\n"
+        "Continuity-question remains open; engage should route to spec or tasks.\n\n"
         "## Follow-up\n\n"
         f"{rationale}"
     )

@@ -19,6 +19,10 @@ missing, follow [ensure-store.md](references/ensure-store.md). Follow
 - Record decisions only when the user chooses between real alternatives.
 - Do not write work-items, acceptance records, or code.
 
+For a light phase, skip specification and design records. Record a decision
+only when the user chooses between approaches. Do not record a recommendation
+as a decision.
+
 ## Steps
 
 1. Resolve the focus and phase from the workflow handoff. Read the active

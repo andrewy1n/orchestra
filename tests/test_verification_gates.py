@@ -30,13 +30,13 @@ def _normalized(text: str) -> str:
     ],
 )
 def test_plan_phase_requires_a_verification_task(phrase):
-    assert phrase in _normalized(_skill("plan-phase"))
+    assert phrase in _normalized(_skill("tasks"))
 
 
 def test_plan_phase_example_verification_task_depends_on_several_work_items():
     creates = [
         inv
-        for inv in extract_invocations(_skill("plan-phase"))
+        for inv in extract_invocations(_skill("tasks"))
         if inv["subcommand"] == "create"
         and inv["type"] == "score:work-item"
         and "verify-<phase-slug>" in inv["raw"]
@@ -48,7 +48,7 @@ def test_plan_phase_example_verification_task_depends_on_several_work_items():
 def test_plan_phase_example_gives_the_verification_task_an_integration_acceptance():
     acceptances = [
         inv
-        for inv in extract_invocations(_skill("plan-phase"))
+        for inv in extract_invocations(_skill("tasks"))
         if inv["subcommand"] == "create"
         and inv["type"] == "score:acceptance"
         and "verify-<phase-slug>" in inv["raw"]
@@ -80,11 +80,11 @@ def test_init_requires_verifiable_exit_criteria(phrase):
     ],
 )
 def test_execute_phase_gates_phase_close(phrase):
-    assert phrase in _normalized(_skill("execute-phase"))
+    assert phrase in _normalized(_skill("execute"))
 
 
 def test_execute_phase_queries_check_runs_by_criterion_before_closing():
-    text = _skill("execute-phase")
+    text = _skill("execute")
     gate_query = text.index("--where payload.criterion_id=<acceptance-id>")
     phase_close = text.index(
         "canon update --type score:phase --id <phase-id> \\\n  --transition done"

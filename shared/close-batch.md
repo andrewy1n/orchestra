@@ -1,6 +1,6 @@
 # Close batch (simple work)
 
-`close` is the simple-work batch for verify-work steps 3–5 (no phase
+`close` is the simple-work batch for verify steps 3–5 (no phase
 specification, and incidental). It skips assessment and release. Do
 not route `blocked` or `insufficient` through `close`. Structured
 work uses `orchestra check` (or a `manual` create) with `requirement`
@@ -178,10 +178,10 @@ orchestra close-batch \
    above the final `update` line first, so one `canon apply` writes
    every record for the task. On `"ok": false`, print each failed
    `results` entry and the input line with the same `line` number
-   (verify-work step 8):
+   (verify step 8):
 
 ```bash
 canon apply /tmp/close-batch.ndjson
 ```
 
-6. Validate (verify-work step 9).
+6. Validate (verify step 9).

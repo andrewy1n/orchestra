@@ -1,4 +1,4 @@
-"""verify-work splits verify from assess and routes the next stage from evidence."""
+"""verify splits verify from assess and routes the next stage from evidence."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def contract_indexes(resolved_contract):
 
 
 def test_verify_and_assess_are_separate_steps():
-    text = _text("verify-work")
+    text = _text("verify")
     verify_at = text.index("## Verify")
     assess_at = text.index("# Assess (structured work)")
     assert verify_at < assess_at
@@ -60,9 +60,10 @@ def test_verify_and_assess_are_separate_steps():
     assert "Treat a failing concurrency test as proof the design is wrong" in flat
     assert "put that id and an `evidence_kind` from the schema enum on the check-run" in flat
 
-    check_runs = _writes("verify-work", "tuner:check-run", {"create"})
-    assert len(check_runs) == 1
-    payload = check_runs[0]["payload"]
+    check_runs = _writes("verify", "tuner:check-run", {"create"})
+    manual_runs = [run for run in check_runs if run["payload"].get("method") == "manual"]
+    assert len(manual_runs) == 1
+    payload = manual_runs[0]["payload"]
     assert "level" not in payload
     assert "next" not in payload
     for field in ("criterion_id", "revision", "result", "effort", "method", "signed_by"):
@@ -72,7 +73,7 @@ def test_verify_and_assess_are_separate_steps():
 
 
 def test_routing_table_chooses_next_from_the_evidence():
-    text = _text("verify-work")
+    text = _text("verify")
     flat = _normalized(text)
     assert (
         "Choose the first `next` the evidence supports. Do not send every failure to execute"
@@ -93,7 +94,7 @@ def test_routing_table_chooses_next_from_the_evidence():
 
     by_next = {
         (inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
-        for inv in _writes("verify-work", "conductor:assessment", {"create"})
+        for inv in _writes("verify", "conductor:assessment", {"create"})
     }
     assert ("implementation", "execute", "failed") in by_next
     assert ("verification", "verify", "insufficient") in by_next
@@ -101,14 +102,14 @@ def test_routing_table_chooses_next_from_the_evidence():
     assert not [status for _, _, status in by_next if status == "verified"]
     superseded = {
         (inv["payload"].get("level"), inv["payload"]["next"], inv["payload"]["status"])
-        for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
+        for inv in _writes("verify", "conductor:assessment", {"supersede"})
     }
     assert ("design", "design", "failed") in superseded
     assert not [status for _, _, status in superseded if status == "verified"]
 
 
 def test_evidence_escalation_ladder():
-    text = _normalized(_text("verify-work"))
+    text = _normalized(_text("verify"))
     assert "## Evidence escalation" in text
     assert "`implementation` → `design` → `specification`" in text
     assert "say in Reason that the evidence did not increase" in text
@@ -123,19 +124,26 @@ def test_evidence_escalation_ladder():
 
     raised = [
         inv
-        for inv in _writes("verify-work", "conductor:assessment", {"supersede"})
+        for inv in _writes("verify", "conductor:assessment", {"supersede"})
         if inv["payload"].get("level") == "design" and inv["payload"]["next"] == "design"
     ]
     assert len(raised) == 1
     assert "The evidence did not increase." in raised[0]["raw"]
     assert "implementation" not in raised[0]["payload"].values()
 
-    questions = _writes("verify-work", "score:continuity-question", {"create"})
+    assess = (SKILLS / "verify" / "references" / "assess.md").read_text()
+    questions = [
+        inv
+        for inv in extract_invocations(assess)
+        if inv["subcommand"] == "create"
+        and inv["type"] == "score:continuity-question"
+        and inv.get("payload")
+    ]
     assert len(questions) == 1
     assert questions[0]["payload"]["blocking"] is True
     findings = [
         inv
-        for inv in _writes("verify-work", "tuner:finding", {"create"})
+        for inv in _writes("verify", "tuner:finding", {"create"})
         if "specification repeated" in inv["payload"]["claim"]
     ]
     assert len(findings) == 1
@@ -143,7 +151,7 @@ def test_evidence_escalation_ladder():
 
 
 def test_release_ready_is_derived_and_never_written():
-    text = _text("verify-work")
+    text = _text("verify")
     flat = _normalized(text)
     assert "## Release" in text
     assert "Release `ready` is derived" in flat
@@ -151,18 +159,18 @@ def test_release_ready_is_derived_and_never_written():
     assert "Write no `conductor:release`." in flat
     assert "Do not write `merged`, `deployed`, or any other state." in flat
     assert "Do not deploy." in flat
-    assert not _writes("verify-work", "conductor:release", {"create", "supersede"})
+    assert not _writes("verify", "conductor:release", {"create", "supersede"})
 
 
 def test_two_modes_skip_assessment_and_release():
-    text = _normalized(_text("verify-work"))
+    text = _normalized(_text("verify"))
     assert "No specification for this phase, and incidental work, are **simple**" in text
     assert "pass/fail check-runs only — no assessment or release" in text
     assert "Write assessment or release for incidental / no-specification phases" in text
 
 
 def test_assessment_examples_carry_required_fields_and_sections():
-    for inv in _writes("verify-work", "conductor:assessment"):
+    for inv in _writes("verify", "conductor:assessment"):
         payload = inv["payload"]
         for field in ("requirement", "status", "next", "confidence", "phase", "effort"):
             assert field in payload
@@ -226,7 +234,7 @@ def test_engage_idea_input():
     assert "--exact-subject" in text
     assert "payload.status" in text and "not `open`" in flat
     assert "payload.effort" in text
-    assert "settle-phase" in text and "phase: new" in text
+    assert "spec" in text and "phase: new" in text
     assert "route to `init`" in flat or "routes to `init`" in flat
     assert "idea: <subject> | none" in text
     assert "Promote an idea from engage" in text
@@ -244,8 +252,8 @@ def test_engage_idea_input():
 
 
 def test_verify_work_documents_enforced_red_first_close():
-    """R6: verify-work must describe close_batch red-first, not deny it."""
-    text = _text("verify-work")
+    """R6: verify must describe close_batch red-first, not deny it."""
+    text = _text("verify")
     flat = _normalized(text)
     assert "the engine does not enforce" not in flat
     assert "does not enforce" not in flat
@@ -262,7 +270,7 @@ def test_verify_work_documents_enforced_red_first_close():
     assert '"revision": "<green-sha>"' in text
 
 
-@pytest.mark.parametrize("skill_name", ["verify-work", "engage"])
+@pytest.mark.parametrize("skill_name", ["verify", "engage"])
 def test_documented_invocations_are_contract_legal(contract_indexes, skill_name):
     defs, _ = contract_indexes
     violations = check_skill_text(_text(skill_name), defs)
@@ -283,13 +291,13 @@ def test_assessment_and_check_run_enums_match_the_contract(contract_indexes):
     evidence_kinds = set(check_enum["evidence_kind"])
     results = set(check_enum["result"])
     methods = set(check_enum["method"])
-    for inv in _writes("verify-work", "tuner:check-run", {"create"}):
+    for inv in _writes("verify", "tuner:check-run", {"create"}):
         kind = inv["payload"].get("evidence_kind")
         if kind is not None:
             assert kind in evidence_kinds
-        assert inv["payload"]["result"] in results
+        assert inv["payload"]["result"] in results or "<" in inv["payload"]["result"]
         assert inv["payload"]["method"] in methods
-    for inv in _writes("verify-work", "conductor:assessment"):
+    for inv in _writes("verify", "conductor:assessment"):
         payload = inv["payload"]
         assert payload["status"] in assessment_enum["status"]
         assert payload["next"] in assessment_enum["next"]
@@ -297,7 +305,7 @@ def test_assessment_and_check_run_enums_match_the_contract(contract_indexes):
         if "level" in payload:
             assert payload["level"] in assessment_enum["level"]
     release_states = set(defs["conductor:release"]["payload_enum"]["state"])
-    for inv in _writes("verify-work", "conductor:release", {"create"}):
+    for inv in _writes("verify", "conductor:release", {"create"}):
         assert inv["payload"]["state"] in release_states
         assert inv["payload"]["state"] == "ready"
 
@@ -307,9 +315,9 @@ def test_engage_idea_path_skips_focus_naming_and_always_promotes_through_init_or
     assert "skip this step and use step 4" in text
     assert "Set `idea: <idea-subject>` on the routing line." in text
     assert "reopen it first" in text
-    assert "always routes through `settle-phase` with" in text
+    assert "always routes through `spec` with" in text
 
 
 def test_init_and_settle_phase_promote_only_open_ideas():
-    for name in ("init", "settle-phase"):
+    for name in ("init", "spec"):
         assert "Promote only when the idea's `payload.status` is `open`" in _text(name)

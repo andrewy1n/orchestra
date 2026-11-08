@@ -52,7 +52,7 @@ class SuitePolicy:
 
     @property
     def run_locally(self) -> bool:
-        """True when execute-phase should start the suite in the worktree."""
+        """True when verify should start the suite in the worktree."""
         if self.mode in ("none", ""):
             return False
         if self.gate == "deferred":

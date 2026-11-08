@@ -60,5 +60,5 @@ def manual_refuse_message() -> str:
     return (
         "Acceptance method is manual; orchestra check does not run it. "
         "Record a check-run with method=manual and set signed_by for human sign-off "
-        "(see verify-work)."
+        "(see verify)."
     )

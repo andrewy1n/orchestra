@@ -1,7 +1,7 @@
 # Retry loop
 
 Parent-only. Run at the start of each dispatch cycle, before the
-planned ready `list` in execute-phase step 2. Evidence escalation
+planned ready `list` in execute step 2. Evidence escalation
 still chooses `level` / `next`; the budget only decides when to stop.
 
 ## Re-dispatch selection
@@ -79,7 +79,7 @@ assessment's `## Reason` when present; set `attempts` to prior+1
 (absent → 0, so first re-dispatch writes `1`) in a work-item update
 that also carries `assignee` and `write_root`. Write no new
 `conductor:assignment`.
-Dispatch as in execute-phase steps 4–5 (same executor mode), with the
+Dispatch as in execute steps 4–5 (same executor mode), with the
 brief and territory notes. Work-item stays `in_progress` — never
 reopen `done`.
 
@@ -104,7 +104,7 @@ canon update --type score:work-item --id <id> \
   --payload '{"attempts":1,"assignee":"<assignee>","write_root":"<write-root>"}'
 ```
 
-Then dispatch with that mode through execution-report + `verify-work`.
+Then dispatch with that mode through execution-report + `verify`.
 
 ## Fix tasks (closing verification)
 

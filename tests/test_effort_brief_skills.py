@@ -1,4 +1,4 @@
-"""init writes a brief for deliver efforts only, settle-phase reads it, and the score docs list the type."""
+"""init writes a brief for deliver efforts only, spec reads it, and the score docs list the type."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def test_r11_init_gives_a_brief_body_template_with_the_four_headings():
 
 
 def test_r12_settle_phase_context_step_lists_the_brief_for_the_focus_effort():
-    text = skill_text("settle-phase")
+    text = skill_text("spec")
     start = text.index("Read context")
     step = text[start : text.index("\n3.", start)]
     assert re.search(

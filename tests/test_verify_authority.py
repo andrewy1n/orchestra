@@ -1,4 +1,4 @@
-"""Fail closed if verify-work or close_batch invent binary check-runs for tdd/check.
+"""Fail closed if verify or close_batch invent binary check-runs for tdd/check.
 
 R5 / check-run-authority: tdd/check check-runs come only from
 `orchestra check` (or an already runner-produced id). Agents write
@@ -18,7 +18,7 @@ from skill_extraction import extract_invocations
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close_batch
 
-SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "verify" / "SKILL.md"
 SCRIPT = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
 
 
@@ -36,7 +36,7 @@ def _check_run(record_id: str, payload: JsonObject) -> Record:
 
 
 def _skill() -> str:
-    return skill_text("verify-work")
+    return skill_text("verify")
 
 
 def _normalized(text: str) -> str:
@@ -53,16 +53,17 @@ def test_skill_documents_tuner_check_for_tdd_and_check():
 
 
 def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
+    manual_docs = (REPO_ROOT / "skills" / "verify" / "references" / "verify-mechanics.md").read_text()
     creates = [
         inv
-        for inv in extract_invocations(_skill())
+        for inv in extract_invocations(manual_docs)
         if inv["subcommand"] == "create" and inv["type"] == "tuner:check-run" and inv.get("payload")
     ]
     assert creates, "manual check-run create examples must remain"
     for inv in creates:
         method = inv["payload"].get("method")
         assert method == "manual", (
-            f"verify-work must not document create with method={method!r}; "
+            f"verify must not document create with method={method!r}; "
             "tdd/check check-runs come from orchestra check"
         )
 
@@ -84,8 +85,7 @@ def test_skill_close_request_references_check_run_id_for_runner_methods():
     assert "check_run_id" in text
     assert '"method": "tdd"' in text or '"method": "tdd"' in text.replace(" ", "")
     # Close examples for tdd/check must not invent revision/signed_by creates.
-    close_at = text.index("## Close")
-    close = text[close_at:]
+    close = (REPO_ROOT / "skills" / "verify" / "references" / "close-batch.md").read_text()
     assert "check_run_id" in close
     assert '"method": "tdd"' in close
     assert '"method": "check"' in close

@@ -1,5 +1,5 @@
 ---
-name: plan-phase
+name: tasks
 description: >-
   Promotes the current phase and materializes the current effort's
   work-item and acceptance records (this phase only, or a single
@@ -14,7 +14,7 @@ description: >-
 Requires `canon` and `orchestra` on PATH. Follow
 [ensure-store.md](references/ensure-store.md) in the **current work repo**
 before writing records. Follow [kinds-and-focus.md](references/kinds-and-focus.md).
-Batch example: [mechanics.md](references/mechanics.md). Skip for
+Batch example: [record-mechanics.md](references/record-mechanics.md). Skip for
 incidental work that fits in the current chat. If handoff has no goal
 for the focus, use `init` first (`engage` if kind/focus unset).
 
@@ -50,7 +50,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
 - Do not write `conductor:assessment` or `conductor:integration-report`.
 - Lifecycle only: `planned` -> `in_progress` -> `done` / `withdrawn`.
   Never write `stage`, `live`, `ready`, or `wave`. This skill creates
-  work-items and promotes the phase; `execute-phase` and `verify-work`
+  work-items and promotes the phase; `execute` and `verify`
   move work-items.
 - Dependencies: `payload.depends_on`, a JSON array of work-item
   subjects. Create each prerequisite first; canon rejects an unknown
@@ -98,7 +98,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    lowest-`ordinal` `planned`; ask if several fit. `engage` `phase:
    new` -> create in step 3 with `ordinal` = max existing + 1.
    Approach must be settled (a `score:decision` for this phase, or
-   fixed in chat); else `settle-phase` or ask to skip. Incidental
+   fixed in chat); else `spec` or ask to skip. Incidental
    skips the settle check.
 3. Promote the current phase to `in_progress` with its real plan
    (`canon get --type score:phase`, then `update --transition
@@ -125,7 +125,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    acceptance exists and fills `test_ids` and `oracle_hashes`.
 9. Write the batch. Put every drafted record in one NDJSON file and
    run `canon apply` once (line shape and example in
-   [mechanics.md](references/mechanics.md)). Order the lines: each
+   [record-mechanics.md](references/record-mechanics.md)). Order the lines: each
    prerequisite work-item before the work-items that list it in
    `depends_on`, the verification task last, a work-item before its
    acceptances. On `"ok": false`, fix the failed lines and apply only
@@ -142,9 +142,9 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     non-empty `test_ids` and `oracle_hashes`. Run `orchestra analyze
     <phase-slug>` first. Refuse plan review while it exits 1. Fix each
     error finding, then run it again. If the effort's `autonomy` is
-    `auto-plan` or `auto-phases`, skip the gate and go to `execute-phase`.
+    `auto-plan` or `auto-phases`, skip the gate and go to `execute`.
     Otherwise (`gated` or missing) create a blocking
     `score:continuity-question` with scope
     `plan-review:<current-phase-slug>`. Ask approve / change / send back to
-    `settle-phase`. On approval, answer the question; only then may
-    `execute-phase` run.
+    `spec`. On approval, answer the question; only then may
+    `execute` run.

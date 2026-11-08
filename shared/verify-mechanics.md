@@ -1,4 +1,4 @@
-# verify-work mechanics
+# verify mechanics
 
 Full step-by-step mechanics. SKILL.md keeps the judgment; this file is the manual fallback and the record of every contract.
 
@@ -133,7 +133,7 @@ canon update --type tuner:finding --id <finding-id> \
 ```
 
    If this finding overturns a prior `score:decision`, supersede that
-   decision (see `settle-phase`) and cite the finding's subject in the
+   decision (see `spec`) and cite the finding's subject in the
    new decision's `## Rationale`. If it contradicts an earlier
    `tuner:finding`, put the earlier finding's record id in
    `contradicted_by` (a JSON array) in the new finding's payload.
@@ -248,7 +248,7 @@ canon create --type tuner:finding \
    Do not send every failure to execute. Verification check fail
    caused by the task's code → leave `in_progress`, assessment
    `next` `execute`; do not tell the parent to run a suite the
-   acceptance does not name. Parent (`execute-phase`) re-dispatches
+   acceptance does not name. Parent (`execute`) re-dispatches
    or creates fix tasks — this skill does not.
 7. On **abandoned** approach: `create --type conductor:failed-attempt`
    with `attempted_action`, `retry_when`, `effort`. If the whole task

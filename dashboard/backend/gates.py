@@ -16,12 +16,12 @@ from dashboard.backend.task import TaskRow
 PLAN_REVIEW_PREFIX = "plan-review:"
 
 _LOOP_SKILL = {
-    "specify": "settle-phase",
-    "design": "settle-phase",
-    "plan": "plan-phase",
-    "execute": "execute-phase",
-    "integrate": "execute-phase",
-    "verify": "verify-work",
+    "specify": "spec",
+    "design": "design",
+    "plan": "tasks",
+    "execute": "execute",
+    "integrate": "execute",
+    "verify": "verify",
 }
 
 
@@ -137,13 +137,13 @@ def next_step(view: EffortView, landing: dict[str, Landing]) -> str:
     for item in view.needs_you:
         slug = _plan_review_slug(item)
         if slug is not None and item.kind == "blocking-question":
-            return f"review the {slug} plan (plan-phase)"
+            return f"review the {slug} plan (tasks)"
         if item.kind == "blocking-question":
             return f"answer: {item.text}"
 
     merge_slug = _unmerged_done_slug(view, landing)
     if merge_slug is not None:
-        return f"merge phase/{merge_slug} (execute-phase)"
+        return f"merge phase/{merge_slug} (verify)"
 
     for item in view.needs_you:
         if item.kind == "loop-route":
@@ -152,7 +152,7 @@ def next_step(view: EffortView, landing: dict[str, Landing]) -> str:
             skill = _LOOP_SKILL.get(nxt, nxt)
             return f"{nxt} for {req} ({skill})"
         if item.kind == "unsigned-check":
-            return f"sign off {item.subject} (verify-work)"
+            return f"sign off {item.subject} (verify)"
 
     running = [task for task in view.tasks if task.status == "running"]
     if running:
@@ -164,21 +164,21 @@ def next_step(view: EffortView, landing: dict[str, Landing]) -> str:
     if ready:
         waves = [task.wave for task in ready if task.wave is not None]
         wave = min(waves) if waves else 0
-        return f"execute-phase wave {wave}"
+        return f"execute wave {wave}"
 
     for phase in sorted(view.phases, key=lambda row: row.ordinal):
         if phase.state != "in_progress":
             continue
         tasks = _phase_tasks(view, phase.subject)
         if tasks and all(task.status == "done" for task in tasks):
-            return f"close {phase.subject} (verify-work)"
+            return f"close {phase.subject} (verify)"
 
     for phase in sorted(view.phases, key=lambda row: row.ordinal):
         if phase.state != "planned":
             continue
         if _has_decisions(phase):
-            return f"plan-phase {phase.subject}"
-        return f"settle-phase {phase.subject}"
+            return f"tasks {phase.subject}"
+        return f"spec {phase.subject}"
 
     if view.phases and all(phase.state == "done" for phase in view.phases):
         return "close the effort or add a phase"

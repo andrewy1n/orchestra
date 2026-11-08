@@ -1,0 +1,220 @@
+# Assess (structured work)
+
+Skip for simple work (no phase specification, and incidental).
+Structured work runs Assess after check-runs and before verify
+step 5.
+
+Write a `conductor:assessment` only for a requirement whose status is
+non-verified: `failed`, `insufficient`, or `blocked`. A requirement
+whose acceptances have passing check-runs is `verified` in
+`orchestra view verification`; write no assessment for it. A written
+non-verified assessment wins over derivation until newer passing
+check-runs for every acceptance supersede it.
+
+Subject is `<phase-slug>-<requirement-id>`. Reason names the
+cause in words — the check-run does not. Payload: `requirement`,
+`status`, `level`, `next`, `confidence` (`low`), `phase`, `effort`,
+`missing`. Body sections, all non-empty: `## Evidence`, `## Missing`,
+`## Reason`. Add each assessment as a line of the verify step-8
+batch (`canon apply`); the commands below show each line's payload.
+
+List the active assessment for that subject. Create when none;
+supersede when one is active (`supersede` keeps the subject). Compare
+with the previous assessment before choosing `level` (see Evidence
+escalation).
+
+```bash
+canon list --type conductor:assessment --subject "<phase-slug>-<requirement-id>" --state active --full
+```
+
+Choose the first `next` the evidence supports. Do not send every
+failure to execute:
+
+| Evidence | status | level | next |
+|---|---|---|---|
+| `failed` and the cause is the task's code | `failed` | `implementation` | `execute` |
+| `failed` and the design cannot satisfy the requirement | `failed` | `design` | `design` |
+| `failed` and no task covers the requirement | `failed` | `plan` | `plan` |
+| `failed` and the requirement is ambiguous or contradicted | `failed` | `specification` | `specify` |
+| integration-report `fail`, and a task must change | `failed` | `integration` | `execute` |
+| integration-report `fail`, otherwise | `failed` | `integration` | `integrate` |
+| `insufficient` (the criterion was not exercised) | `insufficient` | `verification` | `verify` |
+| `level` `environment` or `unknown` | `blocked` | `environment` or `unknown` | `verify` |
+| every check the requirement needs passed (derived, write nothing) | `verified` | omit | `release` |
+
+A row is `failed` when check-run `result` is `fail` and the cause
+column matches. Read the phase integration report before using
+integration rows:
+
+```bash
+canon list --type conductor:integration-report --where payload.phase=<phase-slug> --full
+```
+
+`insufficient`: set `missing` to the absent check. Prefer first
+missing kind: acceptance, integration, unit, property, fuzz, review.
+A passing check of a different kind does not force `verified`.
+
+`environment` / `unknown`: `next` is `verify`, never `execute`. Open
+a blocking `score:continuity-question` and a finding with
+`needs` `human` (same two writes as repeated `specification` below).
+Leave work-item `in_progress`.
+
+`failed` and cause is the task's code: `level` `implementation`,
+`next` `execute`. Leave `in_progress`. When a verification check
+fails for that reason, same routing — do not tell the parent to run a
+suite the acceptance does not name; run that acceptance's
+`verify_command`.
+
+```bash
+canon create --type conductor:assessment \
+  --subject "<phase-slug>-<requirement-id>" \
+  --payload '{"requirement":"<requirement-id>","status":"failed","level":"implementation","next":"execute","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
+  --body "## Evidence
+
+<check-runs for this requirement and their results>
+
+## Missing
+
+none
+
+## Reason
+
+<the cause in words: the task's code failed the requirement>"
+```
+
+Design, plan, and specification use the same create/supersede shape
+with that row's fields and `confidence` `low`. Integration uses
+`level` `integration` and `next` `execute` when a task must change,
+otherwise `next` `integrate`.
+
+```bash
+canon create --type conductor:assessment \
+  --subject "<phase-slug>-<requirement-id>" \
+  --payload '{"requirement":"<requirement-id>","status":"insufficient","level":"verification","next":"verify","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":"acceptance"}' \
+  --body "## Evidence
+
+<which checks ran and which did not>
+
+## Missing
+
+acceptance
+
+## Reason
+
+<the criterion was not exercised>"
+```
+
+```bash
+canon create --type conductor:assessment \
+  --subject "<phase-slug>-<requirement-id>" \
+  --payload '{"requirement":"<requirement-id>","status":"blocked","level":"environment","next":"verify","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":"<absent environment fact, or empty>"}' \
+  --body "## Evidence
+
+<the blocked check and the environment fact>
+
+## Missing
+
+<absent environment fact, or none>
+
+## Reason
+
+<environment or unknown; not the task's code>"
+```
+
+When the requirement derives `verified`, write nothing. For
+**oracle-backed** requirements, `verified` holds only after mechanical
+oracle verify holds. When it does not hold, write an `insufficient`
+assessment with `missing` `oracle` so the derived status does not
+stand.
+
+A written non-verified assessment wins until every acceptance for the
+requirement has a passing check-run recorded after it. Then the derived
+`verified` status stands. Write no clearing assessment. Never write an
+assessment with `status` `verified`.
+
+## Evidence escalation
+
+Compare with the previous assessment for the same requirement. Stay
+at the same `level` only when new check-runs add evidence (new
+`evidence_kind`, narrower failing case, or a cause now named) or the
+previous cause is resolved. Otherwise raise one step on
+`implementation` → `design` → `specification`, set `next` to that
+stage (`design`, then `specify`), and say in Reason that the evidence
+did not increase. Do not escalate by failure count. `plan` and
+`integration` only when the evidence says so — not under a repeated
+implementation failure.
+
+First implementation failure still uses `next` `execute`. When the
+previous cause is resolved and the requirement passes, clear the
+assessment as above.
+
+```bash
+canon supersede --type conductor:assessment --id <assessment-id> \
+  --expected-revision <revision> \
+  --payload '{"requirement":"<requirement-id>","status":"failed","level":"design","next":"design","confidence":"low","phase":"<phase-slug>","effort":"<effort-slug>","missing":""}' \
+  --body "## Evidence
+
+<previous check-runs and the new ones>
+
+## Missing
+
+none
+
+## Reason
+
+The evidence did not increase. <the same cause, still unnamed beyond the task's code>"
+```
+
+When `specification` repeats without new evidence, supersede again
+with `level` `specification` / `next` `specify`; do not raise further
+or set `next` `execute`. Open a blocking continuity-question and a
+finding with `needs` `human` (same for `environment` / `unknown`):
+
+```bash
+canon create --type score:continuity-question \
+  --subject "<effort-slug>" \
+  --payload '{"owner":"user","blocking":true,"scope":"assess:<phase-slug>-<requirement-id>"}'
+
+canon create --type tuner:finding \
+  --subject "<phase-slug>-<requirement-id>" \
+  --payload '{"claim":"<requirement-id> needs a human: specification repeated without new evidence, or the level is environment or unknown","basis":"<the assessments and check-runs>","invalidated_when":"<a new evidence_kind, a named cause, or a human answer>","effort":"<effort-slug>","needs":"human"}' \
+  --body "## Evidence
+
+<the repeated assessment or the environment or unknown level>
+
+## Consequence
+
+<dispatch stays stopped>
+
+## Follow-up
+
+<what the human must answer>"
+```
+
+When the user answers or decides the finding, clear at the event
+(kinds-and-focus, Needs-you clears):
+
+```bash
+canon update --type score:continuity-question --id <question-id> \
+  --transition answered --expected-revision <revision>
+
+canon update --type tuner:finding --id <finding-id> \
+  --expected-revision <revision> \
+  --payload '{"needs":"none"}'
+```
+
+## Release
+
+Release `ready` is derived: it holds when every specification
+requirement derives `verified`. Write no
+`conductor:release`. Do not write `merged`, `deployed`, or any other
+state. Do not deploy.
+
+```bash
+orchestra view verification --effort <effort-slug>
+```
+
+Leave the work-item `in_progress` when any requirement it covers is
+not `verified`. Go to verify step 5 only when each of those
+requirements derives `verified` and no non-verified assessment is
+active for it.

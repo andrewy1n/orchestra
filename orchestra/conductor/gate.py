@@ -10,7 +10,7 @@ policy comes from the caller's worktree's `orchestra.toml` when it passes one,
 else from the store root. With no review check-run, no term bound to the head
 can hold.
 
-Each term is one line of the "Phase gate" list in execute-phase's phase-end.md.
+Each term is one line of the "Phase gate" list in verify's phase-end.md.
 """
 
 from __future__ import annotations

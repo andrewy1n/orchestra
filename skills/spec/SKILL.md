@@ -14,15 +14,56 @@ missing, follow [ensure-store.md](references/ensure-store.md). Follow
 
 ## Own
 
-- Write one `score:specification` for the selected phase.
+- Write one `score:specification` for a full phase.
 - State observable behavior and acceptance criteria.
 - Preserve constraints, non-goals, invariants, and assumptions.
 - Do not write technical design, work-items, acceptance records, or code.
 
+## Phase weight
+
+A phase is `light` when its planned work takes about 4
+tasks or fewer, about four hours or less, and fits in one session. When no
+option changes the architecture, recommend light. Explain the choice and let
+the user override it either way. Record `weight` on the phase. For a full
+phase, write a `score:specification` and hand off to design. A light phase
+writes no `score:specification` and no `score:design`. Its phase body
+has `## Requirements`, `## Proof`, and `## Landing`. Proof uses `demo`,
+`commands`, `claims`, or `audit-triage`. Write a decision only when the user
+picked between options. Verification, the reviewer, frozen oracles, and
+red-first stay the same.
+
 ## Steps
 
-1. Resolve the focus and phase from the workflow handoff. Read the phase,
+1. Resolve the focus and phase from the workflow handoff. Read context:
+   the phase, effort brief, milestones, prerequisites, decisions, constraints,
+   assessments, and relevant code. Read the phase,
    effort brief, prerequisites, decisions, constraints, and phase assessments.
+   Read the brief with:
+
+```bash
+canon list --type score:brief --where payload.effort=<focus> --state active --full
+```
+
+   When `phase: new`, create the next phase with the highest ordinal plus one.
+   Use the phase body shape from `init` step 7. Ask which existing milestone
+   it belongs to, or use none. Promote the named idea only when its status is
+   `open`:
+
+```bash
+canon create --type score:phase \
+  --subject "<phase-slug>" \
+  --payload '{"title":"<phase title>","ordinal":<next-ordinal>,"effort":"<effort-slug>","milestone":"<milestone-slug>"}' \
+  --body-file "<phase-body.md>"
+
+canon list --type composer:idea --subject <idea-subject> --exact-subject --state active --full
+canon supersede --type composer:idea --id <id> \
+  --expected-revision <revision> \
+  --payload '{"status":"promoted","effort":"<effort-slug>","phase":"<phase-slug>"}'
+```
+
+Omit `milestone` when the phase is ungrouped.
+
+   Check current clarification markers and blocked questions before discussion.
    Read an existing active specification before you change it.
 2. Apply the shared intent Q&A. Ask only about behavior, users, outcomes,
    boundaries, and observable proof. Do not ask the user to choose an
@@ -30,6 +71,10 @@ missing, follow [ensure-store.md](references/ensure-store.md). Follow
 3. Write one atomic requirement per stable `Rn` id. Split a requirement when
    it names more than one observable behavior. Keep existing ids when their
    meaning stays the same.
+   Add `[NEEDS CLARIFICATION: <question>]` beside unresolved behavior in a
+   specification or design. Resolve every marker before the spec step ends.
+   Promote only when the idea's `payload.status` is `open` and the user approves
+   the new phase. Preserve persisted assessment values such as `specify`.
 4. Present the complete specification. Wait for explicit user approval or
    delegation before you record it. Do not infer consent from a request to
    continue.

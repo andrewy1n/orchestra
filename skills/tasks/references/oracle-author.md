@@ -25,7 +25,7 @@ Parent then, for each such drafted acceptance:
 3. On assertion-level red, compute `oracle_hashes` for the files those
    ids live in and put `test_ids`, `oracle_hashes`, and the derived
    `verify_command` into the drafted acceptance payload. The
-   acceptance is then created once, with the plan batch (plan-phase
+   acceptance is then created once, with the plan batch (tasks
    step 9):
 
 ```json

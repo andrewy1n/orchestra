@@ -1,4 +1,4 @@
-"""execute-phase states per-task worktrees when Landing is present."""
+"""execute states per-task worktrees when Landing is present."""
 
 from __future__ import annotations
 
@@ -8,22 +8,22 @@ from pathlib import Path
 from conftest import REPO_ROOT
 from helpers import skill_text
 
-SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
-PHASE_END = REPO_ROOT / "skills" / "execute-phase" / "references" / "phase-end.md"
+SKILL = REPO_ROOT / "skills" / "execute" / "SKILL.md"
+PHASE_END = REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md"
 
 _VERIFICATION = "the work-item that depends_on every other phase work-item"
 _OTHER = f"a task other than {_VERIFICATION}"
 
 
 def _flat(path: Path) -> str:
-    body = skill_text("execute-phase") if path == SKILL else path.read_text()
+    body = skill_text("execute") if path == SKILL else path.read_text()
     return re.sub(r"\s+", " ", body)
 
 
 def test_r1_landing_creates_a_task_branch_except_the_verification_task():
     text = _flat(SKILL)
     assert (
-        "When Landing is present, at the start of a wave, execute-phase creates branch "
+        "When Landing is present, at the start of a wave, execute creates branch "
         "`task/<phase-slug>/<task-slug>` from the current `phase/<phase-slug>` tip for every "
         f"task in that wave except {_VERIFICATION}." in text
     )
@@ -32,7 +32,7 @@ def test_r1_landing_creates_a_task_branch_except_the_verification_task():
 def test_r2_landing_adds_a_task_worktree_except_the_verification_task():
     text = _flat(SKILL)
     assert (
-        "When Landing is present, at the start of a wave, execute-phase adds worktree "
+        "When Landing is present, at the start of a wave, execute adds worktree "
         "`<repo>/.worktrees/<phase-slug>--<task-slug>` checked out on that task branch for every "
         f"task in that wave except {_VERIFICATION}." in text
     )
@@ -50,7 +50,7 @@ def test_r4_per_task_commit_stages_with_git_add_excluding_artifacts():
 
 def test_r5_verify_work_runs_in_that_task_worktree():
     text = _flat(SKILL)
-    assert f"verify-work for {_OTHER} runs in that task worktree." in text
+    assert f"verify for {_OTHER} runs in that task worktree." in text
 
 
 def test_r6_passing_check_run_records_that_task_commit():
@@ -136,18 +136,18 @@ def test_r17_verification_task_is_dispatched_in_the_phase_worktree():
 
 def test_r18_no_task_branch_for_the_verification_task():
     text = _flat(SKILL)
-    assert f"execute-phase does not create a task branch for {_VERIFICATION}." in text
+    assert f"execute does not create a task branch for {_VERIFICATION}." in text
 
 
 def test_r19_no_task_worktree_for_the_verification_task():
     text = _flat(SKILL)
-    assert f"execute-phase does not add a task worktree for {_VERIFICATION}." in text
+    assert f"execute does not add a task worktree for {_VERIFICATION}." in text
 
 
 def test_r20_absent_landing_does_not_create_a_task_branch():
     text = _flat(SKILL)
     assert (
-        "When Landing is absent, execute-phase does not create a "
+        "When Landing is absent, execute does not create a "
         "`task/<phase-slug>/<task-slug>` branch." in text
     )
 
@@ -155,7 +155,7 @@ def test_r20_absent_landing_does_not_create_a_task_branch():
 def test_r21_absent_landing_does_not_add_a_task_worktree():
     text = _flat(SKILL)
     assert (
-        "When Landing is absent, execute-phase does not add a "
+        "When Landing is absent, execute does not add a "
         "`<repo>/.worktrees/<phase-slug>--<task-slug>` worktree." in text
     )
 
@@ -189,7 +189,4 @@ def test_r25_dispatch_prompt_does_not_tell_the_executor_to_avoid_git_add():
 
 def test_r26_no_empty_commit_when_a_task_has_nothing_to_commit():
     text = _flat(SKILL)
-    assert (
-        f"When {_OTHER} has nothing to commit, execute-phase does not create an empty commit."
-        in text
-    )
+    assert f"When {_OTHER} has nothing to commit, execute does not create an empty commit." in text

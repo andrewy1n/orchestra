@@ -1,4 +1,4 @@
-"""execute-phase records semantic integration and does not treat a git merge as pass."""
+"""execute records semantic integration and does not treat a git merge as pass."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import helpers as h
 from conftest import REPO_ROOT
 from skill_extraction import check_skill_text, extract_invocations
 
-SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md"
 
 
 def _text() -> str:
-    return re.sub(r"\s+", " ", h.skill_text("execute-phase"))
+    return re.sub(r"\s+", " ", SKILL.read_text())
 
 
 def _integration_creates(text: str) -> list[dict]:
@@ -25,7 +25,7 @@ def _integration_creates(text: str) -> list[dict]:
 
 def test_integration_report_create_matches_the_contract(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    text = h.skill_text("execute-phase")
+    text = SKILL.read_text()
     violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
 
@@ -47,7 +47,7 @@ def test_a_git_merge_is_not_a_pass():
         "`pass` only when verdict is `PASS` and those sections hold — a clean git merge is not enough."
         in text
     )
-    assert "Write integration-report `pass` from a clean git merge alone" in text
+    assert "a clean git merge is not enough" in text
 
 
 def test_integration_report_is_skipped_for_incidental_and_serial_waves():

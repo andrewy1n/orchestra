@@ -1,4 +1,4 @@
-"""plan-phase records the recipe, one shared wave executor, and phase run facts before plan review."""
+"""tasks records the recipe, one shared wave executor, and phase run facts before plan review."""
 
 from __future__ import annotations
 
@@ -41,9 +41,9 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
     assert "executor" in work_item["optional_payload"]
     assert "Approach" not in work_item["required_sections"]
 
-    raw = _text("plan-phase")
+    raw = h.skill_text("tasks")
     text = _flat(raw)
-    assert "`executor` (`inline`| `subagent`; missing → `subagent`; same within a wave)" in text
+    assert "`executor` is `inline` or `subagent`. Missing means `subagent`" in text
     payloads = _work_item_payloads(raw)
     assert payloads
     assert {payload["executor"] for payload in payloads} <= {"inline", "subagent"}
@@ -58,18 +58,18 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
 
 
 def test_every_task_in_a_wave_uses_the_same_executor():
-    assert "same within a wave" in _flat(_text("plan-phase"))
+    assert "same within a wave" in _flat(_text("tasks"))
     for path in (SKILLS / "kinds-and-focus.md", REPO_ROOT / "README.md"):
         doc = _flat(path.read_text())
         assert "`inline` or `subagent`" in doc
         assert "Every task in a wave uses the same executor." in doc
         assert "Missing `executor` means `subagent`." in doc
-    executors = {payload["executor"] for payload in _work_item_payloads(_text("plan-phase"))}
+    executors = {payload["executor"] for payload in _work_item_payloads(_text("tasks"))}
     assert len(executors) == 1
 
 
 def test_phase_body_records_size_stops_and_collision_notes():
-    text = _flat(_text("plan-phase"))
+    text = _flat(_text("tasks"))
     assert (
         "Phase body records session shape (`one sitting` | `more than one`), human stops, collision notes"
         in text
@@ -77,9 +77,9 @@ def test_phase_body_records_size_stops_and_collision_notes():
 
 
 def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
-    text = _text("plan-phase")
+    text = (SKILLS / "tasks" / "SKILL.md").read_text()
     flat = _flat(text)
-    gate = "Open the plan review gate (skip incidental). Do not open until:"
+    gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
     question = next(
         inv
         for inv in extract_invocations(text)
@@ -87,10 +87,11 @@ def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_presen
     )
     assert question["payload"]["blocking"] is True
     assert question["payload"]["scope"].startswith("plan-review:")
-    question_at = flat.rindex("canon create --type score:continuity-question")
-    gate_at = flat.rindex(gate)
+    question_at = flat.index("canon create --type score:continuity-question")
+    gate_at = flat.index(gate)
     assert gate_at < question_at
     window = flat[gate_at:question_at]
-    assert "each work-item has `## Approach`" in window
-    assert "wave executors agree" in window
-    assert "phase body has size, human stops, collision notes" in window
+    assert "task recipes" in window
+    assert "wave executor choices" in window
+    assert "phase run facts" in window
+    assert "Landing" in window

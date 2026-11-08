@@ -1,7 +1,7 @@
 # Assess (structured work)
 
 Skip for simple work (no phase specification, and incidental).
-Structured work runs Assess after check-runs and before verify-work
+Structured work runs Assess after check-runs and before verify
 step 5.
 
 Write a `conductor:assessment` only for a requirement whose status is
@@ -15,7 +15,7 @@ Subject is `<phase-slug>-<requirement-id>`. Reason names the
 cause in words — the check-run does not. Payload: `requirement`,
 `status`, `level`, `next`, `confidence` (`low`), `phase`, `effort`,
 `missing`. Body sections, all non-empty: `## Evidence`, `## Missing`,
-`## Reason`. Add each assessment as a line of the verify-work step-8
+`## Reason`. Add each assessment as a line of the verify step-8
 batch (`canon apply`); the commands below show each line's payload.
 
 List the active assessment for that subject. Create when none;
@@ -215,6 +215,6 @@ orchestra view verification --effort <effort-slug>
 ```
 
 Leave the work-item `in_progress` when any requirement it covers is
-not `verified`. Go to verify-work step 5 only when each of those
+not `verified`. Go to verify step 5 only when each of those
 requirements derives `verified` and no non-verified assessment is
 active for it.

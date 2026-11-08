@@ -16,8 +16,8 @@ from helpers import skill_text
 from skill_extraction import extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
-EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
-VERIFY = SKILLS / "verify-work" / "SKILL.md"
+EXECUTE = SKILLS / "execute" / "SKILL.md"
+VERIFY = SKILLS / "verify" / "SKILL.md"
 SUITE_MODULE = REPO_ROOT / "orchestra" / "conductor" / "suite.py"
 
 _RUNNER_METHODS = {"tdd", "check"}
@@ -128,7 +128,7 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
     def fenced(invocations: list[dict]) -> str:
         return "```bash\n" + "\n".join(inv["raw"] for inv in invocations) + "\n```"
 
-    execute = skill_text("execute-phase")
+    execute = skill_text("execute")
     review = [
         inv
         for inv in extract_invocations(execute)
@@ -141,7 +141,7 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
 
     assert "orchestra suite record" in execute
 
-    verify = skill_text("verify-work")
+    verify = skill_text("verify")
     manual = [
         inv
         for inv in extract_invocations(verify)
@@ -162,10 +162,10 @@ def test_manual_review_and_suite_check_run_stay_allowed(tmp_path: Path):
 def test_migrated_skills_pass_the_scanner():
     violations = scan_skills(SKILLS)
     assert not violations, "\n".join(violations)
-    assert _AMENDMENT_SENTENCE in skill_text("execute-phase")
+    assert _AMENDMENT_SENTENCE in skill_text("execute")
     assert (
         "a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts"
-        in " ".join(skill_text("verify-work").split())
+        in " ".join(skill_text("verify").split())
     )
 
 

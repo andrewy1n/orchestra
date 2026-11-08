@@ -36,14 +36,14 @@ from orchestra.conductor.suite import (
     suite_subject,
 )
 
-SKILL = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "execute" / "SKILL.md"
 
 HEAD = "abcdef0123456789abcdef0123456789abcdef01"
 PHASE = "verification-policy"
 
 
 def _skill_text() -> str:
-    return h.skill_text("execute-phase")
+    return h.skill_text("verify")
 
 
 def _skill_flat() -> str:
@@ -586,15 +586,15 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
 
 
 def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
-    text = _skill_text()
-    flat = _skill_flat()
+    text = (REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md").read_text()
+    flat = " ".join(text.split())
     assert "Do not waive suite policy" in flat
     assert (
         "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
         in flat
     )
     assert (
-        "closing verification → analyze → reviewer → integration-report → suite → phase gate"
+        "last implementation wave → closing verification → analyze → reviewer → integration-report from reviewer `integration` → suite"
         in flat
     )
     assert "orchestra suite record" in text

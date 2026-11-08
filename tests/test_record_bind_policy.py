@@ -1,7 +1,7 @@
 """Orchestra skills name record versus bind. Aff stays mode-free.
 
-``verify-work`` says when to record an evidence-observation versus when
-to ``orchestra verify bind`` that observation to a claim. ``execute-phase`` says when
+``verify`` says when to record an evidence-observation versus when
+to ``orchestra verify bind`` that observation to a claim. ``execute`` says when
 bind or recheck is required before a manifest claim is earned. A
 documented path shows claim → evidence-binding → evidence-observation.
 No aff work-kind, mode flag, or policy switch encodes that choice.
@@ -18,8 +18,8 @@ from conftest import REPO_ROOT
 from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
-EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
-VERIFY = SKILLS / "verify-work" / "SKILL.md"
+EXECUTE = SKILLS / "execute" / "SKILL.md"
+VERIFY = SKILLS / "verify" / "SKILL.md"
 
 _AFF_SWITCH = re.compile(
     r"record-versus-bind|record_versus_bind|record-vs-bind|record_vs_bind|--mode\b|--policy\b"
@@ -204,34 +204,33 @@ def tuner_policy_switches() -> list[str]:
 
 def policy_gaps() -> list[str]:
     gaps: list[str] = []
-    record = missing_record_versus_bind(skill_text("verify-work"))
+    record = missing_record_versus_bind(skill_text("verify"))
     if record:
-        gaps.append("verify-work missing: " + "; ".join(record))
-    earned = missing_earned_rule(skill_text("execute-phase"))
+        gaps.append("verify missing: " + "; ".join(record))
+    earned = missing_earned_rule(skill_text("execute"))
     if earned:
-        gaps.append("execute-phase missing: " + "; ".join(earned))
+        gaps.append("execute missing: " + "; ".join(earned))
     if not skill_linkage_paths():
         gaps.append(
-            "no verify-work or execute-phase path shows "
-            "claim → evidence-binding → evidence-observation"
+            "no verify or execute path shows claim → evidence-binding → evidence-observation"
         )
     return gaps
 
 
 def test_verify_work_names_when_to_record_an_observation_versus_tuner_bind():
-    missing = missing_record_versus_bind(skill_text("verify-work"))
-    assert not missing, "verify-work missing: " + "; ".join(missing)
+    missing = missing_record_versus_bind(skill_text("verify"))
+    assert not missing, "verify missing: " + "; ".join(missing)
 
 
 def test_execute_phase_names_when_bind_or_recheck_before_a_claim_is_earned():
-    missing = missing_earned_rule(skill_text("execute-phase"))
-    assert not missing, "execute-phase missing: " + "; ".join(missing)
+    missing = missing_earned_rule(skill_text("execute"))
+    assert not missing, "execute missing: " + "; ".join(missing)
 
 
 def test_verify_or_execute_skill_shows_claim_binding_observation_linkage():
     found = skill_linkage_paths()
     assert found, (
-        "verify-work or execute-phase must show "
+        "verify or execute must show "
         "claim → evidence-binding → evidence-observation "
         "on a path that also runs `orchestra verify bind`"
     )

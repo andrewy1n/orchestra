@@ -1,4 +1,4 @@
-"""plan-phase stamps atomic requirement ids and thin acceptances."""
+"""tasks stamps atomic requirement ids and thin acceptances."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ WRITES = {"create", "update", "supersede", "capture"}
 
 
 def _text() -> str:
-    return h.skill_text("plan-phase")
+    return h.skill_text("tasks")
 
 
 def _flat(text: str) -> str:
@@ -59,7 +59,7 @@ def test_criterion_optional_in_contract():
 
 
 def test_execute_phase_requires_original_text_briefs():
-    flat = _flat(h.skill_text("execute-phase"))
+    flat = _flat(h.skill_text("execute"))
     assert (
         "quotes (verbatim, by id) work-item Description/Approach, linked requirement text" in flat
     )
@@ -141,7 +141,7 @@ def test_plan_phase_oracle_author_and_freeze():
 
 
 def test_execute_phase_oracle_amendment_and_frozen_oracle(resolved_contract):
-    text = h.skill_text("execute-phase")
+    text = h.skill_text("execute")
     flat = _flat(text)
     assert "### Frozen oracle (do not edit)" in text
     assert "oracle_hashes" in flat
@@ -157,7 +157,7 @@ def test_execute_phase_oracle_amendment_and_frozen_oracle(resolved_contract):
 
 
 def test_verify_work_mechanical_oracle_backed():
-    verify = h.skill_text("verify-work")
+    verify = h.skill_text("verify")
     flat = _flat(verify)
     assert "mechanical" in flat
     assert "assertion-level" in flat

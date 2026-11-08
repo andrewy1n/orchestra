@@ -14,11 +14,11 @@ import helpers as h
 from conftest import REPO_ROOT
 
 EFFORT = "workflow-loop"
-SKILL = REPO_ROOT / "skills" / "verify-work" / "SKILL.md"
+SKILL = REPO_ROOT / "skills" / "verify" / "SKILL.md"
 
 
 def _skill_text() -> str:
-    return re.sub(r"\s+", " ", h.skill_text("verify-work"))
+    return re.sub(r"\s+", " ", h.skill_text("verify"))
 
 
 def _body(record_def: dict, fills: dict[str, str] | None = None) -> str | None:

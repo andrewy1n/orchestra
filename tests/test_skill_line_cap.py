@@ -5,15 +5,15 @@ from conftest import REPO_ROOT
 
 LINE_CAP = 150
 CAPPED_SKILLS = (
-    "execute-phase",
-    "plan-phase",
-    "verify-work",
+    "execute",
+    "tasks",
+    "verify",
     "tasks",
     "execute",
     "verify",
     "run",
 )
-EXECUTE = REPO_ROOT / "skills" / "execute-phase" / "SKILL.md"
+EXECUTE = REPO_ROOT / "skills" / "execute" / "SKILL.md"
 
 
 def line_count(text: str) -> int:

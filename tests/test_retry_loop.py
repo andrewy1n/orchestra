@@ -31,8 +31,8 @@ def test_attempts_is_optional_on_work_item():
 
 
 def test_execute_phase_redispatch_selects_in_progress_before_planned():
-    text = _text("execute-phase")
-    flat = _flat("execute-phase")
+    text = _text("execute")
+    flat = _flat("execute")
     assert "--state in_progress" in text
     assert "before" in flat and "planned" in flat
     assert "assessment `next` is `execute`" in flat
@@ -45,8 +45,8 @@ def test_execute_phase_redispatch_selects_in_progress_before_planned():
 
 
 def test_redispatch_records_assignment_amendment_with_failure_evidence():
-    text = _text("execute-phase")
-    flat = _flat("execute-phase")
+    text = _text("execute")
+    flat = _flat("execute")
     assert "assignment-amendment" in text
     assert "## Correction" in text
     assert "check-run" in flat
@@ -66,8 +66,8 @@ def test_redispatch_records_assignment_amendment_with_failure_evidence():
 
 
 def test_redispatch_increments_attempts():
-    text = _text("execute-phase")
-    flat = _flat("execute-phase")
+    text = _text("execute")
+    flat = _flat("execute")
     assert "attempts" in flat
     updates = [
         inv
@@ -76,12 +76,12 @@ def test_redispatch_increments_attempts():
         and inv["type"] == "score:work-item"
         and "attempts" in (inv.get("payload") or {})
     ]
-    assert updates, "execute-phase must document incrementing payload attempts on re-dispatch"
+    assert updates, "execute must document incrementing payload attempts on re-dispatch"
 
 
 def test_fix_task_depends_on_and_no_reopen_done():
-    text = _text("execute-phase")
-    flat = _flat("execute-phase")
+    text = _text("execute")
+    flat = _flat("execute")
     assert "fix" in flat and "work-item" in flat
     assert "depends_on" in flat
     assert "never reopen" in flat or ("never transition" in flat and "`done`" in flat)
@@ -95,7 +95,7 @@ def test_fix_task_depends_on_and_no_reopen_done():
         for inv in extract_invocations(text)
         if inv["subcommand"] == "create" and inv["type"] == "score:work-item"
     ]
-    assert creates, "execute-phase must create a fix work-item"
+    assert creates, "execute must create a fix work-item"
     assert "update --rel" in text or any(
         inv.get("rel") or "depends_on" in (inv.get("raw") or "")
         for inv in extract_invocations(text)
@@ -104,8 +104,8 @@ def test_fix_task_depends_on_and_no_reopen_done():
 
 
 def test_budget_defaults_overrides_and_exhaustion():
-    text = _text("execute-phase")
-    flat = _flat("execute-phase")
+    text = _text("execute")
+    flat = _flat("execute")
     assert "2 re-dispatch" in flat or "2 redispatches" in flat or "default: 2" in flat
     assert "2×" in text or "2x" in flat or "2 ×" in flat or "time multiplier" in flat
     assert "3 fix" in flat or ("fix tasks" in flat and "3" in flat)
@@ -146,8 +146,8 @@ def test_budget_defaults_overrides_and_exhaustion():
 
 
 def test_plan_phase_consumes_next_plan():
-    text = _text("plan-phase")
-    flat = _flat("plan-phase")
+    text = _text("tasks")
+    flat = _flat("tasks")
     assert "next: plan" in flat or "`next` `plan`" in flat or "next` `plan`" in flat
     assert "missing task" in flat or "missing work-item" in flat
     assert "plan-review" in flat
@@ -160,9 +160,9 @@ def test_plan_phase_consumes_next_plan():
 
 
 def test_verify_work_notes_parent_redispatch_without_changing_ladder():
-    text = _text("verify-work")
-    flat = _flat("verify-work")
-    assert "re-dispatch" in flat or "redispatch" in flat or "execute-phase" in flat
+    text = _text("verify")
+    flat = _flat("verify")
+    assert "re-dispatch" in flat or "redispatch" in flat or "execute" in flat
     assert "fix" in flat and ("work-item" in flat or "task" in flat)
     assert "## Evidence escalation" in text
     assert "Do not escalate by failure count." in flat

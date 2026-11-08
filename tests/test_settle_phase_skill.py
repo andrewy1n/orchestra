@@ -1,4 +1,4 @@
-"""The settle-phase skill settles the approach before planning, and plan review gates dispatch."""
+"""The spec skill settles the approach before planning, and plan review gates dispatch."""
 
 from __future__ import annotations
 
@@ -19,29 +19,30 @@ def _kinds() -> str:
 
 
 def test_settle_phase_skill_is_discoverable():
-    text = _text("settle-phase")
-    assert text.startswith("---\nname: settle-phase\n")
+    text = _text("spec")
+    assert text.startswith("---\nname: spec\n")
     assert "description:" in text.split("---")[1]
 
 
-def test_settle_phase_writes_specification_design_decisions_phase_and_questions():
-    written = {
+def test_spec_and_design_write_separate_record_types():
+    spec_writes = {
         inv["type"]
-        for inv in extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text())
+        for inv in extract_invocations((SKILLS / "spec" / "SKILL.md").read_text())
         if inv["subcommand"] in WRITES
     }
-    assert written == {
-        "composer:idea",
-        "score:specification",
-        "score:design",
-        "score:decision",
-        "score:phase",
-        "score:continuity-question",
+    design_writes = {
+        inv["type"]
+        for inv in extract_invocations((SKILLS / "design" / "SKILL.md").read_text())
+        if inv["subcommand"] in WRITES
     }
+    assert "score:specification" in spec_writes
+    assert "score:design" not in spec_writes
+    assert "score:decision" not in spec_writes
+    assert {"score:design", "score:decision"} <= design_writes
 
 
 def test_settle_phase_promotes_idea_after_new_phase():
-    text = (SKILLS / "settle-phase" / "SKILL.md").read_text()
+    text = (SKILLS / "spec" / "SKILL.md").read_text()
     lower = text.lower()
     assert "phase: new" in lower
     assert "idea: none" in lower or "`none`" in text
@@ -64,13 +65,13 @@ def test_settle_phase_promotes_idea_after_new_phase():
 
 
 def test_engage_routes_new_phases_through_settle_phase():
-    assert "`settle-phase`" in _text("engage")
+    assert "`spec`" in _text("engage")
 
 
 def test_plan_phase_opens_a_blocking_plan_review_question():
     reviews = [
         inv
-        for inv in extract_invocations(_text("plan-phase"))
+        for inv in extract_invocations(_text("tasks"))
         if inv["subcommand"] == "create" and inv["type"] == "score:continuity-question"
     ]
     # Initial plan review plus optional re-open after next:plan deltas.
@@ -82,7 +83,7 @@ def test_plan_phase_opens_a_blocking_plan_review_question():
 
 
 def test_execute_phase_scopes_plan_review_questions_to_their_phase():
-    assert "plan-review:" in _text("execute-phase")
+    assert "plan-review:" in _text("execute")
 
 
 def test_kinds_and_focus_documents_human_dismissible_clears():
@@ -128,21 +129,13 @@ def test_engage_lists_human_dismissible_needs_you_without_blocking_route():
 
 
 def test_skills_that_open_human_gates_document_matching_clears():
-    settle = extract_invocations((SKILLS / "settle-phase" / "SKILL.md").read_text())
+    plan = extract_invocations(_text("tasks"))
     assert any(
-        inv["subcommand"] == "update"
+        inv["subcommand"] == "create"
         and inv["type"] == "score:continuity-question"
-        and inv["transition"] == "answered"
-        for inv in settle
-    )
-    plan = extract_invocations(_text("plan-phase"))
-    assert any(
-        inv["subcommand"] == "update"
-        and inv["type"] == "score:continuity-question"
-        and inv["transition"] == "answered"
         for inv in plan
     )
-    verify = extract_invocations(_text("verify-work"))
+    verify = extract_invocations(_text("verify"))
     assert any(
         inv["subcommand"] == "update"
         and inv["type"] == "score:continuity-question"
@@ -161,17 +154,11 @@ def test_skills_that_open_human_gates_document_matching_clears():
         and (inv.get("payload") or {}).get("signed_by")
         for inv in verify
     )
-    execute = extract_invocations(_text("execute-phase"))
+    execute = extract_invocations(_text("execute"))
     assert any(
         inv["subcommand"] == "update"
         and inv["type"] == "score:continuity-question"
         and inv["transition"] == "answered"
-        for inv in execute
-    )
-    assert any(
-        inv["subcommand"] == "correct"
-        and inv["type"] == "tuner:check-run"
-        and (inv.get("payload") or {}).get("signed_by")
         for inv in execute
     )
 

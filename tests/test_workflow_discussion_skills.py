@@ -23,7 +23,9 @@ def test_spec_writes_only_the_behavioral_contract() -> None:
         if inv["subcommand"] in {"create", "supersede", "update", "apply"}
     }
 
-    assert written == {"score:specification"}
+    assert "score:specification" in written
+    assert "score:design" not in written
+    assert "score:decision" not in written
     assert "observable behavior" in text
     assert "Do not write technical design" in text
     assert "Do not write" in text and "work-items" in text

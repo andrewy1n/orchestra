@@ -1,5 +1,5 @@
 """Tests for orchestra close-batch -- the batch builder behind the
-verify-work `close` procedure.
+verify `close` procedure.
 
 The pure `build_batch` tests exercise the refusal policy directly; the
 `test_end_to_end_*` tests drive the real `canon` CLI (via the

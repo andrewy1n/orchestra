@@ -1,6 +1,6 @@
 # Task shapes (work-item + acceptance)
 
-Use from plan-phase steps 5–7. List the phase specification first:
+Use from tasks steps 5–7. List the phase specification first:
 
 ```bash
 canon list --type score:specification --where payload.phase=<current-phase-slug> --state active
@@ -17,7 +17,7 @@ and still stamp `requirements` / `requirement`. Omit `criterion` (or
 `decisions`, and `requirement`.
 
 Every `canon create` below shows one line of the plan batch. Write
-the lines through one `canon apply` (plan-phase step 9), not one by
+the lines through one `canon apply` (tasks step 9), not one by
 one. An oracle-backed acceptance carries `test_ids` and
 `oracle_hashes` in its create payload. Create it once; never update it
 afterwards to freeze.

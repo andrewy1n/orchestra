@@ -1,4 +1,4 @@
-# execute-phase mechanics
+# execute mechanics
 
 Full step-by-step mechanics. SKILL.md keeps the judgment; this file is the manual fallback and the record of every contract.
 
@@ -7,8 +7,8 @@ Full step-by-step mechanics. SKILL.md keeps the judgment; this file is the manua
 Requires `canon` and `orchestra` on PATH and a live
 orchestra store. If missing,
 follow [ensure-store.md](references/ensure-store.md) then `init` (if no goal
-for the focus) and `plan-phase`. Follow
-[kinds-and-focus.md](references/kinds-and-focus.md). Follow `verify-work`
+for the focus) and `tasks`. Follow
+[kinds-and-focus.md](references/kinds-and-focus.md). Follow `verify`
 after each task finishes (subagent return or inline).
 
 **Single-writer:** only this parent may write via `canon`.
@@ -18,7 +18,7 @@ would race `--expected-revision`).
 
 Task lifecycle is `planned -> in_progress -> done` (or `withdrawn`).
 Orchestra moves a work-item to `in_progress` (step 4) and to `done`
-(`verify-work`). The planner creates work-items.
+(`verify`). The planner creates work-items.
 `derived.ready` / `derived.wave` are engine-computed from `depends_on`
 — never write them.
 
@@ -68,7 +68,7 @@ canon list --type score:work-item --state planned \
    most one result. `current-phase-slug` is the `score:phase` for
    this effort with `lifecycle_state` `in_progress` — never
    `score:position` `scope`. If none exist, stop and point to
-   `plan-phase`. If several phases are `in_progress`, use the one
+   `tasks`. If several phases are `in_progress`, use the one
    named in context; ask if none is named.
 
    After plan review is answered and before the first wave, read
@@ -90,28 +90,26 @@ git worktree add <repo>/.worktrees/<phase-slug> phase/<phase-slug>
    When Landing is present, code writes only under the worktree and
    store writes on the primary checkout (on `main`). `.canon`
    stays on that primary checkout. Task commits exclude `.canon`.
-   When Landing is present and the phase gate holds, commit the
-   phase branch from the phase worktree and include versioned
-   `.canon` metadata that is in the worktree. When Landing is absent, a missing Landing section
+   When Landing is absent, a missing Landing section
    stays in the current checkout (incidental too); do not create a
-   branch or worktree. When Landing is absent, execute-phase does not
+   branch or worktree. When Landing is absent, execute does not
    create a `task/<phase-slug>/<task-slug>` branch. When Landing is
-   absent, execute-phase does not add a
+   absent, execute does not add a
    `<repo>/.worktrees/<phase-slug>--<task-slug>` worktree.
 3. Group results by `derived.wave`. Lower waves first; waves stay
    serial. Re-run the step-2 `list` before each wave — wave numbers
    can shift.
 
-   When Landing is present, at the start of a wave, execute-phase
+   When Landing is present, at the start of a wave, execute
    creates branch `task/<phase-slug>/<task-slug>` from the current
    `phase/<phase-slug>` tip for every task in that wave except the
    work-item that depends_on every other phase work-item. When Landing
-   is present, at the start of a wave, execute-phase adds worktree
+   is present, at the start of a wave, execute adds worktree
    `<repo>/.worktrees/<phase-slug>--<task-slug>` checked out on that
    task branch for every task in that wave except the work-item that
-   depends_on every other phase work-item. execute-phase does not
+   depends_on every other phase work-item. execute does not
    create a task branch for the work-item that depends_on every other
-   phase work-item. execute-phase does not add a task worktree for the
+   phase work-item. execute does not add a task worktree for the
    work-item that depends_on every other phase work-item. The
    work-item that depends_on every other phase work-item is dispatched
    in `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`.
@@ -230,7 +228,7 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 
    **`inline`:** this session implements with the same brief,
    orientation, and kind instructions; still writes the
-   execution-report and runs `verify-work` once in step 7. Same
+   execution-report and runs `verify` once in step 7. Same
    verification-task and Landing rules as subagent.
 
    With Landing, after each task's code lands and before verify, the
@@ -243,7 +241,7 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    than the work-item that depends_on every other phase work-item
    records that task's commit as its revision. When a task other than
    the work-item that depends_on every other phase work-item has
-   nothing to commit, execute-phase does not create an empty commit.
+   nothing to commit, execute does not create an empty commit.
    Skip when nothing to commit, no Landing, or the work-item that
    depends_on every other phase work-item. Subject `type(scope):
    summary` (`feat|fix|docs|refactor|test|chore`); body 1–2 sentences
@@ -294,7 +292,7 @@ canon create --type conductor:assignment-amendment \
 ```
 
 7. When the task finishes, the per-task Landing commit (step 5) must
-   already exist before `verify-work`. Record the evidence block
+   already exist before `verify`. Record the evidence block
    verbatim — it is the record, not raw material to cherry-pick:
 
 ```bash
@@ -304,12 +302,12 @@ canon create --type conductor:execution-report \
   --body "<the evidence block, verbatim>"
 ```
 
-   Then run `verify-work` here. verify-work for a task other than the
+   Then run `verify` here. verify for a task other than the
    work-item that depends_on every other phase work-item runs in that
    task worktree. It derives investigation / finding /
    check-run from this execution-report (not chat memory) and closes
    or leaves `in_progress`. `tdd`/`check` results come from
-   `orchestra check` (verify-work runs it). Manual/review check-runs
+   `orchestra check` (verify runs it). Manual/review check-runs
    and the suite check-run (`orchestra suite record`, subject
    `<phase-slug>-suite`) stay parent writes.
 
@@ -352,29 +350,7 @@ canon create --type score:continuity-question \
    execution-reports, return to step 3 for the closing verification
    task (do **not** write an integration-report before verification).
 
-   When no same-focus `planned`/`in_progress` work-items remain (or
-   incidental is closed), follow
-   [phase-end.md](references/phase-end.md):
 
-   closing verification → analyze → reviewer → integration-report → suite →
-   phase gate → proof packet → phase close.
-
-   When Landing is present and the phase gate holds, commit the phase
-   branch from the phase worktree. Then run `orchestra land --phase
-   <phase-slug>`. Land runs `orchestra gate` first and runs the land
-   adapter only when the gate holds. Exit 0 means landed (adapter
-   success). Exit 1 means the adapter did not succeed and a PR may
-   exist. Exit 2 means a usage, unknown phase or config error. Exit 5
-   means the gate failed and nothing was pushed. Merge stays human per `orchestra.toml`. The
-   Landing section names branch, worktree, base and repo only. On a
-   non-zero exit, stop and ask. Ask the user before you run land,
-   unless an active constraint authorizes it. Do not merge the phase
-   branch by hand. Details are in phase-end.md.
-
-   An empty task list is not proof the phase is done. Skip
-   reviewer/suite for incidental. Reopen later: kinds-and-focus,
-   Closing and reopening.
-9. Run `canon validate`.
 
 ## Record versus bind
 

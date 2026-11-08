@@ -15,9 +15,9 @@ from conftest import REPO_ROOT
 from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
-EXECUTE = SKILLS / "execute-phase" / "SKILL.md"
-VERIFY = SKILLS / "verify-work" / "SKILL.md"
-PLAN = SKILLS / "plan-phase" / "SKILL.md"
+EXECUTE = SKILLS / "execute" / "SKILL.md"
+VERIFY = SKILLS / "verify" / "SKILL.md"
+PLAN = SKILLS / "tasks" / "SKILL.md"
 
 # Command tokens, including a line break between the words and `bin/aff check`.
 # `aff check-run` names the record, not the command. `aff verdict` stays.
@@ -63,10 +63,10 @@ def test_fixture_old_aff_commands_fail_and_record_names_do_not():
 def test_skills_run_orchestra_check_and_close_batch():
     violations = scan_skills(SKILLS)
     assert not violations, "\n".join(violations)
-    for path in (EXECUTE, VERIFY, PLAN):
-        text = path.read_text()
-        assert "orchestra check" in text, path
-    verify = skill_text("verify-work")
+    assert "orchestra task land" in EXECUTE.read_text()
+    assert "orchestra check" in VERIFY.read_text()
+    assert "orchestra check" not in PLAN.read_text()
+    verify = skill_text("verify")
     assert "orchestra close-batch" in verify
     assert "orchestra verify verdict" in verify
 

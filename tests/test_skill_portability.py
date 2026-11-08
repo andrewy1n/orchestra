@@ -293,7 +293,7 @@ def test_generated_check_passes_for_the_repository():
 
 def test_execute_phase_carries_the_canonical_reviewer_prompt():
     prompt = ROOT / "agents" / "reviewer.prompt.md"
-    reference = SKILLS / "execute-phase" / "references" / "reviewer.md"
+    reference = SKILLS / "execute" / "references" / "reviewer.md"
     assert reference.is_file(), f"{reference} is missing"
     assert reference.read_bytes() == prompt.read_bytes(), f"{reference} drifted from {prompt}"
 

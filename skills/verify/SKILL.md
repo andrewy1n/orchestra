@@ -10,10 +10,14 @@ description: >-
 Requires `canon` and `orchestra` on PATH. Follow
 [ensure-store.md](references/ensure-store.md),
 [kinds-and-focus.md](references/kinds-and-focus.md), and
-[record-mechanics.md](references/record-mechanics.md). For phase closure,
+[record-mechanics.md](references/record-mechanics.md). Follow
+[assess.md](references/assess.md), [close-batch.md](references/close-batch.md),
+and [verify-mechanics.md](references/verify-mechanics.md). For phase closure,
 follow [phase-end.md](references/phase-end.md).
 
-## Task verification
+## Verify
+
+### Task verification
 
 1. Resolve the active work-item and its acceptances. Read the latest execution
    report and verify each command, test, diff, or metric it names.
@@ -45,7 +49,10 @@ When no same-focus work-item remains planned or in progress:
 4. Read `orchestra suite policy` and run the required suite under its
    configured policy. Then run `orchestra gate` and write the proof packet at
    the phase head.
-5. Close the phase only when all required terms pass. With Landing, ask before
+5. Close the phase only when all required terms pass. When Landing is present
+   and the phase gate holds, commit the phase branch from the phase worktree.
+   Then run `orchestra land --phase <phase-slug>`. On a non-zero exit, stop
+   and ask. With Landing, ask before
    `orchestra land --phase <phase-slug>` unless an active constraint already
    authorizes it. Do not push from phase close.
 6. Run `canon validate`. After close, read effort autonomy. Plan the next

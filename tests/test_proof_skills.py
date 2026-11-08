@@ -13,8 +13,8 @@ def _text(name: str) -> str:
 
 
 def test_settle_and_plan_require_proof_section():
-    settle = _text("settle-phase")
-    plan = _text("plan-phase")
+    settle = _text("spec")
+    plan = _text("tasks")
     assert "## Proof" in settle
     assert "demo" in settle and "claims" in settle and "audit-triage" in settle
     assert "## Proof" in plan
@@ -25,7 +25,7 @@ def test_settle_and_plan_require_proof_section():
 
 
 def test_execute_assembles_proof_packet():
-    text = _text("execute-phase")
+    text = _text("execute")
     assert "conductor:proof-packet" in text
     assert "## Look" in text and "## Machine" in text
     assert "## Attention" in text and "## Diff" in text
@@ -36,7 +36,7 @@ def test_execute_assembles_proof_packet():
 
 
 def test_execute_tuner_hooks_and_incidental():
-    text = _text("execute-phase")
+    text = _text("execute")
     assert ".tuner/manifest.json" in text
     assert "orchestra verify trail" in text
     assert "orchestra verify audit" in text

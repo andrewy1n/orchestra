@@ -10,7 +10,9 @@ description: >-
 Requires `canon` and `orchestra` on PATH. Follow
 [ensure-store.md](references/ensure-store.md),
 [kinds-and-focus.md](references/kinds-and-focus.md), and
-[record-mechanics.md](references/record-mechanics.md).
+[record-mechanics.md](references/record-mechanics.md). Follow
+[retry-loop.md](references/retry-loop.md) for interrupted work and
+[execute-mechanics.md](references/execute-mechanics.md) for task dispatch.
 
 ## Own
 

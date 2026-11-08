@@ -51,7 +51,7 @@ position with the new `status`; `supersede` merges the payload, so the
 other fields carry over.
 
 - **Close** only when the user says no more phases follow.
-  `execute-phase` asks when an effort's last phase is done. An effort
+  `run` asks when an effort's last phase is done. An effort
   whose phases and tasks are all done is "finished" on the dashboard,
   but it stays open until the user closes it.
 - **Reopen** when work returns to a closed effort: supersede its goal
