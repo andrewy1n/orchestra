@@ -221,6 +221,8 @@ def validate_phase_effort(record: Record, schemas: SchemaSet, index: RecordIndex
     effort_form = type_def.fields.get("effort")
     if phase_form is None or effort_form is None:
         return
+    if "ref" not in phase_form or "ref" not in effort_form:
+        return
     if "score:phase" not in ref_targets(phase_form):
         return
     if "score:effort" not in ref_targets(effort_form):

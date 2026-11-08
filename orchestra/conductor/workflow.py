@@ -34,6 +34,7 @@ class RunPreview:
     effort: str
     operation: Operation
     phases: tuple[str, ...]
+    external_dependencies: tuple[str, ...]
     requested_steps: tuple[Step, ...]
     change_token: str
 
@@ -103,6 +104,7 @@ def preview_run(
         effort,
         selected_operation,
         selection.dependency_order,
+        tuple(sorted(selection.external_dependencies)),
         requested_steps,
         token,
     )
