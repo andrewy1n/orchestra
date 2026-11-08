@@ -60,7 +60,7 @@ class Landed:
         return close.close_phase(self.project, self.repo, PHASE, states)
 
 
-def make_landed(tmp_path: Path) -> Landed:
+def make_landed(tmp_path: Path, *, shared_repo: bool = False) -> Landed:
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q", "-b", "main")
@@ -79,7 +79,7 @@ def make_landed(tmp_path: Path) -> Landed:
         str(repo / ".worktrees" / f"{PHASE}--a"),
         f"task/{PHASE}/a",
     )
-    project = make_project(tmp_path / "store")
+    project = make_project(repo if shared_repo else tmp_path / "store")
     seed_effort(project, "alpha", PHASE)
     create(
         project,
