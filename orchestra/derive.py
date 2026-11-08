@@ -26,6 +26,7 @@ ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
 QUESTION = "score:continuity-question"
 
+
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
 DORMANT_AFTER = timedelta(days=7)
 Autonomy = Literal["gated", "auto-plan", "auto-phases"]

@@ -239,6 +239,36 @@
           "optional": true
         }
       }
+    },
+    "landing": {
+      "purpose": "One pull-request landing run for a phase: the pull request, its head SHA and the CI result",
+      "lifecycle": "event",
+      "fields": {
+        "phase": {
+          "ref": "score:phase"
+        },
+        "effort": {
+          "ref": "score:effort",
+          "optional": true
+        },
+        "number": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "head_sha": {
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "success",
+            "fail",
+            "blocked",
+            "skipped"
+          ]
+        }
+      }
     }
   },
   "migrations": []

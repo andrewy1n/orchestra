@@ -130,6 +130,21 @@ class Git(CliTool):
     def add_worktree(self, path: Path | str, branch: str) -> None:
         self._checked("worktree", "add", str(path), branch)
 
+    def branches(self, prefix: str) -> tuple[str, ...]:
+        listing = self._checked(
+            "for-each-ref", "--format=%(refname:short)", f"refs/heads/{prefix}"
+        ).stdout
+        return tuple(line for line in listing.splitlines() if line)
+
+    def remove_worktree(self, path: Path | str) -> None:
+        self._checked("worktree", "remove", str(path))
+
+    def delete_branch(self, name: str) -> None:
+        self._checked("branch", "-D", name)
+
+    def branch_tip(self, name: str) -> str | None:
+        return self.resolve(f"refs/heads/{name}")
+
     def show_bytes(self, revision: str, path: str) -> bytes | None:
         self._check_version()
         argv: Sequence[str] = [self.executable, "show", f"{revision}:{path}"]

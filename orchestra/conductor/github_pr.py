@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 import re
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject
+from orchestra.conductor.landing import pull_request_body
 from orchestra.tools import CliTool, Git, ToolError, ToolNotFoundError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
@@ -40,9 +41,13 @@ class GitHubPRError(RuntimeError):
 class GitHubClient(Protocol):
     def push_branch(self, remote: str, branch: str) -> None: ...
 
+    def find_pull_request(self, head: str) -> tuple[int, str] | None: ...
+
     def create_pull_request(
         self, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]: ...
+
+    def update_pull_request(self, number: int, title: str, body: str) -> None: ...
 
     def head_sha(self, number: int) -> str: ...
 
@@ -56,6 +61,7 @@ def open_pull_request(
     base: str = "main",
     remote: str = "origin",
     title: str | None = None,
+    description: Mapping[str, str] | None = None,
     poll_interval_s: float = 10,
     timeout_s: float = 1800,
     client: GitHubClient | None = None,
@@ -92,7 +98,14 @@ def open_pull_request(
     monotonic_fn = monotonic if monotonic is not None else time.monotonic
     try:
         github.push_branch(remote, branch)
-        number, url = github.create_pull_request(branch, base, pr_title, proof_packet)
+        existing = github.find_pull_request(branch)
+        body = pull_request_body(description, proof_packet) if description else proof_packet
+        if existing is None:
+            number, url = github.create_pull_request(branch, base, pr_title, body)
+        else:
+            number, url = existing
+            if description:
+                github.update_pull_request(number, pr_title, body)
         checks = wait_for_checks(
             github,
             number,
@@ -202,6 +215,29 @@ class GitHubGh(CliTool):
     def _repository_flags(self) -> list[str]:
         return ["-R", self._repository] if self._repository else []
 
+    def find_pull_request(self, head: str) -> tuple[int, str] | None:
+        data = self._json(
+            "pr",
+            "list",
+            "--head",
+            head,
+            "--state",
+            "open",
+            "--json",
+            "number,url",
+            *self._repository_flags(),
+        )
+        if not isinstance(data, list):
+            raise GitHubPRError("gh pr list returned an unexpected shape")
+        if not data:
+            return None
+        found = data[0]
+        number = found.get("number") if isinstance(found, dict) else None
+        url = found.get("url") if isinstance(found, dict) else None
+        if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
+            raise GitHubPRError("gh pr list returned an unexpected shape")
+        return number, url
+
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         output = self._text(
             "pr",
@@ -222,6 +258,19 @@ class GitHubGh(CliTool):
             raise GitHubPRError("gh pr create printed no pull request URL")
         return self.pull_request(lines[-1])
 
+    def update_pull_request(self, number: int, title: str, body: str) -> None:
+        self._text(
+            "pr",
+            "edit",
+            str(number),
+            "--title",
+            title,
+            "--body-file",
+            "-",
+            *self._repository_flags(),
+            input=body,
+        )
+
     def pull_request(self, ref: str) -> tuple[int, str]:
         data = self._json("pr", "view", ref, "--json", "number,url", *self._repository_flags())
         if not isinstance(data, dict):
@@ -231,6 +280,16 @@ class GitHubGh(CliTool):
         if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
             raise GitHubPRError("gh pr view returned an unexpected shape")
         return number, url
+
+    def pull_request_state(self, number: int) -> tuple[str, str]:
+        data = self._json(
+            "pr", "view", str(number), "--json", "state,headRefOid", *self._repository_flags()
+        )
+        state = data.get("state") if isinstance(data, dict) else None
+        sha = data.get("headRefOid") if isinstance(data, dict) else None
+        if not isinstance(state, str) or not state or not isinstance(sha, str) or not sha:
+            raise GitHubPRError("gh pr view returned an unexpected shape")
+        return state, sha
 
     def head_sha(self, number: int) -> str:
         data = self._json(

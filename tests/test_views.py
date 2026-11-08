@@ -425,3 +425,49 @@ def test_r11_cli_handoff_keeps_ids_latest_proof_and_backlog(project, monkeypatch
     assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo _(id: rec-" in out.out
     assert "### Backlog\n- **later-idea**: alpha; open _(id: rec-" in out.out
     assert ".canon/" not in out.out
+
+
+def _landed_phase(project: Project, result: str, number: int = 7) -> Record:
+    phase = project.resolve("score:phase", "p1")
+    assert "body" in phase
+    project.update(phase["id"], transition="in_progress", body=phase["body"] + "\n## Landing\n")
+    task = work_item(project, "build-it")
+    project.update(task["id"], transition="in_progress")
+    project.update(task["id"], transition="done")
+    create(
+        project,
+        "conductor:landing",
+        "p1",
+        {
+            "phase": "p1",
+            "effort": "alpha",
+            "number": number,
+            "url": f"https://github.com/o/r/pull/{number}",
+            "head_sha": "abc123",
+            "result": result,
+        },
+    )
+    return phase
+
+
+def test_handoff_shows_awaiting_merge(project: Project) -> None:
+    phase = _landed_phase(project, "success")
+
+    text = render(project, "handoff", effort="alpha")
+
+    assert "Awaiting merge: PR 7" in text
+    assert "https://github.com/o/r/pull/7" in text
+    assert "orchestra close --phase p1" in text
+    sections = dict(views.hook_handoff_sections(views.load_records(project)))
+    assert "Awaiting merge: PR 7" in sections["alpha"]
+    project.update(phase["id"], transition="done")
+    assert "Awaiting merge" not in render(project, "handoff")
+
+
+def test_handoff_omits_awaiting_merge_while_ci_fails(project: Project) -> None:
+    _landed_phase(project, "fail")
+
+    text = render(project, "handoff", effort="alpha")
+
+    assert "Awaiting merge" not in text
+    assert "Run `orchestra gate p1`" in text

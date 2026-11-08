@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -18,6 +19,8 @@ class LandRequest:
     poll_interval_s: float
     timeout_s: float
     config: JsonObject
+    title: str = ""
+    description: Mapping[str, str] = field(default_factory=lambda: {})
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,8 @@ class GitHubPRAdapter:
             poll_interval_s=request.poll_interval_s,
             timeout_s=request.timeout_s,
             adapter_config=request.config,
+            title=request.title or None,
+            description=request.description,
         )
         return LandingResult(
             result=result.result,
@@ -81,6 +86,8 @@ def dispatch_land(
     remote: str = "origin",
     poll_interval_s: float = 10,
     timeout_s: float = 1800,
+    title: str = "",
+    description: Mapping[str, str] | None = None,
 ) -> LandingResult:
     project_root = Path(root)
     config: ProjectConfig = load_project_config(project_root)
@@ -111,6 +118,8 @@ def dispatch_land(
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
             config=dict(config.land_config),
+            title=title,
+            description=dict(description or {}),
         ),
     )
     if not isinstance(result, LandingResult):

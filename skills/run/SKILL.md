@@ -11,7 +11,9 @@ Requires `orchestra` on PATH and a live store. The playbook composes the
 separate `spec`, `design`, `tasks`, `execute`, and `verify` skills.
 Use [retry-loop.md](references/retry-loop.md) and
 [execute-mechanics.md](references/execute-mechanics.md) during execution.
-Use [phase-end.md](references/phase-end.md) during verification.
+Use [phase-end.md](references/phase-end.md) during verification, land, and close.
+When `[land] adapter` is `github-pr`, also use
+[land-github-pr.md](references/land-github-pr.md) for the CI repair loop and close.
 
 ## Built-in operations
 

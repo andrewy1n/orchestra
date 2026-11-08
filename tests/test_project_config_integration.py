@@ -258,6 +258,12 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
         def push_branch(self, remote: str, branch: str) -> None:
             self.events.append(f"push:{remote}:{branch}")
 
+        def find_pull_request(self, head: str) -> tuple[int, str] | None:
+            return None
+
+        def update_pull_request(self, number: int, title: str, body: str) -> None:
+            self.events.append(f"update:{number}:{title}")
+
         def create_pull_request(
             self, head: str, base: str, title: str, body: str
         ) -> tuple[int, str]:
@@ -282,7 +288,14 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
     result = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
 
     assert result == 0
-    assert github.body == packet_body
+    assert github.body.startswith("## What this PR is for\n\nProject config policy is required.\n")
+    assert "\n## Approach\n\nUse a configured adapter.\n" in github.body
+    assert "\n## Exit criteria\n\nThe adapter reports completed CI.\n" in github.body
+    assert github.body.endswith(
+        "\n## Proof packet\n\n"
+        "### Look\nOpen the final phase proof.\n\n### Machine\nproof id\n\n"
+        "### Attention\nnone\n\n### Diff\n1 file changed\n"
+    )
     assert github.poll == 2
     assert all("merge" not in event for event in github.events)
     output = capsys.readouterr().out
