@@ -107,8 +107,8 @@ To install by hand, copy or symlink each generated skill directory into the
 host's skills directory: `engage`, `init`, `spec`, `design`, `tasks`,
 `execute`, `verify`, `run`, `triage-ideas`, and `analyze-sessions`. Every directory is
 self-contained: its `SKILL.md` and its `references/` folder travel together.
-The generated reference copies include the shared docs each skill uses, so no
-shared file needs to sit two levels above a `SKILL.md`. Install canon with `uv tool install` (above)
+The generated reference copies include the shared docs each skill uses. Each
+skill directory contains its required references. Install canon with `uv tool install` (above)
 so `canon` is on PATH.
 
 ## Install with the CLI

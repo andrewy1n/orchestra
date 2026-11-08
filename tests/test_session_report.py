@@ -151,12 +151,13 @@ def records_report(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         project.create(
             record_type="score:effort", subject=effort, payload={"goal": effort, "kind": "repair"}
         )
-    project.create(
-        record_type="score:phase",
-        subject="phase",
-        payload={"title": "Phase", "ordinal": 1, "effort": "eff-a"},
-        body="## Problem\nA\n## Approach\nB\n## Exit criteria\nC",
-    )
+    for ordinal, effort in enumerate(("eff-a", "eff-b"), start=1):
+        project.create(
+            record_type="score:phase",
+            subject=f"phase-{effort}",
+            payload={"title": "Phase", "ordinal": ordinal, "effort": effort},
+            body="## Problem\nA\n## Approach\nB\n## Exit criteria\nC",
+        )
     for minute, task, effort in (("10", "task-one", "eff-a"), ("40", "task-two", "eff-b")):
         timestamp = f"2026-01-01T00:{minute}:00Z"
         monkeypatch.setattr(record, "now", lambda timestamp=timestamp: timestamp)
@@ -165,7 +166,7 @@ def records_report(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             subject=task,
             payload={
                 "title": task,
-                "phase": "phase",
+                "phase": f"phase-{effort}",
                 "effort": effort,
                 "assignee": "",
                 "kind": "repair",
