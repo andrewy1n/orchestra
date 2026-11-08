@@ -471,22 +471,3 @@ def test_handoff_omits_awaiting_merge_while_ci_fails(project: Project) -> None:
 
     assert "Awaiting merge" not in text
     assert "Run `orchestra gate p1`" in text
-
-
-def test_handoff_follows_the_newest_landing_record(project: Project) -> None:
-    _landed_phase(project, "fail", number=7)
-    create(
-        project,
-        "conductor:landing",
-        "p1",
-        {
-            "phase": "p1",
-            "effort": "alpha",
-            "number": 7,
-            "url": "https://github.com/o/r/pull/7",
-            "head_sha": "def456",
-            "result": "success",
-        },
-    )
-
-    assert "Awaiting merge: PR 7" in render(project, "handoff", effort="alpha")

@@ -289,3 +289,15 @@ def test_branch_tip_resolves_the_local_branch(tmp_path: Path) -> None:
 def test_branch_tip_is_none_for_a_missing_branch(tmp_path: Path) -> None:
     run = FakeGitRun(by_subcommand={"rev-parse": (1, "")})
     assert Git(tmp_path, run=run).branch_tip("gone") is None
+
+
+def test_branches_lists_local_branches_under_a_prefix(tmp_path: Path) -> None:
+    argv = ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/task/p1/")
+    run = scripted(Git, {argv: "task/p1/a\ntask/p1/b\n"})
+    assert Git(tmp_path, run=run).branches("task/p1/") == ("task/p1/a", "task/p1/b")
+
+
+def test_branches_is_empty_when_none_match(tmp_path: Path) -> None:
+    argv = ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/task/p1/")
+    run = scripted(Git, {argv: ""})
+    assert Git(tmp_path, run=run).branches("task/p1/") == ()

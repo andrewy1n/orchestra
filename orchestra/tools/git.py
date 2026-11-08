@@ -130,6 +130,12 @@ class Git(CliTool):
     def add_worktree(self, path: Path | str, branch: str) -> None:
         self._checked("worktree", "add", str(path), branch)
 
+    def branches(self, prefix: str) -> tuple[str, ...]:
+        listing = self._checked(
+            "for-each-ref", "--format=%(refname:short)", f"refs/heads/{prefix}"
+        ).stdout
+        return tuple(line for line in listing.splitlines() if line)
+
     def remove_worktree(self, path: Path | str) -> None:
         self._checked("worktree", "remove", str(path))
 

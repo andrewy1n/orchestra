@@ -12,7 +12,17 @@ from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
+from orchestra.conductor import (
+    autonomy,
+    close,
+    gate,
+    land,
+    land_task,
+    reviewer,
+    suite,
+    task_close,
+    wave,
+)
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
@@ -21,6 +31,7 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
+from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
@@ -428,6 +439,22 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
     land.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+    close = sub.add_parser(
+        "close",
+        help="Report a landed phase's pull request and check that its worktrees and branches can go",
+    )
+    close.add_argument("--phase", required=True, help="Phase slug")
+    close.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    close.add_argument(
         "--store",
         default=None,
         metavar="DIR",
@@ -1091,6 +1118,47 @@ def _cmd_land(args: argparse.Namespace) -> int:
     return 0 if result.result == "success" else 1
 
 
+def _cmd_close(args: argparse.Namespace) -> int:
+    work = _cwd(args).resolve()
+    try:
+        location = resolve_location(args.store, work)
+        project = location.open()
+        repo = close.primary_checkout(work)
+        result = close.close_phase(project, repo, args.phase, close.github_states(repo))
+    except (
+        close.CloseError,
+        GitHubPRError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+        ToolError,
+        ValueError,
+    ) as exc:
+        print(f"orchestra close: {exc}", file=sys.stderr)
+        return 2
+    _print_json(
+        {
+            "ok": not result.refusals,
+            "op": "close",
+            "phase": result.phase,
+            "pull_request": {
+                "number": result.number,
+                "url": result.url,
+                "state": result.state,
+                "head_sha": result.head_sha,
+            },
+            "ready": result.ready,
+            "refusals": list(result.refusals),
+            "message": result.message,
+        }
+    )
+    for line in result.refusals:
+        print(f"orchestra close: {line}", file=sys.stderr)
+    return 1 if result.refusals else 0
+
+
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
     values: dict[str, list[str]] = {}
     index = 0
@@ -1346,6 +1414,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_suite_record(args)
     if args.command == "land":
         return _cmd_land(args)
+    if args.command == "close":
+        return _cmd_close(args)
     if args.command == "store":
         if args.action == "recover-evidence":
             from orchestra.canon.validation import ValidationError

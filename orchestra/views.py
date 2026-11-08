@@ -13,9 +13,9 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
+from orchestra.conductor.landing import latest_landing
 from orchestra.derive import (
     effort_dormant,
-    latest_landing,
     phase_progress,
     release_ready,
     requirement_status,
