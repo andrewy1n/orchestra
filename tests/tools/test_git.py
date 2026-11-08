@@ -259,3 +259,33 @@ def test_merge_result_carries_output(tmp_path: Path) -> None:
     fake = FakeGitRun(by_subcommand={"merge": (1, "merge out"), "ls-files": (0, "")})
     result = Git(tmp_path, run=fake).merge("topic")
     assert result == MergeResult(False, (), "merge out")
+
+
+def test_remove_worktree_never_forces(tmp_path: Path) -> None:
+    run = scripted(Git, {("git", "worktree", "remove", "/wt/feat"): ""})
+    Git(tmp_path, run=run).remove_worktree(Path("/wt/feat"))
+    assert run.calls[-1] == ("git", "worktree", "remove", "/wt/feat")
+
+
+def test_remove_worktree_failure_raises(tmp_path: Path) -> None:
+    run = FakeGitRun(by_subcommand={"worktree": (128, "contains modified or untracked files")})
+    with pytest.raises(ToolError):
+        Git(tmp_path, run=run).remove_worktree(Path("/wt/feat"))
+
+
+def test_delete_branch_forces_the_delete(tmp_path: Path) -> None:
+    run = scripted(Git, {("git", "branch", "-D", "feat"): ""})
+    Git(tmp_path, run=run).delete_branch("feat")
+    assert run.calls[-1] == ("git", "branch", "-D", "feat")
+
+
+def test_branch_tip_resolves_the_local_branch(tmp_path: Path) -> None:
+    tip = "a" * 40
+    argv = ("git", "rev-parse", "--verify", "--quiet", "refs/heads/feat^{commit}")
+    run = scripted(Git, {argv: f"{tip}\n"})
+    assert Git(tmp_path, run=run).branch_tip("feat") == tip
+
+
+def test_branch_tip_is_none_for_a_missing_branch(tmp_path: Path) -> None:
+    run = FakeGitRun(by_subcommand={"rev-parse": (1, "")})
+    assert Git(tmp_path, run=run).branch_tip("gone") is None

@@ -301,3 +301,35 @@ def test_push_branch_reports_timeout_cause(tmp_path: Path, monkeypatch: pytest.M
         GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
     assert "timed out" in str(info.value)
     assert "not found" not in str(info.value)
+
+
+PR_STATE_ARGV = ("gh", "pr", "view", "7", "--json", "state,headRefOid")
+
+
+def test_pull_request_state_runs_gh_pr_view(tmp_path: Path) -> None:
+    run = scripted(
+        GitHubGh, {PR_STATE_ARGV: json.dumps({"state": "MERGED", "headRefOid": "abc123"})}
+    )
+
+    state = GitHubGh(tmp_path, run=run).pull_request_state(7)
+
+    assert state == ("MERGED", "abc123")
+    assert run.calls[-1] == PR_STATE_ARGV
+
+
+def test_pull_request_state_passes_the_repository_flag(tmp_path: Path) -> None:
+    argv = (*PR_STATE_ARGV, "-R", "acme/widgets")
+    run = scripted(GitHubGh, {argv: json.dumps({"state": "OPEN", "headRefOid": "def456"})})
+
+    state = GitHubGh(
+        tmp_path, "origin", {"repository": "acme/widgets"}, run=run
+    ).pull_request_state(7)
+
+    assert state == ("OPEN", "def456")
+
+
+def test_pull_request_state_rejects_an_unexpected_shape(tmp_path: Path) -> None:
+    run = scripted(GitHubGh, {PR_STATE_ARGV: json.dumps({"state": "MERGED"})})
+
+    with pytest.raises(GitHubPRError, match="unexpected shape"):
+        GitHubGh(tmp_path, run=run).pull_request_state(7)
