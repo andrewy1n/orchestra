@@ -33,6 +33,7 @@ SKILL_SHARED_DOCS = {
     "execute-mechanics.md": ("execute", "run"),
     "record-mechanics.md": ("tasks", "execute", "verify", "run"),
     "phase-end.md": ("verify", "run"),
+    "land-github-pr.md": ("verify", "run"),
     "planning-mechanics.md": ("tasks",),
     "retry-loop.md": ("execute", "run", "verify"),
     "verify-mechanics.md": ("verify",),

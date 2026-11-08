@@ -225,7 +225,7 @@ merge = "human"
 repository = "acme/orchestra"
 ```
 
-The built-in GitHub adapter uses the authenticated `gh` CLI. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
+The built-in GitHub adapter uses the authenticated `gh` CLI. `orchestra close` and the session start close sweep also need this adapter: they read the pull request state through `gh`. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
 
 Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
 

@@ -6,11 +6,11 @@ import re
 
 from conftest import REPO_ROOT
 
-PHASE_END = REPO_ROOT / "shared/phase-end.md"
+GUIDE = REPO_ROOT / "shared/land-github-pr.md"
 
 
 def _repair_loop() -> str:
-    text = PHASE_END.read_text(encoding="utf-8")
+    text = GUIDE.read_text(encoding="utf-8")
     start = text.find("\n### CI repair loop\n")
     if start == -1:
         return ""
