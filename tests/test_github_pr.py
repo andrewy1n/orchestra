@@ -518,6 +518,12 @@ def test_land_cli_reports_pull_request_and_final_checks(
             assert record_type == "conductor:proof-packet"
             return [packet]
 
+        def create(self, *, record_type: str, subject: str, payload: JsonObject) -> Record:
+            assert record_type == "conductor:landing"
+            assert subject == "project-config"
+            assert payload["number"] == 42
+            return packet
+
     def fake_open_pull_request(
         root: Path,
         proof_packet: str,

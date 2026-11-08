@@ -11,7 +11,7 @@ from pathlib import Path
 from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
@@ -1047,6 +1047,18 @@ def _cmd_land(args: argparse.Namespace) -> int:
             poll_interval_s=args.poll_interval,
             timeout_s=args.timeout,
         )
+        if result.result != "skipped":
+            landing: JsonObject = {
+                "phase": args.phase,
+                "number": result.number,
+                "url": result.url,
+                "head_sha": result.head_sha,
+                "result": result.result,
+            }
+            effort = packet["payload"].get("effort")
+            if isinstance(effort, str) and effort:
+                landing["effort"] = effort
+            project.create(record_type="conductor:landing", subject=args.phase, payload=landing)
     except (
         GitHubPRError,
         LookupError,
