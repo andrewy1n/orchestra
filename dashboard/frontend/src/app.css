@@ -1318,3 +1318,20 @@ a.lrow {
 	text-transform: capitalize;
 	color: var(--muted-foreground);
 }
+
+.hub-panels {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16px;
+	margin: 16px 0;
+}
+
+.hub-panel h3 {
+	margin: 8px 0 2px;
+}
+
+@media (max-width: 900px) {
+	.hub-panels {
+		grid-template-columns: 1fr;
+	}
+}
