@@ -204,13 +204,12 @@ export function breadcrumbParts(
 	areas: AreaView[],
 	selected = "",
 ): CrumbPart[] {
-	const product: CrumbPart = { label: "Product", href: "#/" };
+	const product: CrumbPart = { label: "Product", href: "#/areas" };
 	const finish = (parts: CrumbPart[]): CrumbPart[] =>
 		parts.map((part, index) =>
 			index === parts.length - 1 ? { label: part.label } : part,
 		);
-	if (route.name === "home") return finish([product]);
-	if (route.name === "areas") return finish([product, { label: "Areas" }]);
+	if (route.name === "home" || route.name === "areas") return [];
 	if (route.name === "area") {
 		const subject = areaSubject(route);
 		const title = areas.find((area) => area.subject === subject)?.title;

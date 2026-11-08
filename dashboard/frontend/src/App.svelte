@@ -12,6 +12,7 @@
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
   import StatusBar from "$lib/screens/StatusBar.svelte";
+  import TopTabs from "$lib/screens/TopTabs.svelte";
   import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
   import { bindHub } from "$lib/state/hub.svelte";
@@ -76,9 +77,9 @@
 <div class="app" inert={target || overlay.pendingWrite ? true : undefined}>
   <header class="topbar">
     <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
+    <TopTabs />
     <div class="crumbs" aria-live="polite"><Breadcrumb /></div>
     <div class="top-actions">
-      <a class="top-link" data-nav="areas" href="#/areas">Areas</a>
       <button
         type="button"
         class="theme-switch"

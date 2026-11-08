@@ -13,11 +13,19 @@
 </script>
 
 <section class="hub" data-hub>
-  <h1 class="text-xl font-semibold">Work</h1>
+  <header class="hub-head">
+    <h1 class="hub-h1">Work</h1>
+  </header>
+  {#if hub.error}
+    <p class="hub-status" data-hub-status role="alert">{hub.error}</p>
+  {:else if !hub.data}
+    <p class="hub-status" data-hub-status>Loading work…</p>
+  {/if}
   {#if hub.data}
+    <h2 class="hub-section">Work next</h2>
     <WorkNext items={hub.data.work_next} />
     {#if empty}
-      <p class="meta" data-hub-empty>Nothing is open.</p>
+      <p class="hub-status" data-hub-empty>Nothing is open.</p>
     {:else}
       <div class="hub-panels">
         {#if hub.data.needs_you.length > 0}
@@ -32,5 +40,4 @@
       </div>
     {/if}
   {/if}
-  <a href="#/areas">Areas</a>
 </section>

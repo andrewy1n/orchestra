@@ -1,20 +1,20 @@
 <script lang="ts">
-  import { Badge } from "$lib/components/ui/badge/index.js";
   import type { HubItem } from "../../api-types";
-  import { chipVariant } from "./chipVariant";
+  import { firstSentence } from "../../hubText";
+  import HubTag from "./HubTag.svelte";
 
   let { items }: { items: HubItem[] } = $props();
 </script>
 
 <div class="work-next" data-work-next>
   {#each items as item (item.href)}
-    <a class="lrow clickable" href={item.href}>
-      <Badge variant={chipVariant(item.running ? "ok" : "accent")}>{item.kind}</Badge>
-      <span class="meta">{item.effort}</span>
-      <span class="text">
-        <strong>{item.title}</strong>{#if item.step}<span class="meta"> · {item.step}</span>{/if}
+    <a class="hub-row" href={item.href}>
+      <HubTag kind={item.kind} running={item.running} />
+      <span class="hub-main">
+        <span class="hub-title" title={item.title}>{firstSentence(item.title)}</span>
+        <span class="hub-sub">{item.effort}{#if item.step}{" · "}{item.step}{/if}</span>
       </span>
-      <span class="meta" data-reason>{item.reason}</span>
+      <span class="hub-reason" data-reason>{item.reason}</span>
     </a>
   {/each}
 </div>
