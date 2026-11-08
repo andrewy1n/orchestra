@@ -546,6 +546,36 @@ def suite_pass_at_head(
     return False
 
 
+def _payload_text(run: Record, key: str) -> str:
+    value = run["payload"].get(key)
+    return value if isinstance(value, str) else ""
+
+
+def suite_ready_for_review(
+    policy: SuitePolicy,
+    check_runs: Sequence[Record],
+    *,
+    phase_slug: str,
+    phase_head: str,
+) -> str:
+    """Return why the reviewer may not start yet, or an empty string."""
+    if not policy.run_locally:
+        return ""
+    subject = suite_subject(phase_slug)
+    at_head = [
+        run
+        for run in check_runs
+        if _payload_text(run, "evidence_kind") == EVIDENCE_KIND
+        and subject in {run["subject"], _payload_text(run, "criterion_id")}
+        and _revision_matches(_payload_text(run, "revision"), phase_head)
+    ]
+    if not at_head:
+        return f"no {subject} check-run at {phase_head}"
+    if policy.blocks_merge and not any(_payload_text(run, "result") == "pass" for run in at_head):
+        return f"{subject} check-run at {phase_head} did not pass"
+    return ""
+
+
 def phase_suite_gate_holds(
     *,
     acceptances: Sequence[Mapping[str, JsonValue]],

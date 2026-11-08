@@ -20,7 +20,10 @@ Every `canon create` below shows one line of the plan batch. Write
 the lines through one `canon apply` (tasks step 9), not one by
 one. An oracle-backed acceptance carries `test_ids` and
 `oracle_hashes` in its create payload. Create it once; never update it
-afterwards to freeze.
+afterwards to freeze. Follow
+[verification-policy.md](references/verification-policy.md) and stamp
+the resolved `oracle_policy` on every acceptance. A selected frozen
+acceptance carries `test_ids` and `oracle_hashes` in its create payload.
 
 ## Independent task
 
@@ -41,15 +44,15 @@ R2: <observable behavior>
 
 canon create --type score:acceptance \
   --subject "<task-slug>" \
-  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1"}'
 
 canon create --type score:acceptance \
   --subject "<task-slug>-perf" \
-  --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R2>","requirement":"R2"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command that proves R2>","requirement":"R2"}'
 ```
 
-Drop `test_ids` and `oracle_hashes` for an acceptance that is not
-oracle-backed. Drop the second acceptance when there is only one
+For selected frozen acceptances, use the complete example in
+[oracle-author.md](references/oracle-author.md). Ordinary tdd needs no freeze fields. Drop the second acceptance when there is only one
 requirement. A task needs at least one `score:work-item` and one
 `score:acceptance`.
 
@@ -58,6 +61,8 @@ incidental). Set `executor` to `inline` or `subagent` (same within a
 wave). Every new work-item includes `size` and `estimate_minutes`.
 `method` is `tdd`, `check`, or `manual`; `verify_command` is the
 literal command (empty string for `manual` with no script).
+Include the project's affected compatibility tests in the implementation
+task's checks when it changes a shared contract or generated files.
 
 - `repair` — `verify_command` proves repro-gone plus a regression
   check, not "we investigated." Diagnose happens at execute/verify.
@@ -69,8 +74,10 @@ literal command (empty string for `manual` with no script).
 
 ## Dependent task
 
-Needs another same-phase task done first. Create the prerequisite
-first, then list its subject in `depends_on`:
+Needs another same-phase task done first. Two tasks that must rewrite
+the same function are dependent: the later one lists the earlier one in
+`depends_on`. Create the prerequisite first, then list its subject in
+`depends_on`:
 
 ```bash
 canon create --type score:work-item \
@@ -87,7 +94,7 @@ R2: <observable behavior>
 
 canon create --type score:acceptance \
   --subject "<task-slug>" \
-  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R1"}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R1"}'
 ```
 
 ## Verification task
@@ -101,10 +108,12 @@ that runs the whole `tests` tree, or `tests/dashboard/test_web_dashboard.py`
 without a `-k` filter for this phase, is not a verification
 acceptance.
 
+Use distinct exit requirements, such as R3 and R4 below. Do not attach a downstream acceptance to a prerequisite task's requirement: that prerequisite cannot close until all its acceptances pass.
+
 ```bash
 canon create --type score:work-item \
   --subject "verify-<phase-slug>" \
-  --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
+  --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<effort-slug>","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
 
 Prove the phase exit criteria hold together: run the integration
@@ -116,11 +125,11 @@ check through the real entry point, then every other phase check.
 
 canon create --type score:acceptance \
   --subject "verify-<phase-slug>" \
-  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R1"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<integration test command>","requirement":"R3"}'
 
 canon create --type score:acceptance \
   --subject "verify-<phase-slug>-<criterion-suffix>" \
-  --payload '{"method":"check","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R2"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<effort-slug>","verify_command":"<command>","requirement":"R4"}'
 ```
 
 A task that later joins the phase gets a `depends_on` edge on the

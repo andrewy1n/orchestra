@@ -29,8 +29,9 @@ phase, write a `score:specification` and hand off to design. A light phase
 writes no `score:specification` and no `score:design`. Its phase body
 has `## Requirements`, `## Proof`, and `## Landing`. Proof uses `demo`,
 `commands`, `claims`, or `audit-triage`. Write a decision only when the user
-picked between options. Verification, the reviewer, frozen oracles, and
-red-first stay the same.
+picked between options. Verification, the reviewer, selected frozen oracles,
+and TDD red-first stay the same. Follow
+[verification-policy.md](references/verification-policy.md).
 
 ## Steps
 

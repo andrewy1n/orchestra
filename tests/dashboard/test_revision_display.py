@@ -14,7 +14,7 @@ def test_canon_revision_is_not_labeled_as_a_git_revision(
     store: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(approval, "_git_head", lambda root: "abcdef0123456789")
+    monkeypatch.setattr(approval, "_head_sha", lambda root: "abcdef0123456789")
     target = open_store(store, store=store / ".canon")
     target.create(
         record_type="score:effort",
@@ -71,7 +71,7 @@ def test_missing_head_keeps_unknown_revision_label(
     store: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(approval, "_git_head", lambda root: "")
+    monkeypatch.setattr(approval, "_head_sha", lambda root: "")
     target = open_store(store, store=store / ".canon")
     target.create(
         record_type="score:effort",

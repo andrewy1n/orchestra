@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
+from orchestra.conductor.check import run_check
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.tools import Git, ToolError
 
 EXECUTORS = ("inline", "subagent")
 _LIVE = ("planned", "in_progress", "done")
@@ -36,41 +38,26 @@ class WaveStart:
 
 
 def repo_root(cwd: Path) -> Path:
-    result = run_git(
-        cwd,
-        "rev-parse",
-        "--path-format=absolute",
-        "--git-common-dir",
-        capture_output=True,
-        text=True,
-    )
+    result = Git(cwd).run("rev-parse", "--path-format=absolute", "--git-common-dir")
     if result.returncode != 0:
         raise WaveError(f"not a git repository: {cwd}")
     return Path(result.stdout.strip()).parent
 
 
-def _git(cwd: Path, *args: str) -> str:
-    result = run_git(cwd, *args, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise WaveError(
-            f"git {' '.join(args)} failed: {result.stderr.strip() or result.stdout.strip()}"
-        )
-    return result.stdout.strip()
+def _wave_error(error: ToolError) -> WaveError:
+    detail = error.stderr.strip() or str(error)
+    return WaveError(f"git {' '.join(error.argv[1:])} failed: {detail}")
+
+
+def _git_text(cwd: Path, *args: str) -> str:
+    try:
+        return Git(cwd).text(*args)
+    except ToolError as error:
+        raise _wave_error(error) from error
 
 
 def _branch_exists(repo: Path, branch: str) -> bool:
-    return (
-        run_git(
-            repo,
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            f"refs/heads/{branch}",
-            capture_output=True,
-            text=True,
-        ).returncode
-        == 0
-    )
+    return Git(repo).resolve(f"refs/heads/{branch}") is not None
 
 
 def has_landing(phase_record: Record) -> bool:
@@ -145,16 +132,19 @@ def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path,
     branch = f"task/{phase}/{item['subject']}"
     tree = repo / ".worktrees" / f"{phase}--{item['subject']}"
     if not _branch_exists(repo, branch):
-        _git(repo, "branch", branch, phase_branch)
+        try:
+            Git(repo).create_branch(branch, phase_branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
     if not tree.exists():
-        _git(repo, "worktree", "add", str(tree), branch)
-    contains = run_git(
-        tree, "merge-base", "--is-ancestor", phase_branch, "HEAD", capture_output=True, text=True
-    )
-    if contains.returncode != 0:
-        merged = run_git(tree, "merge", "--no-edit", phase_branch, capture_output=True, text=True)
-        if merged.returncode != 0:
-            raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
+        try:
+            Git(repo).add_worktree(tree, branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
+    task_git = Git(tree)
+    behind = task_git.run("merge-base", "--is-ancestor", phase_branch, "HEAD").returncode != 0
+    if behind and not task_git.merge(phase_branch).clean:
+        raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
     return tree, branch
 
 
@@ -190,7 +180,7 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
 
 
 def worktree_root(cwd: Path) -> Path:
-    result = run_git(cwd, "rev-parse", "--show-toplevel", capture_output=True, text=True)
+    result = Git(cwd).run("rev-parse", "--show-toplevel")
     if result.returncode != 0:
         raise WaveError(f"not a git worktree: {cwd}")
     return Path(result.stdout.strip())
@@ -289,30 +279,140 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
-        already = run_git(
-            repo,
-            "merge-base",
-            "--is-ancestor",
-            branch,
-            phase_branch,
-            capture_output=True,
-            text=True,
-        )
-        if already.returncode == 0:
+        if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
             continue
         acceptances = _acceptances(records, task, phase)
-        tip = _git(repo, "rev-parse", branch)
+        tip = Git(repo).resolve(branch)
+        if tip is None:
+            raise WaveError(f"cannot resolve task branch {branch}")
         if not acceptances or not all(_passes(records, a, tip) for a in acceptances):
             skipped.append((task, "checks did not pass"))
             continue
-        result = run_git(phase_tree, "merge", "--no-edit", branch, capture_output=True, text=True)
-        if result.returncode != 0:
-            unmerged = run_git(phase_tree, "ls-files", "--unmerged", capture_output=True, text=True)
-            if not unmerged.stdout.strip():
-                raise WaveError(
-                    f"git merge {branch} failed: {result.stderr.strip() or result.stdout.strip()}"
-                )
+        result = Git(phase_tree).merge(branch)
+        if not result.clean:
+            if not result.unmerged:
+                raise WaveError(f"git merge {branch} failed: {result.output.strip()}")
             question = _block(project, phase_rec, phase, f"merge:{task}")
             return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
         merged.append(task)
     return WaveEnd(phase, tuple(merged), tuple(skipped), "", "")
+
+
+@dataclass(frozen=True)
+class WaveResolve:
+    phase: str
+    task: str
+    refusals: tuple[str, ...]
+    commit: str = ""
+    checks: tuple[tuple[str, int], ...] = ()
+
+    @property
+    def ready(self) -> bool:
+        return not self.refusals
+
+
+_CONFLICT_MARKER = re.compile(r"^(<<<<<<<|>>>>>>>)( |$)")
+
+
+def _lines(output: str) -> list[str]:
+    return [line for line in output.splitlines() if line]
+
+
+def _marker_paths(tree: Path, paths: list[str]) -> list[str]:
+    found: list[str] = []
+    for path in paths:
+        target = tree / path
+        if not target.is_file():
+            continue
+        text = target.read_text(encoding="utf-8", errors="replace")
+        if any(_CONFLICT_MARKER.match(line) for line in text.splitlines()):
+            found.append(path)
+    return found
+
+
+def _guard_refusals(
+    project: Project, phase_rec: Record, phase: str, task: str, tree: Path
+) -> list[str]:
+    refusals: list[str] = []
+    scope = f"merge:{task}"
+    if _open_question(project, _effort(phase_rec, phase), phase, scope) is None:
+        refusals.append(f"no open {scope} question")
+    unmerged = _lines(_git_text(tree, "diff", "--name-only", "--diff-filter=U"))
+    if unmerged:
+        refusals.append(
+            "unmerged paths remain: " + ", ".join(unmerged) + " (edit them, then run git add)"
+        )
+    changed = _lines(_git_text(tree, "diff", "--name-only", "HEAD"))
+    markers = _marker_paths(tree, sorted({*changed, *unmerged}))
+    if markers:
+        refusals.append("conflict marker remains in: " + ", ".join(markers))
+    return refusals
+
+
+def _merged_tasks(repo: Path, phase: str, items: list[Record], task: str) -> list[str]:
+    merged: list[str] = []
+    for item in items:
+        slug = item["subject"]
+        branch = f"task/{phase}/{slug}"
+        if slug == task or closes_phase(item, items) or not _branch_exists(repo, branch):
+            continue
+        if Git(repo).is_ancestor(branch, f"phase/{phase}"):
+            merged.append(slug)
+    return merged
+
+
+def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
+    phase_rec = phase_record(project.records(), phase)
+    tree = repo / ".worktrees" / phase
+    from orchestra.conductor.land_task import acceptances_for
+
+    refusals = _guard_refusals(project, phase_rec, phase, task, tree)
+    if refusals:
+        return WaveResolve(phase, task, tuple(refusals))
+    _git_text(tree, "add", "-A", "--", ".", ":!.canon")
+    branch = f"task/{phase}/{task}"
+    merged_tree = _git_text(tree, "write-tree")
+    commit = _git_text(
+        tree,
+        "commit-tree",
+        merged_tree,
+        "-p",
+        "HEAD",
+        "-p",
+        branch,
+        "-m",
+        f"Merge branch '{branch}' into phase/{phase}",
+    )
+    trial = repo / ".worktrees" / f"{phase}--resolve-{task}"
+    _git_text(repo, "worktree", "add", "--detach", "--force", str(trial), commit)
+    failures: list[str] = []
+    outcomes: list[tuple[str, int]] = []
+    try:
+        items = phase_items(project.records(), phase)
+        tasks = [task, *_merged_tasks(repo, phase, items, task)]
+        for slug in tasks:
+            for acceptance in sorted(
+                acceptances_for(project, slug, phase), key=lambda r: r["subject"]
+            ):
+                outcome = run_check(
+                    acceptance_id=acceptance["id"],
+                    cwd=trial,
+                    store_root=project.project_root,
+                    store_dir=project.store_path,
+                )
+                outcomes.append((acceptance["subject"], outcome.exit_code))
+                if outcome.exit_code != 0:
+                    failures.append(acceptance["subject"])
+    finally:
+        _git_text(repo, "worktree", "remove", "--force", str(trial))
+    if failures:
+        reason = "acceptance failed on the merge: " + ", ".join(failures)
+        return WaveResolve(phase, task, (reason,), commit, tuple(outcomes))
+    _git_text(tree, "merge", "--quit")
+    _git_text(tree, "reset", "--soft", commit)
+    question = _open_question(project, _effort(phase_rec, phase), phase, f"merge:{task}")
+    if question is not None:
+        project.update(
+            question["id"], record_type="score:continuity-question", transition="answered"
+        )
+    return WaveResolve(phase, task, (), commit, tuple(outcomes))

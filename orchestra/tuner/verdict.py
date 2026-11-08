@@ -13,8 +13,8 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools.git import Git
 from orchestra.tuner.amendment import authorize
 from orchestra.tuner.evidence_kind import kind_allows_runner
 from orchestra.tuner.human_claim import verify_claim_signature
@@ -365,14 +365,12 @@ def _disagrees(
 def _checkout(cwd: Path, commit: str) -> tuple[Path, Path] | None:
     parent = Path(tempfile.mkdtemp(prefix="aff-verdict-"))
     worktree = parent / "wt"
-    added = run_git(
-        cwd,
+    added = Git(cwd).run(
         "worktree",
         "add",
         "--detach",
         str(worktree),
         commit,
-        capture_output=True,
     )
     if added.returncode != 0:
         shutil.rmtree(parent, ignore_errors=True)
@@ -390,12 +388,10 @@ def _remove(cwd: Path, checked: tuple[Path, Path] | None) -> None:
     if checked is None:
         return
     parent, worktree = checked
-    run_git(
-        cwd,
+    Git(cwd).run(
         "worktree",
         "remove",
         "--force",
         str(worktree),
-        capture_output=True,
     )
     shutil.rmtree(parent, ignore_errors=True)

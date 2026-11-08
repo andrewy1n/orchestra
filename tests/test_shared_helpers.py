@@ -14,7 +14,6 @@ from typing import TypeGuard
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-GIT_BACKEND = "orchestra/canon/git_backend.py"
 SAMPLE_OUTPUT = "FAILED tests/test_mod.py::test_name\n"
 
 
@@ -276,9 +275,9 @@ def test_r4_suite_omits_hash() -> None:
     assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "suite.py") == []
 
 
-def test_r5_git_only_in_backend() -> None:
-    """R5: Python files under orchestra/ and dashboard/ start the git executable only in orchestra/canon/git_backend.py."""
-    assert _git_starter_paths() == [GIT_BACKEND]
+def test_r5_git_only_in_git_client() -> None:
+    """R5: Python files under orchestra/ and dashboard/ start the git executable only through orchestra.tools.Git."""
+    assert _git_starter_paths() == []
 
 
 def test_r6_landing_none_on_git_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

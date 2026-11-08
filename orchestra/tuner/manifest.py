@@ -9,15 +9,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project_config import ProjectConfigError, load_project_config_at_revision
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.tools.errors import ToolError, ToolNotFoundError
+from orchestra.tools.git import Git
 
 MANIFEST_PATH = ".tuner/manifest.json"
 ALLOWLIST_PATH = ".tuner/allowed_signers"
@@ -80,14 +80,12 @@ def resolve_commit(cwd: Path | str, rev: str) -> str:
     Runs ``git rev-parse --verify <rev>^{commit}``. Raises ``ManifestError``
     when ``rev`` does not name a commit.
     """
-    result = _run_git(cwd, "rev-parse", "--verify", f"{rev}^{{commit}}")
-    return result.stdout.decode("utf-8").strip()
+    return _git_text(cwd, "rev-parse", "--verify", f"{rev}^{{commit}}")
 
 
 def merge_base(cwd: Path | str, at: str, main: str = "main") -> str:
     """Return ``git merge-base`` of ``at`` and ``main``."""
-    result = _run_git(cwd, "merge-base", at, main)
-    return result.stdout.decode("utf-8").strip()
+    return _git_text(cwd, "merge-base", at, main)
 
 
 def load_manifest(cwd: Path | str, revision: str) -> Manifest:
@@ -259,24 +257,24 @@ def _parse_evidence_kind(value: str) -> EvidenceKind:
 def _show_blob(cwd: Path | str, revision: str, relpath: str) -> bytes:
     if not relpath or relpath.endswith("/"):
         raise FileNotFoundError(relpath)
-    result = _run_git(cwd, "show", f"{revision}:{relpath}", check=False)
-    if result.returncode != 0:
-        raise FileNotFoundError(relpath)
-    return result.stdout
-
-
-def _run_git(
-    cwd: Path | str,
-    *args: str,
-    check: bool = True,
-) -> subprocess.CompletedProcess[bytes]:
     try:
-        result: subprocess.CompletedProcess[bytes] = run_git(
-            cwd, "--no-pager", *args, capture_output=True
-        )  # pyright: ignore[reportAssignmentType]  # No text or encoding options are passed.
-    except FileNotFoundError as exc:
+        blob = Git(Path(cwd)).show_bytes(revision, relpath)
+    except ToolNotFoundError as exc:
         raise ManifestError("git is not available") from exc
-    if check and result.returncode != 0:
-        err = result.stderr.decode("utf-8", "replace").strip()
-        raise ManifestError(err or f"git {' '.join(args)} failed")
-    return result
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
+    if blob is None:
+        raise FileNotFoundError(relpath)
+    return blob
+
+
+def _git_text(cwd: Path | str, *args: str) -> str:
+    try:
+        result = Git(Path(cwd)).run("--no-pager", *args)
+    except ToolNotFoundError as exc:
+        raise ManifestError("git is not available") from exc
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
+    if result.returncode != 0:
+        raise ManifestError(result.stderr.strip() or f"git {' '.join(args)} failed")
+    return result.stdout.strip()

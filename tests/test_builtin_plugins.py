@@ -105,7 +105,9 @@ def test_review_stage_maps_needs_work_and_rejects_invalid_output(tmp_path: Path)
     valid_prefix = (
         "verdict: NEEDS_WORK\nfindings:\n  - task: task-a\n"
         "    kind: behavior-bug\n    expected: correct behavior\n"
-        "    observed: wrong behavior\n    severity: major\nintegration:\n"
+        "    observed: wrong behavior\n    severity: major\n    blocking: true\n"
+        "    requirement: R1 correct behavior\n    trigger: any run\n"
+        "    consequence: wrong result\nintegration:\n"
         "  interfaces: stable API\n  assumptions: host reviewer ran\n"
         "  invariants: signed evidence\n  conflicts: none\n"
     )

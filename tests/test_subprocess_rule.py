@@ -11,19 +11,13 @@ EXCLUDED_PARTS = ("node_modules",)
 EXCLUDED_PREFIXES = ("orchestra/tools/",)
 ALLOWLIST: frozenset[str] = frozenset(
     {
-        "dashboard/backend/landing.py",
         "dashboard/frontend/e2e/serve.py",
         "installer/adapters/tail.py",
         "installer/runner.py",
-        "orchestra/canon/git_backend.py",
         "orchestra/conductor/check.py",
-        "orchestra/conductor/close_batch.py",
-        "orchestra/conductor/gate.py",
         "orchestra/conductor/suite.py",
         "orchestra/stage/hooks.py",
         "orchestra/tuner/audit.py",
-        "orchestra/tuner/manifest.py",
-        "orchestra/tuner/provenance.py",
         "orchestra/tuner/runner.py",
         "orchestra/tuner/sign.py",
         "scripts/check_lint_config.py",
@@ -126,3 +120,15 @@ def test_syntax_error_surfaces(tmp_path: Path) -> None:
 
 def test_real_tree_matches_allowlist() -> None:
     assert violations(subprocess_importers(REPO_ROOT), ALLOWLIST) == []
+
+
+def test_git_modules_not_allowlisted() -> None:
+    migrated = {
+        "orchestra/canon/git_backend.py",
+        "orchestra/conductor/gate.py",
+        "orchestra/conductor/close_batch.py",
+        "orchestra/tuner/manifest.py",
+        "orchestra/tuner/provenance.py",
+        "dashboard/backend/landing.py",
+    }
+    assert migrated.isdisjoint(ALLOWLIST)

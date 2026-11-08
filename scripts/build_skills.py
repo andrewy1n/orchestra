@@ -26,7 +26,7 @@ import argparse
 import sys
 from pathlib import Path
 
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verification-policy.md")
 SKILL_SHARED_DOCS = {
     "assess.md": ("verify",),
     "close-batch.md": ("verify",),

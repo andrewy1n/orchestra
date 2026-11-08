@@ -13,14 +13,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeAlias, TypedDict
 
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.revision import revision_matches
+from orchestra.tools import Git
 
 ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
 
 
-class ReviewerFinding(TypedDict):
+class _FindingBasis(TypedDict, total=False):
+    blocking: bool
+    requirement: str
+    trigger: str
+    consequence: str
+    escape: str
+
+
+class ReviewerFinding(_FindingBasis):
     task: str
     kind: str
     expected: str
@@ -39,6 +47,7 @@ class ParsedReviewerOutput(TypedDict):
     verdict: str
     findings: list[ReviewerFinding]
     integration: IntegrationFields
+    demoted: list[str]
 
 
 class ReviewCheckRunPayload(TypedDict):
@@ -97,6 +106,7 @@ FIXABLE_FINDING_KINDS = frozenset(
     }
 )
 REVIEWER_SEVERITIES = frozenset({"blocker", "major", "minor", "judgment"})
+BASIS_FIELDS = ("requirement", "trigger", "consequence")
 
 
 def _short_kind(record_type: str) -> str:
@@ -136,13 +146,7 @@ def git_phase_diff(
     phase_head: str = "HEAD",
 ) -> str:
     """Return `git diff <base>..<phase-head>` text (empty string on failure)."""
-    result = run_git(
-        cwd,
-        "diff",
-        f"{base}..{phase_head}",
-        capture_output=True,
-        text=True,
-    )
+    result = Git(cwd).run("diff", f"{base}..{phase_head}")
     if result.returncode != 0:
         return ""
     return result.stdout or ""
@@ -242,8 +246,54 @@ def _strip_fence(text: str) -> str:
     return stripped
 
 
+def _is_blocking(finding: ReviewerFinding) -> bool:
+    return bool(finding.get("blocking"))
+
+
+def classify_findings(
+    findings: Sequence[ReviewerFinding],
+) -> tuple[list[ReviewerFinding], list[str]]:
+    """Demote each blocking finding that lacks its basis; return the findings and the demotions.
+
+    A `judgment` finding stays blocking and needs no basis. Any other blocking finding
+    needs a requirement, a trigger and a consequence, and a `missing-test` finding also
+    needs an escaping regression.
+    """
+    classified: list[ReviewerFinding] = []
+    demoted: list[str] = []
+    for finding in findings:
+        updated = finding.copy()
+        if finding["severity"] == "judgment":
+            updated["blocking"] = True
+        elif _is_blocking(finding):
+            needed = [*BASIS_FIELDS, *(("escape",) if finding["kind"] == "missing-test" else ())]
+            if any(not str(finding.get(name) or "").strip() for name in needed):
+                updated["blocking"] = False
+                demoted.append(f"{finding['task']}:{finding['kind']}")
+        classified.append(updated)
+    return classified, demoted
+
+
+def derive_verdict(findings: Sequence[ReviewerFinding]) -> str:
+    """NEEDS_WORK when any finding is blocking, otherwise PASS."""
+    return "NEEDS_WORK" if any(_is_blocking(finding) for finding in findings) else "PASS"
+
+
+def _parse_blocking(rest: str) -> bool | None:
+    match = re.search(r"(?im)^\s*blocking:\s*(\S+)", rest)
+    if match is None:
+        return None
+    value = match.group(1).strip().lower()
+    if value in {"true", "false"}:
+        return value == "true"
+    raise ValueError(f"reviewer finding blocking must be true or false, not {value!r}")
+
+
 def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
-    """Parse the structured PASS/NEEDS_WORK block from the reviewer."""
+    """Parse the structured PASS/NEEDS_WORK block from the reviewer.
+
+    The returned verdict follows the findings, not the verdict line.
+    """
     raw = _strip_fence(text)
     verdict_m = re.search(r"(?im)^\s*verdict:\s*(\S+)", raw)
     verdict = (verdict_m.group(1) if verdict_m else "").strip().upper()
@@ -269,15 +319,21 @@ def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
             expected_m = re.search(r"(?im)^\s*expected:\s*(.+)$", rest)
             observed_m = re.search(r"(?im)^\s*observed:\s*(.+)$", rest)
             severity_m = re.search(r"(?im)^\s*severity:\s*(\S+)", rest)
-            findings.append(
-                {
-                    "task": task,
-                    "kind": (kind_m.group(1) if kind_m else "").strip(),
-                    "expected": (expected_m.group(1) if expected_m else "").strip(),
-                    "observed": (observed_m.group(1) if observed_m else "").strip(),
-                    "severity": (severity_m.group(1) if severity_m else "").strip(),
-                }
-            )
+            finding: ReviewerFinding = {
+                "task": task,
+                "kind": (kind_m.group(1) if kind_m else "").strip(),
+                "expected": (expected_m.group(1) if expected_m else "").strip(),
+                "observed": (observed_m.group(1) if observed_m else "").strip(),
+                "severity": (severity_m.group(1) if severity_m else "").strip(),
+            }
+            blocking = _parse_blocking(rest)
+            if blocking is not None:
+                finding["blocking"] = blocking
+            for name in (*BASIS_FIELDS, "escape"):
+                match = re.search(rf"(?im)^\s*{name}:\s*(.+)$", rest)
+                if match:
+                    finding[name] = match.group(1).strip()  # pyright: ignore[reportGeneralTypeIssues]
+            findings.append(finding)
 
     integration: IntegrationFields = {
         "interfaces": "",
@@ -293,7 +349,15 @@ def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
             if km:
                 integration[key] = km.group(1).strip()
 
-    return {"verdict": verdict, "findings": findings, "integration": integration}
+    classified, demoted = classify_findings(findings)
+    if verdict in {"PASS", "NEEDS_WORK"}:
+        verdict = derive_verdict(classified)
+    return {
+        "verdict": verdict,
+        "findings": classified,
+        "integration": integration,
+        "demoted": demoted,
+    }
 
 
 def validate_reviewer_output(text: str) -> ParsedReviewerOutput:
@@ -315,10 +379,6 @@ def validate_reviewer_output(text: str) -> ParsedReviewerOutput:
     verdict = parsed["verdict"]
     if verdict not in {"PASS", "NEEDS_WORK"}:
         raise ValueError("reviewer output must contain verdict: PASS or NEEDS_WORK")
-    if verdict == "PASS" and parsed["findings"]:
-        raise ValueError("reviewer PASS must not include findings")
-    if verdict == "NEEDS_WORK" and not parsed["findings"]:
-        raise ValueError("reviewer NEEDS_WORK must include at least one finding")
     integration_match = re.search(r"(?im)^\s*integration:\s*", raw)
     if integration_match is None:
         raise ValueError("reviewer output is missing integration section")
@@ -329,6 +389,8 @@ def validate_reviewer_output(text: str) -> ParsedReviewerOutput:
         if field_name != "conflicts" and not parsed["integration"][field_name].strip():
             raise ValueError(f"reviewer integration {field_name} must not be empty")
     for finding in parsed["findings"]:
+        if "blocking" not in finding:
+            raise ValueError("reviewer findings must include blocking: true or false")
         if any(
             not finding[field].strip()
             for field in ("task", "kind", "expected", "observed", "severity")
@@ -373,6 +435,12 @@ def is_fixable_finding_kind(kind: str) -> bool:
     return (kind or "").strip() in FIXABLE_FINDING_KINDS
 
 
+def is_advisory_finding(finding: Mapping[str, JsonValue]) -> bool:
+    """True when the reviewer or the parser marked the finding non-blocking."""
+    severity = str(finding.get("severity") or "").strip().lower()
+    return finding.get("blocking") is False and severity != "judgment"
+
+
 def build_finding_payload(
     finding: Mapping[str, JsonValue],
     *,
@@ -382,15 +450,17 @@ def build_finding_payload(
 ) -> FindingPayload:
     """Parent-only finding payload for one NEEDS_WORK item."""
     severity = str(finding.get("severity") or "").strip().lower()
+    advisory = is_advisory_finding(finding)
     if severity == "judgment":
         needs = "human"
-    elif fix_task_created:
+    elif advisory or fix_task_created:
         needs = "none"
     else:
         needs = "human"
     kind = str(finding.get("kind") or "finding")
     task = str(finding.get("task") or "phase")
-    claim = f"{kind} on {task}: {finding.get('expected') or ''}".strip()
+    prefix = "advisory " if advisory else ""
+    claim = f"{prefix}{kind} on {task}: {finding.get('expected') or ''}".strip()
     basis = str(finding.get("observed") or "")
     return {
         "claim": claim,
@@ -430,7 +500,11 @@ def route_review_findings(
         kind = str(finding.get("kind") or "")
         severity = str(finding.get("severity") or "").strip().lower()
         task = str(finding.get("task") or "phase")
-        fixable = is_fixable_finding_kind(kind) and severity != "judgment"
+        fixable = (
+            is_fixable_finding_kind(kind)
+            and severity != "judgment"
+            and not is_advisory_finding(finding)
+        )
         if fixable:
             wanted_fixable += 1
         if fixable and remaining > 0:

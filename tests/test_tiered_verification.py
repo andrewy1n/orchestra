@@ -585,7 +585,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
     assert "retry" in flat and "budget" in flat
 
 
-def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
+def test_execute_phase_documents_suite_policy_before_reviewer_and_check_run():
     text = (REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md").read_text()
     flat = " ".join(text.split())
     assert "Do not waive suite policy" in flat
@@ -593,10 +593,9 @@ def test_execute_phase_documents_suite_policy_after_reviewer_and_check_run():
         "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
         in flat
     )
-    assert (
-        "last implementation wave → closing verification → analyze → reviewer → integration-report from reviewer `integration` → suite"
-        in flat
-    )
+    assert flat.index("closing verification → analyze → suite") < flat.index("→ reviewer")
+    assert flat.index("→ reviewer") < flat.index("→ integration-report")
+    assert flat.index("→ integration-report") < flat.index("→ phase gate")
     assert "orchestra suite record" in text
     assert (
         "subject `<phase-slug>-suite`, `evidence_kind: integration`, with runner metadata" in flat

@@ -133,8 +133,11 @@ def test_oracle_backed_acceptance_one_create() -> None:
     plan = _skill_md("tasks")
     assert plan.index("8. Oracle author") < plan.index("9. Write the batch")
     shapes = (h.REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
-    creates = _invocations(shapes, "create", "score:acceptance")
-    assert any({"test_ids", "oracle_hashes"} <= set(inv["payload"]) for inv in creates)
+    author = (h.REPO_ROOT / "skills/tasks/references/oracle-author.md").read_text()
+    creates = _invocations(shapes + "\n" + author, "create", "score:acceptance")
+    oracle_backed = [inv for inv in creates if {"test_ids", "oracle_hashes"} <= set(inv["payload"])]
+    assert len(oracle_backed) == 1
+    assert oracle_backed[0]["payload"]["oracle_hashes"]
 
 
 def test_plan_phase_batches_through_apply() -> None:

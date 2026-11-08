@@ -29,7 +29,7 @@ def _latest(records: Sequence[Record]) -> Record | None:
 def acceptance_requirement_ids(record: Record) -> list[str]:
     payload = record_payload(record)
     listed = payload.get("requirements")
-    if isinstance(listed, list):
+    if isinstance(listed, list) and listed:
         return [item for item in listed if isinstance(item, str) and item]
     single = payload.get("requirement")
     return [single] if isinstance(single, str) and single else []

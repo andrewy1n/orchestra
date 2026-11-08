@@ -10,7 +10,6 @@ from pathlib import Path
 
 from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
-from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
@@ -22,6 +21,7 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
+from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
 GATE_FAILED_EXIT = 5
@@ -283,6 +283,18 @@ def _build_parser() -> argparse.ArgumentParser:
     wave_end.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     wave_end.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
+    wave_resolve = wave_sub.add_parser(
+        "resolve",
+        help="Finish a conflicted task merge once both tasks' work is kept",
+    )
+    wave_resolve.add_argument("phase", help="Phase slug")
+    wave_resolve.add_argument("task", help="Task slug whose merge conflicted")
+    wave_resolve.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_resolve.add_argument(
+        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
+    )
+    wave_resolve.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
     task = sub.add_parser("task", help="Land one finished task")
     task_sub = task.add_subparsers(dest="action", required=True)
     task_land = task_sub.add_parser(
@@ -513,16 +525,12 @@ def _cwd(args: argparse.Namespace) -> Path:
 
 
 def _git_root(directory: Path) -> Path:
-    result = run_git(
-        directory,
-        "rev-parse",
-        "--show-toplevel",
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0 and result.stdout.strip():
-        return Path(result.stdout.strip())
-    return directory.resolve()
+    if not directory.is_dir():
+        return directory.resolve()
+    result = Git(directory).run("rev-parse", "--show-toplevel")
+    if result.returncode != 0 or not result.stdout.strip():
+        return directory.resolve()
+    return Path(result.stdout.strip())
 
 
 def _print_json(payload: object) -> None:
@@ -620,10 +628,27 @@ def _load_review_records(
     return records
 
 
+def _suite_refusal(location: StoreLocation, work: Path, phase: str, phase_head: str) -> str:
+    policy = suite.load_suite_policy(work)
+    if not policy.run_locally:
+        return ""
+    resolved = Git(work).resolve(phase_head)
+    if resolved is None:
+        raise RuntimeError(f"cannot resolve {phase_head}")
+    check_runs = [row for row in location.open().list("tuner:check-run") if isinstance(row, dict)]  # pyright: ignore[reportUnnecessaryIsInstance]
+    return suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=resolved)
+
+
 def _cmd_review_brief(args: argparse.Namespace) -> int:
     work = _cwd(args)
     try:
-        records = _load_review_records(resolve_location(args.store, work))
+        location = resolve_location(args.store, work)
+        if args.phase:
+            refusal = _suite_refusal(location, work, args.phase, args.phase_head)
+            if refusal:
+                print(f"orchestra review-brief: {refusal}", file=sys.stderr)
+                return 2
+        records = _load_review_records(location)
         phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
         brief = reviewer.build_reviewer_brief(
             records=records,
@@ -748,6 +773,31 @@ def _cmd_wave_end(args: argparse.Namespace) -> int:
     return 1 if result.conflict else 0
 
 
+def _cmd_wave_resolve(args: argparse.Namespace) -> int:
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        result = wave.resolve(project, wave.repo_root(_cwd(args)), args.phase, args.task)
+    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra wave resolve: {args.phase}: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        _print_json(
+            {
+                "phase": result.phase,
+                "task": result.task,
+                "ready": result.ready,
+                "refusals": list(result.refusals),
+                "commit": result.commit,
+            }
+        )
+    elif result.ready:
+        print(f"resolved {result.task}: merge commit {result.commit}")
+    for reason in result.refusals:
+        print(f"orchestra wave resolve: {args.phase}: {reason}", file=sys.stderr)
+    return 0 if result.ready else 1
+
+
 def _cmd_task_land(args: argparse.Namespace) -> int:
     if args.schema:
         _print_json(EVIDENCE_SCHEMA)
@@ -760,7 +810,7 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         project = open_store(location.root, store=location.store)
         repo = wave.repo_root(_cwd(args))
         landed = land_task.land(project, repo, args.task, Path(args.evidence))
-        statuses = requirement_status(project.records(), landed.phase)
+        statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
         closure = task_close.close(
             project,
             landed,
@@ -1257,7 +1307,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "review-brief":
         return _cmd_review_brief(args)
     if args.command == "wave":
-        return _cmd_wave_start(args) if args.action == "start" else _cmd_wave_end(args)
+        if args.action == "start":
+            return _cmd_wave_start(args)
+        if args.action == "resolve":
+            return _cmd_wave_resolve(args)
+        return _cmd_wave_end(args)
     if args.command == "effort":
         return _cmd_effort_autonomy(args)
     if args.command == "task":

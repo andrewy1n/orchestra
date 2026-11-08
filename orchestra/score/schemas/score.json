@@ -118,6 +118,13 @@
             "full"
           ],
           "optional": true
+        },
+        "oracle_policy": {
+          "enum": [
+            "none",
+            "frozen"
+          ],
+          "optional": true
         }
       },
       "sections": [
@@ -248,6 +255,13 @@
           "list": {
             "type": "string"
           },
+          "optional": true
+        },
+        "oracle_policy": {
+          "enum": [
+            "none",
+            "frozen"
+          ],
           "optional": true
         }
       }

@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from collections import deque
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from urllib.request import Request
+from typing import Literal, overload
 
 import pytest
 
 import orchestra.cli as cli
 import orchestra.conductor.github_pr as github_pr
+from orchestra.canon.types import JsonObject
 from orchestra.conductor.github_pr import (
     GitHubCheck,
+    GitHubClient,
+    GitHubGh,
     GitHubPRError,
     GitHubPRResult,
-    GitHubREST,
     open_pull_request,
+    wait_for_checks,
 )
 from orchestra.conductor.land import LandingCheck, LandingResult, dispatch_land
 
@@ -24,29 +29,102 @@ class FakeGitHub:
         self.events: list[str] = []
         self.body = ""
         self.check_batches: deque[tuple[GitHubCheck, ...]] = deque()
-        self.status_batches: deque[tuple[str, ...]] = deque()
+        self.head = "abc"
+        self.heads: deque[str] = deque()
+
+    def head_sha(self, number: int) -> str:
+        return self.heads.popleft() if self.heads else self.head
 
     def push_branch(self, remote: str, branch: str) -> None:
         self.events.append(f"push:{remote}:{branch}")
 
-    def repository(self) -> str:
-        self.events.append("repository")
-        return "owner/repo"
-
-    def create_pull_request(
-        self, repository: str, head: str, base: str, title: str, body: str
-    ) -> tuple[int, str]:
-        self.events.append(f"create:{repository}:{head}:{base}:{title}")
+    def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
+        self.events.append(f"create:{head}:{base}:{title}")
         self.body = body
         return 42, "https://github.com/owner/repo/pull/42"
 
-    def checks(self, repository: str, revision: str) -> tuple[GitHubCheck, ...]:
-        self.events.append(f"checks:{repository}:{revision}")
+    def checks(self, number: int) -> tuple[GitHubCheck, ...]:
+        self.events.append(f"checks:{number}")
         return self.check_batches.popleft()
 
-    def statuses(self, repository: str, revision: str) -> tuple[str, ...]:
-        self.events.append(f"statuses:{repository}:{revision}")
-        return self.status_batches.popleft()
+
+class ScriptedGh:
+    def __init__(
+        self,
+        version: str = "gh version 2.50.0 (2024-06-01)\n",
+        failures: dict[tuple[str, ...], tuple[int, str]] | None = None,
+        responses: dict[tuple[str, ...], str] | None = None,
+        missing: bool = False,
+        head_oid: str = "",
+    ) -> None:
+        self.version = version
+        self.failures = failures or {}
+        self.responses = responses or {}
+        self.missing = missing
+        self.head_oid = head_oid
+        self.calls: list[tuple[str, ...]] = []
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[True],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    @overload
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: bytes | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: Literal[False],
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[bytes]: ...
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path,
+        input: str | bytes | None,
+        timeout: float | None,
+        capture_output: bool,
+        text: bool,
+        check: bool,
+        env: Mapping[str, str] | None,
+    ) -> subprocess.CompletedProcess[str] | subprocess.CompletedProcess[bytes]:
+        key = tuple(argv)
+        self.calls.append(key)
+        if self.missing:
+            raise FileNotFoundError(2, "No such file or directory", "gh")
+        if key[1:] == ("--version",):
+            return subprocess.CompletedProcess(list(key), 0, self.version, "")
+        if "headRefOid" in key:
+            return subprocess.CompletedProcess(
+                list(key), 0, json.dumps({"headRefOid": self.head_oid}), ""
+            )
+        for prefix, (code, stderr) in self.failures.items():
+            if key[: len(prefix)] == prefix:
+                return subprocess.CompletedProcess(list(key), code, "", stderr)
+        for prefix, stdout in self.responses.items():
+            if key[: len(prefix)] == prefix:
+                return subprocess.CompletedProcess(list(key), 0, stdout, "")
+        raise AssertionError(f"unscripted call: {list(key)}")
+
+
+PR_URL = "https://github.com/owner/repo/pull/42"
+VIEW_RESPONSE = json.dumps({"number": 42, "url": PR_URL})
 
 
 def _write_project(root: Path) -> str:
@@ -75,7 +153,15 @@ def _git(root: Path, *args: str) -> str:
     return completed.stdout.strip()
 
 
-def _adapter(root: Path, client: FakeGitHub) -> GitHubPRResult:
+def _add_origin(root: Path) -> None:
+    remote = root.parent / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+    _git(root, "remote", "add", "origin", str(remote))
+
+
+def _open(root: Path, client: GitHubClient) -> GitHubPRResult:
+    if isinstance(client, FakeGitHub):
+        client.head = _git(root, "rev-parse", "HEAD")
     return open_pull_request(
         root,
         "## Look\nProof packet body\n",
@@ -87,88 +173,153 @@ def _adapter(root: Path, client: FakeGitHub) -> GitHubPRResult:
     )
 
 
+def _fake_with(batches: list[tuple[GitHubCheck, ...]]) -> FakeGitHub:
+    github = FakeGitHub()
+    github.check_batches.extend(batches)
+    return github
+
+
+def _wait(
+    github: FakeGitHub, *, timeout_s: float = 10, clock: Callable[[], float] | None = None
+) -> tuple[tuple[GitHubCheck, ...], list[float]]:
+    sleeps: list[float] = []
+    checks = wait_for_checks(
+        github,
+        42,
+        head_sha="abc",
+        poll_interval_s=2,
+        timeout_s=timeout_s,
+        sleep=sleeps.append,
+        monotonic=clock or (lambda: 0),
+    )
+    return checks, sleeps
+
+
+def _ticking_clock(step: float) -> Callable[[], float]:
+    now = [0.0]
+
+    def clock() -> float:
+        value = now[0]
+        now[0] += step
+        return value
+
+    return clock
+
+
 def test_github_pr_includes_proof_packet(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    github = FakeGitHub()
-    github.check_batches.append((GitHubCheck("CI", "completed", "success"),))
-    github.status_batches.append(("success",))
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
 
-    result = _adapter(root, github)
+    result = _open(root, github)
 
     assert github.body == "## Look\nProof packet body\n"
     assert result.number == 42
     assert result.url.endswith("/pull/42")
-    assert github.events[:3] == [
+    assert github.events[:2] == [
         "push:origin:phase/project-config",
-        "repository",
-        "create:owner/repo:phase/project-config:main:phase/project-config: phase proof",
+        "create:phase/project-config:main:phase/project-config: phase proof",
     ]
 
 
-def test_github_pr_waits_for_checks_to_complete(tmp_path: Path) -> None:
-    root = tmp_path / "repo"
-    _write_project(root)
-    github = FakeGitHub()
-    github.check_batches.extend(
+def test_wait_polls_while_no_checks() -> None:
+    github = _fake_with([(), (), (GitHubCheck("CI", "completed", "success"),)])
+
+    checks, sleeps = _wait(github)
+
+    assert checks == (GitHubCheck("CI", "completed", "success"),)
+    assert sleeps == [2, 2]
+    assert github.events == ["checks:42"] * 3
+
+
+def test_wait_rejects_changed_pull_request_head() -> None:
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
+    github.heads.append("def")
+
+    with pytest.raises(GitHubPRError, match="head changed"):
+        _wait(github)
+
+
+def test_wait_polls_while_incomplete() -> None:
+    github = _fake_with(
         [
-            (GitHubCheck("CI", "in_progress", None),),
-            (GitHubCheck("CI", "completed", "success"),),
+            (GitHubCheck("CI", "completed", "success"), GitHubCheck("Lint", "in_progress", None)),
+            (
+                GitHubCheck("CI", "completed", "success"),
+                GitHubCheck("Lint", "completed", "success"),
+            ),
         ]
     )
-    github.status_batches.extend([("pending",), ("success",)])
-    sleeps: list[float] = []
 
-    result = open_pull_request(
-        root,
-        "proof packet",
-        client=github,
-        poll_interval_s=2,
-        timeout_s=10,
-        sleep=sleeps.append,
-        monotonic=lambda: 0,
-    )
+    checks, sleeps = _wait(github)
 
-    assert result.result == "success"
-    assert len([event for event in github.events if event.startswith("checks:")]) == 2
+    assert all(check.status == "completed" for check in checks)
     assert sleeps == [2]
 
 
-def test_github_pr_waits_for_checks_to_appear(tmp_path: Path) -> None:
+def test_wait_times_out_naming_pending() -> None:
+    pending = (
+        GitHubCheck("CI", "completed", "success"),
+        GitHubCheck("Lint", "in_progress", None),
+        GitHubCheck("Docs", "in_progress", None),
+    )
+    github = _fake_with([pending] * 20)
+
+    with pytest.raises(TimeoutError, match=r"Lint, Docs") as raised:
+        _wait(github, timeout_s=5, clock=_ticking_clock(2))
+
+    assert "CI" not in str(raised.value).split("timeout:")[1]
+
+
+def test_result_fail_on_bad_conclusion(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    github = FakeGitHub()
-    github.check_batches.extend([(), (GitHubCheck("CI", "completed", "success"),)])
-    github.status_batches.extend([(), ("success",)])
-    sleeps: list[float] = []
-
-    result = open_pull_request(
-        root,
-        "proof packet",
-        client=github,
-        poll_interval_s=2,
-        timeout_s=10,
-        sleep=sleeps.append,
-        monotonic=lambda: 0,
+    github = _fake_with(
+        [(GitHubCheck("CI", "completed", "success"), GitHubCheck("Lint", "completed", "failure"))]
     )
 
-    assert result.result == "success"
-    assert len([event for event in github.events if event.startswith("checks:")]) == 2
-    assert sleeps == [2]
-
-
-def test_github_pr_reports_final_ci_result(tmp_path: Path) -> None:
-    root = tmp_path / "repo"
-    _write_project(root)
-    github = FakeGitHub()
-    github.check_batches.append((GitHubCheck("CI", "completed", "failure"),))
-    github.status_batches.append(("failure",))
-
-    result = _adapter(root, github)
+    result = _open(root, github)
 
     assert result.result == "fail"
-    assert result.checks[0].conclusion == "failure"
-    assert result.statuses == ("failure",)
+    assert result.checks[1].conclusion == "failure"
+
+
+def test_result_success_on_good_conclusions(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    github = _fake_with(
+        [
+            (
+                GitHubCheck("CI", "completed", "success"),
+                GitHubCheck("Lint", "completed", "neutral"),
+                GitHubCheck("Docs", "completed", "skipped"),
+            )
+        ]
+    )
+
+    assert _open(root, github).result == "success"
+
+
+def test_github_pr_waits_through_open_pull_request(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    github = _fake_with([(), (GitHubCheck("CI", "in_progress", None),)])
+    github.check_batches.append((GitHubCheck("CI", "completed", "success"),))
+    github.head = _git(root, "rev-parse", "HEAD")
+    sleeps: list[float] = []
+
+    result = open_pull_request(
+        root,
+        "proof packet",
+        client=github,
+        poll_interval_s=2,
+        timeout_s=10,
+        sleep=sleeps.append,
+        monotonic=lambda: 0,
+    )
+
+    assert result.result == "success"
+    assert sleeps == [2, 2]
 
 
 def test_github_pr_adapter_runs_through_dispatch_land(
@@ -176,101 +327,171 @@ def test_github_pr_adapter_runs_through_dispatch_land(
 ) -> None:
     root = tmp_path / "repo"
     _write_project(root)
+    _add_origin(root)
     config_path = root / "orchestra.toml"
     config_path.write_text(
-        config_path.read_text(encoding="utf-8")
-        + '\n[land.config]\nrepository = "owner/repo"\ntoken_env = "PLUGIN_TOKEN"\n',
+        config_path.read_text(encoding="utf-8") + '\n[land.config]\nrepository = "owner/repo"\n',
         encoding="utf-8",
     )
     _git(root, "add", "orchestra.toml")
     _git(root, "commit", "-qm", "configure GitHub adapter")
-    github = FakeGitHub()
-    github.check_batches.append((GitHubCheck("CI", "completed", "failure"),))
-    github.status_batches.append(("failure",))
-    configured: list[tuple[str, str, str]] = []
+    run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
+        responses={
+            ("gh", "pr", "create"): f"{PR_URL}\n",
+            ("gh", "pr", "view"): VIEW_RESPONSE,
+            ("gh", "pr", "checks"): json.dumps(
+                [{"name": "CI", "state": "FAILURE", "bucket": "fail"}]
+            ),
+        },
+    )
+    configured: list[tuple[str, JsonObject]] = []
+    real_gh = github_pr.GitHubGh
 
-    def create_client(root: Path, remote: str, config: dict[str, object]) -> FakeGitHub:
-        del root
-        configured.append((remote, str(config["repository"]), str(config["token_env"])))
-        return github
+    def create_client(root: Path, remote: str, config: JsonObject | None) -> GitHubGh:
+        configured.append((remote, config or {}))
+        return real_gh(root, remote, config, run=run)
 
-    monkeypatch.setattr(github_pr, "GitHubREST", create_client)
+    monkeypatch.setattr(github_pr, "GitHubGh", create_client)
 
     result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10)
 
     assert result.result == "fail"
     assert result.number == 42
-    assert configured == [("origin", "owner/repo", "PLUGIN_TOKEN")]
+    assert result.checks == (LandingCheck("CI", "completed", "failure"),)
+    assert configured == [("origin", {"repository": "owner/repo"})]
+    create = next(call for call in run.calls if call[:3] == ("gh", "pr", "create"))
+    assert create[-2:] == ("-R", "owner/repo")
+
+
+def test_adapter_statuses_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _add_origin(root)
+    run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
+        responses={
+            ("gh", "pr", "create"): f"{PR_URL}\n",
+            ("gh", "pr", "view"): VIEW_RESPONSE,
+            ("gh", "pr", "checks"): json.dumps(
+                [{"name": "CI", "state": "SUCCESS", "bucket": "pass"}]
+            ),
+        },
+    )
+    real_gh = github_pr.GitHubGh
+    monkeypatch.setattr(
+        github_pr,
+        "GitHubGh",
+        lambda root, remote, config: real_gh(root, remote, config, run=run),
+    )
+
+    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10)
+
+    assert result.result == "success"
+    assert result.statuses == ()
 
 
 def test_github_pr_never_merges(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    github = FakeGitHub()
-    github.check_batches.append((GitHubCheck("CI", "completed", "success"),))
-    github.status_batches.append(("success",))
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
 
-    _adapter(root, github)
+    _open(root, github)
 
     assert all("merge" not in event for event in github.events)
     assert not hasattr(github, "merge")
 
 
-def test_github_rest_requires_token_without_gh_fallback(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_github_pr_refuses_non_human_merge(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-    monkeypatch.delenv("GH_TOKEN", raising=False)
+    config_path = root / "orchestra.toml"
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace('merge = "human"', 'merge = "auto"'),
+        encoding="utf-8",
+    )
+    _git(root, "add", "orchestra.toml")
+    _git(root, "commit", "-qm", "auto merge")
 
-    with pytest.raises(GitHubPRError, match="set GITHUB_TOKEN or GH_TOKEN"):
-        GitHubREST(root)
+    with pytest.raises(Exception, match="human"):
+        _open(root, FakeGitHub())
 
 
-def test_github_rest_uses_token_authenticated_api(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_open_pull_request_without_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    monkeypatch.setenv("GH_TOKEN", "test-token")
-    captured: list[tuple[Request, float]] = []
+    _add_origin(root)
+    for name in ("GITHUB_TOKEN", "GH_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    run = ScriptedGh(
+        head_oid=_git(root, "rev-parse", "HEAD"),
+        responses={
+            ("gh", "pr", "create"): f"{PR_URL}\n",
+            ("gh", "pr", "view"): VIEW_RESPONSE,
+            ("gh", "pr", "checks"): json.dumps(
+                [{"name": "CI", "state": "SUCCESS", "bucket": "pass"}]
+            ),
+        },
+    )
 
-    class Response:
-        def __enter__(self) -> Response:
-            return self
+    result = _open(root, GitHubGh(root, run=run))
 
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return b'{"number":7,"html_url":"https://github.com/owner/repo/pull/7"}'
-
-    def fake_urlopen(request: Request, timeout: float) -> Response:
-        captured.append((request, timeout))
-        return Response()
-
-    monkeypatch.setattr(github_pr, "urlopen", fake_urlopen)
-    client = GitHubREST(root)
-    number, url = client.create_pull_request("owner/repo", "topic", "main", "title", "proof")
-
-    request, timeout = captured[0]
-    assert number == 7
-    assert url.endswith("/pull/7")
-    assert request.full_url == "https://api.github.com/repos/owner/repo/pulls"
-    assert request.get_header("Authorization") == "Bearer test-token"
-    assert timeout == 30
+    assert result.number == 42
+    assert result.url == PR_URL
+    assert result.result == "success"
 
 
-def test_github_rest_derives_repository_from_git_remote(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_old_gh_fails_landing(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
-    _git(root, "remote", "add", "origin", "git@github.com:owner/repo.git")
-    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    _add_origin(root)
 
-    assert GitHubREST(root).repository() == "owner/repo"
+    with pytest.raises(GitHubPRError):
+        _open(root, GitHubGh(root, run=ScriptedGh(version="gh version 2.4.0\n")))
+
+
+def test_old_gh_error_names_versions(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _add_origin(root)
+
+    with pytest.raises(GitHubPRError) as raised:
+        _open(root, GitHubGh(root, run=ScriptedGh(version="gh version 2.4.0\n")))
+
+    assert "2.4.0" in str(raised.value)
+    assert "2.50.0" in str(raised.value)
+
+
+def test_failing_gh_raises_with_stderr(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _add_origin(root)
+    run = ScriptedGh(failures={("gh", "pr", "create"): (1, "GraphQL: base branch not found")})
+
+    with pytest.raises(GitHubPRError, match="GraphQL: base branch not found"):
+        _open(root, GitHubGh(root, run=run))
+
+
+def test_missing_gh_raises(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _add_origin(root)
+
+    with pytest.raises(GitHubPRError, match="gh"):
+        _open(root, GitHubGh(root, run=ScriptedGh(missing=True)))
+
+
+def test_duplicate_pull_request_carries_url(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    _add_origin(root)
+    stderr = f"a pull request for branch already exists:\n{PR_URL}\n"
+    run = ScriptedGh(failures={("gh", "pr", "create"): (1, stderr)})
+
+    with pytest.raises(GitHubPRError) as raised:
+        _open(root, GitHubGh(root, run=run))
+
+    assert PR_URL in str(raised.value)
 
 
 def test_land_cli_reports_pull_request_and_final_checks(
@@ -318,7 +539,7 @@ def test_land_cli_reports_pull_request_and_final_checks(
             url="https://github.com/owner/repo/pull/42",
             head_sha="head-sha",
             checks=(LandingCheck("CI", "completed", "success"),),
-            statuses=("success",),
+            statuses=(),
         )
 
     monkeypatch.setattr("orchestra.store.open_store", lambda _root, store=None: FakeProject())

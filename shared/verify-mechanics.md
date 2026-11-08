@@ -44,8 +44,9 @@ skill show the payload of each batch line; do not run them one by one.
 
 ## Mechanical oracle verify
 
-An acceptance is **oracle-backed** when `test_ids` and `oracle_hashes`
-are both non-empty. For oracle-backed `tdd`, verification is
+Select method separately from [oracle policy](references/verification-policy.md).
+Legacy non-empty `test_ids` and `oracle_hashes` remain **oracle-backed**.
+For frozen `check`, enforce green hashes without red. For frozen `tdd`, verification is
 mechanical — not agent prose:
 
 - Assertion-level red check-run for those frozen tests at a base
@@ -53,17 +54,19 @@ mechanical — not agent prose:
 - Green check-run at head whose `revision` equals or descends from
   that red (same ancestry rules)
 - At green, oracle file contents match frozen `oracle_hashes`, or a
-  signed amendment in `.tuner/manifest.json` that `orchestra verify verdict`
-  accepts
+  parent-approved oracle amendment. Manifest claims also require their
+  signed amendment and `orchestra verify verdict` checks
 
 Treat as verified only when those hold. Frozen hashes are close
 authority — do not treat a requirement as `verified` from narrative.
 When they do not hold, write an `insufficient` assessment so the
-derived `verified` does not stand. Parent alone writes assessments. Do not `create`/`supersede`
-`tuner:oracle-amendment`. Wire close-batch with green
+derived `verified` does not stand. Parent alone writes assessments and approved `tuner:oracle-amendment` records.
+Executors never create or approve these records. Wire close-batch with green
 `check_run_id`, request-carried red fields, and the acceptance id —
 do not invent hash or red fields. When the claim is in
 `.tuner/manifest.json`, run `orchestra verify verdict`; non-zero → not done.
+
+For manifest claims, require a signed amendment in `.tuner/manifest.json` that `orchestra verify verdict` accepts.
 
 ## Two modes
 
@@ -344,6 +347,6 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
 - Edit the tree from a verification task when its check fails
 - Route `manual` through `orchestra check`
 - Let oracle-backed `verified` stand without mechanical oracle verify
-- Invent `oracle_hashes` or a signed amendment; `create`/`supersede`
+- Invent `oracle_hashes` or amendment approval; let an executor write
   `tuner:oracle-amendment`
 - Treat a non-zero `orchestra verify verdict` as done

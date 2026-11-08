@@ -2,6 +2,7 @@ import pytest
 from canon_support import create, make_project, seed_effort
 
 from orchestra import views
+from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 
 
@@ -57,6 +58,33 @@ def test_handoff_lists_in_progress_work_item(project):
 def test_handoff_omits_planned_work_item_from_in_progress(project):
     work_item(project, "later")
     assert "In Progress" not in render(project, "handoff")
+
+
+def test_handoff_resumes_phase_close_after_the_last_task(project: Project) -> None:
+    phase = project.resolve("score:phase", "p1")
+    assert "body" in phase
+    project.update(phase["id"], transition="in_progress", body=phase["body"] + "\n## Landing\n")
+    assert "Pending Phase Close" not in render(project, "handoff")
+
+    task = work_item(project, "build-it")
+    project.update(task["id"], transition="in_progress")
+    assert "Pending Phase Close" not in render(project, "handoff")
+    project.update(task["id"], transition="done")
+    text = render(project, "handoff", effort="alpha")
+    assert "### Pending Phase Close" in text
+    assert "Run `orchestra gate p1`. After it passes, record the proof packet" in text
+
+    create(
+        project,
+        "conductor:proof-packet",
+        "p1",
+        {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
+    )
+    sections = dict(views.hook_handoff_sections(views.load_records(project)))
+    assert "verify the proof packet covers the phase head and confirm landing" in sections["alpha"]
+    assert "Pending Phase Close" not in render(project, "handoff", effort="beta")
+    project.update(phase["id"], transition="done")
+    assert "Pending Phase Close" not in render(project, "handoff")
 
 
 def test_handoff_shows_blocking_question_only_when_blocking(project):

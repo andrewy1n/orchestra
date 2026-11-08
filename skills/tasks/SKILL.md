@@ -14,7 +14,9 @@ Requires `canon` and `orchestra` on PATH. Follow
 [task-shapes.md](references/task-shapes.md) and
 [oracle-author.md](references/oracle-author.md) when planning TDD work.
 Follow [planning-mechanics.md](references/planning-mechanics.md) for the
-complete plan review and record rules.
+complete plan review and record rules. Follow
+[verification-policy.md](references/verification-policy.md) when selecting
+methods and oracle policies.
 
 ## Own
 
@@ -34,7 +36,8 @@ complete plan review and record rules.
    `source_reviews` array. Give each acceptance one requirement, unless a
    single check proves several requirements together.
 3. Split independent work first. Add `depends_on` only for real ordering or
-   data dependencies. Make the closing verification task depend on every
+   data dependencies. Tasks that must rewrite the same function get a
+   `depends_on` edge. Make the closing verification task depend on every
    other phase task.
 4. Give each work-item `## Description`, `## Approach`, one executor type,
    `size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded).

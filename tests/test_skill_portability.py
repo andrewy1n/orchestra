@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 SHARED = ROOT / "shared"
 BUILD = ROOT / "scripts" / "build_skills.py"
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verification-policy.md")
 STEP_SHARED_DOCS = {
     "record-mechanics.md": ("tasks", "execute", "verify", "run"),
     "phase-end.md": ("verify", "run"),

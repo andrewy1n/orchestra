@@ -97,7 +97,11 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
     runs = [r for r in index.of_type("tuner:check-run") if r["id"] not in index.corrected]
     for acc in index.of_type("score:acceptance"):
         data = acc["payload"]
-        if data.get("method") != "tdd" or _valid_freeze(data):
+        if (
+            data.get("method") != "tdd"
+            or data.get("oracle_policy") == "none"
+            or _valid_freeze(data)
+        ):
             continue
         phase = index.resolve_subject("score:phase", data.get("phase"))
         if acc["lifecycle_state"] != "active" or (

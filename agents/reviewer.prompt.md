@@ -84,6 +84,11 @@ findings:
     expected: <what specs/acceptances/invariants require>
     observed: <what the diff/tree shows>
     severity: blocker | major | minor | judgment
+    blocking: true | false
+    requirement: <agreed requirement or invariant the change violates>
+    trigger: <condition under which the violation shows>
+    consequence: <what breaks when it triggers>
+    escape: <missing-test only: a regression that passes every existing check>
 integration:
   interfaces: <what landed and how pieces connect>
   assumptions: <assumptions you relied on>
@@ -93,7 +98,13 @@ integration:
 
 Rules:
 
-- `verdict: PASS` only when `findings` is empty (or omitted as `[]`).
-- `verdict: NEEDS_WORK` when any finding exists.
+- Every finding carries `blocking`. Set `blocking: true` only when you can fill
+  `requirement`, `trigger` and `consequence` (and `escape` for `missing-test`).
+  A finding that lacks one is advisory: set `blocking: false`.
+- A `judgment` finding is for a choice that changes what was agreed. It always
+  blocks and needs no basis fields.
+- `verdict: PASS` when no finding is blocking. A `PASS` may list advisory findings.
+- `verdict: NEEDS_WORK` when any finding is blocking. Orchestra derives the final
+  verdict from the findings and ignores a verdict line that disagrees.
 - Always fill `integration`; parent copies it into the integration-report.
 - Do not invent check-run or store record IDs. Do not write records yourself.

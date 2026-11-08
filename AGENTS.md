@@ -10,7 +10,7 @@ by agents. The move to one repo is planned in
 |---|---|
 | `orchestra/` | CLI, views, sessions, store access |
 | `orchestra/canon/` | Record store and the `canon` CLI |
-| `orchestra/tools/` | `CliTool`, the base for CLI wrappers |
+| `orchestra/tools/` | `CliTool`, the base for CLI wrappers, and the `Git` client |
 | `orchestra/tuner/` | Evidence layer behind `orchestra verify` |
 | `orchestra/score/` | Work planning: the `score` schema module |
 | `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |
@@ -86,6 +86,11 @@ their response. They do not call `canon`.
 While you edit, run the affected test files with `uv run pytest <files>`.
 Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
 trees.
+
+When a task changes shared skill references or their generator, include
+`tests/test_skill_portability.py` in that task's `verify_command`.
+Include the contract tests for the behavior the task changes. Run these
+tests in the task worktree before phase review.
 
 Before you close a task, run the test files for the code you changed.
 Run the three pytest commands in the README Testing section only at phase

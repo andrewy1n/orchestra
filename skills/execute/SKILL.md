@@ -13,6 +13,9 @@ Requires `canon` and `orchestra` on PATH. Follow
 [record-mechanics.md](references/record-mechanics.md). Follow
 [retry-loop.md](references/retry-loop.md) for interrupted work and
 [execute-mechanics.md](references/execute-mechanics.md) for task dispatch.
+Follow [verification-policy.md](references/verification-policy.md) when
+checking frozen oracle evidence. All frozen changes require a parent-approved oracle amendment.
+For manifest claims, follow the signed manifest and verdict path in the verification policy.
 
 ## Own
 
@@ -45,6 +48,7 @@ orchestra wave start <phase-slug>
 5. Run `orchestra wave end <phase-slug>`. Do not resolve merge conflicts or
    merge task branches by hand. A merge conflict opens a blocking question;
    leave it unresolved and stop.
+   When tasks need competing behavior, leave the question open and ask the user.
 6. Continue ready waves only while the selected operation includes execute.
    After the last passing wave, report what landed and hand off to verify.
 
@@ -55,4 +59,5 @@ orchestra wave start <phase-slug>
 - Write execution reports from chat memory
 - Close tasks directly or reopen a done task
 - Edit frozen oracle files or create runner check-runs by hand
+- Resolve a merge conflict outside `orchestra wave resolve`
 - Run reviewer, suite, phase gate, proof packet, or phase closure here

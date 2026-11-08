@@ -131,7 +131,7 @@ Fix the failure that blocked closing verification.
 
 canon create --type score:acceptance \
   --subject "fix-<failing-area>" \
-  --payload '{"method":"tdd","phase":"<current-phase-slug>","effort":"<focus>","verify_command":"<command>","requirement":"<id>"}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"<focus>","verify_command":"<command>","requirement":"<id>"}'
 
 canon update --type score:work-item --id <verification-work-item-id> \
   --expected-revision <revision> \

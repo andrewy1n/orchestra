@@ -1,9 +1,9 @@
 {
   "format": "canon/1",
   "schemas": {
-    "score": "1.3.0",
+    "score": "1.5.0",
     "conductor": "1.0.0",
-    "tuner": "1.0.0",
+    "tuner": "1.1.0",
     "composer": "1.1.0"
   },
   "backend": "sqlite"
