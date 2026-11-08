@@ -282,6 +282,9 @@ In whatever repo you are building:
 | `verify` | Assess task or phase evidence and report the next step |
 | `run` | Compose a built-in phase playbook or run one selected step |
 
+Managed upgrades remove the old `settle-phase`, `plan-phase`,
+`execute-phase`, and `verify-work` entry points. They add no aliases.
+
 On first use, `init`, `tasks`, or `engage` runs
 `canon init --schemas score,conductor,tuner` in that repo. The store is marked
 by `.canon/config.json`. Skills stay in the plugin. After a tool
