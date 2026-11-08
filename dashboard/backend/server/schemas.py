@@ -142,6 +142,26 @@ class AreasResponse(RootModel[list[AreaView]]):
     pass
 
 
+class HubItem(Model):
+    kind: str
+    effort: str
+    subject: str
+    title: str
+    reason: str
+    running: bool
+    updated_at: Timestamp | None
+    href: str
+    step: str
+
+
+class HubResponse(Model):
+    work_next: list[HubItem]
+    needs_you: list[HubItem]
+    active_phases: list[HubItem]
+    open_ideas: list[HubItem]
+    generated_at: Timestamp
+
+
 class SnapshotResponse(Model):
     token: str
     generated_at: str

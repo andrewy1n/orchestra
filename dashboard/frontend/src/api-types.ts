@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/hub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hub */
+        get: operations["hub_api_hub_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/journal": {
         parameters: {
             query?: never;
@@ -422,6 +439,40 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HubItem */
+        HubItem: {
+            /** Effort */
+            effort: string;
+            /** Href */
+            href: string;
+            /** Kind */
+            kind: string;
+            /** Reason */
+            reason: string;
+            /** Running */
+            running: boolean;
+            /** Step */
+            step: string;
+            /** Subject */
+            subject: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** HubResponse */
+        HubResponse: {
+            /** Active Phases */
+            active_phases: components["schemas"]["HubItem"][];
+            /** Generated At */
+            generated_at: string;
+            /** Needs You */
+            needs_you: components["schemas"]["HubItem"][];
+            /** Open Ideas */
+            open_ideas: components["schemas"]["HubItem"][];
+            /** Work Next */
+            work_next: components["schemas"]["HubItem"][];
         };
         /** IntegrationView */
         IntegrationView: {
@@ -925,6 +976,8 @@ export type DecisionLog = components['schemas']['DecisionLog'];
 export type EffortSummary = components['schemas']['EffortSummary'];
 export type ErrorBody = components['schemas']['ErrorBody'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
+export type HubItem = components['schemas']['HubItem'];
+export type HubResponse = components['schemas']['HubResponse'];
 export type IntegrationView = components['schemas']['IntegrationView'];
 export type JournalItem = components['schemas']['JournalItem'];
 export type JournalResponse = components['schemas']['JournalResponse'];
@@ -1076,6 +1129,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    hub_api_hub_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
                 };
             };
             /** @description Bad Request */

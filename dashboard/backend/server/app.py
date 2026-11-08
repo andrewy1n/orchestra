@@ -54,6 +54,10 @@ def create_app(target: Project) -> FastAPI:
     def areas() -> schemas.AreasResponse:
         return reader.areas()
 
+    @app.get("/api/hub", response_model=schemas.HubResponse, responses=ERRORS)
+    def hub() -> schemas.HubResponse:
+        return reader.hub()
+
     @app.get("/api/phase", response_model=schemas.PhaseResponse, responses=ERRORS)
     def phase(effort: str = Query(...), phase: str = Query(...)) -> schemas.PhaseResponse:
         return reader.phase(effort, phase)
