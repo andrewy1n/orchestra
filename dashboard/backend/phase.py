@@ -61,6 +61,7 @@ class PhaseRow:
     milestone: str = ""
     milestone_title: str = ""
     in_progress: tuple[str, ...] = ()
+    updated_at: datetime | None = None
 
 
 @dataclass(frozen=True)

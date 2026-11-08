@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 
 from dashboard.backend import store
@@ -36,7 +36,7 @@ from dashboard.backend.records import (
     remap_records,
 )
 from dashboard.backend.store import change_token
-from dashboard.backend.task import TaskRow, task_rows
+from dashboard.backend.task import TaskRow, belongs, task_rows
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -83,6 +83,7 @@ class NeedsYouItem:
     next: str = ""
     result: str = ""
     revision: str = ""
+    updated_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ class BacklogItem:
     phase: str = ""
     body: str = ""
     record_type: str = "composer:idea"
+    updated_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -259,10 +261,37 @@ def _backlog_items(records: list[Record]) -> list[BacklogItem]:
                 phase=payload.get("phase") or "",
                 body=record.get("body") or "",
                 record_type=record.get("record_type") or "composer:idea",
+                updated_at=recorded_at(record),
             )
         )
     items.sort(key=lambda item: (item.subject, item.id))
     return items
+
+
+def _phase_updated_at(
+    row: PhaseRow,
+    phase_records: list[Record],
+    tasks: list[Record],
+    assignments: list[Record],
+    reports: list[Record],
+    checks: list[Record],
+) -> datetime | None:
+    members = [task for task in tasks if record_payload(task).get("phase") == row.subject]
+    names = {task["id"] for task in members} | {task["subject"] for task in members}
+    stamps = [recorded_at(record) for record in phase_records if record["id"] == row.id]
+    stamps.extend(recorded_at(task) for task in members)
+    for record in (*assignments, *reports):
+        if record_payload(record).get("work_item") in names:
+            stamps.append(recorded_at(record))
+    for task in members:
+        others = [other["subject"] for other in tasks if other["subject"] != task["subject"]]
+        effort = record_payload(task).get("effort", "")
+        stamps.extend(
+            recorded_at(check)
+            for check in checks
+            if belongs(check, task["subject"], effort, others)
+        )
+    return max(stamps, default=None)
 
 
 def _needs_you(
@@ -288,6 +317,7 @@ def _needs_you(
             body=record.get("body") or "",
             task_id=_task_for(subject, tasks),
             revision=record.get("revision") or "",
+            updated_at=recorded_at(record),
         )
 
     items: list[NeedsYouItem] = []
@@ -346,6 +376,7 @@ def _needs_you(
                 status=status,
                 next=nxt,
                 revision=record.get("revision") or "",
+                updated_at=recorded_at(record),
             )
         )
     reports_by_phase: dict[str, list[Record]] = {}
@@ -370,6 +401,7 @@ def _needs_you(
                 phase=phase,
                 result=result,
                 revision=latest.get("revision") or "",
+                updated_at=recorded_at(latest),
             )
         )
     items.sort(key=lambda entry: NEEDS_ORDER.index(entry.kind))
@@ -570,6 +602,20 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
             effort_checks,
             evidence_by_phase,
         )
+        phase_rows = [
+            replace(
+                row,
+                updated_at=_phase_updated_at(
+                    row,
+                    phases.get(effort, []),
+                    effort_tasks,
+                    listed["conductor:assignment"],
+                    listed["conductor:execution-report"],
+                    effort_checks,
+                ),
+            )
+            for row in phase_rows
+        ]
         effort_milestones = build_milestone_rows(milestones.get(effort, []), phase_rows)
         phase_rows = attach_milestones(phase_rows, effort_milestones)
         kind = record_payload(goal).get("kind") or ""
