@@ -41,6 +41,9 @@ class FakeGitHub:
     def find_pull_request(self, head: str) -> tuple[int, str] | None:
         return None
 
+    def update_pull_request(self, number: int, title: str, body: str) -> None:
+        self.events.append(f"update:{number}:{title}")
+
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         self.events.append(f"create:{head}:{base}:{title}")
         self.body = body
@@ -521,6 +524,20 @@ def test_land_cli_reports_pull_request_and_final_checks(
             assert record_type == "conductor:proof-packet"
             return [packet]
 
+        def resolve(self, record_type: str, subject: str) -> Record:
+            assert (record_type, subject) == ("score:phase", "project-config")
+            return {
+                "id": "phase-id",
+                "record_type": "score:phase",
+                "subject": "project-config",
+                "payload": {"title": "Project config"},
+                "lifecycle_state": "in_progress",
+                "relationships": {},
+                "revision": "r",
+                "recorded_at": "now",
+                "body": "## Problem\n\np\n",
+            }
+
         def create(self, *, record_type: str, subject: str, payload: JsonObject) -> Record:
             assert record_type == "conductor:landing"
             assert subject == "project-config"
@@ -535,7 +552,11 @@ def test_land_cli_reports_pull_request_and_final_checks(
         remote: str,
         poll_interval_s: float,
         timeout_s: float,
+        title: str,
+        description: Mapping[str, str],
     ) -> LandingResult:
+        assert title == "Project config (project-config)"
+        assert description == {"problem": "p"}
         assert root == tmp_path.resolve()
         assert proof_packet == "proof packet"
         assert base == "main"

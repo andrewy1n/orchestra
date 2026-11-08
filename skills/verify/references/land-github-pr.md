@@ -7,8 +7,12 @@ what only the GitHub adapter has: a PR, CI checks on it, and
 
 ## After land
 
-Land pushes the phase branch, opens the PR with the proof packet, and
-waits for CI. Each land run writes a `conductor:landing` record. When
+Land pushes the phase branch and opens the PR. The PR title is the phase
+title with its slug. The description says what the PR is for (the phase
+Problem), gives the approach and the exit criteria, then carries the
+proof packet under its own heading. Land waits for CI. A second land
+reuses the PR and updates its title and description to match the phase
+and the new proof packet. Each land run writes a `conductor:landing` record. When
 `orchestra land` exits 0, CI passed and the phase is awaiting merge.
 `orchestra handoff` shows "Awaiting merge: PR n". Merge stays human.
 

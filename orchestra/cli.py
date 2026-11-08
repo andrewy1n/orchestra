@@ -26,6 +26,7 @@ from orchestra.conductor import (
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
+from orchestra.conductor.landing import describe_phase, pull_request_title
 from orchestra.derive import requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
@@ -1076,6 +1077,7 @@ def _cmd_land(args: argparse.Namespace) -> int:
         body = packet.get("body")
         if not isinstance(body, str):
             raise ValueError("phase proof packet has no body")
+        phase_record = project.resolve("score:phase", args.phase)
         result = land.dispatch_land(
             work,
             body,
@@ -1083,6 +1085,8 @@ def _cmd_land(args: argparse.Namespace) -> int:
             remote=args.remote,
             poll_interval_s=args.poll_interval,
             timeout_s=args.timeout,
+            title=pull_request_title(phase_record),
+            description=describe_phase(phase_record),
         )
         if result.result != "skipped":
             landing: JsonObject = {

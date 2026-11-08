@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 import re
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject
+from orchestra.conductor.landing import pull_request_body
 from orchestra.tools import CliTool, Git, ToolError, ToolNotFoundError, Version, run_subprocess
 from orchestra.tools.cli_tool import RunFn
 
@@ -46,6 +47,8 @@ class GitHubClient(Protocol):
         self, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]: ...
 
+    def update_pull_request(self, number: int, title: str, body: str) -> None: ...
+
     def head_sha(self, number: int) -> str: ...
 
     def checks(self, number: int) -> tuple[GitHubCheck, ...]: ...
@@ -58,6 +61,7 @@ def open_pull_request(
     base: str = "main",
     remote: str = "origin",
     title: str | None = None,
+    description: Mapping[str, str] | None = None,
     poll_interval_s: float = 10,
     timeout_s: float = 1800,
     client: GitHubClient | None = None,
@@ -95,10 +99,13 @@ def open_pull_request(
     try:
         github.push_branch(remote, branch)
         existing = github.find_pull_request(branch)
+        body = pull_request_body(description, proof_packet) if description else proof_packet
         if existing is None:
-            number, url = github.create_pull_request(branch, base, pr_title, proof_packet)
+            number, url = github.create_pull_request(branch, base, pr_title, body)
         else:
             number, url = existing
+            if description:
+                github.update_pull_request(number, pr_title, body)
         checks = wait_for_checks(
             github,
             number,
@@ -250,6 +257,19 @@ class GitHubGh(CliTool):
         if not lines:
             raise GitHubPRError("gh pr create printed no pull request URL")
         return self.pull_request(lines[-1])
+
+    def update_pull_request(self, number: int, title: str, body: str) -> None:
+        self._text(
+            "pr",
+            "edit",
+            str(number),
+            "--title",
+            title,
+            "--body-file",
+            "-",
+            *self._repository_flags(),
+            input=body,
+        )
 
     def pull_request(self, ref: str) -> tuple[int, str]:
         data = self._json("pr", "view", ref, "--json", "number,url", *self._repository_flags())

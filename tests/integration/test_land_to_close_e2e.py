@@ -58,7 +58,7 @@ def _land_run(head: str) -> ScriptedRun:
             ("gh", "pr", "list", "--head", BRANCH, "--state", "open", "--json", "number,url"): "[]",
             (
                 "gh", "pr", "create", "--base", "main", "--head", BRANCH,
-                "--title", f"{BRANCH}: phase proof", "--body-file", "-",
+                "--title", f"{PHASE} ({PHASE})", "--body-file", "-",
             ): f"{URL}\n",
             ("gh", "pr", "view", URL, "--json", "number,url"): json.dumps(
                 {"number": 7, "url": URL}

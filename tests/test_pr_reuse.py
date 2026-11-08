@@ -37,6 +37,9 @@ class RecordingGitHub:
             raise GitHubPRError("gh pr list failed")
         return self.existing
 
+    def update_pull_request(self, number: int, title: str, body: str) -> None:
+        self.events.append(f"update:{number}:{title}")
+
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         self.events.append(f"create:{head}:{base}")
         if self.existing is not None:
