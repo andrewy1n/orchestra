@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Protocol
 
 from orchestra.canon import record_payload
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
+from orchestra.canon.types import Record
 from orchestra.conductor.github_pr import GitHubGh
-from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.landing import LANDING, latest_landing
 from orchestra.tools import Git, ToolError
 
 
@@ -32,6 +34,7 @@ class CloseResult:
     ready: bool
     refusals: tuple[str, ...]
     message: str
+    actions: tuple[str, ...] = ()
 
 
 def primary_checkout(cwd: Path) -> Path:
@@ -59,9 +62,46 @@ def close_phase(project: Project, repo: Path, phase: str, states: PullRequestSta
     refusals = _refusals(repo, phase, head_sha)
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
+        return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
+    actions = _apply(project, repo, phase, number, head_sha)
+    if actions:
+        message = f"pull request {number} is MERGED; phase {phase} closed"
     else:
-        message = f"pull request {number} is MERGED; close can proceed"
-    return CloseResult(phase, number, url, state, head_sha, not refusals, refusals, message)
+        message = f"pull request {number} is MERGED; phase {phase} has nothing left to do"
+    return CloseResult(phase, number, url, state, head_sha, True, (), message, actions)
+
+
+def landed_phases(project: Project) -> tuple[str, ...]:
+    seen: dict[str, None] = {}
+    for record in project.list(LANDING):
+        phase = record_payload(record).get("phase")
+        if isinstance(phase, str) and phase:
+            seen.setdefault(phase)
+    return tuple(seen)
+
+
+def pending_close(project: Project, repo: Path, phase: str) -> bool:
+    if project.resolve("score:phase", phase)["lifecycle_state"] != "done":
+        return True
+    if phase_worktree(repo, phase).is_dir() or task_worktrees(repo, phase):
+        return True
+    git = Git(repo)
+    return git.branch_tip(f"phase/{phase}") is not None or bool(git.branches(f"task/{phase}/"))
+
+
+def close_all(
+    project: Project, repo: Path, states: PullRequestStates
+) -> tuple[CloseResult | str, ...]:
+    """Close every landed phase that still has work to close; a failure becomes a message."""
+    results: list[CloseResult | str] = []
+    for phase in landed_phases(project):
+        try:
+            if not pending_close(project, repo, phase):
+                continue
+            results.append(close_phase(project, repo, phase, states))
+        except (CloseError, StoreError, ToolError, RuntimeError, OSError, ValueError) as error:
+            results.append(f"{phase}: {error}")
+    return tuple(results)
 
 
 def phase_worktree(repo: Path, phase: str) -> Path:
@@ -102,3 +142,64 @@ def _refusals(repo: Path, phase: str, head_sha: str) -> tuple[str, ...]:
         if not contained:
             refusals.append(f"branch {branch} has commits not in {phase_branch}")
     return tuple(refusals)
+
+
+_TRANSITIONS = {"planned": ("in_progress", "done"), "in_progress": ("done",)}
+
+
+def _apply(project: Project, repo: Path, phase: str, number: int, head_sha: str) -> tuple[str, ...]:
+    git = Git(repo)
+    actions: list[str] = []
+    trees = [*task_worktrees(repo, phase), phase_worktree(repo, phase)]
+    for tree in trees:
+        if tree.is_dir():
+            git.remove_worktree(tree)
+            actions.append(f"removed worktree {tree}")
+    for branch in git.branches(f"task/{phase}/"):
+        git.delete_branch(branch)
+        actions.append(f"deleted branch {branch}")
+    phase_branch = f"phase/{phase}"
+    if git.branch_tip(phase_branch) is not None:
+        git.delete_branch(phase_branch)
+        actions.append(f"deleted branch {phase_branch}")
+    record = project.resolve("score:phase", phase)
+    steps = _TRANSITIONS.get(record["lifecycle_state"], ())
+    if not steps:
+        return tuple(actions)
+    effort = record_payload(record).get("effort")
+    if isinstance(effort, str) and effort:
+        actions.extend(_update_effort_position(project, effort, phase, number, head_sha))
+    actions.extend(_close_phase_position(project, phase))
+    for step in steps:
+        record = project.update(record["id"], transition=step)
+    actions.append(f"closed phase {phase}")
+    return tuple(actions)
+
+
+def _find_position(project: Project, subject: str, scope: str) -> Record | None:
+    try:
+        position = project.resolve("score:position", subject)
+    except StoreError:
+        return None
+    return position if record_payload(position).get("scope") == scope else None
+
+
+def _update_effort_position(
+    project: Project, effort: str, phase: str, number: int, head_sha: str
+) -> list[str]:
+    position = _find_position(project, effort, "effort")
+    if position is None:
+        return []
+    narrative = f"{phase} merged as PR {number} ({head_sha[:12]}); phase closed."
+    if record_payload(position).get("position") == narrative:
+        return []
+    project.supersede(position["id"], payload={"position": narrative})
+    return [f"updated the position of effort {effort}"]
+
+
+def _close_phase_position(project: Project, phase: str) -> list[str]:
+    position = _find_position(project, phase, "phase")
+    if position is None or record_payload(position).get("status") == "closed":
+        return []
+    project.supersede(position["id"], payload={"status": "closed"})
+    return [f"closed the position of phase {phase}"]

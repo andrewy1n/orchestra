@@ -452,7 +452,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "close",
         help="Report a landed phase's pull request and check that its worktrees and branches can go",
     )
-    close.add_argument("--phase", required=True, help="Phase slug")
+    close.add_argument("--phase", default=None, help="Phase slug")
+    close.add_argument(
+        "--all", action="store_true", help="Close every landed phase that still has work to close"
+    )
     close.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     close.add_argument(
         "--store",
@@ -1118,13 +1121,38 @@ def _cmd_land(args: argparse.Namespace) -> int:
     return 0 if result.result == "success" else 1
 
 
+def _close_json(result: close.CloseResult) -> JsonObject:
+    return {
+        "ok": not result.refusals,
+        "op": "close",
+        "phase": result.phase,
+        "pull_request": {
+            "number": result.number,
+            "url": result.url,
+            "state": result.state,
+            "head_sha": result.head_sha,
+        },
+        "ready": result.ready,
+        "refusals": list(result.refusals),
+        "actions": list(result.actions),
+        "message": result.message,
+    }
+
+
 def _cmd_close(args: argparse.Namespace) -> int:
+    if bool(args.phase) == bool(args.all):
+        print("orchestra close: pass exactly one of --phase and --all", file=sys.stderr)
+        return 2
     work = _cwd(args).resolve()
     try:
         location = resolve_location(args.store, work)
         project = location.open()
         repo = close.primary_checkout(work)
-        result = close.close_phase(project, repo, args.phase, close.github_states(repo))
+        states = close.github_states(repo)
+        if args.all:
+            outcomes = close.close_all(project, repo, states)
+        else:
+            outcomes = (close.close_phase(project, repo, args.phase, states),)
     except (
         close.CloseError,
         GitHubPRError,
@@ -1138,25 +1166,27 @@ def _cmd_close(args: argparse.Namespace) -> int:
     ) as exc:
         print(f"orchestra close: {exc}", file=sys.stderr)
         return 2
-    _print_json(
-        {
-            "ok": not result.refusals,
-            "op": "close",
-            "phase": result.phase,
-            "pull_request": {
-                "number": result.number,
-                "url": result.url,
-                "state": result.state,
-                "head_sha": result.head_sha,
-            },
-            "ready": result.ready,
-            "refusals": list(result.refusals),
-            "message": result.message,
-        }
-    )
-    for line in result.refusals:
+    results = [item for item in outcomes if not isinstance(item, str)]
+    errors = [item for item in outcomes if isinstance(item, str)]
+    if args.all:
+        _print_json(
+            {
+                "ok": not errors and not any(item.refusals for item in results),
+                "op": "close",
+                "phases": [_close_json(item) for item in results],
+                "errors": errors,
+            }
+        )
+    else:
+        _print_json(_close_json(results[0]))
+    for item in results:
+        for line in item.refusals:
+            print(f"orchestra close: {line}", file=sys.stderr)
+    for line in errors:
         print(f"orchestra close: {line}", file=sys.stderr)
-    return 1 if result.refusals else 0
+    if errors:
+        return 2
+    return 1 if any(item.refusals for item in results) else 0
 
 
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:

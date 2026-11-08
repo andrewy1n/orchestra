@@ -60,8 +60,7 @@ class Landed:
         return close.close_phase(self.project, self.repo, PHASE, states)
 
 
-@pytest.fixture
-def landed(tmp_path: Path) -> Landed:
+def make_landed(tmp_path: Path) -> Landed:
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q", "-b", "main")
@@ -96,6 +95,11 @@ def landed(tmp_path: Path) -> Landed:
         },
     )
     return Landed(project, repo, head)
+
+
+@pytest.fixture
+def landed(tmp_path: Path) -> Landed:
+    return make_landed(tmp_path)
 
 
 def test_close_acts_only_on_merged(landed: Landed) -> None:
