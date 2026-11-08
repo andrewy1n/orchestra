@@ -18,7 +18,7 @@ test("R8 the area page h1 renders at 20px", async ({ page }) => {
 });
 
 test("R9 the product home has one h1 reading Areas", async ({ page }) => {
-	await page.goto("/");
+	await page.goto("/#/areas");
 	await expect(page.locator("[data-product-index]")).toBeVisible();
 	const headings = page.locator("main h1");
 	await expect(headings).toHaveCount(1);
@@ -26,7 +26,7 @@ test("R9 the product home has one h1 reading Areas", async ({ page }) => {
 });
 
 test("R10 home area cards in one row share a height", async ({ page }) => {
-	await page.goto("/");
+	await page.goto("/#/areas");
 	const cards = page.locator("[data-area-card]");
 	await expect(cards.first()).toBeVisible();
 	const heights = await cards.evaluateAll((els) =>
@@ -49,7 +49,7 @@ test("R10 home area cards in one row share a height", async ({ page }) => {
 test("R11 a home area card shows counts and no effort names", async ({
 	page,
 }) => {
-	await page.goto("/");
+	await page.goto("/#/areas");
 	const card = page.locator('[data-area-card="e2e-area"]');
 	await expect(card).toBeVisible();
 	await expect(card.locator("[data-card-effort]")).toHaveCount(0);
