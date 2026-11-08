@@ -29,7 +29,7 @@ def test_spec_writes_only_the_behavioral_contract() -> None:
     assert "Do not write" in text and "work-items" in text
 
 
-def test_design_uses_current_contract_without_creating_tasks() -> None:
+def test_design_compares_only_viable_contract_satisfying_options() -> None:
     text = (SKILLS / "design" / "SKILL.md").read_text()
     written = {
         inv["type"]
@@ -43,7 +43,7 @@ def test_design_uses_current_contract_without_creating_tasks() -> None:
     assert "Do not write work-items" in text
 
 
-def test_both_skills_use_shared_context_before_clarification() -> None:
+def test_context_read_precedes_clarification() -> None:
     for name in ("spec", "design"):
         text = _text(name)
         assert "intent-qa.md" in text
