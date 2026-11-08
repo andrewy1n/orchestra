@@ -271,7 +271,7 @@ def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, 
     return False, readiness.reason or f"{step} review is {readiness.status}"
 
 
-def _execution_ready(records: list[Record], phase: str, effort: str) -> tuple[bool, str]:
+def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     items = [
         record
         for record in records
@@ -299,19 +299,42 @@ def _execution_ready(records: list[Record], phase: str, effort: str) -> tuple[bo
             return False, (
                 f"task {item['subject']!r} execution report result={result!r}, verdict={verdict!r}"
             )
-    integrations = [
-        record
-        for record in records
-        if record["record_type"] == "conductor:integration-report"
-        and record["payload"].get("phase") == phase
-        and record["payload"].get("effort") == effort
-    ]
-    if not integrations:
-        return False, "phase integration report is missing"
-    latest = max(integrations, key=lambda row: (row["recorded_at"], row["id"]))
-    if latest["payload"].get("result") != "pass" or not _text(latest, "revision"):
-        return False, "phase integration report is not passing"
     return True, ""
+
+
+def _requires_integration_report(records: list[Record], phase: str) -> bool:
+    items = {
+        record["subject"]: record
+        for record in records
+        if record["record_type"] == "score:work-item"
+        and record["payload"].get("phase") == phase
+        and record["lifecycle_state"] in ("planned", "in_progress", "done")
+    }
+    dependencies: dict[str, set[str]] = {}
+    for subject, item in items.items():
+        raw = item["payload"].get("depends_on", [])
+        if not isinstance(raw, list) or not all(isinstance(dep, str) for dep in raw):
+            return True
+        dependencies[subject] = {dep for dep in raw if isinstance(dep, str)} & items.keys()
+    closing_tasks = {
+        subject
+        for subject, task_dependencies in dependencies.items()
+        if len(items) > 1 and len(task_dependencies) == len(items) - 1
+    }
+    implementation_tasks = set(items) - closing_tasks
+    completed: set[str] = set()
+    while implementation_tasks - completed:
+        wave = {
+            subject
+            for subject in implementation_tasks - completed
+            if dependencies[subject] <= completed
+        }
+        if not wave:
+            return True
+        if len(wave) > 1:
+            return True
+        completed.update(wave)
+    return False
 
 
 def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
@@ -339,12 +362,24 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         latest = max(own, key=lambda row: (row["recorded_at"], row["id"]))
         if latest["payload"].get("result") != "pass":
             return False, f"acceptance {acceptance['subject']!r} check-run is not pass"
+    if _requires_integration_report(records, phase):
+        effort = _text(phase_record, "effort")
+        integrations = [
+            record
+            for record in records
+            if record["record_type"] == "conductor:integration-report"
+            and record["payload"].get("phase") == phase
+            and record["payload"].get("effort") == effort
+        ]
+        if not integrations:
+            return False, "phase integration report is missing"
+        latest = max(integrations, key=lambda row: (row["recorded_at"], row["id"]))
+        if latest["payload"].get("result") != "pass" or not _text(latest, "revision"):
+            return False, "phase integration report is not passing"
     return True, ""
 
 
-def _step_completion(
-    records: list[Record], phase: str, step: Step, effort: str
-) -> tuple[bool, str]:
+def _step_completion(records: list[Record], phase: str, step: Step) -> tuple[bool, str]:
     if step in ("spec", "design", "tasks"):
         ready, reason = _review_ready(records, phase, step)
         if not ready:
@@ -353,11 +388,18 @@ def _step_completion(
             return _plan_ready(records, phase)
         return True, ""
     if step == "execute":
-        return _execution_ready(records, phase, effort)
+        return _execution_ready(records, phase)
     return _verification_ready(records, phase)
 
 
-def _action_for(records: list[Record], phase: Record, step: Step, effort: str) -> RunAction:
+def _action_for(
+    records: list[Record],
+    phase: Record,
+    step: Step,
+    *,
+    prepare: bool = False,
+    selected_phases: set[str] | None = None,
+) -> RunAction:
     subject = phase["subject"]
     try:
         blockers = phase_blockers(records, subject)
@@ -367,6 +409,8 @@ def _action_for(records: list[Record], phase: Record, step: Step, effort: str) -
         names = ", ".join(blocker.record["subject"] for blocker in blockers)
         return RunAction(subject, step, "blocked", f"human decision blocks this phase: {names}")
     for dependency in _dependencies(phase):
+        if prepare and selected_phases is not None and dependency in selected_phases:
+            continue
         dependency_record = _current_phase(records, dependency)
         if dependency_record["lifecycle_state"] != "done":
             return RunAction(
@@ -381,7 +425,7 @@ def _action_for(records: list[Record], phase: Record, step: Step, effort: str) -
     }
     prerequisite = prerequisites[step]
     if prerequisite is not None:
-        complete, reason = _step_completion(records, subject, prerequisite, effort)
+        complete, reason = _step_completion(records, subject, prerequisite)
         if not complete:
             return RunAction(
                 subject, step, "blocked", f"{prerequisite} prerequisite is incomplete: {reason}"
@@ -396,10 +440,9 @@ def _action_for(records: list[Record], phase: Record, step: Step, effort: str) -
     if step == "design":
         return RunAction(subject, step, "ready")
     if step == "tasks":
-        ready, reason = _plan_ready(records, subject)
-        return RunAction(subject, step, "ready" if ready else "blocked", reason)
+        return RunAction(subject, step, "ready")
     if step == "execute":
-        ready, reason = _execution_ready(records, subject, effort)
+        ready, reason = _execution_ready(records, subject)
         if not ready and "execution report result=" in reason:
             return RunAction(subject, step, "blocked", reason)
         return RunAction(subject, step, "ready", reason if not ready else "")
@@ -409,20 +452,26 @@ def _action_for(records: list[Record], phase: Record, step: Step, effort: str) -
 def _all_actions(records: list[Record], run: Record) -> tuple[RunAction, ...]:
     steps = _run_steps(run)
     phases = _phase_records(records, run)
-    effort = _text(run, "effort")
     actions: list[RunAction] = []
     prepare_barrier = _text(run, "operation") == "prepare"
-    specs_complete = all(
-        _step_completion(records, phase["subject"], "spec", effort)[0] for phase in phases
-    )
+    selected_phases = {phase["subject"] for phase in phases}
+    specs_complete = all(_step_completion(records, phase["subject"], "spec")[0] for phase in phases)
     for phase in phases:
         for step in steps:
-            complete, _ = _step_completion(records, phase["subject"], step, effort)
+            complete, _ = _step_completion(records, phase["subject"], step)
             if complete:
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
                 break
-            actions.append(_action_for(records, phase, step, effort))
+            actions.append(
+                _action_for(
+                    records,
+                    phase,
+                    step,
+                    prepare=prepare_barrier,
+                    selected_phases=selected_phases,
+                )
+            )
             break
     return tuple(actions)
 

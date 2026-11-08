@@ -146,5 +146,6 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     Otherwise (`gated` or missing) create a blocking
     `score:continuity-question` with scope
     `plan-review:<current-phase-slug>`. Ask approve / change / send back to
-    `spec`. On approval, answer the question; only then may
-    `execute` run.
+    `spec`. On approval, answer the question and record a task review with
+    authority `user-approval`. For `auto-plan` or `auto-phases`, record a
+    task review with authority `task-plan-policy` before execution.

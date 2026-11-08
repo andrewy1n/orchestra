@@ -82,8 +82,26 @@ canon create --type score:continuity-question \
   --body "Review the phase plan. Approve, change, or send it back to spec."
 ```
 
-After approval, answer the plan-review question. Start execution only after
-the answer clears the blocking question.
+After approval, answer the plan-review question and record the task review:
+
+```bash
+orchestra workflow review <phase-slug> tasks \
+  --artifact <phase-record-id> \
+  --authority user-approval \
+  --basis "<user's approval>"
+```
+
+For `auto-plan` or `auto-phases`, record the policy review instead:
+
+```bash
+orchestra workflow review <phase-slug> tasks \
+  --artifact <phase-record-id> \
+  --authority task-plan-policy \
+  --basis "Effort autonomy permits task planning."
+```
+
+Start execution only after the task review is current and the blocking
+question is clear.
 
 Landing names branch, worktree, base and repo only. `orchestra.toml` `[land]`
 and `[suite]` configure them.

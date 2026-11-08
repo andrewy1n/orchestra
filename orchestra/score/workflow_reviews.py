@@ -209,6 +209,7 @@ def _task_plan_fingerprint(phase: str, records: Sequence[Record]) -> str:
         for key in (
             "title",
             "kind",
+            "executor",
             "requirements",
             "decisions",
             "depends_on",
@@ -217,6 +218,7 @@ def _task_plan_fingerprint(phase: str, records: Sequence[Record]) -> str:
         ):
             if key in payload:
                 item[key] = payload[key]
+        item["body"] = record.get("body", "")
         work_items.append(item)
     acceptances: list[dict[str, JsonValue]] = []
     for record in records:
