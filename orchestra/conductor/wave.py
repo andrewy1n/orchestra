@@ -265,11 +265,12 @@ def _passes(records: list[Record], acceptance: Record, tip: str) -> bool:
         for r in records
         if r["record_type"] == "tuner:check-run"
         and record_payload(r).get("criterion_id") == acceptance["id"]
+        and record_payload(r).get("revision") == tip
     ]
     if not runs:
         return False
-    latest = record_payload(max(runs, key=lambda r: r["recorded_at"]))
-    return latest.get("result") == "pass" and latest.get("revision") == tip
+    latest = record_payload(max(runs, key=lambda r: (r["recorded_at"], r["id"])))
+    return latest.get("result") == "pass"
 
 
 def end(project: Project, repo: Path, phase: str) -> WaveEnd:
