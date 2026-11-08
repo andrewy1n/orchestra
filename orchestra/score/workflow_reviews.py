@@ -91,6 +91,28 @@ def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Re
         and record["payload"].get("phase") == phase
         and record["payload"].get("step") == step
     ]
+    artifact = _artifact_for_step(records, phase, step)
+    dependencies: tuple[Step, ...]
+    if step == "design":
+        dependencies = ("spec",)
+    elif step == "tasks":
+        dependencies = ("spec", "design")
+    else:
+        dependencies = ()
+    sources = [_latest_step_review(records, phase, dependency) for dependency in dependencies]
+    if artifact is not None and all(source is not None for source in sources):
+        current_sources = [source for source in sources if source is not None]
+        source_ids = [source["id"] for source in current_sources]
+        fingerprint = step_input_fingerprint(step, artifact, current_sources, records)
+        current = [
+            record
+            for record in candidates
+            if record["payload"].get("reviewed_artifact") == artifact["id"]
+            and record["payload"].get("source_reviews") == source_ids
+            and record["payload"].get("input_fingerprint") == fingerprint
+        ]
+        if current:
+            return max(current, key=lambda record: (record["recorded_at"], record["id"]))
     return (
         max(candidates, key=lambda record: (record["recorded_at"], record["id"]))
         if candidates
