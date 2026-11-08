@@ -83,6 +83,7 @@ def test_upgrade_removes_managed_legacy_skills(tmp_path: Path, roots: tuple[Path
     assert all((skills / name / "SKILL.md").is_file() for name in WORKFLOW_SKILLS)
     marker = json.loads((roots[1] / ".claude" / ".orchestra-install.json").read_text())
     assert all(f"skills/{name}" not in marker["entries"] for name in RETIRED_SKILLS)
+    assert all(f"skills/{name}" in marker["entries"] for name in WORKFLOW_SKILLS)
 
 
 def test_current_routes_resolve_installed_skills(roots: tuple[Path, Path]) -> None:
