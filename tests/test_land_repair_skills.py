@@ -74,7 +74,7 @@ def test_exhausted_budget_stops_dispatch() -> None:
     section = _repair_loop()
 
     assert "Do not create another repair" in section
-    assert "stop" in section.split("When a retry budget runs out", 1)[-1]
+    assert "Stop until the user answers" in section
 
 
 def test_a_moved_head_redoes_the_gate_terms_before_land() -> None:

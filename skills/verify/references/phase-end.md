@@ -317,9 +317,27 @@ scope `retry:<repair-task-slug>` and a `tuner:finding`, as
 `retry-loop.md` describes. Do not create another repair. Stop until the
 user answers.
 
-At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
+Land ends when `orchestra land` exits 0. The phase is then awaiting
+merge. Merge stays human.
 
-At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
+## Close
+
+Close is the last phase-end step. With a Landing section, close runs
+after the human merges the PR. Run `orchestra close --phase
+<phase-slug>` from the main checkout, not from a worktree that close
+removes. Close reads the landing record and asks `gh` for the PR state.
+It acts only when the PR is merged. Exit 0 means close finished, found
+nothing left to do, or found the PR still open. Exit 1 means close
+refused and named the path or branch: fix it, then run close again.
+Exit 2 means a usage, store or `gh` error.
+
+Close removes the task and phase worktrees, deletes the `task/*` and
+`phase/*` branches, updates the effort position, closes the phase
+position, and marks the phase done. It skips each step already done.
+Session start runs `orchestra close --all`, so a merge between sessions
+closes on its own.
+
+Without a Landing section, close the phase by hand when the gate holds.
 
 Close the phase; close the phase position (`subject` = phase slug,
 `status: closed`) only when a note position exists; update effort
@@ -340,8 +358,9 @@ canon supersede --type score:position --id <effort-position-id> \
 ```
 
 Skip phase close commits for incidental. On revision
-conflict, re-read effort position and retry. Do not materialize the
-next phase's tasks unless asked (`tasks`).
+conflict, re-read effort position and retry. Plan the next phase only
+after close. Do not materialize the next phase's tasks unless asked
+(`tasks`).
 
 If no `planned`/`in_progress` phase remains for this effort, ask
 whether more phases follow. Yes → stop for `tasks`. No → close

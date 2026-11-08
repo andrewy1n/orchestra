@@ -11,7 +11,7 @@ Requires `orchestra` on PATH and a live store. The playbook composes the
 separate `spec`, `design`, `tasks`, `execute`, and `verify` skills.
 Use [retry-loop.md](references/retry-loop.md) and
 [execute-mechanics.md](references/execute-mechanics.md) during execution.
-Use [phase-end.md](references/phase-end.md) during verification and land.
+Use [phase-end.md](references/phase-end.md) during verification, land, and close.
 
 ## Built-in operations
 
