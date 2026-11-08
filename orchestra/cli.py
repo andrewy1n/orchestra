@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import plugin_cli, status_cli, view_cli, views
+from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project, StoreBindingError, open_store
@@ -39,6 +39,8 @@ def _build_parser() -> argparse.ArgumentParser:
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    workflow = sub.add_parser("workflow", help="Preview and resume built-in workflow playbooks")
+    workflow_cli.add_parser(workflow)
     sub.add_parser(
         "verify",
         add_help=False,
@@ -300,7 +302,7 @@ def _build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("phase", help="Phase slug")
     analyze.add_argument(
         "--stage",
-        choices=("plan", "close"),
+        choices=("spec", "design", "plan", "close"),
         default="plan",
         help="Checks to run (default: plan)",
     )
@@ -1264,6 +1266,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_analyze(args)
     if args.command == "gate":
         return _cmd_gate(args)
+    if args.command == "workflow":
+        return workflow_cli.run(args)
     if args.command == "suite":
         if args.action == "policy":
             return _cmd_suite_policy(args)
