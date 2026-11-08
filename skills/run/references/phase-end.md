@@ -290,6 +290,33 @@ EOF
 )"
 ```
 
+### CI repair loop
+
+Land waits for CI. When `orchestra land` exits 1 with a failed check,
+repair it without a user step:
+
+1. Read the failed checks in the land output. Read their logs with
+   `gh run view <run-id> --log-failed`.
+2. Create a repair work-item on the phase for the failing checks. Its
+   acceptance is that each failing check passes. Count it against
+   `retry_max_fix_tasks`.
+3. Run the repair through the execute wave in the phase worktree. The
+   repair uses the executor rules of a task.
+4. After the repair passes its acceptance, commit the repair in the
+   phase worktree.
+5. The head moved. Run `orchestra gate`. Redo each missing term at the
+   new head: the reviewer, then a new proof packet.
+6. Run `orchestra land --phase <phase-slug>` again. Land pushes the
+   commit to the open PR and reads CI again.
+7. Repeat from step 1 until land exits 0.
+
+Repairs follow the retry budgets in `retry-loop.md`:
+`retry_max_redispatches` per task and `retry_max_fix_tasks` per phase.
+When a retry budget runs out, open a `score:continuity-question` with
+scope `retry:<repair-task-slug>` and a `tuner:finding`, as
+`retry-loop.md` describes. Do not create another repair. Stop until the
+user answers.
+
 At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
 
 At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
