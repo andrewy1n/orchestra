@@ -8,6 +8,7 @@
 
 export type RouteName =
 	| "home"
+	| "areas"
 	| "task"
 	| "phase"
 	| "requirement"
@@ -29,6 +30,7 @@ export interface Route {
 
 const NAMES: ReadonlySet<string> = new Set<RouteName>([
 	"home",
+	"areas",
 	"task",
 	"phase",
 	"requirement",

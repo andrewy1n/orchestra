@@ -210,6 +210,7 @@ export function breadcrumbParts(
 			index === parts.length - 1 ? { label: part.label } : part,
 		);
 	if (route.name === "home") return finish([product]);
+	if (route.name === "areas") return finish([product, { label: "Areas" }]);
 	if (route.name === "area") {
 		const subject = areaSubject(route);
 		const title = areas.find((area) => area.subject === subject)?.title;

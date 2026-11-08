@@ -104,9 +104,9 @@ async function mountApp(hash: string) {
 }
 
 describe("retired needs route", () => {
-	it("R5 the route #/needs renders the product home screen", async () => {
+	it("R5 the route #/needs renders the work hub", async () => {
 		await mountApp("#/needs");
-		expect(document.querySelector("[data-product-index]")).not.toBeNull();
+		expect(document.querySelector("[data-hub]")).not.toBeNull();
 		expect(document.querySelector("main")?.getAttribute("data-route")).toBe(
 			"home",
 		);
@@ -125,9 +125,9 @@ describe("retired needs route", () => {
 });
 
 describe("retired backlog route", () => {
-	it("R6 the route #/backlog renders the product home screen", async () => {
+	it("R6 the route #/backlog renders the work hub", async () => {
 		await mountApp("#/backlog");
-		expect(document.querySelector("[data-product-index]")).not.toBeNull();
+		expect(document.querySelector("[data-hub]")).not.toBeNull();
 		expect(document.querySelector("main")?.getAttribute("data-route")).toBe(
 			"home",
 		);
