@@ -261,6 +261,16 @@ class GitHubGh(CliTool):
             raise GitHubPRError("gh pr view returned an unexpected shape")
         return number, url
 
+    def pull_request_state(self, number: int) -> tuple[str, str]:
+        data = self._json(
+            "pr", "view", str(number), "--json", "state,headRefOid", *self._repository_flags()
+        )
+        state = data.get("state") if isinstance(data, dict) else None
+        sha = data.get("headRefOid") if isinstance(data, dict) else None
+        if not isinstance(state, str) or not state or not isinstance(sha, str) or not sha:
+            raise GitHubPRError("gh pr view returned an unexpected shape")
+        return state, sha
+
     def head_sha(self, number: int) -> str:
         data = self._json(
             "pr", "view", str(number), "--json", "headRefOid", *self._repository_flags()
