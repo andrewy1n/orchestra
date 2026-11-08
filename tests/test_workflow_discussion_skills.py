@@ -43,6 +43,14 @@ def test_design_compares_only_viable_contract_satisfying_options() -> None:
     assert "Do not write work-items" in text
 
 
+def test_design_uses_current_contract_without_creating_tasks() -> None:
+    text = (SKILLS / "design" / "SKILL.md").read_text()
+
+    assert "active approved specification" in text
+    assert "Refuse to design" in text
+    assert "Do not write work-items" in text
+
+
 def test_context_read_precedes_clarification() -> None:
     for name in ("spec", "design"):
         text = _text(name)
