@@ -15,6 +15,7 @@ from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
 from orchestra.derive import (
     effort_dormant,
+    latest_landing,
     phase_progress,
     release_ready,
     requirement_status,
@@ -500,6 +501,14 @@ def _group_records(
 
 def _phase_close_step(phase: Record, records: list[Record]) -> str:
     slug = phase["subject"]
+    landing = latest_landing(records, slug)
+    if landing is not None:
+        landed = record_payload(landing)
+        if landed.get("result") == "success":
+            return (
+                f"Awaiting merge: PR {landed.get('number')} ({landed.get('url')}). "
+                f"Run `orchestra close --phase {shlex.quote(slug)}` after the merge."
+            )
     gate = f"Run `orchestra gate {shlex.quote(slug)}`."
     has_packet = any(
         record["record_type"] == "conductor:proof-packet"

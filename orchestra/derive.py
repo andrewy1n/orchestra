@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Literal
@@ -25,6 +26,20 @@ CHECK_RUN = "tuner:check-run"
 ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
 QUESTION = "score:continuity-question"
+LANDING = "conductor:landing"
+
+
+def latest_landing(records: Sequence[Record], phase: str) -> Record | None:
+    """Return the newest `conductor:landing` record for a phase, or None."""
+    found = [
+        record
+        for record in records
+        if record["record_type"] == LANDING and record_payload(record).get("phase") == phase
+    ]
+    if not found:
+        return None
+    return max(enumerate(found), key=lambda pair: (pair[1].get("recorded_at", ""), pair[0]))[1]
+
 
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
 DORMANT_AFTER = timedelta(days=7)
