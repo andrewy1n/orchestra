@@ -26,7 +26,7 @@ import argparse
 import sys
 from pathlib import Path
 
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md")
+SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md")
 SKILLS_DIRNAME = "skills"
 SHARED_DIRNAME = "shared"
 REFERENCES_DIRNAME = "references"
