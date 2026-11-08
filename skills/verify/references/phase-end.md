@@ -331,9 +331,14 @@ nothing left to do, or found the PR still open. Exit 1 means close
 refused and named the path or branch: fix it, then run close again.
 Exit 2 means a usage, store or `gh` error.
 
-Close removes the task and phase worktrees, deletes the `task/*` and
-`phase/*` branches, updates the effort position, closes the phase
-position, and marks the phase done. It skips each step already done.
+At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
+`orchestra close` does this, then removes the phase worktree.
+
+At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
+`orchestra close` does this, then deletes the `phase/<phase-slug>` branch.
+
+Close also updates the effort position, closes the phase position, and
+marks the phase done. It skips each step already done.
 Session start runs `orchestra close --all`, so a merge between sessions
 closes on its own.
 
