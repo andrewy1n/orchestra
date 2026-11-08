@@ -16,6 +16,7 @@ from orchestra import views
 from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.conductor import close
 from orchestra.conductor.model_types import PlanningPayload
 
 PROTOCOL = (
@@ -164,6 +165,25 @@ def _wrap_start(fmt: str, ctx: str) -> JsonObject:
     return {"additional_context": ctx}
 
 
+def _close_sweep(project: Project, root: Path) -> list[str]:
+    try:
+        if not close.landed_phases(project):
+            return []
+        repo = close.primary_checkout(root)
+        results = close.close_all(project, repo, close.github_states(repo), root)
+    except Exception as exc:
+        return [f"Close sweep failed: {exc}"]
+    lines: list[str] = []
+    for item in results:
+        if isinstance(item, str):
+            lines.append(f"Close sweep failed: {item}")
+        elif item.actions:
+            lines.append(f"Closed phase {item.phase}: pull request {item.number} merged.")
+        elif item.refusals:
+            lines.append(f"Close refused for phase {item.phase}: " + "; ".join(item.refusals))
+    return lines
+
+
 def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
     root = _root_from_hook(data, fmt)
     try:
@@ -172,6 +192,7 @@ def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
             return None
         if open_backend(project.store_path).backup_due(timedelta(hours=24)):
             subprocess.run(["canon", "backup"], cwd=root, check=True)
+        sweep = _close_sweep(project, root)
         records = views.load_records(project)
         _save_baseline(project, root, data)
         dormant = views.dormant_efforts(records)
@@ -180,6 +201,8 @@ def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
             views.hook_handoff_sections(records, dormant),
             dormant,
         )
+        if sweep:
+            ctx += "\n" + "\n".join(sweep) + "\n"
     except Exception as exc:
         ctx = f"orchestra session-start failed: {exc}\n"
     return _wrap_start(fmt, ctx)

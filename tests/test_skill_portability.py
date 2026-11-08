@@ -33,6 +33,7 @@ SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verific
 STEP_SHARED_DOCS = {
     "record-mechanics.md": ("tasks", "execute", "verify", "run"),
     "phase-end.md": ("verify", "run"),
+    "land-github-pr.md": ("verify", "run"),
 }
 
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)

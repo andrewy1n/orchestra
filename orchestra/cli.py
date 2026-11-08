@@ -11,16 +11,28 @@ from pathlib import Path
 from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
-from orchestra.canon.types import Record
-from orchestra.conductor import autonomy, gate, land, land_task, reviewer, suite, task_close, wave
+from orchestra.canon.types import JsonObject, Record
+from orchestra.conductor import (
+    autonomy,
+    close,
+    gate,
+    land,
+    land_task,
+    reviewer,
+    suite,
+    task_close,
+    wave,
+)
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
+from orchestra.conductor.landing import describe_phase, pull_request_title
 from orchestra.derive import requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
+from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
@@ -428,6 +440,32 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
     land.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+    close = sub.add_parser(
+        "close",
+        help=(
+            "After the pull request merges, remove the phase worktrees and branches "
+            "and close the phase"
+        ),
+        description=(
+            "After the pull request merges, close removes the worktrees and branches of the "
+            "phase and closes the phase. Run it from the main checkout."
+        ),
+    )
+    close.add_argument("--phase", default=None, help="Phase slug")
+    close.add_argument(
+        "--all", action="store_true", help="Close every landed phase that still has work to close"
+    )
+    close.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    close.add_argument(
         "--store",
         default=None,
         metavar="DIR",
@@ -1039,6 +1077,7 @@ def _cmd_land(args: argparse.Namespace) -> int:
         body = packet.get("body")
         if not isinstance(body, str):
             raise ValueError("phase proof packet has no body")
+        phase_record = project.resolve("score:phase", args.phase)
         result = land.dispatch_land(
             work,
             body,
@@ -1046,7 +1085,21 @@ def _cmd_land(args: argparse.Namespace) -> int:
             remote=args.remote,
             poll_interval_s=args.poll_interval,
             timeout_s=args.timeout,
+            title=pull_request_title(phase_record),
+            description=describe_phase(phase_record),
         )
+        if result.result != "skipped":
+            landing: JsonObject = {
+                "phase": args.phase,
+                "number": result.number,
+                "url": result.url,
+                "head_sha": result.head_sha,
+                "result": result.result,
+            }
+            effort = packet["payload"].get("effort")
+            if isinstance(effort, str) and effort:
+                landing["effort"] = effort
+            project.create(record_type="conductor:landing", subject=args.phase, payload=landing)
     except (
         GitHubPRError,
         LookupError,
@@ -1077,6 +1130,74 @@ def _cmd_land(args: argparse.Namespace) -> int:
         }
     )
     return 0 if result.result == "success" else 1
+
+
+def _close_json(result: close.CloseResult) -> JsonObject:
+    return {
+        "ok": not result.refusals,
+        "op": "close",
+        "phase": result.phase,
+        "pull_request": {
+            "number": result.number,
+            "url": result.url,
+            "state": result.state,
+            "head_sha": result.head_sha,
+        },
+        "ready": result.ready,
+        "refusals": list(result.refusals),
+        "actions": list(result.actions),
+        "message": result.message,
+    }
+
+
+def _cmd_close(args: argparse.Namespace) -> int:
+    if bool(args.phase) == bool(args.all):
+        print("orchestra close: pass exactly one of --phase and --all", file=sys.stderr)
+        return 2
+    work = _cwd(args).resolve()
+    try:
+        location = resolve_location(args.store, work)
+        project = location.open()
+        repo = close.primary_checkout(work)
+        states = close.github_states(repo)
+        if args.all:
+            outcomes = close.close_all(project, repo, states, work)
+        else:
+            outcomes = (close.close_phase(project, repo, args.phase, states, work),)
+    except (
+        close.CloseError,
+        GitHubPRError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+        ToolError,
+        ValueError,
+    ) as exc:
+        print(f"orchestra close: {exc}", file=sys.stderr)
+        return 2
+    results = [item for item in outcomes if not isinstance(item, str)]
+    errors = [item for item in outcomes if isinstance(item, str)]
+    if args.all:
+        _print_json(
+            {
+                "ok": not errors and not any(item.refusals for item in results),
+                "op": "close",
+                "phases": [_close_json(item) for item in results],
+                "errors": errors,
+            }
+        )
+    else:
+        _print_json(_close_json(results[0]))
+    for item in results:
+        for line in item.refusals:
+            print(f"orchestra close: {line}", file=sys.stderr)
+    for line in errors:
+        print(f"orchestra close: {line}", file=sys.stderr)
+    if errors:
+        return 2
+    return 1 if any(item.refusals for item in results) else 0
 
 
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
@@ -1334,6 +1455,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_suite_record(args)
     if args.command == "land":
         return _cmd_land(args)
+    if args.command == "close":
+        return _cmd_close(args)
     if args.command == "store":
         if args.action == "recover-evidence":
             from orchestra.canon.validation import ValidationError

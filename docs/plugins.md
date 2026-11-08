@@ -225,7 +225,7 @@ merge = "human"
 repository = "acme/orchestra"
 ```
 
-The built-in GitHub adapter uses the authenticated `gh` CLI. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
+The built-in GitHub adapter uses the authenticated `gh` CLI. `orchestra close` and the session start close sweep also need this adapter: they read the pull request state through `gh`. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
 
 Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
 
@@ -266,4 +266,4 @@ region = "west"
 
 The example `example-land` adapter returns `skipped`. It checks the dispatch contract without opening a pull request.
 
-Orchestra passes the proof packet, base branch, remote, polling limits, and config in `LandRequest`. A result uses `success`, `fail`, `blocked`, or `skipped`. Orchestra keeps the human merge decision.
+Orchestra passes the proof packet, base branch, remote, polling limits, and config in `LandRequest`. It also passes `title` and `description`: the phase title with its slug, and the phase Problem, Approach and Exit criteria as `problem`, `approach` and `exit_criteria`. Both default to empty. The built-in GitHub adapter uses them as the PR title and as a description that says what the PR is for, followed by the proof packet. A result uses `success`, `fail`, `blocked`, or `skipped`. Orchestra keeps the human merge decision.

@@ -38,6 +38,12 @@ class FakeGitHub:
     def push_branch(self, remote: str, branch: str) -> None:
         self.events.append(f"push:{remote}:{branch}")
 
+    def find_pull_request(self, head: str) -> tuple[int, str] | None:
+        return None
+
+    def update_pull_request(self, number: int, title: str, body: str) -> None:
+        self.events.append(f"update:{number}:{title}")
+
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         self.events.append(f"create:{head}:{base}:{title}")
         self.body = body
@@ -59,7 +65,7 @@ class ScriptedGh:
     ) -> None:
         self.version = version
         self.failures = failures or {}
-        self.responses = responses or {}
+        self.responses = {("gh", "pr", "list"): "[]", **(responses or {})}
         self.missing = missing
         self.head_oid = head_oid
         self.calls: list[tuple[str, ...]] = []
@@ -518,6 +524,26 @@ def test_land_cli_reports_pull_request_and_final_checks(
             assert record_type == "conductor:proof-packet"
             return [packet]
 
+        def resolve(self, record_type: str, subject: str) -> Record:
+            assert (record_type, subject) == ("score:phase", "project-config")
+            return {
+                "id": "phase-id",
+                "record_type": "score:phase",
+                "subject": "project-config",
+                "payload": {"title": "Project config"},
+                "lifecycle_state": "in_progress",
+                "relationships": {},
+                "revision": "r",
+                "recorded_at": "now",
+                "body": "## Problem\n\np\n",
+            }
+
+        def create(self, *, record_type: str, subject: str, payload: JsonObject) -> Record:
+            assert record_type == "conductor:landing"
+            assert subject == "project-config"
+            assert payload["number"] == 42
+            return packet
+
     def fake_open_pull_request(
         root: Path,
         proof_packet: str,
@@ -526,7 +552,11 @@ def test_land_cli_reports_pull_request_and_final_checks(
         remote: str,
         poll_interval_s: float,
         timeout_s: float,
+        title: str,
+        description: Mapping[str, str],
     ) -> LandingResult:
+        assert title == "Project config (project-config)"
+        assert description == {"problem": "p"}
         assert root == tmp_path.resolve()
         assert proof_packet == "proof packet"
         assert base == "main"
@@ -553,3 +583,16 @@ def test_land_cli_reports_pull_request_and_final_checks(
     output = capsys.readouterr().out
     assert '"url": "https://github.com/owner/repo/pull/42"' in output
     assert '"result": "success"' in output
+
+
+def test_land_pushes_the_branch_before_waiting_for_checks(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
+
+    _open(root, github)
+
+    assert github.events[0] == "push:origin:phase/project-config"
+    assert github.events.index("push:origin:phase/project-config") < github.events.index(
+        "checks:42"
+    )

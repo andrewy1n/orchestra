@@ -442,7 +442,7 @@ subcommands and shells to `canon` for store reads/writes:
 | `review-brief` | Build the phase-end reviewer brief from records and a diff. |
 | `suite` | Read, run, collect, and record the configured phase suite. |
 | `gate` | Check every phase-end term, against `--cwd`'s HEAD when given; exit 1 and name each missing term. |
-| `land` | Run the phase gate, then publish the phase branch, open a PR with its proof packet, and wait for GitHub checks. |
+| `land` | Run the phase gate, then publish the phase branch, open a PR that says what it is for and carries the proof packet, and wait for GitHub checks. |
 | `store` | Resolve the bound store and run `canon` through it. |
 
 `orchestra land --phase <phase> --cwd <phase-worktree>` runs

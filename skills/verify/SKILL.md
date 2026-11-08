@@ -50,12 +50,10 @@ When no same-focus work-item remains planned or in progress:
 4. Record the semantic integration report from reviewer evidence when the
    phase has a multi-task wave. A clean merge is not enough.
 5. Run `orchestra gate` and write the proof packet at the phase head.
-6. Close the phase only when all required terms pass. When Landing is present
-   and the phase gate holds, commit the phase branch from the phase worktree.
-   Then run `orchestra land --phase <phase-slug>`. On a non-zero exit, stop
-   and ask. With Landing, ask before
-   `orchestra land --phase <phase-slug>` unless an active constraint already
-   authorizes it. Do not push from phase close.
+   With a Landing section, verify ends here. Verify does not commit, push,
+   or run land. Hand off to the Land section of `phase-end.md`.
+6. Without a Landing section, close the phase only when all required terms
+   pass.
 7. Run `canon validate`. After close, read effort autonomy. Plan the next
    phase only at `auto-phases`; ask first for `gated` or `auto-plan`.
 

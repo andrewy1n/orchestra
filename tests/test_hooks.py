@@ -6,9 +6,11 @@ from typing import TypeGuard
 
 import pytest
 from canon_support import create, make_project, seed_effort
+from test_close import PHASE, make_landed
 
 from orchestra import cli, views
 from orchestra.canon.project import Project
+from orchestra.conductor import close
 from orchestra.stage import hooks
 
 
@@ -551,3 +553,60 @@ def test_malformed_hook_input(
     captured = capsys.readouterr()
     assert not captured.out
     assert "hook input" in captured.err
+
+
+def test_session_start_closes_merged_phases(tmp_path, monkeypatch):
+    landed = make_landed(tmp_path, shared_repo=True)
+    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("MERGED"))
+
+    out = _output(hooks.cmd_start(hooks.CLAUDE, {"cwd": str(landed.repo)}))
+
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert f"Closed phase {PHASE}" in context
+    assert not landed.phase_tree.exists()
+    assert landed.project.resolve("score:phase", PHASE)["lifecycle_state"] == "done"
+
+
+def test_session_start_leaves_an_unmerged_phase_alone(tmp_path, monkeypatch):
+    landed = make_landed(tmp_path, shared_repo=True)
+    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("OPEN"))
+
+    out = _output(hooks.cmd_start(hooks.CLAUDE, {"cwd": str(landed.repo)}))
+
+    assert "Closed phase" not in out["hookSpecificOutput"]["additionalContext"]
+    assert landed.phase_tree.is_dir()
+
+
+def test_session_start_survives_a_failed_close_sweep(tmp_path, monkeypatch):
+    landed = make_landed(tmp_path, shared_repo=True)
+
+    def broken(_repo):
+        raise close.CloseError("gh is not installed")
+
+    monkeypatch.setattr(close, "github_states", broken)
+
+    out = _output(hooks.cmd_start(hooks.CLAUDE, {"cwd": str(landed.repo)}))
+
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert "Close sweep failed: gh is not installed" in context
+    assert "# Project Handoff" in context
+    assert landed.phase_tree.is_dir()
+
+
+class _NoBackup:
+    def backup_due(self, _age: object) -> bool:
+        return False
+
+
+def test_session_start_keeps_the_worktree_it_runs_in(tmp_path, monkeypatch):
+    landed = make_landed(tmp_path, shared_repo=True)
+    monkeypatch.setattr(hooks, "_open_project", lambda _root: landed.project)
+    monkeypatch.setattr(hooks, "open_backend", lambda _path: _NoBackup())
+    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("MERGED"))
+
+    out = _output(hooks.cmd_start(hooks.CLAUDE, {"cwd": str(landed.phase_tree)}))
+
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert landed.phase_tree.is_dir()
+    assert "Closed phase" not in context
+    assert "current directory" in context

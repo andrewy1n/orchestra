@@ -253,7 +253,12 @@ Body: `## Look`, `## Machine`, `## Attention`, `## Diff`
 and Attention in chat. Refuse "phase complete" without a packet at
 this phase-head. Head moves after fixes → new packet.
 
-## Commit the phase branch and stop
+## Land
+
+Land is a separate step after verify. Land runs only when the phase has
+a Landing section. Land runs only when the gate holds at the phase head
+and the proof packet exists at that head. Without a Landing section,
+skip this section.
 
 When Landing is present and the phase gate holds, commit the phase
 branch from the phase worktree. The phase-branch commit will include
@@ -285,9 +290,25 @@ EOF
 )"
 ```
 
+Land ends when `orchestra land` exits 0. The phase is then landed and
+waits for the human merge. Merge stays human. On exit 1 the adapter
+reports a failure. When `[land] adapter` is `github-pr`, follow
+`land-github-pr.md` for the CI repair loop. Another adapter ships its
+own guide; without one, stop and ask.
+
+## Close
+
+Close is the last phase-end step. With a Landing section, it runs after
+the human merges the phase branch. When `[land] adapter` is
+`github-pr`, follow `land-github-pr.md` for the close step. Another
+adapter ships its own close step; without one, close the phase by hand.
+
 At phase close, the parent removes each task worktree `<repo>/.worktrees/<phase-slug>--<task-slug>` for that phase.
 
 At phase close, the parent deletes each `task/<phase-slug>/<task-slug>` branch that is contained in the phase branch.
+
+Without a Landing section, or without an adapter close step, close the
+phase by hand when the gate holds.
 
 Close the phase; close the phase position (`subject` = phase slug,
 `status: closed`) only when a note position exists; update effort
@@ -308,8 +329,9 @@ canon supersede --type score:position --id <effort-position-id> \
 ```
 
 Skip phase close commits for incidental. On revision
-conflict, re-read effort position and retry. Do not materialize the
-next phase's tasks unless asked (`tasks`).
+conflict, re-read effort position and retry. Plan the next phase only
+after close. Do not materialize the next phase's tasks unless asked
+(`tasks`).
 
 If no `planned`/`in_progress` phase remains for this effort, ask
 whether more phases follow. Yes → stop for `tasks`. No → close
