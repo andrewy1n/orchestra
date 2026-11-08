@@ -260,6 +260,7 @@ def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, 
                     for record in records
                     if record["record_type"] == "score:effort"
                     and record["subject"] == effort_subject
+                    and record["lifecycle_state"] != "superseded"
                 ),
                 None,
             )

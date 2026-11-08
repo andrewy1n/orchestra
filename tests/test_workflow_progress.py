@@ -202,6 +202,22 @@ def test_existing_approval_and_autonomy_rules_apply(tmp_path: Path) -> None:
     assert [(action.step, action.state) for action in actions] == [("tasks", "ready")]
 
 
+def test_policy_review_reads_autonomy_from_the_active_effort_record(tmp_path: Path) -> None:
+    project = _project(tmp_path, autonomy="gated")
+    effort = project.resolve("score:effort", EFFORT)
+    project.supersede(effort["id"], payload={"autonomy": "auto-phases"})
+    _phase(project, "p1", 1)
+    _plan(project, "p1")
+    _review(project, "p1", "spec")
+    _review(project, "p1", "design")
+    _review(project, "p1", "tasks", authority="task-plan-policy")
+    run = _start(project, "p1", "deliver")
+
+    actions = next_actions(project, run["subject"])
+
+    assert [(action.step, action.state) for action in actions] == [("execute", "ready")]
+
+
 def test_starting_run_does_not_grant_merge_approval(tmp_path: Path) -> None:
     project = _project(tmp_path)
     phase = _phase(project, "p1", 1)
