@@ -110,7 +110,9 @@ def test_phase_position_only_for_notes() -> None:
     plan = _flat(_skill_md("tasks"))
     execute = _flat(_skill_md("execute"))
     assert "only for a note a person must read" in plan
-    assert "Phase progress is derived" in _flat((h.REPO_ROOT / "skills/tasks/references/kinds-and-focus.md").read_text())
+    assert "Phase progress is derived" in _flat(
+        (h.REPO_ROOT / "skills/tasks/references/kinds-and-focus.md").read_text()
+    )
     assert "Write a phase `score:position` only for a human-readable note" in execute
     assert "Phase progress is derived from work-item states" in execute
     assert not _invocations(_skill_md("tasks"), "create", "score:position")

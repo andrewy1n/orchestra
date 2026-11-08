@@ -53,7 +53,9 @@ def test_skill_documents_tuner_check_for_tdd_and_check():
 
 
 def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
-    manual_docs = (REPO_ROOT / "skills" / "verify" / "references" / "verify-mechanics.md").read_text()
+    manual_docs = (
+        REPO_ROOT / "skills" / "verify" / "references" / "verify-mechanics.md"
+    ).read_text()
     creates = [
         inv
         for inv in extract_invocations(manual_docs)

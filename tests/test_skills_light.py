@@ -33,7 +33,9 @@ def test_plan_phase_keeps_the_plan_review_gate_unless_autonomy_skips_it() -> Non
 
 def test_light_phase_keeps_verification_reviewer_oracles_and_red_first() -> None:
     text = skill_text("spec").replace("\n  ", " ")
-    assert "Verification, the reviewer, frozen oracles, and red-first stay the same" in " ".join(text.split())
+    assert "Verification, the reviewer, frozen oracles, and red-first stay the same" in " ".join(
+        text.split()
+    )
 
 
 def test_plan_phase_allows_a_multi_requirement_acceptance_in_a_light_phase() -> None:

@@ -20,9 +20,7 @@ def test_two_modes():
     text = _lifecycle()
     assert "Decision two-modes is the rule." in text
     assert "Structured work is a phase with a specification." in text
-    assert (
-        "spec, design, tasks, execute, verify, assess, and release `ready`"
-    ) in text
+    assert ("spec, design, tasks, execute, verify, assess, and release `ready`") in text
     assert "Simple work is incidental, or a phase with no specification." in text
     assert "It runs execute, then verify as pass or fail." in text
     assert "skip assessment and release and keep pass/fail check-runs" in text

@@ -131,9 +131,7 @@ def test_engage_lists_human_dismissible_needs_you_without_blocking_route():
 def test_skills_that_open_human_gates_document_matching_clears():
     plan = extract_invocations(_text("tasks"))
     assert any(
-        inv["subcommand"] == "create"
-        and inv["type"] == "score:continuity-question"
-        for inv in plan
+        inv["subcommand"] == "create" and inv["type"] == "score:continuity-question" for inv in plan
     )
     verify = extract_invocations(_text("verify"))
     assert any(

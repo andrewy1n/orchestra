@@ -21,7 +21,9 @@ def test_r03_execute_phase_plans_the_next_phase_without_asking_at_auto_phases() 
 
 def test_r04_execute_phase_stops_at_every_level_for_failures_findings_pushes_and_merges() -> None:
     text = _flat("execute")
-    assert "At every level, stop for a failed check, a needs-human finding, a push, or a merge" in text
+    assert (
+        "At every level, stop for a failed check, a needs-human finding, a push, or a merge" in text
+    )
 
 
 def test_r06_the_light_phase_gate_reads_the_effort_autonomy() -> None:
