@@ -562,3 +562,16 @@ def test_land_cli_reports_pull_request_and_final_checks(
     output = capsys.readouterr().out
     assert '"url": "https://github.com/owner/repo/pull/42"' in output
     assert '"result": "success"' in output
+
+
+def test_land_pushes_the_branch_before_waiting_for_checks(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
+
+    _open(root, github)
+
+    assert github.events[0] == "push:origin:phase/project-config"
+    assert github.events.index("push:origin:phase/project-config") < github.events.index(
+        "checks:42"
+    )
