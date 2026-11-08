@@ -208,6 +208,7 @@ def advisory_finding_payload(
         "basis": f"exit_code={suite.exit_code}; failing: {nodes}",
         "invalidated_when": ("suite check-run passes at phase head, or human clears the finding"),
         "effort": effort,
+        "phase": phase_slug,
         "needs": "none",
     }
 

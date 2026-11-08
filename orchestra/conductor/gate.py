@@ -27,8 +27,8 @@ from orchestra.canon.query import order_by_recorded_at
 from orchestra.canon.types import Record
 from orchestra.conductor import reviewer, suite
 from orchestra.conductor.check import RUNNER, git_head
+from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 
-INACTIVE_FINDING_STATES = frozenset({"refuted", "retracted"})
 METADATA_DIR = ".canon/"
 LIVE_WORK_ITEM_STATES = frozenset({"planned", "in_progress", "done"})
 
@@ -314,20 +314,24 @@ def gate_terms(
             )
         )
 
-    blockers = [
-        f
-        for f in of_type("tuner:finding")
-        if _str(f, "effort") == effort
-        and _str(f, "needs") == "human"
-        and f["lifecycle_state"] not in INACTIVE_FINDING_STATES
-    ]
+    try:
+        blockers = phase_blockers(records, phase_slug)
+    except WorkflowBlockerError as exc:
+        raise LookupError(str(exc)) from exc
     if blockers:
-        for finding in blockers:
+        for blocker in blockers:
+            record = blocker.record
+            if record["record_type"] == "tuner:finding":
+                name = f"finding-needs-human:{record['subject']}"
+                detail = _str(record, "claim")
+            else:
+                name = f"question-needs-human:{record['subject']}"
+                detail = _str(record, "scope")
             terms.append(
                 Term(
-                    f"finding-needs-human:{finding['subject']}",
+                    name,
                     False,
-                    _str(finding, "claim"),
+                    detail,
                 )
             )
     else:

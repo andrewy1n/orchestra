@@ -145,7 +145,7 @@ def _request(
         "execution_report_id": execution_report_id,
         "acceptance_ids": acceptance_ids or ["rec-ac1"],
         "criteria": criteria or [_tdd_with_dirty_red()],
-        "finding": finding,
+        "finding": {**finding, "phase": "phase-1"} if finding is not None else None,
     }
 
 
@@ -400,6 +400,7 @@ def test_finding_permits_the_close_and_needs_is_forced_to_human():
     ops = _build(request)
     finding_op = next(op for op in ops if op["type"] == "tuner:finding")
     assert _op_payload(finding_op)["needs"] == "human"
+    assert _op_payload(finding_op)["phase"] == "phase-1"
     assert ops[-1]["op"] == "update" and ops[-1]["transition"] == "done"
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 

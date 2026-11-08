@@ -283,6 +283,7 @@ def test_parent_write_review_check_run_and_findings():
             build_finding_payload(
                 _finding_mapping(finding),
                 effort="workflow-loop",
+                phase_slug="workflow-skills-playbooks",
                 fix_task_created=create_fix,
             )
         )

@@ -9,6 +9,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.git_backend import run_git
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
+from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 
 EXECUTORS = ("inline", "subagent")
 _LIVE = ("planned", "in_progress", "done")
@@ -162,12 +163,13 @@ def _effort(phase_rec: Record, phase: str) -> str:
     return effort if isinstance(effort, str) else phase
 
 
-def _open_question(project: Project, effort: str, scope: str) -> Record | None:
+def _open_question(project: Project, effort: str, phase: str, scope: str) -> Record | None:
     for record in project.list("score:continuity-question"):
         payload = record_payload(record)
         if (
             record["subject"] == effort
             and payload.get("scope") == scope
+            and payload.get("phase") == phase
             and payload.get("blocking") is True
             and record["lifecycle_state"] == "open"
         ):
@@ -177,13 +179,13 @@ def _open_question(project: Project, effort: str, scope: str) -> Record | None:
 
 def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Record:
     effort = _effort(phase_rec, phase)
-    existing = _open_question(project, effort, scope)
+    existing = _open_question(project, effort, phase, scope)
     if existing is not None:
         return existing
     return project.create(
         record_type="score:continuity-question",
         subject=effort,
-        payload={"owner": "user", "blocking": True, "scope": scope},
+        payload={"owner": "user", "blocking": True, "scope": scope, "phase": phase},
     )
 
 
@@ -200,6 +202,13 @@ def block(project: Project, phase: str, scope: str) -> Record:
 
 def start(project: Project, repo: Path, phase: str, workdir: Path | None = None) -> WaveStart:
     records = project.records()
+    try:
+        blockers = phase_blockers(records, phase)
+    except WorkflowBlockerError as exc:
+        raise WaveError(str(exc)) from exc
+    if blockers:
+        names = ", ".join(blocker.record["subject"] for blocker in blockers)
+        raise WaveError(f"phase {phase!r} is blocked by human decision: {names}")
     derived = project.derived(records)
     phase_rec = phase_record(records, phase)
     wave, chosen = select_wave(records, derived, phase)

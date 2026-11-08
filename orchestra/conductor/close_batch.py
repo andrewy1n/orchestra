@@ -68,6 +68,7 @@ class FindingRequest(TypedDict):
     basis: str
     invalidated_when: str
     body: str
+    phase: str | None
 
 
 class CriterionRequest(TypedDict):
@@ -197,10 +198,13 @@ def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
     if raw_finding is not None:
         if not _is_object_mapping(raw_finding):
             raise CloseRequestError("field 'finding' must be an object")
-        finding_fields = ("claim", "basis", "invalidated_when", "body")
+        finding_fields = ("claim", "basis", "invalidated_when", "body", "phase")
         values: dict[str, str] = {}
         for key in finding_fields:
             value = raw_finding.get(key)
+            if key == "phase" and value is None:
+                values[key] = ""
+                continue
             if not isinstance(value, str):
                 raise CloseRequestError(f"finding missing field: '{key}'")
             values[key] = value
@@ -209,6 +213,7 @@ def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
             "basis": values["basis"],
             "invalidated_when": values["invalidated_when"],
             "body": values["body"],
+            "phase": values["phase"] or None,
         }
 
     return {
@@ -967,11 +972,18 @@ def build_batch(
 
     if finding:
         try:
+            phase: object = finding.get("phase")
+            if phase is None:
+                work_item = _open_project(resolved_store).get(work_item_id, "score:work-item")
+                phase = record_payload(work_item).get("phase")
+            if not isinstance(phase, str):
+                raise CloseRequestError(f"work-item {work_item_id!r} has no phase")
             finding_payload: JsonObject = {
                 "claim": finding["claim"],
                 "basis": finding["basis"],
                 "invalidated_when": finding["invalidated_when"],
                 "effort": effort,
+                "phase": phase,
                 # Hardcoded, not passed through: this finding exists to
                 # surface a deferred/unmet criterion under handoff's Needs
                 # Human role, which only fires on needs="human".
