@@ -913,14 +913,17 @@ def build_batch(
                 red_payload=red_payload,
                 cwd=work_cwd,
             )
-            _enforce_oracle_gates(
-                entry,
-                green_payload=green_payload,
-                red_record=red_record,
-                cwd=work_cwd,
-                acceptance=acceptances[entry["criterion_id"]],
-                list_oracle_amendments=amendment_lister,
-            )
+            acceptance = acceptances[entry["criterion_id"]]
+            acceptance_payload = record_payload(acceptance)
+            if acceptance_payload.get("test_ids") or acceptance_payload.get("oracle_hashes"):
+                _enforce_oracle_gates(
+                    entry,
+                    green_payload=green_payload,
+                    red_record=red_record,
+                    cwd=work_cwd,
+                    acceptance=acceptance,
+                    list_oracle_amendments=amendment_lister,
+                )
 
     passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
     unmet = [aid for aid in acceptance_ids if aid not in passed_ids]

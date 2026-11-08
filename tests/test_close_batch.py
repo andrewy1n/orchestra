@@ -1318,6 +1318,24 @@ def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
+def test_non_oracle_tdd_acceptance_closes_without_oracle_freeze(tmp_path: Path) -> None:
+    repo, green_sha = _oracle_repo(tmp_path)
+    acceptance = _record(
+        "rec-ac1",
+        {"method": "tdd", "effort": "effort-1", "oracle_policy": "none"},
+        record_type="score:acceptance",
+        subject="task-1",
+    )
+
+    ops = _build_oracle(
+        _request(criteria=[_tdd_with_dirty_red(revision=green_sha)]),
+        cwd=repo,
+        acceptance=acceptance,
+    )
+
+    assert ops[-1]["transition"] == "done"
+
+
 def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     phase = h.create_generic_record(cli, defs, "score:phase")
