@@ -5,9 +5,10 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import datetime, timezone
 from typing import TypeVar
 
-from dashboard.backend import approval, areas, backlog, dismiss, journal, store
+from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, store
 from dashboard.backend.phase import (
     PhaseRow,
     load_decision_log,
@@ -188,6 +189,10 @@ class Reader:
             ),
             schemas.AreasResponse,
         )
+
+    def hub(self) -> schemas.HubResponse:
+        now = datetime.now(timezone.utc)
+        return schemas.HubResponse.model_validate(hub.build_hub(self.cache.current(), now))
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
         def load() -> schemas.PhaseResponse:

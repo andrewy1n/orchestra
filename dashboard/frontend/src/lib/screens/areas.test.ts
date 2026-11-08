@@ -128,7 +128,7 @@ describe("areas", () => {
 	});
 
 	it("R6 home route lists each area as a card link instead", async () => {
-		await mountApp([billing]);
+		await mountApp([billing], "#/areas");
 		const cards = document.querySelectorAll("[data-area-card]");
 		expect(cards).toHaveLength(1);
 		expect(cards[0]?.getAttribute("href")).toBe("#/area/billing");

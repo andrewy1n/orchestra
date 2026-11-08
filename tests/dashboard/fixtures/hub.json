@@ -1,0 +1,101 @@
+{
+  "body": {
+    "active_phases": [
+      {
+        "effort": "alpha",
+        "href": "#/phase/alpha/p-work",
+        "kind": "phase",
+        "reason": "Running now",
+        "running": true,
+        "step": "execute",
+        "subject": "p-work",
+        "title": "title of p-work",
+        "updated_at": "<timestamp>"
+      },
+      {
+        "effort": "alpha",
+        "href": "#/phase/alpha/route-phase",
+        "kind": "phase",
+        "reason": "Updated <elapsed>",
+        "running": false,
+        "step": "design",
+        "subject": "route-phase",
+        "title": "title of route-phase",
+        "updated_at": "<timestamp>"
+      }
+    ],
+    "generated_at": "<timestamp>",
+    "needs_you": [],
+    "open_ideas": [
+      {
+        "effort": "alpha",
+        "href": "#/backlog/alpha/<composer:idea:park-too>",
+        "kind": "idea",
+        "reason": "Idea · parked <elapsed>",
+        "running": false,
+        "step": "",
+        "subject": "<composer:idea:park-too>",
+        "title": "park-too",
+        "updated_at": "<timestamp>"
+      },
+      {
+        "effort": "alpha",
+        "href": "#/backlog/alpha/<composer:idea:park-me>",
+        "kind": "idea",
+        "reason": "Idea · parked <elapsed>",
+        "running": false,
+        "step": "",
+        "subject": "<composer:idea:park-me>",
+        "title": "park-me",
+        "updated_at": "<timestamp>"
+      }
+    ],
+    "work_next": [
+      {
+        "effort": "alpha",
+        "href": "#/phase/alpha/p-work",
+        "kind": "phase",
+        "reason": "Running now",
+        "running": true,
+        "step": "execute",
+        "subject": "p-work",
+        "title": "title of p-work",
+        "updated_at": "<timestamp>"
+      },
+      {
+        "effort": "alpha",
+        "href": "#/backlog/alpha/<composer:idea:park-too>",
+        "kind": "idea",
+        "reason": "Idea · parked <elapsed>",
+        "running": false,
+        "step": "",
+        "subject": "<composer:idea:park-too>",
+        "title": "park-too",
+        "updated_at": "<timestamp>"
+      },
+      {
+        "effort": "alpha",
+        "href": "#/backlog/alpha/<composer:idea:park-me>",
+        "kind": "idea",
+        "reason": "Idea · parked <elapsed>",
+        "running": false,
+        "step": "",
+        "subject": "<composer:idea:park-me>",
+        "title": "park-me",
+        "updated_at": "<timestamp>"
+      },
+      {
+        "effort": "alpha",
+        "href": "#/phase/alpha/route-phase",
+        "kind": "phase",
+        "reason": "Updated <elapsed>",
+        "running": false,
+        "step": "design",
+        "subject": "route-phase",
+        "title": "title of route-phase",
+        "updated_at": "<timestamp>"
+      }
+    ]
+  },
+  "status": 200
+}

@@ -141,23 +141,25 @@ describe("railItems", () => {
 });
 
 describe("breadcrumbParts", () => {
-	it("shows only Product on the home route", () => {
-		expect(breadcrumbParts(parseRoute(""), snapshot, areas)).toEqual([
-			{ label: "Product" },
-		]);
+	it("shows nothing on the home route, which the Work tab names", () => {
+		expect(breadcrumbParts(parseRoute(""), snapshot, areas)).toEqual([]);
+	});
+
+	it("shows nothing on the areas route, which the Product tab names", () => {
+		expect(breadcrumbParts(parseRoute("#/areas"), snapshot, areas)).toEqual([]);
 	});
 
 	it("shows Product and the area title on an area route", () => {
 		expect(
 			breadcrumbParts(parseRoute(areaHref("billing")), snapshot, areas),
-		).toEqual([{ label: "Product", href: "#/" }, { label: "Billing" }]);
+		).toEqual([{ label: "Product", href: "#/areas" }, { label: "Billing" }]);
 	});
 
 	it("shows Product, area and effort on an effort route", () => {
 		expect(
 			breadcrumbParts(parseRoute(effortHref("refunds")), snapshot, areas),
 		).toEqual([
-			{ label: "Product", href: "#/" },
+			{ label: "Product", href: "#/areas" },
 			{ label: "Billing", href: "#/area/billing" },
 			{ label: "refunds" },
 		]);
@@ -166,14 +168,14 @@ describe("breadcrumbParts", () => {
 	it("omits the area part when the effort has no area", () => {
 		expect(
 			breadcrumbParts(parseRoute(effortHref("loose")), snapshot, areas),
-		).toEqual([{ label: "Product", href: "#/" }, { label: "loose" }]);
+		).toEqual([{ label: "Product", href: "#/areas" }, { label: "loose" }]);
 	});
 
 	it("reuses the effort level on other routes", () => {
 		expect(
 			breadcrumbParts(parseRoute("#/phase/invoices/p1"), snapshot, areas),
 		).toEqual([
-			{ label: "Product", href: "#/" },
+			{ label: "Product", href: "#/areas" },
 			{ label: "Billing", href: "#/area/billing" },
 			{ label: "invoices" },
 		]);

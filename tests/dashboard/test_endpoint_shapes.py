@@ -31,6 +31,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 UPDATE = os.environ.get("UPDATE_FIXTURES") == "1"
 
 RECORD_ID = re.compile(r"rec-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+ELAPSED = re.compile(r"\d+ (?:day|hour|minute)s? ago")
 REVISION = re.compile(r"sha256:[0-9a-f]{64}")
 TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?")
 CHANGE_TOKEN = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
@@ -611,7 +612,7 @@ def _normalizer(seed: dict, store: Path) -> Callable[[object], object]:
         value = value.replace(store_text, "<store>")
         value = RECORD_ID.sub(lambda m: f"<{labels.get(m.group(0), 'unknown-id')}>", value)
         value = REVISION.sub(lambda m: f"<{labels.get(m.group(0), 'unknown-revision')}>", value)
-        return TIMESTAMP.sub("<timestamp>", value)
+        return ELAPSED.sub("<elapsed>", TIMESTAMP.sub("<timestamp>", value))
 
     def walk(value):
         if isinstance(value, dict):
@@ -723,6 +724,7 @@ CASES: dict[str, Callable[[dict], tuple[str, str, dict, dict | None]]] = {
     "needs-integration": _get(
         "/api/needs", effort="alpha", id=_id("conductor:integration-report", "route-phase-report")
     ),
+    "hub": _get("/api/hub"),
     "areas-rich": _get("/api/areas"),
     "areas-minimal": _get("/api/areas"),
     "backlog-with-phase": _get("/api/backlog", effort="alpha", id=_id("composer:idea", "park-me")),

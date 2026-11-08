@@ -99,39 +99,17 @@ test("R18 the right panel empty-state text is no larger than the section title",
 	}
 });
 
-test("R19 the footer shows a green dot beside Live when polling succeeds", async ({
-	page,
-}) => {
+test("R19 the footer is absent while polling succeeds", async ({ page }) => {
 	await page.goto(EFFORT_URL);
-	const footer = page.locator("footer");
-	await expect(footer).toContainText("Live");
-	const dot = footer.locator("[data-status-dot]");
-	await expect(dot).toBeVisible();
-	await expect(dot).toHaveCSS(
-		"background-color",
-		await tokenColour(page, "--done"),
-	);
-	const dotBox = await dot.boundingBox();
-	const textBox = await footer.locator("[data-status-text]").boundingBox();
-	expect(dotBox).not.toBeNull();
-	expect(textBox).not.toBeNull();
-	if (!dotBox || !textBox) return;
-	expect(dotBox.x + dotBox.width).toBeLessThanOrEqual(textBox.x + 1);
-	expect(textBox.x - (dotBox.x + dotBox.width)).toBeLessThanOrEqual(16);
-	expect(
-		Math.abs(dotBox.y + dotBox.height / 2 - (textBox.y + textBox.height / 2)),
-	).toBeLessThanOrEqual(4);
-	await expect(footer.locator("[data-status-text]")).toHaveCSS(
-		"font-size",
-		"12px",
-	);
+	await expect(page.locator("main")).toBeVisible();
+	await expect(page.locator("footer")).toHaveCount(0);
 });
 
 test("R20 the footer shows a red dot beside the error text when polling fails", async ({
 	page,
 }) => {
 	await page.goto(EFFORT_URL);
-	await expect(page.locator("footer")).toContainText("Live");
+	await expect(page.locator("main")).toBeVisible();
 	await page.route("**/api/token", (route) =>
 		route.fulfill({ json: { token: "changed-token" } }),
 	);

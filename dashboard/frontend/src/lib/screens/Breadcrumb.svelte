@@ -14,6 +14,7 @@
   );
 </script>
 
+{#if parts.length > 0}
 <nav class="breadcrumb" data-breadcrumb aria-label="Breadcrumb">
   {#each parts as part, index (index)}
     {#if index > 0}<span class="crumb-sep" aria-hidden="true">{" › "}</span>{/if}
@@ -24,3 +25,4 @@
     {/if}
   {/each}
 </nav>
+{/if}

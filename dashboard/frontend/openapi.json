@@ -676,6 +676,111 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HubItem": {
+        "properties": {
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "href": {
+            "title": "Href",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "kind",
+          "effort",
+          "subject",
+          "title",
+          "reason",
+          "running",
+          "updated_at",
+          "href",
+          "step"
+        ],
+        "title": "HubItem",
+        "type": "object"
+      },
+      "HubResponse": {
+        "properties": {
+          "active_phases": {
+            "items": {
+              "$ref": "#/components/schemas/HubItem"
+            },
+            "title": "Active Phases",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "needs_you": {
+            "items": {
+              "$ref": "#/components/schemas/HubItem"
+            },
+            "title": "Needs You",
+            "type": "array"
+          },
+          "open_ideas": {
+            "items": {
+              "$ref": "#/components/schemas/HubItem"
+            },
+            "title": "Open Ideas",
+            "type": "array"
+          },
+          "work_next": {
+            "items": {
+              "$ref": "#/components/schemas/HubItem"
+            },
+            "title": "Work Next",
+            "type": "array"
+          }
+        },
+        "required": [
+          "work_next",
+          "needs_you",
+          "active_phases",
+          "open_ideas",
+          "generated_at"
+        ],
+        "title": "HubResponse",
+        "type": "object"
+      },
       "IntegrationView": {
         "properties": {
           "conflicts": {
@@ -2248,6 +2353,54 @@
           }
         },
         "summary": "Write Backlog"
+      }
+    },
+    "/api/hub": {
+      "get": {
+        "operationId": "hub_api_hub_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Hub"
       }
     },
     "/api/journal": {

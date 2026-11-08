@@ -4,6 +4,7 @@
   import Breadcrumb from "$lib/screens/Breadcrumb.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
   import Home from "$lib/screens/Home.svelte";
+  import Hub from "$lib/screens/Hub.svelte";
   import Journal from "$lib/screens/Journal.svelte";
   import Overlay from "$lib/screens/Overlay.svelte";
   import PhasePage from "$lib/screens/PhasePage.svelte";
@@ -11,8 +12,10 @@
   import Rail from "$lib/screens/Rail.svelte";
   import SideRail from "$lib/screens/SideRail.svelte";
   import StatusBar from "$lib/screens/StatusBar.svelte";
+  import TopTabs from "$lib/screens/TopTabs.svelte";
   import { railItems, routePhase } from "$lib/state/areas";
   import { areas, bindAreas } from "$lib/state/areas.svelte";
+  import { bindHub } from "$lib/state/hub.svelte";
   import { bindJournal } from "$lib/state/journal.svelte";
   import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
@@ -27,6 +30,7 @@
   bindPolling();
   bindJournal();
   bindAreas();
+  bindHub();
   bindOverlay();
   bindPhase();
 
@@ -73,6 +77,7 @@
 <div class="app" inert={target || overlay.pendingWrite ? true : undefined}>
   <header class="topbar">
     <div class="brand">orchestra <span class="brand-sub">dashboard</span></div>
+    <TopTabs />
     <div class="crumbs" aria-live="polite"><Breadcrumb /></div>
     <div class="top-actions">
       <button
@@ -104,6 +109,8 @@
       {#if navigation.route.name === "journal"}
         <Journal />
       {:else if navigation.route.name === "home"}
+        <Hub />
+      {:else if navigation.route.name === "areas"}
         <ProductIndex />
       {:else if navigation.route.name === "area"}
         <Area />

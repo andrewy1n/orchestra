@@ -6,12 +6,12 @@ test("the packaged dashboard shows the seeded effort", async ({ page }) => {
 });
 
 test("R28 the product index shows the seeded area card", async ({ page }) => {
-	await page.goto("/");
+	await page.goto("/#/areas");
 	await expect(page.locator('[data-area-card="e2e-area"]')).toBeVisible();
 });
 
 test("R29 a click on the area card opens the area page", async ({ page }) => {
-	await page.goto("/");
+	await page.goto("/#/areas");
 	await page.locator('[data-area-card="e2e-area"]').click();
 	await expect(page).toHaveURL(/#\/area\/e2e-area$/);
 });

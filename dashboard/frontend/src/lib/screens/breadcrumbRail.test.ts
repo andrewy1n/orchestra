@@ -140,7 +140,7 @@ describe("breadcrumb and rail", () => {
 			"Billing",
 		]);
 		expect(links.map((a) => a.getAttribute("href"))).toEqual([
-			"#/",
+			"#/areas",
 			"#/area/billing",
 		]);
 		const last = nav.querySelector("[aria-current='page']");

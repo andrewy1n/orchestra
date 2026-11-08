@@ -122,7 +122,7 @@ const SIDE_PANELS = [
 
 describe("side panels by level", () => {
 	it("R15 the product index has no side panels", async () => {
-		await mountAt("#/");
+		await mountAt("#/areas");
 		expect(document.querySelector("[data-product-index]")).toBeTruthy();
 		for (const selector of SIDE_PANELS) {
 			expect(document.querySelector(selector)).toBeNull();

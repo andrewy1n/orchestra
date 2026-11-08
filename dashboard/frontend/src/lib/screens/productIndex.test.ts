@@ -88,7 +88,7 @@ async function settle() {
 	flushSync();
 }
 
-async function mountApp(snapshot: Snapshot, hash = "") {
+async function mountApp(snapshot: Snapshot, hash = "#/areas") {
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async (input: RequestInfo | URL) => {
