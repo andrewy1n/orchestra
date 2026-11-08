@@ -285,6 +285,7 @@ def test_task_review_ignores_execution_state_but_tracks_plan_changes(project: Pr
         subject="task-a",
         payload={
             "title": "Implement workflow",
+            "executor": "inline",
             "phase": "phase",
             "kind": "deliver",
             "assignee": "parent",
@@ -306,5 +307,17 @@ def test_task_review_ignores_execution_state_but_tracks_plan_changes(project: Pr
     project.update(work_item["id"], transition="in_progress")
     assert step_readiness(project.records(), "phase", "tasks").status == "ready"
 
-    project.update(work_item["id"], payload={"title": "Changed task plan"})
+    project.update(work_item["id"], body="## Description\nUse a changed recipe.")
+    assert step_readiness(project.records(), "phase", "tasks").status == "stale"
+
+    _review(
+        project,
+        "phase",
+        "tasks",
+        phase,
+        "task-plan-policy",
+        "workflow-loop auto-plan policy",
+        [spec_review, design_review],
+    )
+    project.update(work_item["id"], payload={"executor": "subagent"})
     assert step_readiness(project.records(), "phase", "tasks").status == "stale"

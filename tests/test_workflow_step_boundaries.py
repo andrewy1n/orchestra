@@ -18,6 +18,8 @@ def test_tasks_cover_current_requirements_and_pin_reviewed_inputs() -> None:
     assert "source_reviews" in text
     assert "depends_on" in text
     assert "closing verification task" in text
+    assert "workflow review <phase-slug> tasks" in text
+    assert "task-plan-policy" in text
     assert "Do not start execution here" in text
 
 

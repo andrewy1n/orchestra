@@ -122,6 +122,34 @@ def test_prepare_waits_for_all_selected_specifications(tmp_path: Path) -> None:
     assert [(action.phase, action.step) for action in actions] == [("p2", "spec")]
 
 
+def test_prepare_does_not_wait_for_selected_dependency_to_finish(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _phase(project, "p1", 1)
+    _phase(project, "p2", 2, dependencies=["p1"])
+    _review(project, "p1", "spec")
+    _review(project, "p2", "spec")
+    run = _start(project, "p1,p2", "prepare")
+
+    actions = next_actions(project, run["subject"])
+
+    assert [(action.phase, action.step, action.state) for action in actions] == [
+        ("p1", "design", "ready"),
+        ("p2", "design", "ready"),
+    ]
+
+
+def test_tasks_action_is_ready_before_work_items_exist(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _phase(project, "p1", 1)
+    _review(project, "p1", "spec")
+    _review(project, "p1", "design")
+    run = _start(project, "p1", "phase")
+
+    actions = next_actions(project, run["subject"])
+
+    assert [(action.step, action.state) for action in actions] == [("tasks", "ready")]
+
+
 def test_single_step_run_never_advances_to_another_step(tmp_path: Path) -> None:
     project = _project(tmp_path)
     _phase(project, "p1", 1)
@@ -213,6 +241,132 @@ def test_required_read_and_check_failures_remain_failures(tmp_path: Path) -> Non
     assert "fail" in actions[0].reason
     with pytest.raises(WorkflowRunError, match="missing"):
         next_actions(project, "missing-run")
+
+
+def test_serial_phase_verification_does_not_require_integration_report(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    phase = _phase(project, "p1", 1)
+    _ready_through_tasks(project, "p1")
+    task = project.resolve("score:work-item", "task-p1")
+    acceptance = project.resolve("score:acceptance", "acceptance-p1")
+    project.update(task["id"], record_type="score:work-item", transition="in_progress")
+    project.update(task["id"], record_type="score:work-item", transition="done")
+    create(
+        project,
+        "conductor:execution-report",
+        "task-p1",
+        {
+            "work_item": task["subject"],
+            "result": "pass",
+            "verdict": "pass",
+            "revision": "deadbeef",
+            "effort": EFFORT,
+        },
+    )
+    create(
+        project,
+        "tuner:check-run",
+        "acceptance-p1",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": "deadbeef",
+            "method": "check",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+    project.update(phase["id"], record_type="score:phase", transition="in_progress")
+    project.update(phase["id"], record_type="score:phase", transition="done")
+    run = _start(project, "p1", "phase")
+
+    status = run_status(project, run["subject"])
+
+    assert status.complete is True
+
+
+def test_parallel_implementation_wave_needs_integration_report_at_verification(
+    tmp_path: Path,
+) -> None:
+    project = _project(tmp_path)
+    phase = _phase(project, "p1", 1)
+    _review(project, "p1", "spec")
+    _review(project, "p1", "design")
+    for subject in ("task-a", "task-b"):
+        create(
+            project,
+            "score:work-item",
+            subject,
+            {
+                "title": subject,
+                "phase": "p1",
+                "kind": "deliver",
+                "assignee": "",
+                "effort": EFFORT,
+                "requirements": ["R1"],
+            },
+            "## Description\nImplement R1.",
+        )
+    acceptance = create(
+        project,
+        "score:acceptance",
+        "acceptance-p1",
+        {
+            "method": "check",
+            "phase": "p1",
+            "effort": EFFORT,
+            "verify_command": "true",
+            "requirement": "R1",
+        },
+    )
+    _review(project, "p1", "tasks")
+    for subject in ("task-a", "task-b"):
+        task = project.resolve("score:work-item", subject)
+        project.update(task["id"], record_type="score:work-item", transition="in_progress")
+        project.update(task["id"], record_type="score:work-item", transition="done")
+        create(
+            project,
+            "conductor:execution-report",
+            subject,
+            {
+                "work_item": subject,
+                "result": "pass",
+                "verdict": "pass",
+                "revision": "deadbeef",
+                "effort": EFFORT,
+            },
+        )
+    create(
+        project,
+        "tuner:check-run",
+        "acceptance-p1",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": "deadbeef",
+            "method": "check",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+    run = _start(project, "p1", "phase")
+
+    action = next_actions(project, run["subject"])[0]
+    assert (action.step, action.state) == ("verify", "ready")
+    project.update(phase["id"], record_type="score:phase", transition="in_progress")
+    project.update(phase["id"], record_type="score:phase", transition="done")
+    assert run_status(project, run["subject"]).complete is False
+
+    create(
+        project,
+        "conductor:integration-report",
+        "p1-integration",
+        {"phase": "p1", "effort": EFFORT, "result": "pass", "revision": "deadbeef"},
+        "## Interfaces\nReviewed.\n## Assumptions\nReviewed.\n"
+        "## Invariants\nReviewed.\n## Conflicts\nNone.",
+    )
+
+    assert run_status(project, run["subject"]).complete is True
 
 
 def test_any_unfinished_required_step_keeps_run_incomplete(tmp_path: Path) -> None:
