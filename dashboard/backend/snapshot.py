@@ -14,6 +14,7 @@ from dashboard.backend.phase import (
     PhaseEvidence,
     PhaseRow,
     attach_milestones,
+    evidence_records_by_phase,
     latest_assessment_map,
     phase_evidence,
 )
@@ -575,6 +576,9 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         effort_tasks = tasks.get(effort, [])
         effort_acceptances = acceptances.get(effort, [])
         effort_checks = checks.get(effort, [])
+        phase_acceptances, phase_checks = evidence_records_by_phase(
+            effort_acceptances, effort_checks
+        )
         evidence_by_phase: dict[str, PhaseEvidence] = {}
         for spec_effort, phase in structured:
             if spec_effort != effort:
@@ -586,8 +590,8 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 designs_by_effort.get(effort, []),
                 decisions_by_effort.get(effort, []),
                 effort_tasks,
-                effort_acceptances,
-                effort_checks,
+                phase_acceptances.get(phase, []),
+                phase_checks.get(phase, []),
                 assessments_by_effort.get(effort, []),
                 integrations_by_effort.get(effort, []),
                 releases_by_effort.get(effort, []),
