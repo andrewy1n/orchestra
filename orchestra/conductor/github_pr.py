@@ -40,6 +40,8 @@ class GitHubPRError(RuntimeError):
 class GitHubClient(Protocol):
     def push_branch(self, remote: str, branch: str) -> None: ...
 
+    def find_pull_request(self, head: str) -> tuple[int, str] | None: ...
+
     def create_pull_request(
         self, head: str, base: str, title: str, body: str
     ) -> tuple[int, str]: ...
@@ -92,7 +94,11 @@ def open_pull_request(
     monotonic_fn = monotonic if monotonic is not None else time.monotonic
     try:
         github.push_branch(remote, branch)
-        number, url = github.create_pull_request(branch, base, pr_title, proof_packet)
+        existing = github.find_pull_request(branch)
+        if existing is None:
+            number, url = github.create_pull_request(branch, base, pr_title, proof_packet)
+        else:
+            number, url = existing
         checks = wait_for_checks(
             github,
             number,
@@ -201,6 +207,29 @@ class GitHubGh(CliTool):
 
     def _repository_flags(self) -> list[str]:
         return ["-R", self._repository] if self._repository else []
+
+    def find_pull_request(self, head: str) -> tuple[int, str] | None:
+        data = self._json(
+            "pr",
+            "list",
+            "--head",
+            head,
+            "--state",
+            "open",
+            "--json",
+            "number,url",
+            *self._repository_flags(),
+        )
+        if not isinstance(data, list):
+            raise GitHubPRError("gh pr list returned an unexpected shape")
+        if not data:
+            return None
+        found = data[0]
+        number = found.get("number") if isinstance(found, dict) else None
+        url = found.get("url") if isinstance(found, dict) else None
+        if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
+            raise GitHubPRError("gh pr list returned an unexpected shape")
+        return number, url
 
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         output = self._text(

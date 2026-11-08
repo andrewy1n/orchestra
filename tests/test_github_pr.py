@@ -38,6 +38,9 @@ class FakeGitHub:
     def push_branch(self, remote: str, branch: str) -> None:
         self.events.append(f"push:{remote}:{branch}")
 
+    def find_pull_request(self, head: str) -> tuple[int, str] | None:
+        return None
+
     def create_pull_request(self, head: str, base: str, title: str, body: str) -> tuple[int, str]:
         self.events.append(f"create:{head}:{base}:{title}")
         self.body = body
@@ -59,7 +62,7 @@ class ScriptedGh:
     ) -> None:
         self.version = version
         self.failures = failures or {}
-        self.responses = responses or {}
+        self.responses = {("gh", "pr", "list"): "[]", **(responses or {})}
         self.missing = missing
         self.head_oid = head_oid
         self.calls: list[tuple[str, ...]] = []

@@ -258,6 +258,9 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
         def push_branch(self, remote: str, branch: str) -> None:
             self.events.append(f"push:{remote}:{branch}")
 
+        def find_pull_request(self, head: str) -> tuple[int, str] | None:
+            return None
+
         def create_pull_request(
             self, head: str, base: str, title: str, body: str
         ) -> tuple[int, str]:
