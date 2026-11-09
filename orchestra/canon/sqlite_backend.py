@@ -11,7 +11,12 @@ from collections.abc import Generator, Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.errors import (
+    ReadOnlyStoreError,
+    StaleWriteError,
+    StoreError,
+    StoreNotInitializedError,
+)
 from orchestra.canon.metadata import MetadataFiles
 from orchestra.canon.oplog import fold
 from orchestra.canon.paths import validate_record_id, validate_record_type
@@ -93,14 +98,19 @@ class SqliteBackend:
             repository_name = repository_root.name
         return Path.home().joinpath(".canon", repository_name)
 
-    def __init__(self, config_root: Path, data_root: Path):
+    def __init__(self, config_root: Path, data_root: Path, *, read_only: bool = False):
         self.config_root = config_root
         self.data_root = data_root
+        self.read_only = read_only
         self.db_path = data_root / "canon.db"
         self._metadata = MetadataFiles(config_root)
         self._active: sqlite3.Connection | None = None
-        if self._metadata.has_config():
+        if self._metadata.has_config() and not read_only:
             self._initialize_database()
+
+    def _require_writable(self) -> None:
+        if self.read_only:
+            raise ReadOnlyStoreError(f"store opened read-only: {self.db_path}")
 
     def _initialize_database(self) -> None:
         self.data_root.mkdir(parents=True, exist_ok=True)
@@ -113,7 +123,23 @@ class SqliteBackend:
         finally:
             connection.close()
 
+    def _connect_read_only(self) -> sqlite3.Connection:
+        if not self.db_path.is_file():
+            raise StoreNotInitializedError(f"store database missing: {self.db_path}")
+        connection = sqlite3.connect(
+            f"{self.db_path.resolve().as_uri()}?mode=ro", uri=True, timeout=10, isolation_level=None
+        )
+        try:
+            connection.execute("PRAGMA busy_timeout=10000")
+            connection.execute("PRAGMA query_only=ON")
+        except BaseException:
+            connection.close()
+            raise
+        return connection
+
     def _connect(self) -> sqlite3.Connection:
+        if self.read_only:
+            return self._connect_read_only()
         self.data_root.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
         try:
@@ -138,6 +164,7 @@ class SqliteBackend:
 
     @contextlib.contextmanager
     def transaction(self) -> Generator[None, None, None]:
+        self._require_writable()
         if self._active is not None:
             name = "nested_" + uuid.uuid4().hex
             connection = self._active
@@ -175,18 +202,21 @@ class SqliteBackend:
         return self._metadata.has_config()
 
     def write_config(self, config: JsonObject) -> None:
+        self._require_writable()
         self._metadata.write_config(config)
 
     def read_snapshot(self, namespace: str) -> str | None:
         return self._metadata.read_snapshot(namespace)
 
     def write_snapshot(self, namespace: str, text: str) -> None:
+        self._require_writable()
         self._metadata.write_snapshot(namespace, text)
 
     def is_absent(self) -> bool:
         return self._metadata.is_absent()
 
     def init(self, config: JsonObject, snapshots: dict[str, str] | None = None) -> str:
+        self._require_writable()
         if self.has_config():
             self.load_config()
             return "already_initialized"
@@ -516,6 +546,7 @@ class SqliteBackend:
         return hashlib.sha256(json.dumps(rows).encode()).hexdigest()
 
     def backup(self, keep: int = 14) -> str:
+        self._require_writable()
         if self._active is not None:
             raise StoreError("cannot back up during a write transaction")
         if keep < 1:

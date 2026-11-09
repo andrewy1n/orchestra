@@ -16,3 +16,7 @@ class PartialStoreError(StoreError):
 
 class StoreLockError(StoreError):
     pass
+
+
+class ReadOnlyStoreError(StoreError):
+    pass

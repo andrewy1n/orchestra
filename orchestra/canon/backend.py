@@ -58,8 +58,10 @@ class Backend(Protocol):
     def backup_due(self, max_age: timedelta) -> bool: ...
 
 
-def open_backend(store_root: Path, config: JsonObject | None = None) -> Backend:
-    """Open the configured SQLite backend."""
+def open_backend(
+    store_root: Path, config: JsonObject | None = None, *, read_only: bool = False
+) -> Backend:
+    """Open the configured SQLite backend. Read-only mode never writes or creates the database."""
     store = MetadataFiles(store_root)
     if config is None:
         config = store.load_config() if store.has_config() else {}
@@ -80,5 +82,5 @@ def open_backend(store_root: Path, config: JsonObject | None = None) -> Backend:
                 elif value != "local":
                     raise StoreError(f"invalid store binding at {binding}: {value!r}")
                 break
-        return SqliteBackend(store_root, data_root)
+        return SqliteBackend(store_root, data_root, read_only=read_only)
     raise StoreError(f"unsupported store backend: {selected!r}")
