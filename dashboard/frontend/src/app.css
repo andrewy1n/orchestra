@@ -1552,3 +1552,148 @@ a.lrow {
 		grid-template-columns: 1fr;
 	}
 }
+
+.phase-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px 14px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--panel);
+	min-width: 0;
+}
+
+.pc-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 8px;
+}
+
+.pc-title {
+	font-weight: 600;
+	color: var(--ink);
+	text-decoration: none;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.pc-title:hover {
+	text-decoration: underline;
+}
+
+.pc-chip {
+	padding: 1px 8px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--sunken);
+	color: var(--text-muted);
+	font-size: var(--text-xs);
+}
+
+.pc-time {
+	margin-left: auto;
+	color: var(--text-muted);
+	font-size: var(--text-xs);
+}
+
+.pc-running {
+	color: var(--running);
+	font-weight: 600;
+}
+
+.pc-stepper {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.pc-stage {
+	min-width: 0;
+	padding-top: 6px;
+	border-top: 3px solid var(--line);
+	color: var(--text-muted);
+	font-size: var(--text-xs);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pc-stage[data-state="done"] {
+	border-top-color: var(--done);
+	color: var(--done);
+}
+
+.pc-stage[data-state="current"] {
+	border-top-color: var(--brand);
+	color: var(--brand);
+	font-weight: 700;
+}
+
+.pc-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	font-size: var(--text-xs);
+}
+
+.pc-name {
+	flex: 0 0 96px;
+	color: var(--text-muted);
+}
+
+.pc-bar {
+	display: flex;
+	flex: 1 1 80px;
+	gap: 2px;
+	height: 8px;
+	border-radius: 4px;
+	background: var(--sunken);
+	overflow: hidden;
+}
+
+.pc-seg {
+	flex: 1 1 0;
+	background: var(--line);
+}
+
+.pc-seg[data-segment="done"] {
+	background: var(--done);
+}
+
+.pc-seg[data-segment="running"] {
+	background: var(--brand);
+}
+
+.pc-fill {
+	display: block;
+	height: 100%;
+	background: var(--done);
+}
+
+.pc-label {
+	margin-left: auto;
+	color: var(--ink);
+}
+
+.pc-repairs .pc-name,
+.pc-repairs .pc-label {
+	color: var(--warn);
+}
+
+.pc-gate {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2px 6px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--sunken);
+	color: var(--text-muted);
+	font-size: var(--text-xs);
+}
