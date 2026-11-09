@@ -1640,6 +1640,14 @@ a.lrow {
 	list-style: none;
 }
 
+@media (max-width: 700px) {
+	.pc-stepper {
+		grid-auto-flow: row;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		row-gap: 8px;
+	}
+}
+
 .pc-stage {
 	min-width: 0;
 	padding-top: 6px;
