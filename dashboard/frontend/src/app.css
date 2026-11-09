@@ -1494,6 +1494,29 @@ a.lrow {
 	align-items: start;
 }
 
+.hub-active {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 0 0 20px;
+}
+
+.hub-active .hub-section {
+	margin: 0;
+}
+
+.hub-split {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	gap: 16px;
+	margin: 0 0 20px;
+	align-items: start;
+}
+
+.hub-split-main {
+	min-width: 0;
+}
+
 .hub-panel {
 	border: 1px solid var(--line);
 	border-radius: 10px;
@@ -1549,6 +1572,10 @@ a.lrow {
 	}
 
 	.hub-panels {
+		grid-template-columns: 1fr;
+	}
+
+	.hub-split {
 		grid-template-columns: 1fr;
 	}
 }
