@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
+from dashboard.backend.landing import Landing
+from dashboard.backend.progress import Progress, build_progress
 from dashboard.backend.snapshot import Snapshot
 
 WORK_NEXT_LIMIT = 5
@@ -25,6 +28,7 @@ class HubItem:
     updated_at: datetime | None
     href: str
     step: str = ""
+    progress: Progress | None = None
 
 
 @dataclass
@@ -52,7 +56,17 @@ def _order(item: HubItem) -> tuple[bool, float, str, str]:
     return (not item.running, -stamp.timestamp(), item.effort, item.subject)
 
 
-def build_hub(snapshot: Snapshot, now: datetime) -> HubView:
+def build_hub(
+    snapshot: Snapshot,
+    now: datetime,
+    *,
+    landings: Mapping[str, Landing] | None = None,
+    approvals: Mapping[str, Collection[str]] | None = None,
+    review_passed: Collection[str] | None = None,
+) -> HubView:
+    landings = landings or {}
+    approvals = approvals or {}
+    review_passed = review_passed or ()
     phases: list[HubItem] = []
     needs: list[HubItem] = []
     ideas: list[HubItem] = []
@@ -76,6 +90,14 @@ def build_hub(snapshot: Snapshot, now: datetime) -> HubView:
                     updated_at=phase.updated_at,
                     href=f"#/phase/{effort.effort}/{phase.subject}",
                     step=phase.evidence.stage if phase.evidence else "",
+                    progress=build_progress(
+                        phase,
+                        effort.tasks,
+                        effort.needs_you,
+                        landing=landings.get(phase.subject),
+                        approved=approvals.get(phase.subject, ()),
+                        review_passed_at_head=phase.subject in review_passed,
+                    ),
                 )
             )
         for need in effort.needs_you:
@@ -109,7 +131,7 @@ def build_hub(snapshot: Snapshot, now: datetime) -> HubView:
                 )
             )
     return HubView(
-        work_next=sorted([*phases, *needs, *ideas], key=_order)[:WORK_NEXT_LIMIT],
+        work_next=sorted([*needs, *ideas], key=_order)[:WORK_NEXT_LIMIT],
         needs_you=sorted(needs, key=_order),
         active_phases=sorted(phases, key=_order),
         open_ideas=sorted(ideas, key=_order),

@@ -403,6 +403,32 @@
         "title": "BacklogSummary",
         "type": "object"
       },
+      "BlockerSummary": {
+        "properties": {
+          "more": {
+            "title": "More",
+            "type": "integer"
+          },
+          "shown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Shown",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shown",
+          "more",
+          "text"
+        ],
+        "title": "BlockerSummary",
+        "type": "object"
+      },
       "CheckRun": {
         "properties": {
           "evidence_kind": {
@@ -689,6 +715,16 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reason": {
             "title": "Reason",
@@ -1454,6 +1490,50 @@
         "title": "PhaseSummary",
         "type": "object"
       },
+      "Progress": {
+        "properties": {
+          "blockers": {
+            "$ref": "#/components/schemas/BlockerSummary"
+          },
+          "repairs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepairProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requirements": {
+            "$ref": "#/components/schemas/RequirementProgress"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/Stage"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "tasks": {
+            "$ref": "#/components/schemas/TaskProgress"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weight",
+          "stages",
+          "tasks",
+          "requirements",
+          "repairs",
+          "blockers"
+        ],
+        "title": "Progress",
+        "type": "object"
+      },
       "ProofView": {
         "properties": {
           "attention": {
@@ -1542,6 +1622,29 @@
         "title": "RelatedRecord",
         "type": "object"
       },
+      "RepairProgress": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "used",
+          "limit",
+          "label"
+        ],
+        "title": "RepairProgress",
+        "type": "object"
+      },
       "RequirementDetail": {
         "properties": {
           "acceptances": {
@@ -1605,6 +1708,29 @@
           "assessments"
         ],
         "title": "RequirementDetail",
+        "type": "object"
+      },
+      "RequirementProgress": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "proven": {
+            "title": "Proven",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "proven",
+          "total",
+          "label"
+        ],
+        "title": "RequirementProgress",
         "type": "object"
       },
       "RequirementResponse": {
@@ -1724,6 +1850,24 @@
           "efforts"
         ],
         "title": "SnapshotResponse",
+        "type": "object"
+      },
+      "Stage": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "Stage",
         "type": "object"
       },
       "StoredRecord": {
@@ -1943,6 +2087,51 @@
           "write_root"
         ],
         "title": "TaskDetail",
+        "type": "object"
+      },
+      "TaskProgress": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "wave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wave"
+          }
+        },
+        "required": [
+          "done",
+          "running",
+          "remaining",
+          "total",
+          "wave",
+          "label"
+        ],
+        "title": "TaskProgress",
         "type": "object"
       },
       "TaskResponse": {
