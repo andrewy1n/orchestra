@@ -5,6 +5,69 @@
         "effort": "alpha",
         "href": "#/phase/alpha/p-work",
         "kind": "phase",
+        "progress": {
+          "blockers": {
+            "more": 1,
+            "shown": [
+              "3 tasks not done",
+              "1 requirement not proven"
+            ],
+            "text": "3 tasks not done; 1 requirement not proven +1 more"
+          },
+          "repairs": {
+            "label": "0 of 3 fix tasks used",
+            "limit": 3,
+            "used": 0
+          },
+          "requirements": {
+            "label": "1 of 2 proven",
+            "proven": 1,
+            "total": 2
+          },
+          "stages": [
+            {
+              "id": "spec",
+              "state": "done"
+            },
+            {
+              "id": "design",
+              "state": "done"
+            },
+            {
+              "id": "tasks",
+              "state": "done"
+            },
+            {
+              "id": "execute",
+              "state": "current"
+            },
+            {
+              "id": "verify",
+              "state": "pending"
+            },
+            {
+              "id": "review",
+              "state": "pending"
+            },
+            {
+              "id": "land",
+              "state": "pending"
+            },
+            {
+              "id": "close",
+              "state": "pending"
+            }
+          ],
+          "tasks": {
+            "done": 0,
+            "label": "0 of 3 done · wave 1",
+            "remaining": 2,
+            "running": 1,
+            "total": 3,
+            "wave": 1
+          },
+          "weight": "full"
+        },
         "reason": "Running now",
         "running": true,
         "step": "execute",
@@ -16,6 +79,57 @@
         "effort": "alpha",
         "href": "#/phase/alpha/route-phase",
         "kind": "phase",
+        "progress": {
+          "blockers": {
+            "more": 0,
+            "shown": [
+              "1 requirement not proven",
+              "No passing review"
+            ],
+            "text": "1 requirement not proven; No passing review"
+          },
+          "repairs": null,
+          "requirements": {
+            "label": "0 of 1 proven",
+            "proven": 0,
+            "total": 1
+          },
+          "stages": [
+            {
+              "id": "tasks",
+              "state": "current"
+            },
+            {
+              "id": "execute",
+              "state": "pending"
+            },
+            {
+              "id": "verify",
+              "state": "pending"
+            },
+            {
+              "id": "review",
+              "state": "pending"
+            },
+            {
+              "id": "land",
+              "state": "pending"
+            },
+            {
+              "id": "close",
+              "state": "pending"
+            }
+          ],
+          "tasks": {
+            "done": 0,
+            "label": "no tasks yet",
+            "remaining": 0,
+            "running": 0,
+            "total": 0,
+            "wave": null
+          },
+          "weight": "light"
+        },
         "reason": "Updated <elapsed>",
         "running": false,
         "step": "design",
@@ -31,6 +145,7 @@
         "effort": "alpha",
         "href": "#/backlog/alpha/<composer:idea:park-too>",
         "kind": "idea",
+        "progress": null,
         "reason": "Idea · parked <elapsed>",
         "running": false,
         "step": "",
@@ -42,6 +157,7 @@
         "effort": "alpha",
         "href": "#/backlog/alpha/<composer:idea:park-me>",
         "kind": "idea",
+        "progress": null,
         "reason": "Idea · parked <elapsed>",
         "running": false,
         "step": "",
@@ -53,19 +169,9 @@
     "work_next": [
       {
         "effort": "alpha",
-        "href": "#/phase/alpha/p-work",
-        "kind": "phase",
-        "reason": "Running now",
-        "running": true,
-        "step": "execute",
-        "subject": "p-work",
-        "title": "title of p-work",
-        "updated_at": "<timestamp>"
-      },
-      {
-        "effort": "alpha",
         "href": "#/backlog/alpha/<composer:idea:park-too>",
         "kind": "idea",
+        "progress": null,
         "reason": "Idea · parked <elapsed>",
         "running": false,
         "step": "",
@@ -77,22 +183,12 @@
         "effort": "alpha",
         "href": "#/backlog/alpha/<composer:idea:park-me>",
         "kind": "idea",
+        "progress": null,
         "reason": "Idea · parked <elapsed>",
         "running": false,
         "step": "",
         "subject": "<composer:idea:park-me>",
         "title": "park-me",
-        "updated_at": "<timestamp>"
-      },
-      {
-        "effort": "alpha",
-        "href": "#/phase/alpha/route-phase",
-        "kind": "phase",
-        "reason": "Updated <elapsed>",
-        "running": false,
-        "step": "design",
-        "subject": "route-phase",
-        "title": "title of route-phase",
         "updated_at": "<timestamp>"
       }
     ]

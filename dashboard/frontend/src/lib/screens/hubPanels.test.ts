@@ -44,6 +44,22 @@ function item(overrides: Partial<HubItem>): HubItem {
 	};
 }
 
+const progress: NonNullable<HubItem["progress"]> = {
+	weight: "full",
+	stages: [{ id: "execute", state: "current" }],
+	tasks: {
+		done: 1,
+		running: 1,
+		remaining: 1,
+		total: 3,
+		wave: 1,
+		label: "1 of 3",
+	},
+	requirements: { proven: 1, total: 2, label: "1 of 2 proven" },
+	repairs: null,
+	blockers: { shown: [], more: 0, text: "Nothing blocks close" },
+};
+
 const activePhases: HubItem[] = [
 	item({
 		effort: "dashboard",
@@ -51,6 +67,7 @@ const activePhases: HubItem[] = [
 		subject: "work-hub",
 		title: "Work hub",
 		step: "execute",
+		progress,
 	}),
 	item({
 		effort: "workflow",
@@ -58,6 +75,7 @@ const activePhases: HubItem[] = [
 		subject: "skills-playbooks",
 		title: "Skills playbooks",
 		step: "verify",
+		progress,
 	}),
 ];
 
@@ -152,16 +170,21 @@ function links(name: string): HTMLAnchorElement[] {
 }
 
 describe("hub panels", () => {
-	it("R2 active phases rows show effort, phase title and step", async () => {
+	it("R2 active phases cards show effort, phase title and link", async () => {
 		await mountHub({ active_phases: activePhases });
-		const found = links("active-phases");
-		expect(found).toHaveLength(activePhases.length);
-		found.forEach((row, i) => {
+		const cards = Array.from(
+			document.querySelectorAll<HTMLElement>(
+				"[data-hub] [data-active-phases] [data-phase-card]",
+			),
+		);
+		expect(cards).toHaveLength(activePhases.length);
+		cards.forEach((card, i) => {
 			const expected = activePhases[i] as HubItem;
-			expect(row.getAttribute("href")).toBe(expected.href);
-			expect(row.textContent).toContain(expected.effort);
-			expect(row.textContent).toContain(expected.title);
-			expect(row.textContent).toContain(expected.step);
+			expect(card.querySelector("[data-title]")?.getAttribute("href")).toBe(
+				expected.href,
+			);
+			expect(card.textContent).toContain(expected.effort);
+			expect(card.textContent).toContain(expected.title);
 		});
 	});
 

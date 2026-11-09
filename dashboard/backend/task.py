@@ -191,18 +191,22 @@ def check_from(record: Record) -> CheckRun:
     )
 
 
-def retry_max_redispatches(body: str) -> int:
-    """Per-task re-dispatch budget from phase run facts, or the default of 2."""
+def run_fact_int(body: str, name: str, default: int) -> int:
     for line in (body or "").splitlines():
-        if "retry_max_redispatches" not in line:
+        if name not in line:
             continue
-        _, _, rest = line.partition("retry_max_redispatches")
+        _, _, rest = line.partition(name)
         rest = rest.lstrip(" \t:")
         token = rest.split()[0] if rest.split() else ""
         token = token.rstrip(".,;")
         if token.isdigit():
             return int(token)
-    return DEFAULT_RETRY_MAX_REDISPATCHES
+    return default
+
+
+def retry_max_redispatches(body: str) -> int:
+    """Per-task re-dispatch budget from phase run facts, or the default of 2."""
+    return run_fact_int(body, "retry_max_redispatches", DEFAULT_RETRY_MAX_REDISPATCHES)
 
 
 def _size(payload: PlanningPayload) -> str:

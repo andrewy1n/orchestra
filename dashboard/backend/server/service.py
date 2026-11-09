@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from typing import TypeVar
 
 from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, store
+from dashboard.backend.gates import landing_cache_token
+from dashboard.backend.landing import Landing, landings_for_phases
 from dashboard.backend.phase import (
     PhaseRow,
     load_decision_log,
@@ -16,6 +18,7 @@ from dashboard.backend.phase import (
     load_requirement_detail,
     tabs_for,
 )
+from dashboard.backend.records import list_records
 from dashboard.backend.server import schemas
 from dashboard.backend.snapshot import (
     BacklogItem,
@@ -26,6 +29,8 @@ from dashboard.backend.snapshot import (
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
+from orchestra.conductor.reviewer import phase_review_gate_holds
+from orchestra.score.workflow_reviews import Step, step_readiness
 
 CachedResponse = (
     schemas.AreasResponse
@@ -168,12 +173,76 @@ class Cache:
         return value
 
 
+CARD_APPROVAL_STEPS: tuple[tuple[Step, str], ...] = (
+    ("spec", "spec"),
+    ("design", "design"),
+    ("tasks", "plan"),
+)
+_WORKFLOW_RECORD_TYPES = (
+    "score:phase",
+    "score:specification",
+    "score:design",
+    "score:step-review",
+    "score:work-item",
+    "score:acceptance",
+    "score:continuity-question",
+)
+
+
 class Reader:
     """Read accessors and writes behind the FastAPI routes."""
 
     def __init__(self, target: Project) -> None:
         self.target = target
         self.cache = Cache(target)
+        self.landing_lock = threading.Lock()
+        self.landing_cache: tuple[str, dict[str, Landing]] | None = None
+
+    def _landings(self, snapshot: Snapshot, phases: list[PhaseRow]) -> dict[str, Landing]:
+        token = landing_cache_token(self.target.project_root, snapshot)
+        key = f"{snapshot.token}\n{token}\n" + ",".join(p.subject for p in phases)
+        with self.landing_lock:
+            if self.landing_cache is not None and self.landing_cache[0] == key:
+                return self.landing_cache[1]
+        found = landings_for_phases(
+            self.target.project_root, [(phase.subject, phase.body) for phase in phases]
+        )
+        with self.landing_lock:
+            self.landing_cache = (key, found)
+        return found
+
+    def _card_inputs(
+        self, snapshot: Snapshot
+    ) -> tuple[dict[str, Landing], dict[str, set[str]], set[str]]:
+        phases = [
+            phase
+            for effort in snapshot.efforts
+            if not (effort.finished or effort.dormant)
+            for phase in effort.phases
+            if phase.state == "in_progress"
+        ]
+        if not phases:
+            return {}, {}, set()
+        landings = self._landings(snapshot, phases)
+        records = [
+            record
+            for record_type in _WORKFLOW_RECORD_TYPES
+            for record in list_records(self.target, record_type)
+        ]
+        approvals: dict[str, set[str]] = {}
+        for phase in phases:
+            approvals[phase.subject] = {
+                name
+                for step, name in CARD_APPROVAL_STEPS
+                if step_readiness(records, phase.subject, step).status == "ready"
+            }
+        checks = list_records(self.target, "tuner:check-run")
+        review_passed = {
+            subject
+            for subject, landing in landings.items()
+            if landing.head and phase_review_gate_holds(check_runs=checks, phase_head=landing.head)
+        }
+        return landings, approvals, review_passed
 
     def token(self) -> schemas.TokenResponse:
         return schemas.TokenResponse(token=self.cache.token_only())
@@ -192,7 +261,12 @@ class Reader:
 
     def hub(self) -> schemas.HubResponse:
         now = datetime.now(timezone.utc)
-        return schemas.HubResponse.model_validate(hub.build_hub(self.cache.current(), now))
+        snapshot = self.cache.current()
+        landings, approvals, review_passed = self._card_inputs(snapshot)
+        view = hub.build_hub(
+            snapshot, now, landings=landings, approvals=approvals, review_passed=review_passed
+        )
+        return schemas.HubResponse.model_validate(view)
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
         def load() -> schemas.PhaseResponse:

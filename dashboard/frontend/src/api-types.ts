@@ -343,6 +343,15 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** BlockerSummary */
+        BlockerSummary: {
+            /** More */
+            more: number;
+            /** Shown */
+            shown: string[];
+            /** Text */
+            text: string;
+        };
         /** CheckRun */
         CheckRun: {
             /** Evidence Kind */
@@ -448,6 +457,7 @@ export interface components {
             href: string;
             /** Kind */
             kind: string;
+            progress?: components["schemas"]["Progress"] | null;
             /** Reason */
             reason: string;
             /** Running */
@@ -706,6 +716,17 @@ export interface components {
             /** Verified */
             verified: number | null;
         };
+        /** Progress */
+        Progress: {
+            blockers: components["schemas"]["BlockerSummary"];
+            repairs: components["schemas"]["RepairProgress"] | null;
+            requirements: components["schemas"]["RequirementProgress"];
+            /** Stages */
+            stages: components["schemas"]["Stage"][];
+            tasks: components["schemas"]["TaskProgress"];
+            /** Weight */
+            weight: string;
+        };
         /** ProofView */
         ProofView: {
             /** Attention */
@@ -740,6 +761,15 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** RepairProgress */
+        RepairProgress: {
+            /** Label */
+            label: string;
+            /** Limit */
+            limit: number;
+            /** Used */
+            used: number;
+        };
         /** RequirementDetail */
         RequirementDetail: {
             /** Acceptances */
@@ -760,6 +790,15 @@ export interface components {
             tasks: components["schemas"]["TaskRow"][];
             /** Text */
             text: string;
+        };
+        /** RequirementProgress */
+        RequirementProgress: {
+            /** Label */
+            label: string;
+            /** Proven */
+            proven: number;
+            /** Total */
+            total: number;
         };
         /** RequirementResponse */
         RequirementResponse: {
@@ -799,6 +838,13 @@ export interface components {
             store: string;
             /** Token */
             token: string;
+        };
+        /** Stage */
+        Stage: {
+            /** Id */
+            id: string;
+            /** State */
+            state: string;
         };
         /** StoredRecord */
         StoredRecord: {
@@ -873,6 +919,21 @@ export interface components {
             wave: number | null;
             /** Write Root */
             write_root: string;
+        };
+        /** TaskProgress */
+        TaskProgress: {
+            /** Done */
+            done: number;
+            /** Label */
+            label: string;
+            /** Remaining */
+            remaining: number;
+            /** Running */
+            running: number;
+            /** Total */
+            total: number;
+            /** Wave */
+            wave: number | null;
         };
         /** TaskResponse */
         TaskResponse: {
@@ -968,6 +1029,7 @@ export type AssessmentView = components['schemas']['AssessmentView'];
 export type BacklogItem = components['schemas']['BacklogItem'];
 export type BacklogResponse = components['schemas']['BacklogResponse'];
 export type BacklogSummary = components['schemas']['BacklogSummary'];
+export type BlockerSummary = components['schemas']['BlockerSummary'];
 export type CheckRun = components['schemas']['CheckRun'];
 export type ConfirmChoice = components['schemas']['ConfirmChoice'];
 export type DecisionChoice = components['schemas']['DecisionChoice'];
@@ -991,15 +1053,20 @@ export type PhaseDetail = components['schemas']['PhaseDetail'];
 export type PhaseEvidence = components['schemas']['PhaseEvidence'];
 export type PhaseResponse = components['schemas']['PhaseResponse'];
 export type PhaseSummary = components['schemas']['PhaseSummary'];
+export type Progress = components['schemas']['Progress'];
 export type ProofView = components['schemas']['ProofView'];
 export type RecordResponse = components['schemas']['RecordResponse'];
 export type RelatedRecord = components['schemas']['RelatedRecord'];
+export type RepairProgress = components['schemas']['RepairProgress'];
 export type RequirementDetail = components['schemas']['RequirementDetail'];
+export type RequirementProgress = components['schemas']['RequirementProgress'];
 export type RequirementResponse = components['schemas']['RequirementResponse'];
 export type RequirementRow = components['schemas']['RequirementRow'];
 export type SnapshotResponse = components['schemas']['SnapshotResponse'];
+export type Stage = components['schemas']['Stage'];
 export type StoredRecord = components['schemas']['StoredRecord'];
 export type TaskDetail = components['schemas']['TaskDetail'];
+export type TaskProgress = components['schemas']['TaskProgress'];
 export type TaskResponse = components['schemas']['TaskResponse'];
 export type TaskRow = components['schemas']['TaskRow'];
 export type TimelineEvent = components['schemas']['TimelineEvent'];

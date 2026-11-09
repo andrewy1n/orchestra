@@ -142,6 +142,47 @@ class AreasResponse(RootModel[list[AreaView]]):
     pass
 
 
+class Stage(Model):
+    id: str
+    state: str
+
+
+class TaskProgress(Model):
+    done: int
+    running: int
+    remaining: int
+    total: int
+    wave: int | None
+    label: str
+
+
+class RequirementProgress(Model):
+    proven: int
+    total: int
+    label: str
+
+
+class RepairProgress(Model):
+    used: int
+    limit: int
+    label: str
+
+
+class BlockerSummary(Model):
+    shown: list[str]
+    more: int
+    text: str
+
+
+class Progress(Model):
+    weight: str
+    stages: list[Stage]
+    tasks: TaskProgress
+    requirements: RequirementProgress
+    repairs: RepairProgress | None
+    blockers: BlockerSummary
+
+
 class HubItem(Model):
     kind: str
     effort: str
@@ -152,6 +193,7 @@ class HubItem(Model):
     updated_at: Timestamp | None
     href: str
     step: str
+    progress: Progress | None = None
 
 
 class HubResponse(Model):
