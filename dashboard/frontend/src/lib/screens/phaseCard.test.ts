@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { type Component, flushSync, mount, unmount } from "svelte";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HubItem } from "../../api-types";
 
 type Progress = NonNullable<HubItem["progress"]>;
@@ -13,6 +13,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	if (mounted) unmount(mounted);
 	mounted = undefined;
 	document.body.innerHTML = "";
@@ -97,8 +98,15 @@ describe("phase card header", () => {
 	});
 
 	it("R4 a running phase shows running with the time", async () => {
+		const now = new Date("2026-06-01T12:00:00Z");
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
 		const card = await render(
-			item({ running: true, reason: "Updated 4 min ago" }),
+			item({
+				running: true,
+				reason: "Running now",
+				updated_at: new Date(now.getTime() - 4 * 60_000).toISOString(),
+			}),
 		);
 		const running = card.querySelector("[data-running]");
 		expect(running).not.toBeNull();
@@ -285,5 +293,72 @@ describe("phase card gate line", () => {
 		const gate = card.querySelector("[data-gate]");
 		expect(text(gate)).toContain("Nothing blocks close");
 		expect(gate?.querySelector("[data-blocker]")).toBeNull();
+	});
+});
+
+describe("phase card polish", () => {
+	const twoBlockers = {
+		blockers: {
+			shown: ["1 task not done", "1 requirement not proven"],
+			more: 0,
+			text: "1 task not done; 1 requirement not proven",
+		},
+	};
+
+	it("R19 a separator element sits between two shown blockers", async () => {
+		const card = await render(item({}, twoBlockers));
+		const gate = card.querySelector("[data-gate]");
+		const seps = Array.from(gate?.querySelectorAll("[data-separator]") ?? []);
+		expect(seps).toHaveLength(1);
+		expect(seps[0]?.getAttribute("aria-hidden")).toBe("true");
+		expect(text(seps[0]).length).toBeGreaterThan(0);
+		const blockers = Array.from(gate?.querySelectorAll("[data-blocker]") ?? []);
+		expect(blockers).toHaveLength(2);
+		expect(
+			blockers[0]?.compareDocumentPosition(seps[0] as Node) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			seps[0]?.compareDocumentPosition(blockers[1] as Node) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
+	it("R19 no separator before the first or after the last blocker", async () => {
+		const one = await render(
+			item({}, { blockers: { shown: ["Review pending"], more: 0, text: "x" } }),
+		);
+		expect(one.querySelector("[data-gate] [data-separator]")).toBeNull();
+		unmount(mounted as ReturnType<typeof mount>);
+		mounted = undefined;
+		document.body.innerHTML = "";
+		const card = await render(item({}, twoBlockers));
+		const gate = card.querySelector("[data-gate]") as HTMLElement;
+		const first = gate.querySelector("[data-blocker]") as Element;
+		const last = Array.from(gate.querySelectorAll("[data-blocker]")).pop();
+		expect(first.previousElementSibling?.hasAttribute("data-separator")).toBe(
+			false,
+		);
+		expect(
+			last?.nextElementSibling?.hasAttribute("data-separator") ?? false,
+		).toBe(false);
+	});
+
+	it("R20 a running card shows running once with the time since the last write", async () => {
+		const now = new Date("2026-06-01T12:00:00Z");
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		const card = await render(
+			item({
+				running: true,
+				reason: "Running now",
+				updated_at: new Date(now.getTime() - 4 * 60_000).toISOString(),
+			}),
+		);
+		const header = text(card.querySelector("[data-card-header]"));
+		expect(header.match(/running/gi)).toHaveLength(1);
+		expect(header).not.toContain("Running now");
+		expect(header).toContain("4 min ago");
+		expect(text(card.querySelector("[data-running]"))).toBe("running");
 	});
 });

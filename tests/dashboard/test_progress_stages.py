@@ -186,13 +186,12 @@ def test_r7_current_is_first_stage_not_done() -> None:
 
 
 def test_r7_current_skips_back_to_earliest_gap_when_later_stages_are_done() -> None:
-    assert _current(approved=frozenset({"design", "plan"})) == "spec"
+    assert _current(**_in_progress(approved=frozenset({"design", "plan"}))) == "spec"
     assert _current(task_states=("done", "planned")) == "execute"
     assert _current(branch_merged=False, phase_state="in_progress") == "land"
-    states = _states(approved=frozenset({"design", "plan"}))
+    states = _states(**_in_progress(approved=frozenset({"design", "plan"})))
     assert states["spec"] == "current"
     assert states["design"] == "done"
-    assert states["close"] == "done"
 
 
 def test_r7_land_is_current_after_review_passes_and_branch_unmerged() -> None:
@@ -201,3 +200,30 @@ def test_r7_land_is_current_after_review_passes_and_branch_unmerged() -> None:
 
 def test_r7_close_is_current_after_land() -> None:
     assert _current(phase_state="in_progress") == "close"
+
+
+def test_r18_full_phase_with_tasks_and_no_approvals_shows_execute_current() -> None:
+    states = _states(**_in_progress(task_states=("todo", "todo", "todo", "todo")))
+    assert states["spec"] == "done"
+    assert states["design"] == "done"
+    assert states["tasks"] == "done"
+    assert _current(**_in_progress(task_states=("todo", "todo", "todo", "todo"))) == "execute"
+
+
+def test_r18_full_phase_without_tasks_or_approvals_shows_spec_current() -> None:
+    assert _current(**_in_progress()) == "spec"
+
+
+def test_r18_light_phase_with_tasks_still_omits_spec_and_design() -> None:
+    kwargs = _in_progress(weight="light", task_states=("todo", "todo"))
+    stages = _stages(**kwargs)
+    assert [stage.id for stage in stages] == LIGHT_IDS
+    assert _states(**kwargs)["tasks"] == "done"
+    assert _current(**kwargs) == "execute"
+
+
+def test_r18_approvals_without_tasks_keep_their_stage_done() -> None:
+    states = _states(**_in_progress(approved=frozenset({"spec"})))
+    assert states["spec"] == "done"
+    assert states["design"] == "current"
+    assert states["tasks"] == "pending"

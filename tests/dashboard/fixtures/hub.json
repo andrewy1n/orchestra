@@ -27,19 +27,19 @@
           "stages": [
             {
               "id": "spec",
-              "state": "current"
+              "state": "done"
             },
             {
               "id": "design",
-              "state": "pending"
+              "state": "done"
             },
             {
               "id": "tasks",
-              "state": "pending"
+              "state": "done"
             },
             {
               "id": "execute",
-              "state": "pending"
+              "state": "current"
             },
             {
               "id": "verify",

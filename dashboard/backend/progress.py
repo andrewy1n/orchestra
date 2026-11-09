@@ -33,10 +33,11 @@ def derive_stages(
     review_passed_at_head: bool,
     branch_merged: bool,
 ) -> list[Stage]:
+    has_tasks = bool(task_states)
     done = {
-        "spec": "spec" in approved,
-        "design": "design" in approved,
-        "tasks": "plan" in approved,
+        "spec": has_tasks or "spec" in approved,
+        "design": has_tasks or "design" in approved,
+        "tasks": has_tasks or "plan" in approved,
         "execute": bool(task_states) and all(state == "done" for state in task_states),
         "verify": all(status == "verified" for status in requirement_statuses),
         "review": review_passed_at_head,

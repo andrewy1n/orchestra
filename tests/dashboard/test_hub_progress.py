@@ -162,7 +162,9 @@ def test_r2_each_card_carries_a_progress_object() -> None:
     assert spec_state["spec"] == "done"
     assert spec_state["review"] == "done"
     assert spec_state["land"] == "done"
-    assert {s.id: s.state for s in by_subject["b1"].stages}["spec"] == "current"
+    b1_states = {s.id: s.state for s in by_subject["b1"].stages}
+    assert b1_states["spec"] == "done"
+    assert b1_states["execute"] == "current"
 
 
 def test_r2_needs_and_ideas_carry_no_progress() -> None:

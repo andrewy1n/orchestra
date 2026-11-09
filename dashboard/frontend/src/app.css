@@ -1630,6 +1630,10 @@ a.lrow {
 	font-weight: 600;
 }
 
+.pc-sep {
+	color: var(--text-muted);
+}
+
 .pc-stepper {
 	display: grid;
 	grid-auto-flow: column;

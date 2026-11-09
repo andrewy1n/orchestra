@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { HubItem } from "../../api-types";
-  import { firstSentence } from "../../hubText";
+  import { firstSentence, relativeTime } from "../../hubText";
 
   let { item }: { item: HubItem } = $props();
 
@@ -21,7 +21,7 @@
       <span class="pc-chip" data-effort>{item.effort}</span>
       <span class="pc-chip" data-weight>{progress.weight}</span>
       <span class="pc-time">
-        {#if item.running}<span class="pc-running" data-running>running</span>{" · "}{/if}<span data-reason>{item.reason}</span>
+        {#if item.running}<span class="pc-running" data-running>running</span>{" "}<span data-reason>{relativeTime(item.updated_at)}</span>{:else}<span data-reason>{item.reason}</span>{/if}
       </span>
     </header>
 
@@ -68,7 +68,8 @@
     <div class="pc-gate" data-gate>
       {#if progress.blockers.shown.length > 0}
         <span>Blocks close:</span>
-        {#each progress.blockers.shown as blocker (blocker)}
+        {#each progress.blockers.shown as blocker, i (blocker)}
+          {#if i > 0}<span class="pc-sep" data-separator aria-hidden="true">·</span>{/if}
           <span class="pc-blocker" data-blocker>{blocker}</span>
         {/each}
         {#if progress.blockers.more > 0}
