@@ -71,6 +71,10 @@ INSERT OR IGNORE INTO meta VALUES ('format', 'canon-sqlite/1');
 """
 
 
+def _applied_at() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+
+
 def _decode_op(text: str, seq: int) -> StoredOp:
     op: StoredOp = json.loads(text)
     return {**op, "seq": seq}
@@ -272,6 +276,7 @@ class SqliteBackend:
                 "op_id": uuid.uuid4().hex,
                 "kind": "create" if create else "write",
                 "outcome": "accepted",
+                "applied_at": _applied_at(),
                 "record": state,
             }
             connection.execute(
@@ -408,6 +413,7 @@ class SqliteBackend:
                 "op_id": uuid.uuid4().hex,
                 "kind": "delete",
                 "outcome": "accepted",
+                "applied_at": _applied_at(),
                 "record": None,
             }
             connection.execute(
@@ -416,6 +422,10 @@ class SqliteBackend:
             )
             connection.execute("DELETE FROM records WHERE record_id=?", (record_id,))
             connection.execute("DELETE FROM revisions WHERE record_id=?", (record_id,))
+
+    def read_chain(self, record_id: str) -> list[StoredOp]:
+        with self._reader() as connection:
+            return self._chain(connection, record_id)
 
     def iter_chains(self) -> Iterator[tuple[str, list[StoredOp]]]:
         with self._reader() as connection:
