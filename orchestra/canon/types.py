@@ -46,6 +46,14 @@ class StoredOp(_OptionalOp):
     record: Record | None
 
 
+class RecordChange(TypedDict):
+    seq: int
+    kind: str
+    lifecycle_state: str | None
+    revision: str | None
+    applied_at: str | None
+
+
 class _NumberedResult(TypedDict, total=False):
     line: int
 

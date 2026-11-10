@@ -423,6 +423,10 @@ class SqliteBackend:
             connection.execute("DELETE FROM records WHERE record_id=?", (record_id,))
             connection.execute("DELETE FROM revisions WHERE record_id=?", (record_id,))
 
+    def read_chain(self, record_id: str) -> list[StoredOp]:
+        with self._reader() as connection:
+            return self._chain(connection, record_id)
+
     def iter_chains(self) -> Iterator[tuple[str, list[StoredOp]]]:
         with self._reader() as connection:
             chains = [
