@@ -132,6 +132,10 @@ class SqliteBackend:
         try:
             connection.execute("PRAGMA busy_timeout=10000")
             connection.execute("PRAGMA query_only=ON")
+            connection.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchall()
+        except sqlite3.OperationalError as exc:
+            connection.close()
+            raise StoreError(f"cannot open {self.db_path} read-only: {exc}") from exc
         except BaseException:
             connection.close()
             raise

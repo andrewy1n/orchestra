@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -72,6 +73,14 @@ def test_r2_mutating_methods_raise_read_only_error(roots: tuple[Path, Path]) -> 
         "delete_record": lambda: reader.delete_record(record["record_type"], record["id"]),
         "archive_history": lambda: reader.archive_history(record),
         "import_record": lambda: reader.import_record(record),
+        "import_op": lambda: reader.import_op(
+            record["record_type"],
+            record["id"],
+            {"seq": 9, "op_id": "x", "kind": "create", "outcome": "accepted", "record": record},
+        ),
+        "delete_history_snapshot": lambda: reader.delete_history_snapshot(
+            record["record_type"], record["id"], "sha256:x"
+        ),
     }
     for call in calls.values():
         with pytest.raises(ReadOnlyStoreError):
@@ -97,6 +106,11 @@ def test_r3_reading_leaves_the_database_file_byte_identical(roots: tuple[Path, P
     assert errors == []
     assert db.read_bytes() == before_bytes
     assert _tables(db) == before_tables
+    assert {path.name for path in roots[1].iterdir()} <= {
+        "canon.db",
+        "canon.db-wal",
+        "canon.db-shm",
+    }
 
 
 def test_r4_missing_database_raises_and_creates_nothing(tmp_path: Path) -> None:
@@ -121,3 +135,15 @@ def test_r5_reads_committed_records_while_a_write_transaction_is_open(
         writer.create_record(_record("pending"))
         assert [r["subject"] for r in reader.iter_records()] == ["first"]
     assert sorted(r["subject"] for r in reader.iter_records()) == ["first", "pending"]
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory permissions")
+def test_r3_unwritable_data_directory_fails_with_a_store_error(roots: tuple[Path, Path]) -> None:
+    for sidecar in roots[1].glob("canon.db-*"):
+        sidecar.unlink()
+    roots[1].chmod(0o555)
+    try:
+        with pytest.raises(StoreError, match="read-only"):
+            list(_reader(roots).iter_records())
+    finally:
+        roots[1].chmod(0o755)
