@@ -11,7 +11,12 @@ from typing import Literal
 
 from orchestra.canon.backend import Backend, open_backend
 from orchestra.canon.derive import compute_derived
-from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.errors import (
+    ReadOnlyStoreError,
+    StaleWriteError,
+    StoreError,
+    StoreNotInitializedError,
+)
 from orchestra.canon.index import SUPERSEDED, RecordIndex
 from orchestra.canon.record import base_record, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
@@ -72,14 +77,15 @@ class Project:
     project_root: Path
     store_path: Path
     binding: Binding
+    read_only: bool = False
 
     def config(self) -> JsonObject:
         """Return the current store configuration."""
-        return open_backend(self.store_path).load_config()
+        return self._backend().load_config()
 
     def change_token(self) -> str:
         """Return an opaque token that changes when stored records change."""
-        return open_backend(self.store_path).change_token()
+        return self._backend().change_token()
 
     def schemas(self) -> SchemaSet:
         return self._session()[1]
@@ -132,6 +138,7 @@ class Project:
         provenance: JsonValue = None,
     ) -> Record:
         """Write one record and return the stored record, including id and revision."""
+        self._require_writable()
         store, schemas = self._session()
         with store.transaction():
             return _create_record(
@@ -156,6 +163,7 @@ class Project:
         expected_revision: str | None = _CURRENT_REVISION,
     ) -> Record:
         """Move a record to a new state and merge payload and body changes into it."""
+        self._require_writable()
         store, schemas = self._session()
         op: JsonObject = {
             "id": record_id,
@@ -178,6 +186,7 @@ class Project:
         expected_revision: str | None = _CURRENT_REVISION,
     ) -> MutationResult:
         """Write a successor under a new id. Returns `record` and `predecessor`."""
+        self._require_writable()
         store, schemas = self._session()
         op: JsonObject = {
             "id": record_id,
@@ -200,6 +209,7 @@ class Project:
         expected_revision: str | None = None,
     ) -> MutationResult:
         """Write a correcting successor of an event record. Returns `record` and `predecessor`."""
+        self._require_writable()
         store, schemas = self._session()
         op: JsonObject = {
             "id": record_id,
@@ -218,6 +228,7 @@ class Project:
         A bad operation is reported and later operations still run. Earlier
         writes are left in place.
         """
+        self._require_writable()
         store, schemas = self._session()
         results: list[OperationResult] = []
         for index, op in enumerate(operations, start=1):
@@ -239,6 +250,7 @@ class Project:
 
     def apply_at_snapshot(self, operations: Iterable[JsonObject], change_token: str) -> None:
         """Apply a batch atomically only if its source snapshot is still current."""
+        self._require_writable()
         store, schemas = self._session()
         with store.transaction():
             if store.change_token() != change_token:
@@ -246,52 +258,66 @@ class Project:
             for operation in operations:
                 _apply_operation(store, schemas, operation)
 
+    def _backend(self) -> Backend:
+        return open_backend(self.store_path, read_only=self.read_only)
+
+    def _require_writable(self) -> None:
+        if self.read_only:
+            raise ReadOnlyStoreError(f"store opened read-only: {self.store_path}")
+
     def _session(self) -> tuple[Backend, SchemaSet]:
-        store = open_backend(self.store_path)
+        store = self._backend()
         config = store.load_config()
         return store, SchemaSet.load(store, config)
 
 
-def open_store(directory: str | Path, *, store: str | Path | None = None) -> Project:
-    """Open one store for `directory`. The first match wins; nothing after it is read."""
+def open_store(
+    directory: str | Path, *, store: str | Path | None = None, read_only: bool = False
+) -> Project:
+    """Open one store for `directory`. The first match wins; nothing after it is read.
+
+    With `read_only`, the connection cannot write, every write method raises
+    `ReadOnlyStoreError`, and a missing database raises `StoreNotInitializedError`
+    instead of being created.
+    """
     root = _project_root(directory)
     if store is not None:
         chosen = Path(store)
-        return _open(root, chosen, Binding(_location(root, chosen), "argument"))
+        return _open(root, chosen, Binding(_location(root, chosen), "argument"), read_only)
 
     if "CANON_STORE" in os.environ:
         chosen = Path(os.environ["CANON_STORE"])
-        return _open(root, chosen, Binding(_location(root, chosen), "CANON_STORE"))
+        return _open(root, chosen, Binding(_location(root, chosen), "CANON_STORE"), read_only)
 
-    return _open_bound(root)
+    return _open_bound(root, read_only)
 
 
 def bound_store_path(directory: str | Path) -> Path:
     """Return the store directory that the binding of `directory` names, ignoring CANON_STORE."""
-    return _open_bound(_project_root(directory)).store_path
+    return _open_bound(_project_root(directory), False).store_path
 
 
-def _open_bound(root: Path) -> Project:
+def _open_bound(root: Path, read_only: bool) -> Project:
     bound = _binding_file(root)
     if bound is not None:
         path, kind = bound
         metadata = root / ".canon"
-        if kind == "global" and _has_config(metadata):
+        if kind == "global" and _has_config(metadata, read_only):
             try:
-                config = open_backend(metadata, {}).load_config()
+                config = open_backend(metadata, {}, read_only=read_only).load_config()
             except StoreError:
                 config = {}
             if config.get("backend") == "sqlite":
-                return _open(root, metadata, Binding(kind, str(path)))
-        return _open(root, _place(root, kind), Binding(kind, str(path)))
+                return _open(root, metadata, Binding(kind, str(path)), read_only)
+        return _open(root, _place(root, kind), Binding(kind, str(path)), read_only)
 
     local = root / ".canon"
-    if _has_config(local):
-        return _open(root, local, Binding("local", "default"))
+    if _has_config(local, read_only):
+        return _open(root, local, Binding("local", "default"), read_only)
 
     home = _global_store(root)
-    if _has_config(home):
-        return _open(root, home, Binding("global", "default"))
+    if _has_config(home, read_only):
+        return _open(root, home, Binding("global", "default"), read_only)
 
     raise NoArtifactStoreError(
         f"No artifact store for {root}: neither {local} nor {home} has config.json"
@@ -327,8 +353,8 @@ def _location(root: Path, store: Path) -> Location | None:
     return None
 
 
-def _has_config(store: Path) -> bool:
-    return open_backend(store, {}).has_config()
+def _has_config(store: Path, read_only: bool) -> bool:
+    return open_backend(store, {}, read_only=read_only).has_config()
 
 
 def _binding_file(root: Path) -> tuple[Path, Location] | None:
@@ -361,10 +387,16 @@ def _read_binding(path: Path) -> Location:
     return "local" if value == "local" else "global"
 
 
-def _open(root: Path, store: Path, binding: Binding) -> Project:
-    if not _has_config(store):
+def _open(root: Path, store: Path, binding: Binding, read_only: bool) -> Project:
+    if not _has_config(store, read_only):
         raise StoreBindingError(f"Store selected by {binding.source} at {store} has no config.json")
-    return Project(project_root=root, store_path=store.resolve(), binding=binding)
+    if read_only and not open_backend(store, read_only=True).has_record_collection():
+        raise StoreNotInitializedError(
+            f"Store at {store} has no database file, and a read-only open does not create one"
+        )
+    return Project(
+        project_root=root, store_path=store.resolve(), binding=binding, read_only=read_only
+    )
 
 
 _OP_KEYS = {
