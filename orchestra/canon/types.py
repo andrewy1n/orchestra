@@ -35,6 +35,7 @@ class Record(_OptionalRecord):
 
 class _OptionalOp(TypedDict, total=False):
     conflict_revision: str | None
+    applied_at: JsonValue
 
 
 class StoredOp(_OptionalOp):
