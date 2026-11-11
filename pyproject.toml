@@ -32,6 +32,7 @@ packages = [
     "orchestra.composer.schemas",
     "orchestra.conductor",
     "orchestra.conductor.schemas",
+    "orchestra.metrics",
     "orchestra.tuner",
     "orchestra.tuner.schemas",
     "orchestra.stage",
