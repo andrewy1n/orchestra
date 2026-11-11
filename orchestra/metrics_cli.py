@@ -21,13 +21,36 @@ def add_parser(sub: SubparserGroup) -> None:
     phases.add_argument("--effort", default=None, help="Only phases of this effort")
     phases.add_argument("--json", action="store_true", help="Print the rows as JSON")
     phases.add_argument("directory", nargs="?", default=None, help="Project directory")
+    repairs = verbs.add_parser("repairs", help="List fix commits on main with their repair links")
+    repairs.add_argument("--since", required=True, help="Only commits on or after this date")
+    repairs.add_argument("directory", nargs="?", default=None, help="Project directory")
 
 
 def _cell(value: object) -> str:
     return "-" if value is None else str(value)
 
 
+def _run_repairs(args: argparse.Namespace) -> int:
+    from orchestra.canon.errors import StoreError
+    from orchestra.canon.project import StoreBindingError
+    from orchestra.metrics.repairs import build_repair_rows
+    from orchestra.tools.errors import ToolError
+
+    try:
+        rows = build_repair_rows(
+            Path(args.directory) if args.directory else Path.cwd(), since=args.since
+        )
+    except (StoreBindingError, StoreError, ToolError, OSError) as exc:
+        print(f"orchestra metrics: {exc}", file=sys.stderr)
+        return 1
+    for r in rows:
+        print(f"{r.sha}\t{r.subject}\t{_cell(r.cause)}\t{_cell(r.phase)}")
+    return 1 if any(r.cause is None for r in rows) else 0
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.metrics_command == "repairs":
+        return _run_repairs(args)
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError
     from orchestra.metrics.phases import build_phase_rows
