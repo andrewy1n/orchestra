@@ -137,3 +137,39 @@ def test_report_text_is_identical_for_identical_saved_results(tmp_path: Path) ->
     second = build_report(*build_fixture(tmp_path / "b"))
     assert first
     assert first == second
+
+
+def test_one_line_per_case_sorted_with_gate_and_catch_fractions(tmp_path: Path) -> None:
+    lines = build_report(*build_fixture(tmp_path)).splitlines()
+    case_lines = [line for line in lines if line.startswith("case ")]
+    assert case_lines == [
+        "case ctl-1: gate caught, false alarms 1/3 (33.3%)",
+        "case ctl-2: gate n/a, false alarms 0/2 (0.0%)",
+        "case real-1: gate missed, verdict 3/3 (100.0%), located 1/3 (33.3%)",
+        "case syn-rev-1: gate caught, verdict 2/3 (66.7%), located 1/3 (33.3%)",
+        "case syn-rev-2: gate missed, verdict 0/3 (0.0%), located 0/3 (0.0%)",
+        "case syn-test-1: gate caught, verdict 2/2 (100.0%), located 2/2 (100.0%)",
+    ]
+
+
+def test_one_line_per_case_ignores_incomplete_calls(tmp_path: Path) -> None:
+    lines = build_report(*build_fixture(tmp_path, incomplete=3)).splitlines()
+    assert "case syn-test-1: gate caught, verdict 2/2 (100.0%), located 2/2 (100.0%)" in lines
+    assert "case ctl-2: gate n/a, false alarms 0/2 (0.0%)" in lines
+
+
+def test_tokens_per_call_and_total(tmp_path: Path) -> None:
+    campaign, cases_dir = build_fixture(tmp_path, incomplete=1)
+    write_call(campaign, "syn-rev-1", 2, tokens=25, verdict_catch=True)
+    write_call(campaign, "ctl-2", 1, tokens=7)
+    write_call(campaign, "syn-test-1", 9, tokens=5, incomplete=True, incomplete_reason="unparsable")
+    lines = build_report(campaign, cases_dir).splitlines()
+    token_lines = [line for line in lines if line.startswith("tokens ")]
+    assert len(token_lines) == 18
+    assert "tokens syn-rev-1 call 2: 25" in token_lines
+    assert "tokens ctl-2 call 1: 7" in token_lines
+    assert "tokens syn-test-1 call 9: 5" in token_lines
+    assert "tokens ctl-1 call 3: 10" in token_lines
+    assert token_lines[-1] == "tokens total: 177"
+    per_call = [line for line in token_lines if line != "tokens total: 177"]
+    assert per_call == sorted(per_call, key=lambda s: (s.split()[1], int(s.split()[3][:-1])))
