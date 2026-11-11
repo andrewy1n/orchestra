@@ -112,6 +112,7 @@ def test_r14_belongs_to_matches_check_runs_by_acceptance_or_subject_prefix(tmp_p
     records = project.records()
     run = next(r for r in records if r["record_type"] == "tuner:check-run")
     acceptance_id = record_payload(run)["criterion_id"]
+    assert isinstance(acceptance_id, str)
     assert ops.belongs_to(run, "unrelated", {acceptance_id}, set())
     assert not ops.belongs_to(run, "unrelated", set(), set())
 

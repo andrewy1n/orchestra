@@ -9,7 +9,7 @@ from test_metrics_phases import Clock, _check_run, _landing, _phase, _specificat
 
 from orchestra.canon.project import Project
 from orchestra.cli import main
-from orchestra.metrics.compare import compare_phases, render_text
+from orchestra.metrics.compare import Cell, Comparison, compare_phases, render_text
 
 RANKING_WORDS = re.compile(
     r"\b(better|worse|faster|slower|improved|improvement|regressed|regression|win|wins|lose|loses)\b",
@@ -49,7 +49,7 @@ def _world_with_boundary(tmp_path: Path, clock: Clock) -> Project:
     return project
 
 
-def _column(comparison: dict, side: str, weight: str, column: str) -> dict:
+def _column(comparison: Comparison, side: str, weight: str, column: str) -> Cell:
     return comparison["sides"][side]["weights"][weight]["columns"][column]
 
 
