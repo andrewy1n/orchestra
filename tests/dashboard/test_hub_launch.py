@@ -88,7 +88,7 @@ def _efforts(cli: Cli) -> None:
         _create(cli, "score:effort", effort, {"goal": f"ship {effort}", "kind": "deliver"})
 
 
-def _work_next(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[dict]:
+def _hub(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
     port = launch._free_port()
@@ -98,7 +98,7 @@ def _work_next(store: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     try:
         status, _content_type, body = launch._get(port, "/api/hub")
         assert status == 200, body
-        return json.loads(body)["work_next"]
+        return json.loads(body)
     finally:
         launch._stop(proc)
 
@@ -114,13 +114,16 @@ def test_r6_running_phase_is_first_over_http_despite_newer_idle_records(
     _task(cli, "beta", "idle-phase", "idle-task", running=False)
     _idea(cli, "beta", "newer-idea")
 
-    items = _work_next(store, tmp_path, monkeypatch)
+    body = _hub(store, tmp_path, monkeypatch)
+    cards = body["active_phases"]
+    items = body["work_next"]
 
-    assert items[0]["subject"] == "running-phase"
-    assert items[0]["running"] is True
-    assert {item["subject"] for item in items} >= {"idle-phase"}
+    assert cards[0]["subject"] == "running-phase"
+    assert cards[0]["running"] is True
+    assert {card["subject"] for card in cards} == {"running-phase", "idle-phase"}
     assert any(item["title"].startswith("text of newer-idea") for item in items)
-    assert all(not item["running"] for item in items[1:])
+    assert all(not item["running"] for item in [*cards[1:], *items])
+    assert {item["subject"] for item in items}.isdisjoint({"running-phase", "idle-phase"})
 
 
 def test_r7_latest_change_is_first_over_http_when_no_phase_is_running(
@@ -134,9 +137,12 @@ def test_r7_latest_change_is_first_over_http_when_no_phase_is_running(
     time.sleep(1.1)
     _idea(cli, "beta", "newest-idea")
 
-    items = _work_next(store, tmp_path, monkeypatch)
+    body = _hub(store, tmp_path, monkeypatch)
+    cards = body["active_phases"]
+    items = body["work_next"]
 
-    assert not any(item["running"] for item in items)
+    assert not any(item["running"] for item in [*cards, *items])
+    assert [card["subject"] for card in cards] == ["idle-phase"]
     assert items[0]["title"].startswith("text of newest-idea")
-    order = [item["title"].removeprefix("text of ").strip() or item["subject"] for item in items]
-    assert order.index("older-idea") < order.index("idle-phase")
+    order = [item["title"].removeprefix("text of ").strip() for item in items]
+    assert order.index("newest-idea") < order.index("older-idea")

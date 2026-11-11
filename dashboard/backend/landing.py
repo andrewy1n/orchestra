@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from orchestra.tools.errors import ToolError
@@ -21,6 +21,7 @@ class Landing:
     exists: bool
     ahead: int
     merged: bool
+    head: str = field(default="", compare=False)
 
 
 def _landing_section(body: str) -> str | None:
@@ -106,4 +107,10 @@ def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
     ahead = sum(1 for line in cherry.stdout.splitlines() if line.startswith("+"))
     merged = ahead == 0
 
-    return Landing(branch=branch, exists=True, ahead=ahead, merged=merged)
+    return Landing(
+        branch=branch,
+        exists=True,
+        ahead=ahead,
+        merged=merged,
+        head=exists_result.stdout.strip(),
+    )

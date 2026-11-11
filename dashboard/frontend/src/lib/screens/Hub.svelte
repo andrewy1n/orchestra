@@ -1,6 +1,7 @@
 <script lang="ts">
   import { hub } from "../state/hub.svelte";
   import HubPanel from "./HubPanel.svelte";
+  import PhaseCard from "./PhaseCard.svelte";
   import WorkNext from "./WorkNext.svelte";
 
   const empty = $derived(
@@ -22,22 +23,31 @@
     <p class="hub-status" data-hub-status>Loading work…</p>
   {/if}
   {#if hub.data}
-    <h2 class="hub-section">Work next</h2>
-    <WorkNext items={hub.data.work_next} />
     {#if empty}
       <p class="hub-status" data-hub-empty>Nothing is open.</p>
     {:else}
-      <div class="hub-panels">
+      {#if hub.data.active_phases.length > 0}
+        <section class="hub-active" data-active-phases>
+          <h2 class="hub-section">Active phases <span class="hub-count">{hub.data.active_phases.length}</span></h2>
+          {#each hub.data.active_phases as phase (phase.href)}
+            <PhaseCard item={phase} />
+          {/each}
+        </section>
+      {/if}
+      <div class="hub-split" data-hub-row>
+        <div class="hub-split-main">
+          <h2 class="hub-section">Work next</h2>
+          <WorkNext items={hub.data.work_next} />
+        </div>
         {#if hub.data.needs_you.length > 0}
           <HubPanel name="needs-you" label="Needs you" items={hub.data.needs_you} />
         {/if}
-        {#if hub.data.active_phases.length > 0}
-          <HubPanel name="active-phases" label="Active phases" items={hub.data.active_phases} />
-        {/if}
-        {#if hub.data.open_ideas.length > 0}
-          <HubPanel name="open-ideas" label="Open ideas" items={hub.data.open_ideas} grouped />
-        {/if}
       </div>
+      {#if hub.data.open_ideas.length > 0}
+        <div class="hub-panels">
+          <HubPanel name="open-ideas" label="Open ideas" items={hub.data.open_ideas} grouped />
+        </div>
+      {/if}
     {/if}
   {/if}
 </section>

@@ -35,6 +35,7 @@ class Record(_OptionalRecord):
 
 class _OptionalOp(TypedDict, total=False):
     conflict_revision: str | None
+    applied_at: JsonValue
 
 
 class StoredOp(_OptionalOp):
@@ -43,6 +44,14 @@ class StoredOp(_OptionalOp):
     kind: str
     outcome: str
     record: Record | None
+
+
+class RecordChange(TypedDict):
+    seq: int
+    kind: str
+    lifecycle_state: str | None
+    revision: str | None
+    applied_at: str | None
 
 
 class _NumberedResult(TypedDict, total=False):

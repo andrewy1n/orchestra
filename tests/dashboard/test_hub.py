@@ -164,7 +164,7 @@ def test_r5_equal_recency_ties_break_by_effort_then_subject() -> None:
         _effort("alpha", phases=[_phase("z", age=same), _phase("a", age=same)]),
     )
     hub = build_hub(snap, NOW)
-    assert [(i.effort, i.subject) for i in hub.work_next] == [
+    assert [(i.effort, i.subject) for i in hub.active_phases] == [
         ("alpha", "a"),
         ("alpha", "z"),
         ("beta", "b"),
@@ -183,9 +183,10 @@ def test_r6_running_phase_ranks_first() -> None:
         )
     )
     hub = build_hub(snap, NOW)
-    assert _subjects(hub.work_next)[:1] == ["busy"]
-    assert [item.running for item in hub.work_next][:1] == [True]
-    assert all(not item.running for item in hub.work_next[1:])
+    assert _subjects(hub.active_phases)[:1] == ["busy"]
+    assert [item.running for item in hub.active_phases][:1] == [True]
+    assert all(not item.running for item in hub.active_phases[1:])
+    assert all(not item.running for item in hub.work_next)
 
 
 def test_r7_non_running_items_rank_newest_first() -> None:
@@ -198,7 +199,8 @@ def test_r7_non_running_items_rank_newest_first() -> None:
         )
     )
     hub = build_hub(snap, NOW)
-    assert _subjects(hub.work_next) == ["n-new", "i-mid", "p-old"]
+    assert _subjects(hub.work_next) == ["n-new", "i-mid"]
+    assert _subjects(hub.active_phases) == ["p-old"]
 
 
 def test_r8_each_item_has_one_line_reason_naming_recency() -> None:
@@ -214,7 +216,7 @@ def test_r8_each_item_has_one_line_reason_naming_recency() -> None:
         )
     )
     hub = build_hub(snap, NOW)
-    reasons = {item.subject: item.reason for item in hub.work_next}
+    reasons = {item.subject: item.reason for item in [*hub.active_phases, *hub.work_next]}
     assert reasons.get("busy") == "Running now"
     assert reasons.get("idle") == "Updated 2 hours ago"
     assert reasons.get("n1") == "Needs you · updated 2 hours ago"

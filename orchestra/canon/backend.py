@@ -47,6 +47,7 @@ class Backend(Protocol):
     def read_history(self) -> Iterator[Record]: ...
     def history_exists(self, record_type: str, record_id: str, revision: str) -> bool: ...
     def delete_history_snapshot(self, record_type: str, record_id: str, revision: str) -> None: ...
+    def read_chain(self, record_id: str) -> list[StoredOp]: ...
     def iter_chains(self) -> Iterator[tuple[str, list[StoredOp]]]: ...
     def import_op(self, record_type: str, record_id: str, op: StoredOp) -> None: ...
     def import_record(self, record: Record) -> None: ...
@@ -58,8 +59,14 @@ class Backend(Protocol):
     def backup_due(self, max_age: timedelta) -> bool: ...
 
 
-def open_backend(store_root: Path, config: JsonObject | None = None) -> Backend:
-    """Open the configured SQLite backend."""
+def open_backend(
+    store_root: Path, config: JsonObject | None = None, *, read_only: bool = False
+) -> Backend:
+    """Open the configured SQLite backend.
+
+    Read-only mode never writes or creates the database. A WAL reader can still create the
+    `-wal` and `-shm` sidecar files next to it.
+    """
     store = MetadataFiles(store_root)
     if config is None:
         config = store.load_config() if store.has_config() else {}
@@ -80,5 +87,5 @@ def open_backend(store_root: Path, config: JsonObject | None = None) -> Backend:
                 elif value != "local":
                     raise StoreError(f"invalid store binding at {binding}: {value!r}")
                 break
-        return SqliteBackend(store_root, data_root)
+        return SqliteBackend(store_root, data_root, read_only=read_only)
     raise StoreError(f"unsupported store backend: {selected!r}")
