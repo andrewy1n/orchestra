@@ -30,7 +30,11 @@ def _read_json(path: Path) -> Any:  # pyright: ignore[reportExplicitAny]
 
 def _verify_commands(case_folder: Path) -> list[tuple[str, str]]:
     raw = _read_json(case_folder / "records.json")
-    return [(str(e["subject"]), str(e["verify_command"])) for e in raw["acceptances"]]
+    return [
+        (str(e["subject"]), str(e["verify_command"]))
+        for e in raw
+        if e["record_type"] == "acceptance"
+    ]
 
 
 def _passes(command: str, tree: Path) -> bool:

@@ -72,7 +72,8 @@ def write_case(
         )
     )
     (folder / "defect.patch").write_text(patch)
-    (folder / "records.json").write_text(json.dumps({"acceptances": acceptances}))
+    records = [{"record_type": "acceptance", "body": "", **entry} for entry in acceptances]
+    (folder / "records.json").write_text(json.dumps(records))
     (folder / "baseline.json").write_text(json.dumps(baseline))
 
 
