@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from orchestra import plugin_cli, status_cli, view_cli, views, workflow_cli
+from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, Record
@@ -50,6 +50,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    metrics_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     workflow = sub.add_parser("workflow", help="Preview and resume built-in workflow playbooks")
     workflow_cli.add_parser(workflow)
@@ -1480,6 +1481,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_place(args)
     if args.command == "status":
         return status_cli.run(args)
+    if args.command == "metrics":
+        return metrics_cli.run(args)
     if args.command == "plugins":
         return plugin_cli.run(args)
     if args.command in view_cli.COMMANDS:
