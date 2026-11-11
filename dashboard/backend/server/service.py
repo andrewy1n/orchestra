@@ -23,6 +23,7 @@ from dashboard.backend.snapshot import (
     NeedsYouItem,
     Snapshot,
     load_snapshot,
+    load_work_snapshot,
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
@@ -105,27 +106,47 @@ class Cache:
     def __init__(self, target: Project) -> None:
         self.target = target
         self.lock = threading.Lock()
+        self.snapshot_build_lock = threading.Lock()
+        self.work_build_lock = threading.Lock()
+        self.generation = 0
         self.token = ""
         self.snapshot: Snapshot | None = None
+        self.work_snapshot: Snapshot | None = None
         self.details: dict[tuple[str, ...], CachedResponse] = {}
 
     def current(self) -> Snapshot:
-        with self.lock:
-            token = store.change_token(self.target)
-            if self.snapshot is not None and token == self.token:
-                return self.snapshot
+        with self.snapshot_build_lock:
+            token = self.token_only()
+            with self.lock:
+                if self.snapshot is not None and token == self.token:
+                    return self.snapshot
+                generation = self.generation
             snapshot = load_snapshot(self.target, token=token)
-            if token != self.token:
-                self.details.clear()
-            self.token = snapshot.token or token
-            self.snapshot = snapshot
+            with self.lock:
+                if self.generation == generation and self.token == token:
+                    self.snapshot = snapshot
+            return snapshot
+
+    def work_current(self, now: datetime) -> Snapshot:
+        with self.work_build_lock:
+            token = self.token_only()
+            with self.lock:
+                if self.work_snapshot is not None and token == self.token:
+                    return self.work_snapshot
+                generation = self.generation
+            snapshot = load_work_snapshot(self.target, now=now, token=token)
+            with self.lock:
+                if self.generation == generation and self.token == token:
+                    self.work_snapshot = snapshot
             return snapshot
 
     def token_only(self) -> str:
         with self.lock:
             token = store.change_token(self.target)
             if token != self.token:
+                self.generation += 1
                 self.snapshot = None
+                self.work_snapshot = None
                 self.details.clear()
                 self.token = token
             return self.token
@@ -133,7 +154,9 @@ class Cache:
     def drop(self) -> None:
         """Clear snapshot and detail cache after a successful write."""
         with self.lock:
+            self.generation += 1
             self.snapshot = None
+            self.work_snapshot = None
             self.details.clear()
             self.token = ""
 
@@ -158,11 +181,12 @@ class Cache:
         cache_key = (token, *key)
         with self.lock:
             cached = self.details.get(cache_key)
+            generation = self.generation
         if isinstance(cached, response_type):
             return cached
         value = load()
         with self.lock:
-            if self.token == token:
+            if self.token == token and self.generation == generation:
                 self.details[cache_key] = value
         return value
 
@@ -191,7 +215,7 @@ class Reader:
 
     def hub(self) -> schemas.HubResponse:
         now = datetime.now(timezone.utc)
-        return schemas.HubResponse.model_validate(hub.build_hub(self.cache.current(), now))
+        return schemas.HubResponse.model_validate(hub.build_hub(self.cache.work_current(now), now))
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
         def load() -> schemas.PhaseResponse:

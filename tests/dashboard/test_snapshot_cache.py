@@ -12,29 +12,18 @@ from orchestra.canon.project import Project, open_store
 
 
 class ScheduledLock:
-    def __init__(self, wait_for_follower: bool = False) -> None:
+    def __init__(self) -> None:
         self.lock = threading.Lock()
         self.follower_attempted = threading.Event()
-        self.follower_released = threading.Event()
-        self.wait_for_follower = wait_for_follower
-        self.entries: dict[str, int] = {}
 
     def __enter__(self) -> ScheduledLock:
-        name = threading.current_thread().name
-        count = self.entries.get(name, 0) + 1
-        self.entries[name] = count
-        if name.startswith("leader") and count == 2 and self.wait_for_follower:
-            assert self.follower_released.wait(10)
-        if name.startswith("follower") and count == 1:
+        if threading.current_thread().name.startswith("follower"):
             self.follower_attempted.set()
         self.lock.acquire()
         return self
 
     def __exit__(self, *_args: object) -> None:
-        name = threading.current_thread().name
         self.lock.release()
-        if name.startswith("follower") and self.entries[name] == 1:
-            self.follower_released.set()
 
 
 def _add_effort(target: Project, subject: str) -> None:
@@ -55,17 +44,16 @@ def test_concurrent_snapshot_requests_share_one_build(
     store: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     reader = _reader(store)
-    scheduled = ScheduledLock(wait_for_follower=True)
-    monkeypatch.setattr(reader.cache, "lock", scheduled)
     original = service.load_snapshot
     started = threading.Event()
+    follower_started = threading.Event()
     calls: list[str] = []
 
     def load(target: Project, token: str) -> Snapshot:
         calls.append(token)
         if threading.current_thread().name.startswith("leader"):
             started.set()
-            assert scheduled.follower_attempted.wait(10)
+            assert follower_started.wait(10)
         return original(target, token=token)
 
     monkeypatch.setattr(service, "load_snapshot", load)
@@ -75,7 +63,12 @@ def test_concurrent_snapshot_requests_share_one_build(
     ):
         first = leader.submit(reader.cache.current)
         assert started.wait(10)
-        second = follower.submit(reader.cache.current)
+
+        def follow() -> Snapshot:
+            follower_started.set()
+            return reader.cache.current()
+
+        second = follower.submit(follow)
         first_snapshot = first.result(timeout=15)
         second_snapshot = second.result(timeout=15)
     assert len(calls) == 1
@@ -122,17 +115,16 @@ def test_drop_during_a_build_does_not_restore_the_invalidated_snapshot(
     store: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     reader = _reader(store)
-    scheduled = ScheduledLock(wait_for_follower=True)
-    monkeypatch.setattr(reader.cache, "lock", scheduled)
     original = service.load_snapshot
     started = threading.Event()
+    follower_started = threading.Event()
     calls: list[str] = []
 
     def load(target: Project, token: str) -> Snapshot:
         calls.append(token)
         if threading.current_thread().name.startswith("leader"):
             started.set()
-            assert scheduled.follower_attempted.wait(10)
+            assert follower_started.wait(10)
         return original(target, token=token)
 
     monkeypatch.setattr(service, "load_snapshot", load)
@@ -142,7 +134,12 @@ def test_drop_during_a_build_does_not_restore_the_invalidated_snapshot(
     ):
         first = leader.submit(reader.cache.current)
         assert started.wait(10)
-        invalidation = follower.submit(reader.cache.drop)
+
+        def drop() -> None:
+            follower_started.set()
+            reader.cache.drop()
+
+        invalidation = follower.submit(drop)
         invalidated = first.result(timeout=15)
         invalidation.result(timeout=15)
     fresh = reader.cache.current()
@@ -171,3 +168,65 @@ def test_failed_snapshot_build_releases_waiters_for_a_retry(
         snapshot = pool.submit(reader.snapshot).result(timeout=15)
     assert [effort.effort for effort in snapshot.efforts] == ["alpha"]
     assert calls == 2
+
+
+def test_token_poll_completes_while_snapshot_construction_is_blocked(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reader = _reader(store)
+    original = service.load_snapshot
+    started, release, polled = threading.Event(), threading.Event(), threading.Event()
+
+    def load(target: Project, token: str) -> Snapshot:
+        started.set()
+        assert release.wait(10)
+        return original(target, token=token)
+
+    def poll() -> str:
+        token = reader.token().token
+        polled.set()
+        return token
+
+    monkeypatch.setattr(service, "load_snapshot", load)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        snapshot = pool.submit(reader.snapshot)
+        assert started.wait(10)
+        token = pool.submit(poll)
+        try:
+            assert polled.wait(3), "Token polling waits for snapshot construction"
+        finally:
+            release.set()
+        assert token.result(timeout=10) == reader.target.change_token()
+        snapshot.result(timeout=10)
+
+
+def test_completed_build_does_not_republish_after_invalidation(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reader = _reader(store)
+    original = service.load_snapshot
+    built, release, dropped = threading.Event(), threading.Event(), threading.Event()
+
+    def load(target: Project, token: str) -> Snapshot:
+        result = original(target, token=token)
+        built.set()
+        assert release.wait(10)
+        return result
+
+    def drop() -> None:
+        reader.cache.drop()
+        dropped.set()
+
+    monkeypatch.setattr(service, "load_snapshot", load)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        building = pool.submit(reader.cache.current)
+        assert built.wait(10)
+        invalidating = pool.submit(drop)
+        try:
+            assert dropped.wait(3)
+        finally:
+            release.set()
+        old = building.result(timeout=10)
+        invalidating.result(timeout=10)
+    assert reader.cache.snapshot is None
+    assert reader.cache.current() is not old
