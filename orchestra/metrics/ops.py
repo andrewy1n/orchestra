@@ -54,7 +54,9 @@ def count_operations(project: Project, phase: str) -> tuple[Counter[str], int]:
         r["id"]: r["record_type"] for r in records if belongs_to(r, phase, acceptance_ids, subjects)
     }
     counts: Counter[str] = Counter()
-    for record_id, chain in open_backend(project.store_path).iter_chains():
+    for record_id, chain in open_backend(
+        project.store_path, read_only=project.read_only
+    ).iter_chains():
         if record_id in members:
             counts[members[record_id]] += len(chain)
     return counts, len(tasks)

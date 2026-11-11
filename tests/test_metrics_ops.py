@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,8 @@ from canon_support import create
 from test_ops_per_task import BODY, PHASE, _script, _world
 
 from orchestra.canon import record_payload
+from orchestra.canon.errors import StoreError
+from orchestra.canon.project import open_store
 from orchestra.metrics import ops
 
 
@@ -128,3 +131,35 @@ def test_r14_a_phase_without_work_items_has_zero_tasks(tmp_path: Path) -> None:
     project = _world(tmp_path)
     _, tasks = ops.count_operations(project, "no-such-phase")
     assert tasks == 0
+
+
+def test_r14_count_operations_opens_the_backend_read_only_for_a_read_only_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _world(tmp_path)
+    read_only = open_store(tmp_path, store=project.store_path, read_only=True)
+    opened: list[bool] = []
+    real = ops.open_backend
+
+    def spy(*args: object, **kwargs: object):
+        opened.append(bool(kwargs.get("read_only", False)))
+        return real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(ops, "open_backend", spy)
+    counts, tasks = ops.count_operations(read_only, PHASE)
+    assert opened == [True]
+    assert tasks == 2
+    assert counts["score:work-item"] == 6
+
+
+def test_r14_count_operations_on_a_read_only_project_creates_no_database(tmp_path: Path) -> None:
+    project = _world(tmp_path / "world")
+    empty = tmp_path / "empty-store"
+    empty.mkdir()
+    read_only = dataclasses.replace(
+        open_store(tmp_path / "world", store=project.store_path, read_only=True),
+        store_path=empty,
+    )
+    with pytest.raises(StoreError):
+        ops.count_operations(read_only, PHASE)
+    assert list(empty.iterdir()) == []
