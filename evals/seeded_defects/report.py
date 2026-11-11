@@ -38,6 +38,9 @@ class Report:
     reviewer_by_type: dict[str, ReviewerRates] = field(default_factory=lambda: {})
     false_alarm: Rate = Rate(0, 0)
     unstable_cases: int = 0
+    case_lines: tuple[str, ...] = ()
+    call_tokens: tuple[tuple[str, int, int], ...] = field(default=(), compare=False)
+    total_tokens: int = field(default=0, compare=False)
 
 
 @dataclass(frozen=True)
@@ -126,6 +129,31 @@ def compute_report(campaign_dir: Path, cases_dir: Path) -> Report:
         if len({made_call.get(key) is True for made_call in made}) > 1:
             unstable += 1
 
+    def gate_text(case_id: str) -> str:
+        if case_id not in gates:
+            return "n/a"
+        return "caught" if gates[case_id] else "missed"
+
+    case_lines: list[str] = []
+    for case in sorted(cases.values(), key=lambda c: c.id):
+        rates = reviewer_rate([case])
+        if case.kind == "control":
+            made = complete.get(case.id, [])
+            alarms = Rate(sum(call.get("false_alarm") is True for call in made), len(made))
+            detail = f"false alarms {alarms}"
+        else:
+            detail = f"verdict {rates.verdict}, located {rates.located}"
+        case_lines.append(f"case {case.id}: gate {gate_text(case.id)}, {detail}")
+
+    def as_int(value: object) -> int:
+        return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+    call_tokens = sorted(
+        (str(call.get("case_id")), as_int(call.get("call_index")), as_int(call.get("tokens")))
+        for call in calls
+        if str(call.get("case_id")) in cases
+    )
+
     return Report(
         incomplete_calls=incomplete,
         gate_by_kind={k: gate_rate(g) for k, g in by_kind.items()},
@@ -136,6 +164,9 @@ def compute_report(campaign_dir: Path, cases_dir: Path) -> Report:
             sum(call.get("false_alarm") is True for call in control_calls), len(control_calls)
         ),
         unstable_cases=unstable,
+        case_lines=tuple(case_lines),
+        call_tokens=tuple(call_tokens),
+        total_tokens=sum(tokens for _, _, tokens in call_tokens),
     )
 
 
@@ -157,6 +188,11 @@ def format_report(report: Report) -> str:
     lines += [f"  {t}: {r.located}" for t, r in report.reviewer_by_type.items()]
     lines.append(f"false-alarm rate: {report.false_alarm}")
     lines.append(f"unstable cases: {report.unstable_cases}")
+    lines += report.case_lines
+    lines += [
+        f"tokens {case_id} call {index}: {tokens}" for case_id, index, tokens in report.call_tokens
+    ]
+    lines.append(f"tokens total: {report.total_tokens}")
     return "\n".join(lines) + "\n"
 
 
