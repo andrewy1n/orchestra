@@ -44,8 +44,9 @@ def _env() -> dict[str, str]:
 
 
 def _metrics(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    split = next((i for i, a in enumerate(args) if a.startswith("--")), len(args))
     return subprocess.run(
-        [sys.executable, "-m", "orchestra.cli", "metrics", *args, str(root)],
+        [sys.executable, "-m", "orchestra.cli", "metrics", *args[:split], str(root), *args[split:]],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,

@@ -9,6 +9,7 @@ from canon_support import create, make_project, seed_effort
 
 from orchestra.canon.project import Project
 from orchestra.cli import main
+from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.repairs import RepairRow, build_repair_rows
 
 
@@ -149,3 +150,19 @@ def test_command_leaves_the_store_unchanged(tmp_path: Path, project: Project) ->
     _cli(tmp_path)
 
     assert len(project.records()) == before
+
+
+def test_z_suffixed_timestamp_parses_as_utc() -> None:
+    moment = parse_instant("2026-10-28T00:00:00Z")
+
+    assert moment == parse_instant("2026-10-28T00:00:00+00:00")
+    assert moment.utcoffset() is not None
+
+
+def test_since_with_z_suffix_selects_fix_commits(tmp_path: Path, project: Project) -> None:
+    kept = _commit(tmp_path, "fix: after", "2026-10-28T00:00:00+00:00")
+    _commit(tmp_path, "fix: before", "2026-10-20T00:00:00+00:00")
+
+    rows = build_repair_rows(tmp_path, since="2026-10-26T00:00:00Z")
+
+    assert [r.sha for r in rows] == [kept]

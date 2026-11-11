@@ -167,7 +167,7 @@ def test_cli_json_matches_the_comparison(
     project = _world_with_boundary(tmp_path, clock)
     _land(project, clock, "b1", 3, tasks=4)
     _land(project, clock, "a1", 12, weight=None, tasks=2)
-    assert main(["metrics", "compare", "ph-boundary", "--json", str(tmp_path)]) == 0
+    assert main(["metrics", "compare", "ph-boundary", str(tmp_path), "--json"]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed == json.loads(json.dumps(compare_phases(tmp_path, "ph-boundary")))
     assert "unrecorded" in printed["sides"]["after"]["weights"]

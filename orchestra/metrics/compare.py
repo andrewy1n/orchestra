@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from statistics import median
 from typing import TypedDict
 
+from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.phases import PhaseRow, build_phase_rows
 
 COLUMNS = (
@@ -62,7 +62,7 @@ def compare_phases(directory: Path, boundary: str) -> Comparison:
         raise UnknownBoundaryError(f"no done phase named {boundary}")
     if anchor.landing_time is None:
         raise UnknownBoundaryError(f"phase {boundary} has no landing time")
-    cut = datetime.fromisoformat(anchor.landing_time)
+    cut = parse_instant(anchor.landing_time)
     before: list[PhaseRow] = []
     after: list[PhaseRow] = []
     unplaced = 0
@@ -71,7 +71,7 @@ def compare_phases(directory: Path, boundary: str) -> Comparison:
             continue
         if r.landing_time is None:
             unplaced += 1
-        elif datetime.fromisoformat(r.landing_time) < cut:
+        elif parse_instant(r.landing_time) < cut:
             before.append(r)
         else:
             after.append(r)

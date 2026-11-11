@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import open_store
+from orchestra.metrics.instants import parse_instant
 from orchestra.tools.git import Git
 
 REPAIR_LINK = "conductor:repair-link"
@@ -26,18 +26,13 @@ def _text(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _instant(value: str) -> datetime:
-    moment = datetime.fromisoformat(value)
-    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
-
-
 def build_repair_rows(directory: Path, *, since: str) -> list[RepairRow]:
     log = Git(directory).text(
         "log",
         "main",
         f"--format=%H{FIELD_SEP}%cI{FIELD_SEP}%s{RECORD_SEP}",
     )
-    start = _instant(since)
+    start = parse_instant(since)
     links: dict[str, tuple[str | None, str | None]] = {}
     for record in open_store(directory, read_only=True).records():
         if record["record_type"] != REPAIR_LINK:
@@ -52,7 +47,7 @@ def build_repair_rows(directory: Path, *, since: str) -> list[RepairRow]:
         if not entry:
             continue
         sha, committed_at, subject = entry.split(FIELD_SEP, 2)
-        if not subject.startswith("fix") or _instant(committed_at) < start:
+        if not subject.startswith("fix") or parse_instant(committed_at) < start:
             continue
         cause, phase = links.get(sha, (None, None))
         rows.append(RepairRow(sha, subject, committed_at, cause, phase))

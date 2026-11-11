@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
+from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 
 LANDING = "conductor:landing"
@@ -101,9 +101,7 @@ def _row(project: Project, records: list[Record], phase_record: Record) -> Phase
     elif landing_time is None:
         missing["elapsed_seconds"] = "the landing time is missing"
     else:
-        elapsed = (
-            datetime.fromisoformat(landing_time) - datetime.fromisoformat(min(specs))
-        ).total_seconds()
+        elapsed = (parse_instant(landing_time) - parse_instant(min(specs))).total_seconds()
     checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
     review_rounds = sum(1 for r in checks if _text(r, "method") == "review")
     failed_check_runs = sum(1 for r in checks if _text(r, "result") == "fail")
