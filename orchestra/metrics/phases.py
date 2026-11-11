@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.project import open_store
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.metrics.ops import belongs_to, tasks_of
+from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 
 LANDING = "conductor:landing"
 PROOF = "conductor:proof-packet"
 CHECK_RUN = "tuner:check-run"
+REPAIR_LINK = "conductor:repair-link"
+QUESTION = "score:continuity-question"
+STEP_REVIEW = "score:step-review"
+AMENDMENT = "tuner:oracle-amendment"
 
 
 @dataclass(frozen=True)
@@ -23,6 +28,11 @@ class PhaseRow:
     landing_time: str | None
     landing_source: str | None
     elapsed_seconds: float | None
+    review_rounds: int = 0
+    failed_check_runs: int = 0
+    human_decisions: int = 0
+    repairs_by_cause: dict[str, int] = field(default_factory=dict)
+    operations_per_task: float | None = None
     missing: dict[str, str] = field(default_factory=dict)
 
 
@@ -46,7 +56,22 @@ def _landing(records: list[Record], phase: str, members: set[str]) -> tuple[str,
     return None
 
 
-def _row(records: list[Record], phase_record: Record) -> PhaseRow:
+def _human_decisions(records: list[Record], phase: str) -> int:
+    total = 0
+    for r in records:
+        if _text(r, "phase") != phase:
+            continue
+        kind = r["record_type"]
+        if kind == QUESTION:
+            total += bool(_text(r, "answer"))
+        elif kind == STEP_REVIEW:
+            total += _text(r, "authority") == "user-approval"
+        elif kind == AMENDMENT:
+            total += 1
+    return total
+
+
+def _row(project: Project, records: list[Record], phase_record: Record) -> PhaseRow:
     phase = phase_record["subject"]
     weight = _text(phase_record, "weight") or None
     acceptance_ids = {
@@ -79,6 +104,23 @@ def _row(records: list[Record], phase_record: Record) -> PhaseRow:
         elapsed = (
             datetime.fromisoformat(landing_time) - datetime.fromisoformat(min(specs))
         ).total_seconds()
+    checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
+    review_rounds = sum(1 for r in checks if _text(r, "method") == "review")
+    failed_check_runs = sum(1 for r in checks if _text(r, "result") == "fail")
+    human_decisions = _human_decisions(records, phase)
+    repairs_by_cause = dict(
+        Counter(
+            _text(r, "cause")
+            for r in records
+            if r["record_type"] == REPAIR_LINK and _text(r, "phase") == phase
+        )
+    )
+    operations_per_task: float | None = None
+    if not tasks:
+        missing["operations_per_task"] = "the phase has no tasks"
+    else:
+        counts, task_count = count_operations(project, phase)
+        operations_per_task = sum(counts.values()) / task_count
     return PhaseRow(
         phase=phase,
         effort=_text(phase_record, "effort"),
@@ -87,12 +129,18 @@ def _row(records: list[Record], phase_record: Record) -> PhaseRow:
         landing_time=landing_time,
         landing_source=landing_source,
         elapsed_seconds=elapsed,
+        review_rounds=review_rounds,
+        failed_check_runs=failed_check_runs,
+        human_decisions=human_decisions,
+        repairs_by_cause=repairs_by_cause,
+        operations_per_task=operations_per_task,
         missing=missing,
     )
 
 
 def build_phase_rows(directory: Path, *, effort: str | None = None) -> list[PhaseRow]:
-    records = open_store(directory, read_only=True).records()
+    project = open_store(directory, read_only=True)
+    records = project.records()
     phases = [
         r
         for r in records
@@ -100,4 +148,4 @@ def build_phase_rows(directory: Path, *, effort: str | None = None) -> list[Phas
         and r["lifecycle_state"] == "done"
         and (effort is None or _text(r, "effort") == effort)
     ]
-    return [_row(records, p) for p in phases]
+    return [_row(project, records, p) for p in phases]
