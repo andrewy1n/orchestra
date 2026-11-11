@@ -24,6 +24,10 @@ def add_parser(sub: SubparserGroup) -> None:
     repairs = verbs.add_parser("repairs", help="List fix commits on main with their repair links")
     repairs.add_argument("--since", required=True, help="Only commits on or after this date")
     repairs.add_argument("directory", nargs="?", default=None, help="Project directory")
+    compare = verbs.add_parser("compare", help="Compare done phases before and after a phase")
+    compare.add_argument("boundary", help="Phase whose landing time splits the done phases")
+    compare.add_argument("--json", action="store_true", help="Print the comparison as JSON")
+    compare.add_argument("directory", nargs="?", default=None, help="Project directory")
 
 
 def _cell(value: object) -> str:
@@ -48,9 +52,27 @@ def _run_repairs(args: argparse.Namespace) -> int:
     return 1 if any(r.cause is None for r in rows) else 0
 
 
+def _run_compare(args: argparse.Namespace) -> int:
+    from orchestra.canon.errors import StoreError
+    from orchestra.canon.project import StoreBindingError
+    from orchestra.metrics.compare import UnknownBoundaryError, compare_phases, render_text
+
+    try:
+        comparison = compare_phases(
+            Path(args.directory) if args.directory else Path.cwd(), args.boundary
+        )
+    except (StoreBindingError, StoreError, UnknownBoundaryError, OSError) as exc:
+        print(f"orchestra metrics: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(comparison, indent=2) if args.json else render_text(comparison))
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
     if args.metrics_command == "repairs":
         return _run_repairs(args)
+    if args.metrics_command == "compare":
+        return _run_compare(args)
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError
     from orchestra.metrics.phases import build_phase_rows
