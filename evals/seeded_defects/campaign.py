@@ -15,6 +15,7 @@ from evals.seeded_defects.scoring import score_call
 from orchestra.tools import RunFn
 
 PROMPT_FILES = ("agents/reviewer.md", "orchestra/conductor/reviewer.py")
+_CHECK_AFTER = 3
 CASE_FILES = ("case.json", "defect.patch", "records.json", "baseline.json")
 
 
@@ -105,10 +106,25 @@ def run_campaign(args: argparse.Namespace, run: RunFn, confirm: Callable[[str], 
             return _fail(mismatch)
     else:
         _write_json(record, expected)
-    for planned in plan_calls(cases):
+    pending = [
+        planned
+        for planned in plan_calls(cases)
+        if not (campaign_dir / "calls" / f"{planned.case.id}-{planned.call_index}.json").exists()
+    ]
+    if not pending:
+        return 0
+    if not confirm(f"The campaign will make {len(pending)} reviewer calls. Continue?"):
+        return _fail("campaign declined before the first call")
+    tokens_spent: list[int] = []
+    for planned in pending:
         target = campaign_dir / "calls" / f"{planned.case.id}-{planned.call_index}.json"
-        if target.exists():
-            continue
+        if len(tokens_spent) == _CHECK_AFTER:
+            projected = sum(tokens_spent) // len(tokens_spent) * len(pending)
+            if not confirm(
+                f"After {_CHECK_AFTER} calls the projected total is {projected} tokens "
+                f"for {len(pending)} calls. Continue?"
+            ):
+                return _fail("campaign declined after the first calls; saved results stay")
         result = review_call(
             planned.case,
             planned.call_index,
@@ -117,6 +133,7 @@ def run_campaign(args: argparse.Namespace, run: RunFn, confirm: Callable[[str], 
             case_dir=cases_dir / planned.case.id,
             source_repo=repo,
         )
+        tokens_spent.append(result.tokens)
         if result.incomplete_reason == "usage_limit":
             return _fail("usage limit reached; resume the campaign later")
         if result.incomplete_reason == "failed":
