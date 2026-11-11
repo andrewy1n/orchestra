@@ -148,6 +148,13 @@ canon list --type composer:idea \
 
    Skip `spec` (go straight to `tasks`) when the user
    already fixed the approach in this ask, or for `incidental`.
+
+   For `repair`, when the fault traces to a completed phase, write a
+   `conductor:repair-link` record. Set `fix` to the fix, `cause` to
+   one of `spec-gap`, `verification-miss`, or `requirement-change`,
+   and `phase` to the completed phase. When no phase owns the fault,
+   set `cause` to `no-phase` and omit `phase`. Set `work_item` when a
+   work-item carries the fix.
 7. Show the routing line, then follow that skill with focus and kind
    in context:
 
