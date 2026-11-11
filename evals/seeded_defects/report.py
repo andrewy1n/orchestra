@@ -196,5 +196,17 @@ def format_report(report: Report) -> str:
     return "\n".join(lines) + "\n"
 
 
+def build_header(campaign_dir: Path) -> str:
+    record = campaign_dir / "campaign.json"
+    if not record.is_file():
+        return ""
+    meta = _read(record)
+    return (
+        f"model: {meta.get('model')}\n"
+        f"reviewer prompt commit: {meta.get('prompt_commit')}\n"
+        f"case set hash: {meta.get('case_set_hash')}\n"
+    )
+
+
 def build_report(campaign_dir: Path, cases_dir: Path) -> str:
     return format_report(compute_report(campaign_dir, cases_dir))

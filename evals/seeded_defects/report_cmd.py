@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeAlias
 
-from evals.seeded_defects.report import build_report
+from evals.seeded_defects.report import build_header, build_report
 from orchestra.tools import RunFn
 
 SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"  # pyright: ignore[reportPrivateUsage]
@@ -19,5 +19,11 @@ def register(subparsers: SubParsers) -> None:
 
 
 def run(args: argparse.Namespace, run: RunFn, confirm: Callable[[str], bool]) -> int:
-    print(build_report(args.campaign_dir, args.cases_dir), end="")
+    body = build_report(args.campaign_dir, args.cases_dir)
+    first, newline, rest = body.partition("\n")
+    if first.startswith("incomplete calls:"):
+        body = first + newline + build_header(args.campaign_dir) + rest
+    else:
+        body = build_header(args.campaign_dir) + body
+    print(body, end="")
     return 0
