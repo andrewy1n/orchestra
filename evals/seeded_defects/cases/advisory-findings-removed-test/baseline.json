@@ -1,0 +1,19 @@
+{
+  "uv run pytest -q tests/test_skill_portability.py": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k judgment_severity": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k advisory_no_fix_task": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k derives_verdict": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k judgment_needs_human": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k names_consequence": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py": "pass",
+  "uv run pytest -q tests/test_phase_reviewer.py tests/test_dispatch_review_findings.py tests/test_gate.py tests/test_skill_portability.py tests/test_contract_self_consistency.py": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k end_to_end": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k names_requirement": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k names_trigger": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k advisory_gate_ignores": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k names_escape": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k demotes": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k pass_with_only_advisory": "pass",
+  "uv run pytest -q tests/test_light_analyze.py tests/test_analyze.py": "pass",
+  "uv run pytest -q tests/test_advisory_findings.py -k advisory_needs_none": "pass"
+}

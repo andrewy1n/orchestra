@@ -1,0 +1,56 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "verify-suite-before-review",
+    "body": "## Description\n\nProve the phase exit criteria hold together: run `orchestra review-brief` through its entry point against a temporary repository, then every other phase check.\n\n## Approach\n\nAdd an end-to-end test `test_review_brief_end_to_end` in `tests/test_suite_before_review.py`. It builds a temporary git repository with a required suite policy, runs `cli.main([\"review-brief\", \"--phase\", ...])` with no suite check-run and sees exit 2 with the missing check-run named, then records a passing `<phase>-suite` check-run at head and sees the brief printed. Run `tests/test_suite_before_review.py`, `tests/test_phase_end_order.py` and the skill and contract consistency tests. Do not edit the tree.\n",
+    "title": "Verify the suite-before-review phase"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "phase-end-order",
+    "body": "## Description\n\nR1: `phase-end.md` runs the suite step before the reviewer step.\nR6: `phase-end.md` says a failing required suite creates fix tasks before the reviewer starts.\n\n## Approach\n\nIn `skills/execute-phase/references/phase-end.md` change the order line to: last implementation wave, closing verification, analyze, suite, reviewer, integration-report, phase gate, phase close. Move the `## Suite` section above `## Reviewer`. In it say the suite runs at the phase head after analyze, and a failing `gate=required` suite creates fix tasks before the reviewer starts. In `## Reviewer` pass `--phase <phase-slug>` to `orchestra review-brief` and say it refuses until the suite policy is met at the head. Say a fix task moves the head and the suite runs again before the reviewer. Update the matching order sentence in `skills/execute-phase/SKILL.md` step 7. Keep copies of these files in sync if `tests/test_skill_portability.py` or `tests/test_contract_self_consistency.py` pin them.\n\nWrite tests in `tests/test_phase_end_order.py`: the suite heading comes before the reviewer heading, the order line lists suite before reviewer, and the fix-task sentence exists.\n",
+    "title": "Run the suite before the reviewer in the skills"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "fix-review-end-to-end",
+    "body": "## Description\n\nReviewer finding: `test_review_brief_end_to_end` is missing. Add it to `tests/test_suite_before_review.py`. It runs `review-brief --phase` against a temporary repo and a real temporary store: exit 2 with no suite check-run, then the brief after a passing `<phase>-suite` check-run at head is created.\n\n## Approach\n\nUse the `store` and `cli` fixtures from `tests/conftest.py`. Create a `score:effort` record, then the check-run through `cli(\"create\", ...)`, and call `orchestra.cli.main` with `--store`.\n",
+    "title": "Add the end-to-end review-brief test"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "brief-suite-check",
+    "body": "## Description\n\nR2: `orchestra review-brief` exits non-zero when a local suite is configured but no `<phase>-suite` check-run exists at the phase head.\nR3: `orchestra review-brief` exits non-zero when `gate=required` is set but the `<phase>-suite` check-run at the phase head failed.\nR4: `orchestra review-brief` builds the brief when `gate=advisory` is set, even if the `<phase>-suite` check-run at the phase head failed.\nR5: `orchestra review-brief` builds the brief when `mode=none`, `mode=external` or `gate=deferred`, with no suite check-run.\n\n## Approach\n\nAdd `suite_ready_for_review(policy, check_runs, phase_slug, phase_head)` to `orchestra/conductor/suite.py`. It returns a refusal message or an empty string. Use `SuitePolicy.run_locally`, `blocks_merge`, `is_suite_check_run` and the revision match already in that module. Rules: a policy that does not run locally needs nothing. A local policy needs a `<phase>-suite` check-run at the phase head. A `blocks_merge` policy also needs that check-run to pass. An advisory policy accepts a failed check-run.\n\nIn `_cmd_review_brief` in `orchestra/cli.py`, call it when `--phase` is given. Load the policy with `suite.load_suite_policy(work)` and the check-runs from the store. Resolve `--phase-head` to a full revision first. On a refusal print `orchestra review-brief: <message>` to stderr and return 2. The message names the missing or failing check-run and the head. Without `--phase` nothing changes.\n\nWrite tests in `tests/test_suite_before_review.py` with `brief` in each test name, one per requirement, using the helpers in `tests/test_cli_surface.py`. Run them first and see them fail.\n",
+    "title": "Make review-brief enforce the suite policy"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "brief-suite-check",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_suite_before_review.py -k brief"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-review-end-to-end",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_suite_before_review.py -k end_to_end"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-suite-before-review-consistency",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_cli_surface.py tests/test_skill_portability.py tests/test_contract_self_consistency.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "phase-end-order",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_phase_end_order.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-suite-before-review",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_suite_before_review.py tests/test_phase_end_order.py"
+  }
+]

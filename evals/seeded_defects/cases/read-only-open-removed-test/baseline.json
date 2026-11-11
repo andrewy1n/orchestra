@@ -1,0 +1,7 @@
+{
+  "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_backend.py": "pass",
+  "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check .": "pass",
+  "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_open.py -k \"test_r10_\"": "pass",
+  "uv run pytest --confcutdir=tests/canon -q tests/canon": "pass",
+  "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_open.py -k \"not test_r10_\"": "pass"
+}

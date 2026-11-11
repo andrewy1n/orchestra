@@ -1,0 +1,9 @@
+{
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k \"test_r4_ or test_r5_ or test_r6_\"": "pass",
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time_flow.py -k test_r8_": "pass",
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k \"test_r1_ or test_r2_ or test_r3_\"": "pass",
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon": "pass",
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k test_r7_": "pass",
+  "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check .": "pass",
+  "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time_flow.py -k test_r9_": "pass"
+}

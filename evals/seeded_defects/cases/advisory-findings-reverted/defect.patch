@@ -1,0 +1,59 @@
+diff --git a/orchestra/conductor/reviewer.py b/orchestra/conductor/reviewer.py
+--- a/orchestra/conductor/reviewer.py
++++ b/orchestra/conductor/reviewer.py
+@@ -245,54 +235,8 @@ def _strip_fence(text: str) -> str:
+     return stripped
+ 
+ 
+-def _is_blocking(finding: ReviewerFinding) -> bool:
+-    return bool(finding.get("blocking"))
+-
+-
+-def classify_findings(
+-    findings: Sequence[ReviewerFinding],
+-) -> tuple[list[ReviewerFinding], list[str]]:
+-    """Demote each blocking finding that lacks its basis; return the findings and the demotions.
+-
+-    A `judgment` finding stays blocking and needs no basis. Any other blocking finding
+-    needs a requirement, a trigger and a consequence, and a `missing-test` finding also
+-    needs an escaping regression.
+-    """
+-    classified: list[ReviewerFinding] = []
+-    demoted: list[str] = []
+-    for finding in findings:
+-        updated = finding.copy()
+-        if finding["severity"] == "judgment":
+-            updated["blocking"] = True
+-        elif _is_blocking(finding):
+-            needed = [*BASIS_FIELDS, *(("escape",) if finding["kind"] == "missing-test" else ())]
+-            if any(not str(finding.get(name) or "").strip() for name in needed):
+-                updated["blocking"] = False
+-                demoted.append(f"{finding['task']}:{finding['kind']}")
+-        classified.append(updated)
+-    return classified, demoted
+-
+-
+-def derive_verdict(findings: Sequence[ReviewerFinding]) -> str:
+-    """NEEDS_WORK when any finding is blocking, otherwise PASS."""
+-    return "NEEDS_WORK" if any(_is_blocking(finding) for finding in findings) else "PASS"
+-
+-
+-def _parse_blocking(rest: str) -> bool | None:
+-    match = re.search(r"(?im)^\s*blocking:\s*(\S+)", rest)
+-    if match is None:
+-        return None
+-    value = match.group(1).strip().lower()
+-    if value in {"true", "false"}:
+-        return value == "true"
+-    raise ValueError(f"reviewer finding blocking must be true or false, not {value!r}")
+-
+-
+ def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
++    """Parse the structured PASS/NEEDS_WORK block from the reviewer."""
+-    """Parse the structured PASS/NEEDS_WORK block from the reviewer.
+-
+-    The returned verdict follows the findings, not the verdict line.
+-    """
+     raw = _strip_fence(text)
+     verdict_m = re.search(r"(?im)^\s*verdict:\s*(\S+)", raw)
+     verdict = (verdict_m.group(1) if verdict_m else "").strip().upper()

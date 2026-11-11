@@ -1,0 +1,8 @@
+{
+  "phase": "operation-timestamps",
+  "revision": "b10fc1f2e493a169a1799dbf749f9363c0d8b022",
+  "kind": "control",
+  "expected_files": [],
+  "expected_requirement_ids": [],
+  "diff_bytes": 13863
+}

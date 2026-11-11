@@ -1,0 +1,28 @@
+diff --git a/tests/canon/test_read_only_backend.py b/tests/canon/test_read_only_backend.py
+--- a/tests/canon/test_read_only_backend.py
++++ b/tests/canon/test_read_only_backend.py
+@@ -93,24 +93,6 @@
+     assert issubclass(ReadOnlyStoreError, StoreError)
+ 
+ 
+-def test_r3_reading_leaves_the_database_file_byte_identical(roots: tuple[Path, Path]) -> None:
+-    db = roots[1] / "canon.db"
+-    before_bytes, before_tables = db.read_bytes(), _tables(db)
+-    reader = _reader(roots)
+-    assert [r["subject"] for r in reader.iter_records()] == ["first"]
+-    assert reader.list_records("contract:setting")
+-    assert reader.change_token()
+-    assert list(reader.read_history()) is not None
+-    errors: list[str] = []
+-    reader.check_integrity(errors)
+-    assert errors == []
+-    assert db.read_bytes() == before_bytes
+-    assert _tables(db) == before_tables
+-    assert {path.name for path in roots[1].iterdir()} <= {
+-        "canon.db",
+-        "canon.db-wal",
+-        "canon.db-shm",
+-    }
+ 
+ 
+ def test_r4_missing_database_raises_and_creates_nothing(tmp_path: Path) -> None:

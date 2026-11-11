@@ -1,0 +1,68 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "stamp-op-time",
+    "body": "## Description\n\nR1: Every `create` operation the store accepts records `applied_at`, a UTC ISO-8601 time with a `+00:00` offset.\nR2: Every `write` operation the store accepts (update, supersede, correct) records `applied_at`.\nR3: Every `delete` operation the store accepts records `applied_at`.\nR7: Opening a store with operations that have no time leaves every stored operation unchanged.\n\n## Approach\n\nIn `orchestra/canon/sqlite_backend.py` add a module helper that returns `datetime.now(timezone.utc).isoformat(timespec=\"microseconds\")` and put its result under `applied_at` in the op dict built in `SqliteBackend._write` and `SqliteBackend.delete_record`. Add `applied_at: JsonValue` to `_OptionalOp` in `orchestra/canon/types.py`. Change nothing else: not `fold`, not the schema, not `import_op`.\n\nWrite `tests/canon/test_op_time.py`. Build a temporary store with the `project` fixture from `tests/canon/conftest.py` and read ops with `open_backend(project.store_path).iter_chains()`. Name tests `test_r1_<behavior>`, `test_r2_<behavior>` (one for update, one for supersede or correct), `test_r3_<behavior>` (call `backend.delete_record`) and `test_r7_<behavior>`. For R7, insert op rows without `applied_at` straight into a fresh `ops` table with `sqlite3`, open the project, run `records()`, `get` and `validate()`, then compare `SELECT * FROM ops` before and after. Assert each time parses with `datetime.fromisoformat`, has a zero UTC offset, and lies between two `datetime.now(timezone.utc)` readings taken around the call. Run the R1 to R3 tests first and see them fail on the missing key.\n",
+    "title": "Stamp a time on each new store operation"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "pin-time-flows",
+    "body": "## Description\n\nR8: `canon export` then `canon import` into an empty store keeps each operation's `applied_at` value, or its absence.\n\n## Approach\n\nAdd `tests/canon/test_op_time_flow.py`. `test_r8_<behavior>`: create and update a record, add a legacy op row without a time to a second record, run `export_ops` from `orchestra/canon/transfer.py` into a `StringIO`, run `import_ops` into a fresh `SqliteBackend`, then compare `iter_chains()` of both stores op by op. No production code changes; `transfer.py` copies op keys as they are. Also write `test_r9_<behavior>` here: with the `cli` and `project` fixtures run `canon create` then `canon update --transition` through the CLI, then assert `project.history(id)` has strictly increasing `applied_at` values and the matching states. The R9 acceptance sits on the verification task.\n",
+    "title": "Pin the time through export, import and the CLI"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "verify-operation-timestamps",
+    "body": "## Description\n\nProve the phase exit criteria hold together: run the CLI flow check through the real entry point, then the canon test tree and the type and lint gates.\n\n## Approach\n\nR9: A record created, then updated through the `canon` CLI shows increasing times in its history.\nR10: The existing canon tests pass.\nR11: The change is clean under basedpyright, ruff check, ruff format.\n\nRun the acceptance commands with `orchestra check` in the phase worktree `/home/andrewyin/orchestra/.worktrees/operation-timestamps`. Do not edit the tree. Return `fail` with the output if a check fails.\n",
+    "title": "Verify operation timestamps"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "read-op-history",
+    "body": "## Description\n\nR4: `Project.history(record_id)` lists the accepted operations of the record, oldest first, as entries with the keys `seq`, `kind`, `lifecycle_state`, `revision`, `applied_at`.\nR5: A history entry for an operation stored without `applied_at` reports `applied_at` as `None`.\nR6: After a record moves to a new state, the history entry with that state carries a time within the span of the update call.\n\n## Approach\n\nAdd `read_chain(self, record_id: str) -> list[StoredOp]` to the `Backend` protocol in `orchestra/canon/backend.py` and to `SqliteBackend` (open `_reader()` and return `_chain`). Add a `RecordChange` TypedDict to `orchestra/canon/types.py` with `seq: int`, `kind: str`, `lifecycle_state: str | None`, `revision: str | None`, `applied_at: str | None`. Add `Project.history(self, record_id: str) -> list[RecordChange]` in `orchestra/canon/project.py`: read the chain with `store.read_chain`, raise `StoreError` for an unknown id (empty chain), keep ops with `outcome == \"accepted\"`, and take `lifecycle_state` and `revision` from `op[\"record\"]` (None for a delete op). `applied_at` is the op value when it is a string, else `None`. Docstring: say that the time a record entered a state is the `applied_at` of the first entry with that state.\n\nTests go in `tests/canon/test_op_time.py`, named `test_r4_<behavior>`, `test_r5_<behavior>` and `test_r6_<behavior>`. For R5 insert a legacy op row with `sqlite3` as in the `test_r7_` test. First add `history` as a stub that returns `[]`, run the tests and see them fail on the assertions, then implement.\n",
+    "title": "Read a record's operation history with times"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "read-op-history",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k \"test_r4_ or test_r5_ or test_r6_\""
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "pin-time-flows",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time_flow.py -k test_r8_"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "stamp-op-time",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k \"test_r1_ or test_r2_ or test_r3_\""
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-operation-timestamps-canon",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "stamp-op-time-r7",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time.py -k test_r7_"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-operation-timestamps-gates",
+    "body": "",
+    "verify_command": "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check ."
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-operation-timestamps",
+    "body": "",
+    "verify_command": "uv run pytest -q -p no:cacheprovider --confcutdir=tests/canon tests/canon/test_op_time_flow.py -k test_r9_"
+  }
+]

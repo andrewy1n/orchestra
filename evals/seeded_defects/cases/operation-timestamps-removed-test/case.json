@@ -1,0 +1,11 @@
+{
+  "phase": "operation-timestamps",
+  "revision": "b10fc1f2e493a169a1799dbf749f9363c0d8b022",
+  "kind": "synthetic-defect",
+  "expected_files": [
+    "tests/canon/test_op_time.py"
+  ],
+  "expected_requirement_ids": [],
+  "diff_bytes": 13863,
+  "defect_type": "removed-test"
+}
