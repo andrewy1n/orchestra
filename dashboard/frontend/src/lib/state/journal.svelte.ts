@@ -30,6 +30,7 @@ export const journal = new JournalState();
 
 export function bindJournal() {
 	journal.reset();
+	const onWork = $derived(navigation.route.name === "home");
 
 	$effect(() => {
 		if (journal.effortName && journal.effortName !== polling.selectedEffort) {
@@ -38,7 +39,9 @@ export function bindJournal() {
 	});
 
 	$effect(() => {
-		const name = journal.effortName || polling.effort?.effort || "";
+		const name = onWork
+			? ""
+			: journal.effortName || polling.effort?.effort || "";
 		if (!name) {
 			journal.data = null;
 			journal.error = "";

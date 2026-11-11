@@ -16,6 +16,8 @@ const JOURNAL_TEASER_KINDS = new Set(["repair", "evaluate"]);
 
 class Polling {
 	snapshot = $state<Snapshot | null>(null);
+	token = $state("");
+	generation = $state(0);
 	loading = $state(true);
 	error = $state("");
 	pollError = $state("");
@@ -62,6 +64,8 @@ class Polling {
 
 	reset() {
 		this.snapshot = null;
+		this.token = "";
+		this.generation = 0;
 		this.loading = true;
 		this.error = "";
 		this.pollError = "";
@@ -71,7 +75,14 @@ class Polling {
 		this.expandedForEffort = "";
 	}
 
+	applyToken = (token: string): void => {
+		if (this.token && this.token !== token) this.generation += 1;
+		this.token = token;
+		this.pollError = "";
+	};
+
 	applySnapshot = (data: Snapshot) => {
+		this.applyToken(data.token);
 		this.snapshot = data;
 		this.loading = false;
 		this.error = "";
@@ -93,8 +104,12 @@ class Polling {
 		this.expandedMilestones = next;
 	}
 
-	start(): () => void {
+	start(fetchSnapshot = true): () => void {
+		this.loading = fetchSnapshot && this.snapshot === null;
+		this.error = "";
 		const poller = startTokenPoller({
+			fetchSnapshot,
+			onToken: this.applyToken,
 			onSnapshot: this.applySnapshot,
 			onError: (message) => {
 				if (this.loading) {

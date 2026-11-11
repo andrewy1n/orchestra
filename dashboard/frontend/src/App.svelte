@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import Area from "$lib/screens/Area.svelte";
   import Breadcrumb from "$lib/screens/Breadcrumb.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
@@ -34,6 +34,7 @@
   bindOverlay();
   bindPhase();
 
+  const needsSnapshot = $derived(navigation.route.name !== "home");
   const effort = $derived(polling.effort);
   const target = $derived(overlay.target);
   const onPhasePage = $derived(
@@ -53,6 +54,11 @@
     applyTheme(theme);
   });
 
+  $effect(() => {
+    const fetchSnapshot = needsSnapshot;
+    return untrack(() => polling.start(fetchSnapshot));
+  });
+
   function onToggleTheme() {
     theme = toggle(theme);
     saveTheme(theme);
@@ -64,10 +70,7 @@
     const onKey = (event: KeyboardEvent) => handleKey(event, onToggleTheme);
     window.addEventListener("keydown", onKey, true);
 
-    const stopPolling = polling.start();
-
     return () => {
-      stopPolling();
       stopRoute();
       window.removeEventListener("keydown", onKey, true);
     };
