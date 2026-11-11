@@ -1,6 +1,6 @@
 {
   "namespace": "conductor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "types": {
     "failed-attempt": {
       "purpose": "An approach that should not be retried as-is",
@@ -267,6 +267,35 @@
             "blocked",
             "skipped"
           ]
+        }
+      }
+    },
+    "repair-link": {
+      "purpose": "Links a fix to the phase it repairs and the cause",
+      "lifecycle": "event",
+      "fields": {
+        "fix": {
+          "type": "string"
+        },
+        "cause": {
+          "enum": [
+            "spec-gap",
+            "verification-miss",
+            "requirement-change",
+            "no-phase"
+          ]
+        },
+        "phase": {
+          "ref": "score:phase",
+          "optional": true
+        },
+        "work_item": {
+          "ref": "score:work-item",
+          "optional": true
+        },
+        "effort": {
+          "ref": "score:effort",
+          "optional": true
         }
       }
     }
