@@ -1,0 +1,181 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "fix-longer-prefix-matrix",
+    "body": "## Description\n\nAdd a proper prefix longer than seven characters to each shared production-path matrix.\n\n## Approach\n\nUse an eight-character proper prefix in the helper, suite acceptance, suite result, and gate term tests.\nTest both argument orders and keep the existing six and seven character cases.\n",
+    "title": "Cover proper prefixes longer than seven characters"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "share-revision-comparison",
+    "body": "## Description\n\nImplement R1-R7 under shared-seven-character-revisions.\nPreserve suite, reviewer, and gate results while giving the comparison rule one owner.\n\n## Approach\n\nAdd orchestra/conductor/revision.py with the settled pure revision_matches function.\nRoute suite acceptance and suite checks, reviewer checks, and gate terms through it.\nPreserve reviewer.revision_matches as a public import or re-export.\nRemove duplicate private implementations without changing caller targets or prerequisites.\nDo not put the rule in Canon record hashing.\nCreate tests/test_revision_policy.py with focused tests named r1_whitespace through r7_unrelated.\nUse a common case matrix through public reviewer, suite, and acceptance checks.\nCover both prefix orders, seven versus six characters, normalized equality, and exact short equality.\nAdd a revision_gate_terms test through the real gate entry point using a disposable store.\nAvoid Git object lookup, format validation, data migration, and unrelated gate repairs.\nRun the affected tests and inspect old comparison names in imports and strings.\nOwn orchestra/conductor/revision.py, comparison wiring in suite.py, reviewer.py and gate.py, and tests/test_revision_policy.py.\n",
+    "title": "Give Conductor revision comparison one owner"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "fix-gate-revision-matrix",
+    "body": "## Description\n\nAdd the revision matrix coverage required by the phase review for acceptance and gate paths.\n\n## Approach\n\nExtend the shared matrix through suite acceptance-at-head and suite-at-head checks.\nUse temporary Canon records to run the same cases through gate_terms.\nPreserve isolated stores and existing caller prerequisites.\n",
+    "title": "Cover revision matrix through acceptance and gate paths"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "verify-shared-revision-policy",
+    "body": "## Description\n\nProve R1-R9 and every phase exit criterion after both implementation tasks.\n\n## Approach\n\nRun the common matrix and the stored-record dashboard evidence tests through production entry points.\nRun revision_gate_terms through the gate command with a temporary store.\nRun the affected reviewer, suite, gate, and dashboard regression files.\nInspect the diff and imports for a single comparison owner, preserved reviewer export, and unchanged caller prerequisites.\nVerify the frozen oracle content remains unchanged.\nVerify unknown HEAD and Canon sha256 display stay distinct from Git matching.\nRun uv run basedpyright, uvx ruff@0.13.1 check ., and uvx ruff@0.13.1 format --check .\nRun the configured phase-end suite through orchestra suite and record its advisory result.\nRun canon validate and record the requirement evidence.\nDo not expand the repair or change other phases.\nOwn verification evidence only; return failures to the responsible implementation task.\n",
+    "title": "Verify shared revision policy through gates and dashboard evidence"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "align-dashboard-revisions",
+    "body": "## Description\n\nImplement R8-R9 under shared-seven-character-revisions.\nMake dashboard evidence labels apply the shared rule while preserving Canon revision display.\n\n## Approach\n\nUse the shared Conductor function from dashboard/backend/approval.py.\nRemove the dashboard-specific comparison implementation.\nCompare original values before shortening display text.\nPreserve Canon sha256 exclusion, unknown HEAD output, evidence targets, and approval behavior.\nMake the frozen dashboard oracle pass without changing its test content.\nAdd check coverage for Canon sha256 display and unknown HEAD where the oracle does not already cover them.\nUse public evidence_panels with a temporary Canon store and temporary Git repository.\nRun the dashboard oracle and affected dashboard backend tests.\nOwn comparison wiring in dashboard/backend/approval.py and additional dashboard revision tests outside the frozen oracle file.\nDo not modify the frozen oracle, frontend code, signer rules, or approval restrictions.\n",
+    "title": "Apply the shared revision rule to dashboard evidence labels"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r9",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/dashboard/test_revision_display.py -k canon_revision"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "align-dashboard-revisions-r9",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/dashboard/test_revision_display.py -k canon_revision"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r8",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/dashboard/test_revision_evidence.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-display",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/dashboard/test_revision_display.py -k missing_head"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-gate-revision-matrix",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k production_revision_paths && uv run pytest -q tests/test_gate.py -k gate_terms_revision_policy_matrix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r2",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r2_case"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r3",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r3_empty"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r5",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r5_prefix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-regression",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py tests/test_phase_reviewer.py tests/test_tiered_verification.py tests/test_suite_config.py tests/test_gate.py tests/dashboard/test_revision_evidence.py tests/dashboard/test_revision_display.py tests/dashboard/test_dashboard_gates.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r4",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r4_exact"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-gates",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_gate.py -k gate_holds_with_required_suite_passing_at_head"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r2",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r2_case"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r1_whitespace"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r7",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r7_unrelated"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-quality",
+    "body": "",
+    "verify_command": "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check ."
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r4",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r4_exact"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "align-dashboard-revisions",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/dashboard/test_revision_evidence.py::test_evidence_label_uses_shared_revision_rule"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r5",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r5_prefix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r7",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r7_unrelated"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy-r6",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r6_short_prefix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-longer-prefix-matrix",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k production_revision_paths && uv run pytest -q tests/test_gate.py -k gate_terms_revision_policy_matrix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r3",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r3_empty"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "share-revision-comparison-r6",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r6_short_prefix"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-shared-revision-policy",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_revision_policy.py -k r1_whitespace"
+  },
+  {
+    "record_type": "specification",
+    "subject": "shared-revision-policy",
+    "body": "## Requirements\n\nR1: Revision comparison ignores surrounding whitespace.\nR2: Revision comparison ignores letter case.\nR3: Revision comparison rejects either empty normalized value.\nR4: Revision comparison accepts identical nonempty normalized values.\nR5: Revision comparison accepts a proper prefix when the shorter normalized value has at least seven characters.\nR6: Revision comparison rejects a proper prefix when the shorter normalized value has fewer than seven characters.\nR7: Revision comparison rejects different normalized values without a prefix relationship.\nR8: The dashboard evidence label reports a Git revision match according to the shared revision rule.\nR9: The dashboard evidence label does not classify a Canon sha256 record revision as a Git revision match.\n\n## Acceptance criteria\n\nUse one case matrix through the shared helper, the public reviewer gate, suite checks, acceptance-at-head checks, and dashboard evidence_panels.\nInclude full equality, seven-character prefixes, longer prefixes, six-character proper prefixes, unrelated values, empty values, whitespace, and mixed case.\nExercise prefix cases in both argument orders.\nInclude identical short nonempty values to distinguish equality from a proper prefix.\nVerify the gate command's suite-at-head and acceptance-runner-at-head terms against the same policy.\nUse disposable stores for stored checks and dashboard evidence records.\nVerify dashboard output with a real temporary Git HEAD and a stored unsigned check.\nVerify missing HEAD keeps the existing unknown display.\nVerify Canon sha256 record revisions retain their existing display without a Git match claim.\nReview imports to establish one owner of the comparison rule.\nRun affected tests, required Python quality gates, the configured phase-end suite, and canon validate before implementation closure.\n\n## Constraints\n\nPreserve current suite and reviewer comparison results for valid string inputs.\nUse one pure comparison function owned by Conductor.\nPreserve reviewer.revision_matches as a public entry point.\nCoordinate suite edits with fail-first-contracts.\nUse temporary stores in tests.\nApply strict types without Any, cast, or new checker suppressions.\n\n## Non-goals\n\nGit object resolution, prefix uniqueness checks, revision format validation, and full-revision-only enforcement.\nRecord migration, historical evidence changes, new approval restrictions, and dashboard frontend changes.\nChanges to suite phase identity, result selection, gate policy, reviewed-revision selection, or ancestry checks.\nChanges to Canon record revisions or Tuner claim revision semantics.\n\n## Invariants\n\nEach selected caller uses the same comparison rule for the values it compares.\nCallers retain ownership of their target revision and non-revision prerequisites.\nIdentical short nonempty values remain matches under the existing equality rule.\nThe dashboard comparison remains an evidence label, not permission to approve or sign.\nDisplay shortening never determines comparison input.\n\n## Assumptions\n\nInputs are strings supplied by existing callers.\nSeven characters are a compatibility rule, not proof of Git object uniqueness.\nThe dashboard compares evidence with its repository HEAD.\nConductor gate terms can compare evidence with the reviewed revision.\nDifferent comparison targets can produce different results without violating the shared rule.\n"
+  }
+]

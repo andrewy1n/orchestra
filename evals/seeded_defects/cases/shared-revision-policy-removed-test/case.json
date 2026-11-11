@@ -1,0 +1,11 @@
+{
+  "phase": "shared-revision-policy",
+  "revision": "dae0fcb6a8b8c30a70b6d9a668ac18a0f2dff4d2",
+  "kind": "synthetic-defect",
+  "expected_files": [
+    "tests/test_revision_policy.py"
+  ],
+  "expected_requirement_ids": [],
+  "diff_bytes": 19123,
+  "defect_type": "removed-test"
+}

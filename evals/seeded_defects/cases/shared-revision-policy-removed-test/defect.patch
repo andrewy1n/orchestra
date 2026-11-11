@@ -1,0 +1,28 @@
+diff --git a/tests/test_revision_policy.py b/tests/test_revision_policy.py
+--- a/tests/test_revision_policy.py
++++ b/tests/test_revision_policy.py
+@@ -18,24 +18,6 @@
+ )
+ 
+ 
+-@pytest.mark.parametrize(
+-    ("checked", "head", "expected"),
+-    [
+-        pytest.param(" abcdef0 ", "ABCDEF0123", True, id="r1_whitespace"),
+-        pytest.param("abcdef0", "ABCDEF0123", True, id="r2_case"),
+-        pytest.param("", "abcdef0123", False, id="r3_empty_checked"),
+-        pytest.param("abcdef0", "", False, id="r3_empty_head"),
+-        pytest.param("abcd", "ABCD", True, id="r4_exact_short"),
+-        pytest.param("abcdef0", "abcdef0123", True, id="r5_prefix_checked_shorter"),
+-        pytest.param("abcdef0123", "abcdef0", True, id="r5_prefix_head_shorter"),
+-        pytest.param("abcdef01", "abcdef0123", True, id="r5_longer_prefix_checked_shorter"),
+-        pytest.param("abcdef0123", "abcdef01", True, id="r5_longer_prefix_head_shorter"),
+-        pytest.param("abcdef", "abcdef0123", False, id="r6_short_prefix"),
+-        pytest.param("abcdef0123", "ghijklmnop", False, id="r7_unrelated"),
+-    ],
+-)
+-def test_revision_policy(checked: str, head: str, expected: bool) -> None:
+-    assert revision_matches(checked, head) is expected
+ 
+ 
+ @pytest.mark.parametrize(

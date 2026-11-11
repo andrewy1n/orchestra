@@ -1,0 +1,62 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "fix-read-only-hardening",
+    "body": "## Description\n\nR2: Each mutating method of a read-only SQLite backend raises ReadOnlyStoreError.\nR3: Reading through a read-only SQLite backend leaves the database file byte-identical.\n\nReviewer follow-up: a read-only read in a data directory that cannot create the WAL shared-memory file raises StoreError, not a raw sqlite3 error. A read-only read adds no file other than the `-wal` and `-shm` sidecars. Every backend mutator, including `delete_history_snapshot` and `import_op`, raises ReadOnlyStoreError.\n\n## Approach\n\nIn `_connect_read_only`, run one probe query and convert `sqlite3.OperationalError` into `StoreError`. Add tests to `tests/canon/test_read_only_backend.py` first and record red. State the sidecar fact in the `open_backend` docstring.\n",
+    "title": "Harden read-only reads"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "read-only-backend",
+    "body": "## Description\n\nR1: A read-only SQLite backend connection rejects a write statement.\nR2: Each mutating method of a read-only SQLite backend raises ReadOnlyStoreError.\nR3: Reading through a read-only SQLite backend leaves the database file byte-identical.\nR4: A read-only SQLite backend on a missing database raises StoreNotInitializedError.\nR5: A read-only SQLite backend returns the committed records while another connection holds a write transaction.\n\n## Approach\n\nAdd `ReadOnlyStoreError(StoreError)` to `orchestra/canon/errors.py`. Add `read_only: bool = False` to `open_backend` and `SqliteBackend.__init__`. In read-only mode skip `_initialize_database` in `__init__`. In `_connect`, raise `StoreNotInitializedError` when the database file is missing, open `file:<db>?mode=ro` with `uri=True`, set `PRAGMA busy_timeout` and `PRAGMA query_only=ON`, and skip `mkdir`, `journal_mode` and `synchronous`. Guard `transaction`, `write_config`, `write_snapshot`, `init` and `backup` with a helper that raises `ReadOnlyStoreError`. Keep the edits to `sqlite_backend.py` narrow. Write tests in `tests/canon/test_read_only_backend.py` against temporary stores first and record red before the implementation.\n",
+    "title": "Read-only SQLite backend"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "read-only-project",
+    "body": "## Description\n\nR6: open_store(directory, read_only=True) returns a Project with read_only True.\nR7: Each write method of a read-only Project raises ReadOnlyStoreError.\nR8: A read-only Project returns the same read results as a normal Project.\nR9: open_store(directory, read_only=True) on a store with no database file raises StoreNotInitializedError.\n\n## Approach\n\nAdd `read_only: bool = False` to the `Project` dataclass and to `open_store`. Thread it through `_open_bound`, `_open` and `_has_config`; in read-only mode `_has_config` and the global-binding config load read metadata through `MetadataFiles` so no backend constructor touches the database. `_open` raises `StoreNotInitializedError` in read-only mode when the backend reports no database file. Route every `open_backend(self.store_path)` call in `Project` through one helper that passes `read_only`. Raise `ReadOnlyStoreError` at the top of `create`, `update`, `supersede`, `correct`, `apply` and `apply_at_snapshot`. Write tests in `tests/canon/test_read_only_open.py` first, including the cross-process test `test_r10_read_only_project_reads_during_concurrent_write` for the verification task, and record red before the implementation.\n",
+    "title": "Read-only Project open"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "verify-read-only-open",
+    "body": "## Description\n\nProve the phase exit criteria hold together. R10 is the integration check through `open_store`. R11 is the full canon tree. R12 is the static gates.\n\nR10: A read-only Project opened through open_store returns the committed records while a separate process writes through a normal Project.\nR11: The existing tests in tests/canon pass.\nR12: Static analysis (type check, lint, format) passes on the change.\n\n## Approach\n\nRun the three acceptance commands in the phase worktree. Do not edit the tree.\n",
+    "title": "Verify read-only open"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-read-only-hardening",
+    "body": "",
+    "verify_command": "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_backend.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-read-only-open-static",
+    "body": "",
+    "verify_command": "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check ."
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-read-only-open",
+    "body": "",
+    "verify_command": "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_open.py -k \"test_r10_\""
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-read-only-open-canon",
+    "body": "",
+    "verify_command": "uv run pytest --confcutdir=tests/canon -q tests/canon"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "read-only-project",
+    "body": "",
+    "verify_command": "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_open.py -k \"not test_r10_\""
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "read-only-backend",
+    "body": "",
+    "verify_command": "uv run pytest --confcutdir=tests/canon -q tests/canon/test_read_only_backend.py"
+  }
+]

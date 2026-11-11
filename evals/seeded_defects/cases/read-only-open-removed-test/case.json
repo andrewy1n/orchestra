@@ -1,0 +1,11 @@
+{
+  "phase": "read-only-open",
+  "revision": "91fcb9929b0a076e7690edd8e03186a8b7fa1e8e",
+  "kind": "synthetic-defect",
+  "expected_files": [
+    "tests/canon/test_read_only_backend.py"
+  ],
+  "expected_requirement_ids": [],
+  "diff_bytes": 26930,
+  "defect_type": "removed-test"
+}

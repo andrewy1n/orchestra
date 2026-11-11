@@ -1,0 +1,17 @@
+{
+  "uv run pytest -q tests/test_conflict_skills.py -k depends_on_same_function": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k question_open": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k incoming_acceptance": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k wave_end_continues": "pass",
+  "uv run pytest -q tests/test_conflict_skills.py -k competing_behavior": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k end_to_end": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py tests/test_conflict_skills.py": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k records_check_runs": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k unmerged": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k commits_merge": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k merged_acceptance": "pass",
+  "uv run pytest -q tests/test_skill_line_cap.py tests/test_conflict_skills.py": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k marker": "pass",
+  "uv run pytest -q tests/test_wave_resolve.py -k answers_question": "pass",
+  "uv run pytest -q tests/test_task_worktrees.py tests/test_execute_wave_dispatch.py tests/test_cli_surface.py tests/test_skill_portability.py tests/test_contract_self_consistency.py": "pass"
+}
