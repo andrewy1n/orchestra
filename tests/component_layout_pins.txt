@@ -41,11 +41,15 @@ tests/dashboard/test_proof_dashboard.py
 tests/dashboard/test_proof_packet_smoke.py
 tests/dashboard/test_revision_display.py
 tests/dashboard/test_revision_evidence.py
+tests/dashboard/test_snapshot_cache.py
+tests/dashboard/test_snapshot_evidence_index.py
 tests/dashboard/test_ui_structure.py
 tests/dashboard/test_web_dashboard.py
 tests/dashboard/test_web_dashboard_launch.py
 tests/dashboard/test_web_fastapi_writes.py
 tests/dashboard/test_web_packaging.py
+tests/dashboard/test_work_load.py
+tests/dashboard/test_work_read_path.py
 tests/integration/test_cli_on_path.py
 tests/integration/test_declared_install.py
 tests/integration/test_derived_records_e2e.py
