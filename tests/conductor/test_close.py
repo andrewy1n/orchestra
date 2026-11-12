@@ -1,100 +1,13 @@
 from __future__ import annotations
 
-import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from canon_support import create, make_project, seed_effort
+from canon_support import make_project, seed_effort
+from conductor_support import CLOSE_PHASE as PHASE
+from conductor_support import FakeStates, Landed, _commit, _git, make_landed
 
-from orchestra.canon.project import Project
 from orchestra.conductor import close
-
-PHASE = "p1"
-URL = "https://github.com/o/r/pull/7"
-
-
-@dataclass
-class FakeStates:
-    state: str
-    head_sha: str
-    calls: int = 0
-
-    def pull_request_state(self, number: int) -> tuple[str, str]:
-        assert number == 7
-        self.calls += 1
-        return self.state, self.head_sha
-
-
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
-    ).stdout.strip()
-
-
-def _commit(root: Path, name: str) -> str:
-    (root / name).write_text(name, encoding="utf-8")
-    _git(root, "add", name)
-    _git(root, "commit", "-qm", name)
-    return _git(root, "rev-parse", "HEAD")
-
-
-@dataclass
-class Landed:
-    project: Project
-    repo: Path
-    head: str
-
-    @property
-    def phase_tree(self) -> Path:
-        return self.repo / ".worktrees" / PHASE
-
-    @property
-    def task_tree(self) -> Path:
-        return self.repo / ".worktrees" / f"{PHASE}--a"
-
-    def states(self, state: str = "MERGED", head: str | None = None) -> FakeStates:
-        return FakeStates(state, head or self.head)
-
-    def close(self, states: FakeStates) -> close.CloseResult:
-        return close.close_phase(self.project, self.repo, PHASE, states)
-
-
-def make_landed(tmp_path: Path, *, shared_repo: bool = False) -> Landed:
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    _git(repo, "init", "-q", "-b", "main")
-    _git(repo, "config", "user.email", "test@example.com")
-    _git(repo, "config", "user.name", "test")
-    _commit(repo, "base.txt")
-    _git(repo, "branch", f"phase/{PHASE}")
-    _git(repo, "worktree", "add", "-q", str(repo / ".worktrees" / PHASE), f"phase/{PHASE}")
-    head = _commit(repo / ".worktrees" / PHASE, "work.txt")
-    _git(repo, "branch", f"task/{PHASE}/a", f"phase/{PHASE}")
-    _git(
-        repo,
-        "worktree",
-        "add",
-        "-q",
-        str(repo / ".worktrees" / f"{PHASE}--a"),
-        f"task/{PHASE}/a",
-    )
-    project = make_project(repo if shared_repo else tmp_path / "store")
-    seed_effort(project, "alpha", PHASE)
-    create(
-        project,
-        "conductor:landing",
-        PHASE,
-        {
-            "phase": PHASE,
-            "effort": "alpha",
-            "number": 7,
-            "url": URL,
-            "head_sha": head,
-            "result": "success",
-        },
-    )
-    return Landed(project, repo, head)
 
 
 @pytest.fixture

@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from test_close import PHASE, Landed, _git, make_landed
+from conductor_support import CLOSE_PHASE as PHASE
+from conductor_support import Landed, _git, make_landed
 
 from orchestra.conductor import close
 

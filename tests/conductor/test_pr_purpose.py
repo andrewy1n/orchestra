@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from test_gate import PHASE, Cli, Phase, _land_args, _packet, _review_repo_head, seed
+from conductor_support import PHASE, Cli, Phase, _land_args, _packet, _review_repo_head, seed
 
 from orchestra.canon.types import Record
 from orchestra.cli import main as cli_main

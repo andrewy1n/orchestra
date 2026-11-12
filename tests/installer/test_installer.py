@@ -28,7 +28,7 @@ from installer.agents import render as render_agent
 from installer.allowlist import COPY_ALLOWLIST, DENY_ROOTS, is_allowed
 from installer.matrix import load_matrix
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MARKER = ".orchestra-install.json"
 
 NPX_STUB = """#!/bin/sh
@@ -584,7 +584,7 @@ def test_native_opencode_installs_skills_source_plugin_and_subagent(source, proj
 
 
 def test_opencode_plugin_uses_the_v2_default_definition():
-    plugin = (Path(__file__).resolve().parents[1] / "hosts" / "opencode" / "plugin.js").read_text(
+    plugin = (Path(__file__).resolve().parents[2] / "hosts" / "opencode" / "plugin.js").read_text(
         encoding="utf-8"
     )
     assert "export default Plugin.define" in plugin

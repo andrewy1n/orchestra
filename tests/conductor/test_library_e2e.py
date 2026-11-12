@@ -224,7 +224,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
 
 
 def _close_command(repo: Path, request: dict) -> tuple[int, str]:
-    command = str(Path(__file__).resolve().parents[1] / "bin" / "orchestra")
+    command = str(Path(__file__).resolve().parents[2] / "bin" / "orchestra")
     path = repo / "close-request.json"
     path.write_text(json.dumps(request), encoding="utf-8")
     out = repo / "close-batch.ndjson"

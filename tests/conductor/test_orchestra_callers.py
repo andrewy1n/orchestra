@@ -15,7 +15,7 @@ from pathlib import Path
 from orchestra.canon.types import Record
 from orchestra.conductor import close_batch
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 CANON_ROOT = ROOT / "orchestra" / "canon"
 CLAIM_ID = "claim-widget"
 _OLD_MODULES = ("orchestra.aa_resolve", "dashboard.artifact_store")

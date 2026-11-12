@@ -6,7 +6,8 @@ from typing import TypeGuard
 
 import pytest
 from canon_support import create, make_project, seed_effort
-from test_close import PHASE, make_landed
+from conductor_support import CLOSE_PHASE as PHASE
+from conductor_support import make_landed
 
 from orchestra import cli, views
 from orchestra.canon.project import Project
