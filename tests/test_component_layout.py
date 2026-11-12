@@ -83,11 +83,23 @@ def test_no_stage_directory():
     assert not (TESTS / "stage").exists()
 
 
+PINS = TESTS / "component_layout_pins.txt"
+
+
+def _pinned_under(directory: str) -> list[str]:
+    prefix = directory.rstrip("/") + "/"
+    lines = PINS.read_text(encoding="utf-8").splitlines()
+    return [line for line in lines if line.startswith(prefix)]
+
+
 def _assert_stays(relpath: str) -> None:
     target = REPO / relpath
     assert target.exists(), f"{relpath} is missing"
     if target.is_dir():
-        assert any(target.rglob("test_*.py")), f"{relpath} holds no test modules"
+        pinned = _pinned_under(relpath)
+        assert pinned, f"no pinned modules under {relpath}"
+        missing = [path for path in pinned if not (REPO / path).exists()]
+        assert not missing, f"pinned modules moved or deleted from {relpath}: {missing}"
 
 
 def test_cli_packaging_stays():
