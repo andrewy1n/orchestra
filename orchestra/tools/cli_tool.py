@@ -50,8 +50,26 @@ class ProcessHandle:
         self._process: subprocess.Popen[bytes] = process
 
     @property
+    def pid(self) -> int:
+        return self._process.pid
+
+    @property
     def returncode(self) -> int | None:
         return self._process.poll()
+
+    @property
+    def group_exists(self) -> bool:
+        if os.name != "posix":
+            raise ToolError("process-group inspection requires a Unix host", [], None, "")
+        try:
+            os.killpg(self._process.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError as error:
+            raise ToolError(f"cannot inspect process group: {error}", [], None, "") from error
+        return True
 
     def wait(self, timeout: float | None = None) -> int:
         try:

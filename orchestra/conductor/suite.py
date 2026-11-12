@@ -12,6 +12,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -246,6 +247,7 @@ class SuiteStart:
     result_path: Path | None = None
     lifecycle_path: Path | None = None
     skip_path: Path | None = None
+    cancel_path: Path | None = None
 
 
 @dataclass
@@ -322,6 +324,7 @@ def _run_paths(run_dir: Path) -> dict[str, Path]:
         "result_path": run_dir / "result.json",
         "exit_path": run_dir / "exit",
         "lifecycle_path": run_dir / "worker.lock",
+        "cancel_path": run_dir / "cancel.json",
     }
 
 
@@ -417,6 +420,7 @@ def load_suite_job(
         ready_path=paths["ready_path"],
         result_path=paths["result_path"],
         lifecycle_path=paths["lifecycle_path"],
+        cancel_path=paths["cancel_path"],
     )
 
 
@@ -466,6 +470,7 @@ def start_suite_background(
     suite_command: str | None = None,
     policy: SuitePolicy | None = None,
     allow_dirty: bool = False,
+    timeout: float | None = None,
 ) -> SuiteStart | SuiteResult:
     """Start the suite in a detached worker; return after worker readiness.
 
@@ -521,6 +526,8 @@ def start_suite_background(
     cmd = suite_command if suite_command is not None else resolved_policy.command
     if not cmd.strip():
         raise ValueError("suite command must be non-empty")
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        raise ValueError("suite timeout must be a positive finite number")
     job_dir.mkdir(parents=True, exist_ok=True)
     guard_path = job_dir / "job.lock"
     with guard_path.open("a+b") as guard:
@@ -542,6 +549,7 @@ def start_suite_background(
             "revision": revision,
             "diff_sha256": diff,
             "created_at_epoch": time.time(),
+            "timeout_seconds": timeout,
             "paths": {key: str(path) for key, path in paths.items()},
         }
         atomic_write_suite_json(paths["request_path"], request)
@@ -599,9 +607,77 @@ def start_suite_background(
 def suite_job_finished(job: SuiteStart) -> bool:
     if job.skipped:
         return True
-    if job.result_path is None:
-        raise RuntimeError("suite run metadata is missing its result path")
-    return job.result_path.is_file()
+    if job.result_path is None or job.lifecycle_path is None:
+        raise RuntimeError("suite run metadata is missing its result or lifecycle path")
+    return job.result_path.is_file() or not _lock_is_held(job.lifecycle_path)
+
+
+def _lock_is_held(path: Path) -> bool:
+    if not path.is_file():
+        raise RuntimeError(f"invalid suite run metadata: missing lifecycle lock at {path}")
+    descriptor = os.open(path, os.O_RDWR)
+    try:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        return False
+    finally:
+        os.close(descriptor)
+
+
+def _interrupted_result(job: SuiteStart, *, allow_dirty: bool) -> SuiteResult:
+    if not job.log_path.is_file():
+        raise RuntimeError(f"required suite output is missing at {job.log_path}")
+    output = job.log_path.read_text(encoding="utf-8", errors="replace")
+    revision, diff, _ = resolve_suite_revision(
+        job.worktree,
+        allow_dirty=allow_dirty,
+        provisional_result="blocked",
+    )
+    return SuiteResult(
+        exit_code=3,
+        duration_s=max(0.0, time.monotonic() - job.started_monotonic),
+        output=output,
+        output_sha256=output_sha256(output),
+        failing_node_ids=[],
+        result="blocked",
+        revision=revision,
+        diff_sha256=diff,
+        run_id=job.run_id,
+        reason="interrupted",
+    )
+
+
+def cancel_suite_run(job: SuiteStart) -> str:
+    if job.skipped:
+        return "skipped"
+    if job.cancel_path is None or job.result_path is None or job.lifecycle_path is None:
+        raise RuntimeError("suite run metadata is missing cancellation paths")
+    job_dir = job.run_dir.parent.parent if job.run_dir is not None else None
+    if job_dir is None:
+        raise RuntimeError("suite run metadata is missing its run directory")
+    guard_path = job_dir / "job.lock"
+    with guard_path.open("a+b") as guard:
+        fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
+        if job.result_path.is_file():
+            terminal = read_suite_json_object(job.result_path)
+            reason = terminal.get("reason")
+            return reason if isinstance(reason, str) else "completed"
+        if not _lock_is_held(job.lifecycle_path):
+            return "interrupted"
+        if job.cancel_path.is_file():
+            request = read_suite_json_object(job.cancel_path)
+            if request.get("run_id") != job.run_id:
+                raise RuntimeError(f"invalid cancellation metadata at {job.cancel_path}")
+            reason = request.get("reason")
+            return reason if isinstance(reason, str) else "cancelled"
+        atomic_write_suite_json(
+            job.cancel_path,
+            {"run_id": job.run_id, "reason": "cancelled", "requested_at_epoch": time.time()},
+        )
+    return "requested"
 
 
 def poll_suite(
@@ -612,6 +688,8 @@ def poll_suite(
     """If the background job finished, return a ``SuiteResult``; else ``None``."""
     if not suite_job_finished(job):
         return None
+    if job.result_path is not None and not job.result_path.is_file():
+        return _interrupted_result(job, allow_dirty=allow_dirty)
     return collect_suite(job, allow_dirty=allow_dirty)
 
 
@@ -633,8 +711,12 @@ def collect_suite(
             skipped=True,
             skip_reason=job.skip_reason,
         )
-    if job.result_path is None or not job.result_path.is_file():
-        raise RuntimeError("suite run has no terminal result")
+    if job.result_path is None:
+        raise RuntimeError("suite run metadata is missing its result path")
+    if not job.result_path.is_file():
+        if job.lifecycle_path is not None and not _lock_is_held(job.lifecycle_path):
+            return _interrupted_result(job, allow_dirty=allow_dirty)
+        raise RuntimeError("suite run is still active")
     terminal = read_suite_json_object(job.result_path)
     if terminal.get("run_id") != job.run_id:
         raise RuntimeError(f"invalid suite run metadata at {job.result_path}: run id mismatch")

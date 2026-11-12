@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -10,7 +11,7 @@ from typing import IO
 
 from orchestra.canon.types import JsonValue
 from orchestra.conductor.suite import atomic_write_suite_json, read_suite_json_object
-from orchestra.tools import CliTool, ToolError
+from orchestra.tools import CliTool, ProcessHandle, ToolError
 
 
 def _required_text(request: Mapping[str, JsonValue], key: str, path: Path) -> str:
@@ -31,6 +32,7 @@ def _request_paths(request: Mapping[str, JsonValue], request_path: Path) -> dict
         "result_path",
         "exit_path",
         "lifecycle_path",
+        "cancel_path",
     )
     parsed: dict[str, Path] = {}
     for name in names:
@@ -62,12 +64,47 @@ def _write_result(
     )
 
 
+def _timeout(request: Mapping[str, JsonValue], path: Path) -> float | None:
+    value = request.get("timeout_seconds")
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RuntimeError(f"invalid suite run metadata at {path}: invalid timeout")
+    timeout = float(value)
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise RuntimeError(f"invalid suite run metadata at {path}: invalid timeout")
+    return timeout
+
+
+def _cancel_reason(path: Path, run_id: str) -> str | None:
+    if not path.is_file():
+        return None
+    request = read_suite_json_object(path)
+    if request.get("run_id") != run_id or request.get("reason") != "cancelled":
+        raise RuntimeError(f"invalid cancellation metadata at {path}")
+    return "cancelled"
+
+
+def _stop_group(process: ProcessHandle) -> int | None:
+    process.terminate_group()
+    deadline = time.monotonic() + 5.0
+    while process.group_exists and time.monotonic() < deadline:
+        time.sleep(0.02)
+    if process.group_exists:
+        process.kill_group()
+    try:
+        return process.wait(timeout=1.0)
+    except ToolError:
+        return process.returncode
+
+
 def run(request_path: Path, lifecycle_fd: int) -> int:
     request = read_suite_json_object(request_path)
     run_id = _required_text(request, "run_id", request_path)
     worktree = Path(_required_text(request, "worktree", request_path))
     command = _required_text(request, "command", request_path)
     paths = _request_paths(request, request_path)
+    timeout = _timeout(request, request_path)
     started = time.monotonic()
     exit_code: int | None = None
     reason = "startup_failed"
@@ -79,9 +116,26 @@ def run(request_path: Path, lifecycle_fd: int) -> int:
             cwd=worktree,
             stdout=output,
         )
-        atomic_write_suite_json(paths["ready_path"], {"run_id": run_id, "ready": True})
+        atomic_write_suite_json(
+            paths["ready_path"], {"run_id": run_id, "ready": True, "worker_pid": os.getpid()}
+        )
         reason = "completed"
-        exit_code = process.wait()
+        deadline = time.monotonic() + timeout if timeout is not None else None
+        while True:
+            code = process.returncode
+            if code is not None:
+                exit_code = process.wait(timeout=0)
+                break
+            cancel_reason = _cancel_reason(paths["cancel_path"], run_id)
+            if cancel_reason is not None:
+                reason = cancel_reason
+                exit_code = _stop_group(process)
+                break
+            if deadline is not None and time.monotonic() >= deadline:
+                reason = "timeout"
+                exit_code = _stop_group(process)
+                break
+            time.sleep(0.05)
     except (OSError, RuntimeError, ToolError) as error:
         worker_log = paths["worker_log_path"]
         with worker_log.open("ab") as log:
