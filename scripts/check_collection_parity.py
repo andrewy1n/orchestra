@@ -43,9 +43,16 @@ def collect(root: Path) -> set[str]:
     return ids
 
 
+def base_ref(git: Git) -> str:
+    for ref in ("origin/main", "main"):
+        if git.run("rev-parse", "--verify", "--quiet", ref).returncode == 0:
+            return ref
+    sys.exit("neither origin/main nor main exists")
+
+
 def main() -> int:
     git = Git(REPO)
-    base = git.run("merge-base", "HEAD", "main").stdout.strip()
+    base = git.run("merge-base", "HEAD", base_ref(git)).stdout.strip()
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / "base.tar"
         git.run("archive", "--format=tar", f"--output={archive}", base)
