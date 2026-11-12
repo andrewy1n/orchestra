@@ -126,6 +126,14 @@ class Polling {
 
 export const polling = new Polling();
 
+export function bindSnapshotPolling(): void {
+	const needsSnapshot = $derived(navigation.route.name !== "home");
+	$effect(() => {
+		const fetchSnapshot = needsSnapshot;
+		return untrack(() => polling.start(fetchSnapshot));
+	});
+}
+
 export function leaveHref(): string {
 	const route = navigation.route;
 	if (route.name === "task" || route.name === "requirement") {
