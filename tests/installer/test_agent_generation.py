@@ -17,7 +17,7 @@ from pathlib import Path
 
 from installer import agents
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MARKER = ".orchestra-install.json"
 BUILD = REPO_ROOT / "scripts" / "build_skills.py"
 GENERATED_AGENT = REPO_ROOT / "agents" / "reviewer.md"
