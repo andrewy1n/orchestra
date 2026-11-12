@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, Literal, overload
@@ -270,3 +271,23 @@ def test_run_fn_accepts_no_timeout(tmp_path: Path) -> None:
         env=None,
     )
     assert result.stdout.strip() == "ok"
+
+
+def test_started_process_exposes_exit_status(tmp_path: Path) -> None:
+    tool = PythonTool(tmp_path)
+    process = tool.start_process([sys.executable, "-c", "raise SystemExit(7)"])
+
+    assert process.wait(timeout=5) == 7
+    assert process.returncode == 7
+
+
+def test_started_process_can_stop_its_process_group(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("process groups require a Unix host")
+    tool = PythonTool(tmp_path)
+    process = tool.start_process([sys.executable, "-c", "import time; time.sleep(30)"])
+    time.sleep(0.05)
+
+    process.terminate_group()
+
+    assert process.wait(timeout=5) < 0
