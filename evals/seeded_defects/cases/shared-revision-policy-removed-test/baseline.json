@@ -1,0 +1,17 @@
+{
+  "uv run pytest -q tests/dashboard/test_revision_display.py -k canon_revision": "pass",
+  "uv run pytest -q tests/dashboard/test_revision_evidence.py": "pass",
+  "uv run pytest -q tests/dashboard/test_revision_display.py -k missing_head": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k production_revision_paths && uv run pytest -q tests/test_gate.py -k gate_terms_revision_policy_matrix": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r2_case": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r3_empty": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r5_prefix": "pass",
+  "uv run pytest -q tests/test_revision_policy.py tests/test_phase_reviewer.py tests/test_tiered_verification.py tests/test_suite_config.py tests/test_gate.py tests/dashboard/test_revision_evidence.py tests/dashboard/test_revision_display.py tests/dashboard/test_dashboard_gates.py": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r4_exact": "pass",
+  "uv run pytest -q tests/test_gate.py -k gate_holds_with_required_suite_passing_at_head": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r1_whitespace": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r7_unrelated": "pass",
+  "uv run basedpyright && uvx ruff@0.13.1 check . && uvx ruff@0.13.1 format --check .": "pass",
+  "uv run pytest -q tests/dashboard/test_revision_evidence.py::test_evidence_label_uses_shared_revision_rule": "pass",
+  "uv run pytest -q tests/test_revision_policy.py -k r6_short_prefix": "pass"
+}

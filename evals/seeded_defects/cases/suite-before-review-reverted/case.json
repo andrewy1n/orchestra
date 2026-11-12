@@ -1,0 +1,11 @@
+{
+  "phase": "suite-before-review",
+  "revision": "e4a3981b66a9f54c55f2fc993e4eac15ff81cf07",
+  "kind": "synthetic-defect",
+  "expected_files": [
+    "orchestra/conductor/suite.py"
+  ],
+  "expected_requirement_ids": [],
+  "diff_bytes": 21027,
+  "defect_type": "reverted-change"
+}

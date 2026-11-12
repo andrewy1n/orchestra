@@ -1,0 +1,8 @@
+{
+  "phase": "read-only-open",
+  "revision": "91fcb9929b0a076e7690edd8e03186a8b7fa1e8e",
+  "kind": "control",
+  "expected_files": [],
+  "expected_requirement_ids": [],
+  "diff_bytes": 26930
+}

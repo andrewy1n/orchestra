@@ -1,0 +1,133 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "resolve-e2e-test",
+    "body": "## Description\n\nAdd `test_end_to_end_wave_resolve` to `tests/test_wave_resolve.py`. It runs `wave end` through the CLI until it stops on a conflict, keeps both changes, stages them, runs `wave resolve` through the CLI, and sees exit 0 and the question answered.\n\n## Approach\n\nUse subprocess calls to `python -m orchestra.cli` as the existing CLI conflict test does, with the `_grep_world` helper.\n",
+    "title": "Drive wave resolve through the CLI end to end"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "verify-routine-wave-conflicts",
+    "body": "## Description\n\nProve the phase exit criteria hold together: stage a conflict between two tasks and drive `orchestra wave resolve` through its CLI entry, then run every other phase check.\n\n## Approach\n\nAdd `test_end_to_end_wave_resolve` in `tests/test_wave_resolve.py`: a temporary repository and store, two task branches that edit different lines of one file, `cli.main([\"wave\",\"end\",...])` stops on the conflict, the test edits the file to keep both changes, `cli.main([\"wave\",\"resolve\",...])` exits 0 and the question is answered. Run `tests/test_wave_resolve.py`, `tests/test_conflict_skills.py`, `tests/test_task_worktrees.py`, `tests/test_execute_wave_dispatch.py`, `tests/test_cli_surface.py`, `tests/test_skill_portability.py` and `tests/test_contract_self_consistency.py`. Do not edit the tree.\n",
+    "title": "Verify the routine wave conflicts phase"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "fix-skill-line-cap",
+    "body": "## Description\n\nThe suite fails `tests/test_skill_line_cap.py` for `execute-phase` and `plan-phase`: each `SKILL.md` is over 150 lines after the conflict wording.\n\n## Approach\n\nShorten the new wording in `skills/execute-phase/SKILL.md` and `skills/plan-phase/SKILL.md` to fit the cap and keep the full procedure in `references/mechanics.md` and `references/task-shapes.md`. Keep the phrases `tests/test_conflict_skills.py` checks.\n",
+    "title": "Keep the two skills within the line cap"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "resolve-finish",
+    "body": "## Description\n\nR3: `orchestra wave resolve` refuses unless every active acceptance of the incoming task passes on the merge commit.\nR4: `orchestra wave resolve` refuses unless every active acceptance of each task already merged in the wave passes on the merge commit.\nR6: A successful resolve commits the merge.\nR7: A successful resolve records the check-runs at the merge commit.\nR8: A successful resolve answers the blocking `merge:<task>` question.\nR9: `orchestra wave end` continues with the remaining tasks after a successful resolve.\n\n## Approach\n\nExtend `resolve` in `orchestra/conductor/wave.py`. After the guards pass, stage the resolved files (`git add -u`) and build the merge commit without moving `HEAD`: `git write-tree`, then `git commit-tree -p HEAD -p <task-branch>`. Check that commit out in a temporary detached worktree and run the active acceptances of the incoming task and of every task already merged into the phase branch in this wave, through the same path `orchestra task land` uses. Record the check-runs at that commit. When any acceptance fails, remove the temporary worktree, change nothing else, leave the question open and refuse with the failing acceptance ids; the agent's edits and the merge state stay in the phase worktree. When all pass, fast-forward the phase worktree to that commit (`git merge --ff-only`), answer the question (`canon update --transition answered` through `Project`) and return success. `orchestra wave end` already skips branches that are ancestors of the phase branch, so a second run continues with the remaining tasks; add a test that proves it.\n\nTests in `tests/test_wave_resolve.py` with `-k` groups: `incoming_acceptance` (R3), `merged_acceptance` (R4), `commits_merge` (R6), `records_check_runs` (R7), `answers_question` (R8), `wave_end_continues` (R9). Write them first and see them fail.\n",
+    "title": "Run both tasks' acceptances and finish the merge"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "resolve-guards",
+    "body": "## Description\n\nR1: `orchestra wave resolve` refuses while an unmerged path remains in the phase worktree.\nR2: `orchestra wave resolve` refuses while a conflict marker remains in a tracked file.\nR5: A refused resolve leaves the blocking `merge:<task>` question open.\n\n## Approach\n\nIn `orchestra/conductor/wave.py` add `resolve(project, repo, phase, task)` and a `ResolveRefusal` result. It reads the open `merge:<task>` question for the phase effort (`_open_question`) and refuses when none is open. In the phase worktree it refuses while `git ls-files --unmerged` lists a path. It refuses while any tracked file holds a line that starts with `<<<<<<<`, `=======` or `>>>>>>>` (`git grep -nE '^(<<<<<<<|=======|>>>>>>>)( |$)'`). With a clean tree it returns a `ready` result and changes nothing; `resolve-finish` adds the rest. Expose `orchestra wave resolve <phase> <task>` in `orchestra/cli.py` next to `wave start` and `wave end`. A refusal prints each reason to stderr and exits 1. The question stays open and no record is written.\n\nTests in `tests/test_wave_resolve.py` build a temporary repository with a conflict between two task branches and a temporary store (see `tests/test_task_worktrees.py`). Name them so these `-k` filters pick one group each: `unmerged` (R1), `marker` (R2), `question_open` (R5). Write them first and see them fail.\n",
+    "title": "Add wave resolve with its refusal checks"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "conflict-skills",
+    "body": "## Description\n\nR10: `execute-phase` tells the agent to ask the user when the two tasks need competing behavior.\nR11: `plan-phase` tells the planner to add a `depends_on` edge between tasks that must rewrite the same function.\n\n## Approach\n\nEdit `skills/execute-phase/SKILL.md` step 6 and its Do-not list, and `skills/execute-phase/references/mechanics.md`. Keep that `wave end` stops on a conflict and opens the blocking question. Add: the parent resolves a routine conflict, where both tasks keep their behavior, by editing the conflicted files in the phase worktree and running `orchestra wave resolve <phase-slug> <task-slug>`; when the two tasks need competing behavior, leave the question open and ask the user. Replace \"resolve a merge conflict\" in the Do-not list with \"resolve a merge conflict by any path other than `orchestra wave resolve`\". Edit `skills/plan-phase/SKILL.md` and its `task-shapes.md`: add a `depends_on` edge between tasks that must rewrite the same function, so the later task builds on the earlier one.\n\nTests in `tests/test_conflict_skills.py`: `competing_behavior` (R10) and `depends_on_same_function` (R11) read the skill text. Update any consistency test that pins the old Do-not wording.\n",
+    "title": "Tell agents when to resolve and when to ask"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "conflict-skills-plan",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_conflict_skills.py -k depends_on_same_function"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-guards-question",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k question_open"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k incoming_acceptance"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish-continue",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k wave_end_continues"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "conflict-skills",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_conflict_skills.py -k competing_behavior"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-e2e-test",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k end_to_end"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-routine-wave-conflicts",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py tests/test_conflict_skills.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish-checks",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k records_check_runs"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-guards",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k unmerged"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish-commit",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k commits_merge"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish-merged",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k merged_acceptance"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-skill-line-cap",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_skill_line_cap.py tests/test_conflict_skills.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-guards-marker",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k marker"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "resolve-finish-answer",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_wave_resolve.py -k answers_question"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-routine-wave-conflicts-regression",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_task_worktrees.py tests/test_execute_wave_dispatch.py tests/test_cli_surface.py tests/test_skill_portability.py tests/test_contract_self_consistency.py"
+  },
+  {
+    "record_type": "specification",
+    "subject": "routine-wave-conflicts",
+    "body": "## Requirements\n\nR1: `orchestra wave resolve` refuses while an unmerged path remains in the phase worktree.\nR2: `orchestra wave resolve` refuses while a conflict marker remains in a tracked file.\nR3: `orchestra wave resolve` refuses unless every active acceptance of the incoming task passes on the merge commit.\nR4: `orchestra wave resolve` refuses unless every active acceptance of each task already merged in the wave passes on the merge commit.\nR5: A refused resolve leaves the blocking `merge:<task>` question open.\nR6: A successful resolve commits the merge.\nR7: A successful resolve records the check-runs at the merge commit.\nR8: A successful resolve answers the blocking `merge:<task>` question.\nR9: `orchestra wave end` continues with the remaining tasks after a successful resolve.\nR10: `execute-phase` tells the agent to ask the user when the two tasks need competing behavior.\nR11: `plan-phase` tells the planner to add a `depends_on` edge between tasks that must rewrite the same function.\n\n## Acceptance criteria\n\n- A test stages a conflict between two tasks that edit different lines of one file, resolves it, and sees the question answered.\n- A test resolves with a marker left and sees a refusal.\n- A test resolves a merge that breaks one task's acceptance and sees a refusal with the question open.\n- A skill consistency test finds R10 and R11 text.\n\n## Constraints\n\n- Only the parent session writes records and runs `orchestra wave resolve`.\n- `orchestra wave end` still never resolves a conflict on its own.\n- No rebase of a task branch.\n\n## Non-goals\n\n- Automatic conflict resolution inside `wave end`.\n- Detecting same-function overlap by static analysis at plan time.\n- Resolving conflicts between phase branches or against `main`.\n\n## Invariants\n\n- A task branch whose checks did not pass is never merged.\n- The phase worktree is the only integration checkout.\n- A `done` task never reopens.\n\n## Assumptions\n\n- The agent that edits the conflicted files runs in the phase worktree.\n- A task's acceptances are runnable at the merge commit in the phase worktree.\n"
+  }
+]

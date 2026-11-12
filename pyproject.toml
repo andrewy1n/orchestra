@@ -108,7 +108,7 @@ allowed-confusables = ["–", "×"]
 [tool.basedpyright]
 typeCheckingMode = "standard"
 pythonVersion = "3.10"
-include = ["orchestra", "dashboard", "installer", "tests", "scripts"]
+include = ["orchestra", "dashboard", "installer", "tests", "scripts", "evals"]
 strict = ["orchestra", "dashboard", "installer"]
 reportIgnoreCommentWithoutRule = "error"
 reportExplicitAny = "error"

@@ -1,0 +1,31 @@
+diff --git a/orchestra/canon/sqlite_backend.py b/orchestra/canon/sqlite_backend.py
+--- a/orchestra/canon/sqlite_backend.py
++++ b/orchestra/canon/sqlite_backend.py
+@@ -127,27 +117,7 @@ class SqliteBackend:
+         finally:
+             connection.close()
+ 
+-    def _connect_read_only(self) -> sqlite3.Connection:
+-        if not self.db_path.is_file():
+-            raise StoreNotInitializedError(f"store database missing: {self.db_path}")
+-        connection = sqlite3.connect(
+-            f"{self.db_path.resolve().as_uri()}?mode=ro", uri=True, timeout=10, isolation_level=None
+-        )
+-        try:
+-            connection.execute("PRAGMA busy_timeout=10000")
+-            connection.execute("PRAGMA query_only=ON")
+-            connection.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchall()
+-        except sqlite3.OperationalError as exc:
+-            connection.close()
+-            raise StoreError(f"cannot open {self.db_path} read-only: {exc}") from exc
+-        except BaseException:
+-            connection.close()
+-            raise
+-        return connection
+-
+     def _connect(self) -> sqlite3.Connection:
+-        if self.read_only:
+-            return self._connect_read_only()
+         self.data_root.mkdir(parents=True, exist_ok=True)
+         connection = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
+         try:

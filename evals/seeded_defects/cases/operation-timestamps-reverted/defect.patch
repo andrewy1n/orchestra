@@ -1,0 +1,37 @@
+diff --git a/orchestra/canon/project.py b/orchestra/canon/project.py
+--- a/orchestra/canon/project.py
++++ b/orchestra/canon/project.py
+@@ -108,33 +107,6 @@ class Project:
+         store, schemas = self._session()
+         return compute_derived(list(store.iter_records()) if records is None else records, schemas)
+ 
+-    def history(self, record_id: str) -> list[RecordChange]:
+-        """Return the accepted operations of one record, oldest first.
+-
+-        `applied_at` is `None` for an operation stored without a time. The time a record
+-        entered a state is the `applied_at` of the first entry with that state.
+-        """
+-        store, _ = self._session()
+-        chain = store.read_chain(record_id)
+-        if not chain:
+-            raise StoreError(f"unknown record: {record_id}")
+-        changes: list[RecordChange] = []
+-        for op in chain:
+-            if op.get("outcome") != "accepted":
+-                continue
+-            record = op["record"]
+-            applied_at = op.get("applied_at")
+-            changes.append(
+-                {
+-                    "seq": op["seq"],
+-                    "kind": op["kind"],
+-                    "lifecycle_state": record["lifecycle_state"] if record is not None else None,
+-                    "revision": record["revision"] if record is not None else None,
+-                    "applied_at": applied_at if isinstance(applied_at, str) else None,
+-                }
+-            )
+-        return changes
+-
+     def resolve(self, record_type: str, subject: str) -> Record:
+         """Return the latest record of the type with the subject."""
+         store, schemas = self._session()
