@@ -15,6 +15,7 @@ from dashboard.backend.hub import build_hub
 from dashboard.backend.phase import PhaseEvidence
 from dashboard.backend.server import schemas, service
 from dashboard.backend.server.app import create_app
+from dashboard.backend.task import TaskRow
 from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.errors import StoreError
@@ -175,6 +176,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
     reads = 0
     original_records = Project.records
     original_evidence = snapshot_mod.phase_evidence
+    original_tasks = snapshot_mod.task_rows
     phases: list[str] = []
 
     def records(target: Project) -> list[Record]:
@@ -184,6 +186,19 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
 
     def forbidden(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("Work loads full snapshot data")
+
+    def active_task_rows(
+        records: list[Record],
+        assignments: list[Record] | None = None,
+        amendments: list[Record] | None = None,
+        reports: list[Record] | None = None,
+        checks: list[Record] | None = None,
+        phases: list[Record] | None = None,
+    ) -> list[TaskRow]:
+        assert all(
+            record["payload"].get("phase") in ("active", "legacy-phase") for record in records
+        )
+        return original_tasks(records, assignments, amendments, reports, checks, phases)
 
     def evidence(
         phase: str,
@@ -220,7 +235,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
     monkeypatch.setattr(service, "load_snapshot", forbidden)
     monkeypatch.setattr(snapshot_mod, "_activity", forbidden)
     monkeypatch.setattr(snapshot_mod, "load_journal", forbidden)
-    monkeypatch.setattr(snapshot_mod, "task_rows", forbidden)
+    monkeypatch.setattr(snapshot_mod, "task_rows", active_task_rows)
     monkeypatch.setattr(phase_mod, "task_rows", forbidden)
     monkeypatch.setattr(snapshot_mod, "phase_evidence", evidence)
     response = TestClient(create_app(project)).get("/api/hub")

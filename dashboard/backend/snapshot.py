@@ -689,6 +689,7 @@ _WORK_TYPES = (
 def load_work_snapshot(
     target: Project, now: datetime | None = None, token: str | None = None
 ) -> Snapshot:
+    target = replace(target, read_only=True)
     now = now or datetime.now(timezone.utc)
     token = token or change_token(target)
     with store.pinned_token(token):
@@ -741,6 +742,12 @@ def load_work_snapshot(
         assessments = grouped["conductor:assessment"].get(effort, [])
         integrations = grouped["conductor:integration-report"].get(effort, [])
         phase_acceptances, phase_checks = evidence_records_by_phase(acceptances, checks)
+        active_subjects = {
+            record["subject"] for record in phases if record["lifecycle_state"] == "in_progress"
+        }
+        active_tasks = [
+            task for task in tasks if record_payload(task).get("phase") in active_subjects
+        ]
         rows: list[PhaseRow] = []
         for record in phases:
             if record["lifecycle_state"] != "in_progress":
@@ -772,6 +779,7 @@ def load_work_snapshot(
                 total=progress.total,
                 id=record["id"],
                 evidence=evidence,
+                body=record.get("body") or "",
                 in_progress=progress.in_progress,
             )
             rows.append(
@@ -793,6 +801,7 @@ def load_work_snapshot(
                 effort=effort,
                 goal=record_payload(goal).get("goal", ""),
                 phases=rows,
+                tasks=task_rows(active_tasks),
                 needs_you=_needs_you(
                     questions.get(effort, []),
                     grouped["tuner:finding"].get(effort, []),
