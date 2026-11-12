@@ -44,7 +44,7 @@ def test_review_technique_owns_validation_and_tuner_has_no_conductor_imports() -
         )
         assert not any(name and name.startswith("orchestra.conductor") for name in imported)
 
-    package_config = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    package_config = Path(__file__).resolve().parents[2] / "pyproject.toml"
     text = package_config.read_text(encoding="utf-8")
     assert not (package_config.parent / "orchestra" / "plugins.py").exists()
     assert not (package_config.parent / "orchestra" / "plugin_evidence.py").exists()

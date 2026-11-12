@@ -74,7 +74,7 @@ def test_suite_loader_ignores_canon_policy(tmp_path: Path) -> None:
 
 
 def test_repository_canon_config_contains_only_store_mechanics() -> None:
-    config_path = Path(__file__).resolve().parents[1] / ".canon" / "config.json"
+    config_path = Path(__file__).resolve().parents[2] / ".canon" / "config.json"
     config = json.loads(config_path.read_text(encoding="utf-8"))
 
     assert config["backend"] == "sqlite"

@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-import helpers as h
+from conductor_support import _commit_all, _seed_acceptance
 from conftest import REPO_ROOT, git, run_cli
 
 from orchestra.conductor.close_batch import build_batch
@@ -37,58 +37,6 @@ def _run_tuner(*args: str, cwd: Path, timeout: float = 60) -> subprocess.Complet
         env=_cli_env(),
         timeout=timeout,
     )
-
-
-def _commit_all(store: Path, message: str = "seed") -> str:
-    git(store, "add", "-A")
-    git(store, "commit", "-qm", message)
-    return git(store, "rev-parse", "HEAD").stdout.strip()
-
-
-def _seed_acceptance(
-    store: Path,
-    cli,
-    resolved_contract,
-    *,
-    subject: str,
-    verify_command: str,
-    method: str = "tdd",
-    requirement: str = "R1",
-    commit: bool = True,
-    extra_payload: dict | None = None,
-) -> dict:
-    defs = h.record_defs_by_id(resolved_contract)
-    phase_subject = f"phase-{subject}"
-    h.create_generic_record(
-        cli,
-        defs,
-        "score:phase",
-        subject=phase_subject,
-        extra_payload={"title": phase_subject, "ordinal": 1, "effort": "workflow-loop"},
-    )
-    extra = {
-        "criterion": f"criterion for {subject}",
-        "method": method,
-        "phase": phase_subject,
-        "effort": "workflow-loop",
-        "verify_command": verify_command,
-        "requirement": requirement,
-        **(extra_payload or {}),
-    }
-    result = cli(
-        "create",
-        "--type",
-        "score:acceptance",
-        "--subject",
-        subject,
-        "--payload",
-        json.dumps(extra),
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    record = json.loads(result.stdout)["record"]
-    if commit:
-        _commit_all(store, f"seed {subject}")
-    return record
 
 
 def _list_check_runs(store: Path) -> list[dict]:

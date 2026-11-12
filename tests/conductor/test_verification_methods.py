@@ -1,114 +1,13 @@
 from __future__ import annotations
 
-import hashlib
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-from canon_support import create, make_project, seed_effort
+from conductor_support import close_request, green, run_acceptance, setup_acceptance
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.check import run_check
 from orchestra.conductor.close_batch import CloseRefused, build_batch
-
-PROBE = 'from pathlib import Path\n\ndef test_probe():\n    assert Path("flag.txt").read_text() == "yes"\n'
-NODE = "test_probe.py::test_probe"
-
-
-def _commit(root: Path) -> None:
-    subprocess.run(
-        ["git", "-C", str(root), "add", "test_probe.py", "flag.txt", ".gitignore"],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        [
-            "git",
-            "-C",
-            str(root),
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@example.com",
-            "commit",
-            "-qm",
-            "test",
-        ],
-        check=True,
-        capture_output=True,
-    )
-
-
-def setup_acceptance(
-    root: Path,
-    method: str,
-    policy: str | None,
-    *,
-    frozen: bool = False,
-    phase_policy: str | None = None,
-) -> tuple[Project, Record]:
-    project = make_project(root)
-    seed_effort(project)
-    if phase_policy is not None:
-        phase = project.list("score:phase")[0]
-        project.update(phase["id"], payload={"oracle_policy": phase_policy})
-    (root / "test_probe.py").write_text(PROBE)
-    (root / "flag.txt").write_text("no")
-    (root / ".gitignore").write_text(".canon/\n.pytest_cache/\n__pycache__/\n")
-    _commit(root)
-    payload: JsonObject = {
-        "method": method,
-        "phase": "p1",
-        "effort": "alpha",
-        "verify_command": f"{sys.executable} -m pytest {NODE} -q",
-    }
-    if policy is not None:
-        payload["oracle_policy"] = policy
-    if frozen:
-        payload["test_ids"] = [NODE]
-        payload["oracle_hashes"] = [
-            "test_probe.py:sha256:" + hashlib.sha256(PROBE.encode()).hexdigest()
-        ]
-    acceptance = create(project, "score:acceptance", "probe", payload)
-    return project, acceptance
-
-
-def run_acceptance(project: Project, acceptance: Record) -> Record:
-    outcome = run_check(
-        acceptance_id=acceptance["id"], cwd=project.project_root, store_root=project.project_root
-    )
-    assert outcome.record is not None, outcome.message
-    return outcome.record
-
-
-def green(project: Project, acceptance: Record) -> Record:
-    (project.project_root / "flag.txt").write_text("yes")
-    _commit(project.project_root)
-    result = run_acceptance(project, acceptance)
-    assert result["payload"]["result"] == "pass"
-    return result
-
-
-def close_request(acceptance: Record, passed: Record, red: Record | None = None) -> JsonObject:
-    entry: JsonObject = {
-        "criterion_id": acceptance["id"],
-        "method": acceptance["payload"]["method"],
-        "check_run_id": passed["id"],
-        "result": "pass",
-    }
-    if red is not None:
-        entry["red_check_run_id"] = red["id"]
-        entry["revision"] = passed["payload"]["revision"]
-    return {
-        "subject": "probe",
-        "effort": "alpha",
-        "work_item_id": "probe-item",
-        "transition": "done",
-        "acceptance_ids": [acceptance["id"]],
-        "criteria": [entry],
-    }
 
 
 def close(project: Project, request: JsonObject) -> list[JsonObject]:

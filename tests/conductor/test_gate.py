@@ -6,37 +6,30 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-import helpers as h
 import pytest
-from conftest import REPO_ROOT, git, make_git_repo
+from conductor_support import (
+    EFFORT,
+    HEAD,
+    PHASE,
+    Cli,
+    Phase,
+    _land_args,
+    _landing,
+    _packet,
+    _review_repo_head,
+    seed,
+    write_policy,
+)
+from conftest import REPO_ROOT, git
 
 from orchestra.canon.types import Record
 from orchestra.cli import main as cli_main
 from orchestra.conductor import gate, land
-from orchestra.conductor.check import git_head
 
-PHASE = "gate-phase"
-EFFORT = "gate-effort"
-HEAD = "a" * 40
 OTHER_HEAD = "b" * 40
-PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n"
-POLICY = """[verify.stages]
-task = ["unit"]
-
-[verify.unit]
-runner = ["python3", "-m", "pytest", "{{tests}}", "--junitxml={{report}}"]
-
-[suite]
-mode = "{mode}"
-command = "{command}"
-gate = "{gate}"
-"""
-
-Cli = Callable[..., subprocess.CompletedProcess[str]]
 
 
 def _orchestra(
@@ -53,224 +46,6 @@ def _orchestra(
         cwd=str(cwd or store),
         env=env,
     )
-
-
-@dataclass
-class Phase:
-    store: Path
-    cli: Cli
-    repo: Path
-    acceptance: dict
-
-    def create(
-        self,
-        record_type: str,
-        subject: str,
-        payload: dict,
-        body: str | None = None,
-        *,
-        earlier: bool = False,
-    ) -> dict:
-        args = [
-            "create",
-            "--type",
-            record_type,
-            "--subject",
-            subject,
-            "--payload",
-            json.dumps(payload),
-        ]
-        if body is not None:
-            args.extend(["--body", body])
-        if earlier:
-            return h.run_cli_48h_ago(self.store, *args)
-        result = self.cli(*args)
-        assert result.returncode == 0, result.stdout + result.stderr
-        return json.loads(result.stdout)["record"]
-
-    def advance(self, record: dict, *states: str) -> dict:
-        for state in states:
-            result = self.cli(
-                "update",
-                "--type",
-                record["record_type"],
-                "--id",
-                record["id"],
-                "--transition",
-                state,
-                "--expected-revision",
-                record["revision"],
-            )
-            assert result.returncode == 0, result.stdout + result.stderr
-            record = json.loads(result.stdout)["record"]
-        return record
-
-    def check_run(
-        self,
-        result: str = "pass",
-        *,
-        revision: str = HEAD,
-        criterion: str | None = None,
-        method: str = "check",
-        runner: bool = True,
-        signed_by: str = "",
-        subject: str | None = None,
-        evidence_kind: str | None = None,
-        earlier: bool = False,
-    ) -> dict:
-        criterion = criterion or self.acceptance["id"]
-        payload: dict[str, object] = {
-            "criterion_id": criterion,
-            "revision": revision,
-            "result": result,
-            "effort": EFFORT,
-            "method": method,
-            "signed_by": signed_by,
-        }
-        if runner:
-            payload["runner"] = "orchestra"
-        if evidence_kind:
-            payload["evidence_kind"] = evidence_kind
-        return self.create(
-            "tuner:check-run",
-            subject or self.acceptance["subject"],
-            payload,
-            earlier=earlier,
-        )
-
-    def review(self, result: str = "pass", revision: str = HEAD, *, earlier: bool = False) -> dict:
-        return self.check_run(
-            result,
-            earlier=earlier,
-            revision=revision,
-            criterion=f"{PHASE}-review",
-            method="review",
-            runner=False,
-            subject=f"{PHASE}-review",
-            evidence_kind="review",
-        )
-
-    def suite_run(self, result: str = "pass", revision: str = HEAD) -> dict:
-        return self.check_run(
-            result,
-            revision=revision,
-            criterion=f"{PHASE}-suite",
-            subject=f"{PHASE}-suite",
-            evidence_kind="integration",
-        )
-
-    def finding(self, subject: str = "review-gate-phase-spec-gap", needs: str = "human") -> dict:
-        return self.create(
-            "tuner:finding",
-            subject,
-            {
-                "claim": "spec-gap on gate-phase",
-                "basis": "observed",
-                "invalidated_when": "human clears",
-                "effort": EFFORT,
-                "needs": needs,
-            },
-            "## Evidence\n\ne\n\n## Consequence\n\nc\n\n## Follow-up\n\nf",
-        )
-
-    def set_suite_policy(self, gate_mode: str) -> None:
-        write_policy(self.store, mode="smoke", command="true", gate=gate_mode)
-
-    def term(self, name: str) -> gate.Term:
-        terms = {t.name: t for t in gate.gate_terms(self.store, PHASE)}
-        assert name in terms, sorted(terms)
-        return terms[name]
-
-    def missing(self) -> list[str]:
-        return [t.name for t in gate.missing_terms(gate.gate_terms(self.store, PHASE))]
-
-
-def write_policy(
-    root: Path, *, mode: str = "none", command: str = "", gate: str = "required"
-) -> None:
-    (root / "orchestra.toml").write_text(POLICY.format(mode=mode, command=command, gate=gate))
-
-
-PROSE_LANDING = PHASE_BODY + "\n## Landing\n\nMerge phase/x into main after the review passes.\n"
-
-
-def _code_repo() -> Path:
-    repo = make_git_repo()
-    git(repo, "branch", "-M", "main")
-    write_policy(repo)
-    git(repo, "add", "orchestra.toml")
-    git(repo, "commit", "-qm", "policy")
-    git(repo, "checkout", "-qb", "phase/x")
-    (repo / "landed.txt").write_text("landed\n")
-    git(repo, "add", "landed.txt")
-    git(repo, "commit", "-qm", "phase work")
-    git(repo, "checkout", "-q", "main")
-    return repo
-
-
-def _landing(repo: Path, *lines: str) -> str:
-    return PHASE_BODY + "\n## Landing\n\n" + "\n".join([f"- Repo: `{repo}`", *lines]) + "\n"
-
-
-def seed(
-    store: Path,
-    cli: Cli,
-    *,
-    method: str = "check",
-    landing_lines: tuple[str, ...] = (),
-    prose_landing: bool = False,
-    verification: str = "done",
-    review: bool = True,
-    runner_check: bool = True,
-) -> Phase:
-    write_policy(store)
-    repo = _code_repo()
-    phase = Phase(store, cli, repo, {})
-    phase.create("score:effort", EFFORT, {"goal": "g", "kind": "deliver"})
-    phase.create(
-        "score:phase",
-        PHASE,
-        {"title": PHASE, "ordinal": 1, "effort": EFFORT},
-        PROSE_LANDING if prose_landing else _landing(repo, *landing_lines),
-    )
-    item = {"phase": PHASE, "kind": "deliver", "assignee": "agent", "effort": EFFORT}
-    impl = phase.create(
-        "score:work-item", f"{PHASE}-impl", {"title": "impl", **item}, "## Description\n\nd"
-    )
-    phase.advance(impl, "in_progress", "done")
-    if verification != "absent":
-        verify = phase.create(
-            "score:work-item",
-            f"verify-{PHASE}",
-            {"title": "verify", "depends_on": [f"{PHASE}-impl"], **item},
-            "## Description\n\nd",
-        )
-        if verification == "done":
-            phase.advance(verify, "in_progress", "done")
-        elif verification == "in_progress":
-            phase.advance(verify, "in_progress")
-    phase.acceptance = phase.create(
-        "score:acceptance",
-        f"{PHASE}-ac",
-        {
-            "criterion": "c",
-            "method": method,
-            "phase": PHASE,
-            "effort": EFFORT,
-            "verify_command": "true",
-            "requirement": "R1",
-        },
-    )
-    if runner_check:
-        phase.check_run(
-            method=method,
-            runner=method != "manual",
-            signed_by="me" if method == "manual" else "",
-            earlier=True,
-        )
-    if review:
-        phase.review(earlier=True)
-    return phase
 
 
 @pytest.fixture
@@ -673,25 +448,6 @@ class FakeAdapter:
         return land.LandingResult("success", 7, "https://example.test/pull/7", HEAD, (), ())
 
 
-def _land_args(phase: Phase) -> list[str]:
-    return ["land", "--phase", PHASE, "--cwd", str(phase.repo), "--store", str(phase.store)]
-
-
-def _packet(phase: Phase) -> None:
-    phase.create(
-        "conductor:proof-packet",
-        PHASE,
-        {
-            "phase": PHASE,
-            "effort": EFFORT,
-            "revision": git_head(phase.repo),
-            "base": "main",
-            "kind": "claims",
-        },
-        "## Look\nl\n\n## Machine\nm\n\n## Attention\nnone\n\n## Diff\n1 file changed\n",
-    )
-
-
 @pytest.fixture
 def adapter(monkeypatch: pytest.MonkeyPatch) -> FakeAdapter:
     fake = FakeAdapter([])
@@ -701,13 +457,6 @@ def adapter(monkeypatch: pytest.MonkeyPatch) -> FakeAdapter:
 
     monkeypatch.setattr(land, "dispatch_land", dispatch)
     return fake
-
-
-def _review_repo_head(phase: Phase) -> str:
-    head = git_head(phase.repo)
-    phase.check_run(revision=head)
-    phase.review(revision=head)
-    return head
 
 
 def test_land_refuses_when_gate_fails_no_push(

@@ -13,7 +13,7 @@ from typing import TypeGuard
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_OUTPUT = "FAILED tests/test_mod.py::test_name\n"
 
 

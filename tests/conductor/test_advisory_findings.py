@@ -5,12 +5,13 @@ from pathlib import Path
 from subprocess import CompletedProcess
 
 import pytest
-from test_gate import PHASE, Phase, _orchestra, seed
+from conductor_support import PHASE, Phase, seed
+from test_gate import _orchestra
 
 from orchestra.canon.types import JsonValue
 from orchestra.conductor import reviewer
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 
 INTEGRATION = """integration:
   interfaces: parser feeds routing

@@ -19,5 +19,5 @@ def test_tier2_module_raises_import_error():
 
 
 def test_tuner_tier2_file_absent():
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     assert not (root / "tuner" / "tier2.py").is_file()
