@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
@@ -604,6 +603,8 @@ def _suite_result_document(result: suite.SuiteResult) -> dict[str, object]:
         "refuse_message": result.refuse_message,
         "skipped": result.skipped,
         "skip_reason": result.skip_reason,
+        "run_id": result.run_id,
+        "reason": result.reason,
     }
 
 
@@ -618,32 +619,11 @@ def _suite_exit_code(result: suite.SuiteResult) -> int:
 
 
 def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
-    """Rebuild the start handle from the worktree's ``.suite/`` files.
-
-    The files are the same ones ``start_suite_background`` writes, so a
-    separate CLI process can poll a job a previous process started.
-    """
-    work = _cwd(args).resolve()
-    slug = args.phase.strip()
-    name = args.session or f"orchestra-suite-{slug}"
-    head = args.phase_head or git_head(work)
-    log_path = work / ".suite" / f"{name}.log"
-    exit_path = work / ".suite" / f"{name}.exit"
-    skip_path = work / ".suite" / f"{name}.skipped"
-    skipped = skip_path.is_file()
-    started = time.monotonic()
-    if log_path.is_file():
-        started -= max(0.0, time.time() - log_path.stat().st_ctime)
-    return suite.SuiteStart(
-        session_name=name,
-        worktree=work,
-        phase_slug=slug,
-        phase_head=head,
-        log_path=log_path,
-        exit_path=exit_path,
-        started_monotonic=started,
-        skipped=skipped,
-        skip_reason=skip_path.read_text(encoding="utf-8") if skipped else "",
+    return suite.load_suite_job(
+        worktree=_cwd(args),
+        phase_slug=args.phase,
+        session_name=args.session,
+        run_id=getattr(args, "run_id", None),
     )
 
 
@@ -981,6 +961,7 @@ def _cmd_suite_start(args: argparse.Namespace) -> int:
             "phase_head": outcome.phase_head,
             "log_path": str(outcome.log_path),
             "exit_path": str(outcome.exit_path),
+            "run_id": outcome.run_id,
             "skip_reason": outcome.skip_reason,
             "policy": _policy_document(outcome.policy) if outcome.policy else None,
         }
@@ -1004,6 +985,7 @@ def _cmd_suite_poll(args: argparse.Namespace) -> int:
                 "phase_head": job.phase_head,
                 "log_path": str(job.log_path),
                 "exit_path": str(job.exit_path),
+                "run_id": job.run_id,
             }
         )
         return 3

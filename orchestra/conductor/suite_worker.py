@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+from collections.abc import Mapping
+from pathlib import Path
+from typing import IO
+
+from orchestra.canon.types import JsonValue
+from orchestra.conductor.suite import atomic_write_suite_json, read_suite_json_object
+from orchestra.tools import CliTool, ToolError
+
+
+def _required_text(request: Mapping[str, JsonValue], key: str, path: Path) -> str:
+    value = request.get(key)
+    if not isinstance(value, str) or not value:
+        raise RuntimeError(f"invalid suite run metadata at {path}: missing {key}")
+    return value
+
+
+def _request_paths(request: Mapping[str, JsonValue], request_path: Path) -> dict[str, Path]:
+    paths = request.get("paths")
+    if not isinstance(paths, dict):
+        raise RuntimeError(f"invalid suite run metadata at {request_path}: missing paths")
+    names = (
+        "worker_log_path",
+        "output_path",
+        "ready_path",
+        "result_path",
+        "exit_path",
+        "lifecycle_path",
+    )
+    parsed: dict[str, Path] = {}
+    for name in names:
+        value = paths.get(name)
+        if not isinstance(value, str):
+            raise RuntimeError(f"invalid suite run metadata at {request_path}: missing path {name}")
+        parsed[name] = Path(value)
+    if request_path.resolve() != request_path.parent.joinpath("request.json").resolve():
+        raise RuntimeError(f"invalid suite run metadata at {request_path}: invalid request path")
+    return parsed
+
+
+def _write_result(
+    result_path: Path,
+    *,
+    run_id: str,
+    exit_code: int | None,
+    reason: str,
+    started: float,
+) -> None:
+    atomic_write_suite_json(
+        result_path,
+        {
+            "run_id": run_id,
+            "exit_code": exit_code,
+            "reason": reason,
+            "duration_s": round(max(0.0, time.monotonic() - started), 6),
+        },
+    )
+
+
+def run(request_path: Path, lifecycle_fd: int) -> int:
+    request = read_suite_json_object(request_path)
+    run_id = _required_text(request, "run_id", request_path)
+    worktree = Path(_required_text(request, "worktree", request_path))
+    command = _required_text(request, "command", request_path)
+    paths = _request_paths(request, request_path)
+    started = time.monotonic()
+    exit_code: int | None = None
+    reason = "startup_failed"
+    output: IO[bytes] | None = None
+    try:
+        output = paths["output_path"].open("wb")
+        process = CliTool(worktree).start_process(
+            ["bash", "-lc", command],
+            cwd=worktree,
+            stdout=output,
+        )
+        atomic_write_suite_json(paths["ready_path"], {"run_id": run_id, "ready": True})
+        reason = "completed"
+        exit_code = process.wait()
+    except (OSError, RuntimeError, ToolError) as error:
+        worker_log = paths["worker_log_path"]
+        with worker_log.open("ab") as log:
+            log.write(f"{type(error).__name__}: {error}\n".encode("utf-8", errors="replace"))
+    finally:
+        if output is not None:
+            output.close()
+        _write_result(
+            paths["result_path"],
+            run_id=run_id,
+            exit_code=exit_code,
+            reason=reason,
+            started=started,
+        )
+        if exit_code is not None:
+            paths["exit_path"].write_text(f"{exit_code}\n", encoding="utf-8")
+        os.close(lifecycle_fd)
+    return 0
+
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        return 2
+    try:
+        lifecycle_fd = int(sys.argv[2])
+    except ValueError:
+        return 2
+    try:
+        return run(Path(sys.argv[1]), lifecycle_fd)
+    except (OSError, RuntimeError, json.JSONDecodeError):
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
