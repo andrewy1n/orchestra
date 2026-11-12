@@ -158,6 +158,16 @@ def test_brief_check_reports_the_missing_subject() -> None:
     assert message == f"no {PHASE}-suite check-run at abc1234"
 
 
+@pytest.mark.parametrize(
+    ("gate", "blocks_merge"),
+    [("required", True), ("advisory", False), ("deferred", False)],
+)
+def test_required_advisory_deferred_merge_gate_matrix(gate: str, blocks_merge: bool) -> None:
+    policy = suite.SuitePolicy(mode="full", command="true", gate=gate)
+
+    assert policy.blocks_merge is blocks_merge
+
+
 def test_review_brief_end_to_end(
     repo: Path,
     store: Path,
