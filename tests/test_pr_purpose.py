@@ -1,4 +1,4 @@
-"""The pull request says what it is for, then carries the proof packet."""
+"""The pull request carries the phase summary and proof without its diff."""
 
 from __future__ import annotations
 
@@ -58,22 +58,26 @@ def test_description_lists_the_exit_criteria() -> None:
     )
 
 
-def test_description_carries_the_proof_packet_after_the_purpose() -> None:
+def test_description_includes_proof_without_the_redundant_diff() -> None:
     body = _body()
 
-    assert body.index("## What this PR is for") < body.index("\n## Proof packet\n")
-    assert "\n### Look\n\nRead the e2e output.\n" in body
-    assert "\n## Look\n" not in body
+    assert "## Proof packet" in body
+    assert "### Look\n\nRead the e2e output." in body
+    assert "### Machine\n\nhead abc" in body
+    assert "### Attention\n\nnone" in body
+    assert "### Diff" not in body
+    assert "1 file" not in body
 
 
-def test_a_phase_without_sections_still_gets_a_title_and_the_packet() -> None:
+def test_a_phase_without_sections_still_includes_the_proof_packet() -> None:
     bare = _phase("no sections here\n")
 
     body = pull_request_body(describe_phase(bare), PACKET)
 
     assert pull_request_title(bare) == "Land through CI repair to close (land-to-close)"
     assert "## Proof packet" in body
-    assert "## What this PR is for" not in body
+    assert "### Look" in body
+    assert "### Diff" not in body
 
 
 class Recorder:
