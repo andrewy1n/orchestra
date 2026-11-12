@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from conftest import git, make_git_repo
 
+from orchestra.cli import _build_parser
 from orchestra.conductor import suite
 from orchestra.conductor.suite import (
     SuitePolicy,
@@ -250,3 +251,26 @@ def test_cancellation_stops_only_the_selected_run(tmp_path: Path) -> None:
     assert result.reason == "cancelled"
     assert result.result == "blocked"
     assert suite.cancel_suite_run(started) == "cancelled"
+
+
+def test_suite_cli_parses_timeout_run_selection_and_required_cancel_id() -> None:
+    parser = _build_parser()
+    start = parser.parse_args(["suite", "start", "--phase", "p1", "--timeout", "3.5"])
+    poll = parser.parse_args(
+        ["suite", "poll", "--phase", "p1", "--run-id", "9ecdad9be7e942e4aaf0fc7d9b0d3d5f"]
+    )
+    cancel = parser.parse_args(
+        [
+            "suite",
+            "cancel",
+            "--phase",
+            "p1",
+            "--run-id",
+            "9ecdad9be7e942e4aaf0fc7d9b0d3d5f",
+        ]
+    )
+
+    assert start.timeout == 3.5
+    assert poll.run_id == cancel.run_id
+    with pytest.raises(SystemExit):
+        parser.parse_args(["suite", "cancel", "--phase", "p1"])

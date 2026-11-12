@@ -36,11 +36,16 @@ waive suite policy — a human changes `[suite]` in the root
 `[suite]` section or `mode=none` → skip.
 `mode=external` or `gate=deferred` → do not run locally (`deferred` =
 Landing human stop). For `smoke`/`full` with a `command`: run via
-`orchestra suite start` / `poll` / `collect` / `record` in the phase
-worktree (tmux); one check-run at phase-head SHA, subject
+`orchestra suite start` / `poll` / `collect` / `cancel` / `record` in the phase
+worktree; one check-run at phase-head SHA, subject
 `<phase-slug>-suite`, `evidence_kind: integration`, with runner
 metadata. Dirty-only pass refused like `orchestra check`. Suite is
 never red-first.
+
+`suite start` returns an immutable `run_id`. Pass it to `poll`, `collect`,
+and `record` when you inspect an older run. Add `--timeout <seconds>` to
+bound a run. Cancel with `orchestra suite cancel --run-id <run_id>`.
+The `--session` option remains a job label.
 
 After a local run:
 
@@ -60,15 +65,17 @@ or finding. A `pre-existing` label does not change the gate: `required`
 still blocks and `advisory` still does not. Put the pre-existing ids in
 front of the user; do not wait silently.
 
-Orphaned tmux: `tmux attach -t orchestra-suite-<phase-slug>` or
-inspect worktree `.suite/`; re-start if gone. Do not fix-and-rerun
-inside this step.
+For an orphaned worker, inspect the run's `worker.log`, `result.json`, and
+`output.log` under `.suite/jobs/`. Older `.suite/<label>.log` and
+`.suite/<label>.exit` files are diagnostic only. Do not signal saved PIDs.
+Do not fix-and-rerun inside this step.
 
 ```bash
 orchestra suite record \
   --phase "<phase-slug>" \
   --effort "<focus>" \
-  --cwd <phase-worktree>
+  --cwd <phase-worktree> \
+  --run-id "<run-id>"
 
 canon create --type tuner:finding \
   --subject "suite-advisory-<phase-slug>" \

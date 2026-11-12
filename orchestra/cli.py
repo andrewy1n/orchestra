@@ -369,7 +369,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_parser = sub.add_parser(
         "suite",
-        help="Phase suite: configured policy, background run, collect, record",
+        help="Phase suite: policy, start, poll, collect, cancel, record",
     )
     suite_sub = suite_parser.add_subparsers(dest="action", required=True)
 
@@ -381,7 +381,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     suite_start = suite_sub.add_parser(
         "start",
-        help="Start the configured suite in a detached tmux session",
+        help="Start the configured suite in a detached worker process",
     )
     _add_suite_job_arguments(suite_start)
     suite_start.add_argument(
@@ -390,27 +390,43 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override the configured suite command",
     )
+    suite_start.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Stop the suite command after this many seconds",
+    )
     suite_poll = suite_sub.add_parser(
         "poll",
         help="Return the suite result when the background job finished, else 'running'",
     )
-    _add_suite_job_arguments(suite_poll)
+    _add_suite_job_arguments(suite_poll, include_run_id=True)
 
     suite_collect = suite_sub.add_parser(
         "collect",
         help="Collect the finished suite result (exit code, log, failing node ids)",
     )
-    _add_suite_job_arguments(suite_collect)
+    _add_suite_job_arguments(suite_collect, include_run_id=True)
 
     suite_record = suite_sub.add_parser(
         "record",
         help="Collect a finished suite and write its tuner:check-run",
     )
-    _add_suite_job_arguments(suite_record)
+    _add_suite_job_arguments(suite_record, include_run_id=True)
     suite_record.add_argument(
         "--effort",
         required=True,
         help="Effort/focus the check-run belongs to",
+    )
+    suite_cancel = suite_sub.add_parser(
+        "cancel",
+        help="Request cancellation of one selected suite run",
+    )
+    _add_suite_job_arguments(suite_cancel)
+    suite_cancel.add_argument(
+        "--run-id",
+        required=True,
+        help="Immutable run id returned by suite start",
     )
     suite_record.add_argument(
         "--criterion-id",
@@ -533,8 +549,12 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _add_suite_job_arguments(parser: argparse.ArgumentParser) -> None:
-    """Arguments shared by start/poll/collect/record suite jobs."""
+def _add_suite_job_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    include_run_id: bool = False,
+) -> None:
+    """Arguments shared by suite job commands."""
     parser.add_argument("--phase", required=True, help="Phase slug")
     parser.add_argument(
         "--cwd",
@@ -549,8 +569,14 @@ def _add_suite_job_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--session",
         default=None,
-        help="tmux session name (default: orchestra-suite-<phase>)",
+        help="Suite job label (default: orchestra-suite-<phase>)",
     )
+    if include_run_id:
+        parser.add_argument(
+            "--run-id",
+            default=None,
+            help="Select this immutable run instead of the current run",
+        )
     parser.add_argument(
         "--allow-dirty",
         action="store_true",
@@ -945,6 +971,7 @@ def _cmd_suite_start(args: argparse.Namespace) -> int:
             session_name=args.session,
             suite_command=args.suite_command,
             allow_dirty=args.allow_dirty,
+            timeout=args.timeout,
         )
     except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
         print(f"orchestra suite start: {exc}", file=sys.stderr)
@@ -1031,6 +1058,25 @@ def _cmd_suite_record(args: argparse.Namespace) -> int:
         return 2
     _print_json({"ok": True, "op": "suite-record", "record": record})
     return 0
+
+
+def _cmd_suite_cancel(args: argparse.Namespace) -> int:
+    try:
+        job = _suite_job(args)
+        state = suite.cancel_suite_run(job)
+    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
+        print(f"orchestra suite cancel: {exc}", file=sys.stderr)
+        return 2
+    _print_json(
+        {
+            "ok": True,
+            "op": "suite-cancel",
+            "state": state,
+            "session_name": job.session_name,
+            "run_id": job.run_id,
+        }
+    )
+    return 0 if state in ("requested", "cancelled", "completed", "skipped") else 2
 
 
 def _cmd_land(args: argparse.Namespace) -> int:
@@ -1435,6 +1481,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_suite_poll(args)
         if args.action == "collect":
             return _cmd_suite_collect(args)
+        if args.action == "cancel":
+            return _cmd_suite_cancel(args)
         return _cmd_suite_record(args)
     if args.command == "land":
         return _cmd_land(args)

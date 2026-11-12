@@ -1,8 +1,8 @@
-"""Phase-level suite runner: policy, background tmux, check-run, gate, fix routing.
+"""Phase-level suite runner: policy, background worker, check-run, gate, fix routing.
 
 Parent session loads ``[suite]`` from ``orchestra.toml``, starts the
-configured command in a detached tmux window in the phase worktree when mode
-is smoke/full, polls for completion, and records one ``tuner:check-run`` with
+configured command in a detached worker in the phase worktree when mode is
+smoke/full, polls for completion, and records one ``tuner:check-run`` with
 ``evidence_kind: integration`` and subject ``<phase>-suite``. Does not
 fix-and-rerun inline. Suite is never red-first.
 """
@@ -1031,9 +1031,7 @@ def record_suite_check_run(
 
 
 def orphan_recovery_hint(job: SuiteStart) -> str:
-    """Document how to recover if the tmux job is orphaned."""
-    return (
-        f"Orphaned suite: reattach with `tmux attach -t {job.session_name}` "
-        f"or inspect `{job.log_path}` / `{job.exit_path}`; "
-        f"re-run start_suite_background in the phase worktree if the session is gone."
-    )
+    """Point to persistent diagnostics for an orphaned suite run."""
+    worker_log = job.run_dir / "worker.log" if job.run_dir else job.log_path
+    result = job.result_path if job.result_path else job.exit_path
+    return f"Orphaned suite run {job.run_id}: inspect `{worker_log}` and `{result}`."
