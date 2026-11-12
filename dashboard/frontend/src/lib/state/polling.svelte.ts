@@ -76,7 +76,7 @@ class Polling {
 	}
 
 	applyToken = (token: string): void => {
-		if (this.token && this.token !== token) this.generation += 1;
+		if (this.token !== token) this.generation += 1;
 		this.token = token;
 		this.pollError = "";
 	};

@@ -199,6 +199,25 @@ afterEach(() => {
 });
 
 describe("Work data loading", () => {
+	it("R7 refreshes Work when the first token arrives after a store change", async () => {
+		const pending = deferred<Response>();
+		let title = "Review caps";
+		const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "/api/hub") return json(work(title));
+			if (url === "/api/token") return pending.promise;
+			throw new Error(`Unexpected request: ${url}`);
+		});
+		vi.stubGlobal("fetch", fetcher);
+		await mountWork();
+		expect(document.querySelector("[data-hub]")?.textContent).toContain(title);
+		title = "Check the new work";
+		pending.resolve(json({ token: "tok-2" }));
+		await settle();
+		expect(document.querySelector("[data-hub]")?.textContent).toContain(title);
+		expect(requests(fetcher)).not.toContain("/api/snapshot");
+	});
+
 	it("R7 starts Work without requesting or awaiting the full snapshot", async () => {
 		const pending = deferred<Response>();
 		const fetcher = stubRequests(
