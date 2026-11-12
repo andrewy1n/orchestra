@@ -291,11 +291,12 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
     assert github.body.startswith("## What this PR is for\n\nProject config policy is required.\n")
     assert "\n## Approach\n\nUse a configured adapter.\n" in github.body
     assert "\n## Exit criteria\n\nThe adapter reports completed CI.\n" in github.body
-    assert github.body.endswith(
-        "\n## Proof packet\n\n"
-        "### Look\nOpen the final phase proof.\n\n### Machine\nproof id\n\n"
-        "### Attention\nnone\n\n### Diff\n1 file changed\n"
-    )
+    assert "## Proof packet" in github.body
+    assert "### Look\nOpen the final phase proof." in github.body
+    assert "### Machine\nproof id" in github.body
+    assert "### Attention\nnone" in github.body
+    assert "### Diff" not in github.body
+    assert "1 file changed" not in github.body
     assert github.poll == 2
     assert all("merge" not in event for event in github.events)
     output = capsys.readouterr().out

@@ -35,7 +35,7 @@ def pinned_token(token: str) -> Generator[None, None, None]:
         _pin.token = None
 
 
-def _catalog(target: Project) -> list[Record]:
+def _catalog(target: Project, *, required: bool = False) -> list[Record]:
     key = str(target.store_path)
     with _catalog_lock:
         token = getattr(_pin, "token", None) or change_token(target)
@@ -45,10 +45,19 @@ def _catalog(target: Project) -> list[Record]:
         try:
             records = target.records()
             rows = attach_derived_all(records, target.derived(records))
-        except StoreError:
+        except StoreError as exc:
+            if required:
+                raise ModelError(f"catalog read failed: {exc}") from exc
             return []
         _catalog_cache[key] = (token, rows)
         return rows
+
+
+def catalog_records(target: Project) -> list[Record]:
+    try:
+        return _catalog(target, required=True)
+    except (OSError, ValueError) as exc:
+        raise ModelError(f"catalog read failed: {exc}") from exc
 
 
 def declared_record_types(target: Project) -> frozenset[str] | None:

@@ -57,8 +57,12 @@ def _demote(markdown: str) -> str:
     return re.sub(r"^(#{2,5}) ", r"#\1 ", markdown, flags=re.MULTILINE)
 
 
+def _without_diff(markdown: str) -> str:
+    return re.sub(r"(?ms)^## Diff\s*$.*?(?=^## |\Z)", "", markdown).strip()
+
+
 def pull_request_body(description: Mapping[str, str], packet: str) -> str:
-    """Say what the pull request is for, then carry the proof packet under its own heading."""
+    """Say what the pull request is for, then include proof without its diff."""
     parts: list[str] = []
     if description.get("problem"):
         parts.append(f"## What this PR is for\n\n{description['problem']}")
@@ -66,5 +70,5 @@ def pull_request_body(description: Mapping[str, str], packet: str) -> str:
         parts.append(f"## Approach\n\n{description['approach']}")
     if description.get("exit_criteria"):
         parts.append(f"## Exit criteria\n\n{description['exit_criteria']}")
-    parts.append(f"## Proof packet\n\n{_demote(packet.strip())}")
-    return "\n\n".join(parts) + "\n"
+    parts.append(f"## Proof packet\n\n{_demote(_without_diff(packet.strip()))}")
+    return "\n\n".join(parts) + ("\n" if parts else "")

@@ -99,7 +99,7 @@ def open_pull_request(
     try:
         github.push_branch(remote, branch)
         existing = github.find_pull_request(branch)
-        body = pull_request_body(description, proof_packet) if description else proof_packet
+        body = pull_request_body(description or {}, proof_packet)
         if existing is None:
             number, url = github.create_pull_request(branch, base, pr_title, body)
         else:
