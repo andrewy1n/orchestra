@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import os
-import subprocess
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
+
+from orchestra.tools import run_subprocess
+from orchestra.tools.git import Git
 
 REPO = Path(__file__).resolve().parent.parent
 LAYOUT_TEST = "test_component_layout.py"
@@ -17,37 +22,37 @@ COLLECT = [
 ]
 
 
-def git(*args: str, cwd: Path = REPO) -> bytes:
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True).stdout
-
-
 def collect(root: Path) -> set[str]:
-    env = {**os.environ, "PYTHONPATH": str(root)}
-    result = subprocess.run(
+    result = run_subprocess(
         [sys.executable, "-m", "pytest", *COLLECT],
         cwd=root,
-        env=env,
+        input=None,
+        timeout=None,
         capture_output=True,
         text=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(root)},
     )
     if result.returncode != 0:
         sys.exit(f"collection failed in {root}:\n{result.stdout[-2000:]}{result.stderr[-2000:]}")
-    ids = set()
+    ids: set[str] = set()
     for line in result.stdout.splitlines():
-        if "::" not in line:
-            continue
-        path, _, rest = line.partition("::")
-        ids.add(f"{Path(path).name}::{rest}")
+        path, separator, rest = line.partition("::")
+        if separator:
+            ids.add(f"{Path(path).name}::{rest}")
     return ids
 
 
 def main() -> int:
-    base = git("merge-base", "HEAD", "main").decode().strip()
+    git = Git(REPO)
+    base = git.run("merge-base", "HEAD", "main").stdout.strip()
     with tempfile.TemporaryDirectory() as tmp:
-        archive = subprocess.Popen(["git", "archive", base], cwd=REPO, stdout=subprocess.PIPE)
-        subprocess.run(["tar", "-x", "-C", tmp], stdin=archive.stdout, check=True)
-        archive.wait()
-        before = collect(Path(tmp))
+        archive = Path(tmp) / "base.tar"
+        git.run("archive", "--format=tar", f"--output={archive}", base)
+        tree = Path(tmp) / "tree"
+        with tarfile.open(archive) as bundle:
+            bundle.extractall(tree, filter="data")
+        before = collect(tree)
     after = collect(REPO)
     added = {i for i in after - before if i.startswith(f"{LAYOUT_TEST}::")}
     missing = before - after
