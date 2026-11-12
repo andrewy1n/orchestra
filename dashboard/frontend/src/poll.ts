@@ -3,13 +3,14 @@ import type { Snapshot } from "./types";
 import { TOKEN_POLL_MS } from "./types";
 
 export interface TokenPoller {
-	/** Last token value applied to a snapshot load. */
 	token: string;
 	/** Stop the interval. */
 	stop: () => void;
 }
 
 export interface TokenPollerOptions {
+	fetchSnapshot?: boolean;
+	onToken?: (token: string) => void;
 	/** Called whenever a fresh snapshot is loaded. */
 	onSnapshot: (snapshot: Snapshot) => void;
 	/** Called when a poll or load fails. */
@@ -21,46 +22,59 @@ export interface TokenPollerOptions {
 	getSnapshot?: () => Promise<Snapshot>;
 }
 
-/**
- * Load the snapshot once, then poll `/api/token` on an interval and
- * request `/api/snapshot` again only when the token value changes.
- */
 export function startTokenPoller(options: TokenPollerOptions): TokenPoller {
 	const intervalMs = options.intervalMs ?? TOKEN_POLL_MS;
+	const fetchSnapshot = options.fetchSnapshot ?? true;
+	const controller = new AbortController();
 	const getToken =
-		options.getToken ?? (() => getJson<{ token: string }>("token"));
+		options.getToken ??
+		(() => getJson<{ token: string }>("token", { signal: controller.signal }));
 	const getSnapshot =
-		options.getSnapshot ?? (() => getJson<Snapshot>("snapshot"));
+		options.getSnapshot ??
+		(() => getJson<Snapshot>("snapshot", { signal: controller.signal }));
 
 	const state: TokenPoller = { token: "", stop: () => {} };
 	let timer: ReturnType<typeof setInterval> | undefined;
 	let stopped = false;
+	let polling = false;
 
 	async function loadSnapshot(): Promise<void> {
 		const snapshot = await getSnapshot();
 		if (stopped) return;
 		state.token = snapshot.token;
+		options.onToken?.(snapshot.token);
 		options.onSnapshot(snapshot);
 	}
 
 	async function poll(): Promise<void> {
+		if (stopped || polling) return;
+		polling = true;
 		try {
 			const data = await getToken();
 			if (stopped) return;
 			if (data.token !== state.token) {
-				await loadSnapshot();
+				if (fetchSnapshot) {
+					await loadSnapshot();
+				} else {
+					state.token = data.token;
+					options.onToken?.(data.token);
+				}
 			}
 		} catch (err) {
-			options.onError?.(err instanceof Error ? err.message : String(err));
+			if (!stopped)
+				options.onError?.(err instanceof Error ? err.message : String(err));
+		} finally {
+			polling = false;
 		}
 	}
 
-	// Kick off initial load, then start the interval.
 	void (async () => {
 		try {
-			await loadSnapshot();
+			if (fetchSnapshot) await loadSnapshot();
+			else await poll();
 		} catch (err) {
-			options.onError?.(err instanceof Error ? err.message : String(err));
+			if (!stopped)
+				options.onError?.(err instanceof Error ? err.message : String(err));
 		}
 		if (!stopped) {
 			timer = setInterval(() => {
@@ -71,6 +85,7 @@ export function startTokenPoller(options: TokenPollerOptions): TokenPoller {
 
 	state.stop = () => {
 		stopped = true;
+		controller.abort();
 		if (timer !== undefined) clearInterval(timer);
 	};
 

@@ -20,7 +20,7 @@
   import { handleKey } from "$lib/state/keys";
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
   import { bindPhase } from "$lib/state/phase.svelte";
-  import { bindPolling, polling } from "$lib/state/polling.svelte";
+  import { bindPolling, bindSnapshotPolling, polling } from "$lib/state/polling.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
   import { applyTheme, loadTheme, saveTheme, type Theme, toggle } from "./theme";
@@ -53,6 +53,8 @@
     applyTheme(theme);
   });
 
+  bindSnapshotPolling();
+
   function onToggleTheme() {
     theme = toggle(theme);
     saveTheme(theme);
@@ -64,10 +66,7 @@
     const onKey = (event: KeyboardEvent) => handleKey(event, onToggleTheme);
     window.addEventListener("keydown", onKey, true);
 
-    const stopPolling = polling.start();
-
     return () => {
-      stopPolling();
       stopRoute();
       window.removeEventListener("keydown", onKey, true);
     };

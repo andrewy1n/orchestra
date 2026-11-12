@@ -1,6 +1,7 @@
 import { getJson } from "../../api";
 import type { HubResponse } from "../../api-types";
 import { polling } from "./polling.svelte";
+import { navigation } from "./route.svelte";
 
 class HubState {
 	data = $state<HubResponse | null>(null);
@@ -27,12 +28,13 @@ function isHub(data: unknown): data is HubResponse {
 	);
 }
 
-/** Reloads GET /api/hub whenever the snapshot token changes. */
 export function bindHub() {
 	hub.reset();
+	const active = $derived(navigation.route.name === "home");
 
 	$effect(() => {
-		if (!polling.snapshot?.token) return;
+		polling.generation;
+		if (!active) return;
 		let cancelled = false;
 		void getJson<HubResponse>("hub")
 			.then((data) => {

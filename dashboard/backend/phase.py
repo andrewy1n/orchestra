@@ -34,7 +34,6 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
-from orchestra.derive import release_ready as derive_release_ready
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
@@ -189,6 +188,23 @@ def _choices(subjects: list[str], decisions: list[Record]) -> tuple[DecisionChoi
         )
         for subject in subjects
     )
+
+
+def evidence_records_by_phase(
+    acceptances: list[Record], checks: list[Record]
+) -> tuple[dict[str, list[Record]], dict[str, list[Record]]]:
+    by_phase: dict[str, list[Record]] = {}
+    acceptance_phases: dict[str, str] = {}
+    for record in acceptances:
+        phase = record_payload(record).get("phase") or ""
+        by_phase.setdefault(phase, []).append(record)
+        acceptance_phases[record["id"]] = phase
+    phase_checks: dict[str, list[Record]] = {}
+    for record in checks:
+        phase = acceptance_phases.get(record_payload(record).get("criterion_id") or "")
+        if phase is not None:
+            phase_checks.setdefault(phase, []).append(record)
+    return by_phase, phase_checks
 
 
 def _latest_requirement_check(
@@ -651,9 +667,12 @@ def phase_evidence(
         for (record_phase, requirement), record in latest_assessment_map(assessments).items()
         if record_phase == phase
     }
+    acceptances_by_phase, checks_by_phase = evidence_records_by_phase(acceptances, checks)
+    acceptances = acceptances_by_phase.get(phase, [])
+    checks = checks_by_phase.get(phase, [])
     pool = _derivation_pool([spec], acceptances, checks, assessments)
     derived = requirement_status(pool, phase)
-    ready = derive_release_ready(pool, phase)
+    ready = bool(derived) and all(row.status == "verified" for row in derived.values())
     rows: list[RequirementRow] = []
     for requirement in spec_ids:
         status, nxt, confidence = _requirement_view(

@@ -18,7 +18,6 @@ from dashboard.backend.phase import (
     load_requirement_detail,
     tabs_for,
 )
-from dashboard.backend.records import list_records
 from dashboard.backend.server import schemas
 from dashboard.backend.snapshot import (
     BacklogItem,
@@ -26,6 +25,7 @@ from dashboard.backend.snapshot import (
     NeedsYouItem,
     Snapshot,
     load_snapshot,
+    load_work_snapshot,
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
@@ -108,30 +108,49 @@ class Cache:
     """Snapshot and detail cache keyed by ``dashboard.backend.store.change_token``."""
 
     def __init__(self, target: Project) -> None:
-        self.target = target
+        self.target = replace(target, read_only=True)
         self.lock = threading.Lock()
+        self.snapshot_build_lock = threading.Lock()
+        self.work_build_lock = threading.Lock()
+        self.generation = 0
         self.token = ""
         self.snapshot: Snapshot | None = None
+        self.work_snapshot: Snapshot | None = None
         self.details: dict[tuple[str, ...], CachedResponse] = {}
 
     def current(self) -> Snapshot:
-        token = store.change_token(self.target)
-        with self.lock:
-            if self.snapshot is not None and token == self.token:
-                return self.snapshot
-        snapshot = load_snapshot(self.target, token=token)
-        with self.lock:
-            if token != self.token:
-                self.details.clear()
-            self.token = snapshot.token or token
-            self.snapshot = snapshot
+        with self.snapshot_build_lock:
+            token = self.token_only()
+            with self.lock:
+                if self.snapshot is not None and token == self.token:
+                    return self.snapshot
+                generation = self.generation
+            snapshot = load_snapshot(self.target, token=token)
+            with self.lock:
+                if self.generation == generation and self.token == token:
+                    self.snapshot = snapshot
+            return snapshot
+
+    def work_current(self, now: datetime) -> Snapshot:
+        with self.work_build_lock:
+            token = self.token_only()
+            with self.lock:
+                if self.work_snapshot is not None and token == self.token:
+                    return self.work_snapshot
+                generation = self.generation
+            snapshot = load_work_snapshot(self.target, now=now, token=token)
+            with self.lock:
+                if self.generation == generation and self.token == token:
+                    self.work_snapshot = snapshot
             return snapshot
 
     def token_only(self) -> str:
-        token = store.change_token(self.target)
         with self.lock:
+            token = store.change_token(self.target)
             if token != self.token:
+                self.generation += 1
                 self.snapshot = None
+                self.work_snapshot = None
                 self.details.clear()
                 self.token = token
             return self.token
@@ -139,7 +158,9 @@ class Cache:
     def drop(self) -> None:
         """Clear snapshot and detail cache after a successful write."""
         with self.lock:
+            self.generation += 1
             self.snapshot = None
+            self.work_snapshot = None
             self.details.clear()
             self.token = ""
 
@@ -164,11 +185,12 @@ class Cache:
         cache_key = (token, *key)
         with self.lock:
             cached = self.details.get(cache_key)
+            generation = self.generation
         if isinstance(cached, response_type):
             return cached
         value = load()
         with self.lock:
-            if self.token == token:
+            if self.token == token and self.generation == generation:
                 self.details[cache_key] = value
         return value
 
@@ -195,6 +217,7 @@ class Reader:
     def __init__(self, target: Project) -> None:
         self.target = target
         self.cache = Cache(target)
+        self.read_target = self.cache.target
         self.landing_lock = threading.Lock()
         self.landing_cache: tuple[str, dict[str, Landing]] | None = None
 
@@ -224,10 +247,13 @@ class Reader:
         if not phases:
             return {}, {}, set()
         landings = self._landings(snapshot, phases)
+        with store.pinned_token(snapshot.token):
+            catalog = store.catalog_records(self.read_target)
         records = [
             record
             for record_type in _WORKFLOW_RECORD_TYPES
-            for record in list_records(self.target, record_type)
+            for record in catalog
+            if record["record_type"] == record_type
         ]
         approvals: dict[str, set[str]] = {}
         for phase in phases:
@@ -236,7 +262,7 @@ class Reader:
                 for step, name in CARD_APPROVAL_STEPS
                 if step_readiness(records, phase.subject, step).status == "ready"
             }
-        checks = list_records(self.target, "tuner:check-run")
+        checks = [record for record in catalog if record["record_type"] == "tuner:check-run"]
         review_passed = {
             subject
             for subject, landing in landings.items()
@@ -254,14 +280,17 @@ class Reader:
         return self.cache.remember(
             ("areas",),
             lambda: schemas.AreasResponse(
-                [schemas.AreaView.model_validate(view) for view in areas.load_areas(self.target)]
+                [
+                    schemas.AreaView.model_validate(view)
+                    for view in areas.load_areas(self.read_target)
+                ]
             ),
             schemas.AreasResponse,
         )
 
     def hub(self) -> schemas.HubResponse:
         now = datetime.now(timezone.utc)
-        snapshot = self.cache.current()
+        snapshot = self.cache.work_current(now)
         landings, approvals, review_passed = self._card_inputs(snapshot)
         view = hub.build_hub(
             snapshot, now, landings=landings, approvals=approvals, review_passed=review_passed
@@ -270,8 +299,8 @@ class Reader:
 
     def phase(self, effort: str, phase: str) -> schemas.PhaseResponse:
         def load() -> schemas.PhaseResponse:
-            detail = load_phase_detail(self.target, effort, phase)
-            log = load_decision_log(self.target, effort, phase, history=False)
+            detail = load_phase_detail(self.read_target, effort, phase)
+            log = load_decision_log(self.read_target, effort, phase, history=False)
             return schemas.PhaseResponse(
                 detail=schemas.PhaseDetail.model_validate(detail),
                 tabs=list(tabs_for(detail)),
@@ -284,14 +313,16 @@ class Reader:
         return self.cache.remember(
             ("task", task_id),
             lambda: schemas.TaskResponse(
-                detail=schemas.TaskDetail.model_validate(load_task_detail(self.target, task_id))
+                detail=schemas.TaskDetail.model_validate(
+                    load_task_detail(self.read_target, task_id)
+                )
             ),
             schemas.TaskResponse,
         )
 
     def journal(self, effort: str) -> schemas.JournalResponse:
         def load() -> schemas.JournalResponse:
-            opened, rest = journal.ordered(journal.load_journal(self.target, effort))
+            opened, rest = journal.ordered(journal.load_journal(self.read_target, effort))
             return schemas.JournalResponse(
                 open=[schemas.JournalItem.model_validate(item) for item in opened],
                 rest=[schemas.JournalItem.model_validate(item) for item in rest],
@@ -304,7 +335,7 @@ class Reader:
             ("record", record_id),
             lambda: schemas.RecordResponse(
                 record=schemas.StoredRecord.model_validate(
-                    journal.load_record(self.target, record_id)
+                    journal.load_record(self.read_target, record_id)
                 )
             ),
             schemas.RecordResponse,
@@ -315,7 +346,7 @@ class Reader:
             ("requirement", effort, phase, requirement),
             lambda: schemas.RequirementResponse(
                 detail=schemas.RequirementDetail.model_validate(
-                    load_requirement_detail(self.target, effort, phase, requirement)
+                    load_requirement_detail(self.read_target, effort, phase, requirement)
                 )
             ),
             schemas.RequirementResponse,

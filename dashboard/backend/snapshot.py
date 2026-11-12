@@ -14,6 +14,7 @@ from dashboard.backend.phase import (
     PhaseEvidence,
     PhaseRow,
     attach_milestones,
+    evidence_records_by_phase,
     latest_assessment_map,
     phase_evidence,
 )
@@ -40,7 +41,7 @@ from dashboard.backend.task import TaskRow, belongs, task_rows
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.derive import effort_dormant
+from orchestra.derive import effort_dormant, phase_progress
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -575,6 +576,9 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         effort_tasks = tasks.get(effort, [])
         effort_acceptances = acceptances.get(effort, [])
         effort_checks = checks.get(effort, [])
+        phase_acceptances, phase_checks = evidence_records_by_phase(
+            effort_acceptances, effort_checks
+        )
         evidence_by_phase: dict[str, PhaseEvidence] = {}
         for spec_effort, phase in structured:
             if spec_effort != effort:
@@ -586,8 +590,8 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 designs_by_effort.get(effort, []),
                 decisions_by_effort.get(effort, []),
                 effort_tasks,
-                effort_acceptances,
-                effort_checks,
+                phase_acceptances.get(phase, []),
+                phase_checks.get(phase, []),
                 assessments_by_effort.get(effort, []),
                 integrations_by_effort.get(effort, []),
                 releases_by_effort.get(effort, []),
@@ -660,4 +664,155 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
             )
         )
     efforts.sort(key=lambda view: view.finished)
+    return Snapshot(efforts, token, now)
+
+
+_WORK_TYPES = (
+    "score:effort",
+    "score:phase",
+    "score:work-item",
+    "score:acceptance",
+    "score:continuity-question",
+    "score:specification",
+    "score:design",
+    "tuner:finding",
+    "tuner:check-run",
+    "conductor:assignment",
+    "conductor:execution-report",
+    "conductor:assessment",
+    "conductor:integration-report",
+    "conductor:release",
+    "composer:idea",
+)
+
+
+def load_work_snapshot(
+    target: Project, now: datetime | None = None, token: str | None = None
+) -> Snapshot:
+    target = replace(target, read_only=True)
+    now = now or datetime.now(timezone.utc)
+    token = token or change_token(target)
+    with store.pinned_token(token):
+        every_record = store.catalog_records(target)
+    listed: dict[str, list[Record]] = {record_type: [] for record_type in _WORK_TYPES}
+    for record in every_record:
+        type_records = listed.get(record["record_type"])
+        if type_records is not None:
+            type_records.append(record)
+    aliases = merge_aliases(listed["score:effort"])
+    listed = {
+        record_type: remap_records(records, aliases) for record_type, records in listed.items()
+    }
+    grouped = {record_type: records_by_effort(rows) for record_type, rows in listed.items()}
+    questions = records_by_effort(listed["score:continuity-question"], "subject")
+    acceptances_by_id = {record["id"]: record for record in listed["score:acceptance"]}
+    structured = _structured_phases(listed["score:specification"]) | _light_phases(
+        listed["score:phase"]
+    )
+    goals = [
+        record
+        for record in listed["score:effort"]
+        if record["lifecycle_state"] == "active"
+        and record_payload(record).get("status") != "closed"
+    ]
+    efforts: list[EffortView] = []
+    for goal in sorted(goals, key=lambda record: record["subject"]):
+        effort = goal["subject"]
+        phases = [
+            record
+            for record in grouped["score:phase"].get(effort, [])
+            if record["lifecycle_state"] in ("planned", "in_progress", "done")
+        ]
+        tasks = grouped["score:work-item"].get(effort, [])
+        counted = [
+            record
+            for record in tasks
+            if record["lifecycle_state"] in ("planned", "in_progress", "done")
+        ]
+        if (
+            (phases or counted)
+            and all(record["lifecycle_state"] == "done" for record in phases)
+            and all(record["lifecycle_state"] == "done" for record in counted)
+        ):
+            continue
+        if effort_dormant(every_record, effort, now):
+            continue
+        acceptances = grouped["score:acceptance"].get(effort, [])
+        checks = grouped["tuner:check-run"].get(effort, [])
+        assessments = grouped["conductor:assessment"].get(effort, [])
+        integrations = grouped["conductor:integration-report"].get(effort, [])
+        phase_acceptances, phase_checks = evidence_records_by_phase(acceptances, checks)
+        active_subjects = {
+            record["subject"] for record in phases if record["lifecycle_state"] == "in_progress"
+        }
+        active_tasks = [
+            task for task in tasks if record_payload(task).get("phase") in active_subjects
+        ]
+        rows: list[PhaseRow] = []
+        for record in phases:
+            if record["lifecycle_state"] != "in_progress":
+                continue
+            phase = record["subject"]
+            progress = phase_progress(tasks, phase)
+            evidence = None
+            if (effort, phase) in structured:
+                evidence = phase_evidence(
+                    phase,
+                    effort,
+                    grouped["score:specification"].get(effort, []),
+                    grouped["score:design"].get(effort, []),
+                    [],
+                    tasks,
+                    phase_acceptances.get(phase, []),
+                    phase_checks.get(phase, []),
+                    assessments,
+                    integrations,
+                    grouped["conductor:release"].get(effort, []),
+                    phases,
+                )
+            row = PhaseRow(
+                subject=phase,
+                title=record_payload(record).get("title", ""),
+                ordinal=record_payload(record).get("ordinal", 0),
+                state=record["lifecycle_state"],
+                done=progress.done,
+                total=progress.total,
+                id=record["id"],
+                evidence=evidence,
+                body=record.get("body") or "",
+                in_progress=progress.in_progress,
+            )
+            rows.append(
+                replace(
+                    row,
+                    updated_at=_phase_updated_at(
+                        row,
+                        phases,
+                        tasks,
+                        listed["conductor:assignment"],
+                        listed["conductor:execution-report"],
+                        checks,
+                    ),
+                )
+            )
+        rows.sort(key=lambda row: (row.ordinal, row.subject))
+        efforts.append(
+            EffortView(
+                effort=effort,
+                goal=record_payload(goal).get("goal", ""),
+                phases=rows,
+                tasks=task_rows(active_tasks),
+                needs_you=_needs_you(
+                    questions.get(effort, []),
+                    grouped["tuner:finding"].get(effort, []),
+                    checks,
+                    acceptances_by_id,
+                    tasks,
+                    assessments,
+                    integrations,
+                    {phase for spec_effort, phase in structured if spec_effort == effort},
+                ),
+                backlog=_backlog_items(grouped["composer:idea"].get(effort, [])),
+            )
+        )
     return Snapshot(efforts, token, now)
