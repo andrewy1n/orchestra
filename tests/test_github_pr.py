@@ -212,14 +212,14 @@ def _ticking_clock(step: float) -> Callable[[], float]:
     return clock
 
 
-def test_github_pr_includes_proof_packet(tmp_path: Path) -> None:
+def test_github_pr_omits_packet_diff(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
     github = _fake_with([(GitHubCheck("CI", "completed", "success"),)])
 
     result = _open(root, github)
 
-    assert github.body == "## Look\nProof packet body\n"
+    assert github.body == "## Proof packet\n\n### Look\nProof packet body\n"
     assert result.number == 42
     assert result.url.endswith("/pull/42")
     assert github.events[:2] == [
