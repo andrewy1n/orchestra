@@ -73,7 +73,8 @@ def _wait_result(started: SuiteStart, timeout: float = 8.0) -> SuiteResult:
 
 def test_starter_exits_while_background_command_continues(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
 
     started = _start(worktree, head, command)
@@ -84,7 +85,8 @@ def test_starter_exits_while_background_command_continues(tmp_path: Path) -> Non
 
 def test_later_job_inspection_reads_the_persistent_run(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
     started = _start(worktree, head, command)
 
@@ -101,7 +103,8 @@ def test_later_job_inspection_reads_the_persistent_run(tmp_path: Path) -> None:
 
 def test_collection_returns_combined_output_and_actual_exit_status(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = (
         f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done; "
         "printf 'stdout value\\n'; printf 'stderr value\\n' >&2; exit 7"
@@ -122,9 +125,52 @@ def test_collection_returns_combined_output_and_actual_exit_status(tmp_path: Pat
     assert result.result == "fail"
 
 
+def test_revision_change_during_run_cannot_pass(tmp_path: Path) -> None:
+    worktree, head = _worktree(tmp_path)
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
+    started = _start(worktree, head, command)
+
+    (worktree / "tracked").write_text("changed while running\n", encoding="utf-8")
+    marker.touch()
+    result = _wait_result(started)
+
+    assert result.result == "blocked"
+    assert result.reason == "revision_changed"
+
+
+def test_record_refuses_pass_after_revision_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    worktree, head = _worktree(tmp_path)
+    result = suite.SuiteResult(
+        exit_code=0,
+        duration_s=0.1,
+        output="",
+        output_sha256="",
+        failing_node_ids=[],
+        result="pass",
+        revision=head,
+        worktree=worktree,
+        start_head=head,
+    )
+    monkeypatch.setattr(suite, "suite_worktree_matches", lambda *_args: False)
+
+    with pytest.raises(RuntimeError, match="refusing passing check-run"):
+        suite.record_suite_check_run(
+            store_root=worktree,
+            phase_slug="suite-test",
+            effort="workflow-loop",
+            suite=result,
+        )
+
+
 def test_duplicate_start_preserves_the_active_run(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
     started = _start(worktree, head, command)
     assert started.request_path is not None
@@ -142,7 +188,8 @@ def test_duplicate_start_preserves_the_active_run(tmp_path: Path) -> None:
 
 def test_malformed_current_run_pointer_is_an_error(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
     started = _start(worktree, head, command)
     assert started.run_dir is not None
@@ -161,7 +208,8 @@ def test_malformed_current_run_pointer_is_an_error(tmp_path: Path) -> None:
 
 def test_worker_loss_is_reported_as_interrupted(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    marker = worktree / "release"
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
     command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
     started = _start(worktree, head, command)
     assert started.ready_path is not None
@@ -179,7 +227,7 @@ def test_worker_loss_is_reported_as_interrupted(tmp_path: Path) -> None:
 
 def test_timeout_stops_the_command_group(tmp_path: Path) -> None:
     worktree, head = _worktree(tmp_path)
-    child_pid = worktree / "child.pid"
+    child_pid = worktree / ".suite" / "child.pid"
     command = f"sleep 30 & echo $! > {shlex.quote(str(child_pid))}; wait"
     started = _start(worktree, head, command, timeout=0.2)
 

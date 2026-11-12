@@ -30,15 +30,13 @@ from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
-    git_diff_sha256,
     git_head,
-    git_is_dirty,
     output_sha256,
     parse_failing_node_ids,
 )
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 from orchestra.conductor.revision import revision_matches as _revision_matches
-from orchestra.tools import CliTool, ToolError
+from orchestra.tools import CliTool, Git, ToolError
 
 EVIDENCE_KIND = "integration"
 SUBJECT_SUFFIX = "-suite"
@@ -248,6 +246,8 @@ class SuiteStart:
     lifecycle_path: Path | None = None
     skip_path: Path | None = None
     cancel_path: Path | None = None
+    start_head: str = ""
+    start_diff_sha256: str | None = None
 
 
 @dataclass
@@ -266,6 +266,9 @@ class SuiteResult:
     skip_reason: str = ""
     run_id: str = ""
     reason: str = ""
+    worktree: Path | None = None
+    start_head: str = ""
+    start_diff_sha256: str | None = None
 
 
 def resolve_suite_revision(
@@ -278,9 +281,8 @@ def resolve_suite_revision(
 
     Dirty pass is refused without ``allow_dirty``, matching check dirty policy.
     """
-    head = git_head(cwd)
-    dirty = git_is_dirty(cwd)
-    diff = git_diff_sha256(cwd) if dirty else None
+    head, diff = _suite_tree_identity(cwd)
+    dirty = diff is not None
     decision = dirty_pass_decision(
         dirty=dirty,
         result=provisional_result,  # type: ignore[arg-type]
@@ -291,6 +293,24 @@ def resolve_suite_revision(
     if decision.refuse:
         return decision.revision, decision.diff_sha256, decision.refuse_message
     return decision.revision, decision.diff_sha256, None
+
+
+def suite_worktree_matches(worktree: Path, head: str, diff_sha256: str | None) -> bool:
+    current_head, current_diff = _suite_tree_identity(worktree)
+    return current_head == head and current_diff == diff_sha256
+
+
+def _suite_tree_identity(worktree: Path) -> tuple[str, str | None]:
+    git = Git(worktree)
+    paths = ("--", ".", ":(exclude).suite")
+    diff = git.run("diff", "HEAD", *paths)
+    status = git.run("status", "--porcelain", "--untracked-files=all", *paths)
+    if diff.returncode != 0 or status.returncode != 0:
+        raise RuntimeError(f"cannot inspect suite worktree at {worktree}")
+    if not status.stdout.strip():
+        return git_head(worktree), None
+    blob = diff.stdout + "\n" + status.stdout
+    return git_head(worktree), hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
 
 
 def read_suite_json_object(path: Path) -> JsonObject:
@@ -401,6 +421,14 @@ def load_suite_job(
         raise RuntimeError(
             f"invalid suite run metadata at {paths['request_path']}: missing creation time"
         )
+    start_head = request.get("start_head")
+    start_diff = request.get("start_diff_sha256")
+    if not isinstance(start_head, str) or (
+        start_diff is not None and not isinstance(start_diff, str)
+    ):
+        raise RuntimeError(
+            f"invalid suite run metadata at {paths['request_path']}: invalid starting revision"
+        )
     saved_paths = request.get("paths")
     if not isinstance(saved_paths, dict) or any(
         saved_paths.get(key) != str(path) for key, path in paths.items()
@@ -421,6 +449,8 @@ def load_suite_job(
         result_path=paths["result_path"],
         lifecycle_path=paths["lifecycle_path"],
         cancel_path=paths["cancel_path"],
+        start_head=start_head,
+        start_diff_sha256=start_diff,
     )
 
 
@@ -548,6 +578,8 @@ def start_suite_background(
             "phase_head": head,
             "revision": revision,
             "diff_sha256": diff,
+            "start_head": git_head(work),
+            "start_diff_sha256": diff,
             "created_at_epoch": time.time(),
             "timeout_seconds": timeout,
             "paths": {key: str(path) for key, path in paths.items()},
@@ -647,6 +679,27 @@ def _interrupted_result(job: SuiteStart, *, allow_dirty: bool) -> SuiteResult:
         diff_sha256=diff,
         run_id=job.run_id,
         reason="interrupted",
+        worktree=job.worktree,
+        start_head=job.start_head,
+        start_diff_sha256=job.start_diff_sha256,
+    )
+
+
+def _revision_changed_result(job: SuiteStart, output: str, duration: float) -> SuiteResult:
+    return SuiteResult(
+        exit_code=3,
+        duration_s=round(max(0.0, duration), 6),
+        output=output,
+        output_sha256=output_sha256(output),
+        failing_node_ids=[],
+        result="blocked",
+        revision="dirty" if job.start_diff_sha256 else job.start_head,
+        diff_sha256=job.start_diff_sha256,
+        run_id=job.run_id,
+        reason="revision_changed",
+        worktree=job.worktree,
+        start_head=job.start_head,
+        start_diff_sha256=job.start_diff_sha256,
     )
 
 
@@ -735,6 +788,8 @@ def collect_suite(
     duration = float(duration_value)
     exit_code = exit_code_value if isinstance(exit_code_value, int) else 3
     result = map_process_outcome(exit_code=exit_code) if reason_value == "completed" else "blocked"
+    if not suite_worktree_matches(job.worktree, job.start_head, job.start_diff_sha256):
+        return _revision_changed_result(job, output, duration)
     revision, diff, refuse_msg = resolve_suite_revision(
         job.worktree,
         allow_dirty=allow_dirty,
@@ -757,7 +812,7 @@ def collect_suite(
         )
     # Prefer the captured phase head when the tree stayed clean at that SHA.
     if revision not in ("dirty",) and job.phase_head:
-        revision = job.phase_head
+        revision = job.start_head
     nodes = parse_failing_node_ids(output) if result == "fail" else []
     return SuiteResult(
         exit_code=exit_code,
@@ -770,6 +825,9 @@ def collect_suite(
         diff_sha256=diff,
         run_id=job.run_id,
         reason=reason_value,
+        worktree=job.worktree,
+        start_head=job.start_head,
+        start_diff_sha256=job.start_diff_sha256,
     )
 
 
@@ -938,6 +996,16 @@ def record_suite_check_run(
         raise RuntimeError(suite.refuse_message or "refusing suite check-run")
     if suite.skipped:
         raise RuntimeError(suite.skip_reason or "suite was skipped; no check-run")
+    if (
+        suite.result == "pass"
+        and suite.worktree is not None
+        and not suite_worktree_matches(
+            suite.worktree,
+            suite.start_head,
+            suite.start_diff_sha256,
+        )
+    ):
+        raise RuntimeError("suite worktree changed after collection; refusing passing check-run")
     subject = suite_subject(phase_slug)
     payload = build_suite_check_run_payload(
         phase_slug=phase_slug,

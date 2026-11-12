@@ -10,7 +10,11 @@ from pathlib import Path
 from typing import IO
 
 from orchestra.canon.types import JsonValue
-from orchestra.conductor.suite import atomic_write_suite_json, read_suite_json_object
+from orchestra.conductor.suite import (
+    atomic_write_suite_json,
+    read_suite_json_object,
+    suite_worktree_matches,
+)
 from orchestra.tools import CliTool, ProcessHandle, ToolError
 
 
@@ -103,6 +107,10 @@ def run(request_path: Path, lifecycle_fd: int) -> int:
     run_id = _required_text(request, "run_id", request_path)
     worktree = Path(_required_text(request, "worktree", request_path))
     command = _required_text(request, "command", request_path)
+    start_head = _required_text(request, "start_head", request_path)
+    start_diff = request.get("start_diff_sha256")
+    if start_diff is not None and not isinstance(start_diff, str):
+        raise RuntimeError(f"invalid suite run metadata at {request_path}: invalid starting diff")
     paths = _request_paths(request, request_path)
     timeout = _timeout(request, request_path)
     started = time.monotonic()
@@ -111,31 +119,34 @@ def run(request_path: Path, lifecycle_fd: int) -> int:
     output: IO[bytes] | None = None
     try:
         output = paths["output_path"].open("wb")
-        process = CliTool(worktree).start_process(
-            ["bash", "-lc", command],
-            cwd=worktree,
-            stdout=output,
-        )
         atomic_write_suite_json(
             paths["ready_path"], {"run_id": run_id, "ready": True, "worker_pid": os.getpid()}
         )
-        reason = "completed"
-        deadline = time.monotonic() + timeout if timeout is not None else None
-        while True:
-            code = process.returncode
-            if code is not None:
-                exit_code = process.wait(timeout=0)
-                break
-            cancel_reason = _cancel_reason(paths["cancel_path"], run_id)
-            if cancel_reason is not None:
-                reason = cancel_reason
-                exit_code = _stop_group(process)
-                break
-            if deadline is not None and time.monotonic() >= deadline:
-                reason = "timeout"
-                exit_code = _stop_group(process)
-                break
-            time.sleep(0.05)
+        if not suite_worktree_matches(worktree, start_head, start_diff):
+            reason = "revision_changed"
+        else:
+            process = CliTool(worktree).start_process(
+                ["bash", "-lc", command],
+                cwd=worktree,
+                stdout=output,
+            )
+            reason = "completed"
+            deadline = time.monotonic() + timeout if timeout is not None else None
+            while True:
+                code = process.returncode
+                if code is not None:
+                    exit_code = process.wait(timeout=0)
+                    break
+                cancel_reason = _cancel_reason(paths["cancel_path"], run_id)
+                if cancel_reason is not None:
+                    reason = cancel_reason
+                    exit_code = _stop_group(process)
+                    break
+                if deadline is not None and time.monotonic() >= deadline:
+                    reason = "timeout"
+                    exit_code = _stop_group(process)
+                    break
+                time.sleep(0.05)
     except (OSError, RuntimeError, ToolError) as error:
         worker_log = paths["worker_log_path"]
         with worker_log.open("ab") as log:
