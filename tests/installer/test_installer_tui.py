@@ -20,7 +20,7 @@ from installer.model import InstallRequest
 from installer.paths import is_packaged
 from installer.runner import run
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 _HOST_PROMPT = "Select hosts [numbers, ids, ranges, a=all, q=quit]"
 _SCOPE_PROMPT = "Scope: [p]roject / [g]lobal"
 _MODE_PROMPT = "Mode: [s]ymlink / [c]opy"
