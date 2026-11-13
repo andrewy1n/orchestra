@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -74,17 +75,50 @@ def _check_runs(store: Path) -> list[dict]:
     return json.loads(result.stdout)["records"]
 
 
-def _write_finished_suite(repo: Path) -> None:
-    suite_dir = repo / ".suite"
-    suite_dir.mkdir()
-    (suite_dir / f"{SESSION}.log").write_text("1 passed\n")
-    (suite_dir / f"{SESSION}.exit").write_text("0\n")
-    (repo / ".gitignore").write_text(".suite/\n")
-    git(repo, "add", ".gitignore")
-    git(repo, "commit", "-qm", "ignore suite")
+def _start_finished_suite(repo: Path, home: Path) -> str:
+    if not (repo / "orchestra.toml").is_file():
+        write_policy(repo, mode="full", command="true")
+    started = _orchestra(
+        "suite",
+        "start",
+        "--phase",
+        PHASE,
+        "--session",
+        SESSION,
+        "--cwd",
+        str(repo),
+        "--command",
+        "printf '1 passed\\n'",
+        "--allow-dirty",
+        cwd=repo,
+        home=home,
+    )
+    assert started.returncode == 0, started.stdout + started.stderr
+    run_id = json.loads(started.stdout)["run_id"]
+    poll_args = (
+        "suite",
+        "poll",
+        "--phase",
+        PHASE,
+        "--session",
+        SESSION,
+        "--cwd",
+        str(repo),
+        "--run-id",
+        run_id,
+        "--allow-dirty",
+    )
+    deadline = time.monotonic() + 5
+    result = _orchestra(*poll_args, cwd=repo, home=home)
+    while json.loads(result.stdout).get("state") == "running" and time.monotonic() < deadline:
+        time.sleep(0.02)
+        result = _orchestra(*poll_args, cwd=repo, home=home)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["result"] == "pass"
+    return run_id
 
 
-def _suite_record_args(repo: Path) -> list[str]:
+def _suite_record_args(repo: Path, run_id: str) -> list[str]:
     return [
         "suite",
         "record",
@@ -94,6 +128,9 @@ def _suite_record_args(repo: Path) -> list[str]:
         "resolve-effort",
         "--session",
         SESSION,
+        "--run-id",
+        run_id,
+        "--allow-dirty",
         "--cwd",
         str(repo),
     ]
@@ -165,9 +202,9 @@ def test_cwd_fallback_review_brief(store, cli, resolved_contract, home):
 
 def test_suite_store_flag_record(store, cli, resolved_contract, code_repo, home):
     _seed_suite_effort(store, cli, resolved_contract)
-    _write_finished_suite(code_repo)
+    run_id = _start_finished_suite(code_repo, home)
     result = _orchestra(
-        *_suite_record_args(code_repo), "--store", str(store), cwd=code_repo, home=home
+        *_suite_record_args(code_repo, run_id), "--store", str(store), cwd=code_repo, home=home
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert [run["subject"] for run in _check_runs(store)] == [f"{PHASE}-suite"]
@@ -175,9 +212,9 @@ def test_suite_store_flag_record(store, cli, resolved_contract, code_repo, home)
 
 def test_env_fallback_suite(store, cli, resolved_contract, code_repo, home):
     _seed_suite_effort(store, cli, resolved_contract)
-    _write_finished_suite(code_repo)
+    run_id = _start_finished_suite(code_repo, home)
     record = _orchestra(
-        *_suite_record_args(code_repo),
+        *_suite_record_args(code_repo, run_id),
         cwd=code_repo,
         home=home,
         extra_env={"ORCHESTRA_STORE": str(store)},
@@ -188,8 +225,8 @@ def test_env_fallback_suite(store, cli, resolved_contract, code_repo, home):
 
 def test_cwd_fallback_suite(store, cli, resolved_contract, home):
     _seed_suite_effort(store, cli, resolved_contract)
-    _write_finished_suite(store)
-    record = _orchestra(*_suite_record_args(store), cwd=store, home=home)
+    run_id = _start_finished_suite(store, home)
+    record = _orchestra(*_suite_record_args(store, run_id), cwd=store, home=home)
     assert record.returncode == 0, record.stdout + record.stderr
     assert [run["subject"] for run in _check_runs(store)] == [f"{PHASE}-suite"]
 
@@ -334,9 +371,14 @@ def _do_land(via, store, third, cli, contract, repo, home) -> None:
 
 def _do_suite_record(via, store, third, cli, contract, repo, home) -> None:
     _seed_suite_effort(store, cli, contract)
-    _write_finished_suite(repo)
+    run_id = _start_finished_suite(repo, home)
     result = _run_with_canon_store(
-        _suite_record_args(repo), via=via, store=store, third=third, repo=repo, home=home
+        _suite_record_args(repo, run_id),
+        via=via,
+        store=store,
+        third=third,
+        repo=repo,
+        home=home,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert [run["subject"] for run in _check_runs(store)] == [f"{PHASE}-suite"]

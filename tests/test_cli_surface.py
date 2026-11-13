@@ -9,6 +9,7 @@ real store or tmux server.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -73,13 +74,6 @@ def make_design(path: Path, suite_policy: dict | None = None) -> Path:
         encoding="utf-8",
     )
     return config
-
-
-def finished_suite(work: Path, phase: str = "p1", exit_code: str = "0") -> None:
-    directory = work / ".suite"
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"orchestra-suite-{phase}.log").write_text("1 passed in 0.01s\n")
-    (directory / f"orchestra-suite-{phase}.exit").write_text(f"{exit_code}\n")
 
 
 @pytest.mark.parametrize("argv", HELP_PATHS, ids=lambda argv: "-".join(argv))
@@ -268,20 +262,44 @@ def test_suite_start_smoke(tmp_path, monkeypatch, capsys):
 def _git_worktree() -> Path:
     repo = make_git_repo()
     (repo / ".gitignore").write_text(".suite/\n")
-    git(repo, "add", ".gitignore")
-    git(repo, "commit", "-qm", "ignore suite output")
+    make_design(repo, {"mode": "full", "command": "true", "gate": "required"})
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "suite config")
     return repo
 
 
 def test_suite_poll_running_then_finished(capsys):
     repo = _git_worktree()
-    code, out, err = run(["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys)
+    marker = repo / ".suite" / "release"
+    command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done; printf '1 passed\\n'"
+    code, out, err = run(
+        [
+            "suite",
+            "start",
+            "--cwd",
+            str(repo),
+            "--phase",
+            "p1",
+            "--command",
+            command,
+            "--allow-dirty",
+        ],
+        capsys,
+    )
+    assert code == 0, err
+    run_id = json.loads(out)["run_id"]
+    poll_args = ["suite", "poll", "--cwd", str(repo), "--phase", "p1", "--run-id", run_id]
+    code, out, err = run([*poll_args, "--allow-dirty"], capsys)
     assert code == 3
     assert json.loads(out)["state"] == "running"
 
     head = git(repo, "rev-parse", "HEAD").stdout.strip()
-    finished_suite(repo)
-    code, out, err = run(["suite", "poll", "--cwd", str(repo), "--phase", "p1"], capsys)
+    marker.touch()
+    deadline = time.monotonic() + 5
+    code, out, err = run([*poll_args, "--allow-dirty"], capsys)
+    while code == 3 and time.monotonic() < deadline:
+        time.sleep(0.02)
+        code, out, err = run([*poll_args, "--allow-dirty"], capsys)
     assert code == 0, err
     result = json.loads(out)
     assert result["result"] == "pass"
@@ -291,20 +309,95 @@ def test_suite_poll_running_then_finished(capsys):
 
 def test_suite_collect_reports_failures(capsys):
     repo = _git_worktree()
-    finished_suite(repo, exit_code="1")
-    (repo / ".suite" / "orchestra-suite-p1.log").write_text(
-        "FAILED tests/test_foo.py::test_bar - AssertionError\n"
+    command = "printf 'FAILED tests/test_foo.py::test_bar - AssertionError\\n'; exit 1"
+    code, out, err = run(
+        [
+            "suite",
+            "start",
+            "--cwd",
+            str(repo),
+            "--phase",
+            "p1",
+            "--command",
+            command,
+            "--allow-dirty",
+        ],
+        capsys,
     )
-    code, out, _ = run(["suite", "collect", "--cwd", str(repo), "--phase", "p1"], capsys)
-    assert code == 1
+    assert code == 0, err
+    run_id = json.loads(out)["run_id"]
+    poll_args = ["suite", "poll", "--cwd", str(repo), "--phase", "p1", "--run-id", run_id]
+    deadline = time.monotonic() + 5
+    code, out, err = run([*poll_args, "--allow-dirty"], capsys)
+    while code == 3 and time.monotonic() < deadline:
+        time.sleep(0.02)
+        code, out, err = run([*poll_args, "--allow-dirty"], capsys)
+    collect_args = [
+        "suite",
+        "collect",
+        "--cwd",
+        str(repo),
+        "--phase",
+        "p1",
+        "--run-id",
+        run_id,
+        "--allow-dirty",
+    ]
+    code, out, err = run(collect_args, capsys)
+    assert code == 1, err
     result = json.loads(out)
     assert result["result"] == "fail"
     assert result["failing_node_ids"] == ["tests/test_foo.py::test_bar"]
 
 
+def test_suite_legacy_artifacts_are_diagnostic_only(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo = _git_worktree()
+    suite_dir = repo / ".suite"
+    suite_dir.mkdir()
+    (suite_dir / "orchestra-suite-p1.log").write_text("1 passed\n")
+    (suite_dir / "orchestra-suite-p1.exit").write_text("0\n")
+
+    code, out, err = run(
+        ["suite", "poll", "--cwd", str(repo), "--phase", "p1"],
+        capsys,
+    )
+
+    assert code == 2
+    assert not out
+    assert "legacy suite artifacts cannot prove a run" in err
+
+
 def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
     repo = _git_worktree()
-    finished_suite(repo)
+    code, out, err = run(
+        [
+            "suite",
+            "start",
+            "--cwd",
+            str(repo),
+            "--phase",
+            "p1",
+            "--command",
+            "printf '1 passed\\n'",
+            "--allow-dirty",
+        ],
+        capsys,
+    )
+    assert code == 0, err
+    run_id = json.loads(out)["run_id"]
+    (tmp_path / ".canon").mkdir()
+    (tmp_path / ".canon" / "config.json").write_text(
+        '{"format":"canon/1","schemas":{},"settings":{}}'
+    )
+    poll_args = ["suite", "poll", "--cwd", str(repo), "--phase", "p1", "--run-id", run_id]
+    deadline = time.monotonic() + 5
+    code, out, err = run([*poll_args, "--allow-dirty"], capsys)
+    while code == 3 and time.monotonic() < deadline:
+        time.sleep(0.02)
+        code, out, err = run([*poll_args, "--allow-dirty"], capsys)
+    assert code == 0, err
     recorded: list[dict] = []
 
     class _Project:
@@ -323,8 +416,13 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
             str(repo),
             "--phase",
             "p1",
+            "--run-id",
+            run_id,
             "--effort",
             "packaging",
+            "--store",
+            str(tmp_path),
+            "--allow-dirty",
         ],
         capsys,
     )
