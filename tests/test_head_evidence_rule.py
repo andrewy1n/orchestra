@@ -42,7 +42,7 @@ def _compares(node: ast.AST, text: str) -> bool:
 
 def _decides_pass(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     matches_head = _calls_revision_matches(function) or _compares(function, "revision")
-    return False
+    return "result" in _strings(function) and _compares(function, "pass") and matches_head
 
 
 def decides_pass_from_result_and_revision(path: Path) -> bool:
