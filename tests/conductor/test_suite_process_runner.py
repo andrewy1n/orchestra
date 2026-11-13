@@ -398,6 +398,52 @@ def test_suite_worker_rejects_invalid_request_version(
         suite_worker.run(request_path, lifecycle_fd=0)
 
 
+@pytest.mark.parametrize(
+    "field_name",
+    [
+        "worker_log_path",
+        "output_path",
+        "ready_path",
+        "result_path",
+        "exit_path",
+        "lifecycle_path",
+        "cancel_path",
+    ],
+)
+def test_suite_worker_rejects_paths_outside_run_directory(
+    tmp_path: Path,
+    field_name: str,
+) -> None:
+    run_dir = tmp_path / "runs" / "run-id"
+    run_dir.mkdir(parents=True)
+    names = {
+        "worker_log_path": "worker.log",
+        "output_path": "output.log",
+        "ready_path": "ready.json",
+        "result_path": "result.json",
+        "exit_path": "exit",
+        "lifecycle_path": "worker.lock",
+        "cancel_path": "cancel.json",
+    }
+    paths = {name: str(run_dir / filename) for name, filename in names.items()}
+    paths[field_name] = str(tmp_path / "outside" / names[field_name])
+    request_path = run_dir / "request.json"
+    request = {
+        "version": 1,
+        "run_id": "run-id",
+        "worktree": str(tmp_path),
+        "command": "true",
+        "start_head": "head",
+        "paths": paths,
+    }
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match=r"invalid suite run metadata.*invalid path"):
+        suite_worker.run(request_path, lifecycle_fd=0)
+
+    assert not (tmp_path / "outside").exists()
+
+
 def test_worker_loss_is_reported_as_interrupted(
     tmp_path: Path,
     tracked_runs: RunTracker,

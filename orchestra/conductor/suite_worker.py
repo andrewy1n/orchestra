@@ -30,23 +30,28 @@ def _request_paths(request: Mapping[str, JsonValue], request_path: Path) -> dict
     paths = request.get("paths")
     if not isinstance(paths, dict):
         raise RuntimeError(f"invalid suite run metadata at {request_path}: missing paths")
-    names = (
-        "worker_log_path",
-        "output_path",
-        "ready_path",
-        "result_path",
-        "exit_path",
-        "lifecycle_path",
-        "cancel_path",
-    )
+    names = {
+        "worker_log_path": "worker.log",
+        "output_path": "output.log",
+        "ready_path": "ready.json",
+        "result_path": "result.json",
+        "exit_path": "exit",
+        "lifecycle_path": "worker.lock",
+        "cancel_path": "cancel.json",
+    }
     parsed: dict[str, Path] = {}
-    for name in names:
+    run_dir = request_path.parent.resolve()
+    if request_path.resolve() != run_dir.joinpath("request.json"):
+        raise RuntimeError(f"invalid suite run metadata at {request_path}: invalid request path")
+    for name, filename in names.items():
         value = paths.get(name)
         if not isinstance(value, str):
             raise RuntimeError(f"invalid suite run metadata at {request_path}: missing path {name}")
-        parsed[name] = Path(value)
-    if request_path.resolve() != request_path.parent.joinpath("request.json").resolve():
-        raise RuntimeError(f"invalid suite run metadata at {request_path}: invalid request path")
+        parsed_path = Path(value).resolve()
+        expected_path = run_dir.joinpath(filename).resolve()
+        if parsed_path != expected_path or parsed_path.parent != run_dir:
+            raise RuntimeError(f"invalid suite run metadata at {request_path}: invalid path {name}")
+        parsed[name] = parsed_path
     return parsed
 
 
