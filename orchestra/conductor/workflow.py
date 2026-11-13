@@ -7,6 +7,7 @@ from uuid import uuid4
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -351,17 +352,12 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     ]
     if not acceptances:
         return False, "phase has no active acceptances"
-    runs = [record for record in records if record["record_type"] == "tuner:check-run"]
+    index = EvidenceIndex(records)
     for acceptance in acceptances:
-        own = [
-            run
-            for run in runs
-            if run["payload"].get("criterion_id") in (acceptance["id"], acceptance["subject"])
-        ]
-        if not own:
+        answer = acceptance_latest(index, acceptance, None)
+        if answer.run is None:
             return False, f"acceptance {acceptance['subject']!r} has no check-run"
-        latest = max(own, key=lambda row: (row["recorded_at"], row["id"]))
-        if latest["payload"].get("result") != "pass":
+        if not answer.holds:
             return False, f"acceptance {acceptance['subject']!r} check-run is not pass"
     if _requires_integration_report(records, phase):
         effort = _text(phase_record, "effort")
