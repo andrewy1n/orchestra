@@ -318,7 +318,10 @@ canon create --type conductor:execution-report \
    or leaves `in_progress`. `tdd`/`check` results come from
    `orchestra check` (verify runs it). Manual/review check-runs
    and the suite check-run (`orchestra suite record`, subject
-   `<phase-slug>-suite`) stay parent writes.
+   `<phase-slug>-suite`) stay parent writes. Keep the `run_id` from
+   `orchestra suite start`; pass it to poll, collect, record, or cancel.
+   Use `--timeout <seconds>` to bound a run. Cancellation requires its
+   explicit run ID.
 
    When the acceptance claim is in `.tuner/manifest.json`, run
    `orchestra verify verdict` before `done` (same command as step 4). Non-zero →

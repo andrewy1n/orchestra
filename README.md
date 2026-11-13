@@ -596,7 +596,7 @@ not waive it; a human changes `[suite]` in `orchestra.toml` instead.
 
 | Field | Values | Behavior |
 |---|---|---|
-| `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached tmux window in the phase worktree; `external` does not run locally |
+| `mode` | `none`, `smoke`, `full`, `external` | `none` skips; `smoke`/`full` run the configured `command` in a detached worker in the phase worktree; `external` does not run locally |
 | `gate` | `required`, `advisory`, `deferred` | `required` blocks Landing merge on missing/failing suite@head; `advisory` records the check-run (and a finding on fail) without blocking; `deferred` is a Landing human stop with no local run |
 
 The `[suite]` section lives in the required root `orchestra.toml`; a
@@ -606,6 +606,11 @@ to `required`. This repo's `orchestra.toml` sets `mode=full` and
 `gate=advisory` with the three commands chained with `&&`. The suite check-run
 uses `subject` `<phase>-suite` (`evidence_kind: integration`) at the
 phase head SHA.
+
+`orchestra suite start` returns a `run_id`. Pass `--run-id` to poll, collect,
+record, or cancel a specific run. Add `--timeout <seconds>` to stop a run after
+the deadline. The `--session` option remains a suite job label. Legacy
+`.suite/<label>.log` and `.suite/<label>.exit` files do not prove completion.
 
 The test conftest sets `CANON_SCHEMA_PATH` to the three in-repo module
 files, so test stores load `score`, `conductor` and `tuner` without an

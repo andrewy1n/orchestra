@@ -44,8 +44,8 @@ These are named commands, not files inside a checkout:
   work-items, and acceptances for consistency. It writes no files.
 - `orchestra review-brief` builds the phase-end reviewer brief.
   `orchestra suite policy`, `orchestra suite start`,
-  `orchestra suite poll`, `orchestra suite collect`, and
-  `orchestra suite record` run the configured phase suite and write
+  `orchestra suite poll`, `orchestra suite collect`,
+  `orchestra suite cancel`, and `orchestra suite record` run the configured phase suite and write
   its check-run.
 - `orchestra store path` prints the resolved store;
   `orchestra store run -- <args>` runs `canon` against it.
