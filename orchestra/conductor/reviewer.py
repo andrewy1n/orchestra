@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TypeAlias, TypedDict
 
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.revision import revision_matches as revision_matches
 from orchestra.tools import Git
 
 ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
