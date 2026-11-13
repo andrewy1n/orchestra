@@ -13,14 +13,14 @@ import re
 import shlex
 import subprocess
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.project_config import load_project_config
-from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
@@ -32,10 +32,8 @@ from orchestra.conductor.check import (
     parse_failing_node_ids,
 )
 from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND as EVIDENCE_KIND
-from orchestra.conductor.head_evidence import SUITE_SUBJECT_SUFFIX as SUBJECT_SUFFIX
-from orchestra.conductor.head_evidence import EvidenceIndex, suite_check_runs, suite_subject
+from orchestra.conductor.head_evidence import EvidenceIndex, suite_at_head, suite_subject
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
-from orchestra.conductor.revision import revision_matches as _revision_matches
 
 METHOD = "check"
 
@@ -96,11 +94,6 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
         gate=suite_config.gate,
         source_path=str(root / "orchestra.toml"),
     )
-
-
-def is_suite_subject(subject: str) -> bool:
-    text = (subject or "").strip()
-    return text.endswith(SUBJECT_SUFFIX)
 
 
 def cluster_by_module(node_ids: Sequence[str]) -> dict[str, list[str]]:
@@ -485,64 +478,6 @@ def build_suite_check_run_payload(
     return payload
 
 
-def is_suite_check_run(run: Mapping[str, JsonValue], *, phase_slug: str | None = None) -> bool:
-    evidence = str(run.get("evidence_kind") or "")
-    if evidence != EVIDENCE_KIND:
-        return False
-    subject = str(run.get("subject") or "")
-    criterion = str(run.get("criterion_id") or "")
-    if phase_slug:
-        expected = suite_subject(phase_slug)
-        return subject == expected or criterion == expected
-    return is_suite_subject(subject) or is_suite_subject(criterion)
-
-
-def acceptance_passes_at_head(
-    *,
-    acceptance_id: str,
-    check_runs: Sequence[Mapping[str, JsonValue]],
-    phase_head: str,
-) -> bool:
-    """True when a runner check-run for this criterion passes at the phase head."""
-    matching: list[Mapping[str, JsonValue]] = []
-    for run in check_runs:
-        if str(run.get("criterion_id") or "") != acceptance_id:
-            continue
-        if is_suite_check_run(run):
-            continue
-        if str(run.get("method") or "") == "review":
-            continue
-        if not _revision_matches(str(run.get("revision") or ""), phase_head):
-            continue
-        matching.append(run)
-    if not matching:
-        return False
-    # Prefer last in list (callers should pass chronological order).
-    latest = matching[-1]
-    return str(latest.get("result") or "") == "pass"
-
-
-def suite_pass_at_head(
-    *,
-    check_runs: Sequence[Mapping[str, JsonValue]],
-    phase_head: str,
-    phase_slug: str,
-) -> bool:
-    for run in check_runs:
-        if not is_suite_check_run(run, phase_slug=phase_slug):
-            continue
-        if str(run.get("result") or "") != "pass":
-            continue
-        if _revision_matches(str(run.get("revision") or ""), phase_head):
-            return True
-    return False
-
-
-def _payload_text(run: Record, key: str) -> str:
-    value = run["payload"].get(key)
-    return value if isinstance(value, str) else ""
-
-
 def suite_ready_for_review(
     policy: SuitePolicy,
     check_runs: Sequence[Record],
@@ -554,55 +489,12 @@ def suite_ready_for_review(
     if not policy.run_locally:
         return ""
     subject = suite_subject(phase_slug)
-    at_head = [
-        run
-        for run in suite_check_runs(EvidenceIndex(check_runs), phase_slug)
-        if _revision_matches(_payload_text(run, "revision"), phase_head)
-    ]
-    if not at_head:
+    answer = suite_at_head(EvidenceIndex(check_runs), phase_slug, phase_head)
+    if answer.run is None:
         return f"no {subject} check-run at {phase_head}"
-    if policy.blocks_merge and not any(_payload_text(run, "result") == "pass" for run in at_head):
+    if policy.blocks_merge and not answer.holds:
         return f"{subject} check-run at {phase_head} did not pass"
     return ""
-
-
-def phase_suite_gate_holds(
-    *,
-    acceptances: Sequence[Mapping[str, JsonValue]],
-    check_runs: Sequence[Mapping[str, JsonValue]],
-    phase_head: str,
-    phase_slug: str,
-    policy: SuitePolicy | None = None,
-) -> bool:
-    """Merge gate: every active acceptance pass@head, plus suite when required.
-
-    When policy gate is advisory/deferred or mode is none, missing/failing
-    suite does not block. Required mode with a runnable or external suite
-    still needs a passing ``<phase>-suite`` check-run at head.
-    """
-    for acc in acceptances:
-        state = str(acc.get("lifecycle_state") or "active")
-        if state in ("withdrawn", "superseded"):
-            continue
-        acc_id = str(acc.get("id") or acc.get("criterion_id") or "")
-        if not acc_id:
-            continue
-        if not acceptance_passes_at_head(
-            acceptance_id=acc_id,
-            check_runs=check_runs,
-            phase_head=phase_head,
-        ):
-            return False
-    resolved = policy
-    if resolved is None:
-        resolved = SuitePolicy(mode="full", command="x", gate="required")
-    if not resolved.blocks_merge:
-        return True
-    return suite_pass_at_head(
-        check_runs=check_runs,
-        phase_head=phase_head,
-        phase_slug=phase_slug,
-    )
 
 
 def record_suite_check_run(

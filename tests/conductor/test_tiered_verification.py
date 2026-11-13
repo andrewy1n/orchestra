@@ -22,13 +22,10 @@ from orchestra.conductor.suite import (
     SuitePolicy,
     SuiteResult,
     SuiteStart,
-    advisory_finding_payload,
     build_suite_check_run_payload,
     cluster_by_module,
-    is_suite_subject,
     module_fix_subject,
     parse_failing_node_ids,
-    phase_suite_gate_holds,
     poll_suite,
     route_suite_failures,
     should_rerun_suite,
@@ -176,13 +173,6 @@ def test_background_tmux_start_is_non_blocking(tmp_path: Path):
     assert not started.exit_path.exists()
 
 
-def test_suite_subject_uses_suite_suffix_not_tier2():
-    assert suite_subject(PHASE) == f"{PHASE}-suite"
-    assert suite_subject(f"{PHASE}-suite") == f"{PHASE}-suite"
-    assert suite_subject(f"{PHASE}-tier2") == f"{PHASE}-tier2-suite"
-    assert not is_suite_subject(f"{PHASE}-tier2")
-
-
 def test_runner_records_suite_check_run_payload_fields():
     suite = SuiteResult(
         exit_code=1,
@@ -323,166 +313,6 @@ FAILED tests/test_b.py::TestCls::test_two
     assert "failing_node_ids" in payload
     assert payload["evidence_kind"] == "integration"
     assert "output_sha256" in payload
-
-
-def test_phase_gate_required_blocks_on_missing_or_failing_suite():
-    acc_a = {"id": "acc-a", "lifecycle_state": "active"}
-    acc_b = {"id": "acc-b", "lifecycle_state": "active"}
-    policy = SuitePolicy(mode="full", command="pytest", gate="required")
-    runs_ok = [
-        {
-            "criterion_id": "acc-a",
-            "revision": HEAD,
-            "result": "pass",
-            "method": "tdd",
-            "runner": "orchestra",
-        },
-        {
-            "criterion_id": "acc-b",
-            "revision": HEAD,
-            "result": "pass",
-            "method": "check",
-            "runner": "orchestra",
-        },
-        {
-            "subject": suite_subject(PHASE),
-            "criterion_id": suite_subject(PHASE),
-            "revision": HEAD,
-            "result": "pass",
-            "method": "check",
-            "evidence_kind": "integration",
-            "runner": "orchestra",
-        },
-    ]
-    assert (
-        phase_suite_gate_holds(
-            acceptances=[acc_a, acc_b],
-            check_runs=runs_ok,
-            phase_head=HEAD,
-            phase_slug=PHASE,
-            policy=policy,
-        )
-        is True
-    )
-    assert (
-        phase_suite_gate_holds(
-            acceptances=[acc_a, acc_b],
-            check_runs=runs_ok[:-1],
-            phase_head=HEAD,
-            phase_slug=PHASE,
-            policy=policy,
-        )
-        is False
-    )
-    failing = list(runs_ok)
-    failing[-1] = {**failing[-1], "result": "fail"}
-    assert (
-        phase_suite_gate_holds(
-            acceptances=[acc_a, acc_b],
-            check_runs=failing,
-            phase_head=HEAD,
-            phase_slug=PHASE,
-            policy=policy,
-        )
-        is False
-    )
-    wrong_phase = [
-        *runs_ok[:-1],
-        {**runs_ok[-1], "subject": "another-phase-suite", "criterion_id": "another-phase-suite"},
-    ]
-    assert not phase_suite_gate_holds(
-        acceptances=[acc_a, acc_b],
-        check_runs=wrong_phase,
-        phase_head=HEAD,
-        phase_slug=PHASE,
-        policy=policy,
-    )
-    legacy = [
-        *runs_ok[:-1],
-        {**runs_ok[-1], "subject": f"{PHASE}-tier2", "criterion_id": f"{PHASE}-tier2"},
-    ]
-    assert not phase_suite_gate_holds(
-        acceptances=[acc_a, acc_b],
-        check_runs=legacy,
-        phase_head=HEAD,
-        phase_slug=PHASE,
-        policy=policy,
-    )
-    stale = [*runs_ok[:-1], {**runs_ok[-1], "revision": "stale-head"}]
-    assert not phase_suite_gate_holds(
-        acceptances=[acc_a, acc_b],
-        check_runs=stale,
-        phase_head=HEAD,
-        phase_slug=PHASE,
-        policy=policy,
-    )
-    flat = _skill_flat()
-    assert "suite" in flat
-    assert "orchestra.toml" in flat or "suite policy" in flat
-    assert "blocks" in flat
-
-
-def test_advisory_gate_does_not_block_merge_on_suite_fail():
-    acc = {"id": "acc-a", "lifecycle_state": "active"}
-    policy = SuitePolicy(mode="full", command="pytest", gate="advisory")
-    runs = [
-        {
-            "criterion_id": "acc-a",
-            "revision": HEAD,
-            "result": "pass",
-            "method": "tdd",
-            "runner": "orchestra",
-        },
-        {
-            "subject": suite_subject(PHASE),
-            "criterion_id": suite_subject(PHASE),
-            "revision": HEAD,
-            "result": "fail",
-            "method": "check",
-            "evidence_kind": "integration",
-            "runner": "orchestra",
-        },
-    ]
-    assert (
-        phase_suite_gate_holds(
-            acceptances=[acc],
-            check_runs=runs,
-            phase_head=HEAD,
-            phase_slug=PHASE,
-            policy=policy,
-        )
-        is True
-    )
-    assert policy.advisory is True
-    assert policy.blocks_merge is False
-    suite = SuiteResult(
-        exit_code=1,
-        duration_s=1.0,
-        output="FAILED tests/x.py::t\n",
-        output_sha256="a",
-        failing_node_ids=["tests/x.py::t"],
-        result="fail",
-        revision=HEAD,
-    )
-    finding = advisory_finding_payload(
-        phase_slug=PHASE,
-        effort="workflow-loop",
-        suite=suite,
-    )
-    claim = finding["claim"]
-    assert isinstance(claim, str)
-    assert "advisory" in claim
-    assert finding["needs"] == "none"
-    routed = route_suite_failures(
-        suite.failing_node_ids,
-        fix_budget_remaining=3,
-        policy=policy,
-    )
-    assert sum(routed.create_fix_flags) == 0
-    flat = _skill_flat()
-    assert "advisory" in flat
-    assert "finding" in flat
-    assert "fix-task storm" in flat or "fix-task storms" in flat
 
 
 def test_mode_none_skips_suite_start(tmp_path: Path):
@@ -631,30 +461,6 @@ def test_evidence_kind_integration_not_regression():
     check = h.record_def("check-run")
     assert "failing_node_ids" in check["optional_payload"]
     assert "integration" in check["payload_enum"]["evidence_kind"]
-
-
-def test_mode_none_policy_gate_holds_without_suite_check_run():
-    acc = {"id": "acc-a", "lifecycle_state": "active"}
-    policy = SuitePolicy(mode="none", command="", gate="required")
-    runs = [
-        {
-            "criterion_id": "acc-a",
-            "revision": HEAD,
-            "result": "pass",
-            "method": "check",
-            "runner": "orchestra",
-        },
-    ]
-    assert (
-        phase_suite_gate_holds(
-            acceptances=[acc],
-            check_runs=runs,
-            phase_head=HEAD,
-            phase_slug=PHASE,
-            policy=policy,
-        )
-        is True
-    )
 
 
 def test_deferred_gate_is_landing_human_stop_not_local_block():
