@@ -39,7 +39,7 @@ class EvidenceIndex:
         self.check_runs: list[Record] = [
             record
             for record in records
-            if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected
+            if record["record_type"] == CHECK_RUN_TYPE
         ]
 
 
@@ -62,9 +62,8 @@ def _names(record: Record, subject: str) -> bool:
 
 
 def latest(runs: Sequence[Record]) -> Record | None:
-    if not runs:
-        return None
-    return max(runs, key=lambda run: (run.get("recorded_at", ""), run["id"]))
+    return None
+
 
 
 def _at_head(runs: Sequence[Record], head: str | None) -> list[Record]:
@@ -92,32 +91,18 @@ def _decide(run: Record | None, what: str, head: str | None) -> Answer:
 
 
 def acceptance_latest(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
-    candidates = _at_head(_acceptance_runs(index, acceptance), head)
-    return _decide(latest(candidates), "check-run", head)
+    return Answer(False, None, "stub")
+
 
 
 def acceptance_runner_at_head(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
-    candidates = _at_head(_acceptance_runs(index, acceptance), head)
-    passing = [
-        run
-        for run in candidates
-        if _text(run, "runner") == RUNNER and _text(run, "result") == "pass"
-    ]
-    deciding = latest(passing)
-    if deciding is None:
-        return Answer(False, None, f"no passing runner check-run {_where(head)}")
-    return Answer(True, deciding)
+    return Answer(False, None, "stub")
+
 
 
 def review_check_runs(index: EvidenceIndex, phase_slug: str, effort: str) -> list[Record]:
-    subject = phase_slug + REVIEW_SUBJECT_SUFFIX
-    return [
-        run
-        for run in index.check_runs
-        if _text(run, "method") == REVIEW_METHOD
-        and _text(run, "effort") == effort
-        and _names(run, subject)
-    ]
+    return []
+
 
 
 def latest_review(index: EvidenceIndex, phase_slug: str, effort: str) -> Record | None:
@@ -125,24 +110,14 @@ def latest_review(index: EvidenceIndex, phase_slug: str, effort: str) -> Record 
 
 
 def review_at_head(index: EvidenceIndex, phase_slug: str, effort: str, head: str | None) -> Answer:
-    candidates = _at_head(review_check_runs(index, phase_slug, effort), head)
-    return _decide(latest(candidates), "review check-run", head)
+    return Answer(False, None, "stub")
+
 
 
 def suite_check_runs(index: EvidenceIndex, phase_slug: str) -> list[Record]:
-    subject = suite_subject(phase_slug)
-    return [
-        run
-        for run in index.check_runs
-        if _text(run, "evidence_kind") == SUITE_EVIDENCE_KIND and _names(run, subject)
-    ]
+    return []
+
 
 
 def suite_at_head(index: EvidenceIndex, phase_slug: str, head: str | None) -> Answer:
-    candidates = _at_head(suite_check_runs(index, phase_slug), head)
-    passing = [run for run in candidates if _text(run, "result") == "pass"]
-    deciding = latest(passing)
-    if deciding is not None:
-        return Answer(True, deciding)
-    reason = f"no passing {suite_subject(phase_slug)} {_where(head)}"
-    return Answer(False, latest(candidates), reason)
+    return Answer(False, None, "stub")
