@@ -271,7 +271,9 @@ def _git_worktree() -> Path:
 def test_suite_poll_running_then_finished(capsys):
     repo = _git_worktree()
     marker = repo / ".suite" / "release"
-    command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done; printf '1 passed\\n'"
+    command = (
+        f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done; printf '1 passed\\n'"
+    )
     code, out, err = run(
         [
             "suite",
