@@ -383,7 +383,7 @@ def test_timeout_stops_the_command_group(
     worktree, head = _worktree(tmp_path)
     child_pid = worktree / ".suite" / "child.pid"
     command = f"sleep 30 & echo $! > {shlex.quote(str(child_pid))}; wait"
-    started = _start(worktree, head, command, timeout=0.2)
+    started = _start(worktree, head, command, timeout=2.0)
     tracked_runs.add(started)
 
     result = _wait_result(started)
