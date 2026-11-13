@@ -14,7 +14,7 @@ import pytest
 from conftest import git, make_git_repo
 
 from orchestra.cli import _build_parser
-from orchestra.conductor import suite
+from orchestra.conductor import suite, suite_worker
 from orchestra.conductor.suite import (
     SuitePolicy,
     SuiteResult,
@@ -351,6 +351,51 @@ def test_malformed_current_run_pointer_is_an_error(
         )
 
     _release(started, marker)
+
+
+@pytest.mark.parametrize("version", [None, 2], ids=["missing", "unsupported"])
+def test_suite_job_rejects_invalid_request_version(
+    tmp_path: Path,
+    tracked_runs: RunTracker,
+    version: int | None,
+) -> None:
+    worktree, head = _worktree(tmp_path)
+    marker = worktree / ".suite" / "release"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    command = f"while [ ! -f {shlex.quote(str(marker))} ]; do sleep 0.02; done"
+    started = _start(worktree, head, command)
+    tracked_runs.add(started)
+    assert started.request_path is not None
+    original = started.request_path.read_bytes()
+    request = suite.read_suite_json_object(started.request_path)
+    if version is None:
+        request.pop("version")
+    else:
+        request["version"] = version
+    started.request_path.write_text(json.dumps(request), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match=r"invalid suite run metadata.*version"):
+        suite.load_suite_job(
+            worktree=worktree,
+            phase_slug="suite-test",
+            session_name="suite-test-job",
+        )
+
+    started.request_path.write_bytes(original)
+    _release(started, marker)
+
+
+@pytest.mark.parametrize("version", [None, 2], ids=["missing", "unsupported"])
+def test_suite_worker_rejects_invalid_request_version(
+    tmp_path: Path,
+    version: int | None,
+) -> None:
+    request_path = tmp_path / "request.json"
+    request = {} if version is None else {"version": version}
+    request_path.write_text(json.dumps(request), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match=r"invalid suite run metadata.*version"):
+        suite_worker.run(request_path, lifecycle_fd=0)
 
 
 def test_worker_loss_is_reported_as_interrupted(

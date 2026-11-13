@@ -323,6 +323,16 @@ def read_suite_json_object(path: Path) -> JsonObject:
     return value
 
 
+def validate_suite_request_version(request: Mapping[str, JsonValue], path: Path) -> None:
+    version = request.get("version")
+    if version is None:
+        raise RuntimeError(f"invalid suite run metadata at {path}: missing version")
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise RuntimeError(f"invalid suite run metadata at {path}: invalid version")
+    if version != 1:
+        raise RuntimeError(f"invalid suite run metadata at {path}: unsupported version")
+
+
 def atomic_write_suite_json(path: Path, value: Mapping[str, JsonValue]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
@@ -400,6 +410,7 @@ def load_suite_job(
     run_dir = job_dir / "runs" / selected
     paths = _run_paths(run_dir)
     request = read_suite_json_object(paths["request_path"])
+    validate_suite_request_version(request, paths["request_path"])
     required_text = ("session_name", "phase_slug", "worktree", "command", "phase_head", "revision")
     for field_name in required_text:
         if not isinstance(request.get(field_name), str):

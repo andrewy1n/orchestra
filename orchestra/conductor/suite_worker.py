@@ -14,6 +14,7 @@ from orchestra.conductor.suite import (
     atomic_write_suite_json,
     read_suite_json_object,
     suite_worktree_matches,
+    validate_suite_request_version,
 )
 from orchestra.tools import CliTool, ProcessHandle, ToolError
 
@@ -104,6 +105,7 @@ def _stop_group(process: ProcessHandle) -> int | None:
 
 def run(request_path: Path, lifecycle_fd: int) -> int:
     request = read_suite_json_object(request_path)
+    validate_suite_request_version(request, request_path)
     run_id = _required_text(request, "run_id", request_path)
     worktree = Path(_required_text(request, "worktree", request_path))
     command = _required_text(request, "command", request_path)
