@@ -21,10 +21,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.project import open_store
-from orchestra.canon.query import order_by_recorded_at
 from orchestra.canon.types import Record
-from orchestra.conductor import reviewer, suite
-from orchestra.conductor.check import RUNNER, git_head
+from orchestra.conductor import head_evidence, suite
+from orchestra.conductor.check import git_head
+from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
 
@@ -124,22 +124,6 @@ def _str(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _chronological(records: Sequence[Record]) -> list[Record]:
-    return order_by_recorded_at(list(records))
-
-
-def _latest(records: Sequence[Record]) -> Record | None:
-    ordered = _chronological(records)
-    return ordered[-1] if ordered else None
-
-
-def _corrected_ids(records: Sequence[Record]) -> set[str]:
-    corrected: set[str] = set()
-    for record in records:
-        corrected.update((record.get("relationships") or {}).get("corrects") or [])
-    return corrected
-
-
 def _depends_on(record: Record) -> set[str]:
     raw = record["payload"].get("depends_on")
     if not isinstance(raw, list):
@@ -158,48 +142,14 @@ def _verification_items(items: Sequence[Record]) -> list[Record]:
     return found
 
 
-def _runs_for(runs: Sequence[Record], acceptance: Record) -> list[Record]:
-    keys = {acceptance["id"], acceptance["subject"]}
-    return [run for run in runs if _str(run, "criterion_id") in keys]
-
-
-def _is_review_run(run: Record, phase_slug: str, effort: str) -> bool:
-    if _str(run, "method") != "review" or _str(run, "effort") != effort:
-        return False
-    return phase_slug + "-review" in {_str(run, "criterion_id"), run["subject"]}
-
-
-def _is_suite_run(run: Record, phase_slug: str) -> bool:
-    expected = suite.suite_subject(phase_slug)
-    return expected in {_str(run, "criterion_id"), run["subject"]}
-
-
-def _term_for_acceptance(
-    acceptance: Record, runs: Sequence[Record], head: str
-) -> tuple[Term, Term | None]:
+def _acceptance_terms(acceptance: Record, index: EvidenceIndex, head: str) -> list[Term]:
     name = acceptance["subject"]
-    own = _runs_for(runs, acceptance)
-    latest = _latest(own)
-    if latest is None:
-        passes, reason = False, "no check-run"
-    else:
-        result = _str(latest, "result")
-        passes, reason = result == "pass", f"latest check-run result is {result}"
-    first = Term(f"acceptance-passes:{name}", passes, "" if passes else reason)
-    if _str(acceptance, "method") == "manual":
-        return first, None
-    at_head = any(
-        _str(run, "runner") == RUNNER
-        and _str(run, "result") == "pass"
-        and reviewer.revision_matches(_str(run, "revision"), head)
-        for run in own
-    )
-    second = Term(
-        f"acceptance-runner-at-head:{name}",
-        at_head,
-        "" if at_head else f"no passing runner check-run at {head or 'unknown head'}",
-    )
-    return first, second
+    latest = head_evidence.acceptance_latest(index, acceptance, None)
+    terms = [Term(f"acceptance-passes:{name}", latest.holds, latest.reason)]
+    if _str(acceptance, "method") != "manual":
+        at_head = head_evidence.acceptance_runner_at_head(index, acceptance, head)
+        terms.append(Term(f"acceptance-runner-at-head:{name}", at_head.holds, at_head.reason))
+    return terms
 
 
 def gate_terms(
@@ -238,11 +188,8 @@ def gate_terms(
         for r in of_type("score:acceptance")
         if _str(r, "phase") == phase_slug and r["lifecycle_state"] == "active"
     ]
-    corrected = _corrected_ids(records)
-    runs = [r for r in of_type("tuner:check-run") if r["id"] not in corrected]
-    review_runs = [r for r in runs if _is_review_run(r, phase_slug, effort)]
-
-    latest_review = _latest(review_runs)
+    index = EvidenceIndex(records)
+    latest_review = head_evidence.latest_review(index, phase_slug, effort)
     head = _str(latest_review, "revision") if latest_review else ""
 
     terms: list[Term] = []
@@ -258,17 +205,18 @@ def gate_terms(
     terms.append(Term("verification-task-done", verified, detail))
 
     for acceptance in acceptances:
-        first, second = _term_for_acceptance(acceptance, runs, head)
-        terms.append(first)
-        if second is not None:
-            terms.append(second)
+        terms.extend(_acceptance_terms(acceptance, index, head))
 
     for acceptance in acceptances:
-        manual = _chronological(
-            [r for r in _runs_for(runs, acceptance) if _str(r, "method") == "manual"]
+        manual = head_evidence.latest(
+            [
+                r
+                for r in head_evidence.acceptance_runs(index, acceptance)
+                if _str(r, "method") == "manual"
+            ]
         )
         if manual:
-            signed = bool(_str(manual[-1], "signed_by").strip())
+            signed = bool(_str(manual, "signed_by").strip())
             terms.append(
                 Term(
                     f"manual-check-signed:{acceptance['subject']}",
@@ -277,14 +225,8 @@ def gate_terms(
                 )
             )
 
-    review_ok = latest_review is not None and _str(latest_review, "result") == "pass"
-    terms.append(
-        Term(
-            "review-at-head",
-            review_ok,
-            "" if review_ok else f"no passing review check-run at {head or 'unknown head'}",
-        )
-    )
+    review = head_evidence.review_at_head(index, phase_slug, effort, head)
+    terms.append(Term("review-at-head", review.holds, review.reason))
 
     if head_worktree is not None:
         terms.append(_descent_term(head_worktree, head))
@@ -295,19 +237,8 @@ def gate_terms(
 
     policy = suite.load_suite_policy(head_worktree if head_worktree is not None else store)
     if policy.gate == "required" and policy.mode not in ("none", ""):
-        suite_ok = any(
-            _is_suite_run(r, phase_slug)
-            and _str(r, "result") == "pass"
-            and reviewer.revision_matches(_str(r, "revision"), head)
-            for r in runs
-        )
-        terms.append(
-            Term(
-                "suite-at-head",
-                suite_ok,
-                "" if suite_ok else f"no passing {suite.suite_subject(phase_slug)} at head",
-            )
-        )
+        at_head = head_evidence.suite_at_head(index, phase_slug, head)
+        terms.append(Term("suite-at-head", at_head.holds, at_head.reason))
 
     try:
         blockers = phase_blockers(records, phase_slug)

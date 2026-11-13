@@ -73,7 +73,7 @@ def _at_head(runs: Sequence[Record], head: str | None) -> list[Record]:
     return [run for run in runs if revision_matches(_text(run, "revision"), head)]
 
 
-def _acceptance_runs(index: EvidenceIndex, acceptance: Record) -> list[Record]:
+def acceptance_runs(index: EvidenceIndex, acceptance: Record) -> list[Record]:
     keys = {acceptance["id"], acceptance["subject"]}
     return [run for run in index.check_runs if _text(run, "criterion_id") in keys]
 
@@ -92,12 +92,12 @@ def _decide(run: Record | None, what: str, head: str | None) -> Answer:
 
 
 def acceptance_latest(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
-    candidates = _at_head(_acceptance_runs(index, acceptance), head)
+    candidates = _at_head(acceptance_runs(index, acceptance), head)
     return _decide(latest(candidates), "check-run", head)
 
 
 def acceptance_runner_at_head(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
-    candidates = _at_head(_acceptance_runs(index, acceptance), head)
+    candidates = _at_head(acceptance_runs(index, acceptance), head)
     passing = [
         run
         for run in candidates
