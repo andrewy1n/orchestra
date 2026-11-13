@@ -33,7 +33,7 @@ from orchestra.conductor.check import (
 )
 from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND as EVIDENCE_KIND
 from orchestra.conductor.head_evidence import SUITE_SUBJECT_SUFFIX as SUBJECT_SUFFIX
-from orchestra.conductor.head_evidence import suite_subject
+from orchestra.conductor.head_evidence import EvidenceIndex, suite_check_runs, suite_subject
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 from orchestra.conductor.revision import revision_matches as _revision_matches
 
@@ -556,10 +556,8 @@ def suite_ready_for_review(
     subject = suite_subject(phase_slug)
     at_head = [
         run
-        for run in check_runs
-        if _payload_text(run, "evidence_kind") == EVIDENCE_KIND
-        and subject in {run["subject"], _payload_text(run, "criterion_id")}
-        and _revision_matches(_payload_text(run, "revision"), phase_head)
+        for run in suite_check_runs(EvidenceIndex(check_runs), phase_slug)
+        if _revision_matches(_payload_text(run, "revision"), phase_head)
     ]
     if not at_head:
         return f"no {subject} check-run at {phase_head}"
