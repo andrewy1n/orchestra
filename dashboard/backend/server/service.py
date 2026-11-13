@@ -29,8 +29,7 @@ from dashboard.backend.snapshot import (
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.head_evidence import EvidenceIndex, review_at_head
 from orchestra.score.workflow_reviews import Step, step_readiness
 
 CachedResponse = (
@@ -102,22 +101,6 @@ def needs_payload(item: NeedsYouItem) -> schemas.NeedsYouItem:
     ]
     return schemas.NeedsYouItem.model_validate(
         {**vars(item), "approval": schemas.Approval(confirm_choices=choices)}
-    )
-
-
-def _payload_str(record: Record, key: str) -> str:
-    value = record["payload"].get(key)
-    return value if isinstance(value, str) else ""
-
-
-def _review_passed(checks: list[Record], phase: str, effort: str, head: str) -> bool:
-    return any(
-        _payload_str(run, "method") == "review"
-        and _payload_str(run, "result") == "pass"
-        and _payload_str(run, "effort") == effort
-        and f"{phase}-review" in {_payload_str(run, "criterion_id"), run["subject"]}
-        and revision_matches(_payload_str(run, "revision"), head)
-        for run in checks
     )
 
 
@@ -280,12 +263,12 @@ class Reader:
                 for step, name in CARD_APPROVAL_STEPS
                 if step_readiness(records, phase.subject, step).status == "ready"
             }
-        checks = [record for record in catalog if record["record_type"] == "tuner:check-run"]
+        index = EvidenceIndex(catalog)
         efforts = {phase.subject: effort for effort, phase in in_progress}
         review_passed = {
             subject
             for subject, landing in landings.items()
-            if landing.head and _review_passed(checks, subject, efforts[subject], landing.head)
+            if landing.head and review_at_head(index, subject, efforts[subject], landing.head).holds
         }
         return landings, approvals, review_passed
 
