@@ -8,8 +8,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from conductor_support import PHASE, Cli, Phase, _packet, _review_repo_head, seed
 from conftest import git
-from test_gate import PHASE, Cli, Phase, _packet, _review_repo_head, seed
 
 import orchestra.conductor.github_pr as github_pr
 from orchestra.canon.project import open_store

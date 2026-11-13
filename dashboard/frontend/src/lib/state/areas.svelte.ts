@@ -25,9 +25,10 @@ export const areas = new AreasState();
 /** Reloads GET /api/areas whenever the snapshot token changes. */
 export function bindAreas() {
 	areas.reset();
+	const active = $derived(navigation.route.name !== "home");
 
 	$effect(() => {
-		if (!polling.snapshot?.token) return;
+		if (!active || !polling.snapshot?.token) return;
 		let cancelled = false;
 		void getJson<AreasResponse>("areas")
 			.then((data) => {

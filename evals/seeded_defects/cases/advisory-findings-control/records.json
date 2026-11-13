@@ -1,0 +1,157 @@
+[
+  {
+    "record_type": "work-item",
+    "subject": "advisory-routing",
+    "body": "## Description\n\nR8: A finding about a choice that changes what was agreed has severity `judgment`.\nR9: A `judgment` finding has `needs` `human`.\nR10: The parent records an advisory finding with `needs` `none`.\nR11: The parent creates no fix task for an advisory finding.\nR12: The phase gate ignores an advisory finding.\n\n## Approach\n\nIn `orchestra/conductor/reviewer.py` change `route_review_findings` to give advisory findings `False` and an empty subject, never counting them toward the retry budget or escalation. Change `build_finding_payload` so a finding with `blocking` false gets `needs` `none` and a `claim` that starts with `advisory`. A `judgment` finding keeps `needs` `human` and no fix task. Check `orchestra/conductor/gate.py` blocks only on findings with `needs` `human`; add a test that an open advisory finding leaves the gate holding and an open `needs` `human` finding fails it, using the helpers in `tests/test_gate.py`. Update the Reviewer section of `skills/execute-phase/references/phase-end.md`: record each advisory finding with `needs` `none`, create no fix task for it, and say it does not block the phase gate.\n\nTests go in `tests/test_advisory_findings.py`: `judgment_severity` (R8), `judgment_needs_human` (R9), `advisory_needs_none` (R10), `advisory_no_fix_task` (R11) and `advisory_gate_ignores` (R12).\n",
+    "title": "Route advisory findings without fix tasks"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "fix-skill-wording",
+    "body": "## Description\n\nThe portability test `test_runtime_references_name_cli_commands_not_module_apis` fails because `phase-end.md` names `orchestra.conductor.reviewer.build_finding_payload`. Name the behavior without the module path.\n\n## Approach\n\nIn `skills/execute-phase/references/phase-end.md` replace the module path with plain words, then run `python3 scripts/build_skills.py` and the portability test.\n",
+    "title": "Name no module API in phase-end.md"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "review-flow-test",
+    "body": "## Description\n\nAdd `test_end_to_end_review_flow` to `tests/test_advisory_findings.py`: one reviewer block with an advisory finding, a complete blocking finding and an incomplete blocking finding goes through `validate_reviewer_output`, `route_review_findings` and `build_finding_payload`.\n\n## Approach\n\nAssert the derived verdict is NEEDS_WORK, the demoted list names the incomplete finding, only the complete blocking finding gets a fix task, and the finding payloads carry the right `needs`.\n",
+    "title": "Test the parent review flow end to end"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "verify-advisory-findings",
+    "body": "## Description\n\nProve the phase exit criteria hold together: parse a reviewer block through the parent flow (validate, route, build finding payloads), then run every other phase check.\n\n## Approach\n\nAdd `test_end_to_end_review_flow` in `tests/test_advisory_findings.py`: one reviewer block with an advisory finding, a blocking finding with a complete basis and a blocking finding without a basis. Assert the derived verdict, the demotion list, the routing flags and the finding payloads. Run `tests/test_advisory_findings.py`, `tests/test_phase_reviewer.py`, `tests/test_dispatch_review_findings.py`, `tests/test_gate.py`, `tests/test_skill_portability.py` and `tests/test_contract_self_consistency.py`. Do not edit the tree.\n",
+    "title": "Verify the advisory findings phase"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "blocking-basis",
+    "body": "## Description\n\nR1: A review whose findings are all advisory returns verdict PASS.\nR2: A blocking finding names the agreed requirement or invariant it violates.\nR3: A blocking finding names the triggering condition.\nR4: A blocking finding names the consequence.\nR5: A blocking missing-test finding names a regression that can escape the existing checks.\nR6: Orchestra demotes a finding marked blocking that lacks a required field to advisory.\nR7: Orchestra derives the verdict from the findings, not from the verdict line the reviewer wrote.\n\n## Approach\n\nIn `orchestra/conductor/reviewer.py` extend `ReviewerFinding` with `blocking: bool`, `requirement`, `trigger`, `consequence` and `escape` (strings). Parse them in `parse_reviewer_output`: a line `blocking: true|false` and one line per text field. A missing `blocking` line on any finding makes `validate_reviewer_output` raise ValueError, so an old prompt fails loudly. A finding with severity `judgment` is always blocking and needs no basis fields. Add `classify_findings(findings)` that returns the findings with `blocking` recomputed: a finding marked blocking stays blocking only when `requirement`, `trigger` and `consequence` are non-empty, and, for kind `missing-test`, `escape` is non-empty. Otherwise it becomes advisory and its task and kind go in a new `demoted` list on `ParsedReviewerOutput`. Add `derive_verdict(findings)`: NEEDS_WORK when any finding is blocking or judgment, else PASS. `parse_reviewer_output` and `validate_reviewer_output` return the derived verdict and ignore the verdict line except that it must be PASS or NEEDS_WORK. Drop the checks that PASS has no findings and NEEDS_WORK has one.\n\nUpdate `agents/reviewer.md` and `agents/reviewer.prompt.md`: the output schema gains the five fields, `PASS` may list advisory findings, and a blocking finding needs the basis. Update the Reviewer section of `skills/execute-phase/references/phase-end.md` to say the same and to say Orchestra derives the verdict.\n\nTests go in `tests/test_advisory_findings.py`. Name them so these `-k` filters pick one group each: `pass_with_only_advisory` (R1), `names_requirement` (R2), `names_trigger` (R3), `names_consequence` (R4), `names_escape` (R5), `demotes` (R6), `derives_verdict` (R7). Write them first and see them fail. Update `tests/test_phase_reviewer.py` for the relaxed PASS rule.\n",
+    "title": "Require a basis for blocking findings and derive the verdict"
+  },
+  {
+    "record_type": "work-item",
+    "subject": "fix-empty-requirements",
+    "body": "## Description\n\nA full-phase acceptance with `requirements: []` fails `orchestra analyze` with `full-phase-multi-requirement`, and `acceptance_requirement_ids` ignores its `requirement`. An empty list names no requirement, so it must act as absent.\n\n## Approach\n\nIn `orchestra/score/requirements.py` read `requirements` only when it is a non-empty list. In `orchestra/score/analyze.py` flag `full-phase-multi-requirement` only when more than one id is named or `requirements` is non-empty. Add tests to `tests/test_light_analyze.py`.\n",
+    "title": "Treat an empty requirements list as none"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-skill-wording",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_skill_portability.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "advisory-routing",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k judgment_severity"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "advisory-routing-fix",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k advisory_no_fix_task"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-verdict",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k derives_verdict"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "advisory-routing-human",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k judgment_needs_human"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-consequence",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k names_consequence"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-advisory-findings",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "verify-advisory-findings-regression",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_phase_reviewer.py tests/test_dispatch_review_findings.py tests/test_gate.py tests/test_skill_portability.py tests/test_contract_self_consistency.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-skill-wording-check",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_skill_portability.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "review-flow-test-check",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k end_to_end"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-requirement",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k names_requirement"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-trigger",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k names_trigger"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "advisory-routing-gate",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k advisory_gate_ignores"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-escape",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k names_escape"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis-demotion",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k demotes"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "blocking-basis",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k pass_with_only_advisory"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "fix-empty-requirements",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_light_analyze.py tests/test_analyze.py"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "review-flow-test",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k end_to_end"
+  },
+  {
+    "record_type": "acceptance",
+    "subject": "advisory-routing-needs",
+    "body": "",
+    "verify_command": "uv run pytest -q tests/test_advisory_findings.py -k advisory_needs_none"
+  },
+  {
+    "record_type": "specification",
+    "subject": "advisory-findings",
+    "body": "## Requirements\n\nR1: A review whose findings are all advisory returns verdict PASS.\nR2: A blocking finding names the agreed requirement or invariant it violates.\nR3: A blocking finding names the triggering condition.\nR4: A blocking finding names the consequence.\nR5: A blocking missing-test finding names a regression that can escape the existing checks.\nR6: Orchestra demotes a finding marked blocking that lacks a required field to advisory.\nR7: Orchestra derives the verdict from the findings, not from the verdict line the reviewer wrote.\nR8: A finding about a choice that changes what was agreed has severity `judgment`.\nR9: A `judgment` finding has `needs` `human`.\nR10: The parent records an advisory finding with `needs` `none`.\nR11: The parent creates no fix task for an advisory finding.\nR12: The phase gate ignores an advisory finding.\n\n## Acceptance criteria\n\n- A parser test covers a complete blocking finding, one test per missing field, and an advisory-only review.\n- The phase gate test passes with an open advisory finding and fails with an open blocking finding.\n\n## Constraints\n\n- The reviewer stays read-only and writes no record.\n- The reviewer still receives only the restricted brief.\n- Fix tasks stay under the existing retry budget.\n\n## Non-goals\n\n- A second adjudicator pass over findings.\n- Per-task review.\n- A change to the finding kinds `spec-gap`, `behavior-bug`, `missing-test` and `invariant-violation`.\n\n## Invariants\n\n- A passing review check-run exists at the phase head before merge.\n- No `done` task reopens.\n\n## Assumptions\n\n- Existing review check-runs and findings in the store keep their meaning.\n"
+  }
+]

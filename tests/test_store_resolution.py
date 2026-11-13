@@ -12,10 +12,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from conductor_support import _seed_acceptance, write_policy
 from conftest import REPO_ROOT, copy_store, git, make_git_repo, run_cli
 from test_analyze import SLUG, seed_phase
-from test_check import _seed_acceptance
-from test_gate import write_policy
 
 from orchestra import store as store_module
 

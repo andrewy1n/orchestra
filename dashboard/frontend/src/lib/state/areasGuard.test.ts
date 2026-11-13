@@ -8,7 +8,7 @@ let mounted: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
 	document.body.innerHTML = "";
-	window.location.hash = "";
+	window.location.hash = "#/areas";
 	vi.useFakeTimers();
 });
 

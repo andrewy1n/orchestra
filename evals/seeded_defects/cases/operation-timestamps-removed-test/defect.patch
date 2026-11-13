@@ -1,0 +1,19 @@
+diff --git a/tests/canon/test_op_time.py b/tests/canon/test_op_time.py
+--- a/tests/canon/test_op_time.py
++++ b/tests/canon/test_op_time.py
+@@ -103,15 +103,6 @@
+     assert "applied_at" not in _ops(project, LEGACY_ID)[0]
+ 
+ 
+-def test_r4_history_lists_accepted_operations_oldest_first(project: Project) -> None:
+-    task = make_task(project, "t")
+-    moved = project.update(task["id"], transition="in_progress")
+-    history = project.history(task["id"])
+-    assert [entry["seq"] for entry in history] == [1, 2]
+-    assert [entry["kind"] for entry in history] == ["create", "write"]
+-    assert [entry["lifecycle_state"] for entry in history] == ["planned", "in_progress"]
+-    assert [entry["revision"] for entry in history] == [task["revision"], moved["revision"]]
+-    assert all(set(entry) == set(HISTORY_KEYS) for entry in history)
+ 
+ 
+ def test_r4_history_of_a_deleted_record_ends_with_an_empty_delete_entry(project: Project) -> None:

@@ -50,7 +50,9 @@ def _digest(store: Path) -> dict[str, str]:
     return {
         str(path.relative_to(store)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(store.rglob("*"))
-        if path.is_file() and ".git" not in path.relative_to(store).parts
+        if path.is_file()
+        and ".git" not in path.relative_to(store).parts
+        and not path.name.endswith((".db-wal", ".db-shm"))
     }
 
 
@@ -85,7 +87,10 @@ def test_r11_put_and_delete_to_hub_are_rejected_with_405(store):
 
 def test_r11_get_hub_leaves_store_records_unchanged(store, cli):
     _open_idea(cli)
+    target = open_store(store, read_only=True)
+    token = target.change_token()
     before = _digest(store)
     response = _client(store).get("/api/hub")
     assert response.status_code == 200, response.text
     assert _digest(store) == before
+    assert target.change_token() == token

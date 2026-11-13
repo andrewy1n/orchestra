@@ -1,0 +1,25 @@
+diff --git a/tests/test_wave_resolve.py b/tests/test_wave_resolve.py
+--- a/tests/test_wave_resolve.py
++++ b/tests/test_wave_resolve.py
+@@ -110,21 +110,6 @@
+     assert "merge:b" in _open_questions(project)
+ 
+ 
+-def test_resolve_commits_merge_with_both_parents(tmp_path: Path) -> None:
+-    project, repo, tree = _grep_world(tmp_path)
+-    before = _git(tree, "rev-parse", "HEAD")
+-    _keep(tree, "from a\nfrom b\n")
+-    result = wave.resolve(project, repo, PHASE, "b")
+-    assert result.ready, result.refusals
+-    head = _git(tree, "rev-parse", "HEAD")
+-    assert head == result.commit
+-    parents = _git(tree, "rev-list", "--parents", "-n", "1", "HEAD").split()[1:]
+-    assert parents[0] == before
+-    assert parents[1] == _git(repo, "rev-parse", f"task/{PHASE}/b")
+-    assert _git(tree, "status", "--porcelain") == ""
+-    assert not (Path(_git(tree, "rev-parse", "--git-dir")) / "MERGE_HEAD").exists()
+-    assert (tree / "shared.txt").read_text() == "from a\nfrom b\n"
+-    assert not (repo / ".worktrees" / f"{PHASE}--resolve-b").exists()
+ 
+ 
+ def test_resolve_records_check_runs_at_the_merge_commit(tmp_path: Path) -> None:

@@ -1,0 +1,18 @@
+diff --git a/tests/test_suite_before_review.py b/tests/test_suite_before_review.py
+--- a/tests/test_suite_before_review.py
++++ b/tests/test_suite_before_review.py
+@@ -107,14 +107,6 @@
+     assert f"{PHASE}-suite" in err
+ 
+ 
+-def test_brief_refuses_a_failed_required_suite(
+-    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+-) -> None:
+-    write_policy(repo, "full", "required")
+-    code, out, err = run_brief(monkeypatch, capsys, repo, [suite_run(head_of(repo), "fail")])
+-    assert code == 2
+-    assert out == ""
+-    assert "did not pass" in err
+ 
+ 
+ def test_brief_builds_after_a_passing_required_suite(

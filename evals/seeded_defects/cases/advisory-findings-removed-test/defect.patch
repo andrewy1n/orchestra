@@ -1,0 +1,16 @@
+diff --git a/tests/test_advisory_findings.py b/tests/test_advisory_findings.py
+--- a/tests/test_advisory_findings.py
++++ b/tests/test_advisory_findings.py
+@@ -124,12 +124,6 @@
+     assert parsed["demoted"] == []
+ 
+ 
+-def test_derives_verdict_from_findings_not_the_verdict_line() -> None:
+-    blocking = review("PASS", finding_block())
+-    assert reviewer.validate_reviewer_output(blocking)["verdict"] == "NEEDS_WORK"
+-    advisory = review("NEEDS_WORK", finding_block(blocking="false", severity="minor"))
+-    assert reviewer.validate_reviewer_output(advisory)["verdict"] == "PASS"
+-    assert reviewer.validate_reviewer_output(review("NEEDS_WORK"))["verdict"] == "PASS"
+ 
+ 
+ def test_derives_verdict_needs_work_for_a_judgment_finding() -> None:

@@ -1,0 +1,127 @@
+diff --git a/orchestra/conductor/wave.py b/orchestra/conductor/wave.py
+--- a/orchestra/conductor/wave.py
++++ b/orchestra/conductor/wave.py
+@@ -286,123 +277,3 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
+             return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
+         merged.append(task)
+     return WaveEnd(phase, tuple(merged), tuple(skipped), "", "")
+-
+-
+-@dataclass(frozen=True)
+-class WaveResolve:
+-    phase: str
+-    task: str
+-    refusals: tuple[str, ...]
+-    commit: str = ""
+-    checks: tuple[tuple[str, int], ...] = ()
+-
+-    @property
+-    def ready(self) -> bool:
+-        return not self.refusals
+-
+-
+-_CONFLICT_MARKER = re.compile(r"^(<<<<<<<|>>>>>>>)( |$)")
+-
+-
+-def _lines(output: str) -> list[str]:
+-    return [line for line in output.splitlines() if line]
+-
+-
+-def _marker_paths(tree: Path, paths: list[str]) -> list[str]:
+-    found: list[str] = []
+-    for path in paths:
+-        target = tree / path
+-        if not target.is_file():
+-            continue
+-        text = target.read_text(encoding="utf-8", errors="replace")
+-        if any(_CONFLICT_MARKER.match(line) for line in text.splitlines()):
+-            found.append(path)
+-    return found
+-
+-
+-def _guard_refusals(
+-    project: Project, phase_rec: Record, phase: str, task: str, tree: Path
+-) -> list[str]:
+-    refusals: list[str] = []
+-    scope = f"merge:{task}"
+-    if _open_question(project, _effort(phase_rec, phase), scope) is None:
+-        refusals.append(f"no open {scope} question")
+-    unmerged = _lines(_git_text(tree, "diff", "--name-only", "--diff-filter=U"))
+-    if unmerged:
+-        refusals.append(
+-            "unmerged paths remain: " + ", ".join(unmerged) + " (edit them, then run git add)"
+-        )
+-    changed = _lines(_git_text(tree, "diff", "--name-only", "HEAD"))
+-    markers = _marker_paths(tree, sorted({*changed, *unmerged}))
+-    if markers:
+-        refusals.append("conflict marker remains in: " + ", ".join(markers))
+-    return refusals
+-
+-
+-def _merged_tasks(repo: Path, phase: str, items: list[Record], task: str) -> list[str]:
+-    merged: list[str] = []
+-    for item in items:
+-        slug = item["subject"]
+-        branch = f"task/{phase}/{slug}"
+-        if slug == task or closes_phase(item, items) or not _branch_exists(repo, branch):
+-            continue
+-        if Git(repo).is_ancestor(branch, f"phase/{phase}"):
+-            merged.append(slug)
+-    return merged
+-
+-
+-def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
+-    phase_rec = phase_record(project.records(), phase)
+-    tree = repo / ".worktrees" / phase
+-    from orchestra.conductor.land_task import acceptances_for
+-
+-    refusals = _guard_refusals(project, phase_rec, phase, task, tree)
+-    if refusals:
+-        return WaveResolve(phase, task, tuple(refusals))
+-    _git_text(tree, "add", "-A", "--", ".", ":!.canon")
+-    branch = f"task/{phase}/{task}"
+-    merged_tree = _git_text(tree, "write-tree")
+-    commit = _git_text(
+-        tree,
+-        "commit-tree",
+-        merged_tree,
+-        "-p",
+-        "HEAD",
+-        "-p",
+-        branch,
+-        "-m",
+-        f"Merge branch '{branch}' into phase/{phase}",
+-    )
+-    trial = repo / ".worktrees" / f"{phase}--resolve-{task}"
+-    _git_text(repo, "worktree", "add", "--detach", "--force", str(trial), commit)
+-    failures: list[str] = []
+-    outcomes: list[tuple[str, int]] = []
+-    try:
+-        items = phase_items(project.records(), phase)
+-        tasks = [task, *_merged_tasks(repo, phase, items, task)]
+-        for slug in tasks:
+-            for acceptance in sorted(
+-                acceptances_for(project, slug, phase), key=lambda r: r["subject"]
+-            ):
+-                outcome = run_check(
+-                    acceptance_id=acceptance["id"],
+-                    cwd=trial,
+-                    store_root=project.project_root,
+-                    store_dir=project.store_path,
+-                )
+-                outcomes.append((acceptance["subject"], outcome.exit_code))
+-                if outcome.exit_code != 0:
+-                    failures.append(acceptance["subject"])
+-    finally:
+-        _git_text(repo, "worktree", "remove", "--force", str(trial))
+-    if failures:
+-        reason = "acceptance failed on the merge: " + ", ".join(failures)
+-        return WaveResolve(phase, task, (reason,), commit, tuple(outcomes))
+-    _git_text(tree, "merge", "--quit")
+-    _git_text(tree, "reset", "--soft", commit)
+-    question = _open_question(project, _effort(phase_rec, phase), f"merge:{task}")
+-    if question is not None:
+-        project.update(
+-            question["id"], record_type="score:continuity-question", transition="answered"
+-        )
+-    return WaveResolve(phase, task, (), commit, tuple(outcomes))

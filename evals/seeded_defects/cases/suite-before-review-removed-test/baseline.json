@@ -1,0 +1,7 @@
+{
+  "uv run pytest -q tests/test_suite_before_review.py -k brief": "pass",
+  "uv run pytest -q tests/test_suite_before_review.py -k end_to_end": "pass",
+  "uv run pytest -q tests/test_cli_surface.py tests/test_skill_portability.py tests/test_contract_self_consistency.py": "pass",
+  "uv run pytest -q tests/test_phase_end_order.py": "pass",
+  "uv run pytest -q tests/test_suite_before_review.py tests/test_phase_end_order.py": "pass"
+}

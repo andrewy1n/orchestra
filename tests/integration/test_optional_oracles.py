@@ -8,8 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import REPO_ROOT
-from test_verification_methods import (
+from conductor_support import (
     NODE,
     PROBE,
     close_request,
@@ -17,6 +16,7 @@ from test_verification_methods import (
     run_acceptance,
     setup_acceptance,
 )
+from conftest import REPO_ROOT
 
 from orchestra.canon import record
 from orchestra.canon.project import Project
