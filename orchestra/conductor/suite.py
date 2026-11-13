@@ -31,11 +31,12 @@ from orchestra.conductor.check import (
     output_sha256,
     parse_failing_node_ids,
 )
+from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND as EVIDENCE_KIND
+from orchestra.conductor.head_evidence import SUITE_SUBJECT_SUFFIX as SUBJECT_SUFFIX
+from orchestra.conductor.head_evidence import suite_subject
 from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
 from orchestra.conductor.revision import revision_matches as _revision_matches
 
-EVIDENCE_KIND = "integration"
-SUBJECT_SUFFIX = "-suite"
 METHOD = "check"
 
 SKIPPED_EXIT_CODE = 4
@@ -95,15 +96,6 @@ def load_suite_policy(start: Path | None = None) -> SuitePolicy:
         gate=suite_config.gate,
         source_path=str(root / "orchestra.toml"),
     )
-
-
-def suite_subject(phase_slug: str) -> str:
-    slug = (phase_slug or "").strip()
-    if not slug:
-        raise ValueError("phase_slug is required")
-    if slug.endswith(SUBJECT_SUFFIX):
-        return slug
-    return f"{slug}{SUBJECT_SUFFIX}"
 
 
 def is_suite_subject(subject: str) -> bool:
