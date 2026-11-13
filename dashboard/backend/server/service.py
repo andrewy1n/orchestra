@@ -29,7 +29,8 @@ from dashboard.backend.snapshot import (
 )
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
-from orchestra.conductor.reviewer import phase_review_gate_holds
+from orchestra.canon.types import Record
+from orchestra.conductor.revision import revision_matches
 from orchestra.score.workflow_reviews import Step, step_readiness
 
 CachedResponse = (
@@ -101,6 +102,22 @@ def needs_payload(item: NeedsYouItem) -> schemas.NeedsYouItem:
     ]
     return schemas.NeedsYouItem.model_validate(
         {**vars(item), "approval": schemas.Approval(confirm_choices=choices)}
+    )
+
+
+def _payload_str(record: Record, key: str) -> str:
+    value = record["payload"].get(key)
+    return value if isinstance(value, str) else ""
+
+
+def _review_passed(checks: list[Record], phase: str, effort: str, head: str) -> bool:
+    return any(
+        _payload_str(run, "method") == "review"
+        and _payload_str(run, "result") == "pass"
+        and _payload_str(run, "effort") == effort
+        and f"{phase}-review" in {_payload_str(run, "criterion_id"), run["subject"]}
+        and revision_matches(_payload_str(run, "revision"), head)
+        for run in checks
     )
 
 
@@ -237,13 +254,14 @@ class Reader:
     def _card_inputs(
         self, snapshot: Snapshot
     ) -> tuple[dict[str, Landing], dict[str, set[str]], set[str]]:
-        phases = [
-            phase
+        in_progress = [
+            (effort.effort, phase)
             for effort in snapshot.efforts
             if not (effort.finished or effort.dormant)
             for phase in effort.phases
             if phase.state == "in_progress"
         ]
+        phases = [phase for _, phase in in_progress]
         if not phases:
             return {}, {}, set()
         landings = self._landings(snapshot, phases)
@@ -263,10 +281,11 @@ class Reader:
                 if step_readiness(records, phase.subject, step).status == "ready"
             }
         checks = [record for record in catalog if record["record_type"] == "tuner:check-run"]
+        efforts = {phase.subject: effort for effort, phase in in_progress}
         review_passed = {
             subject
             for subject, landing in landings.items()
-            if landing.head and phase_review_gate_holds(check_runs=checks, phase_head=landing.head)
+            if landing.head and _review_passed(checks, subject, efforts[subject], landing.head)
         }
         return landings, approvals, review_passed
 
