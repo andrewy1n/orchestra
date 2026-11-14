@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from orchestra.canon import record_payload
@@ -48,12 +48,16 @@ def _policy_problem(
             "criterion_id": check.acceptance_id,
             "method": record_payload(acceptance).get("method"),
             "result": record_payload(green).get("result"),
-            "check_run_id": check.check_run_id,
         }
-        red = _red_check_run(project, check.acceptance_id, green)
-        if entry["method"] == "tdd" and red:
-            entry["red_check_run_id"] = red
+        if entry["method"] == "manual":
             entry["revision"] = record_payload(green).get("revision")
+            entry["signed_by"] = record_payload(green).get("signed_by")
+        else:
+            entry["check_run_id"] = check.check_run_id
+            red = _red_check_run(project, check.acceptance_id, green)
+            if entry["method"] == "tdd" and red:
+                entry["red_check_run_id"] = red
+                entry["revision"] = record_payload(green).get("revision")
         criteria.append(entry)
 
     def amendments(acceptance_id: str) -> list[Record]:
@@ -91,6 +95,14 @@ def _policy_problem(
 def close(project: Project, landed: land_task.LandedTask, verified: frozenset[str]) -> Closure:
     item = land_task.work_item(project, landed.task)
     tree = Path(str(record_payload(item).get("write_root") or project.project_root))
+    if wave.closes_phase(item, wave.phase_items(project.records(), landed.phase)):
+        from orchestra.conductor.verification import run_closing_checks
+
+        verification = run_closing_checks(project, landed)
+        if verification.refusal:
+            return Closure("in_progress", CODE_FAILED, (verification.refusal,))
+        landed = replace(landed, checks=verification.checks)
+        verified = verification.verified
     reasons: list[str] = []
     failed = False
     pending = False
