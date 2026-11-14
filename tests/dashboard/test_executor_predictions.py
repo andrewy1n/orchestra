@@ -52,7 +52,9 @@ def _tasks(project: Project):
     return {task.subject: task for task in effort.tasks}
 
 
-def test_dashboard_matches_plan_predictions_for_each_phase_wave(project: Project) -> None:
+def test_dashboard_matches_plan_predictions_for_each_phase_wave(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S", estimate_minutes=6)
     _task(project, "large", size="L", estimate_minutes=20, depends_on=["small-a"])
@@ -60,9 +62,8 @@ def test_dashboard_matches_plan_predictions_for_each_phase_wave(project: Project
     snapshot = load_snapshot(project)
     effort = next(effort for effort in snapshot.efforts if effort.effort == "alpha")
     tasks = {task.subject: task for task in effort.tasks}
-    plan = views.render_view(
-        views.PLAN, views.load_records(project), project_root=project.project_root
-    )
+    monkeypatch.chdir(project.project_root)
+    plan = views.render_view(views.PLAN, views.load_records(project))
 
     assert tasks["small-a"].executor == "inline"
     assert tasks["small-b"].executor == "inline"

@@ -32,10 +32,9 @@ def _config(project: Project, budget: int = 15) -> None:
     )
 
 
-def _plan(project: Project) -> str:
-    return views.render_view(
-        views.PLAN, views.load_records(project), project_root=project.project_root
-    )
+def _plan(project: Project, monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.chdir(project.project_root)
+    return views.render_view(views.PLAN, views.load_records(project))
 
 
 @pytest.fixture
@@ -46,30 +45,36 @@ def project(tmp_path: Path) -> Project:
     return result
 
 
-def test_plan_predicts_executor_for_tasks_in_same_wave(project: Project) -> None:
+def test_plan_predicts_executor_for_tasks_in_same_wave(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S", estimate_minutes=6)
     _task(project, "large", size="L", estimate_minutes=20, depends_on=["small-a"])
 
-    text = _plan(project)
+    text = _plan(project, monkeypatch)
 
     assert "**small-a**: small-a; p1; deliver; alpha; executor: predicted inline" in text
     assert "**small-b**: small-b; p1; deliver; alpha; executor: predicted inline" in text
     assert "**large**: large; p1; deliver; alpha; executor: predicted subagent" in text
 
 
-def test_plan_uses_configured_budget_and_missing_estimate_upper_bound(project: Project) -> None:
+def test_plan_uses_configured_budget_and_missing_estimate_upper_bound(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _config(project, budget=8)
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S")
 
-    text = _plan(project)
+    text = _plan(project, monkeypatch)
 
     assert "**small-a**: small-a; p1; deliver; alpha; executor: predicted subagent" in text
     assert "**small-b**: small-b; p1; deliver; alpha; executor: predicted subagent" in text
 
 
-def test_plan_uses_dispatched_assignee_before_override(project: Project) -> None:
+def test_plan_uses_dispatched_assignee_before_override(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     task = _task(project, "dispatched", size="XS", executor="inline")
     project.supersede(
         task["id"],
@@ -84,32 +89,38 @@ def test_plan_uses_dispatched_assignee_before_override(project: Project) -> None
         },
     )
 
-    assert "executor: subagent" in _plan(project)
-    assert "executor: predicted" not in _plan(project)
+    assert "executor: subagent" in _plan(project, monkeypatch)
+    assert "executor: predicted" not in _plan(project, monkeypatch)
 
 
-def test_plan_ignores_historical_assignee_and_honors_override(project: Project) -> None:
+def test_plan_ignores_historical_assignee_and_honors_override(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _task(project, "historical", size="L", assignee="agent-7", executor="inline")
 
-    text = _plan(project)
+    text = _plan(project, monkeypatch)
 
     assert "executor: inline" in text
     assert "executor: predicted" not in text
 
 
-def test_plan_reloads_predictions_after_wave_membership_changes(project: Project) -> None:
+def test_plan_reloads_predictions_after_wave_membership_changes(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _task(project, "first", size="XS", estimate_minutes=4)
     _task(project, "second", size="XS", estimate_minutes=4)
-    assert "executor: predicted inline" in _plan(project)
+    assert "executor: predicted inline" in _plan(project, monkeypatch)
 
     _task(project, "third", size="XS", estimate_minutes=10)
 
-    assert "executor: predicted subagent" in _plan(project)
+    assert "executor: predicted subagent" in _plan(project, monkeypatch)
 
 
-def test_plan_reports_missing_project_config(project: Project) -> None:
+def test_plan_reports_missing_project_config(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
     project.project_root.joinpath("orchestra.toml").unlink()
     _task(project, "small", size="XS")
 
     with pytest.raises(ProjectConfigError, match="required project config is missing"):
-        _plan(project)
+        _plan(project, monkeypatch)
