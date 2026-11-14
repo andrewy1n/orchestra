@@ -36,8 +36,20 @@ def _record(
 def _records(executor: str) -> list[Record]:
     return [
         _record("score:phase", "p", {"weight": "light"}, state="in_progress"),
-        _record("score:work-item", "small", {"phase": "p", "size": "XS", "executor": executor}, state="planned", wave=1),
-        _record("score:work-item", "other", {"phase": "p", "size": "XS", "estimate_minutes": 8}, state="planned", wave=1),
+        _record(
+            "score:work-item",
+            "small",
+            {"phase": "p", "size": "XS", "executor": executor},
+            state="planned",
+            wave=1,
+        ),
+        _record(
+            "score:work-item",
+            "other",
+            {"phase": "p", "size": "XS", "estimate_minutes": 8},
+            state="planned",
+            wave=1,
+        ),
         _record("score:acceptance", "R1", {"phase": "p", "requirement": "R1"}),
     ]
 
@@ -58,10 +70,25 @@ def test_analyzer_keeps_matching_executor_override_without_warning() -> None:
     assert "executor-override-differs" not in {finding.code for finding in report.findings}
 
 
+def test_analyzer_keeps_conflicting_wave_overrides_as_an_error() -> None:
+    records = _records("inline")
+    records[2]["payload"]["executor"] = "subagent"
+
+    report = analyze_phase(records, "p")
+
+    assert any(f.code == "executor-wave-invalid" and f.severity == "error" for f in report.findings)
+
+
 def test_analyzer_does_not_emit_retired_solo_subagent_warning() -> None:
     records = [
         _record("score:phase", "p", {"weight": "light"}, state="in_progress"),
-        _record("score:work-item", "solo", {"phase": "p", "size": "S", "executor": "subagent"}, state="planned", wave=1),
+        _record(
+            "score:work-item",
+            "solo",
+            {"phase": "p", "size": "S", "executor": "subagent"},
+            state="planned",
+            wave=1,
+        ),
         _record("score:acceptance", "R1", {"phase": "p", "requirement": "R1"}),
     ]
 
