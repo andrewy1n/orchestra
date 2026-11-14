@@ -8,6 +8,15 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+PROJECT_CONFIG = (
+    "[verify.stages]\n"
+    'task = ["unit"]\n'
+    'phase = ["unit", "review"]\n'
+    'milestone = ["unit", "review"]\n'
+    "\n"
+    "[verify.unit]\n"
+    'runner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+)
 SCHEMA_PATH = os.pathsep.join(
     [
         str(REPO / "orchestra" / "score" / "schemas" / "score.json"),
@@ -26,6 +35,7 @@ from orchestra.canon.project import Project, open_store  # noqa: E402
 
 def make_project(root: Path) -> Project:
     root.mkdir(parents=True, exist_ok=True)
+    write_project_config(root)
     git_init = subprocess.run(
         ["git", "-C", str(root), "init", "-q"], capture_output=True, text=True
     )
@@ -49,6 +59,10 @@ def make_project(root: Path) -> Project:
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     return open_store(root)
+
+
+def write_project_config(root: Path) -> None:
+    (root / "orchestra.toml").write_text(PROJECT_CONFIG, encoding="utf-8")
 
 
 def create(project, record_type: str, subject: str, payload: dict, body: str | None = None):
