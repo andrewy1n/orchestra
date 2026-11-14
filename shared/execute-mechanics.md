@@ -137,12 +137,13 @@ git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phas
   || git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge phase/<phase-slug>
 ```
 
-   Read `payload.executor` on each ready task (`inline` | `subagent`;
-   missing/empty → `subagent`). If the wave disagrees, or any value is
-   other than those two, stop and name the tasks — do not spawn or
-   transition. Follow `## Approach` in the brief; do not ask the user
-   for an implementation recipe when it is present.
-4. When the wave agrees, transition each task to `in_progress` and set
+   Use the executor mode resolved by `orchestra wave start`. A written
+   `payload.executor` is an optional `inline` or `subagent` override.
+   If the wave disagrees, or any value is other than those two, stop
+   and name the tasks — do not spawn or transition.
+   Follow `## Approach` in the brief; do not ask the user for an
+   implementation recipe when it is present.
+4. After the wave mode is resolved, transition each task to `in_progress` and set
    `assignee` (`inline` for inline; a short label for subagent) and
    `write_root` in the same update. `write_root` is the executor's
    write root. For a task other than the work-item that depends_on
@@ -150,8 +151,9 @@ git -C <repo>/.worktrees/<phase-slug>--<task-slug> merge-base --is-ancestor phas
    `<repo>/.worktrees/<phase-slug>--<task-slug>`. For the work-item
    that depends_on every other phase work-item, it is
    `<repo>/.worktrees/<phase-slug>` on `phase/<phase-slug>`. When
-   Landing is absent, it is the current checkout. Work-item
-   `payload.executor` is only the wave mode. Use
+   Landing is absent, it is the current checkout. A written
+   `payload.executor` is an explicit override; an omitted value is
+   resolved from wave shape and project settings. Use
    `--expected-revision` from `list`/`get`:
 
 ```bash
@@ -211,7 +213,7 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
    `<claim-id>` is that claim's `id` in `.tuner/manifest.json`.
    Exit 0 accepts; non-zero → acceptance not done; leave `in_progress`.
 
-5. Dispatch by the shared `payload.executor`.
+5. Dispatch with the mode resolved for the wave.
 
    **`subagent`:** one `generalPurpose` subagent per task, parallel
    within the wave. Give each only:
@@ -395,7 +397,7 @@ orchestra verify recheck --cwd <repo-or-worktree> --claim <claim-id>
   human-readable note
 - Skip `conductor:execution-report` and derive check-runs from chat memory
 - Ask for an implementation recipe when `## Approach` is present
-- Spawn a subagent for `inline`, or spawn when the wave disagrees on executor
+- Override an explicit executor conflict reported by `orchestra wave start`
 - Dispatch when `derived.ready` is false, or another focus's work
 - Write or recompute `ready`/`wave`
 - Load the whole store; route by focus, then phase

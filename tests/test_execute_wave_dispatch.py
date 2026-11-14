@@ -15,10 +15,10 @@ def _text(name: str) -> str:
     return re.sub(r"\s+", " ", raw)
 
 
-def test_missing_executor_means_subagent_and_disagreement_stops():
+def test_derived_executor_and_conflicting_overrides_stop():
     text = _text("execute")
     assert (
-        "Read `payload.executor` on each ready task (`inline` | `subagent`; missing/empty → `subagent`)"
+        "Use the executor mode resolved by `orchestra wave start`. A written `payload.executor` is an optional `inline` or `subagent` override."
         in text
     )
     assert (

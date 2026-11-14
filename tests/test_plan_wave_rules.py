@@ -1,4 +1,4 @@
-"""tasks records the recipe, one shared wave executor, and phase run facts before plan review."""
+"""tasks records recipes and phase run facts while executor mode stays derived."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def _work_item_def() -> dict:
     return h.record_def("work-item")
 
 
-def test_executor_is_inline_or_subagent_and_approach_stays_optional():
+def test_executor_is_an_optional_override_and_approach_stays_optional():
     work_item = _work_item_def()
     assert work_item["payload_enum"]["executor"] == ["inline", "subagent"]
     assert "executor" in work_item["payload"]
@@ -43,10 +43,14 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
 
     raw = h.skill_text("tasks")
     text = _flat(raw)
-    assert "`executor` is `inline` or `subagent`. Missing means `subagent`" in text
+    assert "Dispatch derives the executor from the wave and project settings." in text
+    assert (
+        "Omit `executor` unless the plan needs an explicit `inline` or `subagent` override."
+        in _flat(raw)
+    )
     payloads = _work_item_payloads(raw)
     assert payloads
-    assert {payload["executor"] for payload in payloads} <= {"inline", "subagent"}
+    assert all("executor" not in payload for payload in payloads)
     for inv in extract_invocations(raw):
         if inv["subcommand"] == "create" and inv["type"] == "score:work-item":
             assert "## Approach" in inv["raw"]
@@ -57,15 +61,13 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
                 assert "implementation recipe" in part["body"]
 
 
-def test_every_task_in_a_wave_uses_the_same_executor():
-    assert "same within a wave" in _flat(_text("tasks"))
+def test_derived_wave_mode_and_explicit_overrides_use_one_executor():
+    assert "Explicit overrides in one wave must agree." in _flat(_text("tasks"))
     for path in (SKILLS / "kinds-and-focus.md", REPO_ROOT / "README.md"):
         doc = _flat(path.read_text())
-        assert "`inline` or `subagent`" in doc
+        assert "Dispatch derives" in doc
         assert "Every task in a wave uses the same executor." in doc
-        assert "Missing `executor` means `subagent`." in doc
-    executors = {payload["executor"] for payload in _work_item_payloads(_text("tasks"))}
-    assert len(executors) == 1
+        assert "explicit" in doc.lower()
 
 
 def test_phase_body_records_size_stops_and_collision_notes():
@@ -76,7 +78,7 @@ def test_phase_body_records_size_stops_and_collision_notes():
     )
 
 
-def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
+def test_plan_review_does_not_require_written_executor_values():
     text = (SKILLS / "tasks" / "SKILL.md").read_text()
     flat = _flat(text)
     gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
@@ -92,6 +94,7 @@ def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_presen
     assert gate_at < question_at
     window = flat[gate_at:question_at]
     assert "task recipes" in window
-    assert "wave executor choices" in window
+    assert "wave executor choices" not in window
+    assert "written `executor` values are optional" in _flat(window)
     assert "phase run facts" in window
     assert "Landing" in window
