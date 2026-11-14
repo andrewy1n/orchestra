@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from helpers import skill_text
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -26,15 +28,14 @@ def test_execute_phase_allows_resolve_only_through_the_command() -> None:
 
 
 def test_plan_phase_adds_depends_on_for_tasks_that_rewrite_the_same_function() -> None:
-    for relative in (
-        "skills/tasks/SKILL.md",
-        "skills/tasks/references/task-shapes.md",
+    for text in (
+        " ".join(skill_text("tasks").split()),
+        flat("skills/tasks/references/task-shapes.md"),
     ):
-        text = flat(relative)
         assert "rewrite the same function" in text
         assert "depends_on" in text
 
 
 def test_depends_on_same_function_rule_is_in_the_planning_rules() -> None:
-    text = flat("skills/tasks/SKILL.md")
+    text = " ".join(skill_text("tasks").split())
     assert "Tasks that must rewrite the same function get a `depends_on` edge" in text

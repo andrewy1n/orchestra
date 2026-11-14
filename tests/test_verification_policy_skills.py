@@ -76,7 +76,7 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
         elif name == "verify":
             assert "# Verification method and oracle policy" in skill_text(name)
         else:
-            assert "references/verification-policy.md" in path.read_text()
+            assert "# Verification method and oracle policy" in skill_text(name)
         copy = path.parent / "references" / "verification-policy.md"
         assert copy.read_text() == POLICY.read_text()
 

@@ -28,6 +28,29 @@ def _github_pr(ctx: BriefContext) -> bool:
 
 
 STEP_TABLE: Mapping[str, tuple[Section, ...]] = {
+    "spec": (
+        Section("ensure-store"),
+        Section("kinds-and-focus"),
+        Section("intent-qa"),
+        Section("verification-policy"),
+        Section("spec-process"),
+    ),
+    "design": (
+        Section("ensure-store"),
+        Section("kinds-and-focus"),
+        Section("intent-qa"),
+        Section("design-process"),
+    ),
+    "tasks": (
+        Section("ensure-store"),
+        Section("kinds-and-focus"),
+        Section("record-mechanics"),
+        Section("verification-policy"),
+        Section("planning-mechanics"),
+        Section("task-shapes"),
+        Section("oracle-author"),
+        Section("tasks-process"),
+    ),
     "verify": (
         Section("verification-policy"),
         Section("record-mechanics"),

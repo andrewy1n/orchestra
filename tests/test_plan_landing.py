@@ -66,7 +66,7 @@ def test_shared_docs_name_the_same_landing():
 
 
 def test_plan_review_stays_closed_until_landing_is_present():
-    flat = _flat((SKILLS / "tasks" / "SKILL.md").read_text())
+    flat = _flat(skill_text("tasks"))
     gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
     question_at = flat.index("canon create --type score:continuity-question")
     gate_at = flat.index(gate)

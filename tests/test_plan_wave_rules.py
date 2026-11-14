@@ -77,7 +77,7 @@ def test_phase_body_records_size_stops_and_collision_notes():
 
 
 def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
-    text = (SKILLS / "tasks" / "SKILL.md").read_text()
+    text = _text("tasks")
     flat = _flat(text)
     gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
     question = next(

@@ -37,6 +37,9 @@ runpy.run_module("orchestra.canon", run_name="__main__", alter_sys=True)
 _BRIEF_STEPS: dict[str, tuple[str, ...]] = {
     "verify": ("verify",),
     "land": ("land",),
+    "spec": ("spec", "design"),
+    "design": ("design",),
+    "tasks": ("tasks",),
     "run": ("verify", "land", "execute"),
     "execute": ("verify", "land", "execute"),
 }

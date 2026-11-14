@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import helpers as h
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, skill_text
 from skill_extraction import check_skill_text, extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -15,8 +15,12 @@ def _text(name: str) -> str:
     return skill_text(name)
 
 
+def _own(name: str) -> str:
+    return (SKILLS / name / "SKILL.md").read_text() + "\n" + brief_text(name)
+
+
 def test_spec_writes_only_the_behavioral_contract() -> None:
-    text = (SKILLS / "spec" / "SKILL.md").read_text()
+    text = _own("spec")
     written = {
         inv["type"]
         for inv in extract_invocations(text)
@@ -32,10 +36,11 @@ def test_spec_writes_only_the_behavioral_contract() -> None:
 
 
 def test_design_compares_only_viable_contract_satisfying_options() -> None:
-    text = (SKILLS / "design" / "SKILL.md").read_text()
+    text = _own("design")
+    process = (REPO_ROOT / "orchestra/conductor/briefs/sections/design-process.md").read_text()
     written = {
         inv["type"]
-        for inv in extract_invocations(text)
+        for inv in extract_invocations(process)
         if inv["subcommand"] in {"create", "supersede", "update", "apply"}
     }
 
@@ -46,7 +51,7 @@ def test_design_compares_only_viable_contract_satisfying_options() -> None:
 
 
 def test_design_uses_current_contract_without_creating_tasks() -> None:
-    text = (SKILLS / "design" / "SKILL.md").read_text()
+    text = _own("design")
 
     assert "active approved specification" in text
     assert "Refuse to design" in text
@@ -55,8 +60,8 @@ def test_design_uses_current_contract_without_creating_tasks() -> None:
 
 def test_context_read_precedes_clarification() -> None:
     for name in ("spec", "design"):
-        text = _text(name)
-        assert "intent-qa.md" in text
+        text = _own(name)
+        assert "intent Q&A" in text
         assert text.index("1. Resolve") < text.index("Apply the shared intent Q&A")
         assert "explicit user approval or delegation" in text
 
