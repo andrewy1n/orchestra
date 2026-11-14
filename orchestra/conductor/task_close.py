@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.close_batch import CloseRefused, CloseRequestError, build_batch
+
+if TYPE_CHECKING:
+    from orchestra.conductor.verification import VerificationRun
 
 CODE_DONE = 0
 CODE_FAILED = 1
@@ -92,17 +96,23 @@ def _policy_problem(
     return ""
 
 
-def close(project: Project, landed: land_task.LandedTask, verified: frozenset[str]) -> Closure:
+def close(
+    project: Project,
+    landed: land_task.LandedTask,
+    verified: frozenset[str],
+    *,
+    verification: VerificationRun | None = None,
+) -> Closure:
     item = land_task.work_item(project, landed.task)
     tree = Path(str(record_payload(item).get("write_root") or project.project_root))
     if wave.closes_phase(item, wave.phase_items(project.records(), landed.phase)):
         from orchestra.conductor.verification import run_closing_checks
 
-        verification = run_closing_checks(project, landed)
-        if verification.refusal:
-            return Closure("in_progress", CODE_FAILED, (verification.refusal,))
-        landed = replace(landed, checks=verification.checks)
-        verified = verification.verified
+        result = verification if verification is not None else run_closing_checks(project, landed)
+        if result.refusal:
+            return Closure("in_progress", CODE_FAILED, (result.refusal,))
+        landed = replace(landed, checks=result.checks)
+        verified = verified | result.verified
     reasons: list[str] = []
     failed = False
     pending = False

@@ -20,6 +20,9 @@ blocking `continuity-question` with `scope` `retry:<task-slug>`.
 
 Re-dispatch with the same `payload.executor` as the prior wave
 (`inline` or `subagent`; missing means `subagent`). Do not change mode.
+The unique closing task in a phase with Landing uses runner checks
+instead of an executor. Retry it with `orchestra wave start` after
+fixing a failed check; do not dispatch it to an agent.
 
 ## Budget (hard backstop)
 

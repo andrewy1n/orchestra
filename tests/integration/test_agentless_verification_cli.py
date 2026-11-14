@@ -19,9 +19,7 @@ PHASE_BODY = (
 
 
 class World:
-    def __init__(
-        self, root: Path, landing: bool = True, acceptance: bool = True
-    ) -> None:
+    def __init__(self, root: Path, landing: bool = True, acceptance: bool = True) -> None:
         self.repo = make_git_repo()
         (self.repo / "base.txt").write_text("base\n")
         git(self.repo, "add", "base.txt")
@@ -146,7 +144,9 @@ class World:
                     "verdict": "pass",
                     "revision": revision,
                 },
-                "subject: implementation\nrevision: " + revision + "\nkind: deliver\nresult: pass\nverdict: pass\nevidence: done",
+                "subject: implementation\nrevision: "
+                + revision
+                + "\nkind: deliver\nresult: pass\nverdict: pass\nevidence: done",
             )
         self.closing(executor=executor, acceptance=acceptance)
 
@@ -224,7 +224,7 @@ def test_r2_r10_closing_wave_runs_checks_and_closes_with_report(world: World) ->
     assert isinstance(checks, list) and checks
     assert checks[0]["result"] == "pass"
     assert world.state("verify-runner") == "done"
-    assert git(phase_tree, "rev-parse", "HEAD") == head
+    assert git(phase_tree, "rev-parse", "HEAD").stdout.strip() == head.stdout.strip()
     assert (phase_tree / "base.txt").read_text() == source
 
 
@@ -259,7 +259,9 @@ def test_r3_closing_task_waits_for_dependency_integration(tmp_path: Path) -> Non
             "verdict": "pass",
             "revision": task_tip,
         },
-        "subject: implementation\nrevision: " + task_tip + "\nkind: deliver\nresult: pass\nverdict: pass\nevidence: done",
+        "subject: implementation\nrevision: "
+        + task_tip
+        + "\nkind: deliver\nresult: pass\nverdict: pass\nevidence: done",
     )
 
     result, output = world.start()
@@ -291,6 +293,7 @@ def test_closing_manual_acceptance_waits_for_human(world: World) -> None:
     assert output.get("state") == "in_progress"
     assert output.get("checks")
     assert output["checks"][0]["exit_code"] == 3
+    assert output["checks"][0]["result"] == "pending"
     assert world.state("verify-runner") == "in_progress"
 
 
@@ -326,4 +329,3 @@ def test_closing_executor_override_does_not_dispatch_an_agent(world: World) -> N
     assert result.returncode == 0, result.stdout + result.stderr
     assert output.get("execution_mode") == "runner"
     assert "tasks" not in output
-

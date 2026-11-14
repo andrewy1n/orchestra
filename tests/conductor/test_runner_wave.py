@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
@@ -75,7 +76,7 @@ def test_r11_ordinary_wave_reports_agent_execution(tmp_path: Path) -> None:
 
 
 def test_r2_phase_closing_task_depends_on_every_live_item(tmp_path: Path) -> None:
-    project, repo = _world(tmp_path)
+    project, _repo = _world(tmp_path)
     _item(project, "first")
     _item(project, "second")
     _item(project, "closing", depends_on=["first"])
@@ -83,3 +84,18 @@ def test_r2_phase_closing_task_depends_on_every_live_item(tmp_path: Path) -> Non
     closing = next(record for record in records if record["subject"] == "closing")
 
     assert not wave.closes_phase(closing, wave.phase_items(records, PHASE))
+
+
+def test_r2_rejects_multiple_phase_closing_tasks(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path)
+    _item(project, "first")
+    _item(project, "second", depends_on=["first"])
+    first = next(record for record in project.records() if record["subject"] == "first")
+    project.update(
+        first["id"],
+        record_type="score:work-item",
+        payload={"depends_on": ["second"]},
+    )
+
+    with pytest.raises(wave.WaveError, match="more than one closing task"):
+        wave.start(project, repo, PHASE)
