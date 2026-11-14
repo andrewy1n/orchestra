@@ -60,7 +60,7 @@ def test_r20_plan_phase_runs_analyze_before_opening_plan_review():
     text = skill_text("tasks")
     command = PLAN_COMMAND.search(text)
     assert command
-    gate = text.rindex("plan-review:<current-phase-slug>")
+    gate = text.rindex("plan-review:<phase-slug>")
     assert command.start() < gate
 
 

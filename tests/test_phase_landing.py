@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, section_text, skill_text
 
 MERGE_STEP = re.compile(
     r"merge that branch into `main`"
@@ -90,8 +90,14 @@ def affirmative_matches(text: str, pattern: re.Pattern[str]) -> list[str]:
 def _included(skill_name: str, relative: str) -> str:
     text = skill_text(skill_name)
     body = (REPO_ROOT / relative).read_text()
+    if relative.endswith("kinds-and-focus.md"):
+        body = section_text("kinds-and-focus")
     assert body in text, relative
     return body
+
+
+def _phase_end_brief() -> str:
+    return brief_text("verify", "land", adapter="")
 
 
 def _landing_paragraph(text: str) -> str:
@@ -106,32 +112,26 @@ def _landing_paragraph(text: str) -> str:
 def landing_surfaces() -> list[tuple[str, str]]:
     """Landing instructions: shared kinds, generated copies, README, plan, and phase close."""
     plan = skill_text("tasks")
-    execute = skill_text("execute")
-    shared = (REPO_ROOT / "shared/kinds-and-focus.md").read_text()
-    top_kinds = (REPO_ROOT / "skills/kinds-and-focus.md").read_text()
+    shared = section_text("kinds-and-focus")
     readme = (REPO_ROOT / "README.md").read_text()
-    plan_kinds = "skills/tasks/references/kinds-and-focus.md"
-    execute_kinds = "skills/execute/references/kinds-and-focus.md"
-    assert (REPO_ROOT / plan_kinds).read_text() in plan
-    assert (REPO_ROOT / execute_kinds).read_text() in execute
+    plan_kinds = "orchestra/conductor/briefs/sections/kinds-and-focus.md"
+    assert section_text("kinds-and-focus") in plan
     return [
         (
-            "skills/verify/references/phase-end.md",
-            _included("verify", "skills/verify/references/phase-end.md"),
+            "orchestra/conductor/briefs/sections/phase-end.md",
+            _phase_end_brief(),
         ),
         (
             "skills/verify/SKILL.md",
             _included("verify", "skills/verify/SKILL.md"),
         ),
         (
-            "skills/execute/references/execute-mechanics.md",
-            _included("execute", "skills/execute/references/execute-mechanics.md"),
+            "execute brief",
+            brief_text("execute"),
         ),
         ("skills/tasks/SKILL.md", _included("tasks", "skills/tasks/SKILL.md")),
-        ("shared/kinds-and-focus.md", _landing_paragraph(shared)),
-        ("skills/kinds-and-focus.md", _landing_paragraph(top_kinds)),
-        (plan_kinds, _landing_paragraph(_included("tasks", plan_kinds))),
-        (execute_kinds, _landing_paragraph(_included("execute", execute_kinds))),
+        ("orchestra/conductor/briefs/sections/kinds-and-focus.md", _landing_paragraph(shared)),
+        ("tasks brief", _landing_paragraph(_included("tasks", plan_kinds))),
         ("README.md", _landing_paragraph(readme)),
     ]
 
@@ -158,7 +158,7 @@ def _phase_end_close(phase_end: str) -> str:
 def test_r1_commits_phase_branch() -> None:
     """R1: When Landing is present and the phase gate holds, commit the phase branch from the phase worktree."""
     surfaces = dict(landing_surfaces())
-    for label in ("skills/verify/references/phase-end.md",):
+    for label in ("orchestra/conductor/briefs/sections/phase-end.md",):
         flat = _flat(surfaces[label]).lower()
         gate_at = flat.find(_GATE)
         assert gate_at != -1, label
@@ -190,7 +190,7 @@ def test_r4_omits_pull_request() -> None:
 def test_r5_follows_repo_instructions() -> None:
     """R5: Integrate the committed phase branch with `orchestra land`."""
     surfaces = dict(landing_surfaces())
-    for label in ("skills/verify/references/phase-end.md",):
+    for label in ("orchestra/conductor/briefs/sections/phase-end.md",):
         text = surfaces[label]
         assert _INTEGRATE in _flat(text).lower(), label
 
@@ -198,7 +198,7 @@ def test_r5_follows_repo_instructions() -> None:
 def test_r6_asks_when_silent() -> None:
     """R6: When land exits non-zero, stop and ask."""
     surfaces = dict(landing_surfaces())
-    for label in ("skills/verify/references/phase-end.md",):
+    for label in ("orchestra/conductor/briefs/sections/phase-end.md",):
         text = surfaces[label]
         assert _ASK in _flat(text).lower(), label
 
@@ -213,8 +213,8 @@ def test_r7_omits_store_commit_on_default_branch() -> None:
 def test_r8_phase_commit_includes_canon_metadata() -> None:
     """R8: The phase-branch commit includes versioned .canon metadata in the worktree."""
     surfaces = dict(landing_surfaces())
-    skill = surfaces["skills/execute/references/execute-mechanics.md"]
-    phase_end = surfaces["skills/verify/references/phase-end.md"]
+    skill = surfaces["execute brief"]
+    phase_end = surfaces["orchestra/conductor/briefs/sections/phase-end.md"]
     close = _phase_end_close(phase_end)
     assert "git -C <repo>/.worktrees/<phase-slug>--<task-slug> add -A -- . ':!.canon'" in skill
     assert _CANON_META in _flat(close)
@@ -223,7 +223,7 @@ def test_r8_phase_commit_includes_canon_metadata() -> None:
 
 def test_r9_ignores_landing_body_integration() -> None:
     """R9: Do not carry out Landing integration steps by hand."""
-    phase_end = dict(landing_surfaces())["skills/verify/references/phase-end.md"]
+    phase_end = dict(landing_surfaces())["orchestra/conductor/briefs/sections/phase-end.md"]
     flat = _flat(phase_end).lower()
     start = flat.find(_IGNORE_BODY)
     assert start != -1

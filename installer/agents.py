@@ -18,11 +18,19 @@ reaches all hosts at once and never drifts per host.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 CANONICAL_PATH = Path("agents") / "reviewer.prompt.md"
 AGENT_FILENAME = "reviewer.md"
+CHECKOUT_AGENT_PATH = Path("agents") / AGENT_FILENAME
+BRIEF_SECTION_PATH = Path("orchestra") / "conductor" / "briefs" / "sections" / "reviewer-prompt.md"
+BRIEF_SECTION_PREFACE = (
+    "# Reviewer prompt\n\n"
+    "Use the `reviewer` subagent when the host provides one. "
+    "Otherwise give the prompt below to a general read-only subagent.\n\n"
+)
 
 #: Where each native host discovers a project/global subagent file.
 HOST_DESTINATIONS = {
@@ -196,3 +204,50 @@ def render_all(source_root: Path | str) -> dict[str, str]:
     """Every host rendering, keyed by provider id (for tests and docs)."""
     agent = load(source_root)
     return {provider_id: render(provider_id, agent) for provider_id in HOST_DESTINATIONS}
+
+
+def generated_files(source_root: Path | str) -> dict[Path, str]:
+    """Every checkout file derived from the canonical prompt, keyed by relative path."""
+    root = Path(source_root)
+    agent = load(root)
+    canonical = (root / CANONICAL_PATH).read_text(encoding="utf-8")
+    return {
+        CHECKOUT_AGENT_PATH: render("claude", agent),
+        BRIEF_SECTION_PATH: BRIEF_SECTION_PREFACE + canonical,
+    }
+
+
+def write_generated(source_root: Path | str) -> None:
+    root = Path(source_root)
+    for relative, text in generated_files(root).items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+
+
+def drifted_files(source_root: Path | str) -> list[Path]:
+    root = Path(source_root)
+    drifted: list[Path] = []
+    for relative, text in generated_files(root).items():
+        target = root / relative
+        if not target.is_file() or target.read_text(encoding="utf-8") != text:
+            drifted.append(relative)
+    return drifted
+
+
+def main(argv: list[str]) -> int:
+    root = Path(__file__).resolve().parent.parent
+    if argv == ["--write"]:
+        write_generated(root)
+        return 0
+    if argv == ["--check"]:
+        drifted = drifted_files(root)
+        for relative in drifted:
+            print(f"drift: {relative} differs from {CANONICAL_PATH}")
+        return 1 if drifted else 0
+    print("usage: python -m installer.agents --write | --check", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -353,7 +353,7 @@ def test_fix_cluster_budget_no_inline_rerun_for_required_gate():
 
 
 def test_execute_phase_documents_suite_policy_before_reviewer_and_check_run():
-    text = (REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md").read_text()
+    text = h.brief_text("verify")
     flat = " ".join(text.split())
     assert "Do not waive suite policy" in flat
     assert (

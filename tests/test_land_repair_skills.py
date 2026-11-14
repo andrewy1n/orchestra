@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import re
 
-from conftest import REPO_ROOT
+from helpers import land_guide_text
 
-GUIDE = REPO_ROOT / "shared/land-github-pr.md"
+GUIDE = land_guide_text()
 
 
 def _repair_loop() -> str:
-    text = GUIDE.read_text(encoding="utf-8")
+    text = GUIDE
     start = text.find("\n### CI repair loop\n")
     if start == -1:
         return ""

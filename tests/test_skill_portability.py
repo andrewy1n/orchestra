@@ -1,13 +1,8 @@
-"""Every advertised skill installs as a self-contained Agent Skills directory.
+"""Every advertised skill installs as one self-contained SKILL.md directory.
 
 R1: a skill directory contains every file its instructions reference, and no
-reference leaves the directory. A bare ``agents/...`` or ``shared/...`` path
-is an authored source outside the skill; it must be generated into
-``references/`` instead.
-R2: the shared ``ensure-store.md`` and ``kinds-and-focus.md`` text is generated
-into each skill's ``references/`` from one source, as is the canonical
-reviewer prompt (``agents/reviewer.prompt.md``).
-R3: the generated-copy drift check fails when a copy differs from its source.
+reference leaves the directory. A bare ``agents/...`` path is an authored
+source outside the skill.
 R4: every ``SKILL.md`` has frontmatter whose ``name`` equals its directory and
 whose ``description`` is non-empty.
 R6: no skill body names a checkout path or a ``<plugin>`` root for a runtime
@@ -18,30 +13,20 @@ the removed ``aff`` binary is still rejected.
 from __future__ import annotations
 
 import re
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
-SHARED = ROOT / "shared"
-BUILD = ROOT / "scripts" / "build_skills.py"
-SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verification-policy.md")
-STEP_SHARED_DOCS = {
-    "record-mechanics.md": ("tasks", "execute", "verify", "run"),
-    "phase-end.md": ("verify", "run"),
-    "land-github-pr.md": ("verify", "run"),
-}
+SECTIONS = ROOT / "orchestra" / "conductor" / "briefs" / "sections"
 
 _FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
 _LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
 _INLINE_PATH = re.compile(r"`((?:\.\.?/|references/)[^`\s]+)`")
-#: Authored sources that must be generated into the skill's ``references/``.
+#: Authored sources outside the skill directory.
 #: A skill that names one directly would break once it is installed alone.
-_OUTSIDE_SKILL_DIRS = ("agents", "shared")
+_OUTSIDE_SKILL_DIRS = ("agents",)
 _BARE_OUTSIDE_PATH = re.compile(r"`((?:" + "|".join(_OUTSIDE_SKILL_DIRS) + r")/[^`\s]+)`")
 
 _CHECKOUT_PATH = re.compile(
@@ -142,14 +127,6 @@ def module_api_errors(text: str) -> list[str]:
     return errors
 
 
-def run_build(root: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, str(BUILD), "--root", str(root), *args],
-        capture_output=True,
-        text=True,
-    )
-
-
 @pytest.mark.parametrize("skill_dir", advertised_skills(), ids=lambda path: path.name)
 def test_paths_every_reference_stays_inside_the_skill_directory(skill_dir: Path):
     errors: list[str] = []
@@ -162,7 +139,7 @@ def test_paths_planted_parent_reference_is_rejected(tmp_path: Path):
     skill = tmp_path / "skills" / "bad" / "references"
     skill.mkdir(parents=True)
     text = (
-        "---\nname: bad\ndescription: bad skill\n---\n\nSee [shared](../shared/ensure-store.md).\n"
+        "---\nname: bad\ndescription: bad skill\n---\n\nSee [store](../outside/ensure-store.md).\n"
     )
     errors = path_errors(skill.parent, text)
     assert any("leaves the skill directory" in error for error in errors), errors
@@ -184,13 +161,10 @@ def test_paths_planted_bare_agents_reference_is_rejected(tmp_path: Path):
     assert any("leaves the skill directory" in error for error in errors), errors
 
 
-def test_paths_planted_bare_shared_link_is_rejected(tmp_path: Path):
+def test_paths_planted_bare_agents_link_is_rejected(tmp_path: Path):
     skill = tmp_path / "skills" / "bad"
     skill.mkdir(parents=True)
-    text = (
-        "---\nname: bad\ndescription: bad skill\n---\n\n"
-        "Follow [ensure-store](shared/ensure-store.md).\n"
-    )
+    text = "---\nname: bad\ndescription: bad skill\n---\n\nFollow [reviewer](agents/reviewer.md).\n"
     errors = path_errors(skill, text)
     assert any("leaves the skill directory" in error for error in errors), errors
 
@@ -237,7 +211,7 @@ def test_paths_named_runtime_commands_are_allowed():
 
 def test_runtime_references_name_cli_commands_not_module_apis():
     errors: list[str] = []
-    paths = [*sorted(SKILLS.rglob("*.md")), *sorted(SHARED.glob("*.md"))]
+    paths = [*sorted(SKILLS.rglob("*.md")), *sorted(SECTIONS.glob("*.md"))]
     for path in paths:
         for error in module_api_errors(path.read_text()):
             errors.append(f"{path.relative_to(ROOT)}: {error}")
@@ -262,75 +236,6 @@ def test_runtime_cli_subcommands_are_allowed():
         "`orchestra store path`, and `orchestra store run -- list`.\n"
     )
     assert module_api_errors(text) == []
-
-
-@pytest.mark.parametrize("doc", SHARED_DOCS)
-def test_generated_references_are_byte_identical(doc: str):
-    source = (SHARED / doc).read_bytes()
-    for skill_dir in advertised_skills():
-        target = skill_dir / "references" / doc
-        assert target.is_file(), f"{target} is missing"
-        assert target.read_bytes() == source, f"{target} drifted from {SHARED / doc}"
-    compat = SKILLS / doc
-    assert compat.is_file(), f"{compat} is missing"
-    assert compat.read_bytes() == source, f"{compat} drifted from {SHARED / doc}"
-
-
-@pytest.mark.parametrize(
-    ("doc", "skill_name"),
-    [(doc, name) for doc, names in STEP_SHARED_DOCS.items() for name in names],
-)
-def test_step_references_are_byte_identical(doc: str, skill_name: str):
-    source = (SHARED / doc).read_bytes()
-    target = SKILLS / skill_name / "references" / doc
-    assert target.is_file(), f"{target} is missing"
-    assert target.read_bytes() == source, f"{target} drifted from {source}"
-
-
-def test_generated_check_passes_for_the_repository():
-    result = run_build(ROOT, "--check")
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
-def test_execute_phase_carries_the_canonical_reviewer_prompt():
-    prompt = ROOT / "agents" / "reviewer.prompt.md"
-    reference = SKILLS / "execute" / "references" / "reviewer.md"
-    assert reference.is_file(), f"{reference} is missing"
-    assert reference.read_bytes() == prompt.read_bytes(), f"{reference} drifted from {prompt}"
-
-
-def test_generated_references_drift_is_detected(tmp_path: Path):
-    shutil.copytree(SHARED, tmp_path / "shared")
-    shutil.copytree(SKILLS, tmp_path / "skills")
-    shutil.copytree(ROOT / "agents", tmp_path / "agents")
-
-    built = run_build(tmp_path)
-    assert built.returncode == 0, built.stdout + built.stderr
-    clean = run_build(tmp_path, "--check")
-    assert clean.returncode == 0, clean.stdout + clean.stderr
-
-    target = tmp_path / "skills" / "init" / "references" / "ensure-store.md"
-    target.write_text(target.read_text() + "\nhand edit\n")
-    drifted = run_build(tmp_path, "--check")
-    assert drifted.returncode != 0
-    assert "drift" in (drifted.stdout + drifted.stderr).lower()
-    assert "ensure-store.md" in (drifted.stdout + drifted.stderr)
-
-
-def test_generated_reviewer_drift_is_detected(tmp_path: Path):
-    shutil.copytree(SHARED, tmp_path / "shared")
-    shutil.copytree(SKILLS, tmp_path / "skills")
-    shutil.copytree(ROOT / "agents", tmp_path / "agents")
-
-    built = run_build(tmp_path)
-    assert built.returncode == 0, built.stdout + built.stderr
-
-    target = tmp_path / "agents" / "reviewer.md"
-    target.write_text(target.read_text() + "\nhand edit\n")
-    drifted = run_build(tmp_path, "--check")
-    assert drifted.returncode != 0
-    assert "drift" in (drifted.stdout + drifted.stderr).lower()
-    assert "reviewer.md" in (drifted.stdout + drifted.stderr)
 
 
 @pytest.mark.parametrize("skill_dir", advertised_skills(), ids=lambda path: path.name)

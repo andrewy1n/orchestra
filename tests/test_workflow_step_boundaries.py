@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 SKILLS = REPO_ROOT / "skills"
 
@@ -12,7 +13,7 @@ def _text(name: str) -> str:
 
 
 def test_tasks_cover_current_requirements_and_pin_reviewed_inputs() -> None:
-    text = _text("tasks")
+    text = skill_text("tasks")
 
     assert "atomic requirement ids" in text
     assert "source_reviews" in text
