@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 from uuid import uuid4
 
@@ -52,6 +52,7 @@ class RunAction:
     step: Step
     state: ActionState
     reason: str = ""
+    brief: str = ""
 
 
 @dataclass(frozen=True)
@@ -507,6 +508,31 @@ def _action_for(
     return RunAction(subject, step, "ready")
 
 
+def step_stage(records: list[Record], phase: str, step: str) -> str | None:
+    match step:
+        case "verify":
+            return "close" if _verification_ready(records, phase)[0] else "gather"
+        case "land":
+            return "confirm" if _landing_ready(records, phase)[0] else "prepare"
+        case _:
+            return None
+
+
+def _with_brief(project: Project, action: RunAction) -> RunAction:
+    if action.state != "ready":
+        return action
+    from orchestra.conductor.briefs.context import brief_context
+    from orchestra.conductor.briefs.render import render_brief
+
+    text = render_brief(brief_context(project, action.phase, action.step))
+    return replace(action, brief=text)
+
+
+def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
+    records = project.records()
+    return _with_brief(project, _action_for(project, records, _current_phase(records, phase), step))
+
+
 def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[RunAction, ...]:
     steps = _run_steps(run)
     phases = _phase_records(records, run)
@@ -523,16 +549,15 @@ def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
                 break
-            actions.append(
-                _action_for(
-                    project,
-                    records,
-                    phase,
-                    step,
-                    prepare=prepare_barrier,
-                    selected_phases=selected_phases,
-                )
+            action = _action_for(
+                project,
+                records,
+                phase,
+                step,
+                prepare=prepare_barrier,
+                selected_phases=selected_phases,
             )
+            actions.append(_with_brief(project, action))
             break
     return tuple(actions)
 
