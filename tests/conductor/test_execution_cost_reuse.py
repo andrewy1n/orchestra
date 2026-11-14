@@ -12,9 +12,7 @@ from orchestra.conductor import land_task
 def test_r8_duplicate_landing_reuses_report_when_elapsed_time_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(
-        tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat()
-    )
+    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
     receipts = iter((START + timedelta(seconds=10), START + timedelta(seconds=30)))
     monkeypatch.setattr(land_task, "utc_now", lambda: next(receipts))
     evidence = _evidence_file(tmp_path, tokens_total=123)
@@ -39,9 +37,7 @@ def test_r8_duplicate_landing_reuses_report_when_elapsed_time_changes(
 def test_r8_new_dispatch_identity_creates_a_new_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(
-        tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat()
-    )
+    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
     receipts = iter((START + timedelta(seconds=10), START + timedelta(seconds=30)))
     monkeypatch.setattr(land_task, "utc_now", lambda: next(receipts))
     evidence = _evidence_file(tmp_path, tokens_total=123)
