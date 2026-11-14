@@ -110,14 +110,11 @@ def _landing_paragraph(text: str) -> str:
 def landing_surfaces() -> list[tuple[str, str]]:
     """Landing instructions: shared kinds, generated copies, README, plan, and phase close."""
     plan = skill_text("tasks")
-    execute = skill_text("execute")
     shared = (REPO_ROOT / "shared/kinds-and-focus.md").read_text()
     top_kinds = (REPO_ROOT / "skills/kinds-and-focus.md").read_text()
     readme = (REPO_ROOT / "README.md").read_text()
     plan_kinds = "skills/tasks/references/kinds-and-focus.md"
-    execute_kinds = "skills/execute/references/kinds-and-focus.md"
     assert (REPO_ROOT / plan_kinds).read_text() in plan
-    assert (REPO_ROOT / execute_kinds).read_text() in execute
     return [
         (
             "skills/verify/references/phase-end.md",
@@ -129,13 +126,12 @@ def landing_surfaces() -> list[tuple[str, str]]:
         ),
         (
             "skills/execute/references/execute-mechanics.md",
-            _included("execute", "skills/execute/references/execute-mechanics.md"),
+            brief_text("execute"),
         ),
         ("skills/tasks/SKILL.md", _included("tasks", "skills/tasks/SKILL.md")),
         ("shared/kinds-and-focus.md", _landing_paragraph(shared)),
         ("skills/kinds-and-focus.md", _landing_paragraph(top_kinds)),
         (plan_kinds, _landing_paragraph(_included("tasks", plan_kinds))),
-        (execute_kinds, _landing_paragraph(_included("execute", execute_kinds))),
         ("README.md", _landing_paragraph(readme)),
     ]
 

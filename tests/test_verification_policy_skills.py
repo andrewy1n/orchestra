@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, skill_text
 from skill_extraction import extract_invocations
 
 POLICY = REPO_ROOT / "shared/verification-policy.md"
@@ -71,7 +71,9 @@ def test_policy_covers_the_automated_method_policy_matrix() -> None:
 def test_all_workflow_stages_reference_the_same_policy() -> None:
     for name in ("spec", "tasks", "execute", "verify"):
         path: Path = REPO_ROOT / "skills" / name / "SKILL.md"
-        if name == "verify":
+        if name == "execute":
+            assert "orchestra workflow brief <phase> execute" in path.read_text()
+        elif name == "verify":
             assert "# Verification method and oracle policy" in skill_text(name)
         else:
             assert "references/verification-policy.md" in path.read_text()
@@ -80,6 +82,6 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
 
 
 def test_all_frozen_changes_keep_parent_amendment_approval() -> None:
-    text = (REPO_ROOT / "skills/execute/SKILL.md").read_text()
-    assert "All frozen changes require a parent-approved oracle amendment." in text
-    assert "For manifest" in text
+    text = brief_text("execute")
+    assert "every frozen hash change requires an" in " ".join(text.split())
+    assert "For manifest claims" in text

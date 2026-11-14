@@ -44,6 +44,18 @@ STEP_TABLE: Mapping[str, tuple[Section, ...]] = {
         Section("phase-proof", stage="proof"),
         Section("phase-close", stage="proof"),
     ),
+    "execute": (
+        Section("execute-overview"),
+        Section("execute-steps"),
+        Section("execute-landing"),
+        Section("execute-dispatch"),
+        Section("execute-evidence"),
+        Section("execute-record-vs-bind"),
+        Section("execute-do-not"),
+        Section("record-mechanics"),
+        Section("retry-loop"),
+        Section("reviewer-prompt"),
+    ),
     "land": (
         Section("land", stage="land"),
         Section("land-github-pr", stage="repair-ci", when=_github_pr),
