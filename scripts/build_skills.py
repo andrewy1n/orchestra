@@ -30,12 +30,12 @@ SHARED_DOCS = ("ensure-store.md", "kinds-and-focus.md", "intent-qa.md", "verific
 SKILL_SHARED_DOCS = {
     "assess.md": ("verify",),
     "close-batch.md": ("verify",),
-    "execute-mechanics.md": ("execute", "run"),
-    "record-mechanics.md": ("tasks", "execute", "verify", "run"),
-    "phase-end.md": ("verify", "run"),
-    "land-github-pr.md": ("verify", "run"),
+    "execute-mechanics.md": ("execute", "run", "land"),
+    "record-mechanics.md": ("tasks", "execute", "verify", "run", "land"),
+    "phase-end.md": ("verify", "run", "land"),
+    "land-github-pr.md": ("verify", "run", "land"),
     "planning-mechanics.md": ("tasks",),
-    "retry-loop.md": ("execute", "run", "verify"),
+    "retry-loop.md": ("execute", "run", "verify", "land"),
     "verify-mechanics.md": ("verify",),
 }
 SKILLS_DIRNAME = "skills"
@@ -44,7 +44,7 @@ REFERENCES_DIRNAME = "references"
 
 REVIEWER_PROMPT = Path("agents") / "reviewer.prompt.md"
 REVIEWER_AGENT = Path("agents") / "reviewer.md"
-REVIEWER_SKILLS = ("execute", "verify", "run")
+REVIEWER_SKILLS = ("execute", "verify", "run", "land")
 REVIEWER_REFERENCE = Path(REFERENCES_DIRNAME) / "reviewer.md"
 
 _CHECKOUT_ROOT = Path(__file__).resolve().parent.parent

@@ -385,6 +385,73 @@ def test_parallel_implementation_wave_needs_integration_report_at_verification(
     assert run_status(project, run["subject"]).complete is True
 
 
+def test_land_step_completes_at_a_successful_landing_at_the_proof_head(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    create(
+        project,
+        "score:phase",
+        "p1",
+        {"title": "p1", "ordinal": 1, "effort": EFFORT, "weight": "light"},
+        PHASE_BODY + "## Landing\nBranch phase/p1.\n",
+    )
+    _ready_through_tasks(project, "p1")
+    task = project.resolve("score:work-item", "task-p1")
+    acceptance = project.resolve("score:acceptance", "acceptance-p1")
+    project.update(task["id"], record_type="score:work-item", transition="in_progress")
+    project.update(task["id"], record_type="score:work-item", transition="done")
+    create(
+        project,
+        "conductor:execution-report",
+        "task-p1",
+        {
+            "work_item": task["subject"],
+            "result": "pass",
+            "verdict": "pass",
+            "revision": "deadbeef",
+            "effort": EFFORT,
+        },
+    )
+    create(
+        project,
+        "tuner:check-run",
+        "acceptance-p1",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": "deadbeef",
+            "method": "check",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+    create(
+        project,
+        "conductor:proof-packet",
+        "p1",
+        {"phase": "p1", "effort": EFFORT, "revision": "deadbeef", "base": "abc", "kind": "claims"},
+    )
+    run = _start(project, "p1", "deliver")
+
+    action = next_actions(project, run["subject"])[0]
+    assert (action.step, action.state) == ("land", "ready")
+
+    create(
+        project,
+        "conductor:landing",
+        "p1",
+        {"phase": "p1", "number": 1, "url": "u", "head_sha": "stale", "result": "success"},
+    )
+    assert run_status(project, run["subject"]).complete is False
+
+    create(
+        project,
+        "conductor:landing",
+        "p1",
+        {"phase": "p1", "number": 1, "url": "u", "head_sha": "deadbeef", "result": "success"},
+    )
+    assert run_status(project, run["subject"]).complete is True
+
+
 def test_any_unfinished_required_step_keeps_run_incomplete(tmp_path: Path) -> None:
     project = _project(tmp_path)
     _phase(project, "p1", 1)

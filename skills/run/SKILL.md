@@ -8,7 +8,7 @@ description: >-
 # Run a workflow
 
 Requires `orchestra` on PATH and a live store. The playbook composes the
-separate `spec`, `design`, `tasks`, `execute`, and `verify` skills.
+separate `spec`, `design`, `tasks`, `execute`, `verify`, and `land` skills.
 Use [retry-loop.md](references/retry-loop.md) and
 [execute-mechanics.md](references/execute-mechanics.md) during execution.
 Use [phase-end.md](references/phase-end.md) during verification, land, and close.
@@ -17,12 +17,16 @@ When `[land] adapter` is `github-pr`, also use
 
 ## Built-in operations
 
-- `phase`: spec, design, tasks, execute, verify
+- `phase`: spec, design, tasks, execute, verify, land
 - `prepare`: spec, then design for all selected phases
-- `deliver`: tasks, execute, verify
-- `spec`, `design`, `tasks`, `execute`, or `verify`: one step only
+- `deliver`: tasks, execute, verify, land
+- `spec`, `design`, `tasks`, `execute`, `verify`, or `land`: one step only
 
 Do not accept custom playbook names. A run does not grant merge approval.
+
+The `land` step runs without asking and opens the PR. The run ends at
+awaiting merge. Close runs after the human merge. `deliver` approves the
+task plan by default.
 
 ## Steps
 

@@ -8,7 +8,7 @@ from typing import Literal
 
 from orchestra.canon.types import JsonValue, Record
 
-Step = Literal["spec", "design", "tasks", "execute", "verify"]
+Step = Literal["spec", "design", "tasks", "execute", "verify", "land"]
 Authority = Literal["user-approval", "explicit-delegation", "task-plan-policy"]
 ReadinessStatus = Literal["ready", "missing", "blocked", "stale"]
 
@@ -146,7 +146,7 @@ def _artifact_for_step(records: Sequence[Record], phase: str, step: Step) -> Rec
         return _active_artifact(records, phase, "score:specification")
     if step == "design":
         return _active_artifact(records, phase, "score:design")
-    if step in ("tasks", "execute", "verify"):
+    if step in ("tasks", "execute", "verify", "land"):
         return phase_record
     return None
 

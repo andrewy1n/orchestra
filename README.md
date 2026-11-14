@@ -105,7 +105,7 @@ tail for a `kind: skills` row and records the profile in the registration.
 
 To install by hand, copy or symlink each generated skill directory into the
 host's skills directory: `engage`, `init`, `spec`, `design`, `tasks`,
-`execute`, `verify`, `run`, `triage-ideas`, and `analyze-sessions`. Every directory is
+`execute`, `verify`, `land`, `run`, `triage-ideas`, and `analyze-sessions`. Every directory is
 self-contained: its `SKILL.md` and its `references/` folder travel together.
 The generated reference copies include the shared docs each skill uses. Each
 skill directory contains its required references. Install canon with `uv tool install` (above)
@@ -280,6 +280,7 @@ In whatever repo you are building:
 | `tasks` | Write requirement-linked tasks, then wait for plan review |
 | `execute` | Dispatch ready work in waves and land task evidence |
 | `verify` | Assess task or phase evidence and report the next step |
+| `land` | Commit, push and open the phase pull request; stop at awaiting merge |
 | `run` | Compose a built-in phase playbook or run one selected step |
 
 Managed upgrades remove the old `settle-phase`, `plan-phase`,

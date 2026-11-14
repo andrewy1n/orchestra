@@ -10,7 +10,7 @@ def _flat(name: str) -> str:
 def test_r02_plan_phase_skips_the_gate_at_auto_plan_and_auto_phases() -> None:
     text = _flat("tasks")
     assert "If the effort's `autonomy` is `auto-plan` or `auto-phases`, skip the gate" in text
-    assert "Otherwise (`gated` or missing) create a blocking `score:continuity-question`" in text
+    assert "Only an explicit `gated` creates a blocking `score:continuity-question`" in text
 
 
 def test_r03_execute_phase_plans_the_next_phase_without_asking_at_auto_phases() -> None:

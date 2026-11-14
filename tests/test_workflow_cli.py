@@ -50,7 +50,7 @@ def test_preview_reports_scope_and_steps_before_start(tmp_path: Path, capsys) ->
     assert code == 0, output + error
     preview = json.loads(output)
     assert preview["phases"] == ["phase-one"]
-    assert preview["requested_steps"] == ["spec", "design", "tasks", "execute", "verify"]
+    assert preview["requested_steps"] == ["spec", "design", "tasks", "execute", "verify", "land"]
     assert preview["prerequisites"] == {"phase-one": []}
     assert preview["snapshot_token"]
     assert not project.list("score:run")

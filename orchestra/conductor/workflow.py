@@ -8,6 +8,7 @@ from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.landing import latest_landing
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -17,11 +18,11 @@ Operation = Literal["phase", "prepare", "deliver", "single-step"]
 ActionState = Literal["ready", "blocked"]
 
 _VERSION = "1"
-_PHASE_STEPS: tuple[Step, ...] = ("spec", "design", "tasks", "execute", "verify")
+_PHASE_STEPS: tuple[Step, ...] = ("spec", "design", "tasks", "execute", "verify", "land")
 _STEPS_BY_OPERATION: dict[Operation, tuple[Step, ...]] = {
     "phase": _PHASE_STEPS,
     "prepare": ("spec", "design"),
-    "deliver": ("tasks", "execute", "verify"),
+    "deliver": ("tasks", "execute", "verify", "land"),
     "single-step": (),
 }
 
@@ -66,7 +67,7 @@ def _operation(value: str) -> Operation:
 
 def _step(value: str | None) -> Step | None:
     match value:
-        case "spec" | "design" | "tasks" | "execute" | "verify":
+        case "spec" | "design" | "tasks" | "execute" | "verify" | "land":
             return value
         case _:
             return None
@@ -341,8 +342,6 @@ def _requires_integration_report(records: list[Record], phase: str) -> bool:
 
 def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     phase_record = _current_phase(records, phase)
-    if phase_record["lifecycle_state"] != "done":
-        return False, "phase is not closed"
     acceptances = [
         record
         for record in records
@@ -376,6 +375,30 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
+    phase_record = _current_phase(records, phase)
+    if phase_record["lifecycle_state"] == "done":
+        return True, ""
+    if "\n## Landing" not in f"\n{phase_record.get('body') or ''}":
+        return True, ""
+    landing = latest_landing(records, phase)
+    if landing is None:
+        return False, "phase has no landing record"
+    if landing["payload"].get("result") != "success":
+        return False, "latest landing did not succeed"
+    packets = [
+        record
+        for record in records
+        if record["record_type"] == "conductor:proof-packet" and record["subject"] == phase
+    ]
+    if not packets:
+        return False, "phase has no proof packet"
+    latest = max(packets, key=lambda row: (row["recorded_at"], row["id"]))
+    if landing["payload"].get("head_sha") != latest["payload"].get("revision"):
+        return False, "landing is not at the proof packet head"
+    return True, ""
+
+
 def _step_completion(records: list[Record], phase: str, step: Step) -> tuple[bool, str]:
     if step in ("spec", "design", "tasks"):
         ready, reason = _review_ready(records, phase, step)
@@ -386,6 +409,8 @@ def _step_completion(records: list[Record], phase: str, step: Step) -> tuple[boo
         return True, ""
     if step == "execute":
         return _execution_ready(records, phase)
+    if step == "land":
+        return _landing_ready(records, phase)
     return _verification_ready(records, phase)
 
 
@@ -419,6 +444,7 @@ def _action_for(
         "tasks": "design",
         "execute": "tasks",
         "verify": "execute",
+        "land": "verify",
     }
     prerequisite = prerequisites[step]
     if prerequisite is not None:

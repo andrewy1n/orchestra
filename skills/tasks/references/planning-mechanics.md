@@ -141,9 +141,11 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     `## Landing`; and each selected frozen acceptance has
     non-empty `test_ids` and `oracle_hashes`. Run `orchestra analyze
     <phase-slug>` first. Refuse plan review while it exits 1. Fix each
-    error finding, then run it again. If the effort's `autonomy` is
+    error finding, then run it again. If the effort has no `autonomy`,
+    run `orchestra effort autonomy <focus> auto-plan` first: the default
+    is to approve the task plan. If the effort's `autonomy` is
     `auto-plan` or `auto-phases`, skip the gate and go to `execute`.
-    Otherwise (`gated` or missing) create a blocking
+    Only an explicit `gated` creates a blocking
     `score:continuity-question` with scope
     `plan-review:<current-phase-slug>`. Ask approve / change / send back to
     `spec`. On approval, answer the question and record a task review with
