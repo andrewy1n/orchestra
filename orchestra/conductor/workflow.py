@@ -7,6 +7,7 @@ from uuid import uuid4
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, parse_landing
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.conductor.landing import latest_landing
 from orchestra.score.analyze import analyze_phase
@@ -24,6 +25,10 @@ _STEPS_BY_OPERATION: dict[Operation, tuple[Step, ...]] = {
     "prepare": ("spec", "design"),
     "deliver": ("tasks", "execute", "verify", "land"),
     "single-step": (),
+}
+_LEGACY_STEPS: dict[Operation, tuple[Step, ...]] = {
+    "phase": ("spec", "design", "tasks", "execute", "verify"),
+    "deliver": ("tasks", "execute", "verify"),
 }
 
 
@@ -166,9 +171,10 @@ def _run_steps(run: Record) -> tuple[Step, ...]:
             raise WorkflowRunError(f"run {run['subject']!r} has invalid requested steps")
         steps_list.append(step)
     steps = tuple(steps_list)
-    if steps != _requested_steps(
+    expected = _requested_steps(
         operation, steps[0] if operation == "single-step" and steps else None
-    ):
+    )
+    if steps != expected and steps != _LEGACY_STEPS.get(operation):
         raise WorkflowRunError(f"run {run['subject']!r} has invalid operation steps")
     return steps
 
@@ -375,31 +381,59 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _verification_gate(project: Project, records: list[Record], phase: str) -> tuple[bool, str]:
+    ready, reason = _verification_ready(records, phase)
+    if not ready:
+        return False, reason
+    phase_record = _current_phase(records, phase)
+    if phase_record["lifecycle_state"] == "done":
+        return True, ""
+    if not parse_landing(phase_record.get("body") or "").present:
+        return False, "phase is not closed"
+    try:
+        missing = missing_terms(
+            gate_terms(project.project_root, phase, store_dir=project.store_path)
+        )
+    except LookupError as exc:
+        raise WorkflowRunError(str(exc)) from exc
+    if missing:
+        return False, "phase gate is not met: " + "; ".join(format_missing(missing))
+    if _proof_packet(records, phase) is None:
+        return False, "phase has no proof packet"
+    return True, ""
+
+
+def _proof_packet(records: list[Record], phase: str) -> Record | None:
+    packets = [
+        record
+        for record in records
+        if record["record_type"] == "conductor:proof-packet" and record["subject"] == phase
+    ]
+    return max(packets, key=lambda row: (row["recorded_at"], row["id"])) if packets else None
+
+
 def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     phase_record = _current_phase(records, phase)
     if phase_record["lifecycle_state"] == "done":
         return True, ""
-    if "\n## Landing" not in f"\n{phase_record.get('body') or ''}":
+    if not parse_landing(phase_record.get("body") or "").present:
         return True, ""
     landing = latest_landing(records, phase)
     if landing is None:
         return False, "phase has no landing record"
     if landing["payload"].get("result") != "success":
         return False, "latest landing did not succeed"
-    packets = [
-        record
-        for record in records
-        if record["record_type"] == "conductor:proof-packet" and record["subject"] == phase
-    ]
-    if not packets:
+    latest = _proof_packet(records, phase)
+    if latest is None:
         return False, "phase has no proof packet"
-    latest = max(packets, key=lambda row: (row["recorded_at"], row["id"]))
     if landing["payload"].get("head_sha") != latest["payload"].get("revision"):
         return False, "landing is not at the proof packet head"
     return True, ""
 
 
-def _step_completion(records: list[Record], phase: str, step: Step) -> tuple[bool, str]:
+def _step_completion(
+    project: Project, records: list[Record], phase: str, step: Step
+) -> tuple[bool, str]:
     if step in ("spec", "design", "tasks"):
         ready, reason = _review_ready(records, phase, step)
         if not ready:
@@ -411,10 +445,11 @@ def _step_completion(records: list[Record], phase: str, step: Step) -> tuple[boo
         return _execution_ready(records, phase)
     if step == "land":
         return _landing_ready(records, phase)
-    return _verification_ready(records, phase)
+    return _verification_gate(project, records, phase)
 
 
 def _action_for(
+    project: Project,
     records: list[Record],
     phase: Record,
     step: Step,
@@ -448,7 +483,7 @@ def _action_for(
     }
     prerequisite = prerequisites[step]
     if prerequisite is not None:
-        complete, reason = _step_completion(records, subject, prerequisite)
+        complete, reason = _step_completion(project, records, subject, prerequisite)
         if not complete:
             return RunAction(
                 subject, step, "blocked", f"{prerequisite} prerequisite is incomplete: {reason}"
@@ -472,22 +507,25 @@ def _action_for(
     return RunAction(subject, step, "ready")
 
 
-def _all_actions(records: list[Record], run: Record) -> tuple[RunAction, ...]:
+def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[RunAction, ...]:
     steps = _run_steps(run)
     phases = _phase_records(records, run)
     actions: list[RunAction] = []
     prepare_barrier = _text(run, "operation") == "prepare"
     selected_phases = {phase["subject"] for phase in phases}
-    specs_complete = all(_step_completion(records, phase["subject"], "spec")[0] for phase in phases)
+    specs_complete = all(
+        _step_completion(project, records, phase["subject"], "spec")[0] for phase in phases
+    )
     for phase in phases:
         for step in steps:
-            complete, _ = _step_completion(records, phase["subject"], step)
+            complete, _ = _step_completion(project, records, phase["subject"], step)
             if complete:
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
                 break
             actions.append(
                 _action_for(
+                    project,
                     records,
                     phase,
                     step,
@@ -518,12 +556,12 @@ def _find_run(records: list[Record], subject: str) -> Record:
 def next_actions(project: Project, run_subject: str) -> tuple[RunAction, ...]:
     records = project.records()
     run = _find_run(records, run_subject)
-    return _all_actions(records, run)
+    return _all_actions(project, records, run)
 
 
 def run_status(project: Project, run_subject: str) -> RunStatus:
     records = project.records()
     run = _find_run(records, run_subject)
-    actions = _all_actions(records, run)
+    actions = _all_actions(project, records, run)
     complete = not actions
     return RunStatus(run, complete, not complete, actions)

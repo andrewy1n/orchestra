@@ -301,8 +301,10 @@ EOF
 Merging the base branch (`main`) into the phase branch is routine.
 Do it without asking when the phase branch is behind the base, or when
 land or the PR reports it is out of date. Commit the merge in the phase
-worktree, then run `orchestra gate` at the new head. Stop and ask only
-when the merge conflicts.
+worktree. The head moved, so redo each missing term at the new head:
+the suite, the reviewer, then a new proof packet. Run `orchestra gate`
+until it exits 0, then run land. Stop and ask only when the merge
+conflicts.
 
 Land ends when `orchestra land` exits 0. The phase is then landed and
 waits for the human merge. Merge stays human. On exit 1 the adapter

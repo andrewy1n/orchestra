@@ -29,11 +29,14 @@ section of [phase-end.md](references/phase-end.md). When `[land] adapter` is
    Stop if it fails. Verify owns the gate and the proof packet.
 2. Merge the base branch into the phase branch when it is behind. Do not
    ask. Stop only on a merge conflict.
-3. Commit the phase worktree. Run
+3. A merge moves the head. After a merge, redo the verification at the new
+   head: run the suite and the reviewer, then write a new proof packet, as
+   the verify skill describes. Run `orchestra gate` until it exits 0.
+4. Commit the phase worktree. Run
    `orchestra land --phase <phase-slug> --cwd <phase-worktree>`.
-4. On exit 1 with the `github-pr` adapter, run the CI repair loop. On any
+5. On exit 1 with the `github-pr` adapter, run the CI repair loop. On any
    other non-zero exit, stop and ask.
-5. Report the PR and the landing result.
+6. Report the PR and the landing result.
 
 ## Do not
 
