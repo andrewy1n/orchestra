@@ -16,7 +16,13 @@ from pathlib import Path
 
 from conftest import REPO_ROOT
 
-from orchestra.conductor.briefs.render import STEP_TABLE, BriefContext, render_brief
+from orchestra.conductor.briefs.render import (
+    SKILL_TABLE,
+    STEP_TABLE,
+    BriefContext,
+    render_brief,
+    render_skill_brief,
+)
 
 _COUNTER = itertools.count()
 
@@ -77,6 +83,8 @@ def skill_text(name: str) -> str:
                     BriefContext(step, "<phase-slug>", "<focus>", None, "github-pr", "full")
                 )
             )
+    if name in SKILL_TABLE:
+        parts.append(render_skill_brief(name))
     return "\n\n".join(parts)
 
 

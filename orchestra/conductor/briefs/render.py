@@ -88,6 +88,13 @@ STEP_TABLE: Mapping[str, tuple[Section, ...]] = {
     ),
 }
 
+SKILL_TABLE: Mapping[str, tuple[Section, ...]] = {
+    "init": (Section("ensure-store"), Section("kinds-and-focus")),
+    "engage": (Section("kinds-and-focus"), Section("ensure-store")),
+    "triage-ideas": (Section("ensure-store"), Section("kinds-and-focus")),
+    "analyze-sessions": (Section("ensure-store"),),
+}
+
 
 def _read(name: str, source: Path | None) -> str:
     if source is not None:
@@ -116,3 +123,11 @@ def render_brief(
     parts = [_read(s.name, source).strip() for s in sections if _selected(s, ctx)]
     text = "\n\n".join(parts)
     return text.replace("{phase}", ctx.phase).replace("{effort}", ctx.effort)
+
+
+def render_skill_brief(skill: str) -> str:
+    sections = SKILL_TABLE.get(skill)
+    if sections is None:
+        raise ValueError(f"unknown skill {skill!r}; valid skills: {', '.join(SKILL_TABLE)}")
+    text = "\n\n".join(_read(s.name, None).strip() for s in sections)
+    return text.replace("{phase}", "<phase-slug>").replace("{effort}", "<effort-slug>")

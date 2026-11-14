@@ -12,10 +12,10 @@ description: >-
 
 # Adopt this repo
 
-Requires `canon` and `orchestra` on PATH. Follow
-[ensure-store.md](references/ensure-store.md) in the **current work repo**.
-Follow [kinds-and-focus.md](references/kinds-and-focus.md). Do not copy this
-plugin into the project.
+Requires `canon` and `orchestra` on PATH. Get the shared rules with
+`orchestra workflow brief --skill init`. If `orchestra` is not on PATH, stop
+and tell the user to install orchestra. Work in the **current work repo**. Do
+not copy this plugin into the project.
 
 Skip this skill for incidental work that fits in the current chat.
 If `engage` already named a new focus, use that subject here.

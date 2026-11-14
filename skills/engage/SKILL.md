@@ -11,9 +11,9 @@ description: >-
 
 # Engage
 
-Thin router. Classify, name focus, stop. Follow
-[kinds-and-focus.md](references/kinds-and-focus.md). Follow
-[ensure-store.md](references/ensure-store.md) if a store will be needed.
+Thin router. Classify, name focus, stop. Get the
+shared rules with `orchestra workflow brief --skill engage`. If `orchestra` is
+not on PATH, stop and tell the user to install orchestra.
 
 Do not plan, implement, or verify in this skill.
 

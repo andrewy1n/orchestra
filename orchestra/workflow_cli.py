@@ -7,6 +7,7 @@ from pathlib import Path
 
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError
+from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.workflow import (
     RunAction,
     RunPreview,
@@ -66,8 +67,13 @@ def add_parser(parser: argparse.ArgumentParser) -> None:
     _add_read_options(next_parser)
 
     brief = actions.add_parser("brief", help="Print the brief for one phase step")
-    brief.add_argument("phase", help="Phase slug")
-    brief.add_argument("step", choices=("spec", "design", "tasks", "execute", "verify", "land"))
+    brief.add_argument("phase", nargs="?", help="Phase slug")
+    brief.add_argument(
+        "step",
+        nargs="?",
+        choices=("spec", "design", "tasks", "execute", "verify", "land"),
+    )
+    brief.add_argument("--skill", help="Print the brief for a skill instead of a phase step")
     _add_read_options(brief)
 
     review = actions.add_parser("review", help="Record a workflow step review")
@@ -279,7 +285,23 @@ def _review_command(project: Project, args: argparse.Namespace) -> int:
     return 0
 
 
+def _skill_brief_command(args: argparse.Namespace) -> int:
+    if args.phase is not None or args.step is not None:
+        return _fail("brief", "--skill", ValueError("takes no phase or step"))
+    try:
+        text = render_skill_brief(args.skill)
+    except ValueError as exc:
+        return _fail("brief", args.skill, exc)
+    print(text)
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.action == "brief":
+        if args.skill is not None:
+            return _skill_brief_command(args)
+        if args.phase is None or args.step is None:
+            return _fail("brief", "arguments", ValueError("give --skill or both phase and step"))
     try:
         project = _project(args)
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
