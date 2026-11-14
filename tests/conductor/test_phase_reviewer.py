@@ -22,7 +22,6 @@ from orchestra.conductor.reviewer import (
     integration_report_body,
     is_fixable_finding_kind,
     parse_reviewer_output,
-    phase_review_gate_holds,
     route_review_findings,
     should_rerun_reviewer,
     verdict_to_result,
@@ -359,64 +358,6 @@ def test_budget_exhaustion_escalates_without_reopening_done():
     flat = _skill_flat()
     assert "never reopen" in flat or ("never" in flat and "`done`" in flat)
     assert "budget" in flat
-
-
-def test_phase_gate_requires_passing_review_check_at_head():
-    head = "deadbeef0123456789abcdef0123456789abcdef"
-    assert (
-        phase_review_gate_holds(
-            check_runs=[
-                {
-                    "method": "review",
-                    "evidence_kind": "review",
-                    "result": "pass",
-                    "revision": head,
-                }
-            ],
-            phase_head=head,
-        )
-        is True
-    )
-    assert (
-        phase_review_gate_holds(
-            check_runs=[
-                {
-                    "method": "review",
-                    "result": "fail",
-                    "revision": head,
-                }
-            ],
-            phase_head=head,
-        )
-        is False
-    )
-    assert (
-        phase_review_gate_holds(
-            check_runs=[
-                {
-                    "method": "review",
-                    "result": "pass",
-                    "revision": "otherdeadbeef",
-                }
-            ],
-            phase_head=head,
-        )
-        is False
-    )
-    assert phase_review_gate_holds(check_runs=[], phase_head=head) is False
-    # Prefix match for short SHAs used in docs.
-    assert (
-        phase_review_gate_holds(
-            check_runs=[
-                {"method": "review", "result": "pass", "revision": head[:7]},
-            ],
-            phase_head=head,
-        )
-        is True
-    )
-    flat = _skill_flat()
-    assert "method: review" in flat or "`method: review`" in flat or 'method":"review"' in flat
-    assert "phase head" in flat or "phase-head" in flat
 
 
 def test_integration_report_body_from_reviewer_section():

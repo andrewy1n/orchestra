@@ -8,6 +8,7 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
+from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
@@ -116,7 +117,7 @@ def _written_assessment(records: list[Record], phase: str, requirement: str) -> 
 
 
 def _derive_requirement(
-    records: list[Record], phase: str, requirement: str, head: str | None
+    records: list[Record], index: EvidenceIndex, phase: str, requirement: str, head: str | None
 ) -> RequirementStatus:
     acceptances = [
         r
@@ -129,14 +130,7 @@ def _derive_requirement(
     acceptance_ids = tuple(a["id"] for a in acceptances)
     latest_runs: list[Record] = []
     for acceptance in acceptances:
-        runs = [
-            r
-            for r in records
-            if r["record_type"] == CHECK_RUN
-            and _text(r, "criterion_id") == acceptance["id"]
-            and (head is None or _text(r, "revision") == head)
-        ]
-        latest = _latest(runs)
+        latest = acceptance_latest(index, acceptance, head).run
         if latest is not None:
             latest_runs.append(latest)
     results = [_text(r, "result") for r in latest_runs]
@@ -165,9 +159,10 @@ def requirement_status(
     records: list[Record], phase: str, head: str | None = None
 ) -> dict[str, RequirementStatus]:
     by_id = {r["id"]: r for r in records}
+    index = EvidenceIndex(records)
     statuses: dict[str, RequirementStatus] = {}
     for requirement in _phase_requirement_ids(records, phase):
-        derived = _derive_requirement(records, phase, requirement, head)
+        derived = _derive_requirement(records, index, phase, requirement, head)
         written = _written_assessment(records, phase, requirement)
         written_status = _text(written, "status") if written is not None else None
         if (

@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import itertools
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
+import pytest
 from conftest import REPO_ROOT
+from test_review_stage import EFFORT, _project_with_phases, _review_run, _review_state
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.hub import HubItem, HubView, build_hub
 from dashboard.backend.phase import PhaseEvidence, PhaseRow
+from dashboard.backend.server import service
 from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot
+from orchestra.canon import record as record_module
+from orchestra.canon.project import Project
 
 NOW = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
 
@@ -237,3 +244,111 @@ def test_r12_active_phases_use_running_then_recent_order() -> None:
     )
     hub = build_hub(snap, NOW)
     assert _subjects(hub.active_phases) == ["busy", "new", "old"]
+
+
+@pytest.fixture
+def ticking_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = itertools.count()
+    monkeypatch.setattr(
+        record_module,
+        "now",
+        lambda: (
+            datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=next(ticks))
+        ).isoformat(),
+    )
+
+
+def _suite_run(
+    project: Project,
+    phase: str,
+    *,
+    subject: str | None = None,
+    evidence_kind: str = "integration",
+    result: str = "pass",
+    revision: str = "abcdef0123456789",
+) -> None:
+    project.create(
+        record_type="tuner:check-run",
+        subject=subject or f"{phase}-suite",
+        payload={
+            "criterion_id": f"{phase}-suite",
+            "revision": revision,
+            "result": result,
+            "effort": EFFORT,
+            "method": "check",
+            "signed_by": "",
+            "evidence_kind": evidence_kind,
+        },
+        body="Suite.\n",
+    )
+
+
+def _suite_label(project: Project, phase: str) -> str:
+    snapshot = service.Reader(project).snapshot()
+    effort = next(item for item in snapshot.efforts if item.effort == EFFORT)
+    return next(row.suite for row in effort.phases if row.subject == phase)
+
+
+def test_head_evidence_review_latest_failure_at_head_overrides_earlier_pass(
+    tmp_path: Path, ticking_clock: None
+) -> None:
+    project, head = _project_with_phases(tmp_path, "p")
+    _review_run(project, "p", head)
+    _review_run(project, "p", head, result="fail")
+
+    assert _review_state(project, "p") != "done"
+
+
+def test_head_evidence_review_latest_pass_at_head_overrides_earlier_failure(
+    tmp_path: Path, ticking_clock: None
+) -> None:
+    project, head = _project_with_phases(tmp_path, "p")
+    _review_run(project, "p", head, result="fail")
+    _review_run(project, "p", head)
+
+    assert _review_state(project, "p") == "done"
+
+
+def test_head_evidence_review_ignores_other_phase_and_other_effort_at_same_head(
+    tmp_path: Path,
+) -> None:
+    project, head = _project_with_phases(tmp_path, "p", "q")
+    _review_run(project, "q", head)
+    _review_run(project, "p", head, effort="other")
+
+    assert _review_state(project, "p") != "done"
+    assert _review_state(project, "q") == "done"
+
+
+def test_head_evidence_suite_names_run_by_criterion_id(tmp_path: Path) -> None:
+    project, _ = _project_with_phases(tmp_path, "p")
+    _suite_run(project, "p", subject="unrelated")
+
+    assert _suite_label(project, "p") == "suite ok@abcdef0"
+
+
+def test_head_evidence_suite_ignores_other_evidence_kind(tmp_path: Path) -> None:
+    project, _ = _project_with_phases(tmp_path, "p")
+    _suite_run(project, "p", evidence_kind="unit")
+
+    assert _suite_label(project, "p") == ""
+
+
+def test_head_evidence_suite_keeps_legacy_tier2_display(tmp_path: Path) -> None:
+    project, _ = _project_with_phases(tmp_path, "p")
+    project.create(
+        record_type="tuner:check-run",
+        subject="p-tier2",
+        payload={
+            "criterion_id": "p-tier2",
+            "revision": "feedface00",
+            "result": "pass",
+            "effort": EFFORT,
+            "method": "check",
+            "signed_by": "",
+            "evidence_kind": "integration",
+        },
+        body="Suite.\n",
+    )
+
+    assert _suite_label(project, "p") == "suite ok@feedfac"

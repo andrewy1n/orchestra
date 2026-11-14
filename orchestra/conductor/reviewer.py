@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TypeAlias, TypedDict
 
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.revision import revision_matches as revision_matches
 from orchestra.tools import Git
 
 ReviewerRecord: TypeAlias = Record | Mapping[str, JsonValue]
@@ -529,25 +529,6 @@ def route_review_findings(
 def should_rerun_reviewer(*, fix_tasks_created: int, reviewer_rerun_used: bool) -> bool:
     """Re-run the reviewer once after fix tasks land; never a second re-run."""
     return bool(fix_tasks_created) and not reviewer_rerun_used
-
-
-def phase_review_gate_holds(
-    *,
-    check_runs: Sequence[ReviewerRecord],
-    phase_head: str,
-) -> bool:
-    """True when a passing method:review check-run exists at the phase head."""
-    for run in check_runs:
-        method = str(run.get("method") or "")
-        result = str(run.get("result") or "")
-        revision = str(run.get("revision") or "")
-        if method != "review":
-            continue
-        if result != "pass":
-            continue
-        if revision_matches(revision, phase_head):
-            return True
-    return False
 
 
 def integration_report_body(integration: Mapping[str, JsonValue]) -> str:

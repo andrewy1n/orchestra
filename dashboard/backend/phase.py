@@ -32,6 +32,11 @@ from dashboard.backend.task import (
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.conductor.head_evidence import (
+    SUITE_EVIDENCE_KIND,
+    EvidenceIndex,
+    suite_check_runs,
+)
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
@@ -260,9 +265,7 @@ def sitting_phrase(body: str) -> str:
 # subject `<phase>-suite`, evidence_kind `integration`, revision = phase head SHA.
 # Legacy `<phase>-tier2` is read for display only when no suite check-run exists.
 # In-flight: result `blocked` and body contains a running marker (no final pass/fail yet).
-SUITE_SUBJECT_SUFFIX = "-suite"
 LEGACY_TIER2_SUBJECT_SUFFIX = "-tier2"
-SUITE_EVIDENCE_KIND = "integration"
 SUITE_RUNNING_MARKER = "suite-running"
 LEGACY_TIER2_RUNNING_MARKER = "tier2-running"
 
@@ -276,20 +279,24 @@ def _short_revision(revision: str) -> str:
 
 def _suite_check_for_phase(phase: str, checks: list[Record]) -> Record | None:
     """Newest active suite check-run for phase; fall back to legacy `-tier2`."""
-
-    def matching(suffix: str) -> list[Record]:
-        return [
-            record
-            for record in checks
-            if record.get("lifecycle_state") not in INACTIVE_STATES
-            and record.get("subject") == f"{phase}{suffix}"
-            and (record_payload(record).get("evidence_kind") or "") == SUITE_EVIDENCE_KIND
+    record = newest_record(
+        [
+            run
+            for run in suite_check_runs(EvidenceIndex(checks), phase)
+            if run.get("lifecycle_state") not in INACTIVE_STATES
         ]
-
-    record = newest_record(matching(SUITE_SUBJECT_SUFFIX))
+    )
     if record is not None:
         return record
-    return newest_record(matching(LEGACY_TIER2_SUBJECT_SUFFIX))
+    return newest_record(
+        [
+            run
+            for run in checks
+            if run.get("lifecycle_state") not in INACTIVE_STATES
+            and run.get("subject") == f"{phase}{LEGACY_TIER2_SUBJECT_SUFFIX}"
+            and (record_payload(run).get("evidence_kind") or "") == SUITE_EVIDENCE_KIND
+        ]
+    )
 
 
 def suite_status_label(phase: str, checks: list[Record]) -> str:

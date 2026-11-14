@@ -352,23 +352,83 @@ def test_latest_check_run_stable_and_skips_corrected(store: Path, cli: Cli) -> N
     assert phase.missing() == []
 
 
-def test_latest_check_run_keeps_store_order_on_equal_timestamps() -> None:
-    def run(record_id: str, result: str) -> Record:
-        return {
-            "id": record_id,
-            "record_type": "tuner:check-run",
-            "subject": "s",
-            "lifecycle_state": "active",
-            "relationships": {},
-            "revision": "r",
-            "recorded_at": "2026-11-01T00:00:00Z",
-            "payload": {"result": result},
-        }
+def test_gate_head_evidence_rejects_six_character_prefix(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, runner_check=False)
+    phase.check_run(revision=HEAD[:6])
+    phase.set_suite_policy("required")
+    phase.suite_run(revision=HEAD[:6])
+    assert phase.missing() == [f"acceptance-runner-at-head:{PHASE}-ac", "suite-at-head"]
 
-    runs = [run("z", "fail"), run("a", "pass")]
-    latest = gate._latest(runs)
-    assert latest is not None
-    assert latest["id"] == "a"
+
+def test_gate_head_evidence_acceptance_subject_check_run_counts(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli, runner_check=False)
+    phase.check_run(criterion=phase.acceptance["subject"])
+    assert phase.missing() == []
+
+
+def test_gate_head_evidence_corrected_check_run_is_not_evidence(store: Path, cli: Cli) -> None:
+    phase = seed(store, cli)
+    failed = phase.check_run("fail")
+    assert f"acceptance-passes:{PHASE}-ac" in phase.missing()
+    result = phase.cli(
+        "correct",
+        "--type",
+        "tuner:check-run",
+        "--id",
+        failed["id"],
+        "--payload",
+        json.dumps({"result": "pass"}),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert phase.missing() == []
+
+
+def test_gate_head_evidence_suite_check_run_needs_integration_kind(phase: Phase) -> None:
+    phase.set_suite_policy("required")
+    phase.check_run(
+        criterion=f"{PHASE}-suite", subject=f"{PHASE}-suite", evidence_kind="acceptance"
+    )
+    assert phase.missing() == ["suite-at-head"]
+
+
+@dataclass
+class _FixedStore:
+    fixed: list[Record]
+
+    def records(self) -> list[Record]:
+        return self.fixed
+
+
+def test_gate_head_evidence_timestamp_tie_takes_greatest_record_id(
+    store: Path, cli: Cli, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    phase = seed(store, cli, runner_check=False)
+    first = phase.check_run("pass")
+    second = phase.check_run("fail")
+    high, low = sorted([first["id"], second["id"]], reverse=True)
+    stamp = "2026-11-01T00:00:00Z"
+    stored = {r["id"]: r for r in gate.open_store(store).records()}
+    others = [r for rid, r in stored.items() if rid not in {high, low}]
+    tied = [
+        {
+            **stored[high],
+            "recorded_at": stamp,
+            "payload": {**stored[high]["payload"], "result": "pass"},
+        },
+        {
+            **stored[low],
+            "recorded_at": stamp,
+            "payload": {**stored[low]["payload"], "result": "fail"},
+        },
+    ]
+    records = [*others, *tied]
+
+    def fixed_store(*_args: object, **_kwargs: object) -> _FixedStore:
+        return _FixedStore(records)
+
+    monkeypatch.setattr(gate, "open_store", fixed_store)
+    terms = {t.name: t for t in gate.gate_terms(store, PHASE)}
+    assert terms[f"acceptance-passes:{PHASE}-ac"].holds
 
 
 def test_verification_task_needs_depends_on(store: Path, cli: Cli) -> None:

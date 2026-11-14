@@ -10,6 +10,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
+from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
 
@@ -249,22 +250,9 @@ def _acceptances(records: list[Record], task: str, phase: str) -> list[Record]:
     ]
 
 
-def _passes(records: list[Record], acceptance: Record, tip: str) -> bool:
-    runs = [
-        r
-        for r in records
-        if r["record_type"] == "tuner:check-run"
-        and record_payload(r).get("criterion_id") == acceptance["id"]
-        and record_payload(r).get("revision") == tip
-    ]
-    if not runs:
-        return False
-    latest = record_payload(max(runs, key=lambda r: (r["recorded_at"], r["id"])))
-    return latest.get("result") == "pass"
-
-
 def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     records = project.records()
+    index = EvidenceIndex(records)
     items = phase_items(records, phase)
     phase_tree = repo / ".worktrees" / phase
     phase_branch = f"phase/{phase}"
@@ -285,7 +273,7 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         tip = Git(repo).resolve(branch)
         if tip is None:
             raise WaveError(f"cannot resolve task branch {branch}")
-        if not acceptances or not all(_passes(records, a, tip) for a in acceptances):
+        if not acceptances or not all(acceptance_latest(index, a, tip).holds for a in acceptances):
             skipped.append((task, "checks did not pass"))
             continue
         result = Git(phase_tree).merge(branch)
