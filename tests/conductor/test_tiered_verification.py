@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
-from collections.abc import Callable
+import time
 from pathlib import Path
 
 import helpers as h
@@ -45,16 +44,6 @@ def _skill_text() -> str:
 
 def _skill_flat() -> str:
     return re.sub(r"\s+", " ", _skill_text())
-
-
-def _fake_tmux_runner(
-    calls: list[list[str]],
-) -> Callable[..., subprocess.CompletedProcess[str]]:
-    def runner(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(list(args))
-        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
-
-    return runner
 
 
 def _git_worktree(tmp_path: Path) -> tuple[Path, str]:
@@ -108,23 +97,6 @@ def test_blank_local_command(tmp_path: Path, mode: str) -> None:
         load_project_config(tmp_path)
 
 
-def test_tmux_launch_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    from orchestra.cli import main
-
-    work, _ = _git_worktree(tmp_path)
-    _suite_config(work, "full", "true")
-    tmux = tmp_path / "tmux"
-    tmux.write_text("#!/bin/sh\necho duplicate-session >&2\nexit 1\n")
-    tmux.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
-    assert main(["suite", "start", "--cwd", str(work), "--phase", PHASE, "--allow-dirty"]) == 2
-    output = capsys.readouterr()
-    assert "duplicate-session" in output.err
-    assert not output.out
-
-
 def test_skipped_start_exit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     from orchestra.cli import main
 
@@ -152,9 +124,8 @@ def test_skipped_suite_evidence(tmp_path: Path, capsys: pytest.CaptureFixture[st
     assert "skipped" in capsys.readouterr().err
 
 
-def test_background_tmux_start_is_non_blocking(tmp_path: Path):
+def test_background_worker_start_is_non_blocking(tmp_path: Path):
     work, head = _git_worktree(tmp_path)
-    calls: list = []
     started = start_suite_background(
         worktree=work,
         phase_slug=PHASE,
@@ -162,15 +133,12 @@ def test_background_tmux_start_is_non_blocking(tmp_path: Path):
         log_dir=tmp_path / "logs",
         suite_command="echo ok",
         policy=SuitePolicy(mode="full", command="echo ok", gate="required"),
-        runner=_fake_tmux_runner(calls),
+        allow_dirty=True,
     )
     assert isinstance(started, SuiteStart)
     assert started.blocking is False
-    assert calls, "tmux must be invoked"
-    assert "-d" in calls[0], "tmux session must be detached (non-blocking)"
-    assert "new-session" in calls[0]
     assert started.session_name.startswith("orchestra-suite-")
-    assert not started.exit_path.exists()
+    assert poll_suite(started) is None
 
 
 def test_runner_records_suite_check_run_payload_fields():
@@ -228,58 +196,28 @@ def test_suite_record_writes_runner_orchestra():
     assert payload["runner"] == "orchestra"
 
 
-def test_tmux_poll_collects_check_run_ready_result(tmp_path: Path):
-    work = tmp_path / "wt"
-    work.mkdir()
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-    job = SuiteStart(
-        session_name="orchestra-suite-demo",
+def test_worker_poll_collects_a_real_command_result(tmp_path: Path):
+    work, head = _git_worktree(tmp_path)
+    started = start_suite_background(
         worktree=work,
-        phase_slug="demo",
-        phase_head=HEAD,
-        log_path=log_dir / "orchestra-suite-demo.log",
-        exit_path=log_dir / "orchestra-suite-demo.exit",
-        started_monotonic=0.0,
-        blocking=False,
+        phase_slug=PHASE,
+        phase_head=head,
+        suite_command="printf '1 passed\\n'",
+        policy=SuitePolicy(mode="full", command="true", gate="required"),
+        allow_dirty=True,
     )
-    assert poll_suite(job) is None
-    job.log_path.write_text("1 passed\n")
-    job.exit_path.write_text("0\n")
-    subprocess.run(["git", "init"], cwd=work, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "config", "user.email", "t@example.com"],
-        cwd=work,
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "t"],
-        cwd=work,
-        check=True,
-        capture_output=True,
-    )
-    (work / "f").write_text("1\n")
-    subprocess.run(["git", "add", "f"], cwd=work, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "commit", "-m", "c"],
-        cwd=work,
-        check=True,
-        capture_output=True,
-    )
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=work,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    job.phase_head = head
-    result = poll_suite(job)
+    assert isinstance(started, SuiteStart)
+    deadline = time.monotonic() + 5
+    result = poll_suite(started)
+    while result is None and time.monotonic() < deadline:
+        time.sleep(0.02)
+        result = poll_suite(started)
+
     assert result is not None
     assert result.exit_code == 0
     assert result.result == "pass"
     assert result.revision == head
+    assert result.output == "1 passed\n"
     assert result.output_sha256
     assert result.failing_node_ids == []
 
@@ -317,18 +255,15 @@ FAILED tests/test_b.py::TestCls::test_two
 
 def test_mode_none_skips_suite_start(tmp_path: Path):
     work, head = _git_worktree(tmp_path)
-    calls: list = []
     policy = SuitePolicy(mode="none", command="", gate="required")
     started = start_suite_background(
         worktree=work,
         phase_slug=PHASE,
         phase_head=head,
         policy=policy,
-        runner=_fake_tmux_runner(calls),
     )
     assert isinstance(started, SuiteStart)
     assert started.skipped is True
-    assert calls == []
     polled = poll_suite(started)
     assert polled is not None
     assert polled.skipped is True
@@ -341,37 +276,39 @@ def test_mode_external_and_deferred_gate_do_not_run_locally(tmp_path: Path):
         SuitePolicy(mode="full", command="pytest -q", gate="deferred"),
         SuitePolicy(mode="smoke", command="pytest -q", gate="deferred"),
     ):
-        calls: list = []
         started = start_suite_background(
             worktree=work,
             phase_slug=PHASE,
             phase_head=head,
             policy=policy,
-            runner=_fake_tmux_runner(calls),
         )
         assert isinstance(started, SuiteStart)
         assert started.skipped is True
         assert policy.run_locally is False
-        assert calls == []
 
 
 def test_mode_smoke_and_full_run_contracted_command(tmp_path: Path):
     work, head = _git_worktree(tmp_path)
     for mode in ("smoke", "full"):
-        calls: list = []
-        policy = SuitePolicy(mode=mode, command="echo suite-cmd", gate="required")
+        policy = SuitePolicy(mode=mode, command="printf suite-cmd", gate="required")
         started = start_suite_background(
             worktree=work,
             phase_slug=PHASE,
             phase_head=head,
-            log_dir=tmp_path / f"logs-{mode}",
+            session_name=f"suite-{mode}",
             policy=policy,
-            runner=_fake_tmux_runner(calls),
+            allow_dirty=True,
         )
         assert isinstance(started, SuiteStart)
         assert not started.skipped
-        assert calls
-        assert "echo suite-cmd" in " ".join(calls[0])
+        deadline = time.monotonic() + 5
+        result = poll_suite(started)
+        while result is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+            result = poll_suite(started)
+        assert result is not None
+        assert result.result == "pass"
+        assert result.output == "suite-cmd"
 
 
 def test_advisory_full_policy_does_not_block_merge():
@@ -420,7 +357,7 @@ def test_execute_phase_documents_suite_policy_before_reviewer_and_check_run():
     flat = " ".join(text.split())
     assert "Do not waive suite policy" in flat
     assert (
-        "`orchestra suite start` / `poll` / `collect` / `record` in the phase worktree (tmux)"
+        "`orchestra suite start` / `poll` / `collect` / `cancel` / `record` in the phase worktree"
         in flat
     )
     assert flat.index("closing verification → analyze → suite") < flat.index("→ reviewer")

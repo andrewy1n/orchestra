@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
 import subprocess
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import ClassVar, Literal, Protocol, TypeAlias, overload
+from typing import IO, ClassVar, Literal, Protocol, TypeAlias, overload
 
 from orchestra.tools.errors import ToolError, ToolNotFoundError, ToolVersionError
 from orchestra.tools.version import Version
@@ -41,6 +43,57 @@ class RunFn(Protocol):
         check: bool,
         env: Mapping[str, str] | None,
     ) -> subprocess.CompletedProcess[bytes]: ...
+
+
+class ProcessHandle:
+    def __init__(self, process: subprocess.Popen[bytes]) -> None:
+        self._process: subprocess.Popen[bytes] = process
+
+    @property
+    def pid(self) -> int:
+        return self._process.pid
+
+    @property
+    def returncode(self) -> int | None:
+        return self._process.poll()
+
+    @property
+    def group_exists(self) -> bool:
+        if os.name != "posix":
+            raise ToolError("process-group inspection requires a Unix host", [], None, "")
+        try:
+            os.killpg(self._process.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError as error:
+            raise ToolError(f"cannot inspect process group: {error}", [], None, "") from error
+        return True
+
+    def wait(self, timeout: float | None = None) -> int:
+        try:
+            return self._process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired as error:
+            raise ToolError(
+                f"process timed out after {timeout}s", [str(self._process.args)], None, ""
+            ) from error
+
+    def terminate_group(self) -> None:
+        self._signal_group(signal.SIGTERM)
+
+    def kill_group(self) -> None:
+        self._signal_group(signal.SIGKILL)
+
+    def _signal_group(self, signum: int) -> None:
+        if os.name != "posix":
+            raise ToolError("process-group signals require a Unix host", [], None, "")
+        try:
+            os.killpg(self._process.pid, signum)
+        except ProcessLookupError:
+            return
+        except OSError as error:
+            raise ToolError(f"cannot signal process group: {error}", [], None, "") from error
 
 
 @overload
@@ -223,6 +276,38 @@ class CliTool:
                 result.stderr.decode("utf-8", errors="replace"),
             )
         return result
+
+    def start_process(
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: Path | None = None,
+        env: Mapping[str, str] | None = None,
+        stdin: int | IO[bytes] | None = subprocess.DEVNULL,
+        stdout: int | IO[bytes] | None = subprocess.DEVNULL,
+        stderr: int | IO[bytes] | None = subprocess.STDOUT,
+        pass_fds: Sequence[int] = (),
+    ) -> ProcessHandle:
+        command = list(argv)
+        if os.name != "posix":
+            raise ToolError("detached process launch requires a Unix host", command, None, "")
+        try:
+            process = subprocess.Popen(
+                command,
+                cwd=cwd or self._cwd,
+                env=env if env is not None else self._env,
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                close_fds=True,
+                pass_fds=tuple(pass_fds),
+                start_new_session=True,
+            )
+        except OSError as error:
+            raise ToolNotFoundError(
+                f"cannot start {command[0]}: {error}", command, None, ""
+            ) from error
+        return ProcessHandle(process)
 
     def _text(self, *args: str, input: str | None = None) -> str:
         self._check_version()
