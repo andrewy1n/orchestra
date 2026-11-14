@@ -1,6 +1,10 @@
 from pathlib import Path
+import sys
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from canon_support import create, make_project, seed_effort
 
 from dashboard.backend.snapshot import load_snapshot
@@ -51,9 +55,11 @@ def _tasks(project: Project):
 def test_dashboard_matches_plan_predictions_for_each_phase_wave(project: Project) -> None:
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S", estimate_minutes=6)
-    _task(project, "large", size="L", estimate_minutes=20)
+    _task(project, "large", size="L", estimate_minutes=20, depends_on=["small-a"])
 
-    tasks = _tasks(project)
+    snapshot = load_snapshot(project)
+    effort = next(effort for effort in snapshot.efforts if effort.effort == "alpha")
+    tasks = {task.subject: task for task in effort.tasks}
     plan = views.render_view(
         views.PLAN, views.load_records(project), project_root=project.project_root
     )
@@ -61,6 +67,7 @@ def test_dashboard_matches_plan_predictions_for_each_phase_wave(project: Project
     assert tasks["small-a"].executor == "inline"
     assert tasks["small-b"].executor == "inline"
     assert tasks["large"].executor == "subagent"
+    assert effort.phases[0].elapsed_minutes == 30
     assert "**small-a**: small-a; p1; deliver; alpha; executor: predicted inline" in plan
 
 
@@ -68,6 +75,18 @@ def test_dashboard_uses_configured_budget_for_missing_estimates(project: Project
     _config(project, budget=8)
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S")
+
+    tasks = _tasks(project)
+    assert {task.executor for task in tasks.values()} == {"subagent"}
+    assert tasks["small-b"].estimate_minutes is None
+
+
+def test_dashboard_recomputes_prediction_when_wave_membership_changes(project: Project) -> None:
+    _task(project, "first", size="XS", estimate_minutes=4)
+    _task(project, "second", size="XS", estimate_minutes=4)
+    assert {task.executor for task in _tasks(project).values()} == {"inline"}
+
+    _task(project, "third", size="XS", estimate_minutes=10)
 
     assert {task.executor for task in _tasks(project).values()} == {"subagent"}
 

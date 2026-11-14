@@ -1,6 +1,10 @@
 from pathlib import Path
+import sys
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from canon_support import create, make_project, seed_effort
 
 from orchestra import views
@@ -45,7 +49,7 @@ def project(tmp_path: Path) -> Project:
 def test_plan_predicts_executor_for_tasks_in_same_wave(project: Project) -> None:
     _task(project, "small-a", size="XS", estimate_minutes=4)
     _task(project, "small-b", size="S", estimate_minutes=6)
-    _task(project, "large", size="L", estimate_minutes=20)
+    _task(project, "large", size="L", estimate_minutes=20, depends_on=["small-a"])
 
     text = _plan(project)
 
@@ -94,11 +98,11 @@ def test_plan_ignores_historical_assignee_and_honors_override(project: Project) 
 
 
 def test_plan_reloads_predictions_after_wave_membership_changes(project: Project) -> None:
-    first = _task(project, "first", size="XS", estimate_minutes=4)
+    _task(project, "first", size="XS", estimate_minutes=4)
     _task(project, "second", size="XS", estimate_minutes=4)
     assert "executor: predicted inline" in _plan(project)
 
-    _task(project, "third", size="L", estimate_minutes=20, depends_on=[first["id"]])
+    _task(project, "third", size="XS", estimate_minutes=10)
 
     assert "executor: predicted subagent" in _plan(project)
 
