@@ -163,6 +163,10 @@ def test_overlap_handles_literals_and_globs() -> None:
     )
 
 
+def test_overlap_supports_unicode_literals() -> None:
+    assert overlap(_pattern("src/λ?.py"), _pattern("src/λx.py")) == "src/λx.py"
+
+
 def test_overlap_finds_a_valid_nonempty_path_for_globstar_only_patterns() -> None:
     assert overlap(_pattern("**"), _pattern("*")) == "a"
     assert overlap(_pattern("a/**/b"), _pattern("a/b")) == "a/b"
