@@ -1,7 +1,7 @@
 # Land with the github-pr adapter
 
 Use this guide when `[land] adapter` is `github-pr` in `orchestra.toml`.
-The shared `phase-end.md` covers every landing adapter. This guide covers
+The phase-end step covers every landing adapter. This section covers
 what only the GitHub adapter has: a PR, CI checks on it, and
 `orchestra close`.
 
@@ -36,11 +36,11 @@ repair it without a user step:
    commit to the open PR and reads CI again.
 7. Repeat from step 1 until land exits 0.
 
-Repairs follow the retry budgets in `retry-loop.md`:
+Repairs follow the retry budgets in this brief:
 `retry_max_redispatches` per task and `retry_max_fix_tasks` per phase.
 When a retry budget runs out, open a `score:continuity-question` with
-scope `retry:<repair-task-slug>` and a `tuner:finding`, as
-`retry-loop.md` describes. Do not create another repair. Stop until the
+scope `retry:<repair-task-slug>` and a `tuner:finding`, as the retry rules
+describe. Do not create another repair. Stop until the
 user answers.
 
 Land ends when `orchestra land` exits 0. The phase is then awaiting

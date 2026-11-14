@@ -69,7 +69,7 @@ For manifest claims, require a signed amendment in `.tuner/manifest.json` that `
 ## Two modes
 
 A phase with an active `score:specification` is **structured**:
-verify → assess.md, which writes an assessment
+verify → the assess step, which writes an assessment
 only for a non-verified status. Release `ready` is derived when
 every requirement is verified; write no `conductor:release`. No
 specification for this phase, and incidental work, are **simple**:
@@ -105,11 +105,11 @@ canon list --type score:specification --subject "{phase}" --state active
 ```bash
 canon create --type tuner:investigation-observation \
   --subject "<task-slug>" \
-  --payload '{"source":"<cmd or log>","observed_time":"<iso>","environment":"<repo/rev>","what_was_observed":"<fact>","effort":"<effort-slug>"}'
+  --payload '{"source":"<cmd or log>","observed_time":"<iso>","environment":"<repo/rev>","what_was_observed":"<fact>","effort":"{effort}"}'
 
 canon create --type tuner:finding \
   --subject "<task-slug>" \
-  --payload '{"claim":"<cause or comparison>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"<effort-slug>","needs":"human"}' \
+  --payload '{"claim":"<cause or comparison>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"{effort}","needs":"human"}' \
   --body "## Evidence
 
 <what was run/observed and its output>
@@ -183,7 +183,7 @@ orchestra verify verdict --cwd <repo-or-worktree> --at <revision> <claim-id>
 ```bash
 canon create --type tuner:check-run \
   --subject "<task-slug>" \
-  --payload '{"criterion_id":"<acceptance-record-id>","revision":"<git sha or dirty>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}'
+  --payload '{"criterion_id":"<acceptance-record-id>","revision":"<git sha or dirty>","result":"pass","effort":"{effort}","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}'
 ```
 
    Prefer `git rev-parse HEAD` after a commit. Leave `signed_by` `""`
@@ -204,10 +204,10 @@ canon correct --type tuner:check-run --id <check-run-id> \
    manual create). Still no `level`/`next`.
 
    **Structured work:** after check-runs, follow
-   assess.md before step 5. Assess adds batch
+   the assess step before step 5. Assess adds batch
    lines for non-verified requirements only.
    **Simple work:** skip Assess; use
-   close-batch.md for the `done` batch
+   close-batch instructions for the `done` batch
    (steps 3–5), or the manual transitions below.
 
 5. On **pass** (simple: binary gate met or evaluate finding accepted;
@@ -228,7 +228,7 @@ canon update --type score:work-item --id <id> \
 ```bash
 canon create --type tuner:finding \
   --subject "<task-slug>" \
-  --payload '{"claim":"<task-slug> closed done with an unmet or unverified criterion","basis":"<why it was closed anyway>","invalidated_when":"<what would undo this acceptance>","effort":"<effort-slug>","needs":"human"}' \
+  --payload '{"claim":"<task-slug> closed done with an unmet or unverified criterion","basis":"<why it was closed anyway>","invalidated_when":"<what would undo this acceptance>","effort":"{effort}","needs":"human"}' \
   --body "## Evidence
 
 <the failing/missing check-run and why closing proceeded anyway>
@@ -274,8 +274,8 @@ canon update --type score:work-item --id <id> \
 
 ```bash
 cat > /tmp/verify-batch.ndjson <<'EOF'
-{"op":"create","type":"tuner:finding","subject":"<task-slug>","payload":{"claim":"<cause>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"<effort-slug>","needs":"none"},"body":"## Evidence\n\n<output>\n\n## Consequence\n\n<meaning>\n\n## Follow-up\n\nnone"}
-{"op":"create","type":"tuner:check-run","subject":"<task-slug>","payload":{"criterion_id":"<acceptance-record-id>","revision":"<git sha>","result":"pass","effort":"<effort-slug>","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}}
+{"op":"create","type":"tuner:finding","subject":"<task-slug>","payload":{"claim":"<cause>","basis":"<evidence>","invalidated_when":"<what would undo this>","effort":"{effort}","needs":"none"},"body":"## Evidence\n\n<output>\n\n## Consequence\n\n<meaning>\n\n## Follow-up\n\nnone"}
+{"op":"create","type":"tuner:check-run","subject":"<task-slug>","payload":{"criterion_id":"<acceptance-record-id>","revision":"<git sha>","result":"pass","effort":"{effort}","method":"manual","signed_by":"","informed_by":["<acceptance-record-id>","<execution-report-id>"]}}
 {"op":"update","type":"score:work-item","id":"<work-item-id>","transition":"done","expected_revision":"@current"}
 EOF
 canon apply /tmp/verify-batch.ndjson
@@ -295,7 +295,7 @@ canon apply /tmp/verify-batch.ndjson
 ## Close
 
 Simple-work `done` batch (red-first, refusal gates, request JSON):
-close-batch.md. Structured work does not
+the close-batch instructions. Structured work does not
 use that batch for assessment fields — check-runs then Assess.
 
 ## Record versus bind

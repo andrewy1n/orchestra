@@ -12,7 +12,7 @@ Reviewer writes no store records. Parent creates them.
    invariants, `git diff <base>..<phase-head>` only — no
    execution-report, check-run, assessment, or assignment text).
 2. Host `reviewer` if available; else read-only/explore subagent
-   with reviewer.md. Refuse reviewer
+   with the reviewer prompt in this brief. Refuse reviewer
    store writes or tree mutation.
    Orchestra derives the verdict from the findings. A finding is blocking
    only with `blocking: true` plus `requirement`, `trigger` and
@@ -51,7 +51,7 @@ Create a fix work-item under the retry budget, or answer Needs you."
 
 4. Fixable blocking findings (`spec-gap`, `behavior-bug`, `missing-test`,
    `invariant-violation`, except `severity: judgment`) → fix
-   work-items via retry-loop.md and
+   work-items using the retry rules in this brief and
    `retry_max_fix_tasks`. Never reopen `done`. After fixes verify,
    re-run the reviewer **once** on the new diff. Budget exhausted →
    Needs-you path; stop.

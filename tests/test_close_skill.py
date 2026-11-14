@@ -66,8 +66,8 @@ def test_land_ends_when_ci_passes_and_awaits_the_merge() -> None:
     assert "awaiting merge" in re.sub(r"\s+", " ", GUIDE)
 
 
-def test_close_defers_the_adapter_steps_to_the_github_pr_guide() -> None:
+def test_close_defers_the_adapter_steps_to_the_adapter_brief() -> None:
     section = _close_section()
 
-    assert "`land-github-pr.md`" in section
+    assert "use the adapter's close instructions in this brief" in section
     assert "orchestra close" not in section

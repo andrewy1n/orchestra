@@ -8,7 +8,7 @@ still chooses `level` / `next`; the budget only decides when to stop.
 
 ```bash
 canon list --type score:work-item --state in_progress \
-  --where payload.effort={effort} --where payload.phase=<current-phase-slug>
+  --where payload.effort={effort} --where payload.phase={phase}
 ```
 
 For each result, load the latest `conductor:assessment` (structured) or
@@ -120,7 +120,7 @@ exhausted, use the budget-exhaustion Needs-you path above
 ```bash
 canon create --type score:work-item \
   --subject "fix-<failing-area>" \
-  --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"{effort}","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
+  --payload '{"title":"Fix <failing area>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
   --body "## Description
 
 Fix the failure that blocked closing verification.
@@ -131,7 +131,7 @@ Fix the failure that blocked closing verification.
 
 canon create --type score:acceptance \
   --subject "fix-<failing-area>" \
-  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"<command>","requirement":"<id>"}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"<command>","requirement":"<id>"}'
 
 canon update --type score:work-item --id <verification-work-item-id> \
   --expected-revision <revision> \

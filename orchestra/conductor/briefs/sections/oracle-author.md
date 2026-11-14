@@ -29,7 +29,7 @@ Parent then, for each selected frozen acceptance:
 ```bash
 canon create --type score:acceptance \
   --subject "<task-slug>-frozen" \
-  --payload '{"method":"tdd","oracle_policy":"frozen","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}'
+  --payload '{"method":"tdd","oracle_policy":"frozen","phase":"{phase}","effort":"{effort}","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1","test_ids":["tests/test_<area>.py::test_<case>"],"oracle_hashes":["tests/test_<area>.py:sha256:<hex>"]}'
 ```
 
 4. After the batch, run `orchestra check --acceptance <acceptance-id>

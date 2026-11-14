@@ -11,10 +11,9 @@ description: >-
 
 # Plan the current effort
 
-Requires `canon` and `orchestra` on PATH. Follow
-[ensure-store.md](references/ensure-store.md) in the **current work repo**
-before writing records. Follow [kinds-and-focus.md](references/kinds-and-focus.md).
-Batch example: [record-mechanics.md](references/record-mechanics.md). Skip for
+Requires `canon` and `orchestra` on PATH. Follow the store setup and focus
+instructions in this brief before writing records. Use the record batch
+example in this brief. Skip for
 incidental work that fits in the current chat. If handoff has no goal
 for the focus, use `init` first (`engage` if kind/focus unset).
 
@@ -42,7 +41,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
 - New acceptances are **thin**: omit `criterion` or `""`. Done meaning
   lives on requirement text.
 - Choose `method` separately from `oracle_policy`; follow
-  [verification-policy.md](references/verification-policy.md). Stamp the
+  the verification policy in this brief. Stamp the
   resolved policy on every new acceptance. Create selected freezes once.
 - Write all work-items and acceptances of the phase through one
   `canon apply` call (step 9). Do not run `canon create` one by one for
@@ -86,7 +85,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
 
 0. When handed an assessment with `next: plan`, consume it before a
    fresh full plan. Add the missing task(s) for the uncovered
-   requirement ([task-shapes.md](references/task-shapes.md)), write
+   requirement (use the task shapes in this brief), write
    them through one `canon apply`, and re-open plan review for
    the delta (step 11 question, `plan-review:{phase}`). Stop until
    the user approves. No `next: plan` assessment: continue with step 1.
@@ -117,15 +116,15 @@ for the focus, use `init` first (`engage` if kind/focus unset).
    `## Counter-argument`). Skip trivia.
 5. Draft the independent tasks (or the one incidental), 6. the
    dependent tasks (`depends_on` in the payload), and 7. the
-   verification task last (`deliver`/`repair`). Shapes are in
-   [task-shapes.md](references/task-shapes.md). Drafting writes no
+   verification task last (`deliver`/`repair`). Use the task shapes in
+   this brief. Drafting writes no
    record.
 8. Oracle author: skip when no acceptance selects `frozen`. Otherwise
-   follow [oracle-author.md](references/oracle-author.md) before creating
+   follow the oracle authoring instructions in this brief before creating
    selected frozen acceptances. Unfrozen tdd tests can start during execution.
 9. Write the batch. Put every drafted record in one NDJSON file and
-   run `canon apply` once (line shape and example in
-   [record-mechanics.md](references/record-mechanics.md)). Order the lines: each
+   run `canon apply` once (use the record batch instructions in this brief).
+   Order the lines: each
    prerequisite work-item before the work-items that list it in
    `depends_on`, the verification task last, a work-item before its
    acceptances. On `"ok": false`, fix the failed lines and apply only
@@ -147,7 +146,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     `auto-plan` or `auto-phases`, skip the gate and go to `execute`.
     Only an explicit `gated` creates a blocking
     `score:continuity-question` with scope
-    `plan-review:<current-phase-slug>`. Ask approve / change / send back to
+    `plan-review:{phase}`. Ask approve / change / send back to
     `spec`. On approval, answer the question and record a task review with
     authority `user-approval`. For `auto-plan` or `auto-phases`, record a
     task review with authority `task-plan-policy` before execution.

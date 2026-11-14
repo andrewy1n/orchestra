@@ -2,7 +2,7 @@
 
 Close is the last phase-end step. With a Landing section, it runs after
 the human merges the phase branch. When `[land] adapter` is
-`github-pr`, follow `land-github-pr.md` for the close step. Another
+`github-pr`, use the adapter's close instructions in this brief. Another
 adapter ships its own close step; without one, close the phase by hand.
 
 At phase close, the parent removes each task worktree `<repo>/.worktrees/{phase}--<task-slug>` for that phase.

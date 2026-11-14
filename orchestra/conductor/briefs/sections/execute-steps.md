@@ -14,14 +14,13 @@ canon update --type score:continuity-question --id <question-id> \
    Do not dispatch another effort's tasks.
 
    Before planned ready work, re-dispatch retryable `in_progress`
-   items (same executor mode) — see
-   retry-loop.md. Then continue with the
+   items (same executor mode) using the retry rules in this brief. Then continue with the
    planned ready list.
 2. Select dispatchable work-items (plan view omits `derived.ready`/`wave`):
 
 ```bash
 canon list --type score:work-item --state planned \
-  --where payload.effort={effort} --where payload.phase=<current-phase-slug> \
+  --where payload.effort={effort} --where payload.phase={phase} \
   --where derived.ready=true
 ```
 

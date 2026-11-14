@@ -46,6 +46,6 @@ conflicts.
 
 Land ends when `orchestra land` exits 0. The phase is then landed and
 waits for the human merge. Merge stays human. On exit 1 the adapter
-reports a failure. When `[land] adapter` is `github-pr`, follow
-`land-github-pr.md` for the CI repair loop. Another adapter ships its
+reports a failure. When `[land] adapter` is `github-pr`, use the CI repair
+loop in the repair-ci stage. Another adapter ships its
 own guide; without one, stop and ask.

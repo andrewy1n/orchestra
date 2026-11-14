@@ -14,7 +14,7 @@
 - Dispatch when `derived.ready` is false, or another focus's work
 - Write or recompute `ready`/`wave`
 - Load the whole store; route by focus, then phase
-- Close a phase whose phase-end gate does not hold (see phase-end.md)
+- Close a phase only when its phase-end gate holds
 - Write integration-report `pass` from a clean git merge alone, or write
   it before closing verification / reviewer, or invent its body
 - Call the phase complete (or merge) without a proof-packet at phase-head

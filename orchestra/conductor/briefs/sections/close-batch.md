@@ -75,7 +75,7 @@ canon list --type tuner:check-run --subject "<task-slug>" --full --order-by reco
 cat > /tmp/close-request.json <<'EOF'
 {
   "subject": "<task-slug>",
-  "effort": "<effort-slug>",
+  "effort": "{effort}",
   "work_item_id": "<work-item-record-id>",
   "transition": "done",
   "execution_report_id": "<execution-report-record-id-or-null>",
@@ -106,7 +106,7 @@ EOF
 cat > /tmp/close-request.json <<'EOF'
 {
   "subject": "<task-slug>",
-  "effort": "<effort-slug>",
+  "effort": "{effort}",
   "work_item_id": "<work-item-record-id>",
   "transition": "done",
   "execution_report_id": "<execution-report-record-id-or-null>",
@@ -137,7 +137,7 @@ EOF
 cat > /tmp/close-request.json <<'EOF'
 {
   "subject": "<task-slug>",
-  "effort": "<effort-slug>",
+  "effort": "{effort}",
   "work_item_id": "<work-item-record-id>",
   "transition": "done",
   "execution_report_id": "<execution-report-record-id-or-null>",

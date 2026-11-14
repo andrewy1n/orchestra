@@ -52,7 +52,7 @@ The phase body records its `## Proof` kind as `demo`, `commands`, `claims`,
 ```bash
 canon create --type score:continuity-question \
   --subject "{effort}" \
-  --payload '{"owner":"user","blocking":true,"scope":"plan-review:<current-phase-slug>"}' \
+  --payload '{"owner":"user","blocking":true,"scope":"plan-review:{phase}"}' \
   --body "Review the phase plan. Approve, change, or send it back to spec."
 ```
 

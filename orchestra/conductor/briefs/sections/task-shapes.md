@@ -3,7 +3,7 @@
 Use from tasks steps 5–7. List the phase specification first:
 
 ```bash
-canon list --type score:specification --where payload.phase=<current-phase-slug> --state active
+canon list --type score:specification --where payload.phase={phase} --state active
 ```
 
 For every `deliver` / `repair` task, payloads include `requirements`
@@ -21,7 +21,7 @@ the lines through one `canon apply` (tasks step 9), not one by
 one. An oracle-backed acceptance carries `test_ids` and
 `oracle_hashes` in its create payload. Create it once; never update it
 afterwards to freeze. Follow
-[verification-policy.md](references/verification-policy.md) and stamp
+the verification policy in this brief and stamp
 the resolved `oracle_policy` on every acceptance. A selected frozen
 acceptance carries `test_ids` and `oracle_hashes` in its create payload.
 
@@ -32,7 +32,7 @@ Put the Description in `body` of the batch line.
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -44,15 +44,15 @@ R2: <observable behavior>
 
 canon create --type score:acceptance \
   --subject "<task-slug>" \
-  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1"}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"python3 -m pytest tests/test_<area>.py::test_<case> -q","requirement":"R1"}'
 
 canon create --type score:acceptance \
   --subject "<task-slug>-perf" \
-  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"<command that proves R2>","requirement":"R2"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"<command that proves R2>","requirement":"R2"}'
 ```
 
 For selected frozen acceptances, use the complete example in
-[oracle-author.md](references/oracle-author.md). Ordinary tdd needs no freeze fields. Drop the second acceptance when there is only one
+the oracle authoring instructions in this brief. Ordinary tdd needs no freeze fields. Drop the second acceptance when there is only one
 requirement. A task needs at least one `score:work-item` and one
 `score:acceptance`.
 
@@ -82,7 +82,7 @@ the same function are dependent: the later one lists the earlier one in
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -94,7 +94,7 @@ R2: <observable behavior>
 
 canon create --type score:acceptance \
   --subject "<task-slug>" \
-  --payload '{"method":"tdd","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"<command>","requirement":"R1"}'
+  --payload '{"method":"tdd","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"<command>","requirement":"R1"}'
 ```
 
 ## Verification task
@@ -113,7 +113,7 @@ Use distinct exit requirements, such as R3 and R4 below. Do not attach a downstr
 ```bash
 canon create --type score:work-item \
   --subject "verify-{phase}" \
-  --payload '{"title":"Verify <phase title>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
+  --payload '{"title":"Verify <phase title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
 
 Prove the phase exit criteria hold together: run the integration
@@ -125,11 +125,11 @@ check through the real entry point, then every other phase check.
 
 canon create --type score:acceptance \
   --subject "verify-{phase}" \
-  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"<integration test command>","requirement":"R3"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"<integration test command>","requirement":"R3"}'
 
 canon create --type score:acceptance \
   --subject "verify-{phase}-<criterion-suffix>" \
-  --payload '{"method":"check","oracle_policy":"none","phase":"<current-phase-slug>","effort":"{effort}","verify_command":"<command>","requirement":"R4"}'
+  --payload '{"method":"check","oracle_policy":"none","phase":"{phase}","effort":"{effort}","verify_command":"<command>","requirement":"R4"}'
 ```
 
 A task that later joins the phase gets a `depends_on` edge on the

@@ -19,10 +19,13 @@ def test_shared_phase_end_names_no_github_commands() -> None:
     assert "`MERGED`" not in text
 
 
-def test_shared_phase_end_points_to_the_adapter_guide() -> None:
+def test_shared_phase_end_names_the_adapter_repair_loop() -> None:
     flat = " ".join(PHASE_END.split())
 
-    assert "`land-github-pr.md`" in flat
+    assert (
+        "When `[land] adapter` is `github-pr`, use the CI repair loop in the repair-ci stage."
+        in flat
+    )
     assert "`[land] adapter` is `github-pr`" in flat
 
 

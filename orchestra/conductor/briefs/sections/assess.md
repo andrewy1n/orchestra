@@ -68,7 +68,7 @@ suite the acceptance does not name; run that acceptance's
 ```bash
 canon create --type conductor:assessment \
   --subject "{phase}-<requirement-id>" \
-  --payload '{"requirement":"<requirement-id>","status":"failed","level":"implementation","next":"execute","confidence":"low","phase":"{phase}","effort":"<effort-slug>","missing":""}' \
+  --payload '{"requirement":"<requirement-id>","status":"failed","level":"implementation","next":"execute","confidence":"low","phase":"{phase}","effort":"{effort}","missing":""}' \
   --body "## Evidence
 
 <check-runs for this requirement and their results>
@@ -90,7 +90,7 @@ otherwise `next` `integrate`.
 ```bash
 canon create --type conductor:assessment \
   --subject "{phase}-<requirement-id>" \
-  --payload '{"requirement":"<requirement-id>","status":"insufficient","level":"verification","next":"verify","confidence":"low","phase":"{phase}","effort":"<effort-slug>","missing":"acceptance"}' \
+  --payload '{"requirement":"<requirement-id>","status":"insufficient","level":"verification","next":"verify","confidence":"low","phase":"{phase}","effort":"{effort}","missing":"acceptance"}' \
   --body "## Evidence
 
 <which checks ran and which did not>
@@ -107,7 +107,7 @@ acceptance
 ```bash
 canon create --type conductor:assessment \
   --subject "{phase}-<requirement-id>" \
-  --payload '{"requirement":"<requirement-id>","status":"blocked","level":"environment","next":"verify","confidence":"low","phase":"{phase}","effort":"<effort-slug>","missing":"<absent environment fact, or empty>"}' \
+  --payload '{"requirement":"<requirement-id>","status":"blocked","level":"environment","next":"verify","confidence":"low","phase":"{phase}","effort":"{effort}","missing":"<absent environment fact, or empty>"}' \
   --body "## Evidence
 
 <the blocked check and the environment fact>
@@ -151,7 +151,7 @@ assessment as above.
 ```bash
 canon supersede --type conductor:assessment --id <assessment-id> \
   --expected-revision <revision> \
-  --payload '{"requirement":"<requirement-id>","status":"failed","level":"design","next":"design","confidence":"low","phase":"{phase}","effort":"<effort-slug>","missing":""}' \
+  --payload '{"requirement":"<requirement-id>","status":"failed","level":"design","next":"design","confidence":"low","phase":"{phase}","effort":"{effort}","missing":""}' \
   --body "## Evidence
 
 <previous check-runs and the new ones>
@@ -172,12 +172,12 @@ finding with `needs` `human` (same for `environment` / `unknown`):
 
 ```bash
 canon create --type score:continuity-question \
-  --subject "<effort-slug>" \
+  --subject "{effort}" \
   --payload '{"owner":"user","blocking":true,"scope":"assess:{phase}-<requirement-id>"}'
 
 canon create --type tuner:finding \
   --subject "{phase}-<requirement-id>" \
-  --payload '{"claim":"<requirement-id> needs a human: specification repeated without new evidence, or the level is environment or unknown","basis":"<the assessments and check-runs>","invalidated_when":"<a new evidence_kind, a named cause, or a human answer>","effort":"<effort-slug>","needs":"human"}' \
+  --payload '{"claim":"<requirement-id> needs a human: specification repeated without new evidence, or the level is environment or unknown","basis":"<the assessments and check-runs>","invalidated_when":"<a new evidence_kind, a named cause, or a human answer>","effort":"{effort}","needs":"human"}' \
   --body "## Evidence
 
 <the repeated assessment or the environment or unknown level>
@@ -211,7 +211,7 @@ requirement derives `verified`. Write no
 state. Do not deploy.
 
 ```bash
-orchestra view verification --effort <effort-slug>
+orchestra view verification --effort {effort}
 ```
 
 Leave the work-item `in_progress` when any requirement it covers is
