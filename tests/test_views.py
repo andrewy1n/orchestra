@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -32,9 +33,12 @@ def work_item(project, subject, state_payload=None, **extra):
 
 
 def render(project, view, **kwargs):
-    return views.render_view(
-        views.VIEWS[view], views.load_records(project), project_root=project.project_root, **kwargs
-    )
+    previous = Path.cwd()
+    os.chdir(project.project_root)
+    try:
+        return views.render_view(views.VIEWS[view], views.load_records(project), **kwargs)
+    finally:
+        os.chdir(previous)
 
 
 def test_handoff_has_goal_and_position_under_effort_heading(project):

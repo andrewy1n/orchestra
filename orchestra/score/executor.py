@@ -34,10 +34,14 @@ class ExecutorTask:
 
 def task_executor(
     task: ExecutorTask,
+    wave_tasks: Sequence[ExecutorTask] | None = None,
+    *,
     small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> Executor:
-    """Return the persisted executor or the single-task prediction."""
-    return wave_executor([task], small_wave_budget_minutes=small_wave_budget_minutes)
+    """Return the dispatched executor, override, or prediction for the task wave."""
+    if task.assignee in ("inline", "subagent"):
+        return task.assignee
+    return wave_executor(wave_tasks or [task], small_wave_budget_minutes=small_wave_budget_minutes)
 
 
 def wave_executor(

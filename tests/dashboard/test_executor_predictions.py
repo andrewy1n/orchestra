@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -46,9 +46,7 @@ def project(tmp_path: Path) -> Project:
 
 
 def _tasks(project: Project):
-    effort = next(
-        effort for effort in load_snapshot(project).efforts if effort.effort == "alpha"
-    )
+    effort = next(effort for effort in load_snapshot(project).efforts if effort.effort == "alpha")
     return {task.subject: task for task in effort.tasks}
 
 
