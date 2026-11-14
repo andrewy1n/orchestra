@@ -83,7 +83,7 @@ def test_wave_start_stores_dispatch_identity_with_assignment(
     assert task["payload"]["assignee"] == "inline"
     assert task["payload"]["write_root"] == str(repo / ".worktrees" / f"{PHASE}--task")
     assert task["payload"].get("dispatch_id")
-    assert task["payload"].get("dispatched_at") == START.isoformat(timespec="microseconds")
+    assert task["payload"].get("dispatch_started_at") == START.isoformat(timespec="microseconds")
 
 
 def test_redispatch_replaces_markers_and_increments_attempts(
@@ -103,7 +103,9 @@ def test_redispatch_replaces_markers_and_increments_attempts(
     assert retried["lifecycle_state"] == "in_progress"
     assert retried["payload"].get("attempts") == 1
     assert retried["payload"].get("dispatch_id") != first_dispatch
-    assert retried["payload"].get("dispatched_at") == clock[0].isoformat(timespec="microseconds")
+    assert retried["payload"].get("dispatch_started_at") == clock[0].isoformat(
+        timespec="microseconds"
+    )
     assert retried["payload"]["assignee"] == first["payload"]["assignee"]
     assert retried["payload"]["write_root"] == first["payload"]["write_root"]
 
@@ -156,4 +158,4 @@ def test_legacy_in_progress_task_without_dispatch_fields_can_be_retried(
 
     assert retried["payload"].get("attempts") == 1
     assert retried["payload"].get("dispatch_id")
-    assert retried["payload"].get("dispatched_at") == START.isoformat(timespec="microseconds")
+    assert retried["payload"].get("dispatch_started_at") == START.isoformat(timespec="microseconds")

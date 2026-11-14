@@ -24,7 +24,7 @@ Orchestra moves a work-item to `in_progress` (step 4) and to `done`
 
 Each dispatch is recorded by the `in_progress` update of the
 work-item (it carries `assignee`, `write_root`, a unique `dispatch_id`,
-and UTC `dispatched_at`) and by a `conductor:execution-report`
+and UTC `dispatch_started_at`) and by a `conductor:execution-report`
 (evidence verbatim). Landing records elapsed seconds for that dispatch.
 Executors may report `tokens_total` only when they know a reliable total;
 zero is valid, and absent stays absent. Write no

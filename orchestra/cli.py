@@ -934,7 +934,7 @@ def _cmd_task_redispatch(args: argparse.Namespace) -> int:
         "revision": record["revision"],
         "attempts": payload.get("attempts"),
         "dispatch_id": payload.get("dispatch_id"),
-        "dispatched_at": payload.get("dispatched_at"),
+        "dispatch_started_at": payload.get("dispatch_started_at"),
         "assignee": payload.get("assignee"),
         "write_root": payload.get("write_root"),
     }

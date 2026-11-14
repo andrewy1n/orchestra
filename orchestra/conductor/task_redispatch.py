@@ -29,7 +29,7 @@ def redispatch(project: Project, task: str, *, expected_revision: str) -> Record
     updates: JsonObject = {
         "attempts": attempts + 1,
         "dispatch_id": markers.dispatch_id,
-        "dispatched_at": markers.dispatched_at,
+        "dispatch_started_at": markers.dispatch_started_at,
     }
     return project.update(
         item["id"],

@@ -27,7 +27,9 @@ def test_dispatch_started_at_is_recorded(tmp_path: Path, monkeypatch: pytest.Mon
 def test_same_dispatch_changed_evidence_records_new_duration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
+    project, repo, _ = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=START.isoformat()
+    )
     receipts = iter((START + timedelta(seconds=10), START + timedelta(seconds=30)))
     monkeypatch.setattr(land_task, "utc_now", lambda: next(receipts))
 

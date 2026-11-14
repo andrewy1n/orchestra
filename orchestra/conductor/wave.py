@@ -230,7 +230,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
                 "assignee": executor,
                 "write_root": write_root,
                 "dispatch_id": markers.dispatch_id,
-                "dispatched_at": markers.dispatched_at,
+                "dispatch_started_at": markers.dispatch_started_at,
             },
         )
         started.append(StartedTask(item["subject"], item["id"], executor, write_root, branch))

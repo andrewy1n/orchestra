@@ -115,7 +115,7 @@ def test_cli_start_landing_redispatch_and_second_landing_keep_dispatches_distinc
     task = project.resolve("score:work-item", "cost-task")
     first_dispatch = task["payload"]["dispatch_id"]
     assert task["lifecycle_state"] == "in_progress"
-    assert task["payload"]["dispatched_at"] == START.isoformat(timespec="microseconds")
+    assert task["payload"]["dispatch_started_at"] == START.isoformat(timespec="microseconds")
     assert json.loads(output)["tasks"][0]["task"] == "cost-task"
 
     clock[0] += timedelta(seconds=12)

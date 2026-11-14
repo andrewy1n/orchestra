@@ -205,7 +205,7 @@
           "type": "string",
           "optional": true
         },
-        "dispatched_at": {
+        "dispatch_started_at": {
           "type": "string",
           "optional": true
         }

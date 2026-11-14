@@ -43,7 +43,7 @@ def _world(
     *,
     verify_command: str = "true",
     dispatch_id: str | None = None,
-    dispatched_at: str | None = None,
+    dispatch_started_at: str | None = None,
 ) -> tuple[Project, Path, Path]:
     project = make_project(tmp_path)
     _git(tmp_path, "config", "user.email", "t@example.com")
@@ -76,8 +76,8 @@ def _world(
     }
     if dispatch_id is not None:
         item_payload["dispatch_id"] = dispatch_id
-    if dispatched_at is not None:
-        item_payload["dispatched_at"] = dispatched_at
+    if dispatch_started_at is not None:
+        item_payload["dispatch_started_at"] = dispatch_started_at
     create(
         project,
         "score:work-item",
@@ -123,7 +123,9 @@ def _report(project: Project, report_id: str) -> JsonObject:
 def test_r2_elapsed_duration_covers_dispatch_through_receipt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
+    project, repo, _ = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=START.isoformat()
+    )
     receipt = START + timedelta(seconds=25.75)
     monkeypatch.setattr(land_task, "utc_now", lambda: receipt)
 
@@ -140,14 +142,16 @@ def test_dispatch_markers_have_a_unique_id_and_utc_start() -> None:
 
     assert first.dispatch_id
     assert first.dispatch_id != second.dispatch_id
-    assert datetime.fromisoformat(first.dispatched_at) == START
-    assert datetime.fromisoformat(first.dispatched_at).utcoffset() == timedelta(0)
+    assert datetime.fromisoformat(first.dispatch_started_at) == START
+    assert datetime.fromisoformat(first.dispatch_started_at).utcoffset() == timedelta(0)
 
 
 def test_r3_check_delay_is_excluded_from_elapsed_duration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
+    project, repo, _ = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=START.isoformat()
+    )
     receipt = START + timedelta(seconds=7)
     clock = [receipt]
 
@@ -190,7 +194,7 @@ def test_r6_missing_or_zero_token_count_is_preserved(
 
 
 def test_r6_missing_dispatch_metadata_leaves_duration_absent(tmp_path: Path) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id=None, dispatched_at=None)
+    project, repo, _ = _world(tmp_path, dispatch_id=None, dispatch_started_at=None)
 
     landed = land_task.land(project, repo, "cost-task", _evidence_file(tmp_path))
 
@@ -221,13 +225,15 @@ def test_r7_invalid_token_count_fails_before_landing_changes_git_or_writes_evide
 
 
 @pytest.mark.parametrize(
-    "dispatched_at",
+    "dispatch_started_at",
     ["not-a-timestamp", "2026-01-01T00:00:00", "2026-01-01T01:00:00+01:00"],
 )
 def test_r7_invalid_dispatch_timestamp_fails_before_landing_changes_git_or_writes_evidence(
-    tmp_path: Path, dispatched_at: str
+    tmp_path: Path, dispatch_started_at: str
 ) -> None:
-    project, repo, tree = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=dispatched_at)
+    project, repo, tree = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=dispatch_started_at
+    )
     (tree / "work.txt").write_text("work\n")
     head_before = _git(tree, "rev-parse", "HEAD")
 
@@ -242,7 +248,7 @@ def test_r7_invalid_dispatch_timestamp_fails_before_landing_changes_git_or_write
 def test_r7_partial_dispatch_fields_fail_before_landing_changes_git_or_writes_evidence(
     tmp_path: Path,
 ) -> None:
-    project, repo, tree = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=None)
+    project, repo, tree = _world(tmp_path, dispatch_id="dispatch-1", dispatch_started_at=None)
     (tree / "work.txt").write_text("work\n")
     head_before = _git(tree, "rev-parse", "HEAD")
 
@@ -258,7 +264,7 @@ def test_r7_negative_elapsed_interval_fails_before_landing_changes_git_or_writes
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     project, repo, tree = _world(
-        tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat()
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=START.isoformat()
     )
     monkeypatch.setattr(land_task, "utc_now", lambda: START - timedelta(seconds=1))
     (tree / "work.txt").write_text("work\n")
@@ -290,7 +296,9 @@ def test_r9_legacy_evidence_without_tokens_remains_valid(tmp_path: Path) -> None
 def test_duplicate_landing_does_not_increase_duration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
+    project, repo, _ = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatch_started_at=START.isoformat()
+    )
     receipts = iter((START + timedelta(seconds=10), START + timedelta(seconds=30)))
     monkeypatch.setattr(land_task, "utc_now", lambda: next(receipts))
     evidence_path = _evidence_file(tmp_path)
@@ -303,7 +311,7 @@ def test_duplicate_landing_does_not_increase_duration(
 
 
 def test_r10_legacy_report_without_cost_fields_remains_valid(tmp_path: Path) -> None:
-    project, repo, _ = _world(tmp_path, dispatch_id=None, dispatched_at=None)
+    project, repo, _ = _world(tmp_path, dispatch_id=None, dispatch_started_at=None)
     item = project.resolve("score:work-item", "cost-task")
 
     report = project.create(

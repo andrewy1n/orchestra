@@ -115,7 +115,6 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
             item,
             evidence,
             received_at,
-            project.list("conductor:execution-report"),
         )
     except ExecutionCostError as exc:
         raise LandError(str(exc)) from exc
