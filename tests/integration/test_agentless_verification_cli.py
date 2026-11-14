@@ -268,7 +268,9 @@ def test_r3_closing_task_waits_for_dependency_integration(tmp_path: Path) -> Non
 
     assert result.returncode == 1
     assert output.get("execution_mode") == "runner"
-    assert "integrat" in " ".join(output.get("refusal_reasons", [])).lower()
+    reasons = output.get("refusal_reasons")
+    assert isinstance(reasons, list)
+    assert any(isinstance(reason, str) and "integrat" in reason.lower() for reason in reasons)
     assert world.state("verify-runner") == "planned"
 
 
@@ -291,9 +293,12 @@ def test_closing_manual_acceptance_waits_for_human(world: World) -> None:
     assert result.returncode == 3
     assert output.get("execution_mode") == "runner"
     assert output.get("state") == "in_progress"
-    assert output.get("checks")
-    assert output["checks"][0]["exit_code"] == 3
-    assert output["checks"][0]["result"] == "pending"
+    checks = output.get("checks")
+    assert isinstance(checks, list) and checks
+    first_check = checks[0]
+    assert isinstance(first_check, dict)
+    assert first_check.get("exit_code") == 3
+    assert first_check.get("result") == "pending"
     assert world.state("verify-runner") == "in_progress"
 
 
@@ -304,7 +309,11 @@ def test_closing_task_with_no_acceptance_reports_refusal(tmp_path: Path) -> None
 
     assert result.returncode == 1
     assert output.get("execution_mode") == "runner"
-    assert "no active acceptance checks" in " ".join(output.get("refusal_reasons", []))
+    reasons = output.get("refusal_reasons")
+    assert isinstance(reasons, list)
+    assert any(
+        "no active acceptance checks" in reason for reason in reasons if isinstance(reason, str)
+    )
     assert world.state("verify-runner") == "in_progress"
 
 

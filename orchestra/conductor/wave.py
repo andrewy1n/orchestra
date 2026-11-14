@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,7 +47,7 @@ class RunnerOutcome:
     task: str
     state: str
     report_id: str
-    checks: tuple[dict[str, object], ...]
+    checks: tuple[Mapping[str, object], ...]
     refusal_reasons: tuple[str, ...]
     code: int
 
