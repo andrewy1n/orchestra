@@ -18,8 +18,8 @@ wins over derivation. Retry when assessment `next` is
 is still running for its current dispatch, or that has an open
 blocking `continuity-question` with `scope` `retry:<task-slug>`.
 
-Re-dispatch with the same `payload.executor` as the prior wave
-(`inline` or `subagent`; missing means `subagent`). Do not change mode.
+Re-dispatch with the same executor mode selected for the task's first dispatch.
+Do not derive a new mode from later wave membership.
 
 ## Budget (hard backstop)
 
@@ -79,9 +79,9 @@ assessment's `## Reason` when present; set `attempts` to prior+1
 (absent → 0, so first re-dispatch writes `1`) in a work-item update
 that also carries `assignee` and `write_root`. Write no new
 `conductor:assignment`.
-Dispatch as in execute steps 4–5 (same executor mode), with the
-brief and territory notes. Work-item stays `in_progress` — never
-reopen `done`.
+Dispatch as in execute steps 4–5. Use the original mode for a re-dispatched
+task. Dispatch a new fix task from its wave policy. Work-item stays
+`in_progress` — never reopen `done`.
 
 ```bash
 canon create --type conductor:assignment-amendment \
@@ -120,7 +120,7 @@ exhausted, use the budget-exhaustion Needs-you path above
 ```bash
 canon create --type score:work-item \
   --subject "fix-<failing-area>" \
-  --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<focus>","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
+  --payload '{"title":"Fix <failing area>","phase":"<current-phase-slug>","kind":"deliver","assignee":"","effort":"<focus>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
   --body "## Description
 
 Fix the failure that blocked closing verification.

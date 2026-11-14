@@ -11,8 +11,10 @@ Only the parent session writes the shared store. Use `canon` and
   a `requirements` array only when one check proves every listed requirement.
 - Put task dependencies in `depends_on` as work-item subjects. Create the
   prerequisite before its dependents.
-- Give each work-item `## Description`, `## Approach`, `executor`, `size`, and
-  `estimate_minutes`. Every wave uses one executor type.
+- Give each work-item `## Description`, `## Approach`, `size`, and
+  `estimate_minutes`. Dispatch derives the executor from wave shape and
+  project settings. Add `executor` only for an explicit `inline` or
+  `subagent` override; overrides in one wave must agree.
 - Put all work-items and acceptances in one ordered NDJSON batch. Create the
   phase verification task last. It depends on every other phase task.
 - Run `canon validate` after applying the batch.
