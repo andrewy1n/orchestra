@@ -18,6 +18,8 @@ complete plan review and record rules. Follow
 [verification-policy.md](references/verification-policy.md) when selecting
 methods and oracle policies.
 
+Declare known task write scopes and review overlap warnings during planning.
+
 ## Own
 
 - Materialize work-items and acceptance records for the current phase.
