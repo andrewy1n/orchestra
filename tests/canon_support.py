@@ -35,12 +35,18 @@ from orchestra.canon.project import Project, open_store  # noqa: E402
 
 def make_project(root: Path) -> Project:
     root.mkdir(parents=True, exist_ok=True)
-    write_project_config(root)
     git_init = subprocess.run(
         ["git", "-C", str(root), "init", "-q"], capture_output=True, text=True
     )
     if git_init.returncode:
         raise RuntimeError(git_init.stdout + git_init.stderr)
+    for key, value in (("user.email", "test@example.com"), ("user.name", "test")):
+        configured = subprocess.run(
+            ["git", "-C", str(root), "config", key, value], capture_output=True, text=True
+        )
+        if configured.returncode:
+            raise RuntimeError(configured.stdout + configured.stderr)
+    write_project_config(root)
     result = subprocess.run(
         [
             sys.executable,
@@ -63,6 +69,10 @@ def make_project(root: Path) -> Project:
 
 def write_project_config(root: Path) -> None:
     (root / "orchestra.toml").write_text(PROJECT_CONFIG, encoding="utf-8")
+    for command in (("add", "orchestra.toml"), ("commit", "-qm", "Add project config")):
+        result = subprocess.run(["git", "-C", str(root), *command], capture_output=True, text=True)
+        if result.returncode:
+            raise RuntimeError(result.stdout + result.stderr)
 
 
 def create(project, record_type: str, subject: str, payload: dict, body: str | None = None):
