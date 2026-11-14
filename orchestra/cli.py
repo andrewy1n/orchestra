@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
+from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, Record
@@ -897,7 +898,9 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
 
 def _cmd_analyze(args: argparse.Namespace) -> int:
     try:
-        records = resolve_location(args.store, _cwd(args)).open().records()
+        project = resolve_location(args.store, _cwd(args)).open()
+        records = project.records()
+        records = attach_derived_all(records, project.derived(records))
     except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
