@@ -141,8 +141,10 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
         r
         for r in project.list("conductor:execution-report")
         if r["subject"] == task
+        and record_payload(r).get("work_item") == task
+        and record_payload(r).get("revision") == revision
+        and record_payload(r).get("dispatch_id") == cost_fields.get("dispatch_id")
         and str(r.get("body") or "").strip() == body.strip()
-        and all(record_payload(r).get(key) == value for key, value in payload.items())
     ]
     report = (
         repeats[-1]
