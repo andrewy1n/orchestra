@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import ProjectConfigError, load_project_config
+from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.briefs.render import BriefContext
 from orchestra.conductor.workflow import step_stage
 
 
 def _adapter(project: Project) -> str:
-    try:
-        config = load_project_config(project.project_root)
-    except ProjectConfigError:
-        return ""
+    config = load_project_config(project.project_root)
     return config.land_adapter if config.land_configured else ""
 
 

@@ -40,6 +40,11 @@ def _invoke(root: Path, capsys: pytest.CaptureFixture[str], *args: str) -> tuple
 
 def _seed_run(root: Path, capsys: pytest.CaptureFixture[str]) -> str:
     project = make_project(root)
+    (root / "orchestra.toml").write_text(
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        '[verify.unit]\nrunner = ["python", "{tests}", "--junitxml={report}"]\n',
+        encoding="utf-8",
+    )
     project.create(
         record_type="score:effort",
         subject=EFFORT,
@@ -122,3 +127,14 @@ def test_blocked_step_exits_non_zero(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert code != 0
     assert reason in error
     assert output == ""
+
+
+def test_malformed_config_is_reported(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _seed_run(tmp_path, capsys)
+    (tmp_path / "orchestra.toml").write_text("[invalid\n", encoding="utf-8")
+
+    code, output, error = _invoke(tmp_path, capsys, "brief", READY_PHASE, STEP)
+
+    assert code != 0
+    assert output == ""
+    assert "invalid TOML" in error
