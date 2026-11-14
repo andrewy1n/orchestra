@@ -28,7 +28,7 @@ def test_settle_phase_writes_a_decision_in_a_light_phase_only_for_a_user_choice(
 def test_plan_phase_keeps_the_plan_review_gate_unless_autonomy_skips_it() -> None:
     text = skill_text("tasks").replace("\n    ", " ")
     assert "Skip this gate at `auto-plan` and `auto-phases`" in " ".join(text.split())
-    assert "Otherwise (`gated` or missing) create a blocking" in " ".join(text.split())
+    assert "Only an explicit `gated` creates a blocking" in " ".join(text.split())
 
 
 def test_light_phase_keeps_verification_reviewer_oracles_and_red_first() -> None:

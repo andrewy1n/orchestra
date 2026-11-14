@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from canon_support import create, make_project
+from conductor_support import write_policy
 
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
@@ -383,6 +384,200 @@ def test_parallel_implementation_wave_needs_integration_report_at_verification(
     )
 
     assert run_status(project, run["subject"]).complete is True
+
+
+def _landing_phase(project: Project, heading: str = "## Landing") -> None:
+    write_policy(project.project_root)
+    create(
+        project,
+        "score:phase",
+        "p1",
+        {"title": "p1", "ordinal": 1, "effort": EFFORT, "weight": "light"},
+        PHASE_BODY + f"{heading}\nBranch phase/p1.\n",
+    )
+    _plan(project, "p1")
+    create(
+        project,
+        "score:work-item",
+        "verify-p1",
+        {
+            "title": "Verify",
+            "phase": "p1",
+            "kind": "deliver",
+            "assignee": "",
+            "effort": EFFORT,
+            "requirements": ["R1"],
+            "depends_on": ["task-p1"],
+        },
+        "## Description\nVerify R1.",
+    )
+    for step in ("spec", "design", "tasks"):
+        _review(project, "p1", step)
+    for subject in ("task-p1", "verify-p1"):
+        task = project.resolve("score:work-item", subject)
+        project.update(task["id"], record_type="score:work-item", transition="in_progress")
+        project.update(task["id"], record_type="score:work-item", transition="done")
+        create(
+            project,
+            "conductor:execution-report",
+            subject,
+            {
+                "work_item": subject,
+                "result": "pass",
+                "verdict": "pass",
+                "revision": "deadbeef",
+                "effort": EFFORT,
+            },
+        )
+    acceptance = project.resolve("score:acceptance", "acceptance-p1")
+    create(
+        project,
+        "tuner:check-run",
+        "acceptance-p1",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": "deadbeef",
+            "method": "check",
+            "runner": "orchestra",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+
+
+def _review_at_head(project: Project) -> None:
+    create(
+        project,
+        "tuner:check-run",
+        "p1-review",
+        {
+            "criterion_id": "p1-review",
+            "result": "pass",
+            "revision": "deadbeef",
+            "method": "review",
+            "evidence_kind": "review",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+
+
+def _proof_packet(project: Project) -> None:
+    create(
+        project,
+        "conductor:proof-packet",
+        "p1",
+        {"phase": "p1", "effort": EFFORT, "revision": "deadbeef", "base": "abc", "kind": "claims"},
+    )
+
+
+def _landing(project: Project, head_sha: str) -> None:
+    create(
+        project,
+        "conductor:landing",
+        "p1",
+        {"phase": "p1", "number": 1, "url": "u", "head_sha": head_sha, "result": "success"},
+    )
+
+
+def test_verify_stays_pending_without_review_and_proof_evidence(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project)
+    run = _start(project, "p1", "deliver")
+
+    action = next_actions(project, run["subject"])[0]
+
+    assert (action.step, action.state) == ("verify", "ready")
+    assert run_status(project, run["subject"]).complete is False
+
+
+def test_land_is_next_once_the_gate_and_proof_packet_hold(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project)
+    _review_at_head(project)
+    _proof_packet(project)
+    run = _start(project, "p1", "deliver")
+
+    action = next_actions(project, run["subject"])[0]
+
+    assert (action.step, action.state) == ("land", "ready")
+
+
+def test_land_stays_pending_when_the_landing_is_not_at_the_proof_head(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project)
+    _review_at_head(project)
+    _proof_packet(project)
+    _landing(project, "stale")
+    run = _start(project, "p1", "deliver")
+
+    assert run_status(project, run["subject"]).complete is False
+
+
+def test_land_completes_at_a_successful_landing_at_the_proof_head(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project)
+    _review_at_head(project)
+    _proof_packet(project)
+    _landing(project, "deadbeef")
+    run = _start(project, "p1", "deliver")
+
+    assert run_status(project, run["subject"]).complete is True
+
+
+def test_a_landing_heading_with_extra_spaces_still_requires_a_landing(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project, "##  Landing")
+    _review_at_head(project)
+    _proof_packet(project)
+    run = _start(project, "p1", "deliver")
+
+    action = next_actions(project, run["subject"])[0]
+
+    assert (action.step, action.state) == ("land", "ready")
+
+
+def test_an_unrelated_landing_notes_heading_is_not_a_landing_section(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _landing_phase(project, "## Landing notes")
+    run = _start(project, "p1", "deliver")
+
+    action = next_actions(project, run["subject"])[0]
+
+    assert (action.step, action.state) == ("verify", "ready")
+
+
+def test_runs_stored_before_the_land_step_stay_readable(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _phase(project, "p1", 1)
+    create(
+        project,
+        "score:run",
+        "old-deliver",
+        {
+            "effort": EFFORT,
+            "operation": "deliver",
+            "phases": ["p1"],
+            "requested_steps": ["tasks", "execute", "verify"],
+            "definition_version": "1",
+        },
+    )
+    create(
+        project,
+        "score:run",
+        "old-phase",
+        {
+            "effort": EFFORT,
+            "operation": "phase",
+            "phases": ["p1"],
+            "requested_steps": ["spec", "design", "tasks", "execute", "verify"],
+            "definition_version": "1",
+        },
+    )
+
+    assert next_actions(project, "old-deliver")[0].step == "tasks"
+    assert next_actions(project, "old-phase")[0].step == "spec"
 
 
 def test_any_unfinished_required_step_keeps_run_incomplete(tmp_path: Path) -> None:

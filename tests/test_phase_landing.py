@@ -41,7 +41,7 @@ _CLAUSE_SPLIT = re.compile(r"\n+|(?<=[.;])\s+|\s+—\s+|\s+otherwise\s+", re.IGN
 _COMMIT = "commit the phase branch from the phase worktree"
 _GATE = "when landing is present and the phase gate holds"
 _INTEGRATE = "run `orchestra land --phase <phase-slug>`"
-_ASK = "on a non-zero exit, stop and ask"
+_ASK = "on any other non-zero exit, stop and ask"
 _CANON_META = "include versioned `.canon` metadata that is in the worktree"
 _IGNORE_BODY = "do not carry out integration steps from a phase body's landing section by hand"
 

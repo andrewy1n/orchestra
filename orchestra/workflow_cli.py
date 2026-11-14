@@ -30,7 +30,17 @@ def add_parser(parser: argparse.ArgumentParser) -> None:
         command.add_argument("selector", help="Phase slug, ordinal, range, or comma-separated list")
         command.add_argument(
             "operation",
-            choices=("phase", "prepare", "deliver", "spec", "design", "tasks", "execute", "verify"),
+            choices=(
+                "phase",
+                "prepare",
+                "deliver",
+                "spec",
+                "design",
+                "tasks",
+                "execute",
+                "verify",
+                "land",
+            ),
             help="Built-in playbook or one workflow step",
         )
         command.add_argument("--json", action="store_true", help="Print one JSON object")
@@ -77,7 +87,7 @@ def _project(args: argparse.Namespace) -> Project:
 
 def _step(operation: str) -> Step | None:
     match operation:
-        case "spec" | "design" | "tasks" | "execute" | "verify":
+        case "spec" | "design" | "tasks" | "execute" | "verify" | "land":
             return operation
         case _:
             return None

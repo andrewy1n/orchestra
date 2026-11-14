@@ -262,7 +262,7 @@ this phase-head. Head moves after fixes → new packet.
 
 ## Land
 
-Land is a separate step after verify. Land runs only when the phase has
+Land is the `land` workflow step, separate from and after verify. Land runs only when the phase has
 a Landing section. Land runs only when the gate holds at the phase head
 and the proof packet exists at that head. Without a Landing section,
 skip this section.
@@ -277,9 +277,10 @@ the adapter did not succeed; a PR may exist. Exit 2 means a usage
 error, an unknown phase, or a missing store, proof packet or config.
 Exit 5 means the gate failed: land prints each missing term and
 pushes nothing. Pass `--cwd <phase-worktree>`; land checks that
-worktree's HEAD. Merge stays human. On a non-zero exit, stop
-and ask. Ask the user before you run land, unless an active
-constraint authorizes it. The Landing section names branch, worktree,
+worktree's HEAD. Merge stays human. Run land without asking when
+the gate holds: opening the PR is part of land. On exit 1 with the
+`github-pr` adapter, follow the CI repair loop. On any other non-zero
+exit, stop and ask. The Landing section names branch, worktree,
 base and repo only. Do not carry out integration steps from a phase
 body's Landing section by hand: a merge into the default branch, a
 push, a pull request, or a store commit on the default branch. No
@@ -296,6 +297,14 @@ Commit the phase branch from the phase worktree so the work has a revision.
 EOF
 )"
 ```
+
+Merging the base branch (`main`) into the phase branch is routine.
+Do it without asking when the phase branch is behind the base, or when
+land or the PR reports it is out of date. Commit the merge in the phase
+worktree. The head moved, so redo each missing term at the new head:
+the suite, the reviewer, then a new proof packet. Run `orchestra gate`
+until it exits 0, then run land. Stop and ask only when the merge
+conflicts.
 
 Land ends when `orchestra land` exits 0. The phase is then landed and
 waits for the human merge. Merge stays human. On exit 1 the adapter

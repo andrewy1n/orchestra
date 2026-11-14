@@ -420,7 +420,8 @@
               "design",
               "tasks",
               "execute",
-              "verify"
+              "verify",
+              "land"
             ]
           }
         },

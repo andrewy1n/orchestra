@@ -68,8 +68,9 @@ the delta through the plan review gate.
 No Landing → not ready for plan review. Incidental has no Landing.
 Open the plan review gate (skip incidental). Do not open until task recipes,
 wave executor choices, phase run facts, proof, Landing, and frozen oracle
-fields pass review. Skip this gate at
-`auto-plan` and `auto-phases`.
+fields pass review. If the effort has no `autonomy`, run
+`orchestra effort autonomy <focus> auto-plan` first. Skip this gate at
+`auto-plan` and `auto-phases`. Only an explicit `gated` opens it.
 
 The phase body records its `## Proof` kind as `demo`, `commands`, `claims`,
 `audit-triage`, or `mixed`. A light phase may use one acceptance with a

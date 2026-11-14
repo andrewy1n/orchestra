@@ -51,7 +51,7 @@ When no same-focus work-item remains planned or in progress:
    phase has a multi-task wave. A clean merge is not enough.
 5. Run `orchestra gate` and write the proof packet at the phase head.
    With a Landing section, verify ends here. Verify does not commit, push,
-   or run land. Hand off to the Land section of `phase-end.md`.
+   or run land. Hand off to the `land` step, which follows the Land section of `phase-end.md`.
 6. Without a Landing section, close the phase only when all required terms
    pass.
 7. Run `canon validate`. After close, read effort autonomy. Plan the next
