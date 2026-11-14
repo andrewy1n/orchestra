@@ -55,6 +55,13 @@ for the focus, use `init` first (`engage` if kind/focus unset).
 - Dependencies: `payload.depends_on`, a JSON array of work-item
   subjects, prerequisites created first. Tasks that must rewrite the
   same function get a `depends_on` edge.
+- Write scopes: declare known repository-relative paths or patterns in
+  `payload.touches`. Use literals, `*`, `?`, or whole-segment `**`, such
+  as `orchestra/score/touches.py`, `tests/score/test_?.py`, or
+  `skills/**/SKILL.md`. An omitted or empty list means unknown scope;
+  unknown scope is not empty scope. Review overlap warnings, but treat
+  them as advisory. Add `depends_on` when tasks must edit the same
+  function, even when their declared scopes appear disjoint.
 - Every `deliver`/`repair` phase ends with a **verification task**
   that `depends_on` every other work-item; at least one acceptance is
   an integration check through the real entry point (not whole-tree
