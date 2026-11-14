@@ -7,14 +7,7 @@ description: >-
 
 # Verify evidence
 
-Requires `canon` and `orchestra` on PATH. Follow
-[ensure-store.md](references/ensure-store.md),
-[kinds-and-focus.md](references/kinds-and-focus.md), and
-[record-mechanics.md](references/record-mechanics.md). Follow
-[assess.md](references/assess.md), [close-batch.md](references/close-batch.md),
-and [verify-mechanics.md](references/verify-mechanics.md). For phase closure,
-follow [phase-end.md](references/phase-end.md). Follow
-[verification-policy.md](references/verification-policy.md) for oracle gates.
+Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> verify` for your instructions, or use the `brief` that `orchestra workflow next` returns. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
 
 ## Verify
 

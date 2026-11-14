@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import skill_text
 
 PHASE_END = REPO_ROOT / "shared/phase-end.md"
 GUIDE = REPO_ROOT / "shared/land-github-pr.md"
@@ -59,6 +60,6 @@ def test_the_guide_ships_to_the_verify_and_run_skills() -> None:
 
 
 def test_the_run_skill_points_to_the_guide() -> None:
-    text = (REPO_ROOT / "skills/run/SKILL.md").read_text(encoding="utf-8")
+    text = skill_text("run")
 
-    assert "land-github-pr.md" in text
+    assert "### CI repair loop" in text

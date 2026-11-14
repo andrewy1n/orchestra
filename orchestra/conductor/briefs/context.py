@@ -3,7 +3,7 @@ from __future__ import annotations
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import ProjectConfigError, load_project_config
 from orchestra.conductor.briefs.render import BriefContext
-from orchestra.conductor.workflow import WorkflowRunError, step_stage
+from orchestra.conductor.workflow import step_stage
 
 
 def _adapter(project: Project) -> str:
@@ -20,10 +20,7 @@ def _text(value: object, default: str) -> str:
 
 def brief_context(project: Project, phase: str, step: str) -> BriefContext:
     record = project.resolve("score:phase", phase)
-    try:
-        stage = step_stage(project.records(), phase, step)
-    except (WorkflowRunError, LookupError, ValueError):
-        stage = None
+    stage = step_stage(project, project.records(), phase, step)
     payload = record["payload"]
     return BriefContext(
         step=step,

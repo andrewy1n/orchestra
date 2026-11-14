@@ -71,7 +71,10 @@ def test_policy_covers_the_automated_method_policy_matrix() -> None:
 def test_all_workflow_stages_reference_the_same_policy() -> None:
     for name in ("spec", "tasks", "execute", "verify"):
         path: Path = REPO_ROOT / "skills" / name / "SKILL.md"
-        assert "references/verification-policy.md" in path.read_text()
+        if name == "verify":
+            assert "# Verification method and oracle policy" in skill_text(name)
+        else:
+            assert "references/verification-policy.md" in path.read_text()
         copy = path.parent / "references" / "verification-policy.md"
         assert copy.read_text() == POLICY.read_text()
 

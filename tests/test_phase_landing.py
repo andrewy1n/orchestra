@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, skill_text
 
 MERGE_STEP = re.compile(
     r"merge that branch into `main`"
@@ -94,6 +94,10 @@ def _included(skill_name: str, relative: str) -> str:
     return body
 
 
+def _phase_end_brief() -> str:
+    return brief_text("verify", "land", adapter="")
+
+
 def _landing_paragraph(text: str) -> str:
     flat = _flat(text)
     start = flat.find("The phase body includes a `## Landing` section")
@@ -117,7 +121,7 @@ def landing_surfaces() -> list[tuple[str, str]]:
     return [
         (
             "skills/verify/references/phase-end.md",
-            _included("verify", "skills/verify/references/phase-end.md"),
+            _phase_end_brief(),
         ),
         (
             "skills/verify/SKILL.md",

@@ -6,10 +6,19 @@ from uuid import uuid4
 
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
+from orchestra.conductor import suite
 from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, parse_landing
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.head_evidence import (
+    EvidenceIndex,
+    acceptance_latest,
+    latest_review,
+    review_at_head,
+    suite_at_head,
+)
 from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.revision import revision_matches
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -508,14 +517,75 @@ def _action_for(
     return RunAction(subject, step, "ready")
 
 
-def step_stage(records: list[Record], phase: str, step: str) -> str | None:
-    match step:
-        case "verify":
-            return "close" if _verification_ready(records, phase)[0] else "gather"
-        case "land":
-            return "confirm" if _landing_ready(records, phase)[0] else "prepare"
-        case _:
-            return None
+def _text_of(record: Record | None, field: str) -> str:
+    return _text(record, field) if record is not None else ""
+
+
+def _suite_required(project: Project) -> bool:
+    policy = suite.load_suite_policy(project.project_root)
+    return policy.gate == "required" and policy.mode not in ("none", "")
+
+
+def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
+    phase_record = _current_phase(records, phase)
+    effort = _text(phase_record, "effort")
+    acceptances = [
+        record
+        for record in records
+        if record["record_type"] == "score:acceptance"
+        and record["payload"].get("phase") == phase
+        and record["lifecycle_state"] == "active"
+    ]
+    index = EvidenceIndex(records)
+    if not acceptances or not all(
+        acceptance_latest(index, acceptance, None).holds for acceptance in acceptances
+    ):
+        return "analyze"
+    review = latest_review(index, phase, effort)
+    head = _text_of(review, "revision")
+    if _suite_required(project) and not suite_at_head(index, phase, head or None).holds:
+        return "suite"
+    if not review_at_head(index, phase, effort, head).holds:
+        return "reviewer"
+    if not _verification_ready(records, phase)[0]:
+        return "reviewer"
+    if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
+        return "gate"
+    packet = _proof_packet(records, phase)
+    if packet is None or not revision_matches(_text(packet, "revision"), head):
+        return "proof"
+    return None
+
+
+def _land_stage(project: Project, records: list[Record], phase: str) -> str | None:
+    phase_record = _current_phase(records, phase)
+    if phase_record["lifecycle_state"] == "done":
+        return None
+    if not parse_landing(phase_record.get("body") or "").present:
+        return None
+    landing = latest_landing(records, phase)
+    if landing is None:
+        return "land"
+    if landing["payload"].get("result") != "success":
+        config = load_project_config(project.project_root)
+        return "repair-ci" if config.land_adapter == "github-pr" else "land"
+    packet = _proof_packet(records, phase)
+    if packet is None or landing["payload"].get("head_sha") != packet["payload"].get("revision"):
+        return "land"
+    return "close"
+
+
+def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:
+    try:
+        match step:
+            case "verify":
+                return _verify_stage(project, records, phase)
+            case "land":
+                return _land_stage(project, records, phase)
+            case _:
+                return None
+    except (WorkflowRunError, LookupError, ValueError, OSError, RuntimeError):
+        return None
 
 
 def _with_brief(project: Project, action: RunAction) -> RunAction:

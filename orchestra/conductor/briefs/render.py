@@ -23,7 +23,35 @@ class Section:
     when: Callable[[BriefContext], bool] | None = None
 
 
-STEP_TABLE: Mapping[str, tuple[Section, ...]] = {}
+def _github_pr(ctx: BriefContext) -> bool:
+    return ctx.adapter == "github-pr"
+
+
+STEP_TABLE: Mapping[str, tuple[Section, ...]] = {
+    "verify": (
+        Section("verification-policy"),
+        Section("record-mechanics"),
+        Section("retry-loop"),
+        Section("phase-end"),
+        Section("verify-mechanics", stage="analyze"),
+        Section("assess", stage="analyze"),
+        Section("close-batch", stage="analyze"),
+        Section("phase-analyze", stage="analyze"),
+        Section("phase-suite", stage="suite"),
+        Section("phase-reviewer", stage="reviewer"),
+        Section("reviewer-prompt", stage="reviewer"),
+        Section("phase-gate", stage="gate"),
+        Section("phase-proof", stage="proof"),
+        Section("phase-close", stage="proof"),
+    ),
+    "land": (
+        Section("land", stage="land"),
+        Section("land-github-pr", stage="repair-ci", when=_github_pr),
+        Section("retry-loop", stage="repair-ci", when=_github_pr),
+        Section("phase-close", stage="close"),
+        Section("close-github-pr", stage="close", when=_github_pr),
+    ),
+}
 
 
 def _read(name: str, source: Path | None) -> str:
