@@ -56,6 +56,10 @@ def test_skill_brief_line_instruction(path: Path) -> None:
     text = _flat(path.read_text())
     if name in NON_STEP_SKILLS:
         assert f"orchestra workflow brief --skill {name}" in text
+    elif name == "verify":
+        assert "orchestra workflow brief --skill verify" in text
+        assert "orchestra workflow brief <phase> verify" in text
+        assert "orchestra workflow next" in text
     else:
         assert f"orchestra workflow brief <phase> {name}" in text or (
             "orchestra workflow brief <phase> <step>" in text

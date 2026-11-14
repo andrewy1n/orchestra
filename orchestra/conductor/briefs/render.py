@@ -93,6 +93,16 @@ SKILL_TABLE: Mapping[str, tuple[Section, ...]] = {
     "engage": (Section("kinds-and-focus"), Section("ensure-store")),
     "triage-ideas": (Section("ensure-store"), Section("kinds-and-focus")),
     "analyze-sessions": (Section("ensure-store"),),
+    "verify": (
+        Section("ensure-store"),
+        Section("kinds-and-focus"),
+        Section("record-mechanics"),
+        Section("verify-mechanics"),
+        Section("assess"),
+        Section("close-batch"),
+        Section("retry-loop"),
+        Section("verification-policy"),
+    ),
 }
 
 

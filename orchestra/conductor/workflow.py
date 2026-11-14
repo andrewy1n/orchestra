@@ -13,9 +13,10 @@ from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, 
 from orchestra.conductor.head_evidence import (
     EvidenceIndex,
     acceptance_latest,
+    latest,
     latest_review,
     review_at_head,
-    suite_at_head,
+    suite_check_runs,
 )
 from orchestra.conductor.landing import latest_landing
 from orchestra.conductor.revision import revision_matches
@@ -521,11 +522,6 @@ def _text_of(record: Record | None, field: str) -> str:
     return _text(record, field) if record is not None else ""
 
 
-def _suite_required(project: Project) -> bool:
-    policy = suite.load_suite_policy(project.project_root)
-    return policy.gate == "required" and policy.mode not in ("none", "")
-
-
 def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
     phase_record = _current_phase(records, phase)
     effort = _text(phase_record, "effort")
@@ -543,7 +539,11 @@ def _verify_stage(project: Project, records: list[Record], phase: str) -> str | 
         return "analyze"
     review = latest_review(index, phase, effort)
     head = _text_of(review, "revision")
-    if _suite_required(project) and not suite_at_head(index, phase, head or None).holds:
+    check_runs = [record for record in records if record["record_type"] == "tuner:check-run"]
+    policy = suite.load_suite_policy(project.project_root)
+    latest_suite = latest(suite_check_runs(index, phase))
+    suite_head = head or _text_of(latest_suite, "revision")
+    if suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=suite_head):
         return "suite"
     if not review_at_head(index, phase, effort, head).holds:
         return "reviewer"
@@ -576,16 +576,13 @@ def _land_stage(project: Project, records: list[Record], phase: str) -> str | No
 
 
 def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:
-    try:
-        match step:
-            case "verify":
-                return _verify_stage(project, records, phase)
-            case "land":
-                return _land_stage(project, records, phase)
-            case _:
-                return None
-    except (WorkflowRunError, LookupError, ValueError, OSError, RuntimeError):
-        return None
+    match step:
+        case "verify":
+            return _verify_stage(project, records, phase)
+        case "land":
+            return _land_stage(project, records, phase)
+        case _:
+            return None
 
 
 def _with_brief(project: Project, action: RunAction) -> RunAction:

@@ -7,7 +7,7 @@ description: >-
 
 # Verify evidence
 
-Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> verify` for your instructions, or use the `brief` that `orchestra workflow next` returns. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
+Requires `canon` and `orchestra` on PATH. For task verification, run `orchestra workflow brief --skill verify`. It needs no phase and works for incidental tasks. For phase verification, run `orchestra workflow brief <phase> verify` or use the `brief` that `orchestra workflow next` returns. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
 
 ## Verify
 

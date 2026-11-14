@@ -95,7 +95,7 @@ def skill_text(name: str) -> str:
                     BriefContext(step, "<phase-slug>", "<focus>", None, "github-pr", "full")
                 )
             )
-    if name in SKILL_TABLE:
+    if name in SKILL_TABLE and name not in _BRIEF_STEPS:
         parts.append(render_skill_brief(name))
     return "\n\n".join(parts)
 

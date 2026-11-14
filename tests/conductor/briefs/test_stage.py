@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, seed
 
 from orchestra.canon.project import open_store
-from orchestra.conductor.workflow import step_stage
+from orchestra.conductor.workflow import WorkflowRunError, step_stage
 
 ADAPTER_TABLE = '\n[land]\nadapter = "{adapter}"\n'
 
@@ -98,11 +99,13 @@ def test_verify_stage_is_none_when_every_stage_is_complete(store: Path, cli: Cli
     assert _stage(phase, "verify") is None
 
 
-def test_stage_is_none_when_the_phase_cannot_be_read(store: Path, cli: Cli) -> None:
+def test_stage_raises_when_the_phase_cannot_be_read(store: Path, cli: Cli) -> None:
     phase = seed(store, cli)
 
-    assert _stage(phase, "verify", "no-such-phase") is None
-    assert _stage(phase, "land", "no-such-phase") is None
+    with pytest.raises(WorkflowRunError, match="no-such-phase"):
+        _stage(phase, "verify", "no-such-phase")
+    with pytest.raises(WorkflowRunError, match="no-such-phase"):
+        _stage(phase, "land", "no-such-phase")
 
 
 def test_stage_is_none_for_a_step_without_stages(store: Path, cli: Cli) -> None:

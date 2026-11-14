@@ -23,7 +23,8 @@ canon create --type conductor:execution-report \
   --body "<the evidence block, verbatim>"
 ```
 
-   Then run `verify` here. verify for a task other than the
+   Then run `verify` here. Its task verification instructions come from
+   `orchestra workflow brief --skill verify`. verify for a task other than the
    work-item that depends_on every other phase work-item runs in that
    task worktree. It derives investigation / finding /
    check-run from this execution-report (not chat memory) and closes
