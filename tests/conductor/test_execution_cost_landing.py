@@ -42,8 +42,8 @@ def _world(
     tmp_path: Path,
     *,
     verify_command: str = "true",
-    dispatch_id: str | None = "dispatch-1",
-    dispatched_at: str | None = START.isoformat(),
+    dispatch_id: str | None = None,
+    dispatched_at: str | None = None,
 ) -> tuple[Project, Path, Path]:
     project = make_project(tmp_path)
     _git(tmp_path, "config", "user.email", "t@example.com")
@@ -114,7 +114,7 @@ def _report(project: Project, report_id: str) -> JsonObject:
 def test_r2_elapsed_duration_covers_dispatch_through_receipt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path)
+    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
     receipt = START + timedelta(seconds=25.75)
     monkeypatch.setattr(land_task, "utc_now", lambda: receipt)
 
@@ -138,7 +138,7 @@ def test_dispatch_markers_have_a_unique_id_and_utc_start() -> None:
 def test_r3_check_delay_is_excluded_from_elapsed_duration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path)
+    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
     receipt = START + timedelta(seconds=7)
     clock = [receipt]
 
@@ -218,7 +218,7 @@ def test_r7_invalid_token_count_fails_before_landing_changes_git_or_writes_evide
 def test_r7_invalid_dispatch_timestamp_fails_before_landing_changes_git_or_writes_evidence(
     tmp_path: Path, dispatched_at: str
 ) -> None:
-    project, repo, tree = _world(tmp_path, dispatched_at=dispatched_at)
+    project, repo, tree = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=dispatched_at)
     (tree / "work.txt").write_text("work\n")
     head_before = _git(tree, "rev-parse", "HEAD")
 
@@ -233,7 +233,7 @@ def test_r7_invalid_dispatch_timestamp_fails_before_landing_changes_git_or_write
 def test_r7_partial_dispatch_fields_fail_before_landing_changes_git_or_writes_evidence(
     tmp_path: Path,
 ) -> None:
-    project, repo, tree = _world(tmp_path, dispatched_at=None)
+    project, repo, tree = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=None)
     (tree / "work.txt").write_text("work\n")
     head_before = _git(tree, "rev-parse", "HEAD")
 
@@ -248,7 +248,9 @@ def test_r7_partial_dispatch_fields_fail_before_landing_changes_git_or_writes_ev
 def test_r7_negative_elapsed_interval_fails_before_landing_changes_git_or_writes_evidence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, tree = _world(tmp_path)
+    project, repo, tree = _world(
+        tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat()
+    )
     monkeypatch.setattr(land_task, "utc_now", lambda: START - timedelta(seconds=1))
     (tree / "work.txt").write_text("work\n")
     head_before = _git(tree, "rev-parse", "HEAD")
@@ -279,7 +281,7 @@ def test_r9_legacy_evidence_without_tokens_remains_valid(tmp_path: Path) -> None
 def test_duplicate_landing_does_not_increase_duration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project, repo, _ = _world(tmp_path)
+    project, repo, _ = _world(tmp_path, dispatch_id="dispatch-1", dispatched_at=START.isoformat())
     receipts = iter((START + timedelta(seconds=10), START + timedelta(seconds=30)))
     monkeypatch.setattr(land_task, "utc_now", lambda: next(receipts))
     evidence_path = _evidence_file(tmp_path)
