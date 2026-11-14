@@ -166,7 +166,9 @@ def test_r6_failed_check_is_recorded_and_keeps_task_open(tmp_path: Path) -> None
 
     assert closure.state == "in_progress"
     assert project.resolve("score:work-item", "verify")["lifecycle_state"] == "in_progress"
-    check_run = project.list("tuner:check-run")[0]
+    check_runs = project.list("tuner:check-run")
+    assert len(check_runs) == 1
+    check_run = check_runs[0]
     assert check_run["payload"]["result"] == "fail"
     assert check_run["payload"]["exit_code"] != 0
 
