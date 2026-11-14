@@ -131,7 +131,7 @@ def test_evidence_escalation_ladder():
     assert "The evidence did not increase." in raised[0]["raw"]
     assert "implementation" not in raised[0]["payload"].values()
 
-    assess = (SKILLS / "verify" / "references" / "assess.md").read_text()
+    assess = h.section_text("assess")
     questions = [
         inv
         for inv in extract_invocations(assess)

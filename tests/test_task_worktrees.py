@@ -6,17 +6,20 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import phase_end_text, skill_text
 
 SKILL = REPO_ROOT / "skills" / "execute" / "SKILL.md"
-PHASE_END = REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md"
+PHASE_END = phase_end_text()
 
 _VERIFICATION = "the work-item that depends_on every other phase work-item"
 _OTHER = f"a task other than {_VERIFICATION}"
 
 
-def _flat(path: Path) -> str:
-    body = skill_text("execute") if path == SKILL else path.read_text()
+def _flat(source: Path | str) -> str:
+    if isinstance(source, str):
+        body = source
+    else:
+        body = skill_text("execute") if source == SKILL else source.read_text()
     return re.sub(r"\s+", " ", body)
 
 

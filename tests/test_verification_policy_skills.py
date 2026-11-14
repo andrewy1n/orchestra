@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import REPO_ROOT
-from helpers import brief_text, skill_text
+from helpers import brief_text, section_text, skill_text
 from skill_extraction import extract_invocations
 
-POLICY = REPO_ROOT / "shared/verification-policy.md"
+POLICY = REPO_ROOT / "orchestra/conductor/briefs/sections/verification-policy.md"
 
 
 def test_planning_examples_record_policy_separately_from_method() -> None:
@@ -31,7 +31,7 @@ def test_planning_examples_record_policy_separately_from_method() -> None:
 
 
 def test_verification_examples_own_distinct_exit_requirements() -> None:
-    text = (REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
+    text = section_text("task-shapes")
     implementation, verification = text.split("## Verification task")
 
     def requirements(section: str) -> set[str]:
@@ -77,8 +77,8 @@ def test_all_workflow_stages_reference_the_same_policy() -> None:
             assert "# Verification method and oracle policy" in skill_text(name)
         else:
             assert "# Verification method and oracle policy" in skill_text(name)
-        copy = path.parent / "references" / "verification-policy.md"
-        assert copy.read_text() == POLICY.read_text()
+        if name != "execute":
+            assert section_text("verification-policy") in brief_text(name)
 
 
 def test_all_frozen_changes_keep_parent_amendment_approval() -> None:

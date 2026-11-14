@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from conftest import REPO_ROOT
-from helpers import brief_text, skill_text
+from helpers import brief_text, section_text, skill_text
 from skill_extraction import extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -15,7 +15,7 @@ def _text(name: str) -> str:
 
 
 def _kinds() -> str:
-    return (SKILLS / "kinds-and-focus.md").read_text()
+    return section_text("kinds-and-focus")
 
 
 def test_settle_phase_skill_is_discoverable():

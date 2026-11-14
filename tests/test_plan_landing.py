@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import section_text, skill_text
 from test_phase_landing import MERGE_STEP, PUSH_STEP, STORE_COMMIT_STEP, affirmative_matches
 
 SKILLS = REPO_ROOT / "skills"
@@ -52,17 +52,16 @@ def test_shared_docs_name_the_same_landing():
         "A phase body that omits Landing is not ready",
         "for plan review.",
     )
-    for path in (
-        REPO_ROOT / "shared/kinds-and-focus.md",
-        SKILLS / "kinds-and-focus.md",
-        REPO_ROOT / "README.md",
+    for name, text in (
+        ("kinds-and-focus.md", section_text("kinds-and-focus")),
+        ("README.md", (REPO_ROOT / "README.md").read_text()),
     ):
-        doc = _landing_paragraph(path.read_text())
+        doc = _landing_paragraph(text)
         for phrase in phrases:
-            assert phrase in doc, path.name
-        assert affirmative_matches(doc, MERGE_STEP) == [], path.name
-        assert affirmative_matches(doc, PUSH_STEP) == [], path.name
-        assert affirmative_matches(doc, STORE_COMMIT_STEP) == [], path.name
+            assert phrase in doc, name
+        assert affirmative_matches(doc, MERGE_STEP) == [], name
+        assert affirmative_matches(doc, PUSH_STEP) == [], name
+        assert affirmative_matches(doc, STORE_COMMIT_STEP) == [], name
 
 
 def test_plan_review_stays_closed_until_landing_is_present():

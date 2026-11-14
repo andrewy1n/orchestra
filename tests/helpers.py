@@ -20,6 +20,7 @@ from orchestra.conductor.briefs.render import (
     SKILL_TABLE,
     STEP_TABLE,
     BriefContext,
+    Section,
     render_brief,
     render_skill_brief,
 )
@@ -58,6 +59,19 @@ def brief_text(*steps: str, adapter: str = "github-pr") -> str:
     )
 
 
+def section_text(name: str) -> str:
+    context = BriefContext("section", "<phase-slug>", "<focus>", None, "github-pr", "full")
+    return render_brief(context, table={"section": (Section(name),)})
+
+
+def phase_end_text() -> str:
+    return brief_text("verify", "land", adapter="")
+
+
+def land_guide_text() -> str:
+    return brief_text("land")
+
+
 def skill_text(name: str) -> str:
     names = {
         "spec": ("spec", "design"),
@@ -67,8 +81,6 @@ def skill_text(name: str) -> str:
     for skill_name in names:
         skill = REPO_ROOT / "skills" / skill_name / "SKILL.md"
         paths.append(skill)
-        if "references/" in skill.read_text():
-            paths.extend(sorted((REPO_ROOT / "skills" / skill_name / "references").glob("*.md")))
     parts: list[str] = []
     seen: set[str] = set()
     for path in paths:

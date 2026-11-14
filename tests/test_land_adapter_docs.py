@@ -3,21 +3,15 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
-from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, land_guide_text, section_text, skill_text
 
-PHASE_END = REPO_ROOT / "shared/phase-end.md"
-GUIDE = REPO_ROOT / "shared/land-github-pr.md"
-
-
-def _text(path: Path) -> str:
-    return path.read_text(encoding="utf-8") if path.exists() else ""
+PHASE_END = "\n\n".join(section_text(name) for name in ("phase-end", "land", "phase-close"))
+GUIDE = land_guide_text()
 
 
 def test_shared_phase_end_names_no_github_commands() -> None:
-    text = _text(PHASE_END)
+    text = PHASE_END
 
     assert not re.search(r"\bgh\b", text)
     assert "orchestra close" not in text
@@ -26,14 +20,14 @@ def test_shared_phase_end_names_no_github_commands() -> None:
 
 
 def test_shared_phase_end_points_to_the_adapter_guide() -> None:
-    flat = " ".join(_text(PHASE_END).split())
+    flat = " ".join(PHASE_END.split())
 
     assert "`land-github-pr.md`" in flat
     assert "`[land] adapter` is `github-pr`" in flat
 
 
 def test_github_pr_guide_holds_the_ci_repair_loop() -> None:
-    text = _text(GUIDE)
+    text = GUIDE
 
     assert "# Land with the github-pr adapter" in text
     assert "\n### CI repair loop\n" in text
@@ -42,8 +36,8 @@ def test_github_pr_guide_holds_the_ci_repair_loop() -> None:
 
 
 def test_github_pr_guide_holds_the_close_step() -> None:
-    text = _text(GUIDE)
-    start = text.find("\n## Close\n")
+    text = GUIDE
+    start = text.rfind("\n## Close\n")
     section = " ".join(text[start:].split()) if start != -1 else ""
 
     assert "`orchestra close --phase <phase-slug>`" in section
@@ -52,11 +46,8 @@ def test_github_pr_guide_holds_the_close_step() -> None:
     assert "`orchestra close --all`" in section
 
 
-def test_the_guide_ships_to_the_verify_and_run_skills() -> None:
-    for skill in ("verify", "run"):
-        copy = REPO_ROOT / "skills" / skill / "references" / "land-github-pr.md"
-        assert copy.exists(), skill
-        assert copy.read_text(encoding="utf-8") == _text(GUIDE)
+def test_the_guide_ships_in_the_land_brief() -> None:
+    assert section_text("land-github-pr") in brief_text("land")
 
 
 def test_the_run_skill_points_to_the_guide() -> None:

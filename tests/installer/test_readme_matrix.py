@@ -196,8 +196,8 @@ def test_agent_skills_section_documents_every_generated_skill():
     skills = _generated_skills()
     for skill in skills:
         assert f"`{skill}`" in section, skill
-    assert "references/" in section
-    assert re.search(r"Each\s+skill directory contains its required references\.", section)
+    assert "references/" not in section
+    assert "orchestra workflow brief" in section
 
 
 def test_agent_skills_section_points_at_the_cli_install():

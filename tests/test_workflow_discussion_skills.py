@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import helpers as h
 from conftest import REPO_ROOT
-from helpers import brief_text, skill_text
+from helpers import brief_text, section_text, skill_text
 from skill_extraction import check_skill_text, extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -37,7 +37,7 @@ def test_spec_writes_only_the_behavioral_contract() -> None:
 
 def test_design_compares_only_viable_contract_satisfying_options() -> None:
     text = _own("design")
-    process = (REPO_ROOT / "orchestra/conductor/briefs/sections/design-process.md").read_text()
+    process = section_text("design-process")
     written = {
         inv["type"]
         for inv in extract_invocations(process)
@@ -79,9 +79,10 @@ def test_scenario_guide_covers_the_human_review_requirements() -> None:
     assert "Text checks confirm instruction boundaries" in text
 
 
-def test_shared_reference_is_packaged_for_both_skills() -> None:
+def test_shared_intent_qa_is_in_both_briefs() -> None:
+    intent_qa = section_text("intent-qa")
     for name in ("spec", "design"):
-        assert (SKILLS / name / "references" / "intent-qa.md").is_file()
+        assert intent_qa in brief_text(name)
 
 
 def test_direct_steps_end_before_planning() -> None:

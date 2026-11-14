@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import section_text, skill_text
 from test_phase_landing import MERGE_STEP, PUSH_STEP, STORE_COMMIT_STEP, affirmative_matches
 
 SKILLS = REPO_ROOT / "skills"
@@ -32,7 +32,7 @@ def test_phase_close_commits_the_phase_branch_without_a_default_branch_merge():
     raw = _raw("execute")
     assert affirmative_matches(raw, MERGE_STEP) == []
     assert affirmative_matches(raw, STORE_COMMIT_STEP) == []
-    phase_end = (SKILLS / "verify" / "references" / "phase-end.md").read_text()
+    phase_end = section_text("phase-end")
     assert "git -C <primary-checkout> merge phase/<phase-slug>" not in phase_end
 
 

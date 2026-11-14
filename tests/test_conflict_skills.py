@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from helpers import skill_text
+from helpers import brief_text, skill_text
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def flat(relative: str) -> str:
+    if relative == "execute brief":
+        return " ".join(brief_text("execute").split())
     return " ".join((ROOT / relative).read_text(encoding="utf-8").split())
 
 
 def test_execute_phase_asks_the_user_for_competing_behavior() -> None:
     for relative in (
         "skills/execute/SKILL.md",
-        "skills/execute/references/execute-mechanics.md",
+        "execute brief",
     ):
         text = flat(relative)
         assert "need competing behavior" in text
@@ -22,7 +24,7 @@ def test_execute_phase_asks_the_user_for_competing_behavior() -> None:
 
 
 def test_execute_phase_allows_resolve_only_through_the_command() -> None:
-    text = flat("skills/execute/references/execute-mechanics.md")
+    text = flat("execute brief")
     assert "orchestra wave resolve <phase-slug> <task-slug>" in text
     assert "resolve a merge conflict outside `orchestra wave resolve`" in text
 
@@ -30,7 +32,7 @@ def test_execute_phase_allows_resolve_only_through_the_command() -> None:
 def test_plan_phase_adds_depends_on_for_tasks_that_rewrite_the_same_function() -> None:
     for text in (
         " ".join(skill_text("tasks").split()),
-        flat("skills/tasks/references/task-shapes.md"),
+        flat("orchestra/conductor/briefs/sections/task-shapes.md"),
     ):
         assert "rewrite the same function" in text
         assert "depends_on" in text
