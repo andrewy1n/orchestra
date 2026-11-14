@@ -66,7 +66,14 @@ def add_parser(parser: argparse.ArgumentParser) -> None:
     )
     _add_read_options(next_parser)
 
-    brief = actions.add_parser("brief", help="Print the brief for one phase step")
+    brief = actions.add_parser(
+        "brief",
+        help="Print the brief for one phase step",
+        description=(
+            "Print the brief for one phase step. The brief equals the next brief for the same "
+            "store state, except in a prepare run, whose barrier next applies and brief does not."
+        ),
+    )
     brief.add_argument("phase", nargs="?", help="Phase slug")
     brief.add_argument(
         "step",
@@ -292,6 +299,9 @@ def _skill_brief_command(args: argparse.Namespace) -> int:
         text = render_skill_brief(args.skill)
     except ValueError as exc:
         return _fail("brief", args.skill, exc)
+    if args.json:
+        print(json.dumps({"skill": args.skill, "brief": text}, indent=2))
+        return 0
     print(text)
     return 0
 

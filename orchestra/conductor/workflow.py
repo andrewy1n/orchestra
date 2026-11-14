@@ -603,7 +603,9 @@ def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
     return _with_brief(project, _action_for(project, records, _current_phase(records, phase), step))
 
 
-def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[RunAction, ...]:
+def _all_actions(
+    project: Project, records: list[Record], run: Record, *, with_brief: bool
+) -> tuple[RunAction, ...]:
     steps = _run_steps(run)
     phases = _phase_records(records, run)
     actions: list[RunAction] = []
@@ -627,7 +629,7 @@ def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[
                 prepare=prepare_barrier,
                 selected_phases=selected_phases,
             )
-            actions.append(_with_brief(project, action))
+            actions.append(_with_brief(project, action) if with_brief else action)
             break
     return tuple(actions)
 
@@ -651,12 +653,12 @@ def _find_run(records: list[Record], subject: str) -> Record:
 def next_actions(project: Project, run_subject: str) -> tuple[RunAction, ...]:
     records = project.records()
     run = _find_run(records, run_subject)
-    return _all_actions(project, records, run)
+    return _all_actions(project, records, run, with_brief=True)
 
 
 def run_status(project: Project, run_subject: str) -> RunStatus:
     records = project.records()
     run = _find_run(records, run_subject)
-    actions = _all_actions(project, records, run)
+    actions = _all_actions(project, records, run, with_brief=False)
     complete = not actions
     return RunStatus(run, complete, not complete, actions)
