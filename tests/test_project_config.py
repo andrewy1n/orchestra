@@ -21,12 +21,41 @@ def _config_text(
     *,
     stage: str = "phase",
     plugins: tuple[str, ...] = ("unit", "review"),
+    small_wave_budget_minutes: int | None = None,
 ) -> str:
     plugin_values = json.dumps(plugins)
     runner_values = json.dumps(runner)
-    return (
+    text = (
         f"[verify.stages]\n{stage} = {plugin_values}\n\n[verify.unit]\nrunner = {runner_values}\n"
     )
+    if small_wave_budget_minutes is not None:
+        text += f"\n[execute]\nsmall_wave_budget_minutes = {small_wave_budget_minutes}\n"
+    return text
+
+
+def test_small_wave_budget_defaults_to_fifteen_minutes(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(_config_text(), encoding="utf-8")
+
+    assert load_project_config(tmp_path).small_wave_budget_minutes == 15
+
+
+def test_small_wave_budget_loads_from_execute_config(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        _config_text(small_wave_budget_minutes=24), encoding="utf-8"
+    )
+
+    assert load_project_config(tmp_path).small_wave_budget_minutes == 24
+
+
+@pytest.mark.parametrize("value", ["true", "-1", "1.5", '"15"'])
+def test_invalid_small_wave_budget_is_rejected(tmp_path: Path, value: str) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        _config_text() + f"\n[execute]\nsmall_wave_budget_minutes = {value}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ProjectConfigError, match="small_wave_budget_minutes"):
+        load_project_config(tmp_path)
 
 
 def _git(root: Path, *args: str) -> str:

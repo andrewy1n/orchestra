@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal, TypeGuard
 
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.score.executor import DEFAULT_SMALL_WAVE_BUDGET_MINUTES
 from orchestra.tools.errors import ToolError, ToolNotFoundError
 from orchestra.tools.git import Git
 
@@ -50,6 +51,7 @@ class ProjectConfig:
     verify_config: Mapping[str, JsonObject]
     land_config: JsonObject
     replay_technique: str
+    small_wave_budget_minutes: int
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -102,6 +104,8 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     if runner.count("{tests}") != 1 or not any("{report}" in arg for arg in runner):
         raise ProjectConfigError("verify.unit.runner must include {tests} once and {report}")
     land_value = root.get("land")
+    execute = _table(root.get("execute", {}), "execute")
+    small_wave_budget_minutes = _parse_small_wave_budget(execute)
     return ProjectConfig(
         stages=stages,
         runner=runner,
@@ -112,6 +116,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
         verify_config=_parse_verify_config(verify),
         land_config=_parse_land_config(land_value),
         replay_technique=_parse_replay_technique(verify.get("replay")),
+        small_wave_budget_minutes=small_wave_budget_minutes,
     )
 
 
@@ -218,6 +223,13 @@ def _parse_suite(value: object) -> SuiteConfig:
     if not isinstance(gate, str) or gate not in SUITE_GATES:
         raise ProjectConfigError("suite.gate must be required, advisory, or deferred")
     return SuiteConfig(mode=mode, command=command, gate=gate)
+
+
+def _parse_small_wave_budget(execute: Mapping[str, object]) -> int:
+    value = execute.get("small_wave_budget_minutes", DEFAULT_SMALL_WAVE_BUDGET_MINUTES)
+    if type(value) is not int or value < 0:
+        raise ProjectConfigError("execute.small_wave_budget_minutes must be a non-negative integer")
+    return value
 
 
 def _parse_land_adapter(value: object) -> str:
