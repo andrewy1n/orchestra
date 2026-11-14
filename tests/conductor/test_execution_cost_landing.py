@@ -10,7 +10,7 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.conductor import land_task, wave
+from orchestra.conductor import land_task
 from orchestra.conductor.check import CheckOutcome
 from orchestra.conductor.evidence import EvidenceError, parse_evidence
 from orchestra.conductor.execution_cost import new_dispatch_markers
@@ -97,8 +97,17 @@ def _world(
             "requirement": "R1",
         },
     )
-    wave.start(project, tmp_path, PHASE)
-    return project, tmp_path, worktrees / f"{PHASE}--cost-task"
+    tree = worktrees / f"{PHASE}--cost-task"
+    _git(tmp_path, "branch", f"task/{PHASE}/cost-task", f"phase/{PHASE}")
+    _git(tmp_path, "worktree", "add", "-q", str(tree), f"task/{PHASE}/cost-task")
+    item = project.resolve("score:work-item", "cost-task")
+    project.update(
+        item["id"],
+        record_type="score:work-item",
+        transition="in_progress",
+        payload={"assignee": "inline", "write_root": str(tree)},
+    )
+    return project, tmp_path, tree
 
 
 def _evidence_file(tmp_path: Path, **override: object) -> Path:

@@ -10,6 +10,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
+from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
@@ -220,11 +221,17 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
             prepared.append((item, str(workdir or repo), ""))
     started: list[StartedTask] = []
     for item, write_root, branch in prepared:
+        markers = new_dispatch_markers()
         project.update(
             item["id"],
             record_type="score:work-item",
             transition="in_progress",
-            payload={"assignee": executor, "write_root": write_root},
+            payload={
+                "assignee": executor,
+                "write_root": write_root,
+                "dispatch_id": markers.dispatch_id,
+                "dispatched_at": markers.dispatched_at,
+            },
         )
         started.append(StartedTask(item["subject"], item["id"], executor, write_root, branch))
     return WaveStart(phase, wave, tuple(started))

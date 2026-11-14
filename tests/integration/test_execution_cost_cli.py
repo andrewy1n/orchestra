@@ -85,7 +85,9 @@ def _world(root: Path) -> tuple[Project, Path, Path]:
     return project, root, evidence_path
 
 
-def _invoke(root: Path, args: list[str], capsys: pytest.CaptureFixture[str]) -> tuple[int, str, str]:
+def _invoke(
+    root: Path, args: list[str], capsys: pytest.CaptureFixture[str]
+) -> tuple[int, str, str]:
     argv = [*args, "--cwd", str(root), "--store", str(root), "--json"]
     try:
         code = cli_main(argv)
@@ -159,9 +161,9 @@ def test_cli_start_landing_redispatch_and_second_landing_keep_dispatches_distinc
     assert code == 0, error
     reports = project.list("conductor:execution-report")
     assert len(reports) == 2
-    second_report = reports[-1]
-    assert second_report["payload"]["dispatch_id"] == second_dispatch
-    assert second_report["payload"]["duration_s"] == 20
+    reports_by_dispatch = {report["payload"]["dispatch_id"]: report for report in reports}
+    assert reports_by_dispatch[first_dispatch]["payload"]["duration_s"] == 12
+    assert reports_by_dispatch[second_dispatch]["payload"]["duration_s"] == 20
 
 
 def test_cli_redispatch_refuses_stale_revision_without_changing_markers(

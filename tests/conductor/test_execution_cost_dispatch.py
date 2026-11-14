@@ -42,8 +42,7 @@ def _repo(tmp_path: Path) -> tuple[Project, Path]:
         PHASE,
         {"title": "Execution cost", "ordinal": 1, "effort": EFFORT},
         "## Problem\n\nProblem.\n\n## Approach\n\nApproach.\n\n"
-        "## Exit criteria\n\nCriteria."
-        + LANDING,
+        "## Exit criteria\n\nCriteria." + LANDING,
     )
     _git(tmp_path, "branch", f"phase/{PHASE}", "main")
     worktrees = tmp_path / ".worktrees"
@@ -99,9 +98,7 @@ def test_redispatch_replaces_markers_and_increments_attempts(
     first_dispatch = first["payload"]["dispatch_id"]
     clock[0] += timedelta(seconds=90)
 
-    retried = task_redispatch.redispatch(
-        project, "task", expected_revision=first["revision"]
-    )
+    retried = task_redispatch.redispatch(project, "task", expected_revision=first["revision"])
 
     assert retried["lifecycle_state"] == "in_progress"
     assert retried["payload"].get("attempts") == 1
@@ -116,9 +113,7 @@ def test_redispatch_rejects_stale_revision_without_writing(tmp_path: Path) -> No
     _item(project, "task")
     wave.start(project, repo, PHASE)
     first = project.resolve("score:work-item", "task")
-    project.update(
-        first["id"], record_type="score:work-item", payload={"attempts": 0}
-    )
+    project.update(first["id"], record_type="score:work-item", payload={"attempts": 0})
     current = project.resolve("score:work-item", "task")
 
     with pytest.raises(StaleWriteError):
@@ -128,9 +123,7 @@ def test_redispatch_rejects_stale_revision_without_writing(tmp_path: Path) -> No
 
 
 @pytest.mark.parametrize("state", ["planned", "done"])
-def test_redispatch_rejects_tasks_outside_in_progress(
-    tmp_path: Path, state: str
-) -> None:
+def test_redispatch_rejects_tasks_outside_in_progress(tmp_path: Path, state: str) -> None:
     project, _ = _repo(tmp_path)
     _item(project, "task")
     task = project.resolve("score:work-item", "task")
@@ -159,9 +152,7 @@ def test_legacy_in_progress_task_without_dispatch_fields_can_be_retried(
     task = project.resolve("score:work-item", "task")
     monkeypatch.setattr(execution_cost, "utc_now", lambda: START)
 
-    retried = task_redispatch.redispatch(
-        project, "task", expected_revision=task["revision"]
-    )
+    retried = task_redispatch.redispatch(project, "task", expected_revision=task["revision"])
 
     assert retried["payload"].get("attempts") == 1
     assert retried["payload"].get("dispatch_id")

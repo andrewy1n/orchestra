@@ -69,14 +69,19 @@ def test_redispatch_increments_attempts():
     text = _text("execute")
     flat = _flat("execute")
     assert "attempts" in flat
-    updates = [
-        inv
-        for inv in extract_invocations(text)
-        if inv["subcommand"] == "update"
-        and inv["type"] == "score:work-item"
-        and "attempts" in (inv.get("payload") or {})
-    ]
-    assert updates, "execute must document incrementing payload attempts on re-dispatch"
+    assert "orchestra task redispatch" in text
+    assert "--expected-revision" in text
+    assert "one guarded update" in flat
+
+
+def test_execution_cost_fields_are_optional_and_measured_per_dispatch() -> None:
+    retry = re.sub(r"\s+", " ", (REPO_ROOT / "shared" / "retry-loop.md").read_text())
+    execute = re.sub(r"\s+", " ", (REPO_ROOT / "shared" / "execute-mechanics.md").read_text())
+    assert "dispatch id" in retry and "start time" in retry
+    assert "elapsed seconds" in retry or "elapsed seconds" in execute
+    assert "tokens_total" in retry
+    assert "zero is valid" in retry
+    assert "missing stays absent" in retry
 
 
 def test_fix_task_depends_on_and_no_reopen_done():

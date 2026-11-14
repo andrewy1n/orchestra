@@ -20,6 +20,9 @@ blocking `continuity-question` with `scope` `retry:<task-slug>`.
 
 Re-dispatch with the same `payload.executor` as the prior wave
 (`inline` or `subagent`; missing means `subagent`). Do not change mode.
+Pass the current work-item revision to `orchestra task redispatch`.
+The command increments `attempts` and replaces the dispatch id and start
+time in one guarded update. It preserves `assignee` and `write_root`.
 
 ## Budget (hard backstop)
 
@@ -75,9 +78,7 @@ canon update --type tuner:finding --id <finding-id> \
 For each retryable task still inside budget: record an
 `assignment-amendment` keyed to the work-item whose `## Correction`
 quotes the failing check-run evidence (runner output tail) and the
-assessment's `## Reason` when present; set `attempts` to prior+1
-(absent → 0, so first re-dispatch writes `1`) in a work-item update
-that also carries `assignee` and `write_root`. Write no new
+assessment's `## Reason` when present. Write no new
 `conductor:assignment`.
 Dispatch as in execute steps 4–5 (same executor mode), with the
 brief and territory notes. Work-item stays `in_progress` — never
@@ -99,10 +100,15 @@ Re-dispatch after failure.
 
 <assessment ## Reason when present, else omit>"
 
-canon update --type score:work-item --id <id> \
-  --expected-revision <revision> \
-  --payload '{"attempts":1,"assignee":"<assignee>","write_root":"<write-root>"}'
+orchestra task redispatch <task-slug> \
+  --expected-revision <work-item-revision>
 ```
+
+The command counts an absent `attempts` field as zero. Initial dispatches
+record a unique dispatch id and UTC start time with their assignment. Landing
+records the dispatch id and elapsed seconds. Include `tokens_total` only
+when the executor reports a reliable total; zero is valid and missing stays
+absent. Legacy reports can omit all cost fields.
 
 Then dispatch with that mode through execution-report + `verify`.
 
