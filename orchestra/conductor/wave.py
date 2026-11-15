@@ -23,6 +23,7 @@ from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_execu
 from orchestra.score.lookups import (
     acceptances_of,
     closing_work_item,
+    closing_work_items,
     current_phase,
     live_work_items,
 )
@@ -377,6 +378,8 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     phase_rec = phase_record(records, phase)
     landing = has_landing(phase_rec)
     items = phase_items(records, phase)
+    if landing and len(closing_work_items(phase, records)) > 1:
+        raise WaveError("phase has more than one closing task")
     closer = closing_task(records, phase) if landing else None
     if closer is not None and all(
         item["lifecycle_state"] == "done" for item in items if item["id"] != closer["id"]

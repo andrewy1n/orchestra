@@ -56,17 +56,21 @@ def dependencies(item: Record) -> list[str]:
     return [entry for entry in value if isinstance(entry, str)]
 
 
-def closing_work_item(slug: str, records: Sequence[Record]) -> Record | None:
+def closing_work_items(slug: str, records: Sequence[Record]) -> list[Record]:
     items = live_work_items(slug, records)
     if len(items) < 2:
-        return None
+        return []
     closing: list[Record] = []
     for item in items:
         named = set(dependencies(item))
         others = [other for other in items if other["id"] != item["id"]]
         if all(other["subject"] in named or other["id"] in named for other in others):
             closing.append(item)
-    return latest(closing)
+    return closing
+
+
+def closing_work_item(slug: str, records: Sequence[Record]) -> Record | None:
+    return latest(closing_work_items(slug, records))
 
 
 def _matches(subject: str, item: Record) -> bool:
