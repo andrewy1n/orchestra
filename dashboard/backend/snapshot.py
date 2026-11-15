@@ -37,7 +37,12 @@ from dashboard.backend.records import (
     remap_records,
 )
 from dashboard.backend.store import change_token
-from dashboard.backend.task import TaskRow, belongs, task_rows
+from dashboard.backend.task import (
+    TaskRow,
+    belongs,
+    configured_small_wave_budget,
+    task_rows,
+)
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -508,6 +513,7 @@ def load_snapshot(
 
 def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
+    small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
     aliases = merge_aliases(listed["score:effort"])
     listed = {
         record_type: remap_records(records, aliases) for record_type, records in listed.items()
@@ -605,6 +611,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
             effort_acceptances,
             effort_checks,
             evidence_by_phase,
+            small_wave_budget_minutes=small_wave_budget_minutes,
         )
         phase_rows = [
             replace(
@@ -640,6 +647,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                     listed["conductor:execution-report"],
                     effort_checks,
                     phases.get(effort, []),
+                    small_wave_budget_minutes=small_wave_budget_minutes,
                 ),
                 needs_you=_needs_you(
                     questions.get(effort, []),
@@ -699,6 +707,7 @@ def load_work_snapshot(
         type_records = listed.get(record["record_type"])
         if type_records is not None:
             type_records.append(record)
+    small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
     aliases = merge_aliases(listed["score:effort"])
     listed = {
         record_type: remap_records(records, aliases) for record_type, records in listed.items()
@@ -801,7 +810,10 @@ def load_work_snapshot(
                 effort=effort,
                 goal=record_payload(goal).get("goal", ""),
                 phases=rows,
-                tasks=task_rows(active_tasks),
+                tasks=task_rows(
+                    active_tasks,
+                    small_wave_budget_minutes=small_wave_budget_minutes,
+                ),
                 needs_you=_needs_you(
                     questions.get(effort, []),
                     grouped["tuner:finding"].get(effort, []),

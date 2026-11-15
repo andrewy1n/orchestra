@@ -9,15 +9,21 @@ from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import (
+    CONFIG_PATH,
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ProjectConfigError,
+    load_project_config,
+)
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
 from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
 
-EXECUTORS = ("inline", "subagent")
 _LIVE = ("planned", "in_progress", "done")
 
 
@@ -108,11 +114,6 @@ def closes_phase(item: Record, items: list[Record]) -> bool:
         return record_payload(item).get("assignee") == "runner"
     deps = _depends_on(item)
     return all(o["subject"] in deps or o["id"] in deps for o in others)
-
-
-def _executor(item: Record) -> str:
-    value = record_payload(item).get("executor")
-    return value if isinstance(value, str) and value else "subagent"
 
 
 def _execution_report(records: list[Record], task: str) -> Record | None:
@@ -260,15 +261,41 @@ def select_wave(
     return lowest, sorted(chosen, key=lambda r: r["subject"])
 
 
-def check_executors(items: list[Record]) -> str:
-    bad = [i["subject"] for i in items if _executor(i) not in EXECUTORS]
-    if bad:
-        raise WaveError(f"unknown executor on: {', '.join(bad)}")
-    modes = {_executor(i) for i in items}
-    if len(modes) > 1:
-        detail = ", ".join(f"{i['subject']}={_executor(i)}" for i in items)
-        raise WaveError(f"tasks disagree on executor: {detail}")
-    return modes.pop()
+def check_executors(
+    items: list[Record], small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+) -> str:
+    tasks = [
+        ExecutorTask(
+            subject=item["subject"],
+            size=_optional_string(record_payload(item).get("size")),
+            estimate_minutes=_optional_integer(record_payload(item).get("estimate_minutes")),
+            executor=_optional_string(record_payload(item).get("executor")),
+            assignee=_optional_string(record_payload(item).get("assignee")),
+        )
+        for item in items
+    ]
+    try:
+        return wave_executor(tasks, small_wave_budget_minutes=small_wave_budget_minutes)
+    except ExecutorWaveError as exc:
+        raise WaveError(str(exc)) from exc
+
+
+def _optional_string(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _optional_integer(value: object) -> int | None:
+    return value if type(value) is int else None
+
+
+def _small_wave_budget(project: Project) -> int:
+    config_path = project.project_root / CONFIG_PATH
+    if not config_path.exists() and not config_path.is_symlink():
+        return DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    try:
+        return load_project_config(project.project_root).small_wave_budget_minutes
+    except ProjectConfigError as exc:
+        raise WaveError(str(exc)) from exc
 
 
 def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path, str]:
@@ -359,7 +386,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
         outcome = _runner_start(project, repo, phase, closers[0], items)
         return WaveStart(phase, None, (), "runner", outcome)
     wave, chosen = select_wave(records, derived, phase)
-    executor = check_executors(chosen)
+    executor = check_executors(chosen, _small_wave_budget(project))
     prepared: list[tuple[Record, str, str]] = []
     for item in chosen:
         if landing:

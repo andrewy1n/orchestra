@@ -23,6 +23,8 @@ Re-dispatch with the same `payload.executor` as the prior wave
 Pass the current work-item revision to `orchestra task redispatch`.
 The command increments `attempts` and replaces the dispatch id and start
 time in one guarded update. It preserves `assignee` and `write_root`.
+If `executor` is absent, keep the mode resolved for the task's first
+dispatch. Do not derive a new mode from later wave membership.
 The unique closing task in a phase with Landing uses runner checks
 instead of an executor. Retry it with `orchestra wave start` after
 fixing a failed check; do not dispatch it to an agent.
@@ -83,9 +85,9 @@ For each retryable task still inside budget: record an
 quotes the failing check-run evidence (runner output tail) and the
 assessment's `## Reason` when present. Write no new
 `conductor:assignment`.
-Dispatch as in execute steps 4–5 (same executor mode), with the
-brief and territory notes. Work-item stays `in_progress` — never
-reopen `done`.
+Dispatch as in execute steps 4–5. Use the original mode for a re-dispatched
+task. Dispatch a new fix task from its wave policy. Work-item stays
+`in_progress` — never reopen `done`.
 
 ```bash
 canon create --type conductor:assignment-amendment \

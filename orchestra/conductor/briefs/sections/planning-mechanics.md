@@ -65,10 +65,11 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   that `depends_on` every other work-item; at least one acceptance is
   an integration check through the real entry point (not whole-tree
   pilot tests). `evaluate` only with a binary gate; incidental never.
-- Every work-item has `## Approach` and `executor` (`inline`|
-  `subagent`; missing -> `subagent`; same within a wave), plus `size`
-  (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock,
-  not padded): XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40.
+- Every work-item has `## Approach`, `size` (`XS`|`S`|`M`|`L`|`XL`),
+  and `estimate_minutes` (agent wall-clock, not padded): XS 2–5, S 5–10,
+  M 8–15, L 15–25, XL 25–40. Dispatch derives the executor from wave
+  size, estimates, and project settings. A written `executor` is an
+  optional `inline` or `subagent` override.
   Phase body records session shape (`one sitting` | `more than one`),
   human stops, collision notes, `## Proof`, and `## Landing` (branch
   `phase/{phase}`, worktree `<repo>/.worktrees/{phase}`,
@@ -142,8 +143,8 @@ for the focus, use `init` first (`engage` if kind/focus unset).
     (`orchestra view plan --effort {effort}`) and which exit criterion
     each acceptance covers.
 11. Open the plan review gate (skip incidental). Do not open until:
-    each work-item has `## Approach`; wave executors agree; the phase
-    body has size, human stops, collision notes, `## Proof`, and
+    each work-item has `## Approach`; the phase body has size, human
+    stops, collision notes, `## Proof`, and
     `## Landing`; and each selected frozen acceptance has
     non-empty `test_ids` and `oracle_hashes`. Run `orchestra analyze
     {phase}` first. Refuse plan review while it exits 1. Fix each

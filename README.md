@@ -301,9 +301,10 @@ are `depends_on` edges between work-items; readiness and wave are
 derived by the engine at read time (`derived.ready`, `derived.wave`) —
 nothing writes them.
 
-`tasks` sets each work-item's `executor` to `inline` or `subagent`.
-Every task in a wave uses the same executor. Missing `executor` means
-`subagent`. It records the implementation recipe and the phase run facts
+Dispatch derives each wave's executor from task size, estimates, and project
+settings. `tasks` writes `executor` only for an explicit `inline` or
+`subagent` override. Every task in a wave uses the same executor. It records
+the implementation recipe and the phase run facts
 (size as `one sitting` or `more than one`, the human stops, and the areas
 parallel tasks share) before plan review.
 
