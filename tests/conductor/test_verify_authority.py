@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import section_text, skill_text
 from skill_extraction import extract_invocations
 
 from orchestra.canon.types import JsonObject, Record
@@ -53,9 +53,7 @@ def test_skill_documents_tuner_check_for_tdd_and_check():
 
 
 def test_skill_does_not_document_hand_create_for_tdd_or_check_methods():
-    manual_docs = (
-        REPO_ROOT / "skills" / "verify" / "references" / "verify-mechanics.md"
-    ).read_text()
+    manual_docs = section_text("verify-mechanics")
     creates = [
         inv
         for inv in extract_invocations(manual_docs)
@@ -87,7 +85,7 @@ def test_skill_close_request_references_check_run_id_for_runner_methods():
     assert "check_run_id" in text
     assert '"method": "tdd"' in text or '"method": "tdd"' in text.replace(" ", "")
     # Close examples for tdd/check must not invent revision/signed_by creates.
-    close = (REPO_ROOT / "skills" / "verify" / "references" / "close-batch.md").read_text()
+    close = section_text("close-batch")
     assert "check_run_id" in close
     assert '"method": "tdd"' in close
     assert '"method": "check"' in close

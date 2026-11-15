@@ -1,15 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 from uuid import uuid4
 
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
+from orchestra.conductor import suite
 from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, parse_landing
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.head_evidence import (
+    EvidenceIndex,
+    acceptance_latest,
+    latest,
+    latest_review,
+    review_at_head,
+    suite_check_runs,
+)
 from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.revision import revision_matches
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -52,6 +62,7 @@ class RunAction:
     step: Step
     state: ActionState
     reason: str = ""
+    brief: str = ""
 
 
 @dataclass(frozen=True)
@@ -507,7 +518,91 @@ def _action_for(
     return RunAction(subject, step, "ready")
 
 
-def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[RunAction, ...]:
+def _text_of(record: Record | None, field: str) -> str:
+    return _text(record, field) if record is not None else ""
+
+
+def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
+    phase_record = _current_phase(records, phase)
+    effort = _text(phase_record, "effort")
+    acceptances = [
+        record
+        for record in records
+        if record["record_type"] == "score:acceptance"
+        and record["payload"].get("phase") == phase
+        and record["lifecycle_state"] == "active"
+    ]
+    index = EvidenceIndex(records)
+    if not acceptances or not all(
+        acceptance_latest(index, acceptance, None).holds for acceptance in acceptances
+    ):
+        return "analyze"
+    review = latest_review(index, phase, effort)
+    head = _text_of(review, "revision")
+    check_runs = [record for record in records if record["record_type"] == "tuner:check-run"]
+    policy = suite.load_suite_policy(project.project_root)
+    latest_suite = latest(suite_check_runs(index, phase))
+    suite_head = head or _text_of(latest_suite, "revision")
+    if suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=suite_head):
+        return "suite"
+    if not review_at_head(index, phase, effort, head).holds:
+        return "reviewer"
+    if not _verification_ready(records, phase)[0]:
+        return "reviewer"
+    if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
+        return "gate"
+    packet = _proof_packet(records, phase)
+    if packet is None or not revision_matches(_text(packet, "revision"), head):
+        return "proof"
+    return None
+
+
+def _land_stage(project: Project, records: list[Record], phase: str) -> str | None:
+    phase_record = _current_phase(records, phase)
+    if phase_record["lifecycle_state"] == "done":
+        return None
+    if not parse_landing(phase_record.get("body") or "").present:
+        return None
+    landing = latest_landing(records, phase)
+    if landing is None:
+        return "land"
+    if landing["payload"].get("result") != "success":
+        config = load_project_config(project.project_root)
+        return "repair-ci" if config.land_adapter == "github-pr" else "land"
+    packet = _proof_packet(records, phase)
+    if packet is None or landing["payload"].get("head_sha") != packet["payload"].get("revision"):
+        return "land"
+    return "close"
+
+
+def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:
+    match step:
+        case "verify":
+            return _verify_stage(project, records, phase)
+        case "land":
+            return _land_stage(project, records, phase)
+        case _:
+            return None
+
+
+def _with_brief(project: Project, action: RunAction) -> RunAction:
+    if action.state != "ready":
+        return action
+    from orchestra.conductor.briefs.context import brief_context
+    from orchestra.conductor.briefs.render import render_brief
+
+    text = render_brief(brief_context(project, action.phase, action.step))
+    return replace(action, brief=text)
+
+
+def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
+    records = project.records()
+    return _with_brief(project, _action_for(project, records, _current_phase(records, phase), step))
+
+
+def _all_actions(
+    project: Project, records: list[Record], run: Record, *, with_brief: bool
+) -> tuple[RunAction, ...]:
     steps = _run_steps(run)
     phases = _phase_records(records, run)
     actions: list[RunAction] = []
@@ -523,16 +618,15 @@ def _all_actions(project: Project, records: list[Record], run: Record) -> tuple[
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
                 break
-            actions.append(
-                _action_for(
-                    project,
-                    records,
-                    phase,
-                    step,
-                    prepare=prepare_barrier,
-                    selected_phases=selected_phases,
-                )
+            action = _action_for(
+                project,
+                records,
+                phase,
+                step,
+                prepare=prepare_barrier,
+                selected_phases=selected_phases,
             )
+            actions.append(_with_brief(project, action) if with_brief else action)
             break
     return tuple(actions)
 
@@ -556,12 +650,12 @@ def _find_run(records: list[Record], subject: str) -> Record:
 def next_actions(project: Project, run_subject: str) -> tuple[RunAction, ...]:
     records = project.records()
     run = _find_run(records, run_subject)
-    return _all_actions(project, records, run)
+    return _all_actions(project, records, run, with_brief=True)
 
 
 def run_status(project: Project, run_subject: str) -> RunStatus:
     records = project.records()
     run = _find_run(records, run_subject)
-    actions = _all_actions(project, records, run)
+    actions = _all_actions(project, records, run, with_brief=False)
     complete = not actions
     return RunStatus(run, complete, not complete, actions)

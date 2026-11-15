@@ -7,11 +7,13 @@ from pathlib import Path
 
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError
+from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.workflow import (
     RunAction,
     RunPreview,
     WorkflowRunError,
     next_actions,
+    phase_step_action,
     preview_run,
     run_status,
     start_run,
@@ -59,7 +61,27 @@ def add_parser(parser: argparse.ArgumentParser) -> None:
 
     next_parser = actions.add_parser("next", help="Show safe next actions for a run")
     next_parser.add_argument("run", help="Run subject or record id")
+    next_parser.add_argument(
+        "--no-brief", action="store_true", help="Omit the step brief from ready actions"
+    )
     _add_read_options(next_parser)
+
+    brief = actions.add_parser(
+        "brief",
+        help="Print the brief for one phase step",
+        description=(
+            "Print the brief for one phase step. The brief equals the next brief for the same "
+            "store state, except in a prepare run, whose barrier next applies and brief does not."
+        ),
+    )
+    brief.add_argument("phase", nargs="?", help="Phase slug")
+    brief.add_argument(
+        "step",
+        nargs="?",
+        choices=("spec", "design", "tasks", "execute", "verify", "land"),
+    )
+    brief.add_argument("--skill", help="Print the brief for a skill instead of a phase step")
+    _add_read_options(brief)
 
     review = actions.add_parser("review", help="Record a workflow step review")
     review.add_argument("phase", help="Phase slug")
@@ -129,13 +151,16 @@ def _preview_json(project: Project, preview: RunPreview) -> dict[str, object]:
     }
 
 
-def _action_json(action: RunAction) -> dict[str, str]:
-    return {
+def _action_json(action: RunAction, *, with_brief: bool = True) -> dict[str, str]:
+    output = {
         "phase": action.phase,
         "step": action.step,
         "state": action.state,
         "reason": action.reason,
     }
+    if with_brief and action.state == "ready":
+        output["brief"] = action.brief
+    return output
 
 
 def _fail(action: str, subject: str, error: Exception) -> int:
@@ -175,13 +200,14 @@ def _start_command(project: Project, args: argparse.Namespace) -> int:
 
 
 def _status_command(project: Project, args: argparse.Namespace, *, actions_only: bool) -> int:
+    with_brief = actions_only and not args.no_brief
     try:
         if actions_only:
             run = project.resolve("score:run", args.run)
             run_actions = next_actions(project, args.run)
             output: dict[str, object] = {
                 "run": run,
-                "actions": [_action_json(action) for action in run_actions],
+                "actions": [_action_json(action, with_brief=with_brief) for action in run_actions],
             }
         else:
             status = run_status(project, args.run)
@@ -191,7 +217,9 @@ def _status_command(project: Project, args: argparse.Namespace, *, actions_only:
                 "status": "complete" if status.complete else "incomplete",
                 "complete": status.complete,
                 "incomplete": status.incomplete,
-                "actions": [_action_json(action) for action in status.actions],
+                "actions": [
+                    _action_json(action, with_brief=with_brief) for action in status.actions
+                ],
             }
     except (
         OSError,
@@ -208,6 +236,27 @@ def _status_command(project: Project, args: argparse.Namespace, *, actions_only:
         print(f"{output.get('status', 'next')}: {args.run}")
         for action in run_actions:
             print(f"{action.phase} {action.step}: {action.state} {action.reason}")
+    return 0
+
+
+def _brief_command(project: Project, args: argparse.Namespace) -> int:
+    try:
+        action = phase_step_action(project, args.phase, args.step)
+    except (
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+        WorkflowRunError,
+        ValueError,
+    ) as exc:
+        return _fail("brief", args.phase, exc)
+    if action.state != "ready":
+        return _fail("brief", args.phase, WorkflowRunError(action.reason))
+    if args.json:
+        print(json.dumps(_action_json(action), indent=2))
+    else:
+        print(action.brief)
     return 0
 
 
@@ -243,7 +292,26 @@ def _review_command(project: Project, args: argparse.Namespace) -> int:
     return 0
 
 
+def _skill_brief_command(args: argparse.Namespace) -> int:
+    if args.phase is not None or args.step is not None:
+        return _fail("brief", "--skill", ValueError("takes no phase or step"))
+    try:
+        text = render_skill_brief(args.skill)
+    except ValueError as exc:
+        return _fail("brief", args.skill, exc)
+    if args.json:
+        print(json.dumps({"skill": args.skill, "brief": text}, indent=2))
+        return 0
+    print(text)
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.action == "brief":
+        if args.skill is not None:
+            return _skill_brief_command(args)
+        if args.phase is None or args.step is None:
+            return _fail("brief", "arguments", ValueError("give --skill or both phase and step"))
     try:
         project = _project(args)
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
@@ -256,4 +324,6 @@ def run(args: argparse.Namespace) -> int:
         return _status_command(project, args, actions_only=False)
     if args.action == "next":
         return _status_command(project, args, actions_only=True)
+    if args.action == "brief":
+        return _brief_command(project, args)
     return _review_command(project, args)

@@ -8,9 +8,6 @@ import helpers as h
 from conftest import REPO_ROOT
 from skill_extraction import extract_invocations
 
-SKILLS = REPO_ROOT / "skills"
-
-
 def _text(name: str) -> str:
     return h.skill_text(name)
 
@@ -62,8 +59,14 @@ def test_executor_is_an_optional_override_and_approach_stays_optional():
 
 
 def test_derived_wave_mode_and_explicit_overrides_use_one_executor():
-    assert "Explicit overrides in one wave must agree." in _flat(_text("tasks"))
-    for path in (SKILLS / "kinds-and-focus.md", REPO_ROOT / "README.md"):
+    brief = _flat(_text("tasks"))
+    assert "Dispatch derives the executor from wave size, estimates, and project settings." in brief
+    assert "Omit `executor` unless the plan needs an explicit `inline` or `subagent` override." in brief
+    assert "Explicit overrides in one wave must agree." in brief
+    for path in (
+        REPO_ROOT / "orchestra/conductor/briefs/sections/kinds-and-focus.md",
+        REPO_ROOT / "README.md",
+    ):
         doc = _flat(path.read_text())
         assert "Dispatch derives" in doc
         assert "Every task in a wave uses the same executor." in doc
@@ -78,8 +81,8 @@ def test_phase_body_records_size_stops_and_collision_notes():
     )
 
 
-def test_plan_review_does_not_require_written_executor_values():
-    text = (SKILLS / "tasks" / "SKILL.md").read_text()
+def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
+    text = _text("tasks")
     flat = _flat(text)
     gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
     question = next(

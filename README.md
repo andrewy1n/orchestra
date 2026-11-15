@@ -106,10 +106,9 @@ tail for a `kind: skills` row and records the profile in the registration.
 To install by hand, copy or symlink each generated skill directory into the
 host's skills directory: `engage`, `init`, `spec`, `design`, `tasks`,
 `execute`, `verify`, `land`, `run`, `triage-ideas`, and `analyze-sessions`. Every directory is
-self-contained: its `SKILL.md` and its `references/` folder travel together.
-The generated reference copies include the shared docs each skill uses. Each
-skill directory contains its required references. Install canon with `uv tool install` (above)
-so `canon` is on PATH.
+self-contained: it holds one `SKILL.md`. Each skill gets its instructions at
+run time from `orchestra workflow brief`, so install orchestra and canon with
+`uv tool install` (above) so both are on PATH.
 
 ## Install with the CLI
 
@@ -418,10 +417,9 @@ the structured path integrates.
 - `verify`
 - `analyze-sessions`
 
-Shared rules: [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
-Shared first-run steps: [skills/ensure-store.md](skills/ensure-store.md).
-The installer ships a byte-identical copy of each shared file inside every
-skill's `references/` directory, so an installed skill is self-contained.
+Each skill's instructions come from `orchestra workflow brief`. The brief
+sections live in `orchestra/conductor/briefs/sections/`, so an installed skill
+is one `SKILL.md` and needs no other file.
 
 ## CLI
 
@@ -513,7 +511,7 @@ Approved oracle amendments can authorize hash changes. Manifest claims keep thei
 Prefer TDD for behavior where red helps define the contract. Use checks for documentation,
 packaging, and final verification. Select frozen oracles for stable contracts that benefit
 from independent tests. Ordinary TDD tests can be written during execution.
-See [verification policy](skills/plan-phase/references/verification-policy.md).
+See [verification policy](orchestra/conductor/briefs/sections/verification-policy.md).
 
 ## Web dashboard
 
