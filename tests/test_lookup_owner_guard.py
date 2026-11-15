@@ -51,21 +51,6 @@ def _index_key(node: ast.AST) -> bool:
     return isinstance(key, ast.Tuple) and bool(key.elts) and _is_phase_literal(key.elts[0])
 
 
-def _scopes(tree: ast.Module) -> list[ast.AST]:
-    scopes: list[ast.AST] = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(
-            node,
-            (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp, ast.Lambda),
-        )
-    ]
-    scopes.extend(
-        node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    )
-    return scopes
-
-
 _SCOPE_NODES = (
     ast.ListComp,
     ast.SetComp,
@@ -111,11 +96,12 @@ def violations(root: Path) -> list[str]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
             lines: set[int] = set()
             for node in ast.walk(tree):
-                if _resolver_call(node) or _index_key(node):
+                if isinstance(node, (ast.Call, ast.Subscript)) and (
+                    _resolver_call(node) or _index_key(node)
+                ):
                     lines.add(node.lineno)
-            for scope in _scopes(tree):
-                if _filters_phase_by_subject(scope):
-                    lines.add(getattr(scope, "lineno", 0))
+                if isinstance(node, _SCOPE_NODES) and _filters_phase_by_subject(node):
+                    lines.add(node.lineno)
             found.extend(f"{relative}:{line}" for line in sorted(lines))
     return found
 

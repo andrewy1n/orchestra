@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import NamedTuple
 
 from orchestra.canon.types import Record
+from orchestra.score.lookups import closing_work_item, dependencies
 
 SIZE_BANDS: dict[str, tuple[int, int]] = {
     "XS": (2, 5),
@@ -23,15 +24,8 @@ class ShapeWarning(NamedTuple):
     message: str
 
 
-def _depends_on(item: Record) -> list[str]:
-    value = item["payload"].get("depends_on")
-    if not isinstance(value, list):
-        return []
-    return [dep for dep in value if isinstance(dep, str)]
-
-
 def _waves(items: Sequence[Record]) -> dict[str, int]:
-    deps = {item["subject"]: _depends_on(item) for item in items}
+    deps = {item["subject"]: dependencies(item) for item in items}
     waves: dict[str, int] = {}
 
     def wave(subject: str, path: frozenset[str]) -> int:
@@ -51,8 +45,9 @@ def _waves(items: Sequence[Record]) -> dict[str, int]:
 
 
 def _closes_phase(item: Record, items: Sequence[Record]) -> bool:
-    others = {other["subject"] for other in items if other["id"] != item["id"]}
-    return bool(others) and others <= set(_depends_on(item))
+    slug = item["payload"].get("phase")
+    closing = closing_work_item(slug, items) if isinstance(slug, str) else None
+    return closing is not None and closing["id"] == item["id"]
 
 
 def plan_shape_warnings(items: Sequence[Record]) -> list[ShapeWarning]:

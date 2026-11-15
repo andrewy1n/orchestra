@@ -228,13 +228,7 @@ def _plan_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     errors = [finding.message for finding in report.findings if finding.severity == "error"]
     if errors:
         return False, "; ".join(errors)
-    items = [
-        record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] in ("planned", "in_progress", "done")
-    ]
+    items = live_work_items(phase, records)
     acceptances = [
         record
         for record in records
@@ -276,13 +270,7 @@ def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, 
 
 
 def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    items = [
-        record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] in ("planned", "in_progress", "done")
-    ]
+    items = live_work_items(phase, records)
     if not items:
         return False, "execution requires a nonempty task plan"
     reports = [

@@ -1180,7 +1180,9 @@ def _cmd_land(args: argparse.Namespace) -> int:
         body = packet.get("body")
         if not isinstance(body, str):
             raise ValueError("phase proof packet has no body")
-        phase_record = project.resolve("score:phase", args.phase)
+        phase_record = current_phase(args.phase, project.records())
+        if phase_record is None:
+            raise StoreError(f"unknown record: no score:phase with subject {args.phase!r}")
         result = land.dispatch_land(
             work,
             body,

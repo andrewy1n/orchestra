@@ -9,12 +9,16 @@ from orchestra.canon.types import Record
 LIVE_WORK_ITEM_STATES = ("planned", "in_progress", "done")
 
 
-def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
-    phases = [
+def phase_versions(slug: str, records: Sequence[Record]) -> list[Record]:
+    return [
         record
         for record in records
         if record["record_type"] == "score:phase" and record["subject"] == slug
     ]
+
+
+def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
+    phases = phase_versions(slug, records)
     corrected = {
         target
         for record in records

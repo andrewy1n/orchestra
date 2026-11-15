@@ -6,7 +6,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.score.lookups import live_work_items
+from orchestra.score.lookups import live_work_items, phase_versions
 
 
 def _text(record: Record, key: str) -> str:
@@ -28,7 +28,7 @@ def belongs_to(
         )
     if kind == "conductor:execution-report":
         return _text(record, "work_item") in task_subjects
-    return _text(record, "phase") == phase or (kind == "score:phase" and record["subject"] == phase)
+    return _text(record, "phase") == phase or bool(phase_versions(phase, [record]))
 
 
 def count_operations(project: Project, phase: str) -> tuple[Counter[str], int]:

@@ -7,6 +7,7 @@ from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.lookups import current_phase, dependencies
 from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.plan_shape import plan_shape_warnings
 from orchestra.score.requirements import (
@@ -116,11 +117,9 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
         subject = phase
         body_lines = phase_requirements(list(records), phase)
         listed = [rid for rid, _ in body_lines]
-        marked = [
-            r for r in records if r.get("record_type") == "score:phase" and _subject(r) == phase
-        ]
-        documents = marked
-        for problem in requirement_body_problems(_body(marked[0]) if marked else ""):
+        current = current_phase(phase, records)
+        documents = [current] if current is not None else []
+        for problem in requirement_body_problems(_body(current) if current is not None else ""):
             add("error", "light-requirements-invalid", subject, problem)
     else:
         spec = specs[0]
@@ -193,10 +192,8 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     _subject(item),
                     f"work-item names {rid}, which {source} does not list",
                 )
-    phase_records = [
-        r for r in records if r["record_type"] == "score:phase" and r["subject"] == phase
-    ]
-    phase_payload = _payload(max(phase_records, key=_recorded_at)) if phase_records else None
+    phase_record = current_phase(phase, records)
+    phase_payload = _payload(phase_record) if phase_record is not None else None
     for acceptance in acceptances:
         try:
             resolve_oracle_policy(_payload(acceptance), phase_payload)
@@ -383,12 +380,7 @@ def _direct_dependency(index: RecordIndex, left: RecordData, right: RecordData) 
 
 
 def _depends_on(index: RecordIndex, source: RecordData, target: RecordData) -> bool:
-    value = _payload(source).get("depends_on")
-    if not isinstance(value, list):
-        return False
-    for dependency in value:
-        if not isinstance(dependency, str):
-            continue
+    for dependency in dependencies(source):
         resolved = index.by_id.get(dependency)
         if resolved is None:
             resolved = index.resolve_subject("score:work-item", dependency)
