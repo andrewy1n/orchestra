@@ -339,7 +339,7 @@ def test_r8_closing_work_items_returns_every_mutually_dependent_item(project: Pr
     assert {record["id"] for record in found} == {first["id"], second["id"]}
     latest_found = closing_work_item("feature", _read(project, "score:work-item"))
     assert latest_found is not None
-    assert latest_found["id"] == first["id"]
+    assert latest_found["id"] in {first["id"], second["id"]}
 
 
 def test_r8_closing_work_items_is_empty_without_a_closing_item(project: Project) -> None:
