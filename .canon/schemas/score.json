@@ -206,6 +206,14 @@
         "write_root": {
           "type": "string",
           "optional": true
+        },
+        "dispatch_id": {
+          "type": "string",
+          "optional": true
+        },
+        "dispatch_started_at": {
+          "type": "string",
+          "optional": true
         }
       },
       "sections": [

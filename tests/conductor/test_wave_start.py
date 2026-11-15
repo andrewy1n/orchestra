@@ -103,8 +103,25 @@ def test_r03_the_closing_task_runs_in_the_phase_worktree(tmp_path: Path) -> None
     project.update(task["id"], record_type="score:work-item", transition="done")
     _item(project, "verify-ph", depends_on=["a"])
     started = wave.start(project, repo, PHASE)
-    assert [t.write_root for t in started.tasks] == [str(repo / ".worktrees" / PHASE)]
-    assert started.tasks[0].branch == "phase/ph"
+    assert started.execution_mode == "runner"
+    assert started.tasks == ()
+    assert started.runner is not None
+    assert started.runner.task == "verify-ph"
+    closing = project.resolve("score:work-item", "verify-ph")
+    assert closing["payload"]["write_root"] == str(repo / ".worktrees" / PHASE)
+
+
+def test_r11_structural_closer_does_not_block_ready_wave(tmp_path: Path) -> None:
+    project, repo = _repo(tmp_path)
+    _item(project, "implementation")
+    _item(project, "verify-ph", depends_on=["implementation"])
+
+    started = wave.start(project, repo, PHASE)
+
+    assert started.execution_mode == "agent"
+    assert [task.task for task in started.tasks] == ["implementation"]
+    assert started.runner is None
+    assert project.resolve("score:work-item", "verify-ph")["lifecycle_state"] == "planned"
 
 
 def test_r04_reuses_a_task_branch_and_merges_the_phase_tip_into_it(tmp_path: Path) -> None:

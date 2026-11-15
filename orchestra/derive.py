@@ -8,14 +8,15 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
-from orchestra.score.requirements import (
-    acceptance_requirement_ids,
-    phase_requirements,
-    phase_weight,
+from orchestra.conductor.requirements import (
+    RequirementState as RequirementState,
 )
-
-RequirementState = Literal["verified", "failed", "unverified"]
+from orchestra.conductor.requirements import (
+    RequirementStatus as RequirementStatus,
+)
+from orchestra.conductor.requirements import (
+    requirement_status,
+)
 
 WORK_ITEM = "score:work-item"
 EFFORT = "score:effort"
@@ -31,16 +32,6 @@ QUESTION = "score:continuity-question"
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
 DORMANT_AFTER = timedelta(days=7)
 Autonomy = Literal["gated", "auto-plan", "auto-phases"]
-
-
-@dataclass(frozen=True)
-class RequirementStatus:
-    requirement: str
-    status: RequirementState
-    acceptance_ids: tuple[str, ...] = ()
-    check_run_ids: tuple[str, ...] = ()
-    assessment_id: str | None = None
-    assessed: str | None = None
 
 
 @dataclass(frozen=True)
@@ -78,108 +69,6 @@ def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
         and r["lifecycle_state"] in _LIVE_WORK_STATES
         and _text(r, "phase") == phase
     ]
-
-
-def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
-    specs = [
-        r
-        for r in records
-        if r["record_type"] == SPECIFICATION
-        and r["lifecycle_state"] == "active"
-        and _text(r, "phase") == phase
-    ]
-    if phase_weight(records, phase) == "light":
-        return [rid for rid, _ in phase_requirements(records, phase)]
-    spec = _latest(specs)
-    sources = [spec] if spec is not None else _phase_work_items(records, phase)
-    ids: list[str] = []
-    for source in sources:
-        value = record_payload(source).get("requirements")
-        if not isinstance(value, list):
-            continue
-        for item in value:
-            if isinstance(item, str) and item not in ids:
-                ids.append(item)
-    return ids
-
-
-def _written_assessment(records: list[Record], phase: str, requirement: str) -> Record | None:
-    return _latest(
-        [
-            r
-            for r in records
-            if r["record_type"] == ASSESSMENT
-            and r["lifecycle_state"] == "active"
-            and _text(r, "phase") == phase
-            and _text(r, "requirement") == requirement
-        ]
-    )
-
-
-def _derive_requirement(
-    records: list[Record], index: EvidenceIndex, phase: str, requirement: str, head: str | None
-) -> RequirementStatus:
-    acceptances = [
-        r
-        for r in records
-        if r["record_type"] == ACCEPTANCE
-        and r["lifecycle_state"] == "active"
-        and _text(r, "phase") == phase
-        and requirement in acceptance_requirement_ids(r)
-    ]
-    acceptance_ids = tuple(a["id"] for a in acceptances)
-    latest_runs: list[Record] = []
-    for acceptance in acceptances:
-        latest = acceptance_latest(index, acceptance, head).run
-        if latest is not None:
-            latest_runs.append(latest)
-    results = [_text(r, "result") for r in latest_runs]
-    status: RequirementState = "unverified"
-    if "fail" in results:
-        status = "failed"
-    elif acceptances and len(latest_runs) == len(acceptances) and all(x == "pass" for x in results):
-        status = "verified"
-    return RequirementStatus(
-        requirement=requirement,
-        status=status,
-        acceptance_ids=acceptance_ids,
-        check_run_ids=tuple(r["id"] for r in latest_runs),
-    )
-
-
-def _passes_after(derived: RequirementStatus, written: Record, by_id: dict[str, Record]) -> bool:
-    if derived.status != "verified":
-        return False
-    return all(
-        by_id[run_id]["recorded_at"] > written["recorded_at"] for run_id in derived.check_run_ids
-    )
-
-
-def requirement_status(
-    records: list[Record], phase: str, head: str | None = None
-) -> dict[str, RequirementStatus]:
-    by_id = {r["id"]: r for r in records}
-    index = EvidenceIndex(records)
-    statuses: dict[str, RequirementStatus] = {}
-    for requirement in _phase_requirement_ids(records, phase):
-        derived = _derive_requirement(records, index, phase, requirement, head)
-        written = _written_assessment(records, phase, requirement)
-        written_status = _text(written, "status") if written is not None else None
-        if (
-            written is not None
-            and written_status not in (None, "verified")
-            and not _passes_after(derived, written, by_id)
-        ):
-            derived = RequirementStatus(
-                requirement=requirement,
-                status="failed" if written_status == "failed" else "unverified",
-                acceptance_ids=derived.acceptance_ids,
-                check_run_ids=derived.check_run_ids,
-                assessment_id=written["id"],
-                assessed=written_status,
-            )
-        statuses[requirement] = derived
-    return statuses
 
 
 def release_ready(records: list[Record], phase: str, head: str | None = None) -> bool:
