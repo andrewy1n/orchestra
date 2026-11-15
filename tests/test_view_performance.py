@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from orchestra import views
-from orchestra.canon.project import open_store
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest, acceptance_runs
 from orchestra.conductor.requirements import requirement_status
@@ -30,8 +30,12 @@ def fixture(tmp_path: Path) -> Fixture:
     return build_fixture(tmp_path / "store", 100)
 
 
+def _project(fixture: Fixture, *, read_only: bool = False) -> Project:
+    return open_store(fixture.root, store=fixture.root / ".canon", read_only=read_only)
+
+
 def test_acceptance_queries_do_not_rescan_unrelated_check_runs(fixture: Fixture) -> None:
-    records = open_store(fixture.root, read_only=True).records()
+    records = _project(fixture, read_only=True).records()
     index = EvidenceIndex(records)
     counted = CountedRecords(index.check_runs)
     index.check_runs = counted
@@ -43,7 +47,7 @@ def test_acceptance_queries_do_not_rescan_unrelated_check_runs(fixture: Fixture)
 
 
 def test_requirement_derivation_bounds_full_record_visits(fixture: Fixture) -> None:
-    records = CountedRecords(open_store(fixture.root, read_only=True).records())
+    records = CountedRecords(_project(fixture, read_only=True).records())
     statuses = requirement_status(records, "benchmark-phase-000")
     assert len(statuses) == 5
     assert all(status.status == "verified" for status in statuses.values())
@@ -54,7 +58,7 @@ def test_requirement_derivation_bounds_full_record_visits(fixture: Fixture) -> N
 def test_render_derives_each_phase_requirement_status_once(
     fixture: Fixture, monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:
-    records = views.load_records(open_store(fixture.root, read_only=True))
+    records = views.load_records(_project(fixture, read_only=True))
     monkeypatch.chdir(fixture.root)
     profiler = cProfile.Profile()
     text = profiler.runcall(views.render_view, views.VIEWS[name], records)
@@ -69,7 +73,7 @@ def test_render_derives_each_phase_requirement_status_once(
 
 
 def test_render_reads_a_new_snapshot_after_evidence_changes(fixture: Fixture) -> None:
-    project = open_store(fixture.root)
+    project = _project(fixture)
     records = views.load_records(project)
     before = views.render_view(views.VIEWS["status"], records)
     acceptance = next(
@@ -98,7 +102,7 @@ def test_render_reads_a_new_snapshot_after_evidence_changes(fixture: Fixture) ->
 def test_evidence_alias_lookup_preserves_input_order_and_duplicate_records(
     fixture: Fixture,
 ) -> None:
-    project = open_store(fixture.root)
+    project = _project(fixture)
     acceptance = next(r for r in project.records() if r["record_type"] == "score:acceptance")
     project.create(
         record_type="tuner:check-run",
@@ -129,7 +133,7 @@ def test_evidence_alias_lookup_preserves_input_order_and_duplicate_records(
 
 
 def test_effort_filtered_render_ignores_another_efforts_correction(fixture: Fixture) -> None:
-    project = open_store(fixture.root)
+    project = _project(fixture)
     project.create(
         record_type="score:effort",
         subject="other-effort",
@@ -152,7 +156,7 @@ def test_effort_filtered_render_ignores_another_efforts_correction(fixture: Fixt
 
 
 def test_specification_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
-    records = open_store(fixture.root, read_only=True).records()
+    records = _project(fixture, read_only=True).records()
     specification = next(r for r in records if r["record_type"] == "score:specification")
     first: Record = {
         **specification,
@@ -170,7 +174,7 @@ def test_specification_timestamp_ties_follow_input_order(fixture: Fixture) -> No
 
 
 def test_assessment_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
-    project = open_store(fixture.root)
+    project = _project(fixture)
     payload = {
         "phase": "benchmark-phase-000",
         "effort": "benchmark-effort",
@@ -206,7 +210,7 @@ def test_assessment_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
 
 
 def test_explicit_release_state_remains_authoritative(fixture: Fixture) -> None:
-    project = open_store(fixture.root)
+    project = _project(fixture)
     release = project.create(
         record_type="conductor:release",
         subject="release",
@@ -217,3 +221,29 @@ def test_explicit_release_state_remains_authoritative(fixture: Fixture) -> None:
     records.append({**release, "lifecycle_state": "current"})
     text = views.render_view(views.VIEWS["status"], records)
     assert "### Release\n- deployed" in text
+
+
+def test_fixture_writes_ignore_parent_store_selection(
+    fixture: Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sentinel = build_fixture(tmp_path / "sentinel", 100)
+    sentinel_project = _project(sentinel, read_only=True)
+    before = sentinel_project.change_token()
+    monkeypatch.setenv("CANON_STORE", str(sentinel.root / ".canon"))
+    project = _project(fixture)
+    record = project.create(
+        record_type="tuner:check-run",
+        subject="fixture-only-run",
+        payload={
+            "criterion_id": "fixture-isolation",
+            "revision": "benchmark-revision",
+            "result": "pass",
+            "effort": "benchmark-effort",
+            "method": "check",
+            "signed_by": "",
+        },
+    )
+    assert project.get(record["id"])["subject"] == "fixture-only-run"
+    assert len(project.records()) == fixture.records + 1
+    assert sentinel_project.change_token() == before
+    assert len(sentinel_project.records()) == sentinel.records
