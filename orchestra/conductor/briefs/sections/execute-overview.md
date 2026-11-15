@@ -16,8 +16,11 @@ Orchestra moves a work-item to `in_progress` (step 4) and to `done`
 — never write them.
 
 Each dispatch is recorded by the `in_progress` update of the
-work-item (it carries `assignee` and `write_root`) and by a
-`conductor:execution-report` (evidence verbatim). Write no
+work-item (it carries `assignee`, `write_root`, a unique `dispatch_id`,
+and UTC `dispatch_started_at`) and by a `conductor:execution-report`
+(evidence verbatim). Landing records elapsed seconds for that dispatch.
+Executors may report `tokens_total` only when they know a reliable total;
+zero is valid, and absent stays absent. Write no
 `conductor:assignment`. Executors take method / verify_command /
 findings / constraints from `orchestra brief <task-slug>`. The brief
 renders `## Orientation`: it quotes (verbatim, by id) work-item

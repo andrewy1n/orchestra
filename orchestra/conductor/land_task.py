@@ -10,6 +10,11 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.check import git_head, run_check
 from orchestra.conductor.evidence import evidence_body, parse_evidence
+from orchestra.conductor.execution_cost import (
+    ExecutionCostError,
+    landing_cost_fields,
+    utc_now,
+)
 from orchestra.conductor.wave import closes_phase, phase_items
 from orchestra.tools import Git
 
@@ -99,11 +104,20 @@ def acceptances_for(project: Project, task: str, phase: str) -> list[Record]:
 
 
 def land(project: Project, repo: Path, task: str, evidence_path: Path) -> LandedTask:
+    received_at = utc_now()
     evidence: JsonObject = parse_evidence(evidence_path)
     if evidence["subject"] != task:
         raise LandError(f"evidence subject {evidence['subject']!r} is not {task!r}")
     item = work_item(project, task)
     phase = _text(item, "phase")
+    try:
+        cost_fields = landing_cost_fields(
+            item,
+            evidence,
+            received_at,
+        )
+    except ExecutionCostError as exc:
+        raise LandError(str(exc)) from exc
     tree = Path(_text(item, "write_root") or str(repo))
     closing = closes_phase(item, phase_items(project.records(), phase))
     if tree.is_dir():
@@ -120,13 +134,16 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
         "verdict": str(evidence["verdict"]),
         "revision": revision,
     }
+    payload.update(cost_fields)
     body = evidence_body(evidence)
     repeats = [
         r
         for r in project.list("conductor:execution-report")
         if r["subject"] == task
+        and record_payload(r).get("work_item") == task
+        and record_payload(r).get("revision") == revision
+        and record_payload(r).get("dispatch_id") == cost_fields.get("dispatch_id")
         and str(r.get("body") or "").strip() == body.strip()
-        and all(record_payload(r).get(key) == value for key, value in payload.items())
     ]
     report = (
         repeats[-1]

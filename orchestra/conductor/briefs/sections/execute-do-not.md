@@ -5,7 +5,7 @@
 - Restate `criterion` / verify_command / findings in the dispatch prompt, or
   paraphrase work-item / requirement claims — brief owns the quotes
 - Write a `conductor:assignment`; the `in_progress` update carries
-  `assignee` and `write_root`
+  `assignee`, `write_root`, `dispatch_id`, and `dispatch_started_at`
 - Write a phase `score:position` for progress; write one only for a
   human-readable note
 - Skip `conductor:execution-report` and derive check-runs from chat memory

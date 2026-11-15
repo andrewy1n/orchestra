@@ -72,16 +72,13 @@ def test_execute_phase_writes_no_assignment() -> None:
     assert all((inv["payload"] or {}).get("work_item") for inv in amendments)
 
 
-def test_in_progress_update_carries_assignee_and_write_root() -> None:
-    text = _skill_md("execute")
-    updates = [
-        inv
-        for inv in _invocations(text, "update", "score:work-item")
-        if inv["transition"] == "in_progress"
-    ]
-    assert len(updates) == 1
-    assert set(updates[0]["payload"]) == {"assignee", "write_root"}
+def test_wave_start_records_dispatch_markers() -> None:
+    text = h.section_text("execute-dispatch")
     flat = _flat(text)
+    assert "`orchestra wave start <phase-slug>`" in flat
+    assert "unique `dispatch_id`" in flat
+    assert "UTC `dispatch_started_at`" in flat
+    assert "`assignee`" in flat and "`write_root`" in flat
     assert "`orchestra brief <task-slug>`" in flat
     assert "territory and concurrency notes" in flat
 

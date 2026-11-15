@@ -36,6 +36,7 @@ EVIDENCE_SCHEMA: JsonObject = {
         "result": {"enum": list(RESULTS)},
         "verdict": {"enum": list(VERDICTS)},
         "needs_human": {"type": "boolean"},
+        "tokens_total": {"type": "integer", "minimum": 0},
     },
 }
 
@@ -59,6 +60,10 @@ def parse_evidence(path: Path) -> JsonObject:
             problems.append(f"field {name!r} must be a string")
     if "needs_human" in data and not isinstance(data["needs_human"], bool):
         problems.append("field 'needs_human' must be a boolean")
+    if "tokens_total" in data:
+        tokens_total = data["tokens_total"]
+        if not isinstance(tokens_total, int) or isinstance(tokens_total, bool) or tokens_total < 0:
+            problems.append("field 'tokens_total' must be a non-negative integer")
     for name, allowed in (("kind", KINDS), ("result", RESULTS), ("verdict", VERDICTS)):
         if name in data and data[name] not in allowed:
             problems.append(f"field {name!r} must be one of {', '.join(allowed)}")
@@ -68,7 +73,7 @@ def parse_evidence(path: Path) -> JsonObject:
 
 
 def _known() -> set[str]:
-    return {*TEXT_FIELDS, "kind", "result", "verdict", "needs_human"}
+    return {*TEXT_FIELDS, "kind", "result", "verdict", "needs_human", "tokens_total"}
 
 
 def evidence_body(evidence: JsonObject) -> str:

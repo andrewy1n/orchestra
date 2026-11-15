@@ -1,21 +1,14 @@
-4. When the wave agrees, transition each task to `in_progress` and set
-   `assignee` (`inline` for inline; a short label for subagent) and
-   `write_root` in the same update. `write_root` is the executor's
-   write root. For a task other than the work-item that depends_on
-   every other phase work-item, it is
+4. When the wave agrees, run `orchestra wave start {phase}`. It
+   transitions each task in the lowest ready wave to `in_progress`.
+   The same update sets `assignee`, `write_root`, a unique
+   `dispatch_id`, and UTC `dispatch_started_at`. `write_root` is the
+   executor's write root. For a task other than the work-item that
+   depends_on every other phase work-item, it is
    `<repo>/.worktrees/{phase}--<task-slug>`. For the work-item
    that depends_on every other phase work-item, it is
-   `<repo>/.worktrees/{phase}` on `phase/{phase}`. When
-   Landing is absent, it is the current checkout. Work-item
-   `payload.executor` is only the wave mode. Use
-   `--expected-revision` from `list`/`get`:
-
-```bash
-canon update --type score:work-item --id <id> \
-  --transition in_progress \
-  --expected-revision <revision> \
-  --payload '{"assignee":"<assignee>","write_root":"<write-root>"}'
-```
+   `<repo>/.worktrees/{phase}` on `phase/{phase}`. When Landing is
+   absent, it is the current checkout. Work-item `payload.executor`
+   is only the wave mode.
 
    Print the brief. It quotes the work-item `## Description` and
    `## Approach`, each requirement by id, the phase design

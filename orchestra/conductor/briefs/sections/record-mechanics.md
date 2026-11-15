@@ -32,11 +32,14 @@ green. Never edit frozen oracle files or invent freeze fields.
 ## Execute and close
 
 `orchestra wave start` selects the lowest ready wave. It writes `in_progress`,
-`assignee`, and `write_root`. Dispatch only tasks whose derived `ready` is
-true. Return evidence as JSON; the parent writes records.
+`assignee`, `write_root`, a unique `dispatch_id`, and UTC
+`dispatch_started_at`. Dispatch only tasks whose derived `ready` is true.
+Return evidence as JSON; include `tokens_total` only when the executor knows
+a reliable total. Zero is valid. Omit an unavailable total.
 
 `orchestra task land <task> --evidence <file>` commits the task worktree,
-writes its execution report, and runs active acceptance checks. Use
+writes its execution report with elapsed seconds for the dispatch, and runs
+active acceptance checks. It leaves unavailable measurements absent. Use
 `orchestra close-batch` for the verified close request, then `canon apply`.
 Never reopen a done task. Create a dependent fix task instead.
 
