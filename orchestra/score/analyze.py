@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
+from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import JsonValue, Record
 from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.plan_shape import plan_shape_warnings
@@ -15,6 +16,7 @@ from orchestra.score.requirements import (
     requirement_body_problems,
     requirements_in_body,
 )
+from orchestra.score.touches import TouchPattern, overlap, validate_touches
 from orchestra.score.workflow_reviews import has_blocking_behavior_question
 
 MARKER = "[NEEDS CLARIFICATION"
@@ -265,4 +267,131 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     f"acceptance {acceptance.get('id')} latest check-run result is {result!r}, not 'pass'",
                 )
 
+    touch_findings = _touch_findings(records, phase)
+    report.findings.extend(touch_findings)
+
     return report
+
+
+def _touch_findings(records: Sequence[RecordData], phase: str) -> list[Finding]:
+    items = sorted(
+        (
+            record
+            for record in records
+            if record.get("record_type") == "score:work-item"
+            and record.get("lifecycle_state") in ("planned", "in_progress")
+            and _payload(record).get("phase") == phase
+        ),
+        key=lambda record: (record["subject"], record["id"]),
+    )
+    if not items:
+        return []
+
+    index = RecordIndex(records)
+    patterns: dict[str, tuple[TouchPattern, ...]] = {}
+    findings: list[Finding] = []
+    for item in items:
+        validation = validate_touches(item)
+        for issue in validation.issues:
+            findings.append(
+                Finding(
+                    "error",
+                    "touches-invalid",
+                    issue.task,
+                    f"task {issue.task!r} has invalid touches declaration {issue.declaration!r}: {issue.message}",
+                )
+            )
+        if validation.issues:
+            continue
+        if not validation.patterns:
+            continue
+        patterns[item["id"]] = validation.patterns
+
+    for left_index, left in enumerate(items):
+        left_patterns = patterns.get(left["id"])
+        if not left_patterns:
+            continue
+        left_wave = left.get("derived", {}).get("wave")
+        for right in items[left_index + 1 :]:
+            right_patterns = patterns.get(right["id"])
+            if not right_patterns:
+                continue
+            right_wave = right.get("derived", {}).get("wave")
+            chained = _direct_dependency(index, left, right)
+            if chained and _merge_size(left) and _merge_size(right):
+                witness = _touch_overlap(left_patterns, right_patterns)
+                if witness is not None:
+                    left_declaration, right_declaration, path = witness
+                    findings.append(
+                        Finding(
+                            "warning",
+                            "touches-merge-candidate",
+                            f"{left['subject']}, {right['subject']}",
+                            _overlap_message(
+                                left, right, left_declaration, right_declaration, path
+                            ),
+                        )
+                    )
+            elif not chained and left_wave is not None and left_wave == right_wave:
+                witness = _touch_overlap(left_patterns, right_patterns)
+                if witness is not None:
+                    left_declaration, right_declaration, path = witness
+                    findings.append(
+                        Finding(
+                            "warning",
+                            "touches-overlap",
+                            f"{left['subject']}, {right['subject']}",
+                            _overlap_message(
+                                left, right, left_declaration, right_declaration, path
+                            ),
+                        )
+                    )
+
+    return sorted(findings, key=lambda finding: (finding.code, finding.subject, finding.message))
+
+
+def _touch_overlap(
+    left: tuple[TouchPattern, ...], right: tuple[TouchPattern, ...]
+) -> tuple[str, str, str] | None:
+    for left_pattern in left:
+        for right_pattern in right:
+            path = overlap(left_pattern, right_pattern)
+            if path is not None:
+                return left_pattern.declaration, right_pattern.declaration, path
+    return None
+
+
+def _overlap_message(
+    left: RecordData,
+    right: RecordData,
+    left_declaration: str,
+    right_declaration: str,
+    path: str,
+) -> str:
+    return (
+        f"{left['subject']} declares {left_declaration!r} and {right['subject']} declares "
+        f"{right_declaration!r}; shared path witness: {path!r}"
+    )
+
+
+def _merge_size(record: RecordData) -> bool:
+    return _payload(record).get("size") in ("XS", "S")
+
+
+def _direct_dependency(index: RecordIndex, left: RecordData, right: RecordData) -> bool:
+    return _depends_on(index, left, right) or _depends_on(index, right, left)
+
+
+def _depends_on(index: RecordIndex, source: RecordData, target: RecordData) -> bool:
+    value = _payload(source).get("depends_on")
+    if not isinstance(value, list):
+        return False
+    for dependency in value:
+        if not isinstance(dependency, str):
+            continue
+        resolved = index.by_id.get(dependency)
+        if resolved is None:
+            resolved = index.resolve_subject("score:work-item", dependency)
+        if resolved is not None and resolved["id"] == target["id"]:
+            return True
+    return False
