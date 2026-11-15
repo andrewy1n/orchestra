@@ -351,7 +351,9 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     closers = [item for item in items if closes_phase(item, items)] if landing else []
     if len(closers) > 1:
         raise WaveError("phase has more than one closing task")
-    if closers:
+    if closers and all(
+        item["lifecycle_state"] == "done" for item in items if item["id"] != closers[0]["id"]
+    ):
         outcome = _runner_start(project, repo, phase, closers[0], items)
         return WaveStart(phase, None, (), "runner", outcome)
     wave, chosen = select_wave(records, derived, phase)
