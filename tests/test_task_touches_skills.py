@@ -14,10 +14,10 @@ def test_tasks_skill_calls_for_write_scope_planning() -> None:
 
 
 def test_planning_mechanics_explains_touch_scope_rules() -> None:
-    source = _flat((REPO_ROOT / "shared/planning-mechanics.md").read_text())
-    generated = _flat((REPO_ROOT / "skills/tasks/references/planning-mechanics.md").read_text())
+    source = _flat(
+        (REPO_ROOT / "orchestra/conductor/briefs/sections/planning-mechanics.md").read_text()
+    )
 
-    assert source == generated
     assert "repository-relative paths or patterns in `payload.touches`" in source
     assert "`orchestra/score/touches.py`" in source
     assert "`tests/score/test_?.py`" in source
