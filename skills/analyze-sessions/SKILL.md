@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Read session metrics, find patterns, and propose fixes. Propose only. Edit nothing until the user picks a candidate.
 
+Get the shared rules with `orchestra workflow brief --skill analyze-sessions`. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
+
 ## Steps
 
 1. Run both report steps. Create the temp directory first and write the report into it.

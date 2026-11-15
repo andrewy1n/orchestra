@@ -59,7 +59,10 @@ def test_executor_is_inline_or_subagent_and_approach_stays_optional():
 
 def test_every_task_in_a_wave_uses_the_same_executor():
     assert "same within a wave" in _flat(_text("tasks"))
-    for path in (SKILLS / "kinds-and-focus.md", REPO_ROOT / "README.md"):
+    for path in (
+        REPO_ROOT / "orchestra/conductor/briefs/sections/kinds-and-focus.md",
+        REPO_ROOT / "README.md",
+    ):
         doc = _flat(path.read_text())
         assert "`inline` or `subagent`" in doc
         assert "Every task in a wave uses the same executor." in doc
@@ -77,7 +80,7 @@ def test_phase_body_records_size_stops_and_collision_notes():
 
 
 def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_present():
-    text = (SKILLS / "tasks" / "SKILL.md").read_text()
+    text = _text("tasks")
     flat = _flat(text)
     gate = "Open the plan review gate (skip incidental). Do not open until task recipes,"
     question = next(

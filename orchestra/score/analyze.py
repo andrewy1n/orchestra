@@ -8,6 +8,7 @@ from typing import TypeAlias
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import JsonValue, Record
 from orchestra.score.oracle_policy import resolve_oracle_policy
+from orchestra.score.plan_shape import plan_shape_warnings
 from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
@@ -235,6 +236,10 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                 subject,
                 f"{rid} joins clauses with 'and' or ';'",
             )
+
+    if stage == "plan":
+        for warning in plan_shape_warnings(items):
+            add("warning", warning.code, warning.subject, warning.message)
 
     if stage == "close":
         for acceptance in acceptances:

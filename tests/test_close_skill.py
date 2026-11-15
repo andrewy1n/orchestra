@@ -4,28 +4,29 @@ from __future__ import annotations
 
 import re
 
-from conftest import REPO_ROOT
+from helpers import land_guide_text
 
-PHASE_END = REPO_ROOT / "shared/phase-end.md"
-GUIDE = REPO_ROOT / "shared/land-github-pr.md"
+PHASE_END = land_guide_text()
+GUIDE = land_guide_text()
 
 
 def _headings() -> list[str]:
-    text = PHASE_END.read_text(encoding="utf-8")
+    text = PHASE_END
     return re.findall(r"^## (.+)$", text, flags=re.M)
 
 
 def _close_section() -> str:
-    text = PHASE_END.read_text(encoding="utf-8")
+    text = PHASE_END
     start = text.find("\n## Close\n")
     if start == -1:
         return ""
-    return re.sub(r"\s+", " ", text[start:]).strip()
+    end = text.find("\n## Close\n", start + 1)
+    return re.sub(r"\s+", " ", text[start : end if end != -1 else None]).strip()
 
 
 def _guide_close_section() -> str:
-    text = GUIDE.read_text(encoding="utf-8")
-    start = text.find("\n## Close\n")
+    text = GUIDE
+    start = text.rfind("\n## Close\n")
     return re.sub(r"\s+", " ", text[start:]).strip() if start != -1 else ""
 
 
@@ -58,15 +59,15 @@ def test_the_next_phase_waits_for_close() -> None:
 
 
 def test_land_ends_when_ci_passes_and_awaits_the_merge() -> None:
-    flat = re.sub(r"\s+", " ", PHASE_END.read_text(encoding="utf-8"))
+    flat = re.sub(r"\s+", " ", PHASE_END)
 
     assert "Land ends when `orchestra land` exits 0" in flat
     assert "waits for the human merge" in flat
-    assert "awaiting merge" in re.sub(r"\s+", " ", GUIDE.read_text(encoding="utf-8"))
+    assert "awaiting merge" in re.sub(r"\s+", " ", GUIDE)
 
 
-def test_close_defers_the_adapter_steps_to_the_github_pr_guide() -> None:
+def test_close_defers_the_adapter_steps_to_the_adapter_brief() -> None:
     section = _close_section()
 
-    assert "`land-github-pr.md`" in section
+    assert "use the adapter's close instructions in this brief" in section
     assert "orchestra close" not in section

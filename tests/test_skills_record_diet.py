@@ -18,12 +18,9 @@ def _text(name: str) -> str:
 
 
 def _skill_md(name: str) -> str:
-    reference = {
-        "execute": "execute-mechanics.md",
-        "tasks": "planning-mechanics.md",
-        "verify": "verify-mechanics.md",
-    }[name]
-    return (h.REPO_ROOT / "skills" / name / "references" / reference).read_text()
+    if name == "verify":
+        return h.section_text("verify-mechanics")
+    return h.brief_text(name)
 
 
 def _flat(text: str) -> str:
@@ -75,16 +72,13 @@ def test_execute_phase_writes_no_assignment() -> None:
     assert all((inv["payload"] or {}).get("work_item") for inv in amendments)
 
 
-def test_in_progress_update_carries_assignee_and_write_root() -> None:
-    text = _skill_md("execute")
-    updates = [
-        inv
-        for inv in _invocations(text, "update", "score:work-item")
-        if inv["transition"] == "in_progress"
-    ]
-    assert len(updates) == 1
-    assert set(updates[0]["payload"]) == {"assignee", "write_root"}
+def test_wave_start_records_dispatch_markers() -> None:
+    text = h.section_text("execute-dispatch")
     flat = _flat(text)
+    assert "`orchestra wave start <phase-slug>`" in flat
+    assert "unique `dispatch_id`" in flat
+    assert "UTC `dispatch_started_at`" in flat
+    assert "`assignee`" in flat and "`write_root`" in flat
     assert "`orchestra brief <task-slug>`" in flat
     assert "territory and concurrency notes" in flat
 
@@ -110,15 +104,13 @@ def test_phase_position_only_for_notes() -> None:
     plan = _flat(_skill_md("tasks"))
     execute = _flat(_skill_md("execute"))
     assert "only for a note a person must read" in plan
-    assert "Phase progress is derived" in _flat(
-        (h.REPO_ROOT / "skills/tasks/references/kinds-and-focus.md").read_text()
-    )
+    assert "Phase progress is derived" in _flat(h.section_text("kinds-and-focus"))
     assert "Write a phase `score:position` only for a human-readable note" in execute
     assert "Phase progress is derived from work-item states" in execute
     assert not _invocations(_skill_md("tasks"), "create", "score:position")
     assert "Leave the effort position alone until the phase closes" in plan
-    phase_end = _flat((h.REPO_ROOT / "skills/verify/references/phase-end.md").read_text())
-    assert "effort position narrative" in phase_end
+    phase_close = _flat(h.section_text("phase-close"))
+    assert "effort position narrative" in phase_close
 
 
 def test_oracle_backed_acceptance_one_create() -> None:
@@ -132,8 +124,8 @@ def test_oracle_backed_acceptance_one_create() -> None:
     assert "Never create it and then update it to freeze." in flat
     plan = _skill_md("tasks")
     assert plan.index("8. Oracle author") < plan.index("9. Write the batch")
-    shapes = (h.REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
-    author = (h.REPO_ROOT / "skills/tasks/references/oracle-author.md").read_text()
+    shapes = h.section_text("task-shapes")
+    author = h.section_text("oracle-author")
     creates = _invocations(shapes + "\n" + author, "create", "score:acceptance")
     oracle_backed = [inv for inv in creates if {"test_ids", "oracle_hashes"} <= set(inv["payload"])]
     assert len(oracle_backed) == 1
@@ -144,7 +136,7 @@ def test_plan_phase_batches_through_apply() -> None:
     plan = _skill_md("tasks")
     assert "through one `canon apply` call" in _flat(plan)
     assert "one NDJSON file" in _flat(plan)
-    shapes = (h.REPO_ROOT / "skills/tasks/references/task-shapes.md").read_text()
+    shapes = h.section_text("task-shapes")
     assert _invocations(shapes, "create", "score:work-item")
     assert "Every `canon create` below shows one line of the plan batch" in _flat(shapes)
 
@@ -161,6 +153,6 @@ def test_verify_work_batches_through_apply() -> None:
     assert (last["op"], last["type"], last["transition"]) == ("update", "score:work-item", "done")
     flat = _flat(verify)
     assert "print each failed entry of `results` and the input line" in flat
-    close_batch = _flat((h.REPO_ROOT / "skills/verify/references/close-batch.md").read_text())
+    close_batch = _flat(h.section_text("close-batch"))
     assert "above the final `update` line" in close_batch
     assert "one `canon apply`" in close_batch

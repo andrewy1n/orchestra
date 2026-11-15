@@ -19,7 +19,6 @@ from installer import agents
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MARKER = ".orchestra-install.json"
-BUILD = REPO_ROOT / "scripts" / "build_skills.py"
 GENERATED_AGENT = REPO_ROOT / "agents" / "reviewer.md"
 
 
@@ -108,45 +107,64 @@ def test_checkout_agent_file_carries_the_canonical_body():
     assert "mode:" not in header
 
 
-def run_build(root: Path) -> subprocess.CompletedProcess:
+def run_generator(root: Path, flag: str) -> subprocess.CompletedProcess:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join([str(root), env.get("PYTHONPATH", "")]).strip(os.pathsep)
     return subprocess.run(
-        [sys.executable, str(BUILD), "--root", str(root)],
+        [sys.executable, "-m", "installer.agents", flag],
+        cwd=str(root),
+        env=env,
         capture_output=True,
         text=True,
     )
 
 
 def authored_tree(tmp_path: Path) -> Path:
-    for name in ("agents", "shared", "skills"):
-        shutil.copytree(REPO_ROOT / name, tmp_path / name)
+    shutil.copytree(REPO_ROOT / "installer", tmp_path / "installer")
+    shutil.copytree(REPO_ROOT / "agents", tmp_path / "agents")
+    section = tmp_path / agents.BRIEF_SECTION_PATH
+    section.parent.mkdir(parents=True)
+    shutil.copy(REPO_ROOT / agents.BRIEF_SECTION_PATH, section)
     return tmp_path
 
 
 def test_generated_agent_drift_is_detected(tmp_path):
     root = authored_tree(tmp_path)
-    built = run_build(root)
+    built = run_generator(root, "--write")
     assert built.returncode == 0, built.stdout + built.stderr
-
-    clean = subprocess.run(
-        [sys.executable, str(BUILD), "--root", str(root), "--check"],
-        capture_output=True,
-        text=True,
-    )
+    clean = run_generator(root, "--check")
     assert clean.returncode == 0, clean.stdout + clean.stderr
 
     target = root / "agents" / "reviewer.md"
     target.write_text(target.read_text(encoding="utf-8") + "\nhand edit\n")
-    drifted = subprocess.run(
-        [sys.executable, str(BUILD), "--root", str(root), "--check"],
-        capture_output=True,
-        text=True,
-    )
-    assert drifted.returncode != 0
-    assert "drift" in (drifted.stdout + drifted.stderr).lower()
-    assert "reviewer.md" in (drifted.stdout + drifted.stderr)
+    drifted = run_generator(root, "--check")
+    assert drifted.returncode == 1
+    assert "drift" in drifted.stdout.lower()
+    assert "reviewer.md" in drifted.stdout
 
 
-def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
+def test_brief_section_drift_is_detected(tmp_path):
+    root = authored_tree(tmp_path)
+    target = root / agents.BRIEF_SECTION_PATH
+    target.write_text(target.read_text(encoding="utf-8") + "\nhand edit\n")
+    drifted = run_generator(root, "--check")
+    assert drifted.returncode == 1
+    assert "reviewer-prompt.md" in drifted.stdout
+
+
+def test_checkout_generated_files_have_no_drift():
+    assert agents.drifted_files(REPO_ROOT) == []
+    assert run_generator(REPO_ROOT, "--check").returncode == 0
+
+
+def test_brief_section_is_the_fallback_preface_and_the_canonical_prompt():
+    section = (REPO_ROOT / agents.BRIEF_SECTION_PATH).read_text(encoding="utf-8")
+    canonical = (REPO_ROOT / agents.CANONICAL_PATH).read_text(encoding="utf-8")
+    assert section == agents.BRIEF_SECTION_PREFACE + canonical
+    assert section.startswith("# Reviewer prompt\n\nUse the `reviewer` subagent")
+
+
+def test_editing_the_canonical_prompt_changes_both_generated_files(tmp_path):
     root = authored_tree(tmp_path)
     canonical = root / "agents" / "reviewer.prompt.md"
     canonical.write_text(
@@ -155,17 +173,16 @@ def test_editing_the_canonical_prompt_changes_the_generated_agent(tmp_path):
         ),
         encoding="utf-8",
     )
-    stale = subprocess.run(
-        [sys.executable, str(BUILD), "--root", str(root), "--check"],
-        capture_output=True,
-        text=True,
-    )
-    assert stale.returncode != 0
-    built = run_build(root)
+    stale = run_generator(root, "--check")
+    assert stale.returncode == 1
+    assert "reviewer.md" in stale.stdout
+    assert "reviewer-prompt.md" in stale.stdout
+    built = run_generator(root, "--write")
     assert built.returncode == 0, built.stdout + built.stderr
     header, _ = split_frontmatter((root / "agents" / "reviewer.md").read_text(encoding="utf-8"))
     assert "tools: Read, Grep, Glob" in header
     assert "Bash" not in header
+    assert run_generator(root, "--check").returncode == 0
 
 
 def test_generated_agent_is_installed_for_each_native_host(tmp_path):

@@ -31,6 +31,7 @@ packages = [
     "orchestra.composer",
     "orchestra.composer.schemas",
     "orchestra.conductor",
+    "orchestra.conductor.briefs",
     "orchestra.conductor.schemas",
     "orchestra.metrics",
     "orchestra.tuner",
@@ -51,6 +52,7 @@ orchestra = ["_scripts/*.py"]
 "orchestra.score" = ["schemas/*.json"]
 "orchestra.composer" = ["schemas/*.json"]
 "orchestra.conductor" = ["schemas/*.json"]
+"orchestra.conductor.briefs" = ["sections/*.md"]
 "orchestra.tuner" = ["schemas/*.json"]
 # `payload/{skills,agents,hosts}` are directory symlinks; the wheel builder dereferences them.
 installer = ["providers.json", "payload/**/*"]
