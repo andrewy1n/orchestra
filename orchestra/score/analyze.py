@@ -215,6 +215,8 @@ def analyze_phase(
 
         items_by_wave: dict[int, list[RecordData]] = {}
         for item in items:
+            if item.get("lifecycle_state") != "planned":
+                continue
             derived = item.get("derived")
             wave = derived.get("wave") if isinstance(derived, Mapping) else None
             if type(wave) is int:

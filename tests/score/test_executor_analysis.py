@@ -70,6 +70,31 @@ def test_analyzer_keeps_matching_executor_override_without_warning() -> None:
     assert "executor-override-differs" not in {finding.code for finding in report.findings}
 
 
+def test_analyzer_uses_only_planned_members_for_override_prediction() -> None:
+    records = [
+        _record("score:phase", "p", {"weight": "light"}, state="in_progress"),
+        _record(
+            "score:work-item",
+            "completed-large",
+            {"phase": "p", "size": "M"},
+            state="done",
+            wave=1,
+        ),
+        _record(
+            "score:work-item",
+            "planned-small",
+            {"phase": "p", "size": "XS", "executor": "inline"},
+            state="planned",
+            wave=1,
+        ),
+        _record("score:acceptance", "R1", {"phase": "p", "requirement": "R1"}),
+    ]
+
+    report = analyze_phase(records, "p")
+
+    assert "executor-override-differs" not in {finding.code for finding in report.findings}
+
+
 def test_analyzer_keeps_conflicting_wave_overrides_as_an_error() -> None:
     records = _records("inline")
     records[2]["payload"]["executor"] = "subagent"
