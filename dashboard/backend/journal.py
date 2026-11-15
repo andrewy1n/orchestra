@@ -11,6 +11,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -56,14 +57,10 @@ def _soft_list(
 
 
 def _phase_for_task(subject: str, tasks: list[Record]) -> tuple[str | None, str]:
-    matches = [
-        task
-        for task in tasks
-        if subject == task["subject"] or subject.startswith(task["subject"] + "-")
-    ]
-    if not matches:
+    live = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
+    task = owning_work_item(subject, live)
+    if task is None:
         return None, ""
-    task = max(matches, key=lambda item: len(item["subject"]))
     return record_payload(task).get("phase") or None, task["id"]
 
 

@@ -22,6 +22,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import task_assignment
+from orchestra.score.lookups import dependencies
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -278,10 +279,6 @@ def _last_record_at(
     return max(stamps, default=None)
 
 
-def _depends(record: Record) -> list[str]:
-    return record_payload(record).get("depends_on") or []
-
-
 def task_rows(
     records: list[Record],
     assignments: list[Record] | None = None,
@@ -306,7 +303,7 @@ def task_rows(
         if status is None:
             continue
         payload = record_payload(record)
-        depends_on = [by_subject[ref] for ref in _depends(record) if ref in by_subject]
+        depends_on = [by_subject[ref] for ref in dependencies(record) if ref in by_subject]
         assignee, write_root = assigned_to(record, assignments)
         running_since = _assigned_at(assignments, record) if status == "running" else None
         others = [s for s in subjects if s != record["subject"]]
@@ -548,7 +545,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         write_root=write_root,
         body=item.get("body") or "",
         depends_on=_linked(
-            [by_subject[ref].id for ref in _depends(item) if ref in by_subject], rows
+            [by_subject[ref].id for ref in dependencies(item) if ref in by_subject], rows
         ),
         blocks=_linked(
             (derived_values(mine).get("referenced_by") or {}).get("depends_on", []), rows

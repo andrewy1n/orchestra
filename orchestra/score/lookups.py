@@ -65,9 +65,14 @@ def closing_work_item(slug: str, records: Sequence[Record]) -> Record | None:
     return latest(closing)
 
 
-def _matches(acceptance: Record, item: Record) -> bool:
-    subject = item["subject"]
-    return acceptance["subject"] == subject or acceptance["subject"].startswith(f"{subject}-")
+def _matches(subject: str, item: Record) -> bool:
+    name = item["subject"]
+    return subject == name or subject.startswith(f"{name}-")
+
+
+def owning_work_item(subject: str, work_items: Sequence[Record]) -> Record | None:
+    matching = [item for item in work_items if _matches(subject, item)]
+    return max(matching, key=lambda item: len(item["subject"]), default=None)
 
 
 def acceptances_of(
@@ -85,10 +90,7 @@ def acceptances_of(
             or record_payload(acceptance).get("phase") != slug
         ):
             continue
-        matching = [candidate for candidate in phase_items if _matches(acceptance, candidate)]
-        if not matching:
-            continue
-        owner = max(matching, key=lambda candidate: len(candidate["subject"]))
-        if owner["id"] == item["id"]:
+        owner = owning_work_item(acceptance["subject"], phase_items)
+        if owner is not None and owner["id"] == item["id"]:
             owned.append(acceptance)
     return owned
