@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
@@ -115,3 +116,18 @@ def test_r2_single_task_phase_runs_as_closing_check(tmp_path: Path) -> None:
     assert started.runner is not None
     assert started.runner.state == "done"
     assert project.resolve("score:work-item", "verify")["lifecycle_state"] == "done"
+
+
+def test_r2_rejects_multiple_phase_closing_tasks(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path)
+    _item(project, "first")
+    _item(project, "second", depends_on=["first"])
+    first = project.resolve("score:work-item", "first")
+    project.update(
+        first["id"],
+        record_type="score:work-item",
+        payload={"depends_on": ["second"]},
+    )
+
+    with pytest.raises(wave.WaveError, match="more than one closing task"):
+        wave.start(project, repo, PHASE)

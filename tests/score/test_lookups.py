@@ -11,6 +11,7 @@ from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     acceptances_of,
     closing_work_item,
+    closing_work_items,
     current_phase,
     dependencies,
     live_work_items,
@@ -325,3 +326,24 @@ def test_r11_longest_subject_owns_shared_acceptances(project: Project) -> None:
 
     assert _owned(project, foo_bar) == ["foo-bar", "foo-bar-1"]
     assert _owned(project, foo) == ["foo", "foo-1"]
+
+
+def test_r8_closing_work_items_returns_every_mutually_dependent_item(project: Project) -> None:
+    _phase(project, "feature")
+    first = _item(project, "first", depends_on=["second"])
+    second = _item(project, "second", depends_on=["first"])
+
+    found = closing_work_items("feature", _read(project, "score:work-item"))
+
+    assert {record["id"] for record in found} == {first["id"], second["id"]}
+    latest_found = closing_work_item("feature", _read(project, "score:work-item"))
+    assert latest_found is not None
+    assert latest_found["id"] == second["id"]
+
+
+def test_r8_closing_work_items_is_empty_without_a_closing_item(project: Project) -> None:
+    _phase(project, "feature")
+    _item(project, "one")
+    _item(project, "two")
+
+    assert closing_work_items("feature", _read(project, "score:work-item")) == []
