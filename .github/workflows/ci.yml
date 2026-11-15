@@ -91,6 +91,15 @@ jobs:
           python-version: "3.10"
           enable-cache: true
       - run: uv sync --locked --group dev
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/frontend/package-lock.json
+      - run: npm ci
+        working-directory: dashboard/frontend
+      - run: npm run build
+        working-directory: dashboard/frontend
       - run: uv run pytest -q -p no:cacheprovider -n auto tests --ignore=tests/canon --ignore=tests/tuner
 
   types:

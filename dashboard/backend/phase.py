@@ -21,12 +21,14 @@ from dashboard.backend.records import (
 )
 from dashboard.backend.store import ModelError
 from dashboard.backend.task import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     AcceptanceRow,
     CheckRun,
     RelatedRecord,
     TaskRow,
     belongs,
     check_from,
+    configured_small_wave_budget,
     latest_checks,
     task_rows,
 )
@@ -374,6 +376,8 @@ def phase_rows(
     acceptances: list[Record] | None = None,
     checks: list[Record] | None = None,
     evidence_by_phase: dict[str, PhaseEvidence] | None = None,
+    *,
+    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> list[PhaseRow]:
     latest = latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
@@ -398,7 +402,9 @@ def phase_rows(
                 for task in open_tasks
             )
         )
-        elapsed_minutes, unset_estimates = phase_elapsed(task_rows(members))
+        elapsed_minutes, unset_estimates = phase_elapsed(
+            task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
+        )
         progress = phase_progress(tasks, record["subject"])
         body = record.get("body") or ""
         rows.append(
@@ -906,7 +912,16 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     effort_checks = by_effort("tuner:check-run").get(effort, [])
     decision_records = by_effort("score:decision").get(effort, [])
     row = next(
-        (p for p in phase_rows([record], tasks, effort_acceptances, effort_checks)),
+        (
+            p
+            for p in phase_rows(
+                [record],
+                tasks,
+                effort_acceptances,
+                effort_checks,
+                small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
+            )
+        ),
         None,
     )
     phase_specs = remap_records(
@@ -1003,6 +1018,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
                 tasks,
                 remap_records(list_records(target, "conductor:assignment"), aliases),
                 phases=[record],
+                small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
             )
             if t.phase == phase_subject
         ],
@@ -1079,7 +1095,15 @@ def load_requirement_detail(
         status,
         nxt,
         _choices(subjects, listed("score:decision")),
-        tuple(row for row in task_rows(traced, assignments) if row.phase == phase),
+        tuple(
+            row
+            for row in task_rows(
+                traced,
+                assignments,
+                small_wave_budget_minutes=configured_small_wave_budget(target, traced),
+            )
+            if row.phase == phase
+        ),
         tuple(
             AcceptanceRow(
                 record["id"],

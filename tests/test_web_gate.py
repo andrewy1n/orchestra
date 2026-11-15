@@ -102,6 +102,14 @@ def test_r9_agents_md_section_names_the_three_commands():
         assert command in section, f"TypeScript and Svelte section omits {command}"
 
 
+def test_vitest_test_script_limits_workers():
+    package = json.loads((UI / "package.json").read_text())
+    script = package["scripts"]["test"]
+    match = re.search(r"--maxWorkers=(\d+)", script)
+    assert match is not None, "npm test does not bound Vitest workers"
+    assert int(match.group(1)) <= 4, "npm test allows more than four Vitest workers"
+
+
 @needs_npm
 def test_web_job_run_lines_pass(tmp_path):
     assert job("web"), "ci.yml has no web job"

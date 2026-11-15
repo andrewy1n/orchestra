@@ -22,8 +22,11 @@ check with no script). Do not stuff a metric delta into
 `check-run.result`. Use `tuner:finding` (`claim`, `basis`,
 `invalidated_when`, `needs`).
 
-`executor` on a work-item is `inline` or `subagent`. Every task in a
-wave uses the same executor. Missing `executor` means `subagent`.
+Dispatch derives the executor from wave size, estimates, and project
+settings. A written work-item `executor` is an optional `inline` or
+`subagent` override. Every task in a wave uses the same executor.
+Explicit overrides in one wave must agree. Re-dispatch keeps the mode
+chosen for that task's first dispatch.
 
 The phase body includes a `## Landing` section with branch
 `phase/{phase}`, worktree

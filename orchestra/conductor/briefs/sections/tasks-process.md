@@ -12,10 +12,12 @@
    data dependencies. Tasks that must rewrite the same function get a
    `depends_on` edge. Make the closing verification task depend on every
    other phase task.
-4. Give each work-item `## Description`, `## Approach`, one executor type,
-   `size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded).
-   `executor` is `inline` or `subagent`. Missing means `subagent`. Every
-   task in one wave uses the same executor.
+4. Give each work-item `## Description`, `## Approach`, `size`
+   (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded).
+   Dispatch derives the executor from wave size, estimates, and project
+   settings. Add `executor` only as an explicit `inline` or `subagent`
+   override. Explicit overrides in one wave must agree. Every task in one
+   wave uses the same resolved executor.
    Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40.
    Phase body records session shape (`one sitting` | `more than one`), human
    stops, and shared areas. Use focused tasks and reserve whole-phase verification
@@ -41,7 +43,9 @@ the delta through the plan review gate.
 No Landing → not ready for plan review. Incidental has no Landing.
 Open the plan review gate (skip incidental). Do not open until task recipes,
 wave executor choices, phase run facts, proof, Landing, and frozen oracle
-fields pass review. If the effort has no `autonomy`, run
+fields pass review. Executor choices derive from wave shape and project
+settings; written `executor` values are optional overrides. If the effort
+has no `autonomy`, run
 `orchestra effort autonomy {effort} auto-plan` first. Skip this gate at
 `auto-plan` and `auto-phases`. Only an explicit `gated` opens it.
 
