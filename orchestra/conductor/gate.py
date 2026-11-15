@@ -25,6 +25,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.check import git_head
 from orchestra.conductor.head_evidence import EvidenceIndex
+from orchestra.score.lookups import current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
 
@@ -164,16 +165,7 @@ def gate_terms(
     Raises LookupError when the store has no such phase.
     """
     records = open_store(store, store=store_dir).records()
-    phase = next(
-        (
-            r
-            for r in records
-            if r["record_type"] == "score:phase"
-            and r["subject"] == phase_slug
-            and r["lifecycle_state"] != "superseded"
-        ),
-        None,
-    )
+    phase = current_phase(phase_slug, records)
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")
     effort = _str(phase, "effort")

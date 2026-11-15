@@ -21,6 +21,7 @@ from orchestra.conductor.head_evidence import (
 from orchestra.conductor.landing import latest_landing
 from orchestra.conductor.revision import revision_matches
 from orchestra.score.analyze import analyze_phase
+from orchestra.score.lookups import current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
@@ -195,17 +196,8 @@ def _phase_records(records: list[Record], run: Record) -> list[Record]:
     if not isinstance(phases, list) or not all(isinstance(item, str) for item in phases):
         raise WorkflowRunError(f"run {run['subject']!r} has invalid phase selection")
     selected: list[Record] = []
-    for subject in phases:
-        phase = next(
-            (
-                record
-                for record in records
-                if record["record_type"] == "score:phase"
-                and record["subject"] == subject
-                and record["lifecycle_state"] != "superseded"
-            ),
-            None,
-        )
+    for subject in (item for item in phases if isinstance(item, str)):
+        phase = current_phase(subject, records)
         if phase is None:
             raise WorkflowRunError(f"run {run['subject']!r} requires missing phase {subject!r}")
         if _text(phase, "effort") != _text(run, "effort"):
@@ -224,16 +216,7 @@ def _dependencies(phase: Record) -> list[str]:
 
 
 def _current_phase(records: list[Record], subject: str) -> Record:
-    phase = next(
-        (
-            record
-            for record in records
-            if record["record_type"] == "score:phase"
-            and record["subject"] == subject
-            and record["lifecycle_state"] != "superseded"
-        ),
-        None,
-    )
+    phase = current_phase(subject, records)
     if phase is None:
         raise WorkflowRunError(f"required phase {subject!r} could not be read")
     return phase

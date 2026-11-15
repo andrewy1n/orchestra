@@ -13,6 +13,7 @@ from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor.github_pr import GitHubGh
 from orchestra.conductor.landing import LANDING, latest_landing
+from orchestra.score.lookups import current_phase
 from orchestra.tools import Git, ToolError
 
 
@@ -86,8 +87,15 @@ def landed_phases(project: Project) -> tuple[str, ...]:
     return tuple(seen)
 
 
+def _phase_record(project: Project, phase: str) -> Record:
+    record = current_phase(phase, project.records())
+    if record is None:
+        raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
+    return record
+
+
 def pending_close(project: Project, repo: Path, phase: str) -> bool:
-    if project.resolve("score:phase", phase)["lifecycle_state"] != "done":
+    if _phase_record(project, phase)["lifecycle_state"] != "done":
         return True
     if phase_worktree(repo, phase).is_dir() or task_worktrees(repo, phase):
         return True
@@ -176,7 +184,7 @@ def _apply(project: Project, repo: Path, phase: str, number: int, head_sha: str)
     if git.branch_tip(phase_branch) is not None:
         git.delete_branch(phase_branch)
         actions.append(f"deleted branch {phase_branch}")
-    record = project.resolve("score:phase", phase)
+    record = _phase_record(project, phase)
     steps = _TRANSITIONS.get(record["lifecycle_state"], ())
     if not steps:
         return tuple(actions)

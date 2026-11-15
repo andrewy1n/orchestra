@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon.types import Record
+from orchestra.score.lookups import current_phase, current_phases
 
 
 class WorkflowBlockerError(ValueError):
@@ -36,11 +37,9 @@ def _dependencies(record: Record) -> set[str]:
 
 def _phase_chain(records: list[Record], phase: Record) -> set[str]:
     phases = {
-        record["subject"]: record
-        for record in records
-        if record["record_type"] == "score:phase"
-        and record["lifecycle_state"] != "superseded"
-        and _payload_text(record, "effort") == _payload_text(phase, "effort")
+        subject: record
+        for subject, record in current_phases(records).items()
+        if _payload_text(record, "effort") == _payload_text(phase, "effort")
     }
     pending = [phase["subject"]]
     found: set[str] = set()
@@ -53,16 +52,7 @@ def _phase_chain(records: list[Record], phase: Record) -> set[str]:
         if current is None:
             raise WorkflowBlockerError(f"unknown phase dependency {subject!r}")
         for dependency in _dependencies(current):
-            target = next(
-                (
-                    record
-                    for record in records
-                    if record["record_type"] == "score:phase"
-                    and record["subject"] == dependency
-                    and record["lifecycle_state"] != "superseded"
-                ),
-                None,
-            )
+            target = current_phase(dependency, records)
             if target is None:
                 raise WorkflowBlockerError(
                     f"phase {subject!r} depends on unknown phase {dependency!r}"
@@ -76,16 +66,7 @@ def _phase_chain(records: list[Record], phase: Record) -> set[str]:
 
 
 def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlocker]:
-    phase = next(
-        (
-            record
-            for record in records
-            if record["record_type"] == "score:phase"
-            and record["subject"] == phase_slug
-            and record["lifecycle_state"] != "superseded"
-        ),
-        None,
-    )
+    phase = current_phase(phase_slug, records)
     if phase is None:
         raise WorkflowBlockerError(f"phase {phase_slug!r} not found")
     effort = _payload_text(phase, "effort")
@@ -114,16 +95,7 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
             continue
         if not isinstance(owned_phase, str):
             raise WorkflowBlockerError(f"blocker {record['subject']!r} has invalid phase")
-        owner = next(
-            (
-                candidate
-                for candidate in records
-                if candidate["record_type"] == "score:phase"
-                and candidate["subject"] == owned_phase
-                and candidate["lifecycle_state"] != "superseded"
-            ),
-            None,
-        )
+        owner = current_phase(owned_phase, records)
         if owner is None or _payload_text(owner, "effort") != record_effort:
             raise WorkflowBlockerError(
                 f"blocker {record['subject']!r} has a phase from another effort or no phase"

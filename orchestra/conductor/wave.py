@@ -13,6 +13,7 @@ from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.score.lookups import current_phase
 from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
@@ -81,10 +82,10 @@ def has_landing(phase_record: Record) -> bool:
 
 
 def phase_record(records: list[Record], phase: str) -> Record:
-    found = [r for r in records if r["record_type"] == "score:phase" and r["subject"] == phase]
-    if not found:
+    record = current_phase(phase, records)
+    if record is None:
         raise WaveError(f"phase {phase!r} not found")
-    return max(found, key=lambda r: r["recorded_at"])
+    return record
 
 
 def phase_items(records: list[Record], phase: str) -> list[Record]:

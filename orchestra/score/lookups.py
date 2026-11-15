@@ -27,6 +27,14 @@ def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
     )
 
 
+def current_phases(records: Sequence[Record]) -> dict[str, Record]:
+    slugs = dict.fromkeys(
+        record["subject"] for record in records if record["record_type"] == "score:phase"
+    )
+    found = {slug: current_phase(slug, records) for slug in slugs}
+    return {slug: record for slug, record in found.items() if record is not None}
+
+
 def live_work_items(slug: str, records: Sequence[Record]) -> list[Record]:
     return [
         record
