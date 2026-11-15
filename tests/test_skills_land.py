@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import phase_end_text, section_text, skill_text
 
 SKILLS = REPO_ROOT / "skills"
 HAND_INTEGRATION = (
@@ -34,15 +34,15 @@ def test_execute_phase_calls_orchestra_land() -> None:
 
 
 def test_phase_end_calls_orchestra_land() -> None:
-    _assert_lands((SKILLS / "verify" / "references" / "phase-end.md").read_text())
+    _assert_lands(phase_end_text())
 
 
 def test_landing_section_has_no_merge_or_suite_command() -> None:
     texts = [
         skill_text("tasks"),
         skill_text("execute"),
-        (SKILLS / "verify" / "references" / "phase-end.md").read_text(),
-        (REPO_ROOT / "shared" / "kinds-and-focus.md").read_text(),
+        phase_end_text(),
+        section_text("kinds-and-focus"),
         (REPO_ROOT / "README.md").read_text(),
     ]
     for text in texts:
@@ -67,7 +67,7 @@ def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
 
 
 def test_phase_gate_terms_name_needs_human_and_orchestra_gate() -> None:
-    text = (SKILLS / "verify" / "references" / "phase-end.md").read_text()
+    text = phase_end_text()
     gate_section = _flat(text.split("## Phase gate", 1)[1].split("## Proof packet", 1)[0])
     assert "Run `orchestra gate <phase-slug>`" in gate_section
     assert "Exit 0 means the gate holds" in gate_section

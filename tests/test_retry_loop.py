@@ -75,8 +75,9 @@ def test_redispatch_increments_attempts():
 
 
 def test_execution_cost_fields_are_optional_and_measured_per_dispatch() -> None:
-    retry = re.sub(r"\s+", " ", (REPO_ROOT / "shared" / "retry-loop.md").read_text())
-    execute = re.sub(r"\s+", " ", (REPO_ROOT / "shared" / "execute-mechanics.md").read_text())
+    sections = REPO_ROOT / "orchestra" / "conductor" / "briefs" / "sections"
+    retry = re.sub(r"\s+", " ", (sections / "retry-loop.md").read_text())
+    execute = re.sub(r"\s+", " ", (sections / "execute-overview.md").read_text())
     assert "dispatch id" in retry and "start time" in retry
     assert "elapsed seconds" in retry or "elapsed seconds" in execute
     assert "tokens_total" in retry

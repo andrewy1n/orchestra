@@ -12,8 +12,18 @@ import json
 import subprocess
 import sys
 from collections import deque
+from pathlib import Path
 
 from conftest import REPO_ROOT
+
+from orchestra.conductor.briefs.render import (
+    SKILL_TABLE,
+    STEP_TABLE,
+    BriefContext,
+    Section,
+    render_brief,
+    render_skill_brief,
+)
 
 _COUNTER = itertools.count()
 
@@ -31,19 +41,46 @@ runpy.run_module("orchestra.canon", run_name="__main__", alter_sys=True)
 """
 
 
+_BRIEF_STEPS: dict[str, tuple[str, ...]] = {
+    "verify": ("verify",),
+    "land": ("land",),
+    "spec": ("spec", "design"),
+    "design": ("design",),
+    "tasks": ("tasks",),
+    "run": ("verify", "land", "execute"),
+    "execute": ("verify", "land", "execute"),
+}
+
+
+def brief_text(*steps: str, adapter: str = "github-pr") -> str:
+    return "\n\n".join(
+        render_brief(BriefContext(step, "<phase-slug>", "<focus>", None, adapter, "full"))
+        for step in steps
+    )
+
+
+def section_text(name: str) -> str:
+    context = BriefContext("section", "<phase-slug>", "<focus>", None, "github-pr", "full")
+    return render_brief(context, table={"section": (Section(name),)})
+
+
+def phase_end_text() -> str:
+    return brief_text("verify", "land", adapter="")
+
+
+def land_guide_text() -> str:
+    return brief_text("land")
+
+
 def skill_text(name: str) -> str:
     names = {
         "spec": ("spec", "design"),
         "execute": ("execute", "run", "verify"),
     }.get(name, (name,))
-    paths = [
-        path
-        for skill_name in names
-        for path in (
-            REPO_ROOT / "skills" / skill_name / "SKILL.md",
-            *sorted((REPO_ROOT / "skills" / skill_name / "references").glob("*.md")),
-        )
-    ]
+    paths: list[Path] = []
+    for skill_name in names:
+        skill = REPO_ROOT / "skills" / skill_name / "SKILL.md"
+        paths.append(skill)
     parts: list[str] = []
     seen: set[str] = set()
     for path in paths:
@@ -51,6 +88,15 @@ def skill_text(name: str) -> str:
         if content not in seen:
             parts.append(content)
             seen.add(content)
+    for step in _BRIEF_STEPS.get(name, ()):
+        if step in STEP_TABLE:
+            parts.append(
+                render_brief(
+                    BriefContext(step, "<phase-slug>", "<focus>", None, "github-pr", "full")
+                )
+            )
+    if name in SKILL_TABLE and name not in _BRIEF_STEPS:
+        parts.append(render_skill_brief(name))
     return "\n\n".join(parts)
 
 

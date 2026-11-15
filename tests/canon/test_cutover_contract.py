@@ -213,14 +213,18 @@ def test_cutover_r17_agents_names_backup_command() -> None:
 
 
 def test_cutover_r18_ensure_store_describes_database() -> None:
-    guidance = (ROOT / "skills" / "ensure-store.md").read_text().lower()
+    guidance = (
+        (ROOT / "orchestra" / "conductor" / "briefs" / "sections" / "ensure-store.md")
+        .read_text()
+        .lower()
+    )
     assert "sqlite" in guidance
     assert "database" in guidance
 
 
-def test_cutover_r19_generated_skills_are_current() -> None:
+def test_cutover_r19_generated_reviewer_files_are_current() -> None:
     result = subprocess.run(
-        [sys.executable, "scripts/build_skills.py", "--check"],
+        [sys.executable, "-m", "installer.agents", "--check"],
         cwd=ROOT,
         capture_output=True,
         text=True,

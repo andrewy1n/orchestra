@@ -171,8 +171,8 @@ def test_r8_every_job_runs_python_3_10():
         assert all(v == "3.10" for v in versions), f"{name} python-version {versions}"
 
 
-def test_r9_checks_runs_build_skills_check():
-    assert any("scripts/build_skills.py --check" in line for line in run_lines("checks"))
+def test_r9_checks_runs_reviewer_generation_check():
+    assert any("python3 -m installer.agents --check" in line for line in run_lines("checks"))
 
 
 def test_r10_checks_runs_plugin_name_check():
