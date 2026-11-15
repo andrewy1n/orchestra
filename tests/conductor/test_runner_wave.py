@@ -86,6 +86,32 @@ def test_r2_phase_closing_task_depends_on_every_live_item(tmp_path: Path) -> Non
     assert not wave.closes_phase(closing, wave.phase_items(records, PHASE))
 
 
+def test_r2_single_task_phase_runs_as_closing_check(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path)
+    _item(project, "verify")
+    create(
+        project,
+        "score:acceptance",
+        "verify",
+        {
+            "method": "check",
+            "oracle_policy": "none",
+            "phase": PHASE,
+            "effort": EFFORT,
+            "verify_command": "true",
+            "requirement": "R2",
+        },
+        "",
+    )
+
+    started = wave.start(project, repo, PHASE)
+
+    assert started.execution_mode == "runner"
+    assert started.runner is not None
+    assert started.runner.state == "done"
+    assert project.resolve("score:work-item", "verify")["lifecycle_state"] == "done"
+
+
 def test_r2_rejects_multiple_phase_closing_tasks(tmp_path: Path) -> None:
     project, repo = _world(tmp_path)
     _item(project, "first")
