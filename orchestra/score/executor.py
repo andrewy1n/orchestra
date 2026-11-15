@@ -6,9 +6,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from orchestra.canon.project_config import DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+
 Executor = Literal["inline", "subagent"]
 TaskSize = Literal["XS", "S", "M", "L", "XL"]
-DEFAULT_SMALL_WAVE_BUDGET_MINUTES = 15
 SIZE_BANDS: dict[TaskSize, tuple[int, int]] = {
     "XS": (2, 5),
     "S": (5, 10),

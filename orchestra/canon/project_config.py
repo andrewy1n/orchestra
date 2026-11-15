@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Literal, TypeGuard
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.score.executor import DEFAULT_SMALL_WAVE_BUDGET_MINUTES
 from orchestra.tools.errors import ToolError, ToolNotFoundError
 from orchestra.tools.git import Git
 
 CONFIG_PATH = "orchestra.toml"
+DEFAULT_SMALL_WAVE_BUDGET_MINUTES = 15
 StageName = Literal["task", "phase", "milestone"]
 PluginName = str
 SUITE_MODES = ("none", "smoke", "full", "external")
