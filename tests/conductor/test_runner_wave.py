@@ -89,6 +89,12 @@ def test_r2_phase_closing_task_depends_on_every_live_item(tmp_path: Path) -> Non
 def test_r2_single_task_phase_runs_as_closing_check(tmp_path: Path) -> None:
     project, repo = _world(tmp_path)
     _item(project, "verify")
+    verify = project.resolve("score:work-item", "verify")
+    project.update(
+        verify["id"],
+        record_type="score:work-item",
+        payload={"assignee": "runner"},
+    )
     create(
         project,
         "score:acceptance",

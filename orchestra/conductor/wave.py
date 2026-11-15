@@ -104,6 +104,8 @@ def _depends_on(item: Record) -> list[str]:
 
 def closes_phase(item: Record, items: list[Record]) -> bool:
     others = [o for o in items if o["id"] != item["id"]]
+    if not others:
+        return record_payload(item).get("assignee") == "runner"
     deps = _depends_on(item)
     return all(o["subject"] in deps or o["id"] in deps for o in others)
 
