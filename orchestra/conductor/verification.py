@@ -39,7 +39,7 @@ def _manual_check(project: Project, acceptance: Record, revision: str) -> Record
 
 def _source_state(tree: Path) -> tuple[str, str]:
     head = git_head(tree)
-    status = Git(tree).run("status", "--porcelain", "--untracked-files=no")
+    status = Git(tree).run("status", "--porcelain", "--untracked-files=all")
     if status.returncode != 0:
         raise RuntimeError(f"git status failed: {status.stderr or status.stdout}")
     return head, status.stdout
@@ -58,9 +58,7 @@ def run_closing_checks(project: Project, landed: land_task.LandedTask) -> Verifi
     if before[0] != landed.revision:
         return VerificationRun((), frozenset(), "source HEAD changed before closing verification")
     if before[1]:
-        return VerificationRun(
-            (), frozenset(), "tracked source state is dirty before closing verification"
-        )
+        return VerificationRun((), frozenset(), "source state is dirty before closing verification")
     acceptances = sorted(
         land_task.acceptances_for(project, landed.task, landed.phase),
         key=lambda record: record["subject"],
@@ -114,7 +112,7 @@ def run_closing_checks(project: Project, landed: land_task.LandedTask) -> Verifi
             return VerificationRun(
                 tuple(checks),
                 frozenset(),
-                "source HEAD or tracked state changed during closing verification",
+                "source HEAD or working tree state changed during closing verification",
             )
     statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
     verified = frozenset(

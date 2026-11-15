@@ -233,19 +233,18 @@ def test_r7_mixed_manual_and_command_checks_run_without_signing_manual(
     assert len(project.list("tuner:check-run")) == 1
 
 
-def test_r9_closing_verification_does_not_commit_or_change_tracked_source(
-    tmp_path: Path,
-) -> None:
-    project, landed = _world(tmp_path)
+def test_r9_closing_verification_refuses_untracked_source_changes(tmp_path: Path) -> None:
+    project, landed = _world(tmp_path, ("touch runner-created.txt",))
     git = Git(tmp_path)
     before_head = git.head()
-    before_status = git.run("status", "--porcelain", "--untracked-files=no").stdout
+    before_status = git.run("status", "--porcelain", "--untracked-files=all").stdout
 
     closure = task_close.close(project, landed, frozenset())
 
-    assert closure.state == "done"
+    assert closure.state == "in_progress"
     assert git.head() == before_head
-    assert git.run("status", "--porcelain", "--untracked-files=no").stdout == before_status
+    assert (tmp_path / "runner-created.txt").is_file()
+    assert git.run("status", "--porcelain", "--untracked-files=all").stdout != before_status
 
 
 def test_r12_repeated_verification_reuses_check_run(tmp_path: Path) -> None:
