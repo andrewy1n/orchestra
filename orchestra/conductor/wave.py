@@ -105,7 +105,7 @@ def _depends_on(item: Record) -> list[str]:
 def closes_phase(item: Record, items: list[Record]) -> bool:
     others = [o for o in items if o["id"] != item["id"]]
     deps = _depends_on(item)
-    return bool(others) and all(o["subject"] in deps or o["id"] in deps for o in others)
+    return all(o["subject"] in deps or o["id"] in deps for o in others)
 
 
 def _executor(item: Record) -> str:
