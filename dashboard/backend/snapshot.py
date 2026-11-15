@@ -291,13 +291,7 @@ def _phase_updated_at(
         if record_payload(record).get("work_item") in names:
             stamps.append(recorded_at(record))
     for task in members:
-        others = [other["subject"] for other in tasks if other["subject"] != task["subject"]]
-        effort = record_payload(task).get("effort", "")
-        stamps.extend(
-            recorded_at(check)
-            for check in checks
-            if belongs(check, task["subject"], effort, others)
-        )
+        stamps.extend(recorded_at(check) for check in checks if belongs(check, task, tasks))
     return max(stamps, default=None)
 
 
@@ -734,11 +728,7 @@ def load_work_snapshot(
             if record["lifecycle_state"] in ("planned", "in_progress", "done")
         ]
         tasks = grouped["score:work-item"].get(effort, [])
-        counted = [
-            record
-            for record in tasks
-            if record["lifecycle_state"] in ("planned", "in_progress", "done")
-        ]
+        counted = [record for record in tasks if record["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
         if (
             (phases or counted)
             and all(record["lifecycle_state"] == "done" for record in phases)

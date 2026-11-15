@@ -164,7 +164,7 @@ def test_evidence_derives_requirement_status_once_per_phase(
         assert calls == {"finished": 1}
 
 
-def test_evidence_preserves_equal_timestamp_check_order(
+def test_evidence_breaks_equal_timestamp_checks_by_id(
     project: Project, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(record_mod, "now", lambda: "2026-11-02T00:00:00+00:00")
@@ -208,7 +208,7 @@ def test_evidence_preserves_equal_timestamp_check_order(
     assert evidence is not None
     rows = {row.id: row for row in evidence.requirements}
     assert rows["R1"].latest_check is not None
-    assert rows["R1"].latest_check.id == tied[0]["id"]
+    assert rows["R1"].latest_check.id == max(r["id"] for r in tied)
     assert rows["R1"].status == "unassessed"
     assert rows["R2"].status == "verified"
     snapshot = load_snapshot(project)

@@ -18,6 +18,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor.check import git_head
 from orchestra.conductor.wave import closing_task
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
+from orchestra.score.lookups import current_phase
 
 
 def _text(record: Record, key: str) -> str:
@@ -40,9 +41,7 @@ def _latest_by(records: list[Record], key: str) -> dict[str, Record]:
 def loop_problems(project: Project, phase: str, revision: str) -> list[str]:
     records = project.records()
     problems: list[str] = []
-    phase_record = next(
-        (r for r in records if r["record_type"] == "score:phase" and r["subject"] == phase), None
-    )
+    phase_record = current_phase(phase, records)
     if phase_record is None:
         return [f"phase {phase!r} not found"]
     if _text(phase_record, "weight") != "light":

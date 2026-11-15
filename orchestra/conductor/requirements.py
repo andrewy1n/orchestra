@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon import record_payload
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.lookups import live_work_items
@@ -36,14 +37,6 @@ def _text(record: Record, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _latest(records: list[Record]) -> Record | None:
-    latest: Record | None = None
-    for record in records:
-        if latest is None or record["recorded_at"] >= latest["recorded_at"]:
-            latest = record
-    return latest
-
-
 def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
     return live_work_items(phase, records)
 
@@ -58,7 +51,7 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
     ]
     if phase_weight(records, phase) == "light":
         return [requirement for requirement, _ in phase_requirements(records, phase)]
-    specification = _latest(specifications)
+    specification = latest(specifications)
     sources = [specification] if specification is not None else _phase_work_items(records, phase)
     requirements: list[str] = []
     for source in sources:
@@ -72,7 +65,7 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
 
 
 def _written_assessment(records: list[Record], phase: str, requirement: str) -> Record | None:
-    return _latest(
+    return latest(
         [
             record
             for record in records
@@ -98,9 +91,9 @@ def _derive_requirement(
     acceptance_ids = tuple(acceptance["id"] for acceptance in acceptances)
     latest_runs: list[Record] = []
     for acceptance in acceptances:
-        latest = acceptance_latest(index, acceptance, head).run
-        if latest is not None:
-            latest_runs.append(latest)
+        run = acceptance_latest(index, acceptance, head).run
+        if run is not None:
+            latest_runs.append(run)
     results = [_text(record, "result") for record in latest_runs]
     status: RequirementState = "unverified"
     if "fail" in results:

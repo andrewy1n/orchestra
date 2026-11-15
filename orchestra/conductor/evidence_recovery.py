@@ -11,7 +11,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.check import RUNNER
 from orchestra.conductor.oracle_freeze import parse_freeze
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, owning_work_item
 from orchestra.tuner.manifest import ManifestError, hash_oracle_files, load_manifest, resolve_commit
 from orchestra.tuner.oracle_red import is_assertion_level_red
 
@@ -115,20 +115,22 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
         ):
             report["historical"].append(acc["id"])
             continue
-        owners = [
-            t
-            for t in tasks
-            if t["lifecycle_state"] != "superseded"
-            and t["payload"].get("effort") == data.get("effort")
-            and t["payload"].get("phase") == data.get("phase")
-            and (acc["subject"] == t["subject"] or acc["subject"].startswith(t["subject"] + "-"))
-        ]
-        if len(owners) == 1 and owners[0]["lifecycle_state"] in ("done", "withdrawn"):
+        owner = owning_work_item(
+            acc["subject"],
+            [
+                t
+                for t in tasks
+                if t["lifecycle_state"] != "superseded"
+                and t["payload"].get("effort") == data.get("effort")
+                and t["payload"].get("phase") == data.get("phase")
+            ],
+        )
+        if owner is not None and owner["lifecycle_state"] in ("done", "withdrawn"):
             report["historical"].append(acc["id"])
             continue
         freeze = (
             _original_freeze(project.project_root, acc, runs)
-            if len(owners) == 1 and phase
+            if owner is not None and phase
             else None
         )
         if freeze is None:

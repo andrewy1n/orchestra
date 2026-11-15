@@ -28,7 +28,7 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
-from orchestra.score.lookups import dependencies
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, dependencies, owning_work_item
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -286,7 +286,7 @@ def _last_record_at(
     amendments: list[Record],
     reports: list[Record],
     checks: list[Record],
-    others: list[str],
+    work_items: list[Record],
 ) -> datetime | None:
     """Latest assignment / amendment / execution-report / check-run stamp for a running task."""
     names = {record["id"], record["subject"]}
@@ -299,8 +299,7 @@ def _last_record_at(
         if record_payload(a).get("assignment") in assignment_names
     )
     stamps.extend(recorded_at(r) for r in reports if record_payload(r).get("work_item") in names)
-    slug, effort = record["subject"], record_payload(record).get("effort", "")
-    stamps.extend(recorded_at(c) for c in checks if belongs(c, slug, effort, others))
+    stamps.extend(recorded_at(c) for c in checks if belongs(c, record, work_items))
     return max(stamps, default=None)
 
 
@@ -323,7 +322,6 @@ def task_rows(
         phase["subject"]: retry_max_redispatches(phase.get("body") or "")
         for phase in (phases or [])
     }
-    subjects = [record["subject"] for record in records]
     wave_members: dict[tuple[str, int | None], list[Record]] = {}
     for item in records:
         payload = record_payload(item)
@@ -341,9 +339,8 @@ def task_rows(
         depends_on = [by_subject[ref] for ref in dependencies(record) if ref in by_subject]
         assignee, write_root = assigned_to(record, assignments)
         running_since = _assigned_at(assignments, record) if status == "running" else None
-        others = [s for s in subjects if s != record["subject"]]
         last_record_at = (
-            _last_record_at(record, assignments, amendments, reports, checks, others)
+            _last_record_at(record, assignments, amendments, reports, checks, records)
             if running_since is not None
             else None
         )
@@ -396,12 +393,21 @@ def _linked(ids: list[str], rows: dict[str, TaskRow]) -> list[LinkedTask]:
     ]
 
 
-def belongs(record: Record, slug: str, effort: str, others: list[str]) -> bool:
-    subject = record["subject"]
-    if subject != slug and not subject.startswith(slug + "-"):
+def belongs(record: Record, task: Record, work_items: list[Record]) -> bool:
+    phase = record_payload(task).get("phase")
+    candidates = [
+        item
+        for item in work_items
+        if item["id"] == task["id"]
+        or (
+            item["lifecycle_state"] in LIVE_WORK_ITEM_STATES
+            and record_payload(item).get("phase") == phase
+        )
+    ]
+    owner = owning_work_item(record["subject"], candidates)
+    if owner is None or owner["id"] != task["id"]:
         return False
-    if any(subject == other or subject.startswith(other + "-") for other in others):
-        return False
+    effort = record_payload(task).get("effort", "")
     return record_payload(record).get("effort", effort) == effort
 
 
@@ -541,15 +547,14 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     }
     by_subject = {row.subject: row for row in rows.values()}
     mine = next((r for r in records if r["id"] == work_item_id), item)
-    others = [
-        r["subject"]
-        for r in records
-        if r["record_type"] == "score:work-item" and r["id"] != work_item_id
+    work_items = [
+        item,
+        *(r for r in records if r["record_type"] == "score:work-item" and r["id"] != work_item_id),
     ]
     names = {work_item_id, slug}
     of_type: dict[str, list[Record]] = {}
     for record in records:
-        if record["id"] != work_item_id and belongs(record, slug, effort, others):
+        if record["id"] != work_item_id and belongs(record, item, work_items):
             of_type.setdefault(record["record_type"], []).append(record)
     assignments = [
         r for r in of_type.get("conductor:assignment", []) if _refers_to(r, "work_item", names)
