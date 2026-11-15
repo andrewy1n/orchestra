@@ -42,6 +42,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import effort_dormant, phase_progress
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -226,13 +227,13 @@ def _assessment_summary(record: Record, by_id: dict[str, Record]) -> tuple[str, 
     return summary, payload.get("status") in ("failed", "blocked")
 
 
+def _live(tasks: list[Record]) -> list[Record]:
+    return [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
+
+
 def _task_for(subject: str, tasks: list[Record]) -> str:
-    matches = [
-        task
-        for task in tasks
-        if subject == task["subject"] or subject.startswith(task["subject"] + "-")
-    ]
-    return max(matches, key=lambda task: len(task["subject"]))["id"] if matches else ""
+    owner = owning_work_item(subject, _live(tasks))
+    return owner["id"] if owner else ""
 
 
 def _backlog_text(record: Record) -> str:

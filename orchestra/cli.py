@@ -30,6 +30,7 @@ from orchestra.conductor.github_pr import GitHubPRError
 from orchestra.conductor.landing import describe_phase, pull_request_title
 from orchestra.derive import requirement_status
 from orchestra.score.analyze import analyze_phase
+from orchestra.score.lookups import current_phase
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
@@ -976,9 +977,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
-    if not any(
-        r.get("record_type") == "score:phase" and r.get("subject") == args.phase for r in records
-    ):
+    if current_phase(args.phase, records) is None:
         print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
         return 2
     report = analyze_phase(records, args.phase, args.stage)

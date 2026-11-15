@@ -6,9 +6,11 @@ from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
+from orchestra.score.lookups import current_phase
 
 LANDING = "conductor:landing"
 PROOF = "conductor:proof-packet"
@@ -41,16 +43,12 @@ def _text(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _latest(records: list[Record]) -> Record | None:
-    return max(records, key=lambda r: r["recorded_at"], default=None)
-
-
 def _landing(records: list[Record], phase: str, members: set[str]) -> tuple[str, str] | None:
     landings = [r for r in records if r["record_type"] == LANDING and _text(r, "phase") == phase]
     proofs = [r for r in records if r["record_type"] == PROOF and _text(r, "phase") == phase]
     checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
     for source, pool in ((LANDING, landings), (PROOF, proofs), (CHECK_RUN, checks)):
-        chosen = _latest(pool)
+        chosen = latest(pool)
         if chosen is not None:
             return chosen["recorded_at"], source
     return None
@@ -139,10 +137,12 @@ def _row(project: Project, records: list[Record], phase_record: Record) -> Phase
 def build_phase_rows(directory: Path, *, effort: str | None = None) -> list[PhaseRow]:
     project = open_store(directory, read_only=True)
     records = project.records()
+    slugs = dict.fromkeys(r["subject"] for r in records if r["record_type"] == "score:phase")
+    current = (current_phase(slug, records) for slug in slugs)
     phases = [
         r
-        for r in records
-        if r["record_type"] == "score:phase"
+        for r in current
+        if r is not None
         and r["lifecycle_state"] == "done"
         and (effort is None or _text(r, "effort") == effort)
     ]

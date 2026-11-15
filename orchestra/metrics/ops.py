@@ -6,6 +6,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.score.lookups import live_work_items
 
 
 def _text(record: Record, key: str) -> str:
@@ -14,18 +15,7 @@ def _text(record: Record, key: str) -> str:
 
 
 def tasks_of(records: list[Record], phase: str) -> list[Record]:
-    chosen: dict[str, Record] = {}
-    for r in records:
-        if r["record_type"] != "score:work-item" or _text(r, "phase") != phase:
-            continue
-        current = chosen.get(r["subject"])
-        rank = (r["lifecycle_state"] != "superseded", r["recorded_at"])
-        if current is None or rank >= (
-            current["lifecycle_state"] != "superseded",
-            current["recorded_at"],
-        ):
-            chosen[r["subject"]] = r
-    return [r for r in chosen.values() if r["lifecycle_state"] != "withdrawn"]
+    return live_work_items(phase, records)
 
 
 def belongs_to(
