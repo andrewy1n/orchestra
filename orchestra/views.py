@@ -8,9 +8,11 @@ import shlex
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.query import latest
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
@@ -21,6 +23,11 @@ from orchestra.derive import (
     release_ready,
     requirement_status,
     task_assignment,
+)
+from orchestra.score.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ExecutorTask,
+    task_executor,
 )
 from orchestra.score.requirements import phase_requirements
 
@@ -364,17 +371,76 @@ def _group_sort_key(
     return key
 
 
-def _assignment_bits(record: Record, records: list[Record]) -> list[str]:
+def _executor_task(record: Record) -> ExecutorTask:
+    payload = record_payload(record)
+    estimate = payload.get("estimate_minutes")
+    size = payload.get("size")
+    executor = payload.get("executor")
+    assignee = payload.get("assignee")
+    return ExecutorTask(
+        subject=record["subject"],
+        size=size if isinstance(size, str) and size else None,
+        estimate_minutes=estimate if type(estimate) is int else None,
+        executor=executor if isinstance(executor, str) else None,
+        assignee=assignee if isinstance(assignee, str) else None,
+    )
+
+
+def _executor_bits(
+    record: Record,
+    records: list[Record],
+    small_wave_budget_minutes: int,
+) -> list[str]:
+    phase = record_payload(record).get("phase")
+    wave = _derived_value(record, "wave")
+    members = [
+        candidate
+        for candidate in records
+        if candidate["record_type"] == WORK_ITEM_TYPE
+        and candidate.get("lifecycle_state") == "planned"
+        and record_payload(candidate).get("phase") == phase
+        and effort_of(candidate) == effort_of(record)
+        and _derived_value(candidate, "wave") == wave
+        and (wave is not None or candidate["id"] == record["id"])
+    ]
+    task = _executor_task(record)
+    assignment = task_assignment(record, records)
+    if (
+        record.get("lifecycle_state") in ("in_progress", "done")
+        and assignment is not None
+        and assignment.assignee in ("inline", "subagent")
+    ):
+        task = replace(task, assignee=assignment.assignee)
+    mode = task_executor(
+        task,
+        [_executor_task(candidate) for candidate in members] or [task],
+        small_wave_budget_minutes=small_wave_budget_minutes,
+    )
+    planned = (
+        record.get("lifecycle_state") == "planned"
+        and task.assignee not in ("inline", "subagent")
+        and not task.executor
+    )
+    prefix = "executor: predicted " if planned else "executor: "
+    return [f"{prefix}{mode}"]
+
+
+def _assignment_bits(
+    record: Record,
+    records: list[Record],
+    small_wave_budget_minutes: int,
+    show_executor: bool,
+) -> list[str]:
     if record["record_type"] != WORK_ITEM_TYPE:
         return []
     assignment = task_assignment(record, records)
-    if assignment is None:
-        return []
     bits: list[str] = []
-    if assignment.assignee:
+    if assignment is not None and assignment.assignee:
         bits.append(f"assignee: {assignment.assignee}")
-    if assignment.write_root:
+    if assignment is not None and assignment.write_root:
         bits.append(f"write root: {assignment.write_root}")
+    if show_executor:
+        bits.extend(_executor_bits(record, records, small_wave_budget_minutes))
     return bits
 
 
@@ -421,7 +487,11 @@ def _release_state(records: list[Record], phase: str) -> str:
 
 
 def _status_bits(
-    record: Record, view: View, tally: list[Record], records: list[Record]
+    record: Record,
+    view: View,
+    tally: list[Record],
+    records: list[Record],
+    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> list[str]:
     bits: list[str] = []
     if view.show_lifecycle_state:
@@ -431,7 +501,14 @@ def _status_bits(
         if value is not None:
             bits.append(f"{name}: {value}")
     if view.show_assignment:
-        bits.extend(_assignment_bits(record, records))
+        bits.extend(
+            _assignment_bits(
+                record,
+                records,
+                small_wave_budget_minutes,
+                show_executor=view.name == "plan",
+            )
+        )
     if view.tally_type:
         subject = record.get("subject", "")
         passed = failed = 0
@@ -532,6 +609,7 @@ def _group_lines(
     *,
     link: bool = True,
     effort: str | None = None,
+    budget: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> list[str]:
     lines = [f"## {name}", ""]
     for role in view.roles:
@@ -543,7 +621,7 @@ def _group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            bits = _status_bits(record, view, tally, records)
+            bits = _status_bits(record, view, tally, records, budget)
             if role.name == "pending-phase-close":
                 bits.append(_phase_close_step(record, records))
             lines.append(_record_line(record, role, bits, link))
@@ -574,6 +652,9 @@ def render_view(
     effort: str | None = None,
     dormant: Collection[str] = (),
 ) -> str:
+    budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    if view.name == "plan":
+        budget = load_project_config(Path.cwd()).small_wave_budget_minutes
     tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
     groups = {
         name: group
@@ -590,7 +671,9 @@ def render_view(
     if not groups:
         lines += ["_No matching records._", ""]
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += _group_lines(view, name, groups[name], tally, records, effort=effort)
+        lines += _group_lines(
+            view, name, groups[name], tally, records, effort=effort, budget=budget
+        )
     if groups and view.phase_derived_section:
         lines += _phase_section_lines(groups, records, effort)
     if dormant:

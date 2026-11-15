@@ -23,9 +23,12 @@ def test_both_skills_name_the_same_executors():
         assert "`subagent`" in text
 
 
-def test_both_skills_treat_a_missing_executor_as_subagent():
-    assert "Missing means `subagent`" in _text("tasks")
-    assert "missing/empty → `subagent`" in _text("execute")
+def test_both_skills_describe_derived_executor_selection():
+    assert (
+        "Dispatch derives the executor from wave size, estimates, and project settings."
+        in _text("tasks")
+    )
+    assert "`orchestra wave start` resolves one executor for the wave" in _text("execute")
 
 
 def test_execute_stops_when_a_wave_disagrees():

@@ -32,7 +32,7 @@ Put the Description in `body` of the batch line.
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -57,8 +57,10 @@ requirement. A task needs at least one `score:work-item` and one
 `score:acceptance`.
 
 Set `kind` and `phase` from the effort (`phase` is `""` when
-incidental). Set `executor` to `inline` or `subagent` (same within a
-wave). Every new work-item includes `size` and `estimate_minutes`.
+incidental). Dispatch derives the executor from the wave and project
+settings. Omit `executor` unless the plan needs an explicit `inline` or
+`subagent` override. Every new work-item includes `size` and
+`estimate_minutes`.
 `method` is `tdd`, `check`, or `manual`; `verify_command` is the
 literal command (empty string for `manual` with no script).
 Include the project's affected compatibility tests in the implementation
@@ -82,7 +84,7 @@ the same function are dependent: the later one lists the earlier one in
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -113,7 +115,7 @@ Use distinct exit requirements, such as R3 and R4 below. Do not attach a downstr
 ```bash
 canon create --type score:work-item \
   --subject "verify-{phase}" \
-  --payload '{"title":"Verify <phase title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"subagent","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
+  --payload '{"title":"Verify <phase title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
 
 Prove the phase exit criteria hold together: run the integration

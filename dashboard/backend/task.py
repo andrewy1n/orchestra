@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from dashboard.backend import store
@@ -18,10 +18,16 @@ from dashboard.backend.records import (
 )
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import task_assignment
+from orchestra.score.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ExecutorTask,
+    task_executor,
+)
 from orchestra.score.lookups import dependencies
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
@@ -219,9 +225,28 @@ def _estimate_minutes(payload: PlanningPayload) -> int | None:
     return payload.get("estimate_minutes")
 
 
-def _executor(payload: PlanningPayload) -> str:
-    executor = payload.get("executor")
-    return executor if executor else "subagent"
+def _executor_task(record: Record) -> ExecutorTask:
+    payload = record_payload(record)
+    return ExecutorTask(
+        subject=record["subject"],
+        size=payload.get("size")
+        if isinstance(payload.get("size"), str) and payload.get("size")
+        else None,
+        estimate_minutes=_estimate_minutes(payload),
+        executor=payload.get("executor") if isinstance(payload.get("executor"), str) else None,
+        assignee=payload.get("assignee") if isinstance(payload.get("assignee"), str) else None,
+    )
+
+
+def configured_small_wave_budget(target: Project, records: list[Record]) -> int:
+    requires_budget = any(
+        record.get("lifecycle_state") == "planned"
+        and record_payload(record).get("size") in ("XS", "S")
+        for record in records
+    )
+    if not requires_budget:
+        return DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    return load_project_config(target.project_root).small_wave_budget_minutes
 
 
 def _attempts(payload: PlanningPayload) -> int:
@@ -286,6 +311,8 @@ def task_rows(
     reports: list[Record] | None = None,
     checks: list[Record] | None = None,
     phases: list[Record] | None = None,
+    *,
+    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> list[TaskRow]:
     by_subject = {record["subject"]: record for record in sorted(records, key=recorded_at)}
     assignments = assignments or []
@@ -297,6 +324,14 @@ def task_rows(
         for phase in (phases or [])
     }
     subjects = [record["subject"] for record in records]
+    wave_members: dict[tuple[str, int | None], list[Record]] = {}
+    for item in records:
+        payload = record_payload(item)
+        if item.get("lifecycle_state") == "planned":
+            wave = derived_values(item).get("wave")
+            if type(wave) is not int:
+                continue
+            wave_members.setdefault((payload.get("phase", ""), wave), []).append(item)
     rows: list[TaskRow] = []
     for record in records:
         status = _task_status(record)
@@ -313,6 +348,11 @@ def task_rows(
             else None
         )
         phase = payload.get("phase", "")
+        executor_task = _executor_task(record)
+        if status in ("running", "done") and assignee in ("inline", "subagent"):
+            executor_task = replace(executor_task, assignee=assignee)
+        wave = derived_values(record).get("wave")
+        wave_task_records = wave_members.get((phase, wave), []) if type(wave) is int else []
         rows.append(
             TaskRow(
                 id=record["id"],
@@ -330,7 +370,11 @@ def task_rows(
                 running_since=running_since,
                 size=_size(payload),
                 estimate_minutes=_estimate_minutes(payload),
-                executor=_executor(payload),
+                executor=task_executor(
+                    executor_task,
+                    [_executor_task(member) for member in wave_task_records] or [executor_task],
+                    small_wave_budget_minutes=small_wave_budget_minutes,
+                ),
                 last_record_at=last_record_at,
                 attempts=_attempts(payload),
                 retry_budget=budgets.get(phase, DEFAULT_RETRY_MAX_REDISPATCHES),
@@ -486,7 +530,15 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     effort = payload.get("effort", "")
     records = remap_records(store.list_records(target, subject=slug), aliases)
     efforts = store.list_records(target, "score:work-item", payload={"effort": effort})
-    rows = {row.id: row for row in task_rows(efforts)}
+    effort_assignments = remap_records(list_records(target, "conductor:assignment"), aliases)
+    rows = {
+        row.id: row
+        for row in task_rows(
+            efforts,
+            effort_assignments,
+            small_wave_budget_minutes=configured_small_wave_budget(target, efforts),
+        )
+    }
     by_subject = {row.subject: row for row in rows.values()}
     mine = next((r for r in records if r["id"] == work_item_id), item)
     others = [
@@ -558,6 +610,6 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         decisions=tuple(payload.get("decisions") or ()),
         size=_size(payload),
         estimate_minutes=_estimate_minutes(payload),
-        executor=_executor(payload),
+        executor=rows[work_item_id].executor,
         agent_work=_agent_work(assignments, amendments, reports),
     )

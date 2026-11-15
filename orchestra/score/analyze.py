@@ -7,6 +7,12 @@ from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ExecutorTask,
+    ExecutorWaveError,
+    wave_executor,
+)
 from orchestra.score.lookups import current_phase, dependencies
 from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.plan_shape import plan_shape_warnings
@@ -54,6 +60,25 @@ def _subject(record: RecordData) -> str:
     return record["subject"]
 
 
+def _executor_task(record: RecordData) -> ExecutorTask:
+    payload = _payload(record)
+    return ExecutorTask(
+        subject=_subject(record),
+        size=_string(payload.get("size")),
+        estimate_minutes=_integer(payload.get("estimate_minutes")),
+        executor=_string(payload.get("executor")),
+        assignee=_string(payload.get("assignee")),
+    )
+
+
+def _string(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _integer(value: object) -> int | None:
+    return value if type(value) is int else None
+
+
 @dataclass(frozen=True)
 class Finding:
     severity: str
@@ -80,7 +105,12 @@ def _has_marker(body: str) -> bool:
     return MARKER in _CODE_SPAN.sub("", body)
 
 
-def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan") -> Report:
+def analyze_phase(
+    records: Sequence[RecordData],
+    phase: str,
+    stage: str = "plan",
+    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+) -> Report:
     if stage not in ("spec", "design", "plan", "close"):
         raise ValueError(f"unknown analysis stage {stage!r}")
 
@@ -182,6 +212,46 @@ def analyze_phase(records: Sequence[RecordData], phase: str, stage: str = "plan"
                     f"{rid} is named by no active acceptance",
                 )
 
+        items_by_wave: dict[int, list[RecordData]] = {}
+        for item in items:
+            if item.get("lifecycle_state") != "planned":
+                continue
+            derived = item.get("derived")
+            wave = derived.get("wave") if isinstance(derived, Mapping) else None
+            if type(wave) is int:
+                items_by_wave.setdefault(wave, []).append(item)
+        for wave_items in items_by_wave.values():
+            tasks = [_executor_task(item) for item in wave_items]
+            try:
+                wave_executor(tasks, small_wave_budget_minutes=small_wave_budget_minutes)
+                prediction = wave_executor(
+                    [
+                        ExecutorTask(
+                            subject=task.subject,
+                            size=task.size,
+                            estimate_minutes=task.estimate_minutes,
+                            assignee=task.assignee,
+                        )
+                        for task in tasks
+                    ],
+                    small_wave_budget_minutes=small_wave_budget_minutes,
+                )
+            except ExecutorWaveError as exc:
+                add("error", "executor-wave-invalid", phase, str(exc))
+                continue
+            for item, task in zip(wave_items, tasks, strict=True):
+                written = task.executor
+                if (
+                    item["lifecycle_state"] == "planned"
+                    and written is not None
+                    and written != prediction
+                ):
+                    add(
+                        "warning",
+                        "executor-override-differs",
+                        _subject(item),
+                        f"written executor is {written}; wave-derived executor is {prediction}",
+                    )
     source = "the phase body" if light else "the specification"
     for item in items:
         for rid in _requirements(item):

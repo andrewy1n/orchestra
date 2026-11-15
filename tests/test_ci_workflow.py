@@ -289,6 +289,45 @@ def test_mypy_gate_r12_no_job_runs_mypy():
             assert "mypy" not in line, f"{name}: {line}"
 
 
+def test_test_orchestra_builds_dashboard_before_python_suite():
+    steps = job("test-orchestra").get("steps")
+    assert isinstance(steps, list)
+    node_setup = next(
+        (index for index, step in enumerate(steps) if step.get("uses") == "actions/setup-node@v5"),
+        None,
+    )
+    frontend_install = next(
+        (
+            index
+            for index, step in enumerate(steps)
+            if step.get("run") == "npm ci" and step.get("working-directory") == WEB_DIR
+        ),
+        None,
+    )
+    frontend_build = next(
+        (
+            index
+            for index, step in enumerate(steps)
+            if step.get("run") == "npm run build" and step.get("working-directory") == WEB_DIR
+        ),
+        None,
+    )
+    python_tests = next(
+        (
+            index
+            for index, step in enumerate(steps)
+            if str(step.get("run", "")).startswith("uv run pytest")
+        ),
+        None,
+    )
+
+    assert node_setup is not None
+    assert frontend_install is not None
+    assert frontend_build is not None
+    assert python_tests is not None
+    assert node_setup < frontend_install < frontend_build < python_tests
+
+
 def test_blocking_jobs_do_not_continue_on_error():
     for name, spec in jobs().items():
         assert not spec.get("continue-on-error"), name

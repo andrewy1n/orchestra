@@ -41,6 +41,7 @@ def run(args: argparse.Namespace) -> int:
     from orchestra import views
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError, open_store
+    from orchestra.canon.project_config import ProjectConfigError
 
     try:
         records = views.load_records(open_store(Path.cwd()))
@@ -53,8 +54,13 @@ def run(args: argparse.Namespace) -> int:
                 if args.command == "handoff" and not args.all and not args.effort
                 else []
             )
-            text = views.render_view(views.VIEWS[name], records, effort=args.effort, dormant=hide)
-    except (StoreBindingError, StoreError, views.ViewError) as exc:
+            text = views.render_view(
+                views.VIEWS[name],
+                records,
+                effort=args.effort,
+                dormant=hide,
+            )
+    except (StoreBindingError, StoreError, views.ViewError, ProjectConfigError) as exc:
         print(f"orchestra {args.command}: {exc}", file=sys.stderr)
         return 1
     print(text)

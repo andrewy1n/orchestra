@@ -10,6 +10,12 @@
    absent, it is the current checkout. Work-item `payload.executor`
    is only the wave mode.
 
+   `orchestra wave start` resolves one executor for the wave from its
+   shape and project settings. A written `payload.executor` is an
+   optional `inline` or `subagent` override. Stop before dispatch when
+   any override is invalid or the overrides disagree. Use the resolved
+   mode for every task in the wave.
+
    Print the brief. It quotes the work-item `## Description` and
    `## Approach`, each requirement by id, the phase design
    `## Invariants` / `## Assumptions`, and each named decision. Write

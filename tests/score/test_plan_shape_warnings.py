@@ -9,7 +9,6 @@ _CLOCK = itertools.count()
 _SHAPE_CODES = {
     "task-split-candidate",
     "estimate-outside-size-band",
-    "small-subagent-solo-wave",
 }
 
 
@@ -88,14 +87,14 @@ def test_estimate_below_the_size_band_is_reported() -> None:
     assert _shape(a, b) == {("estimate-outside-size-band", "a")}
 
 
-def test_small_subagent_task_alone_in_its_wave_is_reported() -> None:
+def test_small_subagent_task_alone_in_its_wave_has_no_retired_warning() -> None:
     task = _item("a", executor="subagent", size="S", estimate_minutes=6)
-    assert _shape(task) == {("small-subagent-solo-wave", "a")}
+    assert _shape(task) == set()
 
 
-def test_missing_executor_counts_as_subagent() -> None:
+def test_missing_executor_has_no_small_subagent_warning() -> None:
     task = _item("a", size="XS", estimate_minutes=3)
-    assert _shape(task) == {("small-subagent-solo-wave", "a")}
+    assert _shape(task) == set()
 
 
 def test_small_inline_task_alone_in_its_wave_is_not_reported() -> None:
@@ -103,17 +102,17 @@ def test_small_inline_task_alone_in_its_wave_is_not_reported() -> None:
     assert _shape(task) == set()
 
 
-def test_small_subagent_tasks_that_share_a_wave_are_not_reported() -> None:
+def test_small_subagent_tasks_that_share_a_wave_have_no_retired_warning() -> None:
     a = _item("a", executor="subagent", size="S", estimate_minutes=6)
     b = _item("b", executor="subagent", size="S", estimate_minutes=6)
     assert _shape(a, b) == set()
 
 
-def test_small_subagent_task_behind_a_dependency_is_alone_in_its_wave() -> None:
+def test_small_subagent_task_behind_a_dependency_has_no_retired_warning() -> None:
     a = _item("a", executor="inline", size="M", estimate_minutes=10)
     b = _item("b", executor="subagent", size="S", estimate_minutes=6, depends_on=["a"])
     c = _item("c", executor="inline", size="M", estimate_minutes=10, depends_on=["b"])
-    assert _shape(a, b, c) == {("small-subagent-solo-wave", "b")}
+    assert _shape(a, b, c) == set()
 
 
 def test_closing_verification_task_is_not_reported_as_solo() -> None:

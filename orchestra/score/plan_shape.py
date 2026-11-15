@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Sequence
 from typing import NamedTuple
 
 from orchestra.canon.types import Record
-from orchestra.score.lookups import closing_work_item, dependencies
 
 SIZE_BANDS: dict[str, tuple[int, int]] = {
     "XS": (2, 5),
@@ -15,7 +13,6 @@ SIZE_BANDS: dict[str, tuple[int, int]] = {
     "XL": (25, 40),
 }
 MAX_REQUIREMENTS = 4
-_SMALL = ("XS", "S")
 
 
 class ShapeWarning(NamedTuple):
@@ -24,35 +21,7 @@ class ShapeWarning(NamedTuple):
     message: str
 
 
-def _waves(items: Sequence[Record]) -> dict[str, int]:
-    deps = {item["subject"]: dependencies(item) for item in items}
-    waves: dict[str, int] = {}
-
-    def wave(subject: str, path: frozenset[str]) -> int:
-        if subject in waves:
-            return waves[subject]
-        if subject in path:
-            return 0
-        inner = path | {subject}
-        depth = 1 + max((wave(dep, inner) for dep in deps[subject] if dep in deps), default=0)
-        if not path:
-            waves[subject] = depth
-        return depth
-
-    for subject in deps:
-        wave(subject, frozenset())
-    return waves
-
-
-def _closes_phase(item: Record, items: Sequence[Record]) -> bool:
-    slug = item["payload"].get("phase")
-    closing = closing_work_item(slug, items) if isinstance(slug, str) else None
-    return closing is not None and closing["id"] == item["id"]
-
-
 def plan_shape_warnings(items: Sequence[Record]) -> list[ShapeWarning]:
-    waves = _waves(items)
-    width = Counter(waves.values())
     warnings: list[ShapeWarning] = []
     for item in items:
         if item["lifecycle_state"] != "planned":
@@ -85,18 +54,4 @@ def plan_shape_warnings(items: Sequence[Record]) -> list[ShapeWarning]:
                         f"estimate_minutes {estimate} is outside the {size} band {low}-{high}",
                     )
                 )
-        executor = payload.get("executor") or "subagent"
-        if (
-            executor == "subagent"
-            and size in _SMALL
-            and width[waves[subject]] == 1
-            and not _closes_phase(item, items)
-        ):
-            warnings.append(
-                ShapeWarning(
-                    "small-subagent-solo-wave",
-                    subject,
-                    f"size {size} subagent task is alone in wave {waves[subject]}; use inline",
-                )
-            )
     return warnings

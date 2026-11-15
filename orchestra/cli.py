@@ -11,6 +11,12 @@ from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, work
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project_config import (
+    CONFIG_PATH,
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ProjectConfigError,
+    load_project_config,
+)
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import (
     autonomy,
@@ -971,16 +977,22 @@ def _cmd_task_redispatch(args: argparse.Namespace) -> int:
 
 def _cmd_analyze(args: argparse.Namespace) -> int:
     try:
-        project = resolve_location(args.store, _cwd(args)).open()
+        location = resolve_location(args.store, _cwd(args))
+        project = location.open()
         records = project.records()
         records = attach_derived_all(records, project.derived(records))
-    except (OSError, RuntimeError, StoreBindingError, StoreError) as exc:
+        budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+        if args.stage in ("plan", "close"):
+            config_path = location.root / CONFIG_PATH
+            if config_path.exists() or config_path.is_symlink():
+                budget = load_project_config(location.root).small_wave_budget_minutes
+    except (OSError, RuntimeError, StoreBindingError, StoreError, ProjectConfigError) as exc:
         print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
         return 2
     if current_phase(args.phase, records) is None:
         print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
         return 2
-    report = analyze_phase(records, args.phase, args.stage)
+    report = analyze_phase(records, args.phase, args.stage, budget)
     if args.json:
         _print_json(
             {
