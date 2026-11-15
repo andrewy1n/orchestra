@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/score/lookups.py")
-ROOTS = ("orchestra", "dashboard/backend")
+ROOTS = ("orchestra", "dashboard/backend", "scripts")
 PHASE = "score:phase"
 GENERIC_LAYER = Path("orchestra/canon")
 RESOLVERS = {"resolve", "resolve_subject"}
@@ -145,3 +145,18 @@ def test_r18_guard_ignores_owner_module(tmp_path: Path) -> None:
     for base in ROOTS:
         shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
     assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+
+
+def test_r18_guard_fails_on_seeded_script_phase_selection(tmp_path: Path) -> None:
+    for base in ROOTS:
+        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
+    seeded = tmp_path / "scripts" / "seeded_phase_pick.py"
+    seeded.write_text(
+        "def pick(records, phase):\n"
+        "    return next(\n"
+        "        (r for r in records if r['record_type'] == 'score:phase' and r['subject'] == phase),\n"
+        "        None,\n"
+        "    )\n",
+        encoding="utf-8",
+    )
+    assert _new(tmp_path) == ["scripts/seeded_phase_pick.py:3"]
