@@ -16,10 +16,10 @@ from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
 from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
 from orchestra.derive import (
     effort_dormant,
     phase_progress,
-    release_ready,
     requirement_status,
     task_assignment,
 )
@@ -449,10 +449,15 @@ def _effort_pool(records: list[Record], effort: str | None) -> list[Record]:
     return [r for r in records if effort_of(r) in (None, effort)]
 
 
-def _phase_derived_lines(records: list[Record], phase: str, effort: str | None = None) -> list[str]:
+def _phase_derived_lines(
+    records: list[Record],
+    phase: str,
+    effort: str | None = None,
+    requirement_index: RequirementIndex | None = None,
+) -> list[str]:
     records = _effort_pool(records, effort)
     progress = phase_progress(records, phase)
-    statuses = requirement_status(records, phase)
+    statuses = requirement_status(records, phase, index=requirement_index)
     if progress.total == 0 and not statuses:
         return []
     lines: list[str] = []
@@ -468,11 +473,13 @@ def _phase_derived_lines(records: list[Record], phase: str, effort: str | None =
             suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
             lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
         lines.append("")
-        lines += ["### Release", f"- {_release_state(records, phase)}", ""]
+        lines += ["### Release", f"- {_release_state(records, phase, statuses)}", ""]
     return lines
 
 
-def _release_state(records: list[Record], phase: str) -> str:
+def _release_state(
+    records: list[Record], phase: str, statuses: dict[str, RequirementStatus]
+) -> str:
     written = sorted(
         (
             r
@@ -485,7 +492,8 @@ def _release_state(records: list[Record], phase: str) -> str:
     )
     if written:
         return str(record_payload(written[-1]).get("state", "ready"))
-    return "ready" if release_ready(records, phase) else "not ready"
+    ready = bool(statuses) and all(status.status == "verified" for status in statuses.values())
+    return "ready" if ready else "not ready"
 
 
 def _status_bits(
@@ -612,6 +620,7 @@ def _group_lines(
     link: bool = True,
     effort: str | None = None,
     budget: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    requirement_index: RequirementIndex | None = None,
 ) -> list[str]:
     lines = [f"## {name}", ""]
     for role in view.roles:
@@ -629,7 +638,7 @@ def _group_lines(
             lines.append(_record_line(record, role, bits, link))
         lines.append("")
     if view.show_phase_derived:
-        lines += _phase_derived_lines(records, name, effort)
+        lines += _phase_derived_lines(records, name, effort, requirement_index)
     return lines
 
 
@@ -657,6 +666,11 @@ def render_view(
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
     if view.name == "plan":
         budget = load_project_config(Path.cwd()).small_wave_budget_minutes
+    requirement_index = (
+        RequirementIndex(_effort_pool(records, effort))
+        if view.show_phase_derived or view.phase_derived_section
+        else None
+    )
     tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
     groups = {
         name: group
@@ -674,17 +688,27 @@ def render_view(
         lines += ["_No matching records._", ""]
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
         lines += _group_lines(
-            view, name, groups[name], tally, records, effort=effort, budget=budget
+            view,
+            name,
+            groups[name],
+            tally,
+            records,
+            effort=effort,
+            budget=budget,
+            requirement_index=requirement_index,
         )
     if groups and view.phase_derived_section:
-        lines += _phase_section_lines(groups, records, effort)
+        lines += _phase_section_lines(groups, records, effort, requirement_index)
     if dormant:
         lines += [f"Dormant: {', '.join(sorted(dormant))}", ""]
     return "\n".join(lines)
 
 
 def _phase_section_lines(
-    groups: dict[str, dict[str, list[Record]]], records: list[Record], effort: str | None
+    groups: dict[str, dict[str, list[Record]]],
+    records: list[Record],
+    effort: str | None,
+    requirement_index: RequirementIndex | None = None,
 ) -> list[str]:
     phases = sorted(
         {
@@ -697,7 +721,7 @@ def _phase_section_lines(
     )
     lines: list[str] = []
     for phase in phases:
-        derived = _phase_derived_lines(records, phase, effort)
+        derived = _phase_derived_lines(records, phase, effort, requirement_index)
         if derived:
             lines += [f"## Phase {phase}", "", *derived]
     return lines

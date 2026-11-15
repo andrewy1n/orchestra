@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from heapq import merge
 
 from orchestra.canon.types import Record
 from orchestra.conductor.revision import revision_matches
@@ -30,7 +31,7 @@ class Answer:
 
 
 class EvidenceIndex:
-    """Check-runs of a record list that no record corrects."""
+    """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
         corrected: set[str] = set()
@@ -41,6 +42,16 @@ class EvidenceIndex:
             for record in records
             if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected
         ]
+        self._by_criterion: dict[str, list[tuple[int, Record]]] = {}
+        for position, run in enumerate(self.check_runs):
+            self._by_criterion.setdefault(_text(run, "criterion_id"), []).append((position, run))
+
+    def acceptance_runs(self, acceptance: Record) -> list[Record]:
+        by_id = self._by_criterion.get(acceptance["id"], [])
+        if acceptance["id"] == acceptance["subject"]:
+            return [run for _, run in by_id]
+        by_subject = self._by_criterion.get(acceptance["subject"], [])
+        return [run for _, run in merge(by_id, by_subject, key=lambda item: item[0])]
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -74,8 +85,7 @@ def _at_head(runs: Sequence[Record], head: str | None) -> list[Record]:
 
 
 def acceptance_runs(index: EvidenceIndex, acceptance: Record) -> list[Record]:
-    keys = {acceptance["id"], acceptance["subject"]}
-    return [run for run in index.check_runs if _text(run, "criterion_id") in keys]
+    return index.acceptance_runs(acceptance)
 
 
 def _where(head: str | None) -> str:

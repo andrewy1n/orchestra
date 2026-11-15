@@ -18,6 +18,7 @@ _WORK_ITEM = "score:work-item"
 _SPECIFICATION = "score:specification"
 _ACCEPTANCE = "score:acceptance"
 _ASSESSMENT = "conductor:assessment"
+_PHASE = "score:phase"
 _LIVE_WORK_STATES = ("planned", "in_progress", "done")
 
 
@@ -77,34 +78,45 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
     return requirements
 
 
-def _written_assessment(records: list[Record], phase: str, requirement: str) -> Record | None:
-    return _latest(
-        [
-            record
-            for record in records
-            if record["record_type"] == _ASSESSMENT
-            and record["lifecycle_state"] == "active"
-            and _text(record, "phase") == phase
-            and _text(record, "requirement") == requirement
-        ]
-    )
+class RequirementIndex:
+    """Requirement lookups for one unchanged record snapshot."""
+
+    def __init__(self, records: list[Record]) -> None:
+        self.by_id: dict[str, Record] = {}
+        self.evidence = EvidenceIndex(records)
+        self.sources: dict[str, list[Record]] = {}
+        self.acceptances: dict[tuple[str, str], list[Record]] = {}
+        self.assessments: dict[tuple[str, str], Record] = {}
+        for record in records:
+            self.by_id[record["id"]] = record
+            record_type = record["record_type"]
+            phase = _text(record, "phase")
+            if record_type == _PHASE:
+                self.sources.setdefault(record["subject"], []).append(record)
+            elif record_type in (_SPECIFICATION, _WORK_ITEM) and phase is not None:
+                self.sources.setdefault(phase, []).append(record)
+            if record["lifecycle_state"] != "active" or phase is None:
+                continue
+            if record_type == _ACCEPTANCE:
+                for requirement in dict.fromkeys(acceptance_requirement_ids(record)):
+                    self.acceptances.setdefault((phase, requirement), []).append(record)
+            elif record_type == _ASSESSMENT:
+                requirement = _text(record, "requirement")
+                if requirement is not None:
+                    key = (phase, requirement)
+                    previous = self.assessments.get(key)
+                    if previous is None or record["recorded_at"] >= previous["recorded_at"]:
+                        self.assessments[key] = record
 
 
 def _derive_requirement(
-    records: list[Record], index: EvidenceIndex, phase: str, requirement: str, head: str | None
+    index: RequirementIndex, phase: str, requirement: str, head: str | None
 ) -> RequirementStatus:
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == _ACCEPTANCE
-        and record["lifecycle_state"] == "active"
-        and _text(record, "phase") == phase
-        and requirement in acceptance_requirement_ids(record)
-    ]
+    acceptances = index.acceptances.get((phase, requirement), [])
     acceptance_ids = tuple(acceptance["id"] for acceptance in acceptances)
     latest_runs: list[Record] = []
     for acceptance in acceptances:
-        latest = acceptance_latest(index, acceptance, head).run
+        latest = acceptance_latest(index.evidence, acceptance, head).run
         if latest is not None:
             latest_runs.append(latest)
     results = [_text(record, "result") for record in latest_runs]
@@ -134,19 +146,23 @@ def _passes_after(derived: RequirementStatus, written: Record, by_id: dict[str, 
 
 
 def requirement_status(
-    records: list[Record], phase: str, head: str | None = None
+    records: list[Record],
+    phase: str,
+    head: str | None = None,
+    *,
+    index: RequirementIndex | None = None,
 ) -> dict[str, RequirementStatus]:
-    by_id = {record["id"]: record for record in records}
-    index = EvidenceIndex(records)
+    if index is None:
+        index = RequirementIndex(records)
     statuses: dict[str, RequirementStatus] = {}
-    for requirement in _phase_requirement_ids(records, phase):
-        derived = _derive_requirement(records, index, phase, requirement, head)
-        written = _written_assessment(records, phase, requirement)
+    for requirement in _phase_requirement_ids(index.sources.get(phase, []), phase):
+        derived = _derive_requirement(index, phase, requirement, head)
+        written = index.assessments.get((phase, requirement))
         written_status = _text(written, "status") if written is not None else None
         if (
             written is not None
             and written_status not in (None, "verified")
-            and not _passes_after(derived, written, by_id)
+            and not _passes_after(derived, written, index.by_id)
         ):
             derived = RequirementStatus(
                 requirement=requirement,
