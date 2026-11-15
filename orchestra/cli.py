@@ -783,10 +783,25 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
         print(f"orchestra wave start: {args.phase}: {exc}", file=sys.stderr)
         return 2
     if args.json:
+        if result.runner is not None:
+            _print_json(
+                {
+                    "phase": result.phase,
+                    "wave": result.wave,
+                    "execution_mode": result.execution_mode,
+                    "task": result.runner.task,
+                    "state": result.runner.state,
+                    "execution_report": result.runner.report_id,
+                    "checks": list(result.runner.checks),
+                    "refusal_reasons": list(result.runner.refusal_reasons),
+                }
+            )
+            return result.runner.code
         _print_json(
             {
                 "phase": result.phase,
                 "wave": result.wave,
+                "execution_mode": result.execution_mode,
                 "tasks": [
                     {
                         "task": t.task,
@@ -800,6 +815,13 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
             }
         )
         return 0
+    if result.runner is not None:
+        print(f"## {result.runner.task} ({result.runner.state})")
+        for check in result.runner.checks:
+            print(f"{check['subject']}: exit {check['exit_code']} {check['message']}")
+        for reason in result.runner.refusal_reasons:
+            print(reason)
+        return result.runner.code
     for t in result.tasks:
         print(f"## {t.task} ({t.executor}) {t.write_root}\n")
         print(briefs[t.task])
