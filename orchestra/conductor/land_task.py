@@ -15,7 +15,7 @@ from orchestra.conductor.execution_cost import (
     landing_cost_fields,
     utc_now,
 )
-from orchestra.conductor.wave import closes_phase, phase_items
+from orchestra.conductor.wave import is_closing_task, task_acceptances
 from orchestra.tools import Git
 
 
@@ -94,13 +94,7 @@ def _commit(tree: Path, phase: str, task: str) -> str:
 
 
 def acceptances_for(project: Project, task: str, phase: str) -> list[Record]:
-    return [
-        r
-        for r in project.list("score:acceptance")
-        if r["lifecycle_state"] == "active"
-        and _text(r, "phase") == phase
-        and (r["subject"] == task or r["subject"].startswith(task + "-"))
-    ]
+    return task_acceptances(project.records(), task, phase)
 
 
 def land(project: Project, repo: Path, task: str, evidence_path: Path) -> LandedTask:
@@ -119,7 +113,7 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
     except ExecutionCostError as exc:
         raise LandError(str(exc)) from exc
     tree = Path(_text(item, "write_root") or str(repo))
-    closing = closes_phase(item, phase_items(project.records(), phase))
+    closing = is_closing_task(project.records(), phase, item)
     if tree.is_dir():
         _verify_evidence_revision(tree, evidence.get("revision"))
     commit = "" if closing or not tree.is_dir() else _commit(tree, phase, task)

@@ -25,12 +25,11 @@ from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.check import git_head
 from orchestra.conductor.head_evidence import EvidenceIndex
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
 
 METADATA_DIR = ".canon/"
-LIVE_WORK_ITEM_STATES = frozenset({"planned", "in_progress", "done"})
 
 _LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
 _NEXT_HEADING = re.compile(r"^##\s+")
@@ -125,24 +124,6 @@ def _str(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _depends_on(record: Record) -> set[str]:
-    raw = record["payload"].get("depends_on")
-    if not isinstance(raw, list):
-        return set()
-    return {item for item in raw if isinstance(item, str)}
-
-
-def _verification_items(items: Sequence[Record]) -> list[Record]:
-    live = [item for item in items if item["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
-    found: list[Record] = []
-    for item in live:
-        others = [other for other in live if other["id"] != item["id"]]
-        deps = _depends_on(item)
-        if others and all(o["subject"] in deps or o["id"] in deps for o in others):
-            found.append(item)
-    return found
-
-
 def _acceptance_terms(acceptance: Record, index: EvidenceIndex, head: str) -> list[Term]:
     name = acceptance["subject"]
     latest = head_evidence.acceptance_latest(index, acceptance, None)
@@ -174,7 +155,6 @@ def gate_terms(
     def of_type(record_type: str) -> list[Record]:
         return [r for r in records if r["record_type"] == record_type]
 
-    items = [r for r in of_type("score:work-item") if _str(r, "phase") == phase_slug]
     acceptances = [
         r
         for r in of_type("score:acceptance")
@@ -186,9 +166,9 @@ def gate_terms(
 
     terms: list[Term] = []
 
-    verification = _verification_items(items)
-    verified = bool(verification) and all(i["lifecycle_state"] == "done" for i in verification)
-    if not verification:
+    verification = closing_work_item(phase_slug, records)
+    verified = verification is not None and verification["lifecycle_state"] == "done"
+    if verification is None:
         detail = "no verification task"
     elif verified:
         detail = ""

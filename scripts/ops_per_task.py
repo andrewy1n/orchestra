@@ -16,7 +16,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor.check import git_head
-from orchestra.conductor.wave import closes_phase
+from orchestra.conductor.wave import closing_task
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 
 
@@ -64,10 +64,10 @@ def loop_problems(project: Project, phase: str, revision: str) -> list[str]:
             problems.append(
                 f"task {task['subject']} latest execution report is {_text(report, 'result')}"
             )
-    closing = [t for t in tasks if closes_phase(t, tasks)]
-    if not closing:
+    closing = closing_task(records, phase)
+    if closing is None:
         problems.append("the phase has no closing verification task")
-    elif not any(t["lifecycle_state"] == "done" for t in closing):
+    elif closing["lifecycle_state"] != "done":
         problems.append("the closing verification task is not done")
     runs = [r for r in records if r["record_type"] == "tuner:check-run"]
     for acceptance in records:

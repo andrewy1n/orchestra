@@ -13,13 +13,17 @@ from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import (
+    acceptances_of,
+    closing_work_item,
+    current_phase,
+    live_work_items,
+)
 from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
 
 EXECUTORS = ("inline", "subagent")
-_LIVE = ("planned", "in_progress", "done")
 
 
 class WaveError(RuntimeError):
@@ -89,26 +93,22 @@ def phase_record(records: list[Record], phase: str) -> Record:
 
 
 def phase_items(records: list[Record], phase: str) -> list[Record]:
-    return [
-        r
-        for r in records
-        if r["record_type"] == "score:work-item"
-        and r["lifecycle_state"] in _LIVE
-        and record_payload(r).get("phase") == phase
-    ]
+    return live_work_items(phase, records)
 
 
-def _depends_on(item: Record) -> list[str]:
-    value = record_payload(item).get("depends_on")
-    return [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
+def closing_task(records: list[Record], phase: str) -> Record | None:
+    closing = closing_work_item(phase, records)
+    if closing is not None:
+        return closing
+    items = phase_items(records, phase)
+    if len(items) == 1 and record_payload(items[0]).get("assignee") == "runner":
+        return items[0]
+    return None
 
 
-def closes_phase(item: Record, items: list[Record]) -> bool:
-    others = [o for o in items if o["id"] != item["id"]]
-    if not others:
-        return record_payload(item).get("assignee") == "runner"
-    deps = _depends_on(item)
-    return all(o["subject"] in deps or o["id"] in deps for o in others)
+def is_closing_task(records: list[Record], phase: str, item: Record) -> bool:
+    closing = closing_task(records, phase)
+    return closing is not None and closing["id"] == item["id"]
 
 
 def _executor(item: Record) -> str:
@@ -351,13 +351,11 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     phase_rec = phase_record(records, phase)
     landing = has_landing(phase_rec)
     items = phase_items(records, phase)
-    closers = [item for item in items if closes_phase(item, items)] if landing else []
-    if len(closers) > 1:
-        raise WaveError("phase has more than one closing task")
-    if closers and all(
-        item["lifecycle_state"] == "done" for item in items if item["id"] != closers[0]["id"]
+    closer = closing_task(records, phase) if landing else None
+    if closer is not None and all(
+        item["lifecycle_state"] == "done" for item in items if item["id"] != closer["id"]
     ):
-        outcome = _runner_start(project, repo, phase, closers[0], items)
+        outcome = _runner_start(project, repo, phase, closer, items)
         return WaveStart(phase, None, (), "runner", outcome)
     wave, chosen = select_wave(records, derived, phase)
     executor = check_executors(chosen)
@@ -365,7 +363,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     for item in chosen:
         if landing:
             try:
-                tree, branch = _prepare(repo, phase, item, closes_phase(item, items))
+                tree, branch = _prepare(repo, phase, item, is_closing_task(records, phase, item))
             except WaveError as exc:
                 _block(project, phase_rec, phase, f"merge:{item['subject']}")
                 started_names = ", ".join(i["subject"] for i, _, _ in prepared) or "none"
@@ -400,15 +398,11 @@ class WaveEnd:
     question_id: str
 
 
-def _acceptances(records: list[Record], task: str, phase: str) -> list[Record]:
-    return [
-        r
-        for r in records
-        if r["record_type"] == "score:acceptance"
-        and r["lifecycle_state"] == "active"
-        and record_payload(r).get("phase") == phase
-        and (r["subject"] == task or r["subject"].startswith(task + "-"))
-    ]
+def task_acceptances(records: list[Record], task: str, phase: str) -> list[Record]:
+    item = next((i for i in live_work_items(phase, records) if i["subject"] == task), None)
+    if item is None:
+        return []
+    return acceptances_of(phase, item, records, records)
 
 
 def end(project: Project, repo: Path, phase: str) -> WaveEnd:
@@ -423,14 +417,14 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     for item in sorted(items, key=lambda r: r["subject"]):
         task = item["subject"]
         branch = f"task/{phase}/{task}"
-        if closes_phase(item, items) or not _branch_exists(repo, branch):
+        if is_closing_task(records, phase, item) or not _branch_exists(repo, branch):
             continue
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
         if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
             continue
-        acceptances = _acceptances(records, task, phase)
+        acceptances = task_acceptances(records, task, phase)
         tip = Git(repo).resolve(branch)
         if tip is None:
             raise WaveError(f"cannot resolve task branch {branch}")
@@ -498,12 +492,16 @@ def _guard_refusals(
     return refusals
 
 
-def _merged_tasks(repo: Path, phase: str, items: list[Record], task: str) -> list[str]:
+def _merged_tasks(repo: Path, records: list[Record], phase: str, task: str) -> list[str]:
     merged: list[str] = []
-    for item in items:
+    for item in phase_items(records, phase):
         slug = item["subject"]
         branch = f"task/{phase}/{slug}"
-        if slug == task or closes_phase(item, items) or not _branch_exists(repo, branch):
+        if (
+            slug == task
+            or is_closing_task(records, phase, item)
+            or not _branch_exists(repo, branch)
+        ):
             continue
         if Git(repo).is_ancestor(branch, f"phase/{phase}"):
             merged.append(slug)
@@ -537,8 +535,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
     failures: list[str] = []
     outcomes: list[tuple[str, int]] = []
     try:
-        items = phase_items(project.records(), phase)
-        tasks = [task, *_merged_tasks(repo, phase, items, task)]
+        tasks = [task, *_merged_tasks(repo, project.records(), phase, task)]
         for slug in tasks:
             for acceptance in sorted(
                 acceptances_for(project, slug, phase), key=lambda r: r["subject"]

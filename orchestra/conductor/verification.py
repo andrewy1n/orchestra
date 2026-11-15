@@ -48,8 +48,7 @@ def _source_state(tree: Path) -> tuple[str, str]:
 def run_closing_checks(project: Project, landed: land_task.LandedTask) -> VerificationRun:
     item = land_task.work_item(project, landed.task)
     tree = Path(str(item["payload"].get("write_root") or project.project_root))
-    items = wave.phase_items(project.records(), landed.phase)
-    if not wave.closes_phase(item, items):
+    if not wave.is_closing_task(project.records(), landed.phase, item):
         return VerificationRun((), frozenset(), "work-item is not the phase closing task")
     try:
         before = _source_state(tree)

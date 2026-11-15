@@ -6,6 +6,7 @@ from typing import Literal
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.score.lookups import live_work_items
 from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
@@ -18,7 +19,6 @@ _WORK_ITEM = "score:work-item"
 _SPECIFICATION = "score:specification"
 _ACCEPTANCE = "score:acceptance"
 _ASSESSMENT = "conductor:assessment"
-_LIVE_WORK_STATES = ("planned", "in_progress", "done")
 
 
 @dataclass(frozen=True)
@@ -45,13 +45,7 @@ def _latest(records: list[Record]) -> Record | None:
 
 
 def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
-    return [
-        record
-        for record in records
-        if record["record_type"] == _WORK_ITEM
-        and record["lifecycle_state"] in _LIVE_WORK_STATES
-        and _text(record, "phase") == phase
-    ]
+    return live_work_items(phase, records)
 
 
 def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:

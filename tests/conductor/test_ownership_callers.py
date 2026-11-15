@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 from canon_support import create, make_project
-from test_runner_wave import _item as _runner_item
-from test_runner_wave import _world as _runner_world
 from test_wave_end import PHASE, _land, _world
 
 from orchestra.canon.project import Project
@@ -75,23 +73,14 @@ def test_r15_gate_takes_the_latest_closing_item_as_verification(
     project.update(second["id"], record_type="score:work-item", transition="in_progress")
     project.update(second["id"], record_type="score:work-item", transition="done")
     records = project.records()
+    for record in records:
+        if record["id"] == second["id"]:
+            record["recorded_at"] = "2099-01-01T00:00:00Z"
     monkeypatch.setattr(gate, "open_store", lambda *_a, **_k: _FixedStore(records))
 
     terms = {term.name: term for term in gate.gate_terms(tmp_path, PHASE)}
 
     assert terms["verification-task-done"].holds
-
-
-def test_r15_wave_start_takes_the_latest_of_several_closing_items(tmp_path: Path) -> None:
-    project, repo = _runner_world(tmp_path)
-    _runner_item(project, "first")
-    _runner_item(project, "second", depends_on=["first"])
-    first = project.resolve("score:work-item", "first")
-    project.update(first["id"], record_type="score:work-item", payload={"depends_on": ["second"]})
-
-    started = wave.start(project, repo, RUNNER_PHASE)
-
-    assert started.execution_mode == "agent"
 
 
 def test_r15_workflow_counts_an_earlier_closing_item_as_implementation(tmp_path: Path) -> None:
