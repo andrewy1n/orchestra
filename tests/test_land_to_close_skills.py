@@ -6,9 +6,10 @@ import re
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from helpers import phase_end_text
 
 VERIFY = REPO_ROOT / "skills/verify/SKILL.md"
-PHASE_END = REPO_ROOT / "shared/phase-end.md"
+PHASE_END = phase_end_text()
 
 
 def _flat(path: Path) -> str:
@@ -16,7 +17,7 @@ def _flat(path: Path) -> str:
 
 
 def _land_section() -> str:
-    text = PHASE_END.read_text(encoding="utf-8")
+    text = PHASE_END
     start = text.find("\n## Land\n")
     if start == -1:
         return ""
@@ -49,7 +50,7 @@ def test_verify_does_not_run_land() -> None:
 
 
 def test_land_is_separate_phase_end_step() -> None:
-    phase_end = PHASE_END.read_text(encoding="utf-8")
+    phase_end = PHASE_END
 
     assert "\n## Land\n" in phase_end
     assert "## Commit the phase branch and stop" not in phase_end

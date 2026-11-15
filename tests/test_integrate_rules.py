@@ -5,14 +5,13 @@ from __future__ import annotations
 import re
 
 import helpers as h
-from conftest import REPO_ROOT
 from skill_extraction import check_skill_text, extract_invocations
 
-SKILL = REPO_ROOT / "skills" / "verify" / "references" / "phase-end.md"
+SKILL = h.phase_end_text()
 
 
 def _text() -> str:
-    return re.sub(r"\s+", " ", SKILL.read_text())
+    return re.sub(r"\s+", " ", SKILL)
 
 
 def _integration_creates(text: str) -> list[dict]:
@@ -25,7 +24,7 @@ def _integration_creates(text: str) -> list[dict]:
 
 def test_integration_report_create_matches_the_contract(resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
-    text = SKILL.read_text()
+    text = SKILL
     violations = check_skill_text(text, defs)
     assert not violations, "\n".join(violations)
 

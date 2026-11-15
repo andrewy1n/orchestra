@@ -7,14 +7,7 @@ description: >-
 
 # Land a phase
 
-Requires `canon` and `orchestra` on PATH. Follow
-[ensure-store.md](references/ensure-store.md),
-[kinds-and-focus.md](references/kinds-and-focus.md), and
-[record-mechanics.md](references/record-mechanics.md). Follow the Land
-section of [phase-end.md](references/phase-end.md). When `[land] adapter` is
-`github-pr`, follow [land-github-pr.md](references/land-github-pr.md). Follow
-[retry-loop.md](references/retry-loop.md) and
-[execute-mechanics.md](references/execute-mechanics.md) for CI repairs.
+Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> land` for your instructions, or use the `brief` that `orchestra workflow next` returns. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
 
 ## Own
 

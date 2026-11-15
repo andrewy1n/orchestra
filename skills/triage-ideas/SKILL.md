@@ -9,10 +9,10 @@ description: >-
 
 # Triage ideas
 
-Requires `canon` and `orchestra` on PATH and a live orchestra store. If
-missing, follow [ensure-store.md](references/ensure-store.md). Follow
-[kinds-and-focus.md](references/kinds-and-focus.md). Parent session writes
-records. Subagents return text only.
+Requires `canon` and `orchestra` on PATH and a live orchestra store. Get the
+shared rules with `orchestra workflow brief --skill triage-ideas`. If
+`orchestra` is not on PATH, stop and tell the user to install orchestra.
+Parent session writes records. Subagents return text only.
 
 Promotion into an effort is `engage`. This skill never sets status
 `promoted`.

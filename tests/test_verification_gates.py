@@ -76,7 +76,7 @@ def test_init_requires_verifiable_exit_criteria(phrase):
         "Verification task exists and is `done`",
         "latest check-run per `criterion_id` passes",
         "Gate fails → leave phase `in_progress`",
-        "Close a phase whose phase-end gate does not hold",
+        "Close a phase only when its phase-end gate holds",
     ],
 )
 def test_execute_phase_gates_phase_close(phrase):

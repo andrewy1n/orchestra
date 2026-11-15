@@ -8,6 +8,15 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+PROJECT_CONFIG = (
+    "[verify.stages]\n"
+    'task = ["unit"]\n'
+    'phase = ["unit", "review"]\n'
+    'milestone = ["unit", "review"]\n'
+    "\n"
+    "[verify.unit]\n"
+    'runner = ["python3", "-m", "pytest", "-o", "junit_family=xunit1", "{tests}", "--junitxml={report}"]\n'
+)
 SCHEMA_PATH = os.pathsep.join(
     [
         str(REPO / "orchestra" / "score" / "schemas" / "score.json"),
@@ -31,6 +40,13 @@ def make_project(root: Path) -> Project:
     )
     if git_init.returncode:
         raise RuntimeError(git_init.stdout + git_init.stderr)
+    for key, value in (("user.email", "test@example.com"), ("user.name", "test")):
+        configured = subprocess.run(
+            ["git", "-C", str(root), "config", key, value], capture_output=True, text=True
+        )
+        if configured.returncode:
+            raise RuntimeError(configured.stdout + configured.stderr)
+    write_project_config(root)
     result = subprocess.run(
         [
             sys.executable,
@@ -49,6 +65,14 @@ def make_project(root: Path) -> Project:
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     return open_store(root)
+
+
+def write_project_config(root: Path) -> None:
+    (root / "orchestra.toml").write_text(PROJECT_CONFIG, encoding="utf-8")
+    for command in (("add", "orchestra.toml"), ("commit", "-qm", "Add project config")):
+        result = subprocess.run(["git", "-C", str(root), *command], capture_output=True, text=True)
+        if result.returncode:
+            raise RuntimeError(result.stdout + result.stderr)
 
 
 def create(project, record_type: str, subject: str, payload: dict, body: str | None = None):

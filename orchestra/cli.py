@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
-from orchestra.canon.errors import StoreError
+from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import (
@@ -20,6 +20,7 @@ from orchestra.conductor import (
     reviewer,
     suite,
     task_close,
+    task_redispatch,
     wave,
 )
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
@@ -307,8 +308,23 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     wave_resolve.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
-    task = sub.add_parser("task", help="Land one finished task")
+    task = sub.add_parser("task", help="Manage one task")
     task_sub = task.add_subparsers(dest="action", required=True)
+    task_redispatch_parser = task_sub.add_parser(
+        "redispatch", help="Start a new measured dispatch for an in-progress task"
+    )
+    task_redispatch_parser.add_argument("task", help="Work-item subject")
+    task_redispatch_parser.add_argument(
+        "--expected-revision", required=True, help="Exact current work-item revision"
+    )
+    task_redispatch_parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    task_redispatch_parser.add_argument(
+        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
+    )
+    task_redispatch_parser.add_argument(
+        "--store", default=None, metavar="DIR", help="Store repo root"
+    )
+
     task_land = task_sub.add_parser(
         "land", help="Commit a task worktree, record its evidence, run its checks, close it"
     )
@@ -917,6 +933,40 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
     return closure.code
 
 
+def _cmd_task_redispatch(args: argparse.Namespace) -> int:
+    try:
+        location = resolve_location(args.store, _cwd(args))
+        project = open_store(location.root, store=location.store)
+        record = task_redispatch.redispatch(
+            project, args.task, expected_revision=args.expected_revision
+        )
+    except (
+        StaleWriteError,
+        task_redispatch.RedispatchError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+    ) as exc:
+        print(f"orchestra task redispatch: {args.task}: {exc}", file=sys.stderr)
+        return 2
+    payload = record["payload"]
+    result: dict[str, object] = {
+        "task": record["subject"],
+        "revision": record["revision"],
+        "attempts": payload.get("attempts"),
+        "dispatch_id": payload.get("dispatch_id"),
+        "dispatch_started_at": payload.get("dispatch_started_at"),
+        "assignee": payload.get("assignee"),
+        "write_root": payload.get("write_root"),
+    }
+    if args.json:
+        _print_json(result)
+    else:
+        print(f"redispatched {record['subject']} (attempt {payload.get('attempts')})")
+    return 0
+
+
 def _cmd_analyze(args: argparse.Namespace) -> int:
     try:
         records = resolve_location(args.store, _cwd(args)).open().records()
@@ -1487,6 +1537,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "effort":
         return _cmd_effort_autonomy(args)
     if args.command == "task":
+        if args.action == "redispatch":
+            return _cmd_task_redispatch(args)
         return _cmd_task_land(args)
     if args.command == "analyze":
         return _cmd_analyze(args)

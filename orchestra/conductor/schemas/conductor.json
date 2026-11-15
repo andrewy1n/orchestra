@@ -1,6 +1,6 @@
 {
   "namespace": "conductor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "types": {
     "failed-attempt": {
       "purpose": "An approach that should not be retried as-is",
@@ -87,6 +87,18 @@
         },
         "effort": {
           "ref": "score:effort",
+          "optional": true
+        },
+        "dispatch_id": {
+          "type": "string",
+          "optional": true
+        },
+        "duration_s": {
+          "type": "number",
+          "optional": true
+        },
+        "tokens_total": {
+          "type": "integer",
           "optional": true
         }
       }

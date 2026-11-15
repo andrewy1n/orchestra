@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import brief_text, section_text, skill_text
 from skill_extraction import extract_invocations
 
 SKILLS = REPO_ROOT / "skills"
@@ -15,7 +15,7 @@ def _text(name: str) -> str:
 
 
 def _kinds() -> str:
-    return (SKILLS / "kinds-and-focus.md").read_text()
+    return section_text("kinds-and-focus")
 
 
 def test_settle_phase_skill_is_discoverable():
@@ -27,12 +27,12 @@ def test_settle_phase_skill_is_discoverable():
 def test_spec_and_design_write_separate_record_types():
     spec_writes = {
         inv["type"]
-        for inv in extract_invocations((SKILLS / "spec" / "SKILL.md").read_text())
+        for inv in extract_invocations(brief_text("spec"))
         if inv["subcommand"] in WRITES
     }
     design_writes = {
         inv["type"]
-        for inv in extract_invocations((SKILLS / "design" / "SKILL.md").read_text())
+        for inv in extract_invocations(brief_text("design"))
         if inv["subcommand"] in WRITES
     }
     assert "score:specification" in spec_writes
@@ -42,7 +42,7 @@ def test_spec_and_design_write_separate_record_types():
 
 
 def test_settle_phase_promotes_idea_after_new_phase():
-    text = (SKILLS / "spec" / "SKILL.md").read_text()
+    text = brief_text("spec")
     lower = text.lower()
     assert "phase: new" in lower
     assert "idea: none" in lower or "`none`" in text
@@ -60,7 +60,7 @@ def test_settle_phase_promotes_idea_after_new_phase():
     ]
     assert len(promotes) == 1
     payload = promotes[0]["payload"]
-    assert payload["effort"] == "<effort-slug>"
+    assert payload["effort"] == "<focus>"
     assert payload["phase"] == "<phase-slug>"
 
 

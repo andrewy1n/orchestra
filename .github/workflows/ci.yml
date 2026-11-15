@@ -23,7 +23,7 @@ jobs:
           python-version: "3.10"
           enable-cache: true
       - run: uv sync --locked --group dev
-      - run: python3 scripts/build_skills.py --check
+      - run: python3 -m installer.agents --check
       - run: python3 scripts/check_orchestra_plugin_names.py
       - name: Check Python type and lint policy
         env:

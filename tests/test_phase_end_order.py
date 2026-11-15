@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from helpers import phase_end_text
+
 ROOT = Path(__file__).resolve().parent.parent
-PHASE_END = (ROOT / "skills/verify/references/phase-end.md").read_text(encoding="utf-8")
+PHASE_END = phase_end_text()
 EXECUTE = (ROOT / "skills/verify/SKILL.md").read_text(encoding="utf-8")
 
 

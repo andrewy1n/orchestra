@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from canon_support import write_project_config
 from conftest import REPO_ROOT, git, make_git_repo
 
 EFFORT = "workflow-playbook-effort"
@@ -41,6 +42,7 @@ def _first_action(record: Mapping[str, object]) -> dict[str, object]:
 class World:
     def __init__(self, root: Path) -> None:
         self.repo = make_git_repo()
+        write_project_config(self.repo)
         git(self.repo, "branch", "-M", "main")
         self.env = {
             key: value
