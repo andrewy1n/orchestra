@@ -132,9 +132,10 @@ def test_two_wave_phase_runs_through_the_three_verbs(world: World) -> None:
     ended = json.loads(world.ok("orchestra", "wave", "end", PHASE, "--json"))
     assert ended["merged"] == ["t1", "t2"]
     second = json.loads(world.ok("orchestra", "wave", "start", PHASE, "--json"))
-    assert [t["task"] for t in second["tasks"]] == ["verify-dc"]
-    assert second["tasks"][0]["write_root"] == str(world.repo / ".worktrees" / PHASE)
-    assert world.land("verify-dc")["state"] == "done"
+    assert second["execution_mode"] == "runner"
+    assert second["task"] == "verify-dc"
+    assert second["state"] == "done"
+    assert second["checks"][0]["result"] == "pass"
     tree = world.repo / ".worktrees" / PHASE
     assert (tree / "t1.txt").exists() and (tree / "t2.txt").exists()
     for slug in ("t1", "t2", "verify-dc"):

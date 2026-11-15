@@ -7,7 +7,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.check import git_head, run_check
-from orchestra.derive import requirement_status
+from orchestra.conductor.requirements import requirement_status
 from orchestra.tools import Git, ToolError
 
 
