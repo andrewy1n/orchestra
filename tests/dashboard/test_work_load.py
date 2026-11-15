@@ -194,11 +194,21 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
         reports: list[Record] | None = None,
         checks: list[Record] | None = None,
         phases: list[Record] | None = None,
+        *,
+        small_wave_budget_minutes: int = 15,
     ) -> list[TaskRow]:
         assert all(
             record["payload"].get("phase") in ("active", "legacy-phase") for record in records
         )
-        return original_tasks(records, assignments, amendments, reports, checks, phases)
+        return original_tasks(
+            records,
+            assignments,
+            amendments,
+            reports,
+            checks,
+            phases,
+            small_wave_budget_minutes=small_wave_budget_minutes,
+        )
 
     def evidence(
         phase: str,

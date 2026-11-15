@@ -1005,7 +1005,7 @@ def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
     assert all(a.criterion != "foreign" for a in detail.acceptances)
 
 
-def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
+def test_detail_uses_five_cli_calls(detail_store, monkeypatch):
     calls = []
     real_get, real_list = backend_store.get_record, backend_store.list_records
 
@@ -1020,7 +1020,7 @@ def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
     monkeypatch.setattr(backend_store, "get_record", spy_get)
     monkeypatch.setattr(backend_store, "list_records", spy_list)
     _detail(detail_store)
-    assert len(calls) == 4
+    assert len(calls) == 5
 
 
 def test_detail_of_an_unknown_id_raises_a_model_error(store):
