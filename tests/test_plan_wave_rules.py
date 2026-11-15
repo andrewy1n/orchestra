@@ -97,7 +97,7 @@ def test_plan_review_stays_closed_until_recipe_executor_and_run_facts_are_presen
     assert gate_at < question_at
     window = flat[gate_at:question_at]
     assert "task recipes" in window
-    assert "wave executor choices" not in window
-    assert "written `executor` values are optional" in _flat(window)
+    assert "wave executor choices" in window
+    assert "written `executor` values are optional overrides" in window
     assert "phase run facts" in window
     assert "Landing" in window
