@@ -13,7 +13,7 @@ from orchestra.score.executor import (
     ExecutorWaveError,
     wave_executor,
 )
-from orchestra.score.lookups import current_phase, dependencies
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phase, dependencies
 from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.plan_shape import plan_shape_warnings
 from orchestra.score.requirements import (
@@ -137,7 +137,7 @@ def analyze_phase(
         )
         return report
     designs = of_type("score:design", "active")
-    items = of_type("score:work-item", "planned", "in_progress", "done")
+    items = of_type("score:work-item", *LIVE_WORK_ITEM_STATES)
     acceptances = of_type("score:acceptance", "active")
 
     def add(severity: str, code: str, subject: str, message: str) -> None:
