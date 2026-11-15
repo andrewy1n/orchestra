@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from orchestra.canon.project import open_store
+from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject
 from orchestra.tools.git import Git
 from scripts import benchmark_cli as benchmark
@@ -21,6 +22,7 @@ def test_fixture_has_fixed_data_and_valid_event_history(tmp_path: Path) -> None:
     assert len(project.records()) == 100
     assert project.validate() == []
     assert first.fingerprint == second.fingerprint
+    assert load_project_config(first.root).small_wave_budget_minutes == 15
     assert project.get(first.record_id)["subject"] == first.task
     assert {record["record_type"] for record in project.records()} >= {
         "score:phase",
@@ -29,6 +31,22 @@ def test_fixture_has_fixed_data_and_valid_event_history(tmp_path: Path) -> None:
         "score:acceptance",
         "tuner:check-run",
     }
+
+
+def test_fixture_fingerprint_includes_project_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = benchmark.build_fixture(tmp_path / "first", 20)
+    monkeypatch.setattr(
+        benchmark,
+        "PROJECT_CONFIG",
+        benchmark.PROJECT_CONFIG.replace(
+            "small_wave_budget_minutes = 15", "small_wave_budget_minutes = 16"
+        ),
+    )
+    second = benchmark.build_fixture(tmp_path / "second", 20)
+    assert load_project_config(second.root).small_wave_budget_minutes == 16
+    assert first.fingerprint != second.fingerprint
 
 
 def test_real_runner_ignores_parent_store_and_git_overrides(

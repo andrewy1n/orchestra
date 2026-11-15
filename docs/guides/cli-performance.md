@@ -8,7 +8,8 @@ uv run python -m scripts.benchmark_cli run --output /tmp/cli-before.json
 
 The runner creates local temporary stores with exactly 100, 1,000, and 6,000 records.
 Each store has phases, requirements, tasks, dependencies, acceptances, and check history.
-Record data and schema snapshots produce a fixture fingerprint.
+Each store includes fixed project policy in `orchestra.toml`.
+Record data, schema snapshots, and project policy produce a fixture fingerprint.
 The runner uses Canon storage APIs and excludes fixture setup from command timings.
 It removes each temporary store when the run ends.
 Parent store paths and Git environment overrides cannot redirect fixture setup or command execution.

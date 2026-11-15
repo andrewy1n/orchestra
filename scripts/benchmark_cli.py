@@ -27,8 +27,17 @@ from orchestra.tools.git import Git
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = "orchestra-cli-benchmark/1"
-FIXTURE_VERSION = "planning-evidence/1"
+FIXTURE_VERSION = "planning-evidence/2"
 STAMP = "2026-01-01T00:00:00+00:00"
+PROJECT_CONFIG = """[verify.stages]
+phase = ["unit"]
+
+[verify.unit]
+runner = ["python3", "-m", "pytest", "{tests}", "--junitxml={report}"]
+
+[execute]
+small_wave_budget_minutes = 15
+"""
 
 
 @dataclass(frozen=True)
@@ -45,6 +54,7 @@ def build_fixture(root: Path, size: int) -> Fixture:
         raise ValueError("fixture size must be at least 20")
     root.mkdir(parents=True, exist_ok=False)
     Git(root, env=clean_environment()).text("init", "-q")
+    (root / "orchestra.toml").write_text(PROJECT_CONFIG, encoding="utf-8")
     backend = open_backend(root / ".canon")
     snapshots = {
         name: (ROOT / "orchestra" / name / "schemas" / f"{name}.json").read_text()
@@ -63,7 +73,11 @@ def build_fixture(root: Path, size: int) -> Fixture:
     backend.init(config, snapshots)
     schemas = SchemaSet.load(backend, config)
     count = 0
-    signature = hashlib.sha256(json.dumps(snapshots, sort_keys=True).encode())
+    signature = hashlib.sha256(
+        json.dumps(
+            {"schemas": snapshots, "project_config": PROJECT_CONFIG}, sort_keys=True
+        ).encode()
+    )
 
     def add(
         record_type: str,
