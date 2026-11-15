@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
+from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.project_config import (
@@ -789,10 +790,25 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
         print(f"orchestra wave start: {args.phase}: {exc}", file=sys.stderr)
         return 2
     if args.json:
+        if result.runner is not None:
+            _print_json(
+                {
+                    "phase": result.phase,
+                    "wave": result.wave,
+                    "execution_mode": result.execution_mode,
+                    "task": result.runner.task,
+                    "state": result.runner.state,
+                    "execution_report": result.runner.report_id,
+                    "checks": list(result.runner.checks),
+                    "refusal_reasons": list(result.runner.refusal_reasons),
+                }
+            )
+            return result.runner.code
         _print_json(
             {
                 "phase": result.phase,
                 "wave": result.wave,
+                "execution_mode": result.execution_mode,
                 "tasks": [
                     {
                         "task": t.task,
@@ -806,6 +822,13 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
             }
         )
         return 0
+    if result.runner is not None:
+        print(f"## {result.runner.task} ({result.runner.state})")
+        for check in result.runner.checks:
+            print(f"{check['subject']}: exit {check['exit_code']} {check['message']}")
+        for reason in result.runner.refusal_reasons:
+            print(reason)
+        return result.runner.code
     for t in result.tasks:
         print(f"## {t.task} ({t.executor}) {t.write_root}\n")
         print(briefs[t.task])
@@ -956,11 +979,9 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
         location = resolve_location(args.store, _cwd(args))
         project = location.open()
         records = project.records()
+        records = attach_derived_all(records, project.derived(records))
         budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
         if args.stage in ("plan", "close"):
-            derived = project.derived(records)
-            for record in records:
-                record["derived"] = derived.get(record["id"], {})
             config_path = location.root / CONFIG_PATH
             if config_path.exists() or config_path.is_symlink():
                 budget = load_project_config(location.root).small_wave_budget_minutes

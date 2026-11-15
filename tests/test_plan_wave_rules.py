@@ -8,6 +8,7 @@ import helpers as h
 from conftest import REPO_ROOT
 from skill_extraction import extract_invocations
 
+
 def _text(name: str) -> str:
     return h.skill_text(name)
 
@@ -61,7 +62,10 @@ def test_executor_is_an_optional_override_and_approach_stays_optional():
 def test_derived_wave_mode_and_explicit_overrides_use_one_executor():
     brief = _flat(_text("tasks"))
     assert "Dispatch derives the executor from wave size, estimates, and project settings." in brief
-    assert "Omit `executor` unless the plan needs an explicit `inline` or `subagent` override." in brief
+    assert (
+        "Omit `executor` unless the plan needs an explicit `inline` or `subagent` override."
+        in brief
+    )
     assert "Explicit overrides in one wave must agree." in brief
     for path in (
         REPO_ROOT / "orchestra/conductor/briefs/sections/kinds-and-focus.md",

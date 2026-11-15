@@ -9,6 +9,8 @@ description: >-
 
 Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> tasks` for your instructions, or use the `brief` that `orchestra workflow next` returns. If `orchestra` is not on PATH, stop and tell the user to install orchestra.
 
+Declare known task write scopes and review overlap warnings during planning.
+
 ## Own
 
 - Materialize work-items and acceptance records for the current phase.

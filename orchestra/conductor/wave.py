@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
+from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
 
@@ -43,6 +45,18 @@ class WaveStart:
     phase: str
     wave: int | None
     tasks: tuple[StartedTask, ...]
+    execution_mode: str = "agent"
+    runner: RunnerOutcome | None = None
+
+
+@dataclass(frozen=True)
+class RunnerOutcome:
+    task: str
+    state: str
+    report_id: str
+    checks: tuple[Mapping[str, object], ...]
+    refusal_reasons: tuple[str, ...]
+    code: int
 
 
 def repo_root(cwd: Path) -> Path:
@@ -96,8 +110,139 @@ def _depends_on(item: Record) -> list[str]:
 
 def closes_phase(item: Record, items: list[Record]) -> bool:
     others = [o for o in items if o["id"] != item["id"]]
+    if not others:
+        return record_payload(item).get("assignee") == "runner"
     deps = _depends_on(item)
-    return bool(others) and all(o["subject"] in deps or o["id"] in deps for o in others)
+    return all(o["subject"] in deps or o["id"] in deps for o in others)
+
+
+def _execution_report(records: list[Record], task: str) -> Record | None:
+    reports = [
+        record
+        for record in records
+        if record["record_type"] == "conductor:execution-report"
+        and record_payload(record).get("work_item") == task
+    ]
+    return (
+        max(reports, key=lambda record: (record["recorded_at"], record["id"])) if reports else None
+    )
+
+
+def _integrated(repo: Path, phase: str, item: Record, records: list[Record]) -> bool:
+    phase_branch = f"phase/{phase}"
+    branch = f"task/{phase}/{item['subject']}"
+    git = Git(repo)
+    phase_head = git.resolve(phase_branch)
+    if phase_head is None:
+        raise WaveError(f"phase branch {phase_branch!r} could not be read")
+    if git.resolve(f"refs/heads/{branch}") is not None:
+        return git.is_ancestor(branch, phase_head)
+    report = _execution_report(records, item["subject"])
+    revision = record_payload(report).get("revision") if report is not None else None
+    if not isinstance(revision, str) or not revision:
+        raise WaveError(f"completed dependency {item['subject']!r} has no execution revision")
+    if git.resolve(revision) is None:
+        raise WaveError(f"execution revision for {item['subject']!r} could not be read")
+    return git.is_ancestor(revision, phase_head)
+
+
+def _runner_start(
+    project: Project, repo: Path, phase: str, item: Record, items: list[Record]
+) -> RunnerOutcome:
+    from orchestra.conductor import land_task, task_close, verification
+
+    others = [other for other in items if other["id"] != item["id"]]
+    incomplete = [other["subject"] for other in others if other["lifecycle_state"] != "done"]
+    if incomplete:
+        return RunnerOutcome(
+            item["subject"],
+            item["lifecycle_state"],
+            "",
+            (),
+            (f"dependencies are not done: {', '.join(incomplete)}",),
+            1,
+        )
+    for other in others:
+        try:
+            integrated = _integrated(repo, phase, other, project.records())
+        except (ToolError, WaveError) as exc:
+            return RunnerOutcome(item["subject"], item["lifecycle_state"], "", (), (str(exc),), 1)
+        if not integrated:
+            return RunnerOutcome(
+                item["subject"],
+                item["lifecycle_state"],
+                "",
+                (),
+                (f"dependency {other['subject']!r} is not integrated into the phase branch",),
+                1,
+            )
+    if item["lifecycle_state"] == "planned":
+        project.update(
+            item["id"],
+            record_type="score:work-item",
+            transition="in_progress",
+            payload={"assignee": "runner", "write_root": str(repo / ".worktrees" / phase)},
+        )
+    tree = repo / ".worktrees" / phase
+    try:
+        revision = Git(tree).head()
+    except ToolError as exc:
+        raise _wave_error(exc) from exc
+    report = project.create(
+        record_type="conductor:execution-report",
+        subject=item["subject"],
+        payload={
+            "work_item": item["subject"],
+            "result": "pass",
+            "verdict": "pass",
+            "revision": revision,
+        },
+        body=(
+            f"subject: {item['subject']}\nrevision: {revision}\nkind: deliver\n"
+            "result: pass\nverdict: pass\nevidence: runner closing checks"
+        ),
+    )
+    landed = land_task.LandedTask(
+        item["subject"], phase, "", revision, report["id"], (), "pass", "pass"
+    )
+    run = verification.run_closing_checks(project, landed)
+    verified = set(run.verified)
+    requirements = record_payload(item).get("requirements")
+    required = (
+        [value for value in requirements if isinstance(value, str)]
+        if isinstance(requirements, list)
+        else []
+    )
+    acceptances = land_task.acceptances_for(project, item["subject"], phase)
+    outcomes = {check.acceptance_id: check.exit_code for check in run.checks}
+    for requirement in required:
+        related = [
+            acceptance
+            for acceptance in acceptances
+            if requirement in acceptance_requirement_ids(acceptance)
+        ]
+        if related and all(outcomes.get(acceptance["id"]) == 0 for acceptance in related):
+            verified.add(requirement)
+    closure = task_close.close(project, landed, frozenset(verified), verification=run)
+    checks = tuple(
+        {
+            "subject": check.subject,
+            "result": (
+                "pass" if check.exit_code == 0 else "pending" if check.exit_code == 3 else "fail"
+            ),
+            "exit_code": check.exit_code,
+            "message": check.message,
+        }
+        for check in run.checks
+    )
+    return RunnerOutcome(
+        item["subject"],
+        closure.state,
+        report["id"],
+        checks,
+        closure.reasons,
+        closure.code,
+    )
 
 
 def select_wave(
@@ -230,10 +375,18 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
         raise WaveError(f"phase {phase!r} is blocked by human decision: {names}")
     derived = project.derived(records)
     phase_rec = phase_record(records, phase)
-    wave, chosen = select_wave(records, derived, phase)
-    executor = check_executors(chosen, _small_wave_budget(project))
     landing = has_landing(phase_rec)
     items = phase_items(records, phase)
+    closers = [item for item in items if closes_phase(item, items)] if landing else []
+    if len(closers) > 1:
+        raise WaveError("phase has more than one closing task")
+    if closers and all(
+        item["lifecycle_state"] == "done" for item in items if item["id"] != closers[0]["id"]
+    ):
+        outcome = _runner_start(project, repo, phase, closers[0], items)
+        return WaveStart(phase, None, (), "runner", outcome)
+    wave, chosen = select_wave(records, derived, phase)
+    executor = check_executors(chosen, _small_wave_budget(project))
     prepared: list[tuple[Record, str, str]] = []
     for item in chosen:
         if landing:
@@ -261,7 +414,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
             },
         )
         started.append(StartedTask(item["subject"], item["id"], executor, write_root, branch))
-    return WaveStart(phase, wave, tuple(started))
+    return WaveStart(phase, wave, tuple(started), "agent")
 
 
 @dataclass(frozen=True)

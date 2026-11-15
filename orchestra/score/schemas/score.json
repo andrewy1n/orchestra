@@ -166,6 +166,12 @@
           },
           "optional": true
         },
+        "touches": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        },
         "decisions": {
           "list": {
             "ref": "score:decision"

@@ -25,6 +25,9 @@ The command increments `attempts` and replaces the dispatch id and start
 time in one guarded update. It preserves `assignee` and `write_root`.
 If `executor` is absent, keep the mode resolved for the task's first
 dispatch. Do not derive a new mode from later wave membership.
+The unique closing task in a phase with Landing uses runner checks
+instead of an executor. Retry it with `orchestra wave start` after
+fixing a failed check; do not dispatch it to an agent.
 
 ## Budget (hard backstop)
 

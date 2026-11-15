@@ -77,3 +77,11 @@ canon create --type score:continuity-question \
    merged cleanly. After the last implementation wave's
    execution-reports, return to step 3 for the closing verification
    task (do **not** write an integration-report before verification).
+
+   With Landing, `orchestra wave start` runs the unique closing task
+   after every other live phase task is done and integrated into the
+   phase branch. It checks the phase source and active acceptances,
+   writes the runner execution-report, and closes the task when all
+   gates pass. A failed check leaves the task `in_progress`; run
+   `wave start` again after fixing the cause. A manual acceptance
+   waits for human sign-off. Without Landing, use the normal executor.

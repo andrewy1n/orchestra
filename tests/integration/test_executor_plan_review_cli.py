@@ -120,6 +120,9 @@ def _review(world: World, phase_id: str, step: str, authority: str) -> None:
 
 def test_plan_review_and_execute_gate_accepts_missing_executor(tmp_path: Path) -> None:
     world = World(tmp_path)
+    (world.repo / "orchestra.toml").write_text(
+        (REPO_ROOT / "orchestra.toml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
     world.ok("canon", "init", "--schemas", "score,conductor,tuner,composer")
     world.create(
         "score:effort",
