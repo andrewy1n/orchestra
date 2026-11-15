@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 import pytest
 from canon_support import create, make_project, seed_effort
 
@@ -10,6 +13,10 @@ from orchestra.canon.types import Record
 def project(tmp_path):
     project = make_project(tmp_path / "repo")
     seed_effort(project, "alpha")
+    project.project_root.joinpath("orchestra.toml").write_text(
+        (Path(__file__).resolve().parents[1] / "orchestra.toml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     return project
 
 
@@ -26,7 +33,12 @@ def work_item(project, subject, state_payload=None, **extra):
 
 
 def render(project, view, **kwargs):
-    return views.render_view(views.VIEWS[view], views.load_records(project), **kwargs)
+    previous = Path.cwd()
+    os.chdir(project.project_root)
+    try:
+        return views.render_view(views.VIEWS[view], views.load_records(project), **kwargs)
+    finally:
+        os.chdir(previous)
 
 
 def test_handoff_has_goal_and_position_under_effort_heading(project):

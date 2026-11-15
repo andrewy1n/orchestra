@@ -2574,6 +2574,10 @@ def test_estimate_view_row_fields(store, cli, defs):
     zero = _estimate_record("zero", size="", estimate_minutes=0, executor="")
     blank = _estimate_record("blank")
     null = _estimate_record("null", size=None, estimate_minutes=None, executor=None)
+    for record, wave in ((zero, 2), (blank, 3), (null, 4)):
+        derived = record.get("derived")
+        assert derived is not None
+        derived["wave"] = wave
     rows = {row.subject: row for row in task_mod.task_rows([sized, zero, blank, null])}
     assert (rows["sized"].size, rows["sized"].estimate_minutes, rows["sized"].executor) == (
         "L",
