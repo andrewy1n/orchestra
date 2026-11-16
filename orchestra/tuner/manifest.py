@@ -77,15 +77,27 @@ def frozen_support_files(manifest: Manifest, claim: Claim) -> tuple[str, ...]:
 def resolve_commit(cwd: Path | str, rev: str) -> str:
     """Return the commit SHA for ``rev``.
 
-    Runs ``git rev-parse --verify <rev>^{commit}``. Raises ``ManifestError``
-    when ``rev`` does not name a commit.
+    Raises ``ManifestError`` when ``rev`` does not name a commit.
     """
-    return _git_text(cwd, "rev-parse", "--verify", f"{rev}^{{commit}}")
+    try:
+        commit = Git(Path(cwd)).resolve(rev)
+    except ToolNotFoundError as exc:
+        raise ManifestError("git is not available") from exc
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
+    if commit is None:
+        raise ManifestError(f"cannot resolve commit {rev}")
+    return commit
 
 
 def merge_base(cwd: Path | str, at: str, main: str = "main") -> str:
-    """Return ``git merge-base`` of ``at`` and ``main``."""
-    return _git_text(cwd, "merge-base", at, main)
+    """Return the common ancestor commit of ``at`` and ``main``."""
+    try:
+        return Git(Path(cwd)).merge_base(at, main)
+    except ToolNotFoundError as exc:
+        raise ManifestError("git is not available") from exc
+    except ToolError as exc:
+        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
 
 
 def load_manifest(cwd: Path | str, revision: str) -> Manifest:
@@ -266,15 +278,3 @@ def _show_blob(cwd: Path | str, revision: str, relpath: str) -> bytes:
     if blob is None:
         raise FileNotFoundError(relpath)
     return blob
-
-
-def _git_text(cwd: Path | str, *args: str) -> str:
-    try:
-        result = Git(Path(cwd)).run("--no-pager", *args)
-    except ToolNotFoundError as exc:
-        raise ManifestError("git is not available") from exc
-    except ToolError as exc:
-        raise ManifestError(exc.stderr.strip() or str(exc)) from exc
-    if result.returncode != 0:
-        raise ManifestError(result.stderr.strip() or f"git {' '.join(args)} failed")
-    return result.stdout.strip()

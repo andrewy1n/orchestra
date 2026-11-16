@@ -91,6 +91,15 @@ class Git(CliTool):
             return None
         return result.stdout.strip()
 
+    def resolve_refs(self, *refs: str) -> str | None:
+        result = self.run("rev-parse", *refs)
+        if result.returncode != 0:
+            return None
+        return result.stdout
+
+    def is_repository(self) -> bool:
+        return self.run("rev-parse", "--git-dir").returncode == 0
+
     def current_branch(self) -> str:
         return self.text("symbolic-ref", "--short", "HEAD")
 

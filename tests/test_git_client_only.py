@@ -59,3 +59,37 @@ def test_wave_and_close_use_primary_checkout() -> None:
     assert not hasattr(wave, "repo_root")
     assert not hasattr(wave, "worktree_root")
     assert not hasattr(close, "primary_checkout")
+
+
+GIT_SUBCOMMANDS = frozenset({"rev-parse", "merge-base"})
+
+
+def _subcommand_calls(path: Path) -> list[int]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and any(isinstance(arg, ast.Constant) and arg.value in GIT_SUBCOMMANDS for arg in node.args)
+    ]
+
+
+def _structural_offenders(root: Path) -> list[str]:
+    offenders = []
+    for base in (root / "orchestra", root / "dashboard" / "backend"):
+        for path in sorted(base.rglob("*.py")):
+            if path == root / "orchestra" / "tools" / "git.py":
+                continue
+            offenders.extend(f"{path.relative_to(root)}:{line}" for line in _subcommand_calls(path))
+    return offenders
+
+
+def test_structural_check_fails_on_seeded_call(tmp_path: Path) -> None:
+    seeded = tmp_path / "orchestra" / "seeded.py"
+    seeded.parent.mkdir(parents=True)
+    seeded.write_text('git.run("rev-parse", "HEAD")\n', encoding="utf-8")
+    assert _structural_offenders(tmp_path) == ["orchestra/seeded.py:1"]
+
+
+def test_structural_check_passes_on_tree() -> None:
+    assert _structural_offenders(ROOT) == []

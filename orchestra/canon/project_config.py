@@ -70,10 +70,9 @@ def load_project_config_at_revision(root: Path | str, revision: str) -> ProjectC
     """Load orchestra.toml from a committed revision, ignoring worktree edits."""
     try:
         git = Git(Path(root))
-        commit_result = git.run("rev-parse", "--verify", f"{revision}^{{commit}}")
-        if commit_result.returncode != 0:
+        commit = git.resolve(revision)
+        if commit is None:
             raise ProjectConfigError(f"cannot resolve commit {revision}")
-        commit = commit_result.stdout.strip()
         config_result = git.run("show", f"{commit}:{CONFIG_PATH}")
         if config_result.returncode != 0:
             raise ProjectConfigError(f"cannot load {CONFIG_PATH} at commit {revision}")
