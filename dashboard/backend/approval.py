@@ -98,13 +98,6 @@ def _cli_json(target: Project, *args: str) -> Record | None:
     return store.stored_record(target, record_id, record_type)
 
 
-def _head_sha(root: Path) -> str:
-    try:
-        return Git(root, timeout=2).head()
-    except ToolError:
-        return ""
-
-
 def _short(sha: str, n: int = 7) -> str:
     value = (sha or "").strip()
     if value.startswith("sha256:"):
@@ -138,7 +131,10 @@ def _check_evidence(
     payload: PlanningPayload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
     checked_rev = str(payload.get("revision") or "").strip()
-    head = _head_sha(root)
+    try:
+        head = Git(root, timeout=2).head()
+    except ToolError:
+        head = ""
     acceptance_text = ""
     criterion_id = str(payload.get("criterion_id") or "").strip()
     if criterion_id:

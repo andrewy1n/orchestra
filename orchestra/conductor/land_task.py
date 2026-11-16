@@ -8,7 +8,7 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.check import git_head, run_check
+from orchestra.conductor.check import run_check
 from orchestra.conductor.evidence import evidence_body, parse_evidence
 from orchestra.conductor.execution_cost import (
     ExecutionCostError,
@@ -65,7 +65,7 @@ def _verify_evidence_revision(tree: Path, claimed: object) -> None:
     if not isinstance(claimed, str) or not claimed:
         return
     resolved = Git(tree).resolve(claimed)
-    head = git_head(tree)
+    head = Git(tree).head()
     if resolved != head:
         raise LandError(
             f"evidence revision {claimed!r} is not the worktree HEAD {head[:12]}; "
@@ -90,7 +90,7 @@ def _commit(tree: Path, phase: str, task: str) -> str:
     committed = git.run("commit", "-q", "-m", f"feat({phase}): {task}")
     if committed.returncode != 0:
         raise LandError(f"commit failed: {committed.stderr.strip() or committed.stdout.strip()}")
-    return git_head(tree)
+    return Git(tree).head()
 
 
 def acceptances_for(project: Project, task: str, phase: str) -> list[Record]:
@@ -118,7 +118,7 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
         _verify_evidence_revision(tree, evidence.get("revision"))
     commit = "" if closing or not tree.is_dir() else _commit(tree, phase, task)
     try:
-        revision = git_head(tree)
+        revision = Git(tree).head()
     except RuntimeError as exc:
         raise LandError(str(exc)) from exc
     result = str(evidence["result"])

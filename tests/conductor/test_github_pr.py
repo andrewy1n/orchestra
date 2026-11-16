@@ -575,7 +575,7 @@ def test_land_cli_reports_pull_request_and_final_checks(
 
     monkeypatch.setattr("orchestra.store.open_store", lambda _root, store=None: FakeProject())
     monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(cli, "git_head", lambda _root: "head-sha")
+    monkeypatch.setattr(cli.Git, "head", lambda _self: "head-sha")
     monkeypatch.setattr(cli.land, "dispatch_land", fake_open_pull_request)
 
     exit_code = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])

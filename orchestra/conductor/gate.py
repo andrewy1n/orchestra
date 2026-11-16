@@ -23,7 +23,6 @@ from pathlib import Path
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
-from orchestra.conductor.check import git_head
 from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
@@ -103,7 +102,7 @@ def _descent_term(worktree: Path, reviewed: str) -> Term:
     if not reviewed:
         return Term(name, False, "no review check-run")
     try:
-        head = git_head(worktree)
+        head = Git(worktree).head()
     except (OSError, RuntimeError) as exc:
         return Term(name, False, f"cannot resolve the worktree HEAD: {exc}")
     git = Git(worktree)

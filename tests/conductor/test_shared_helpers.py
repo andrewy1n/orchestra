@@ -289,12 +289,12 @@ def test_r6_landing_none_on_git_failure(tmp_path: Path, monkeypatch: pytest.Monk
 
 
 def test_r7_git_head_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """R7: orchestra.conductor.check.git_head raises when git rev-parse HEAD fails."""
-    from orchestra.conductor.check import git_head
+    """R7: Git.head raises when git rev-parse HEAD fails."""
+    from orchestra.tools import Git
 
     root = _fails_git(monkeypatch, tmp_path)
     with pytest.raises(RuntimeError):
-        git_head(root)
+        Git(root).head()
 
 
 def test_r8_ssh_keygen_one_module() -> None:

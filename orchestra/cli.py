@@ -30,7 +30,7 @@ from orchestra.conductor import (
     task_redispatch,
     wave,
 )
-from orchestra.conductor.check import DEFAULT_TIMEOUT_S, git_head, run_check
+from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError
 from orchestra.conductor.landing import describe_phase, pull_request_title
@@ -1177,7 +1177,7 @@ def _cmd_land(args: argparse.Namespace) -> int:
                 print(f"orchestra land: {args.phase}: {line}", file=sys.stderr)
             return GATE_FAILED_EXIT
         project = location.open()
-        head = git_head(work)
+        head = Git(work).head()
         packets = project.list("conductor:proof-packet")
         packet = next(
             (

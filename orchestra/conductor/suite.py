@@ -30,7 +30,6 @@ from orchestra.canon.validation import ValidationError
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
-    git_head,
     output_sha256,
     parse_failing_node_ids,
 )
@@ -293,9 +292,9 @@ def _suite_tree_identity(worktree: Path) -> tuple[str, str | None]:
     if diff.returncode != 0 or status.returncode != 0:
         raise RuntimeError(f"cannot inspect suite worktree at {worktree}")
     if not status.stdout.strip():
-        return git_head(worktree), None
+        return Git(worktree).head(), None
     blob = diff.stdout + "\n" + status.stdout
-    return git_head(worktree), hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
+    return Git(worktree).head(), hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()
 
 
 def read_suite_json_object(path: Path) -> JsonObject:
@@ -506,7 +505,7 @@ def start_suite_background(
     """
     work = worktree.resolve()
     resolved_policy = policy if policy is not None else load_suite_policy(work)
-    head = phase_head or git_head(work)
+    head = phase_head or Git(work).head()
 
     slug = phase_slug.strip()
     name = session_name or f"orchestra-suite-{slug}"
@@ -574,7 +573,7 @@ def start_suite_background(
             "phase_head": head,
             "revision": revision,
             "diff_sha256": diff,
-            "start_head": git_head(work),
+            "start_head": Git(work).head(),
             "start_diff_sha256": diff,
             "created_at_epoch": time.time(),
             "timeout_seconds": timeout,
