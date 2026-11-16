@@ -15,7 +15,6 @@ Each term is one line of the "Phase gate" list in verify's phase-end.md.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +23,7 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
+from orchestra.conductor.landing import landing_worktree, parse_landing
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
@@ -31,71 +31,12 @@ from orchestra.tools.errors import ToolError
 
 METADATA_DIR = ".canon/"
 
-_LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
-_NEXT_HEADING = re.compile(r"^##\s+")
-_LANDING_LINE = re.compile(r"^(?:[-*]\s+)?(repo|worktree)\s*:\s*(.+?)\s*$", re.IGNORECASE)
-
 
 @dataclass(frozen=True)
 class Term:
     name: str
     holds: bool
     detail: str = ""
-
-
-@dataclass(frozen=True)
-class LandingSpec:
-    present: bool = False
-    repo: str = ""
-    worktree: str = ""
-
-
-def _unwrap(value: str) -> str:
-    text = value.strip()
-    if len(text) >= 2 and text.startswith("`") and text.endswith("`"):
-        text = text[1:-1].strip()
-    return text
-
-
-def parse_landing(body: str) -> LandingSpec:
-    """Read `Repo:` and `Worktree:` lines from the `## Landing` section."""
-    inside = False
-    found = False
-    values: dict[str, str] = {}
-    for line in body.splitlines():
-        if _LANDING_HEADING.match(line):
-            inside = True
-            found = True
-            continue
-        if inside and _NEXT_HEADING.match(line):
-            break
-        if not inside:
-            continue
-        match = _LANDING_LINE.match(line.strip())
-        if match:
-            values.setdefault(match.group(1).lower(), _unwrap(match.group(2)))
-    return LandingSpec(
-        present=found,
-        repo=values.get("repo", ""),
-        worktree=values.get("worktree", ""),
-    )
-
-
-def _resolve_path(store: Path, value: str) -> Path:
-    path = Path(value).expanduser()
-    return path if path.is_absolute() else store / path
-
-
-def landing_repo(store: Path, landing: LandingSpec) -> Path:
-    if not landing.repo:
-        return store
-    return _resolve_path(store, landing.repo)
-
-
-def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path:
-    if landing.worktree:
-        return _resolve_path(store, landing.worktree)
-    return landing_repo(store, landing) / ".worktrees" / phase_slug
 
 
 def _descent_term(worktree: Path, reviewed: str) -> Term:
