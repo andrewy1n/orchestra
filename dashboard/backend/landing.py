@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from orchestra.conductor.landing import place_of_body
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 _TIMEOUT = 2
-_LANDING_HEADING = re.compile(r"^##\s+Landing\s*$")
-_NEXT_HEADING = re.compile(r"^##\s+")
-_BRANCH_BACKTICK = re.compile(r"(?i)branch[^`\n]*`([^`]+)`")
 
 
 @dataclass(frozen=True)
@@ -24,36 +21,10 @@ class Landing:
     head: str = field(default="", compare=False)
 
 
-def _landing_section(body: str) -> str | None:
-    lines = body.splitlines()
-    start: int | None = None
-    for index, line in enumerate(lines):
-        if _LANDING_HEADING.match(line):
-            start = index + 1
-            break
-    if start is None:
-        return None
-    end = len(lines)
-    for index in range(start, len(lines)):
-        if _NEXT_HEADING.match(lines[index]):
-            end = index
-            break
-    return "\n".join(lines[start:end])
-
-
-def _branch_name(section: str, subject: str) -> str:
-    match = _BRANCH_BACKTICK.search(section)
-    if match:
-        return match.group(1).strip()
-    return f"phase/{subject}"
-
-
-def landing_branch(body: str, subject: str) -> str | None:
+def landing_branch(body: str, subject: str, root: Path) -> str | None:
     """Branch name from a phase body Landing section, or None when absent."""
-    section = _landing_section(body)
-    if section is None:
-        return None
-    return _branch_name(section, subject)
+    place = place_of_body(subject, body, root)
+    return None if place is None else place.branch
 
 
 def rev_parse_token(root: Path, *refs: str) -> str | None:
@@ -77,10 +48,9 @@ def landings_for_phases(root: Path, phases: list[tuple[str, str]]) -> dict[str, 
 
 
 def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
-    section = _landing_section(body)
-    if section is None:
+    branch = landing_branch(body, subject, root)
+    if branch is None:
         return None
-    branch = _branch_name(section, subject)
 
     git = Git(root, timeout=_TIMEOUT)
     try:

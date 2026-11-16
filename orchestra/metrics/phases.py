@@ -8,12 +8,12 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
+from orchestra.conductor.landing import PROOF_PACKET, proof_packet
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import current_phase
 
 LANDING = "conductor:landing"
-PROOF = "conductor:proof-packet"
 CHECK_RUN = "tuner:check-run"
 REPAIR_LINK = "conductor:repair-link"
 QUESTION = "score:continuity-question"
@@ -43,11 +43,15 @@ def _text(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _landing(records: list[Record], phase: str, members: set[str]) -> tuple[str, str] | None:
+def _landing(
+    records: list[Record], phase_record: Record, members: set[str]
+) -> tuple[str, str] | None:
+    phase = phase_record["subject"]
     landings = [r for r in records if r["record_type"] == LANDING and _text(r, "phase") == phase]
-    proofs = [r for r in records if r["record_type"] == PROOF and _text(r, "phase") == phase]
+    packet = proof_packet(records, phase_record)
+    proofs = [] if packet is None else [packet]
     checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
-    for source, pool in ((LANDING, landings), (PROOF, proofs), (CHECK_RUN, checks)):
+    for source, pool in ((LANDING, landings), (PROOF_PACKET, proofs), (CHECK_RUN, checks)):
         chosen = latest(pool)
         if chosen is not None:
             return chosen["recorded_at"], source
@@ -83,7 +87,7 @@ def _row(project: Project, records: list[Record], phase_record: Record) -> Phase
     missing: dict[str, str] = {}
     if weight is None:
         missing["weight"] = "the phase record has no weight"
-    landed = _landing(records, phase, members)
+    landed = _landing(records, phase_record, members)
     landing_time = landed[0] if landed else None
     landing_source = landed[1] if landed else None
     if landed is None:

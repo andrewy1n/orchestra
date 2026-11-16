@@ -16,7 +16,7 @@ from orchestra.canon.project_config import load_project_config
 from orchestra.canon.query import latest
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
-from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.landing import latest_landing, proof_packet
 from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
 from orchestra.derive import (
     effort_dormant,
@@ -593,14 +593,7 @@ def _phase_close_step(phase: Record, records: list[Record]) -> str:
                 f"Run `orchestra close --phase {shlex.quote(slug)}` after the merge."
             )
     gate = f"Run `orchestra gate {shlex.quote(slug)}`."
-    has_packet = any(
-        record["record_type"] == "conductor:proof-packet"
-        and record["lifecycle_state"] == "recorded"
-        and record_payload(record).get("phase") == slug
-        and effort_of(record) == effort_of(phase)
-        for record in records
-    )
-    if not has_packet:
+    if proof_packet(records, phase) is None:
         return f"{gate} After it passes, record the proof packet for any code or claim changes."
     checks = "verify the proof packet covers the phase head"
     if parse_landing(phase.get("body", "")).present:

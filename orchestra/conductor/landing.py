@@ -155,10 +155,13 @@ def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path
 
 def landing_place(phase: Record, store: Path) -> LandingPlace | None:
     """Return where a phase lands, or None when its body has no Landing section."""
-    spec = parse_landing(phase.get("body") or "")
+    return place_of_body(phase["subject"], phase.get("body") or "", store)
+
+
+def place_of_body(slug: str, body: str, store: Path) -> LandingPlace | None:
+    spec = parse_landing(body)
     if not spec.present:
         return None
-    slug = phase["subject"]
     return LandingPlace(
         repo=landing_repo(store, spec),
         worktree=landing_worktree(store, slug, spec),
