@@ -310,7 +310,10 @@ def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path,
         except ToolError as error:
             raise _wave_error(error) from error
     task_git = Git(tree)
-    behind = task_git.run("merge-base", "--is-ancestor", phase_branch, "HEAD").returncode != 0
+    try:
+        behind = not task_git.is_ancestor(phase_branch, "HEAD")
+    except ToolError as error:
+        raise _wave_error(error) from error
     if behind and not task_git.merge(phase_branch).clean:
         raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
     return tree, branch
@@ -437,7 +440,11 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
-        if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
+        try:
+            landed = Git(repo).is_ancestor(branch, phase_branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
+        if landed:
             continue
         acceptances = task_acceptances(records, task, phase)
         tip = Git(repo).resolve(branch)

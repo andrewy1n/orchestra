@@ -9,12 +9,14 @@ import os
 import tempfile
 from pathlib import Path
 
+from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git, GitResult
 from orchestra.tuner.manifest import (
     ALLOWLIST_PATH,
     MANIFEST_PATH,
     Claim,
     Manifest,
+    ManifestError,
     frozen_support_files,
 )
 
@@ -85,7 +87,13 @@ def _oracle_commit(git: Git, at_commit: str, relpaths: list[str]) -> str | None:
 
 
 def _is_ancestor(git: Git, ancestor: str, descendant: str) -> bool:
-    return _run(git, "merge-base", "--is-ancestor", ancestor, descendant).returncode == 0
+    try:
+        return git.is_ancestor(ancestor, descendant)
+    except ToolError as error:
+        detail = error.stderr.strip() or str(error)
+        raise ManifestError(
+            f"cannot check git ancestry of {ancestor} and {descendant}: {detail}"
+        ) from error
 
 
 def _changed_paths(git: Git, commit: str) -> list[str]:

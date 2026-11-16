@@ -27,6 +27,7 @@ from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
+from orchestra.tools.errors import ToolError
 
 METADATA_DIR = ".canon/"
 
@@ -106,7 +107,12 @@ def _descent_term(worktree: Path, reviewed: str) -> Term:
     except (OSError, RuntimeError) as exc:
         return Term(name, False, f"cannot resolve the worktree HEAD: {exc}")
     git = Git(worktree)
-    if git.run("merge-base", "--is-ancestor", reviewed, head).returncode != 0:
+    try:
+        descends = git.is_ancestor(reviewed, head)
+    except ToolError as error:
+        detail = error.stderr.strip() or str(error)
+        return Term(name, False, f"{' '.join(error.argv)} failed: {detail}")
+    if not descends:
         return Term(name, False, f"worktree HEAD {head} does not descend from {reviewed}")
     diff = git.run("diff", "--name-only", "--no-renames", "-z", f"{reviewed}..{head}")
     if diff.returncode != 0:
