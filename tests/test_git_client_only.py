@@ -45,9 +45,23 @@ def test_root_reads_use_git_root() -> None:
     assert offenders == []
 
 
-def test_wave_and_close_use_primary_checkout() -> None:
-    from orchestra.conductor import close, wave
+def _defined_functions(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
 
+
+def _called_attributes(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {
+        node.func.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+
+
+def test_wave_and_close_use_primary_checkout() -> None:
+    wave = ROOT / "orchestra" / "conductor" / "wave.py"
+    close = ROOT / "orchestra" / "conductor" / "close.py"
     offenders = []
     for base in (ROOT / "orchestra", ROOT / "dashboard" / "backend"):
         for path in sorted(base.rglob("*.py")):
@@ -56,9 +70,10 @@ def test_wave_and_close_use_primary_checkout() -> None:
             if any("--git-common-dir" in lit for lit in _string_literals(path)):
                 offenders.append(str(path.relative_to(ROOT)))
     assert offenders == []
-    assert not hasattr(wave, "repo_root")
-    assert not hasattr(wave, "worktree_root")
-    assert not hasattr(close, "primary_checkout")
+    assert not {"repo_root", "worktree_root"} & _defined_functions(wave)
+    assert "primary_checkout" not in _defined_functions(close)
+    assert "primary_checkout" in _called_attributes(ROOT / "orchestra" / "cli.py")
+    assert "primary_checkout" in _called_attributes(ROOT / "orchestra" / "stage" / "hooks.py")
 
 
 GIT_SUBCOMMANDS = frozenset({"rev-parse", "merge-base"})
