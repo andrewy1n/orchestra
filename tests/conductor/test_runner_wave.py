@@ -83,7 +83,7 @@ def test_r2_phase_closing_task_depends_on_every_live_item(tmp_path: Path) -> Non
     records = project.records()
     closing = next(record for record in records if record["subject"] == "closing")
 
-    assert not wave.closes_phase(closing, wave.phase_items(records, PHASE))
+    assert not wave.is_closing_task(records, PHASE, closing)
 
 
 def test_r2_single_task_phase_runs_as_closing_check(tmp_path: Path) -> None:
@@ -122,7 +122,7 @@ def test_r2_rejects_multiple_phase_closing_tasks(tmp_path: Path) -> None:
     project, repo = _world(tmp_path)
     _item(project, "first")
     _item(project, "second", depends_on=["first"])
-    first = next(record for record in project.records() if record["subject"] == "first")
+    first = project.resolve("score:work-item", "first")
     project.update(
         first["id"],
         record_type="score:work-item",

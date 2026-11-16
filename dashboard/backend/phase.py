@@ -41,10 +41,10 @@ from orchestra.conductor.head_evidence import (
 )
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
-COUNTED_TASK_STATES = ("planned", "in_progress", "done")
 LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
 
 
@@ -353,16 +353,14 @@ def phase_elapsed(tasks: list[TaskRow]) -> tuple[int | None, int]:
 
 def _awaits_signoff(
     task: Record,
-    others: list[str],
+    work_items: list[Record],
     acceptances: list[Record],
     latest: dict[str, CheckRun],
 ) -> bool:
-    effort = record_payload(task).get("effort", "")
     mine = [
         record
         for record in acceptances
-        if record["lifecycle_state"] not in INACTIVE_STATES
-        and belongs(record, task["subject"], effort, others)
+        if record["lifecycle_state"] not in INACTIVE_STATES and belongs(record, task, work_items)
     ]
     runs = [latest.get(record["id"]) for record in mine]
     if not mine or any(run is None or run.result != "pass" for run in runs):
@@ -381,8 +379,7 @@ def phase_rows(
 ) -> list[PhaseRow]:
     latest = latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
-    subjects = [task["subject"] for task in tasks]
-    counted = [task for task in tasks if task["lifecycle_state"] in COUNTED_TASK_STATES]
+    counted = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
     rows: list[PhaseRow] = []
     for record in records:
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
@@ -395,12 +392,7 @@ def phase_rows(
         awaiting = (
             record["lifecycle_state"] != "done"
             and bool(open_tasks)
-            and all(
-                _awaits_signoff(
-                    task, [s for s in subjects if s != task["subject"]], acceptances or [], latest
-                )
-                for task in open_tasks
-            )
+            and all(_awaits_signoff(task, tasks, acceptances or [], latest) for task in open_tasks)
         )
         elapsed_minutes, unset_estimates = phase_elapsed(
             task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
@@ -625,7 +617,7 @@ def _stage(
         task
         for task in tasks
         if record_payload(task).get("phase") == phase
-        and task.get("lifecycle_state") in COUNTED_TASK_STATES
+        and task.get("lifecycle_state") in LIVE_WORK_ITEM_STATES
     ]
     if not counted:
         return "plan", False

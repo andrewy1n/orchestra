@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.lookups import current_phase
 
 Step = Literal["spec", "design", "tasks", "execute", "verify", "land"]
 Authority = Literal["user-approval", "explicit-delegation", "task-plan-policy"]
@@ -69,18 +70,7 @@ def light_phase_fingerprints(body: str) -> LightPhaseFingerprints:
 
 
 def _phase_record(records: Sequence[Record], phase: str) -> Record | None:
-    candidates = [
-        record
-        for record in records
-        if record["record_type"] == "score:phase"
-        and record["subject"] == phase
-        and record["lifecycle_state"] != "superseded"
-    ]
-    return (
-        max(candidates, key=lambda record: (record["recorded_at"], record["id"]))
-        if candidates
-        else None
-    )
+    return current_phase(phase, records)
 
 
 def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Record | None:

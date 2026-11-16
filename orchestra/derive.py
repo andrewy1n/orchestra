@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from orchestra.canon import record_payload
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.requirements import (
     RequirementState as RequirementState,
@@ -17,6 +18,7 @@ from orchestra.conductor.requirements import (
 from orchestra.conductor.requirements import (
     requirement_status,
 )
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, live_work_items
 
 WORK_ITEM = "score:work-item"
 EFFORT = "score:effort"
@@ -29,7 +31,6 @@ ASSIGNMENT = "conductor:assignment"
 QUESTION = "score:continuity-question"
 
 
-_LIVE_WORK_STATES = ("planned", "in_progress", "done")
 DORMANT_AFTER = timedelta(days=7)
 Autonomy = Literal["gated", "auto-plan", "auto-phases"]
 
@@ -53,32 +54,14 @@ def _text(record: Record, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _latest(records: list[Record]) -> Record | None:
-    latest: Record | None = None
-    for record in records:
-        if latest is None or record["recorded_at"] >= latest["recorded_at"]:
-            latest = record
-    return latest
-
-
-def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
-    return [
-        r
-        for r in records
-        if r["record_type"] == WORK_ITEM
-        and r["lifecycle_state"] in _LIVE_WORK_STATES
-        and _text(r, "phase") == phase
-    ]
-
-
 def release_ready(records: list[Record], phase: str, head: str | None = None) -> bool:
     statuses = requirement_status(records, phase, head)
     return bool(statuses) and all(s.status == "verified" for s in statuses.values())
 
 
 def phase_progress(records: list[Record], phase: str) -> PhaseProgress:
-    items = _phase_work_items(records, phase)
-    counts = {state: 0 for state in _LIVE_WORK_STATES}
+    items = live_work_items(phase, records)
+    counts = {state: 0 for state in LIVE_WORK_ITEM_STATES}
     for item in items:
         counts[item["lifecycle_state"]] += 1
     return PhaseProgress(
@@ -94,7 +77,7 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
     write_root = _text(work_item, "write_root")
     if assignee is None or write_root is None:
         names = {work_item["id"], work_item["subject"]}
-        written = _latest(
+        written = latest(
             [
                 r
                 for r in records
@@ -110,7 +93,7 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
 
 
 def _goal(records: list[Record], effort: str) -> Record | None:
-    return _latest(
+    return latest(
         [
             r
             for r in records

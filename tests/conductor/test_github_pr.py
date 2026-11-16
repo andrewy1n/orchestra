@@ -517,6 +517,18 @@ def test_land_cli_reports_pull_request_and_final_checks(
         "body": "proof packet",
     }
 
+    phase: Record = {
+        "id": "phase-id",
+        "record_type": "score:phase",
+        "subject": "project-config",
+        "payload": {"title": "Project config"},
+        "lifecycle_state": "in_progress",
+        "relationships": {},
+        "revision": "r",
+        "recorded_at": "now",
+        "body": "## Problem\n\np\n",
+    }
+
     class FakeProject:
         project_root = tmp_path
 
@@ -524,19 +536,8 @@ def test_land_cli_reports_pull_request_and_final_checks(
             assert record_type == "conductor:proof-packet"
             return [packet]
 
-        def resolve(self, record_type: str, subject: str) -> Record:
-            assert (record_type, subject) == ("score:phase", "project-config")
-            return {
-                "id": "phase-id",
-                "record_type": "score:phase",
-                "subject": "project-config",
-                "payload": {"title": "Project config"},
-                "lifecycle_state": "in_progress",
-                "relationships": {},
-                "revision": "r",
-                "recorded_at": "now",
-                "body": "## Problem\n\np\n",
-            }
+        def records(self) -> list[Record]:
+            return [phase]
 
         def create(self, *, record_type: str, subject: str, payload: JsonObject) -> Record:
             assert record_type == "conductor:landing"
