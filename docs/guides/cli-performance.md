@@ -92,3 +92,23 @@ uv run pytest -q tests/test_cli_performance.py
 
 Tests cover fixture validity, command output, report comparison, store isolation,
 and process-group cleanup. They contain no command-speed assertions.
+
+## Rendering measurements
+
+On November 15, 2026, the rendering repair produces these median times at 6,000 records:
+
+| View | Before | After | Change |
+|---|---:|---:|---:|
+| Plan | 1.867 s | 0.665 s | -64.4% |
+| Status | 2.069 s | 0.916 s | -55.7% |
+| Verification | 1.667 s | 0.415 s | -75.1% |
+
+Both runs use workload `planning-evidence/2`, three repetitions, Python 3.13.3, and the same WSL2 host.
+All 33 cases pass. Output hashes match for nine view and store-size combinations.
+The fixture generator and project policy remain unchanged.
+The repair indexes requirement evidence once and reuses phase status during release rendering.
+
+These measurements include controller overhead and warm operating system caches.
+They describe the fixed workload, not every live store shape.
+Unrelated changes near 50 ms can reflect controller polling and host load.
+The measurements do not add timing thresholds to CI.
