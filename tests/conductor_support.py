@@ -15,7 +15,8 @@ from conftest import git, make_git_repo
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close, gate
-from orchestra.conductor.check import git_head, run_check
+from orchestra.conductor.check import run_check
+from orchestra.tools import Git
 
 CLOSE_PHASE = "p1"
 
@@ -422,7 +423,7 @@ def _packet(phase: Phase) -> None:
         {
             "phase": PHASE,
             "effort": EFFORT,
-            "revision": git_head(phase.repo),
+            "revision": Git(phase.repo).head(),
             "base": "main",
             "kind": "claims",
         },
@@ -431,7 +432,7 @@ def _packet(phase: Phase) -> None:
 
 
 def _review_repo_head(phase: Phase) -> str:
-    head = git_head(phase.repo)
+    head = Git(phase.repo).head()
     phase.check_run(revision=head)
     phase.review(revision=head)
     return head

@@ -141,6 +141,29 @@ def test_text_raises_on_nonzero(tmp_path: Path) -> None:
     assert info.value.stderr == "bad ref"
 
 
+def test_checked_error_message_names_git_failure(tmp_path: Path) -> None:
+    fake = FakeGitRun(returncode=128, stderr="fatal: not a git repository\n")
+    with pytest.raises(ToolError, match="not a git repository"):
+        Git(tmp_path, run=fake).text("rev-parse", "HEAD")
+
+
+def test_is_ancestor_error_message_names_git_failure(tmp_path: Path) -> None:
+    fake = FakeGitRun(returncode=128, stderr="fatal: Not a valid object name nope\n")
+    with pytest.raises(ToolError, match="Not a valid object name nope"):
+        Git(tmp_path, run=fake).is_ancestor("nope", "HEAD")
+
+
+def test_primary_checkout_resolves_relative_common_dir(tmp_path: Path) -> None:
+    fake = FakeGitRun(stdout=".git\n")
+    assert Git(tmp_path, run=fake).primary_checkout() == tmp_path
+    assert "--path-format=absolute" not in fake.argvs[0]
+
+
+def test_primary_checkout_keeps_absolute_common_dir(tmp_path: Path) -> None:
+    fake = FakeGitRun(stdout="/repo/.git\n")
+    assert Git(tmp_path, run=fake).primary_checkout() == Path("/repo")
+
+
 def test_show_bytes_returns_blob(tmp_path: Path) -> None:
     run = scripted(Git, {("git", "show", "HEAD:a.bin"): b"\x00\xffdata"})
     assert Git(tmp_path, run=run).show_bytes("HEAD", "a.bin") == b"\x00\xffdata"

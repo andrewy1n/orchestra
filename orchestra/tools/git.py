@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -61,15 +62,17 @@ class Git(CliTool):
             ) from error
         return GitResult(result.returncode, result.stdout, result.stderr)
 
+    def _failure(self, args: Sequence[str], result: GitResult) -> ToolError:
+        message = f"{self.executable} {' '.join(args)} failed with code {result.returncode}"
+        detail = result.stderr.strip()
+        if detail:
+            message = f"{message}: {detail}"
+        return ToolError(message, [self.executable, *args], result.returncode, result.stderr)
+
     def _checked(self, *args: str, input: str | None = None) -> GitResult:
         result = self.run(*args, input=input)
         if result.returncode != 0:
-            raise ToolError(
-                f"{self.executable} exited with code {result.returncode}",
-                [self.executable, *args],
-                result.returncode,
-                result.stderr,
-            )
+            raise self._failure(args, result)
         return result
 
     def text(self, *args: str, input: str | None = None) -> str:
@@ -77,6 +80,10 @@ class Git(CliTool):
 
     def root(self) -> Path:
         return Path(self.text("rev-parse", "--show-toplevel"))
+
+    def primary_checkout(self) -> Path:
+        common = Path(self.text("rev-parse", "--git-common-dir"))
+        return Path(os.path.normpath(self._cwd / common)).parent
 
     def head(self) -> str:
         return self.text("rev-parse", "HEAD")
@@ -86,6 +93,15 @@ class Git(CliTool):
         if result.returncode != 0:
             return None
         return result.stdout.strip()
+
+    def resolve_refs(self, *refs: str) -> str | None:
+        result = self.run("rev-parse", *refs)
+        if result.returncode != 0:
+            return None
+        return result.stdout
+
+    def is_repository(self) -> bool:
+        return self.run("rev-parse", "--git-dir").returncode == 0
 
     def current_branch(self) -> str:
         return self.text("symbolic-ref", "--short", "HEAD")
@@ -99,12 +115,7 @@ class Git(CliTool):
             return True
         if result.returncode == 1:
             return False
-        raise ToolError(
-            f"{self.executable} exited with code {result.returncode}",
-            [self.executable, "merge-base", "--is-ancestor", a, b],
-            result.returncode,
-            result.stderr,
-        )
+        raise self._failure(("merge-base", "--is-ancestor", a, b), result)
 
     def merge_base(self, a: str, b: str) -> str:
         return self.text("merge-base", a, b)

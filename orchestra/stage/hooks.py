@@ -18,6 +18,7 @@ from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close
 from orchestra.conductor.model_types import PlanningPayload
+from orchestra.tools.git import Git
 
 PROTOCOL = (
     "This project keeps its state as canon records. Views are derived: edit "
@@ -169,7 +170,7 @@ def _close_sweep(project: Project, root: Path) -> list[str]:
     try:
         if not close.landed_phases(project):
             return []
-        repo = close.primary_checkout(root)
+        repo = Git(root).primary_checkout()
         results = close.close_all(project, repo, close.github_states(repo), root)
     except Exception as exc:
         return [f"Close sweep failed: {exc}"]

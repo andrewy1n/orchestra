@@ -264,7 +264,7 @@ def landing_refs_for_snapshot(snapshot: Snapshot) -> list[str]:
 
 
 def landing_cache_token(root: Path, snapshot: Snapshot) -> str | None:
-    """Cache key from per-ref `git rev-parse` of main and Landing branches."""
+    """Cache key from per-ref commit lookup of main and Landing branches."""
     parts: list[str] = []
     for ref in landing_refs_for_snapshot(snapshot):
         sha = rev_parse_token(root, ref)

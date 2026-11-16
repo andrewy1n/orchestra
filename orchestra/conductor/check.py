@@ -36,13 +36,6 @@ class CheckOutcome:
     reused: bool = False
 
 
-def git_head(cwd: Path) -> str:
-    result = Git(cwd).run("rev-parse", "HEAD")
-    if result.returncode != 0:
-        raise RuntimeError(f"git rev-parse HEAD failed: {result.stderr or result.stdout}")
-    return result.stdout.strip()
-
-
 def git_is_dirty(cwd: Path) -> bool:
     result = Git(cwd).run("status", "--porcelain")
     if result.returncode != 0:
@@ -217,7 +210,7 @@ def run_check(
         )
 
     try:
-        head = git_head(work)
+        head = Git(work).head()
         dirty = git_is_dirty(work)
         diff_digest = git_diff_sha256(work) if dirty else None
     except RuntimeError as exc:

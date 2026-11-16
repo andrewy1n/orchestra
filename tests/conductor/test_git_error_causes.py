@@ -9,7 +9,7 @@ import pytest
 from test_wave_end import _land, _world  # pyright: ignore[reportPrivateUsage]
 
 import orchestra.tuner.manifest as manifest
-from orchestra.canon.git_backend import GitContextError, git_root
+from orchestra.canon.git_backend import GitContextError, assert_git_context
 from orchestra.canon.project_config import CONFIG_PATH
 from orchestra.conductor import wave
 from orchestra.tools import Git
@@ -38,9 +38,9 @@ def test_manifest_reports_timeout_cause(tmp_path: Path, monkeypatch: pytest.Monk
     assert "not available" not in str(info.value)
 
 
-def test_git_root_reports_timeout_cause(tmp_path: Path) -> None:
+def test_assert_git_context_reports_timeout_cause(tmp_path: Path) -> None:
     with pytest.raises(GitContextError) as info:
-        git_root(tmp_path, run=_timing_out)  # pyright: ignore[reportArgumentType]
+        assert_git_context(tmp_path, run=_timing_out)  # pyright: ignore[reportArgumentType]
     assert "timed out" in str(info.value)
     assert "not found" not in str(info.value)
 

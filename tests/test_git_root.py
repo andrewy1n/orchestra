@@ -6,10 +6,10 @@ from typing import NoReturn
 
 import pytest
 
-from orchestra.canon.git_backend import GitContextError, git_root
+from orchestra.canon.git_backend import GitContextError, assert_git_context
 
 
-def test_git_root_raises_context_error_when_git_missing(tmp_path: Path) -> None:
+def test_assert_git_context_raises_context_error_when_git_missing(tmp_path: Path) -> None:
     def missing(
         argv: Sequence[str],
         *,
@@ -24,4 +24,4 @@ def test_git_root_raises_context_error_when_git_missing(tmp_path: Path) -> None:
         raise FileNotFoundError("git")
 
     with pytest.raises(GitContextError, match="git executable not found"):
-        git_root(tmp_path, run=missing)  # pyright: ignore[reportArgumentType]
+        assert_git_context(tmp_path, run=missing)  # pyright: ignore[reportArgumentType]

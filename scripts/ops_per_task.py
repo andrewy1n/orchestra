@@ -15,10 +15,10 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor.check import git_head
 from orchestra.conductor.wave import closing_task
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import current_phase
+from orchestra.tools import Git
 
 
 def _text(record: Record, key: str) -> str:
@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ops_per_task: {per_task:.1f} per task exceeds {args.max:g}", file=sys.stderr)
         status = 1
     if args.check_loop:
-        revision = args.at or git_head(Path.cwd())
+        revision = args.at or Git(Path.cwd()).head()
         for problem in loop_problems(project, args.phase, revision):
             print(f"ops_per_task: {problem}", file=sys.stderr)
             status = 1

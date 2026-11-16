@@ -48,7 +48,7 @@ def _build_parser() -> argparse.ArgumentParser:
     verdict.add_argument(
         "--base",
         default=None,
-        help="Revision where oracle tests must fail on an assertion (default: merge-base with main)",
+        help="Revision where oracle tests must fail on an assertion (default: common ancestor with main)",
     )
     verdict.add_argument(
         "--provenance",

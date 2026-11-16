@@ -54,7 +54,7 @@ from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
 from orchestra.score.lookups import current_phase
 from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
-from orchestra.tools import Git
+from orchestra.tools import Git, ToolError
 
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
@@ -242,7 +242,13 @@ def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
     """True when ancestor == descendant or ancestor is a git ancestor of descendant."""
     if ancestor == descendant:
         return True
-    return Git(cwd).run("merge-base", "--is-ancestor", ancestor, descendant).returncode == 0
+    try:
+        return Git(cwd).is_ancestor(ancestor, descendant)
+    except ToolError as error:
+        detail = error.stderr.strip() or str(error)
+        raise CloseRefused(
+            f"cannot check git ancestry of {ancestor} and {descendant}: {detail}"
+        ) from error
 
 
 def _open_project(store_root: Path | None):

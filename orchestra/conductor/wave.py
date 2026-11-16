@@ -64,13 +64,6 @@ class RunnerOutcome:
     code: int
 
 
-def repo_root(cwd: Path) -> Path:
-    result = Git(cwd).run("rev-parse", "--path-format=absolute", "--git-common-dir")
-    if result.returncode != 0:
-        raise WaveError(f"not a git repository: {cwd}")
-    return Path(result.stdout.strip()).parent
-
-
 def _wave_error(error: ToolError) -> WaveError:
     detail = error.stderr.strip() or str(error)
     return WaveError(f"git {' '.join(error.argv[1:])} failed: {detail}")
@@ -317,7 +310,10 @@ def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path,
         except ToolError as error:
             raise _wave_error(error) from error
     task_git = Git(tree)
-    behind = task_git.run("merge-base", "--is-ancestor", phase_branch, "HEAD").returncode != 0
+    try:
+        behind = not task_git.is_ancestor(phase_branch, "HEAD")
+    except ToolError as error:
+        raise _wave_error(error) from error
     if behind and not task_git.merge(phase_branch).clean:
         raise WaveError(f"merging {phase_branch} into {branch} conflicts; resolve it in {tree}")
     return tree, branch
@@ -352,13 +348,6 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
         subject=effort,
         payload={"owner": "user", "blocking": True, "scope": scope, "phase": phase},
     )
-
-
-def worktree_root(cwd: Path) -> Path:
-    result = Git(cwd).run("rev-parse", "--show-toplevel")
-    if result.returncode != 0:
-        raise WaveError(f"not a git worktree: {cwd}")
-    return Path(result.stdout.strip())
 
 
 def block(project: Project, phase: str, scope: str) -> Record:
@@ -451,7 +440,11 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
-        if Git(repo).run("merge-base", "--is-ancestor", branch, phase_branch).returncode == 0:
+        try:
+            landed = Git(repo).is_ancestor(branch, phase_branch)
+        except ToolError as error:
+            raise _wave_error(error) from error
+        if landed:
             continue
         acceptances = task_acceptances(records, task, phase)
         tip = Git(repo).resolve(branch)
