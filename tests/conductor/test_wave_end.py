@@ -15,7 +15,7 @@ PHASE = "ph"
 EFFORT = "ef"
 PHASE_BODY = (
     "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n\n"
-    "## Landing\n\nbranch: phase/ph\nworktree: <repo>/.worktrees/ph\nbase: main\n"
+    "## Landing\n\nbranch: phase/ph\nbase: main\n"
 )
 
 

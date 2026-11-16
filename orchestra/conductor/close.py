@@ -12,7 +12,14 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor.github_pr import GitHubGh
-from orchestra.conductor.landing import LANDING, latest_landing
+from orchestra.conductor.landing import (
+    LANDING,
+    LandingPlace,
+    latest_landing,
+    phase_place,
+    task_branch,
+    task_worktree,
+)
 from orchestra.score.lookups import current_phase
 from orchestra.tools import Git, ToolError
 
@@ -61,11 +68,13 @@ def close_phase(
     if state != "MERGED":
         message = f"pull request {number} is {state}; close waits for the merge"
         return CloseResult(phase, number, url, state, head_sha, False, (), message)
-    refusals = _refusals(repo, phase, head_sha, cwd)
+    record = _phase_record(project, phase)
+    place = phase_place(record, repo)
+    refusals = _refusals(place, phase, head_sha, cwd)
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
         return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
-    actions = _apply(project, repo, phase, number, head_sha)
+    actions = _apply(project, place, record, number, head_sha)
     if actions:
         message = f"pull request {number} is MERGED; phase {phase} closed"
     else:
@@ -90,12 +99,14 @@ def _phase_record(project: Project, phase: str) -> Record:
 
 
 def pending_close(project: Project, repo: Path, phase: str) -> bool:
-    if _phase_record(project, phase)["lifecycle_state"] != "done":
+    record = _phase_record(project, phase)
+    if record["lifecycle_state"] != "done":
         return True
-    if phase_worktree(repo, phase).is_dir() or task_worktrees(repo, phase):
+    place = phase_place(record, repo)
+    if place.worktree.is_dir() or task_worktrees(place, phase):
         return True
-    git = Git(repo)
-    return git.branch_tip(f"phase/{phase}") is not None or bool(git.branches(f"task/{phase}/"))
+    git = Git(place.repo)
+    return git.branch_tip(place.branch) is not None or bool(git.branches(task_branch(phase, "")))
 
 
 def close_all(
@@ -113,20 +124,16 @@ def close_all(
     return tuple(results)
 
 
-def phase_worktree(repo: Path, phase: str) -> Path:
-    return repo / ".worktrees" / phase
-
-
-def task_worktrees(repo: Path, phase: str) -> tuple[Path, ...]:
-    root = repo / ".worktrees"
-    if not root.is_dir():
+def task_worktrees(place: LandingPlace, phase: str) -> tuple[Path, ...]:
+    pattern = task_worktree(place, phase, "*")
+    if not pattern.parent.is_dir():
         return ()
-    return tuple(sorted(path for path in root.glob(f"{phase}--*") if path.is_dir()))
+    return tuple(sorted(path for path in pattern.parent.glob(pattern.name) if path.is_dir()))
 
 
-def _refusals(repo: Path, phase: str, head_sha: str, cwd: Path | None) -> tuple[str, ...]:
+def _refusals(place: LandingPlace, phase: str, head_sha: str, cwd: Path | None) -> tuple[str, ...]:
     refusals: list[str] = []
-    trees = [phase_worktree(repo, phase), *task_worktrees(repo, phase)]
+    trees = [place.worktree, *task_worktrees(place, phase)]
     here = cwd.resolve() if cwd is not None else None
     for tree in trees:
         if not tree.is_dir():
@@ -138,8 +145,8 @@ def _refusals(repo: Path, phase: str, head_sha: str, cwd: Path | None) -> tuple[
             )
         if Git(tree).status_porcelain():
             refusals.append(f"worktree {tree} has uncommitted changes")
-    git = Git(repo)
-    phase_branch = f"phase/{phase}"
+    git = Git(place.repo)
+    phase_branch = place.branch
     tip = git.branch_tip(phase_branch)
     if tip is not None and tip != head_sha:
         refusals.append(
@@ -147,7 +154,7 @@ def _refusals(repo: Path, phase: str, head_sha: str, cwd: Path | None) -> tuple[
             f"the merged pull request head {head_sha[:12]}"
         )
     reference = tip or head_sha
-    for branch in git.branches(f"task/{phase}/"):
+    for branch in git.branches(task_branch(phase, "")):
         task_tip = git.branch_tip(branch)
         if task_tip is None:
             continue
@@ -164,22 +171,23 @@ def _refusals(repo: Path, phase: str, head_sha: str, cwd: Path | None) -> tuple[
 _TRANSITIONS = {"planned": ("in_progress", "done"), "in_progress": ("done",)}
 
 
-def _apply(project: Project, repo: Path, phase: str, number: int, head_sha: str) -> tuple[str, ...]:
-    git = Git(repo)
+def _apply(
+    project: Project, place: LandingPlace, record: Record, number: int, head_sha: str
+) -> tuple[str, ...]:
+    phase = record["subject"]
+    git = Git(place.repo)
     actions: list[str] = []
-    trees = [*task_worktrees(repo, phase), phase_worktree(repo, phase)]
+    trees = [*task_worktrees(place, phase), place.worktree]
     for tree in trees:
         if tree.is_dir():
             git.remove_worktree(tree)
             actions.append(f"removed worktree {tree}")
-    for branch in git.branches(f"task/{phase}/"):
+    for branch in git.branches(task_branch(phase, "")):
         git.delete_branch(branch)
         actions.append(f"deleted branch {branch}")
-    phase_branch = f"phase/{phase}"
-    if git.branch_tip(phase_branch) is not None:
-        git.delete_branch(phase_branch)
-        actions.append(f"deleted branch {phase_branch}")
-    record = _phase_record(project, phase)
+    if git.branch_tip(place.branch) is not None:
+        git.delete_branch(place.branch)
+        actions.append(f"deleted branch {place.branch}")
     steps = _TRANSITIONS.get(record["lifecycle_state"], ())
     if not steps:
         return tuple(actions)

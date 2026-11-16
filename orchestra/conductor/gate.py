@@ -23,7 +23,8 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
-from orchestra.conductor.landing import landing_worktree, parse_landing
+from orchestra.conductor.landing import parse_landing as parse_landing
+from orchestra.conductor.landing import phase_place
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git
@@ -96,7 +97,7 @@ def gate_terms(
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")
     effort = _str(phase, "effort")
-    landing = parse_landing(phase.get("body", ""))
+    place = phase_place(phase, store)
 
     def of_type(record_type: str) -> list[Record]:
         return [r for r in records if r["record_type"] == record_type]
@@ -149,9 +150,8 @@ def gate_terms(
     if head_worktree is not None:
         terms.append(_descent_term(head_worktree, head))
     else:
-        worktree = landing_worktree(store, phase_slug, landing)
-        if worktree.is_dir():
-            terms.append(_descent_term(worktree, head))
+        if place.worktree.is_dir():
+            terms.append(_descent_term(place.worktree, head))
 
     policy = suite.load_suite_policy(head_worktree if head_worktree is not None else store)
     if policy.gate == "required" and policy.mode not in ("none", ""):

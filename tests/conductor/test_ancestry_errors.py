@@ -15,6 +15,7 @@ from test_close_batch import RUNNER, _ancestry_repo, _build, _request
 
 from orchestra.canon.project import Project
 from orchestra.conductor import close_batch, wave
+from orchestra.conductor.landing import phase_place
 from orchestra.tools import Git
 from orchestra.tuner.manifest import Claim, Manifest
 from orchestra.tuner.provenance import AFTER, check_provenance
@@ -24,7 +25,7 @@ PHASE = "ancestry-phase"
 EFFORT = "ancestry-effort"
 PHASE_BODY = (
     "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n\n"
-    f"## Landing\n\nbranch: phase/{PHASE}\nworktree: <repo>/.worktrees/{PHASE}\nbase: main\n"
+    f"## Landing\n\nbranch: phase/{PHASE}\nbase: main\n"
 )
 GIT_FAILURE = re.compile(r"not a valid (object name|commit name)|unknown revision", re.IGNORECASE)
 
@@ -104,7 +105,9 @@ def _lose_phase_branch(repo: Path) -> None:
 
 def _prepare(project: Project, repo: Path) -> tuple[Path, str]:
     item = project.resolve("score:work-item", "t")
-    return wave._prepare(repo, PHASE, item, closing=False)
+    return wave._prepare(
+        phase_place(wave.phase_record(project.records(), PHASE), repo), PHASE, item, closing=False
+    )
 
 
 def test_wave_prepare_unknown_revision_raises_wave_error_naming_git(tmp_path: Path) -> None:

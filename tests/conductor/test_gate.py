@@ -27,7 +27,7 @@ from conftest import REPO_ROOT, git
 
 from orchestra.canon.types import Record
 from orchestra.cli import main as cli_main
-from orchestra.conductor import gate, land
+from orchestra.conductor import gate, land, landing
 
 OTHER_HEAD = "b" * 40
 
@@ -487,16 +487,16 @@ def test_landing_parses_repo_and_worktree_lines() -> None:
         "- Worktree: `/code/repo/.worktrees/x`\n\n"
         "## Proof\n\nrepo: ignored\n"
     )
-    landing = gate.parse_landing(body)
-    assert landing.present
-    assert landing.repo == "/code/repo"
-    assert landing.worktree == "/code/repo/.worktrees/x"
+    spec = landing.parse_landing(body)
+    assert spec.present
+    assert spec.repo == "/code/repo"
+    assert spec.worktree == "/code/repo/.worktrees/x"
 
 
 def test_landing_is_absent_without_a_landing_section() -> None:
-    landing = gate.parse_landing("## Approach\n\nrepo: `/code/repo`\n")
-    assert not landing.present
-    assert landing.repo == ""
+    spec = landing.parse_landing("## Approach\n\nrepo: `/code/repo`\n")
+    assert not spec.present
+    assert spec.repo == ""
 
 
 @dataclass
