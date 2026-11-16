@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.score.analyze import analyze_phase
+from orchestra.score.lookups import current_phase
 from orchestra.score.workflow_reviews import (
     Authority,
     Step,
@@ -74,14 +75,9 @@ def record_step_review(
 ) -> Record:
     token = project.change_token()
     records = project.records()
-    phases = [
-        record
-        for record in records
-        if record["record_type"] == "score:phase" and record["subject"] == phase
-    ]
-    if not phases:
+    phase_record = current_phase(phase, records)
+    if phase_record is None:
         raise WorkflowReviewError(f"unknown phase {phase!r}")
-    phase_record = max(phases, key=lambda record: (record["recorded_at"], record["id"]))
     if step == "spec" and has_blocking_behavior_question(records, phase):
         raise WorkflowReviewError("blocking behavior question prevents specification readiness")
     current_artifact = next((record for record in records if record["id"] == artifact["id"]), None)

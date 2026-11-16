@@ -105,7 +105,7 @@ def close(
 ) -> Closure:
     item = land_task.work_item(project, landed.task)
     tree = Path(str(record_payload(item).get("write_root") or project.project_root))
-    if wave.closes_phase(item, wave.phase_items(project.records(), landed.phase)):
+    if wave.is_closing_task(project.records(), landed.phase, item):
         from orchestra.conductor.verification import run_closing_checks
 
         result = verification if verification is not None else run_closing_checks(project, landed)

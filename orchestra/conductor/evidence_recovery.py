@@ -11,6 +11,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.check import RUNNER
 from orchestra.conductor.oracle_freeze import parse_freeze
+from orchestra.score.lookups import current_phase, owning_work_item
 from orchestra.tuner.manifest import ManifestError, hash_oracle_files, load_manifest, resolve_commit
 from orchestra.tuner.oracle_red import is_assertion_level_red
 
@@ -83,9 +84,14 @@ def _original_freeze(cwd: Path, acceptance: Record, runs: list[Record]) -> JsonO
     return frozen
 
 
+def _phase_of(records: list[Record], slug: object) -> Record | None:
+    return current_phase(slug, records) if isinstance(slug, str) else None
+
+
 def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport:
     token = project.change_token()
-    index = RecordIndex(project.records())
+    records = project.records()
+    index = RecordIndex(records)
     report: RecoveryReport = {
         "applied": False,
         "recoverable": [],
@@ -103,26 +109,28 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
             or _valid_freeze(data)
         ):
             continue
-        phase = index.resolve_subject("score:phase", data.get("phase"))
+        phase = _phase_of(records, data.get("phase"))
         if acc["lifecycle_state"] != "active" or (
             phase and phase["lifecycle_state"] in ("done", "withdrawn", "superseded")
         ):
             report["historical"].append(acc["id"])
             continue
-        owners = [
-            t
-            for t in tasks
-            if t["lifecycle_state"] != "superseded"
-            and t["payload"].get("effort") == data.get("effort")
-            and t["payload"].get("phase") == data.get("phase")
-            and (acc["subject"] == t["subject"] or acc["subject"].startswith(t["subject"] + "-"))
-        ]
-        if len(owners) == 1 and owners[0]["lifecycle_state"] in ("done", "withdrawn"):
+        owner = owning_work_item(
+            acc["subject"],
+            [
+                t
+                for t in tasks
+                if t["lifecycle_state"] != "superseded"
+                and t["payload"].get("effort") == data.get("effort")
+                and t["payload"].get("phase") == data.get("phase")
+            ],
+        )
+        if owner is not None and owner["lifecycle_state"] in ("done", "withdrawn"):
             report["historical"].append(acc["id"])
             continue
         freeze = (
             _original_freeze(project.project_root, acc, runs)
-            if len(owners) == 1 and phase
+            if owner is not None and phase
             else None
         )
         if freeze is None:
@@ -141,7 +149,7 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
         subject = run["subject"]
         if not subject.endswith("-tier2"):
             continue
-        phase = index.resolve_subject("score:phase", subject.removesuffix("-tier2"))
+        phase = current_phase(subject.removesuffix("-tier2"), records)
         data = run["payload"]
         if data.get("evidence_kind") != "integration" or (
             phase and phase["lifecycle_state"] in ("done", "withdrawn", "superseded")

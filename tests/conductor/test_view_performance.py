@@ -155,7 +155,7 @@ def test_effort_filtered_render_ignores_another_efforts_correction(fixture: Fixt
     assert "**R1**: failed" in unscoped
 
 
-def test_specification_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
+def test_specification_timestamp_ties_follow_record_id(fixture: Fixture) -> None:
     records = _project(fixture, read_only=True).records()
     specification = next(r for r in records if r["record_type"] == "score:specification")
     first: Record = {
@@ -169,11 +169,11 @@ def test_specification_timestamp_ties_follow_input_order(fixture: Fixture) -> No
         "payload": {**specification["payload"], "requirements": ["R8"]},
     }
     remaining = [r for r in records if r["record_type"] != "score:specification"]
-    assert list(requirement_status([*remaining, first, second], "benchmark-phase-000")) == ["R8"]
+    assert list(requirement_status([*remaining, first, second], "benchmark-phase-000")) == ["R7"]
     assert list(requirement_status([*remaining, second, first], "benchmark-phase-000")) == ["R7"]
 
 
-def test_assessment_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
+def test_assessment_timestamp_ties_follow_record_id(fixture: Fixture) -> None:
     project = _project(fixture)
     payload = {
         "phase": "benchmark-phase-000",
@@ -196,8 +196,8 @@ def test_assessment_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
         body=body,
     )
     stamp = "2026-12-01T00:00:00+00:00"
-    first = {**first, "recorded_at": stamp}
-    second = {**second, "recorded_at": stamp}
+    first = {**first, "id": "a-assessment", "recorded_at": stamp}
+    second = {**second, "id": "z-assessment", "recorded_at": stamp}
     remaining = [r for r in project.records() if r["record_type"] != "conductor:assessment"]
     assert (
         requirement_status([*remaining, first, second], "benchmark-phase-000")["R1"].assessed
@@ -205,8 +205,36 @@ def test_assessment_timestamp_ties_follow_input_order(fixture: Fixture) -> None:
     )
     assert (
         requirement_status([*remaining, second, first], "benchmark-phase-000")["R1"].assessed
-        == "failed"
+        == "blocked"
     )
+
+
+@pytest.mark.parametrize("excluded", ["corrected", "superseded"])
+def test_requirement_index_uses_current_phase_from_full_snapshot(
+    fixture: Fixture, excluded: str
+) -> None:
+    records = _project(fixture, read_only=True).records()
+    phase = next(r for r in records if r["record_type"] == "score:phase")
+    first: Record = {
+        **phase,
+        "id": "a-phase",
+        "payload": {**phase["payload"], "weight": "light"},
+        "body": "## Requirements\nR7: Current requirement",
+    }
+    second: Record = {
+        **first,
+        "id": "z-phase",
+        "lifecycle_state": "superseded" if excluded == "superseded" else "in_progress",
+        "body": "## Requirements\nR8: Excluded requirement",
+    }
+    correction: Record = {
+        **next(r for r in records if r["record_type"] == "score:specification"),
+        "relationships": {"corrects": [second["id"]]} if excluded == "corrected" else {},
+    }
+    remaining = [r for r in records if r["id"] not in (phase["id"], correction["id"])]
+    assert list(
+        requirement_status([*remaining, first, second, correction], "benchmark-phase-000")
+    ) == ["R7"]
 
 
 def test_explicit_release_state_remains_authoritative(fixture: Fixture) -> None:

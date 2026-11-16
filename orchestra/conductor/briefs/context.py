@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.briefs.render import BriefContext
 from orchestra.conductor.workflow import step_stage
+from orchestra.score.lookups import current_phase
 
 
 def _adapter(project: Project) -> str:
@@ -16,7 +18,9 @@ def _text(value: object, default: str) -> str:
 
 
 def brief_context(project: Project, phase: str, step: str) -> BriefContext:
-    record = project.resolve("score:phase", phase)
+    record = current_phase(phase, project.records())
+    if record is None:
+        raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
     stage = step_stage(project, project.records(), phase, step)
     payload = record["payload"]
     return BriefContext(

@@ -52,6 +52,7 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
+from orchestra.score.lookups import current_phase
 from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
 from orchestra.tools import Git
 
@@ -273,14 +274,10 @@ def default_load_acceptance(
 
 
 def default_load_phase(phase: str, *, store_root: Path | None = None) -> Record:
-    records = [
-        record
-        for record in _open_project(store_root).list("score:phase")
-        if record["subject"] == phase and record["lifecycle_state"] != "superseded"
-    ]
-    if not records:
+    record = current_phase(phase, _open_project(store_root).list("score:phase"))
+    if record is None:
         raise LookupError(f"phase {phase!r} not found")
-    return max(records, key=lambda record: record["recorded_at"])
+    return record
 
 
 def default_list_oracle_amendments(

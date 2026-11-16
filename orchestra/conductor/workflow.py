@@ -21,6 +21,8 @@ from orchestra.conductor.head_evidence import (
 from orchestra.conductor.landing import latest_landing
 from orchestra.conductor.revision import revision_matches
 from orchestra.score.analyze import analyze_phase
+from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
+from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
@@ -195,17 +197,8 @@ def _phase_records(records: list[Record], run: Record) -> list[Record]:
     if not isinstance(phases, list) or not all(isinstance(item, str) for item in phases):
         raise WorkflowRunError(f"run {run['subject']!r} has invalid phase selection")
     selected: list[Record] = []
-    for subject in phases:
-        phase = next(
-            (
-                record
-                for record in records
-                if record["record_type"] == "score:phase"
-                and record["subject"] == subject
-                and record["lifecycle_state"] != "superseded"
-            ),
-            None,
-        )
+    for subject in (item for item in phases if isinstance(item, str)):
+        phase = current_phase(subject, records)
         if phase is None:
             raise WorkflowRunError(f"run {run['subject']!r} requires missing phase {subject!r}")
         if _text(phase, "effort") != _text(run, "effort"):
@@ -224,16 +217,7 @@ def _dependencies(phase: Record) -> list[str]:
 
 
 def _current_phase(records: list[Record], subject: str) -> Record:
-    phase = next(
-        (
-            record
-            for record in records
-            if record["record_type"] == "score:phase"
-            and record["subject"] == subject
-            and record["lifecycle_state"] != "superseded"
-        ),
-        None,
-    )
+    phase = current_phase(subject, records)
     if phase is None:
         raise WorkflowRunError(f"required phase {subject!r} could not be read")
     return phase
@@ -244,13 +228,7 @@ def _plan_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     errors = [finding.message for finding in report.findings if finding.severity == "error"]
     if errors:
         return False, "; ".join(errors)
-    items = [
-        record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] in ("planned", "in_progress", "done")
-    ]
+    items = live_work_items(phase, records)
     acceptances = [
         record
         for record in records
@@ -292,13 +270,7 @@ def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, 
 
 
 def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    items = [
-        record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] in ("planned", "in_progress", "done")
-    ]
+    items = live_work_items(phase, records)
     if not items:
         return False, "execution requires a nonempty task plan"
     reports = [
@@ -323,25 +295,12 @@ def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
 
 
 def _requires_integration_report(records: list[Record], phase: str) -> bool:
-    items = {
-        record["subject"]: record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] in ("planned", "in_progress", "done")
+    items = {item["subject"]: item for item in live_work_items(phase, records)}
+    closing = closing_work_item(phase, records)
+    dependencies = {
+        subject: set(item_dependencies(item)) & items.keys() for subject, item in items.items()
     }
-    dependencies: dict[str, set[str]] = {}
-    for subject, item in items.items():
-        raw = item["payload"].get("depends_on", [])
-        if not isinstance(raw, list) or not all(isinstance(dep, str) for dep in raw):
-            return True
-        dependencies[subject] = {dep for dep in raw if isinstance(dep, str)} & items.keys()
-    closing_tasks = {
-        subject
-        for subject, task_dependencies in dependencies.items()
-        if len(items) > 1 and len(task_dependencies) == len(items) - 1
-    }
-    implementation_tasks = set(items) - closing_tasks
+    implementation_tasks = set(items) - ({closing["subject"]} if closing is not None else set())
     completed: set[str] = set()
     while implementation_tasks - completed:
         wave = {

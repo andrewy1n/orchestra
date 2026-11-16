@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon import record_payload
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.score.lookups import current_phases, live_work_items
 from orchestra.score.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
@@ -18,8 +20,6 @@ _WORK_ITEM = "score:work-item"
 _SPECIFICATION = "score:specification"
 _ACCEPTANCE = "score:acceptance"
 _ASSESSMENT = "conductor:assessment"
-_PHASE = "score:phase"
-_LIVE_WORK_STATES = ("planned", "in_progress", "done")
 
 
 @dataclass(frozen=True)
@@ -37,22 +37,8 @@ def _text(record: Record, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _latest(records: list[Record]) -> Record | None:
-    latest: Record | None = None
-    for record in records:
-        if latest is None or record["recorded_at"] >= latest["recorded_at"]:
-            latest = record
-    return latest
-
-
 def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
-    return [
-        record
-        for record in records
-        if record["record_type"] == _WORK_ITEM
-        and record["lifecycle_state"] in _LIVE_WORK_STATES
-        and _text(record, "phase") == phase
-    ]
+    return live_work_items(phase, records)
 
 
 def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
@@ -65,7 +51,7 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
     ]
     if phase_weight(records, phase) == "light":
         return [requirement for requirement, _ in phase_requirements(records, phase)]
-    specification = _latest(specifications)
+    specification = latest(specifications)
     sources = [specification] if specification is not None else _phase_work_items(records, phase)
     requirements: list[str] = []
     for source in sources:
@@ -84,16 +70,16 @@ class RequirementIndex:
     def __init__(self, records: list[Record]) -> None:
         self.by_id: dict[str, Record] = {}
         self.evidence = EvidenceIndex(records)
-        self.sources: dict[str, list[Record]] = {}
+        self.sources: dict[str, list[Record]] = {
+            slug: [phase] for slug, phase in current_phases(records).items()
+        }
         self.acceptances: dict[tuple[str, str], list[Record]] = {}
         self.assessments: dict[tuple[str, str], Record] = {}
         for record in records:
             self.by_id[record["id"]] = record
             record_type = record["record_type"]
             phase = _text(record, "phase")
-            if record_type == _PHASE:
-                self.sources.setdefault(record["subject"], []).append(record)
-            elif record_type in (_SPECIFICATION, _WORK_ITEM) and phase is not None:
+            if record_type in (_SPECIFICATION, _WORK_ITEM) and phase is not None:
                 self.sources.setdefault(phase, []).append(record)
             if record["lifecycle_state"] != "active" or phase is None:
                 continue
@@ -105,7 +91,7 @@ class RequirementIndex:
                 if requirement is not None:
                     key = (phase, requirement)
                     previous = self.assessments.get(key)
-                    if previous is None or record["recorded_at"] >= previous["recorded_at"]:
+                    if previous is None or latest((previous, record)) is record:
                         self.assessments[key] = record
 
 
@@ -116,9 +102,9 @@ def _derive_requirement(
     acceptance_ids = tuple(acceptance["id"] for acceptance in acceptances)
     latest_runs: list[Record] = []
     for acceptance in acceptances:
-        latest = acceptance_latest(index.evidence, acceptance, head).run
-        if latest is not None:
-            latest_runs.append(latest)
+        run = acceptance_latest(index.evidence, acceptance, head).run
+        if run is not None:
+            latest_runs.append(run)
     results = [_text(record, "result") for record in latest_runs]
     status: RequirementState = "unverified"
     if "fail" in results:

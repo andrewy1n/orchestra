@@ -19,6 +19,7 @@ from orchestra.conductor.workflow import (
     start_run,
 )
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
+from orchestra.score.lookups import current_phase, dependencies
 from orchestra.score.workflow_reviews import Authority, Step
 from orchestra.store import resolve_location
 
@@ -125,20 +126,10 @@ def _preview_json(project: Project, preview: RunPreview) -> dict[str, object]:
     records = project.records()
     prerequisites: dict[str, list[str]] = {}
     for phase in preview.phases:
-        record = next(
-            (
-                item
-                for item in records
-                if item["record_type"] == "score:phase" and item["subject"] == phase
-            ),
-            None,
-        )
+        record = current_phase(phase, records)
         if record is None:
             raise WorkflowRunError(f"phase disappeared from the store: {phase}")
-        raw = record["payload"].get("depends_on", [])
-        prerequisites[phase] = (
-            [item for item in raw if isinstance(item, str)] if isinstance(raw, list) else []
-        )
+        prerequisites[phase] = dependencies(record)
     return {
         "effort": preview.effort,
         "operation": preview.operation,

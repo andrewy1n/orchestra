@@ -13,6 +13,7 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
+from orchestra.canon.query import latest
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.gate import parse_landing
 from orchestra.conductor.landing import latest_landing
@@ -480,18 +481,15 @@ def _phase_derived_lines(
 def _release_state(
     records: list[Record], phase: str, statuses: dict[str, RequirementStatus]
 ) -> str:
-    written = sorted(
-        (
-            r
-            for r in records
-            if r["record_type"] == RELEASE_TYPE
-            and r.get("lifecycle_state") == "current"
-            and record_payload(r).get("phase") == phase
-        ),
-        key=lambda r: r.get("recorded_at", ""),
+    written = latest(
+        r
+        for r in records
+        if r["record_type"] == RELEASE_TYPE
+        and r.get("lifecycle_state") == "current"
+        and record_payload(r).get("phase") == phase
     )
-    if written:
-        return str(record_payload(written[-1]).get("state", "ready"))
+    if written is not None:
+        return str(record_payload(written).get("state", "ready"))
     ready = bool(statuses) and all(status.status == "verified" for status in statuses.values())
     return "ready" if ready else "not ready"
 

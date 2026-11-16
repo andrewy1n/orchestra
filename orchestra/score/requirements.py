@@ -5,9 +5,10 @@ from collections.abc import Sequence
 from typing import Literal
 
 from orchestra.canon import record_payload
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
+from orchestra.score.lookups import current_phase
 
-PHASE = "score:phase"
 SPECIFICATION = "score:specification"
 
 _REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
@@ -16,14 +17,6 @@ _REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 def _text(record: Record, key: str) -> str | None:
     value = record_payload(record).get(key)
     return value if isinstance(value, str) and value else None
-
-
-def _latest(records: Sequence[Record]) -> Record | None:
-    latest: Record | None = None
-    for record in records:
-        if latest is None or record["recorded_at"] >= latest["recorded_at"]:
-            latest = record
-    return latest
 
 
 def acceptance_requirement_ids(record: Record) -> list[str]:
@@ -80,18 +73,14 @@ def requirement_body_problems(body: str) -> list[str]:
     return problems
 
 
-def _phase_record(records: Sequence[Record], phase: str) -> Record | None:
-    return _latest([r for r in records if r["record_type"] == PHASE and r["subject"] == phase])
-
-
 def phase_weight(records: Sequence[Record], phase: str) -> Literal["light", "full"]:
-    record = _phase_record(records, phase)
+    record = current_phase(phase, records)
     return "light" if record is not None and _text(record, "weight") == "light" else "full"
 
 
 def phase_requirements(records: Sequence[Record], phase: str) -> list[tuple[str, str]]:
     if phase_weight(records, phase) == "light":
-        record = _phase_record(records, phase)
+        record = current_phase(phase, records)
         return requirements_in_body(record.get("body", "")) if record is not None else []
     specs = [
         r
@@ -100,5 +89,5 @@ def phase_requirements(records: Sequence[Record], phase: str) -> list[tuple[str,
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
     ]
-    spec = _latest(specs)
+    spec = latest(specs)
     return requirements_in_body(spec.get("body", "")) if spec is not None else []

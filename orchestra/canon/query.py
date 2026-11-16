@@ -189,6 +189,12 @@ def order_by_recorded_at(records: list[Record], *, reverse: bool = False) -> lis
     return missing + present
 
 
+def latest(records: Iterable[Record]) -> Record | None:
+    return max(
+        records, key=lambda record: (record.get("recorded_at") or "", record["id"]), default=None
+    )
+
+
 def order_by_path(records: list[Record], path: str, *, reverse: bool = False) -> list[Record]:
     """Sort by a top-level or dotted ``payload.*`` / ``derived.*`` path.
 

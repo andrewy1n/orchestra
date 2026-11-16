@@ -6,6 +6,7 @@ from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import Record
+from orchestra.score.lookups import current_phases
 
 _RANGE = re.compile(r"^(\d+)-(\d+)$")
 
@@ -44,11 +45,7 @@ def _effort_phases(records: list[Record], effort_subject: str) -> tuple[Record, 
     effort = index.resolve_subject("score:effort", effort_subject)
     if effort is None:
         raise PhaseSelectionError(f"unknown effort {effort_subject!r}")
-    all_phases = {
-        record["subject"]: record
-        for record in records
-        if record["record_type"] == "score:phase" and record["lifecycle_state"] != "superseded"
-    }
+    all_phases = current_phases(records)
     phases = {
         subject: record
         for subject, record in all_phases.items()
