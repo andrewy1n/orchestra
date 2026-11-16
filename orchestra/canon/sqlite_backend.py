@@ -90,15 +90,8 @@ class SqliteBackend:
     def global_data_root(config_root: Path) -> Path:
         repository_root = config_root.parent
         try:
-            result = Git(repository_root).run("rev-parse", "--git-common-dir")
+            repository_name = Git(repository_root).primary_checkout().name
         except ToolError:
-            result = None
-        if result is not None and result.returncode == 0 and result.stdout.strip():
-            common_dir = Path(result.stdout.strip())
-            if not common_dir.is_absolute():
-                common_dir = repository_root / common_dir
-            repository_name = common_dir.resolve().parent.name
-        else:
             repository_name = repository_root.name
         return Path.home().joinpath(".canon", repository_name)
 

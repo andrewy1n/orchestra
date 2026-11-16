@@ -78,6 +78,10 @@ class Git(CliTool):
     def root(self) -> Path:
         return Path(self.text("rev-parse", "--show-toplevel"))
 
+    def primary_checkout(self) -> Path:
+        common = self.text("rev-parse", "--path-format=absolute", "--git-common-dir")
+        return Path(common).parent
+
     def head(self) -> str:
         return self.text("rev-parse", "HEAD")
 

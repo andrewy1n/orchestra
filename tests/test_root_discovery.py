@@ -44,26 +44,26 @@ def _patch(monkeypatch: pytest.MonkeyPatch, module: object, run: Callable[..., o
     monkeypatch.setattr(module, "Git", lambda directory: Git(directory, run=run))  # pyright: ignore[reportArgumentType]
 
 
-def test_cli_git_root_raises_when_git_is_missing(
+def test_cli_checkout_root_raises_when_git_is_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch(monkeypatch, cli, _missing)
 
     with pytest.raises(ToolError):
-        cli._git_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        cli._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
 
 
-def test_cli_git_root_raises_when_git_is_too_old(
+def test_cli_checkout_root_raises_when_git_is_too_old(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch(monkeypatch, cli, _old_git)
 
     with pytest.raises(ToolError):
-        cli._git_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        cli._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
 
 
-def test_cli_git_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
-    assert cli._git_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
+def test_cli_checkout_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
+    assert cli._checkout_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_project_root_raises_when_git_is_missing(
@@ -79,10 +79,10 @@ def test_project_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
     assert project._project_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
 
 
-def test_cli_git_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:
+def test_cli_checkout_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:
     missing = tmp_path / "nowhere"
 
-    assert cli._git_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert cli._checkout_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_project_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:

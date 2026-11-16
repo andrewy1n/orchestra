@@ -38,11 +38,6 @@ class CloseResult:
     actions: tuple[str, ...] = ()
 
 
-def primary_checkout(cwd: Path) -> Path:
-    common = Git(cwd).text("rev-parse", "--path-format=absolute", "--git-common-dir")
-    return Path(common).parent
-
-
 def github_states(repo: Path) -> PullRequestStates:
     return GitHubGh(repo, "origin", load_project_config(repo).land_config)
 

@@ -13,6 +13,7 @@ from test_wave_end import _world as _end_world
 
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.check import run_check
+from orchestra.tools.git import Git
 
 NO_LANDING_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n"
 
@@ -179,9 +180,9 @@ def test_non_landing_phase_works_in_the_caller_worktree(tmp_path: Path) -> None:
     )
     linked = tmp_path / ".worktrees" / "feature"
     _git(tmp_path, "worktree", "add", "-q", "-b", "feature", str(linked))
-    assert wave.worktree_root(linked) == linked
-    assert wave.repo_root(linked) == tmp_path
-    started = wave.start(project, wave.repo_root(linked), "ph", wave.worktree_root(linked))
+    assert Git(linked).root() == linked
+    assert Git(linked).primary_checkout() == tmp_path
+    started = wave.start(project, Git(linked).primary_checkout(), "ph", Git(linked).root())
     assert started.tasks[0].write_root == str(linked)
 
 

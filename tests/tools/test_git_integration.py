@@ -62,3 +62,22 @@ def test_real_repository_workflow(tmp_path: Path) -> None:
         assert error.returncode is not None
     else:
         raise AssertionError("expected ToolError")
+
+
+def test_primary_checkout_from_linked_worktree(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git = Git(repo)
+    git.text("init", "-b", "main")
+    git.text("config", "user.name", "Test")
+    git.text("config", "user.email", "test@example.com")
+    (repo / "a.txt").write_text("a\n")
+    _commit(git, "base")
+    linked = tmp_path / "linked"
+    git.create_branch("side", "main")
+    git.add_worktree(linked, "side")
+    (repo / "sub").mkdir()
+
+    assert Git(linked).root() == linked.resolve()
+    assert Git(linked).primary_checkout() == repo.resolve()
+    assert Git(repo / "sub").primary_checkout() == repo.resolve()

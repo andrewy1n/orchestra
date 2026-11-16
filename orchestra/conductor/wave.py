@@ -64,13 +64,6 @@ class RunnerOutcome:
     code: int
 
 
-def repo_root(cwd: Path) -> Path:
-    result = Git(cwd).run("rev-parse", "--path-format=absolute", "--git-common-dir")
-    if result.returncode != 0:
-        raise WaveError(f"not a git repository: {cwd}")
-    return Path(result.stdout.strip()).parent
-
-
 def _wave_error(error: ToolError) -> WaveError:
     detail = error.stderr.strip() or str(error)
     return WaveError(f"git {' '.join(error.argv[1:])} failed: {detail}")
@@ -352,13 +345,6 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
         subject=effort,
         payload={"owner": "user", "blocking": True, "scope": scope, "phase": phase},
     )
-
-
-def worktree_root(cwd: Path) -> Path:
-    result = Git(cwd).run("rev-parse", "--show-toplevel")
-    if result.returncode != 0:
-        raise WaveError(f"not a git worktree: {cwd}")
-    return Path(result.stdout.strip())
 
 
 def block(project: Project, phase: str, scope: str) -> Record:

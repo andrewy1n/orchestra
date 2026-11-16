@@ -612,13 +612,15 @@ def _cwd(args: argparse.Namespace) -> Path:
     return Path(args.cwd).expanduser() if args.cwd else Path.cwd()
 
 
-def _git_root(directory: Path) -> Path:
+def _checkout_root(directory: Path) -> Path:
     if not directory.is_dir():
         return directory.resolve()
-    result = Git(directory).run("rev-parse", "--show-toplevel")
-    if result.returncode != 0 or not result.stdout.strip():
+    try:
+        return Git(directory).root()
+    except ToolError as error:
+        if error.returncode is None or type(error) is not ToolError:
+            raise
         return directory.resolve()
-    return Path(result.stdout.strip())
 
 
 def _print_json(payload: object) -> None:
@@ -783,8 +785,8 @@ def _cmd_wave_start(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
-        repo = wave.repo_root(_cwd(args))
-        result = wave.start(project, repo, args.phase, wave.worktree_root(_cwd(args)))
+        repo = Git(_cwd(args)).primary_checkout()
+        result = wave.start(project, repo, args.phase, Git(_cwd(args)).root())
         records = project.records()
         briefs = {t.task: views.render_brief(t.task, records) for t in result.tasks}
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
@@ -840,7 +842,7 @@ def _cmd_wave_end(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
-        result = wave.end(project, wave.repo_root(_cwd(args)), args.phase)
+        result = wave.end(project, Git(_cwd(args)).primary_checkout(), args.phase)
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra wave end: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -868,7 +870,7 @@ def _cmd_wave_resolve(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
-        result = wave.resolve(project, wave.repo_root(_cwd(args)), args.phase, args.task)
+        result = wave.resolve(project, Git(_cwd(args)).primary_checkout(), args.phase, args.task)
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
         print(f"orchestra wave resolve: {args.phase}: {exc}", file=sys.stderr)
         return 2
@@ -899,7 +901,7 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
-        repo = wave.repo_root(_cwd(args))
+        repo = Git(_cwd(args)).primary_checkout()
         landed = land_task.land(project, repo, args.task, Path(args.evidence))
         statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
         closure = task_close.close(
@@ -1275,7 +1277,7 @@ def _cmd_close(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, work)
         project = location.open()
-        repo = close.primary_checkout(work)
+        repo = Git(work).primary_checkout()
         states = close.github_states(repo)
         if args.all:
             outcomes = close.close_all(project, repo, states, work)
@@ -1451,7 +1453,7 @@ def _cmd_store_ensure(args: argparse.Namespace) -> int:
     from orchestra.canon.backend import open_backend
     from orchestra.canon.sync import init_store
 
-    root = _git_root(_cwd(args))
+    root = _checkout_root(_cwd(args))
     artifacts = root / ".canon"
     try:
         project = open_store(root)
