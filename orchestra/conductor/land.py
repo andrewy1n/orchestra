@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -8,6 +8,7 @@ from typing import Protocol, runtime_checkable
 from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
+from orchestra.canon.project import Project
 from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject
 from orchestra.conductor import gate
@@ -20,7 +21,6 @@ from orchestra.conductor.landing import (
     pull_request_title,
 )
 from orchestra.score.lookups import current_phase
-from orchestra.store import StoreLocation
 from orchestra.tools import Git
 
 
@@ -180,7 +180,9 @@ class LandGateError(RuntimeError):
 
 
 def land_phase(
-    location: StoreLocation,
+    root: Path,
+    store_dir: Path | None,
+    open_project: Callable[[], Project],
     phase: str,
     work: Path,
     client: GitHubClient,
@@ -192,11 +194,11 @@ def land_phase(
 ) -> LandingResult:
     """Gate a phase, land it from `work`, and record the landing unless the result is skipped."""
     missing = gate.missing_terms(
-        gate.gate_terms(location.root, phase, store_dir=location.store, head_worktree=work)
+        gate.gate_terms(root, phase, store_dir=store_dir, head_worktree=work)
     )
     if missing:
         raise LandGateError(phase, gate.format_missing(missing))
-    project = location.open()
+    project = open_project()
     records = project.records()
     phase_record = current_phase(phase, records)
     if phase_record is None:

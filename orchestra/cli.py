@@ -1171,7 +1171,9 @@ def _cmd_land(args: argparse.Namespace) -> int:
     try:
         location = resolve_location(args.store, work)
         result = land.land_phase(
-            location,
+            location.root,
+            location.store,
+            location.open,
             args.phase,
             work,
             github_client(work, args.remote),

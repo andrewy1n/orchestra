@@ -89,7 +89,9 @@ def _landing_records(phase: Phase) -> list[Record]:
 
 def _land(phase: Phase, tree: Path, run: ScriptedRun) -> land.LandingResult:
     return land.land_phase(
-        StoreLocation(phase.store, None),
+        phase.store,
+        None,
+        StoreLocation(phase.store, None).open,
         PHASE,
         tree,
         GitHubGh(tree, "origin", {}, run=run),

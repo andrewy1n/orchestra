@@ -60,7 +60,9 @@ def use_adapter(phase: Phase, adapter: str) -> None:
 def land_through(phase: Phase, gh: FakeGh) -> land.LandingResult:
     gh.head = Git(phase.repo).head()
     return land.land_phase(
-        StoreLocation(phase.store, None),
+        phase.store,
+        None,
+        StoreLocation(phase.store, None).open,
         PHASE,
         phase.repo,
         gh,
