@@ -29,6 +29,7 @@ from conftest import REPO_ROOT, build_store
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close_batch, task_close
+from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 CheckRunLoader = Callable[[str], Record]
 AcceptanceLoader = Callable[[str], Record]
@@ -162,7 +163,9 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
                 "result": entry.get("result"),
                 "runner": entry["runner"] if close_batch._entry_has(entry, "runner") else RUNNER,
                 "revision": (
-                    entry["revision"] if close_batch._entry_has(entry, "revision") else "deadbeef"
+                    entry["revision"]
+                    if close_batch._entry_has(entry, "revision")
+                    else ("HEAD" if entry.get("method") == "check" else "deadbeef")
                 ),
                 "method": entry.get("method"),
             }
@@ -659,10 +662,16 @@ def test_cli_claim_gate_refuses_unknown_claim(cli, store, resolved_contract, tmp
     )
     assert updated.returncode == 0, updated.stdout + updated.stderr
     acceptance = json.loads(updated.stdout)["record"]
-    runner_cr = _seed_runner_check_run(
-        cli, defs, subject, acceptance, execution_report, result="pass"
-    )
     _write_manifest_claim(store, "some-other-claim")
+    runner_cr = _seed_runner_check_run(
+        cli,
+        defs,
+        subject,
+        acceptance,
+        execution_report,
+        result="pass",
+        revision=_git(store, "rev-parse", "HEAD"),
+    )
 
     request = {
         "subject": subject,
@@ -1890,25 +1899,37 @@ def test_close_batch_tuner_import_is_function_local():
     assert local_modules >= _CLOSE_LIBRARY_MODULES
 
 
-def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
+_CONFIG_TOML = (
+    f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n'
+)
+
+
+def _commit_manifest_text(repo: Path, text: str) -> None:
+    (repo / "orchestra.toml").write_text(_CONFIG_TOML, encoding="utf-8")
     tuner_dir = repo / ".tuner"
     tuner_dir.mkdir(parents=True, exist_ok=True)
-    (tuner_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "claims": [
-                    {
-                        "id": claim_id,
-                        "text": "widget works",
-                        "tests": ["tests/test_widget.py::test_widget"],
-                        "oracle_hashes": {},
-                    }
-                ],
-                "amendments": [],
-            }
-        ),
-        encoding="utf-8",
+    (tuner_dir / "manifest.json").write_text(text, encoding="utf-8")
+    _git(repo, "add", "orchestra.toml", ".tuner/manifest.json")
+    _git(
+        repo,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test",
+        "commit",
+        "-m",
+        "manifest",
     )
+
+
+def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
+    claim = {
+        "id": claim_id,
+        "text": "widget works",
+        "tests": ["tests/test_widget.py::test_widget"],
+        "oracle_hashes": {},
+    }
+    _commit_manifest_text(repo, json.dumps({"claims": [claim], "amendments": []}))
 
 
 def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
@@ -2049,8 +2070,9 @@ def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeyp
 
 
 def test_claim_gate_binds_verdict_to_green_close_revision(tmp_path, monkeypatch):
-    repo, green_revision = _oracle_repo(tmp_path)
+    repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
+    green_revision = _git(repo, "rev-parse", "HEAD")
     verdict_revisions: list[str] = []
 
     def verdict(_cwd, revision, _base, _claim_ids):
@@ -2213,9 +2235,7 @@ def test_claim_gate_refuses_when_manifest_is_missing(tmp_path):
 )
 def test_claim_gate_refuses_invalid_manifest(tmp_path, content: str):
     repo, _sha = _oracle_repo(tmp_path)
-    manifest = repo / ".tuner" / "manifest.json"
-    manifest.parent.mkdir()
-    manifest.write_text(content, encoding="utf-8")
+    _commit_manifest_text(repo, content)
 
     with pytest.raises(
         close_batch.CloseRefused, match=r"manifest is (unreadable or invalid|invalid)"
@@ -2282,11 +2302,7 @@ def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
 def test_claim_gate_refuses_claim_when_manifest_lists_none(tmp_path, monkeypatch):
     """R9: a present manifest with no claims still refuses an unlisted claim."""
     repo, _sha = _oracle_repo(tmp_path)
-    tuner_dir = repo / ".tuner"
-    tuner_dir.mkdir()
-    (tuner_dir / "manifest.json").write_text(
-        json.dumps({"claims": [], "amendments": []}), encoding="utf-8"
-    )
+    _commit_manifest_text(repo, json.dumps({"claims": [], "amendments": []}))
     _patch_tuner(
         monkeypatch,
         "orchestra.tuner.verdict",

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -374,30 +373,31 @@ def _approved_amendment_covers_tree(
     return False
 
 
-def _manifest_claim_ids(cwd: Path) -> set[str]:
-    """Return valid claim ids from the repository manifest."""
-    path = cwd / ".tuner" / "manifest.json"
-    if not path.is_file():
-        raise CloseRefused("claim manifest is missing")
+def _tuner_not_importable(claim_id: str) -> CloseRefused:
+    return CloseRefused(
+        f"tuner is not importable; cannot run verdict or recheck for claim {claim_id!r}"
+    )
+
+
+def _claim_ids_at_revision(cwd: Path, revision: str, claim_id: str) -> set[str]:
     try:
-        data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise CloseRefused(f"claim manifest is unreadable or invalid: {exc}") from exc
-    claims = data.get("claims") if isinstance(data, dict) else None
-    if not isinstance(claims, list):
-        raise CloseRefused("claim manifest is invalid: claims must be a list")
-    ids: set[str] = set()
-    for claim in claims:
-        if not _is_object(claim):
-            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
-        raw_claim_id = claim.get("id")
-        if not isinstance(raw_claim_id, str):
-            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
-        claim_id = raw_claim_id.strip()
-        if not claim_id or claim_id in ids:
-            raise CloseRefused("claim manifest is invalid: claim ids must be non-empty and unique")
-        ids.add(claim_id)
-    return ids
+        from orchestra.tuner.manifest import MANIFEST_PATH, ManifestError, load_manifest
+    except ImportError as exc:
+        raise _tuner_not_importable(claim_id) from exc
+
+    try:
+        manifest = load_manifest(cwd, revision)
+    except ManifestError as exc:
+        message = str(exc)
+        if message.startswith(f"missing {MANIFEST_PATH} at "):
+            raise CloseRefused("claim manifest is missing") from exc
+        if message.startswith(f"invalid JSON in {MANIFEST_PATH} at "):
+            raise CloseRefused(f"claim manifest is unreadable or invalid: {message}") from exc
+        raise CloseRefused(f"claim manifest is invalid: {message}") from exc
+    ids = [claim.id.strip() for claim in manifest.claims]
+    if not all(ids) or len(set(ids)) != len(ids):
+        raise CloseRefused("claim manifest is invalid: claim ids must be non-empty and unique")
+    return set(ids)
 
 
 def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
@@ -410,9 +410,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         from orchestra.tuner.binding import recheck
         from orchestra.tuner.verdict import run_verdict
     except ImportError as exc:
-        raise CloseRefused(
-            f"tuner is not importable; cannot run verdict or recheck for claim {claim_id!r}"
-        ) from exc
+        raise _tuner_not_importable(claim_id) from exc
     failed: list[str] = []
     details: list[str] = []
     try:
@@ -460,7 +458,7 @@ def _enforce_claim_gates(
     An acceptance that cannot be loaded refuses, and so does a claim id
     that the manifest does not list. An empty claim is not gated.
     """
-    claim_ids: set[str] | None = None
+    claim_ids_by_revision: dict[str, set[str]] = {}
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
         acceptance = acceptances[entry["criterion_id"]]
@@ -468,13 +466,6 @@ def _enforce_claim_gates(
         claim_id = str(payload.get("claim") or "").strip()
         if not claim_id:
             continue
-        if claim_ids is None:
-            claim_ids = _manifest_claim_ids(cwd)
-        if claim_id not in claim_ids:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: claim {claim_id!r} is not "
-                "listed in .tuner/manifest.json"
-            )
         revision: object = None
         green = green_by_criterion.get(criterion_id)
         if green is not None:
@@ -486,7 +477,15 @@ def _enforce_claim_gates(
                 f"criterion {criterion_id!r}: claim {claim_id!r} requires "
                 "a close revision for tuner verdict"
             )
-        _run_tuner_claim_gate(claim_id, cwd=cwd, revision=str(revision))
+        revision = str(revision)
+        if revision not in claim_ids_by_revision:
+            claim_ids_by_revision[revision] = _claim_ids_at_revision(cwd, revision, claim_id)
+        if claim_id not in claim_ids_by_revision[revision]:
+            raise CloseRefused(
+                f"criterion {criterion_id!r}: claim {claim_id!r} is not "
+                "listed in .tuner/manifest.json"
+            )
+        _run_tuner_claim_gate(claim_id, cwd=cwd, revision=revision)
 
 
 def _enforce_oracle_gates(

@@ -5,14 +5,13 @@ from __future__ import annotations
 import ast
 import contextlib
 import importlib
-import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-from close_store_support import build_in_store
+from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import Record
 from orchestra.conductor import close_batch
@@ -227,7 +226,7 @@ def _check_loader(check_run_id: str) -> Record:
             "criterion_id": "rec-ac1",
             "result": "pass",
             "runner": "orchestra",
-            "revision": "abc123",
+            "revision": "HEAD",
             "method": "check",
         },
     }
@@ -247,24 +246,7 @@ def _claim_acceptance() -> Record:
 
 
 def _write_manifest(repo: Path) -> None:
-    directory = repo / ".tuner"
-    directory.mkdir(parents=True)
-    (directory / "manifest.json").write_text(
-        json.dumps(
-            {
-                "claims": [
-                    {
-                        "id": CLAIM_ID,
-                        "text": "widget works",
-                        "tests": ["tests/test_widget.py::test_widget"],
-                        "oracle_hashes": {},
-                    }
-                ],
-                "amendments": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    commit_claim_manifest(repo, (CLAIM_ID,))
 
 
 def _claim_request() -> dict:

@@ -13,39 +13,21 @@ mirroring the claim-gate tests in ``tests/test_close_batch.py``.
 from __future__ import annotations
 
 import importlib
-import json
 from pathlib import Path
 
-from close_store_support import build_in_store
+from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
 UNKNOWN_CLAIM_ID = "claim-not-in-manifest"
-GREEN_REVISION = "green-rev-abc123"
+GREEN_REVISION = "HEAD"
 CHECK_RUN_ID = "rec-runner-cr"
 
 
 def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
-    tuner_dir = repo / ".tuner"
-    tuner_dir.mkdir(parents=True, exist_ok=True)
-    (tuner_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "claims": [
-                    {
-                        "id": claim_id,
-                        "text": "widget works",
-                        "tests": ["tests/test_widget.py::test_widget"],
-                        "oracle_hashes": {},
-                    }
-                ],
-                "amendments": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    commit_claim_manifest(repo, (claim_id,))
 
 
 def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
@@ -85,7 +67,7 @@ def _matching_loader(request: dict):
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("result"),
                 "runner": entry.get("runner", "orchestra"),
-                "revision": entry.get("revision", "deadbeef"),
+                "revision": entry.get("revision", "HEAD"),
                 "method": entry.get("method"),
             }
             by_id[cid] = {

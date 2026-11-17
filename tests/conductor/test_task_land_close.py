@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from canon_support import REPO, create, make_project
+from close_store_support import commit_claim_manifest
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
@@ -236,8 +237,7 @@ def test_r17_refuses_a_claim_when_the_manifest_is_missing(tmp_path: Path) -> Non
 def test_r17_refuses_a_claim_the_manifest_does_not_list(tmp_path: Path) -> None:
     project, repo = _world(tmp_path, {"claim": "claim-widget"})
     tree = Path(str(project.resolve("score:work-item", "a")["payload"].get("write_root") or repo))
-    (tree / ".tuner").mkdir()
-    (tree / ".tuner" / "manifest.json").write_text(json.dumps({"claims": [{"id": "other"}]}))
+    commit_claim_manifest(tree, ("other",))
     closure = _land(project, repo, tmp_path)
     assert closure.state == "in_progress"
     assert len(closure.reasons) == 1

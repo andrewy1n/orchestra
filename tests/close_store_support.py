@@ -14,6 +14,8 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.close_batch import CloseRequestError, build_batch
 from orchestra.conductor.task_close import CloseRefused
+from orchestra.tools import Git
+from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 RecordSource = Callable[[str], Record]
 AmendmentSource = Callable[[str], list[Record]]
@@ -122,3 +124,31 @@ def build_in_store(
     restored = _swap_json(ops, names, False)
     assert isinstance(restored, list)
     return [JsonObject(op) for op in restored]  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+
+
+def commit_claim_manifest(repo: Path, claim_ids: tuple[str, ...]) -> None:
+    git = Git(repo)
+    git.run("init", "-q")
+    claims = [
+        {
+            "id": claim_id,
+            "text": "widget works",
+            "tests": ["tests/test_widget.py::test_widget"],
+            "oracle_hashes": {},
+        }
+        for claim_id in claim_ids
+    ]
+    toml = (
+        '[verify.stages]\nphase = ["unit"]\n\n'
+        f"[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n"
+    )
+    (repo / "orchestra.toml").write_text(toml, encoding="utf-8")
+    (repo / ".tuner").mkdir(exist_ok=True)
+    (repo / ".tuner" / "manifest.json").write_text(
+        json.dumps({"claims": claims, "amendments": []}), encoding="utf-8"
+    )
+    git.run("add", "orchestra.toml", ".tuner/manifest.json")
+    result = git.run(
+        "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", "manifest"
+    )
+    assert result.returncode == 0, result.stderr

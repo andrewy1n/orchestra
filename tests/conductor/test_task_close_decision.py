@@ -20,6 +20,7 @@ from orchestra.conductor.task_close import (
     decide_close,
 )
 from orchestra.tools import Git
+from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 EFFORT = "ef"
 PHASE = "ph"
@@ -206,10 +207,24 @@ def _head_revision(s: Scenario, relpath: str, content: bytes, message: str) -> s
     return _commit(s.git, s.root, relpath, content, message)
 
 
+_CONFIG_TOML = (
+    f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n'
+)
+
+
+def _commit_manifest_text(s: Scenario, text: str) -> None:
+    _commit(s.git, s.root, "orchestra.toml", _CONFIG_TOML.encode(), "config")
+    sha = _commit(s.git, s.root, ".tuner/manifest.json", text.encode(), "manifest")
+    s.green = _check_run(s.project, s.aid, s.method, {"revision": sha})
+    s.green_sha = sha
+
+
+def _claim(claim_id: str) -> JsonObject:
+    return {"id": claim_id, "text": "t", "tests": [NODE], "oracle_hashes": {}}
+
+
 def _write_manifest(s: Scenario, claims: object) -> None:
-    directory = s.root / ".tuner"
-    directory.mkdir(exist_ok=True)
-    (directory / "manifest.json").write_text(json.dumps({"claims": claims}), encoding="utf-8")
+    _commit_manifest_text(s, json.dumps({"claims": claims}))
 
 
 def _tuner_outcomes(monkeypatch: pytest.MonkeyPatch, verdict: str, recheck: str) -> None:
@@ -690,7 +705,7 @@ def _amend(s: Scenario, status: str, new_hashes: list[str]) -> Record:
 
 def _claim_scenario(tmp_path: Path) -> Scenario:
     s = _check_scenario(tmp_path, acceptance={"claim": CLAIM})
-    _write_manifest(s, [{"id": CLAIM}])
+    _write_manifest(s, [_claim(CLAIM)])
     return s
 
 
@@ -729,7 +744,7 @@ def test_r8_refuses_claim_when_the_tuner_library_is_not_importable(
 
 def test_r8_refuses_claim_missing_from_the_manifest(tmp_path: Path) -> None:
     s = _claim_scenario(tmp_path)
-    _write_manifest(s, [{"id": "claim-other"}])
+    _write_manifest(s, [_claim("claim-other")])
 
     reason = _reason(_decide(s))
 
@@ -744,8 +759,7 @@ def test_r8_refuses_claim_when_the_manifest_is_missing(tmp_path: Path) -> None:
 
 def test_r8_refuses_claim_when_the_manifest_is_unreadable(tmp_path: Path) -> None:
     s = _check_scenario(tmp_path, acceptance={"claim": CLAIM})
-    (s.root / ".tuner").mkdir()
-    (s.root / ".tuner" / "manifest.json").write_text("{", encoding="utf-8")
+    _commit_manifest_text(s, "{")
 
     assert _reason(_decide(s)).startswith("claim manifest is unreadable or invalid: ")
 
@@ -753,12 +767,18 @@ def test_r8_refuses_claim_when_the_manifest_is_unreadable(tmp_path: Path) -> Non
 @pytest.mark.parametrize(
     ("claims", "expected"),
     [
-        ("nope", "claim manifest is invalid: claims must be a list"),
-        (["nope"], "claim manifest is invalid: each claim needs a string id"),
-        ([{"id": 3}], "claim manifest is invalid: each claim needs a string id"),
-        ([{"id": " "}], "claim manifest is invalid: claim ids must be non-empty and unique"),
+        ("nope", "claim manifest is invalid: manifest claims must be a list"),
+        (["nope"], "claim manifest is invalid: claims[0] is not an object"),
         (
-            [{"id": CLAIM}, {"id": CLAIM}],
+            [{**_claim(CLAIM), "id": 3}],
+            "claim manifest is invalid: claims[0].id must be a non-empty string",
+        ),
+        (
+            [_claim(" ")],
+            "claim manifest is invalid: claim ids must be non-empty and unique",
+        ),
+        (
+            [_claim(CLAIM), _claim(CLAIM)],
             "claim manifest is invalid: claim ids must be non-empty and unique",
         ),
     ],
@@ -777,7 +797,6 @@ def test_r8_refuses_claim_when_no_close_revision_exists(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     s = _check_scenario(tmp_path, acceptance={"claim": CLAIM}, green={"revision": ""})
-    _write_manifest(s, [{"id": CLAIM}])
     _tuner_outcomes(monkeypatch, "pass", "pass")
 
     reason = _reason(_decide(s, _entry(s, revision=None)))
