@@ -180,6 +180,10 @@ def test_r19_guard_passes_on_tree() -> None:
         "def run():\n    return open_store(directory=Path.cwd())\n",
         "from pathlib import Path\n\nfrom orchestra.store import resolve_location\n\n\n"
         "def run():\n    return resolve_location(Path.cwd(), Path('x')).open()\n",
+        "from pathlib import Path\n\nfrom orchestra.canon.project import open_store\n\n\n"
+        "def run(root=None):\n    return open_store(root or Path.cwd())\n",
+        "from pathlib import Path\n\nfrom orchestra.canon.project import open_store\n\n\n"
+        "def run(root=None):\n    return open_store(root if root else Path.cwd(), store=None)\n",
     ],
 )
 def test_r19_guard_fails_on_seeded_cwd_store_open(tmp_path: Path, seed: str) -> None:
