@@ -593,3 +593,23 @@ def test_r9_blocker_scope_and_phase_are_unchanged(project: Project, phases: None
 
     assert (found("on-base").scope, found("on-base").phase) == ("phase", "base")
     assert (found("effort-wide").scope, found("effort-wide").phase) == ("effort", None)
+
+
+def _without_acceptances(project: Project) -> list[Record]:
+    return [item for item in _stored(project) if item["record_type"] != "score:acceptance"]
+
+
+def test_r6_unsigned_run_without_an_acceptance_is_a_gate(project: Project) -> None:
+    acceptance = _acceptance(project)
+    run = _run(project, acceptance)
+
+    assert _ids(_gates(_without_acceptances(project), "unsigned-check")) == [run["id"]]
+
+
+def test_r7_earlier_unsigned_run_without_an_acceptance_is_not_a_gate(project: Project) -> None:
+    acceptance = _acceptance(project)
+    _run(project, acceptance)
+    later = _run(project, acceptance, signed_by="me")
+
+    assert later["id"] not in _ids(_gates(_without_acceptances(project), "unsigned-check"))
+    assert _gates(_without_acceptances(project), "unsigned-check") == []

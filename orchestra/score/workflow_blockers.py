@@ -74,12 +74,25 @@ def latest_manual_check(acceptance: Record, records: list[Record]) -> Record | N
 
 def unsigned_manual_checks(records: list[Record]) -> list[Record]:
     runs = _uncorrected_manual_checks(records)
-    unsigned: list[Record] = []
+    claimed: set[str] = set()
+    latest_runs: list[Record] = []
     for acceptance in records:
         if acceptance["record_type"] != "score:acceptance":
             continue
-        run = _latest_among(acceptance, runs)
-        if run is not None and not _payload_text(run, "signed_by") and run not in unsigned:
+        names = check_run_criteria(acceptance)
+        owned = [run for run in runs if _payload_text(run, "criterion_id") in names]
+        claimed.update(run["id"] for run in owned)
+        deciding = latest(owned)
+        if deciding is not None:
+            latest_runs.append(deciding)
+    unowned: dict[str, list[Record]] = {}
+    for run in runs:
+        if run["id"] not in claimed:
+            unowned.setdefault(_payload_text(run, "criterion_id"), []).append(run)
+    latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
+    unsigned: list[Record] = []
+    for run in latest_runs:
+        if not _payload_text(run, "signed_by") and run not in unsigned:
             unsigned.append(run)
     return unsigned
 
