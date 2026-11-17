@@ -613,3 +613,17 @@ def test_r7_earlier_unsigned_run_without_an_acceptance_is_not_a_gate(project: Pr
 
     assert later["id"] not in _ids(_gates(_without_acceptances(project), "unsigned-check"))
     assert _gates(_without_acceptances(project), "unsigned-check") == []
+
+
+def test_r6_unsigned_runs_without_a_criterion_are_each_a_gate(project: Project) -> None:
+    acceptance = _acceptance(project)
+    first = _run(project, acceptance)
+    second = _run(project, acceptance, signed_by="me")
+    records: list[Record] = []
+    for item in _without_acceptances(project):
+        if item["id"] in {first["id"], second["id"]}:
+            blank = item.copy()
+            blank["payload"] = {**item["payload"], "criterion_id": ""}
+            records.append(blank)
+
+    assert _ids(_gates(records, "unsigned-check")) == [first["id"]]

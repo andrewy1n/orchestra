@@ -88,7 +88,7 @@ def unsigned_manual_checks(records: list[Record]) -> list[Record]:
     unowned: dict[str, list[Record]] = {}
     for run in runs:
         if run["id"] not in claimed:
-            unowned.setdefault(_payload_text(run, "criterion_id"), []).append(run)
+            unowned.setdefault(_payload_text(run, "criterion_id") or run["id"], []).append(run)
     latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
     unsigned: list[Record] = []
     for run in latest_runs:
