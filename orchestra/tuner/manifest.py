@@ -39,6 +39,14 @@ class ManifestError(Exception):
     """The revision is not a commit, or the manifest blob cannot be parsed."""
 
 
+class ManifestMissing(ManifestError):
+    pass
+
+
+class ManifestUnreadable(ManifestError):
+    pass
+
+
 @dataclass(frozen=True)
 class Claim:
     id: str

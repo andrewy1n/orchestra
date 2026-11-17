@@ -20,6 +20,7 @@ from orchestra.conductor.task_close import (
     decide_close,
 )
 from orchestra.tools import Git
+from orchestra.conductor import task_close
 from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 EFFORT = "ef"
@@ -964,3 +965,75 @@ def test_r12_refuses_from_the_given_project_not_the_store_in_the_current_directo
     reason = _reason(_decide(s, project=empty))
 
     assert reason.startswith(f"criterion {s.aid!r}: acceptance could not be loaded: ")
+
+
+def test_pr_review_refuses_criterion_outside_acceptance_ids(tmp_path: Path) -> None:
+    s = _check_scenario(tmp_path)
+
+    reason = _reason(_decide(s, _entry(s, criterion_id="rec-ghost")))
+
+    assert reason == f"criteria entry 'rec-ghost' is not in acceptance_ids {[s.aid]}"
+
+
+def test_pr_review_refuses_criterion_without_method(tmp_path: Path) -> None:
+    s = _check_scenario(tmp_path)
+
+    reason = _reason(_decide(s, _entry(s, method=None)))
+
+    assert reason == "criteria entry missing field: 'method'"
+
+
+def test_pr_review_refuses_criterion_with_unknown_method(tmp_path: Path) -> None:
+    s = _check_scenario(tmp_path)
+
+    reason = _reason(_decide(s, _entry(s, method="bogus")))
+
+    assert reason == f"criteria entry {s.aid!r} has unknown method 'bogus'"
+
+
+def test_pr_review_refuses_runner_check_entry_carrying_signed_by(tmp_path: Path) -> None:
+    s = _check_scenario(tmp_path)
+
+    reason = _reason(_decide(s, _entry(s, signed_by="someone")))
+
+    assert reason == (
+        f"criteria entry {s.aid!r} method='check' must "
+        "not carry signed_by; reference check_run_id only"
+    )
+
+
+def test_pr_review_criterion_problem_is_empty_for_a_valid_entry(tmp_path: Path) -> None:
+    s = _check_scenario(tmp_path)
+
+    assert task_close.criterion_problem([_entry(s)], [s.aid]) == ""
+
+
+def test_pr_review_oracle_amendments_read_subject_from_the_given_record(
+    tmp_path: Path,
+) -> None:
+    s = _check_scenario(tmp_path)
+    amendment = _amend(s, "approved", [])
+    unsaved: Record = {**s.acceptance, "id": "rec-unsaved"}
+
+    listed = task_close._oracle_amendments(s.project, unsaved)
+
+    assert [record["id"] for record in listed] == [amendment["id"]]
+
+
+def test_pr_review_missing_manifest_is_refused_with_missing_text(tmp_path: Path) -> None:
+    s = _claim_scenario(tmp_path)
+    _commit(s.git, s.root, "orchestra.toml", _CONFIG_TOML.encode(), "config")
+    s.git.run("rm", "-q", ".tuner/manifest.json")
+    removed = _commit(s.git, s.root, "other.txt", b"x", "drop manifest")
+    s.green = _check_run(s.project, s.aid, s.method, {"revision": removed})
+    s.green_sha = removed
+
+    assert _reason(_decide(s)) == "claim manifest is missing"
+
+
+def test_pr_review_manifest_exceptions_subclass_manifest_error() -> None:
+    from orchestra.tuner import manifest
+
+    assert issubclass(manifest.ManifestMissing, manifest.ManifestError)
+    assert issubclass(manifest.ManifestUnreadable, manifest.ManifestError)
+    assert manifest.ManifestMissing is not manifest.ManifestUnreadable

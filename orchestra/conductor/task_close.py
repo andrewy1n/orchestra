@@ -373,6 +373,10 @@ def _approved_amendment_covers_tree(
     return False
 
 
+def criterion_problem(criteria: Sequence[CriterionRequest], acceptance_ids: Sequence[str]) -> str:
+    return ""
+
+
 def _tuner_not_importable(claim_id: str) -> CloseRefused:
     return CloseRefused(
         f"tuner is not importable; cannot run verdict or recheck for claim {claim_id!r}"

@@ -196,11 +196,24 @@ def test_r19_guard_fails_on_seeded_cwd_store_open(tmp_path: Path, seed: str) -> 
     assert found[0].startswith("orchestra/conductor/seeded_cwd_open.py:")
 
 
-def test_r19_guard_accepts_cwd_as_resolve_location_fallback(tmp_path: Path) -> None:
-    root = _copy_conductor(tmp_path)
-    (root / CONDUCTOR / "seeded_fallback.py").write_text(
+@pytest.mark.parametrize(
+    "seed",
+    [
         "from pathlib import Path\n\nfrom orchestra.store import resolve_location\n\n\n"
-        "def run(store):\n    return resolve_location(store, Path.cwd()).open()\n",
-        encoding="utf-8",
-    )
-    assert r19_violations(root) == []
+        "def run(store):\n    return resolve_location(None, Path.cwd()).open()\n",
+        "from orchestra.store import resolve_location\n\n\n"
+        "def run(store, root):\n    return resolve_location(store, root).open()\n",
+        "from orchestra.store import find_store_root\n\n\n"
+        "def run(root):\n    return find_store_root(root)\n",
+    ],
+)
+def test_pr_review_r19_guard_fails_on_any_store_discovery_call(tmp_path: Path, seed: str) -> None:
+    root = _copy_conductor(tmp_path)
+    (root / CONDUCTOR / "seeded_discovery.py").write_text(seed, encoding="utf-8")
+    found = r19_violations(root)
+    assert len(found) == 1
+    assert found[0].startswith("orchestra/conductor/seeded_discovery.py:")
+
+
+def test_pr_review_r19_guard_passes_on_tree() -> None:
+    assert r19_violations(REPO) == []
