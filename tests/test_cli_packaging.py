@@ -304,7 +304,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
         [
             sys.executable,
             "-c",
-            ("import orchestra.conductor.close_batch as cb\nprint(cb._assertion_level_red({}))\n"),
+            ("import orchestra.conductor.task_close as cb\nprint(cb.assertion_level_red({}))\n"),
         ],
         cwd=str(elsewhere),
         env=env,

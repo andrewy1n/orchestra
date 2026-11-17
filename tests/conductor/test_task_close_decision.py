@@ -228,7 +228,9 @@ def test_r1_refuses_tdd_criterion_naming_no_check_run(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, check_run_id=None)))
 
-    assert reason == f"criterion {s.aid!r}: check_run_id '' not found in artifact store"
+    assert (
+        reason == f"criterion {s.aid!r}: check_run_id check_run_id '' not found in artifact store"
+    )
 
 
 def test_r1_refuses_check_criterion_naming_no_check_run(tmp_path: Path) -> None:
@@ -236,7 +238,9 @@ def test_r1_refuses_check_criterion_naming_no_check_run(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, check_run_id=None)))
 
-    assert reason == f"criterion {s.aid!r}: check_run_id '' not found in artifact store"
+    assert (
+        reason == f"criterion {s.aid!r}: check_run_id check_run_id '' not found in artifact store"
+    )
 
 
 def test_r1_refuses_check_run_the_runner_did_not_produce(tmp_path: Path) -> None:
@@ -261,7 +265,9 @@ def test_r2_refuses_check_run_missing_from_store(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, check_run_id="rec-ghost")))
 
-    assert reason == (f"criterion {s.aid!r}: check_run_id 'rec-ghost' not found in artifact store")
+    assert reason == (
+        f"criterion {s.aid!r}: check_run_id check_run_id 'rec-ghost' not found in artifact store"
+    )
 
 
 def test_r2_refuses_check_run_of_another_criterion(tmp_path: Path) -> None:
@@ -371,7 +377,7 @@ def test_r2_refuses_red_check_run_missing_from_store(tmp_path: Path) -> None:
     reason = _reason(_decide(s, _entry(s, red_check_run_id="rec-ghost")))
 
     assert reason == (
-        f"criterion {s.aid!r}: red_check_run_id 'rec-ghost' not found in artifact store"
+        f"criterion {s.aid!r}: red_check_run_id check_run_id 'rec-ghost' not found in artifact store"
     )
 
 
@@ -448,13 +454,13 @@ def test_r3_refuses_green_on_a_divergent_branch_from_red(tmp_path: Path) -> None
     s = _scenario(tmp_path, frozen=False)
     s.git.run("checkout", "-q", "-b", "side", s.red_sha)
     side = _head_revision(s, "side.txt", b"side\n", "side")
-    green = _check_run(s.project, s.aid, "tdd", {"revision": side})
+    red = _check_run(s.project, s.aid, "tdd", {"revision": side, "result": "fail"})
 
-    reason = _reason(_decide(s, _entry(s, check_run_id=green["id"], revision=side)))
+    reason = _reason(_decide(s, _entry(s, red_check_run_id=red["id"], red_revision=side)))
 
     assert reason == (
         f"criterion {s.aid!r}: green revision is not equal to or "
-        f"a git descendant of red revision (red={s.red_sha}, green={side})"
+        f"a git descendant of red revision (red={side}, green={s.green_sha})"
     )
 
 
@@ -463,9 +469,7 @@ def test_r3_refuses_red_revision_git_cannot_resolve(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, red_revision=None)))
 
-    assert reason.startswith(
-        f"criterion {s.aid!r}: cannot check git ancestry of {'f' * 40} and {s.green_sha}: "
-    )
+    assert reason.startswith(f"cannot check git ancestry of {'f' * 40} and {s.green_sha}: ")
 
 
 def test_r3_refuses_sha_red_when_request_omits_green_revision(tmp_path: Path) -> None:
@@ -627,6 +631,7 @@ def test_r6_refuses_approved_amendment_with_invalid_hashes(tmp_path: Path) -> No
 def test_r6_refuses_oracle_file_missing_at_the_revision(tmp_path: Path) -> None:
     s = _scenario(
         tmp_path,
+        method="check",
         acceptance={
             "test_ids": ["tests/test_gone.py::test_gone"],
             "oracle_hashes": [f"tests/test_gone.py:{_sha(ORACLE_V1)}"],

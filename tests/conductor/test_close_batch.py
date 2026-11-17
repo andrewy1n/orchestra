@@ -1852,7 +1852,7 @@ _CLOSE_LIBRARY_MODULES = frozenset(
 
 
 def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
-    path = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
+    path = REPO_ROOT / "orchestra" / "conductor" / "task_close.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: list[tuple[int, str, bool]] = []
 

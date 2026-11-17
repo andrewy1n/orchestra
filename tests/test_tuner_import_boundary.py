@@ -61,7 +61,7 @@ def _allowed_close_import(path: Path, module: str, function_local: bool) -> bool
     """A function-local import inside close is the library call; module-level is not."""
     return (
         function_local
-        and path == ROOT / "orchestra" / "conductor" / "close_batch.py"
+        and path == ROOT / "orchestra" / "conductor" / "task_close.py"
         and module in CLOSE_LIBRARY_MODULES
     )
 
@@ -82,9 +82,9 @@ def test_orchestra_and_dashboard_do_not_import_tuner_store_client():
     assert hits == []
 
 
-def test_close_batch_tuner_import_is_function_local():
+def test_task_close_tuner_import_is_function_local():
     """Close may import tuner inside a function; a module-level import is not allowed."""
-    path = ROOT / "orchestra" / "conductor" / "close_batch.py"
+    path = ROOT / "orchestra" / "conductor" / "task_close.py"
     tuner = [
         item
         for item in _imported_modules(path)
@@ -97,7 +97,7 @@ def test_close_batch_tuner_import_is_function_local():
 
 
 def test_import_scan_rejects_module_level_and_allows_function_local(tmp_path):
-    sample = tmp_path / "close_batch.py"
+    sample = tmp_path / "task_close.py"
     sample.write_text(
         "import orchestra.tuner.verdict\n"
         "def close():\n"

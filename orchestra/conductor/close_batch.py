@@ -38,31 +38,30 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import json
-import re
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TypedDict, TypeGuard
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
+from orchestra.conductor.task_close import (
+    RUNNER_METHODS,
+    AcceptanceLoader,
+    AmendmentLister,
+    CheckRunLoader,
+    CloseRecords,
+    CloseRefusal,
+    CloseRefused,
+    CriterionRequest,
+    PhaseLoader,
+    decide_close_with,
+)
+from orchestra.conductor.task_close import entry_has as _entry_has
 from orchestra.score.lookups import current_phase
-from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
-from orchestra.tools import Git, ToolError
-
-RUNNER_METHODS = frozenset({"tdd", "check"})
-RUNNER_MARKER = "orchestra"
-
-CheckRunLoader = Callable[[str], Record]
-AcceptanceLoader = Callable[[str], Record]
-PhaseLoader = Callable[[str], Record]
-AmendmentLister = Callable[[str], list[Record]]
 
 
 class FindingRequest(TypedDict):
@@ -71,24 +70,6 @@ class FindingRequest(TypedDict):
     invalidated_when: str
     body: str
     phase: str | None
-
-
-class CriterionRequest(TypedDict):
-    criterion_id: str
-    method: str | None
-    result: str
-    revision: str
-    signed_by: str
-    check_run_id: str
-    red_check_run_id: str
-    red_result: str
-    red_runner: str
-    red_revision: str
-    red_diff_sha256: str
-    red_body: str
-    red_failing_node_ids: str
-    runner: str
-    _provided_fields: list[str]
 
 
 class CloseRequest(TypedDict):
@@ -104,18 +85,6 @@ class CloseRequest(TypedDict):
 
 class CloseRequestError(Exception):
     """Malformed close-request -- exit 1, distinct from a policy refusal."""
-
-
-class CloseRefused(Exception):
-    """Policy refusal -- exit 2, distinct from a malformed request."""
-
-
-class OracleAdapterUnavailable(Exception):
-    """Oracle-backed close needs the tuner library.
-
-    An installed Orchestra CLI serves every other subcommand without tuner
-    importable; this gate refuses clearly when the import fails.
-    """
 
 
 def _is_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
@@ -230,27 +199,6 @@ def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
     }
 
 
-def _entry_passed(entry: CriterionRequest) -> bool:
-    return entry.get("result") == "pass"
-
-
-def _entry_has(entry: CriterionRequest, key: str) -> bool:
-    return key in entry["_provided_fields"]
-
-
-def _is_git_ancestor(ancestor: str, descendant: str, cwd: Path) -> bool:
-    """True when ancestor == descendant or ancestor is a git ancestor of descendant."""
-    if ancestor == descendant:
-        return True
-    try:
-        return Git(cwd).is_ancestor(ancestor, descendant)
-    except ToolError as error:
-        detail = error.stderr.strip() or str(error)
-        raise CloseRefused(
-            f"cannot check git ancestry of {ancestor} and {descendant}: {detail}"
-        ) from error
-
-
 def _open_project(store_root: Path | None):
     return open_store(store_root if store_root is not None else Path.cwd())
 
@@ -309,469 +257,6 @@ def default_list_oracle_amendments(
     return matched
 
 
-def _sha256_digest(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
-
-
-def hash_file_at_revision(cwd: Path, revision: str, relpath: str) -> str:
-    """Content hash of ``relpath`` at a store-backed check-run revision."""
-    content = Git(cwd).show_bytes(revision, relpath)
-    if content is None:
-        raise FileNotFoundError(relpath)
-    return _sha256_digest(content)
-
-
-def tree_oracle_hashes(
-    cwd: Path,
-    revision: str,
-    frozen: dict[str, str],
-) -> dict[str, str]:
-    """Hash each frozen oracle path at ``revision`` in ``cwd``."""
-    out: dict[str, str] = {}
-    for relpath in frozen:
-        out[relpath] = hash_file_at_revision(cwd, revision, relpath)
-    return out
-
-
-def _load_check_run(
-    check_run_id: str,
-    *,
-    criterion_id: JsonValue,
-    label: str,
-    loader: CheckRunLoader,
-) -> Record:
-    try:
-        return loader(check_run_id)
-    except LookupError as exc:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: {label} check_run_id "
-            f"{check_run_id!r} not found in artifact store"
-        ) from exc
-
-
-def _match_field(
-    *,
-    criterion_id: JsonValue,
-    label: str,
-    field: str,
-    requested: JsonValue,
-    stored: JsonValue,
-) -> None:
-    if requested != stored:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: {label} {field} mismatch "
-            f"(request={requested!r}, store={stored!r})"
-        )
-
-
-def _resolve_green_check_run(
-    entry: CriterionRequest,
-    *,
-    loader: CheckRunLoader,
-) -> PlanningPayload:
-    """Load and match the green/primary check-run; return its payload."""
-    criterion_id = entry.get("criterion_id")
-    check_run_id = entry["check_run_id"]
-    record = _load_check_run(
-        check_run_id,
-        criterion_id=criterion_id,
-        label="check_run_id",
-        loader=loader,
-    )
-    payload = record_payload(record)
-
-    _match_field(
-        criterion_id=criterion_id,
-        label="check-run",
-        field="criterion_id",
-        requested=criterion_id,
-        stored=payload.get("criterion_id"),
-    )
-    _match_field(
-        criterion_id=criterion_id,
-        label="check-run",
-        field="result",
-        requested=entry.get("result"),
-        stored=payload.get("result"),
-    )
-
-    stored_runner = payload.get("runner")
-    if stored_runner != RUNNER_MARKER:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: check-run is not runner-produced "
-            f"(runner must be {RUNNER_MARKER!r}, got {stored_runner!r})"
-        )
-    if _entry_has(entry, "runner"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="check-run",
-            field="runner",
-            requested=entry.get("runner"),
-            stored=stored_runner,
-        )
-
-    if _entry_has(entry, "revision"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="check-run",
-            field="revision",
-            requested=entry.get("revision"),
-            stored=payload.get("revision"),
-        )
-
-    return payload
-
-
-def _resolve_red_check_run(
-    entry: CriterionRequest,
-    *,
-    loader: CheckRunLoader,
-) -> tuple[Record, PlanningPayload]:
-    """Load and match the red check-run; return (full record, payload)."""
-    criterion_id = entry.get("criterion_id")
-    red_id = entry.get("red_check_run_id")
-    if not red_id:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: tdd done close requires "
-            "red_check_run_id (runner-produced fail preceding the green)"
-        )
-
-    record = _load_check_run(
-        red_id,
-        criterion_id=criterion_id,
-        label="red_check_run_id",
-        loader=loader,
-    )
-    payload = record_payload(record)
-
-    _match_field(
-        criterion_id=criterion_id,
-        label="red check-run",
-        field="criterion_id",
-        requested=criterion_id,
-        stored=payload.get("criterion_id"),
-    )
-
-    if _entry_has(entry, "red_result"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="red check-run",
-            field="result",
-            requested=entry.get("red_result"),
-            stored=payload.get("result"),
-        )
-    if _entry_has(entry, "red_runner"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="red check-run",
-            field="runner",
-            requested=entry.get("red_runner"),
-            stored=payload.get("runner"),
-        )
-    if _entry_has(entry, "red_revision"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="red check-run",
-            field="revision",
-            requested=entry.get("red_revision"),
-            stored=payload.get("revision"),
-        )
-    if _entry_has(entry, "red_diff_sha256"):
-        _match_field(
-            criterion_id=criterion_id,
-            label="red check-run",
-            field="diff_sha256",
-            requested=entry.get("red_diff_sha256"),
-            stored=payload.get("diff_sha256"),
-        )
-
-    return record, payload
-
-
-def _enforce_red_first_from_store(
-    entry: CriterionRequest,
-    *,
-    green_payload: Mapping[str, object],
-    red_payload: Mapping[str, object],
-    cwd: Path,
-) -> None:
-    """Refuse tdd done closes whose store red does not precede store green."""
-    criterion_id = entry.get("criterion_id")
-
-    red_result = red_payload.get("result")
-    if red_result != "fail":
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: red evidence result must be 'fail', got {red_result!r}"
-        )
-
-    red_runner = red_payload.get("runner")
-    if red_runner != RUNNER_MARKER:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: red check-run is not runner-produced "
-            f"(runner must be {RUNNER_MARKER!r}, got {red_runner!r})"
-        )
-
-    red_revision = red_payload.get("revision")
-    if not red_revision:
-        raise CloseRefused(f"criterion {criterion_id!r}: red evidence missing revision")
-
-    if red_revision == "dirty":
-        digest = red_payload.get("diff_sha256") or ""
-        if not digest:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: dirty red requires non-empty diff_sha256"
-            )
-        return
-
-    # SHA red: request must still carry green revision (anti-gap), and it
-    # must match the store; ancestry uses the store revision.
-    if not _entry_has(entry, "revision"):
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for git-ancestry red-first check"
-        )
-    green_revision = green_payload.get("revision")
-    if not green_revision:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision required for git-ancestry red-first check"
-        )
-    if green_revision == "dirty":
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: cannot verify red-first ordering "
-            "when green revision is dirty and red is a SHA"
-        )
-
-    if not isinstance(red_revision, str) or not isinstance(green_revision, str):
-        raise CloseRefused(f"criterion {criterion_id!r}: revisions must be strings")
-    if not _is_git_ancestor(red_revision, green_revision, cwd):
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision is not equal to or "
-            f"a git descendant of red revision "
-            f"(red={red_revision}, green={green_revision})"
-        )
-
-
-def _assertion_level_red(record: Record) -> bool:
-    """Ask tuner whether red failed at assertion level.
-
-    The import stays inside this function so ``orchestra --help`` does not
-    import tuner. A missing import raises OracleAdapterUnavailable.
-    """
-    try:
-        from orchestra.tuner.oracle_red import is_assertion_level_red
-    except ImportError as exc:
-        raise OracleAdapterUnavailable(
-            "tuner is not importable; close-batch needs tuner to "
-            "classify assertion-level red for oracle-backed acceptances"
-        ) from exc
-    return bool(is_assertion_level_red(record))
-
-
-def _approved_amendment_covers_tree(
-    amendments: list[Record],
-    tree_hashes: dict[str, str],
-) -> bool:
-    """True when an active approved amendment's new_hashes equal tree hashes."""
-    for record in amendments:
-        payload = record_payload(record)
-        if str(payload.get("status") or "") != "approved":
-            continue
-        try:
-            new_hashes = parse_hashes(payload.get("new_hashes"))
-        except ValueError as exc:
-            raise CloseRefused(
-                f"approved oracle-amendment {record['id']!r} has invalid new_hashes: {exc}"
-            ) from exc
-        if new_hashes and new_hashes == tree_hashes:
-            return True
-    return False
-
-
-def _manifest_claim_ids(cwd: Path) -> set[str]:
-    """Return valid claim ids from the repository manifest."""
-    path = cwd / ".tuner" / "manifest.json"
-    if not path.is_file():
-        raise CloseRefused("claim manifest is missing")
-    try:
-        data: JsonValue = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise CloseRefused(f"claim manifest is unreadable or invalid: {exc}") from exc
-    claims = data.get("claims") if isinstance(data, dict) else None
-    if not isinstance(claims, list):
-        raise CloseRefused("claim manifest is invalid: claims must be a list")
-    ids: set[str] = set()
-    for claim in claims:
-        if not _is_object(claim):
-            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
-        raw_claim_id = claim.get("id")
-        if not isinstance(raw_claim_id, str):
-            raise CloseRefused("claim manifest is invalid: each claim needs a string id")
-        claim_id = raw_claim_id.strip()
-        if not claim_id or claim_id in ids:
-            raise CloseRefused("claim manifest is invalid: claim ids must be non-empty and unique")
-        ids.add(claim_id)
-    return ids
-
-
-def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
-    """Refuse unless tuner verdict and recheck both pass for the claim.
-
-    Imports stay inside this function so ``orchestra --help`` does not import
-    tuner. A missing import raises an error that names tuner.
-    """
-    try:
-        from orchestra.tuner.binding import recheck
-        from orchestra.tuner.verdict import run_verdict
-    except ImportError as exc:
-        raise CloseRefused(
-            f"tuner is not importable; cannot run verdict or recheck for claim {claim_id!r}"
-        ) from exc
-    failed: list[str] = []
-    details: list[str] = []
-    try:
-        verdict = run_verdict(cwd, revision, None, [claim_id])
-    except Exception as exc:
-        failed.append("verdict")
-        details.append(f"verdict: {exc}")
-    else:
-        if not _is_pass_result(verdict):
-            failed.append("verdict")
-    try:
-        outcome = recheck(cwd, claim_id)
-    except Exception as exc:
-        failed.append("recheck")
-        details.append(f"recheck: {exc}")
-    else:
-        if not _is_pass_result(outcome):
-            failed.append("recheck")
-    if failed:
-        clocks = " and ".join(failed)
-        suffix = f" ({'; '.join(details)})" if details else ""
-        raise CloseRefused(
-            f"tuner {clocks} refused for claim {claim_id!r} at revision {revision!r}{suffix}"
-        )
-
-
-def _is_pass_result(value: object) -> bool:
-    return _is_object(value) and value.get("result") == "pass"
-
-
-def _is_object(value: object) -> TypeGuard[dict[str, object]]:
-    return isinstance(value, dict)
-
-
-def _enforce_claim_gates(
-    criteria: list[CriterionRequest],
-    *,
-    green_by_criterion: dict[JsonValue, Mapping[str, object]],
-    cwd: Path,
-    acceptances: Mapping[str, Record],
-) -> None:
-    """Manifest-backed acceptances need tuner verdict and recheck on done.
-
-    The claim id comes only from the acceptance payload field ``claim``.
-    An acceptance that cannot be loaded refuses, and so does a claim id
-    that the manifest does not list. An empty claim is not gated.
-    """
-    claim_ids: set[str] | None = None
-    for entry in criteria:
-        criterion_id = entry.get("criterion_id")
-        acceptance = acceptances[entry["criterion_id"]]
-        payload = record_payload(acceptance)
-        claim_id = str(payload.get("claim") or "").strip()
-        if not claim_id:
-            continue
-        if claim_ids is None:
-            claim_ids = _manifest_claim_ids(cwd)
-        if claim_id not in claim_ids:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: claim {claim_id!r} is not "
-                "listed in .tuner/manifest.json"
-            )
-        revision: object = None
-        green = green_by_criterion.get(criterion_id)
-        if green is not None:
-            revision = green.get("revision")
-        if not revision:
-            revision = entry.get("revision")
-        if not revision:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: claim {claim_id!r} requires "
-                "a close revision for tuner verdict"
-            )
-        _run_tuner_claim_gate(claim_id, cwd=cwd, revision=str(revision))
-
-
-def _enforce_oracle_gates(
-    entry: CriterionRequest,
-    *,
-    green_payload: Mapping[str, object],
-    red_record: Record | None,
-    cwd: Path,
-    acceptance: Record,
-    list_oracle_amendments: AmendmentLister,
-) -> None:
-    criterion_id = entry["criterion_id"]
-    try:
-        acceptance_payload = record_payload(acceptance)
-        frozen = parse_freeze(acceptance_payload)
-    except ValueError as exc:
-        raise CloseRefused(f"criterion {criterion_id!r}: incomplete oracle freeze: {exc}") from exc
-
-    if entry["method"] == "tdd":
-        if red_record is None:
-            raise CloseRefused(f"criterion {criterion_id!r}: frozen tdd requires red evidence")
-        try:
-            assertion_red = _assertion_level_red(red_record)
-        except OracleAdapterUnavailable as exc:
-            raise CloseRefused(f"criterion {criterion_id!r}: {exc}") from exc
-        if not assertion_red:
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: oracle-backed tdd requires "
-                "assertion-level red (fail with assertion failure); "
-                "import/collection-only red is refused"
-            )
-
-        failing_nodes = record_payload(red_record).get("failing_node_ids")
-        test_ids = record_payload(acceptance).get("test_ids") or []
-        if (
-            not isinstance(failing_nodes, list)
-            or not failing_nodes
-            or any(node not in test_ids for node in failing_nodes)
-        ):
-            raise CloseRefused(
-                f"criterion {criterion_id!r}: assertion red must identify frozen test ids"
-            )
-
-    green_revision = green_payload.get("revision")
-    if not isinstance(green_revision, str) or not re.fullmatch(
-        r"(?:[0-9a-f]{40}|[0-9a-f]{64})", green_revision
-    ):
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: green revision must be a pinned commit for the freeze check"
-        )
-
-    try:
-        tree = tree_oracle_hashes(cwd, str(green_revision), frozen)
-    except FileNotFoundError as exc:
-        raise CloseRefused(
-            f"criterion {criterion_id!r}: oracle file missing at green "
-            f"revision {green_revision!r}: {exc}"
-        ) from exc
-
-    if tree == frozen:
-        return
-
-    amendments = list_oracle_amendments(str(criterion_id))
-    if _approved_amendment_covers_tree(amendments, tree):
-        return
-
-    raise CloseRefused(
-        f"criterion {criterion_id!r}: oracle hash drift at green revision "
-        f"{green_revision!r} without an approved oracle-amendment whose "
-        "new_hashes match the tree (freeze hashes are the close authority)"
-    )
-
-
 def build_batch(
     request: Mapping[str, object],
     *,
@@ -813,32 +298,10 @@ def build_batch(
             return load_acceptance(acceptance_id)
         return default_load_acceptance(acceptance_id, store_root=resolved_store)
 
-    def oracle_policy(acceptance: Record) -> OraclePolicy:
-        payload = record_payload(acceptance)
-        phase_payload = None
-        phase = payload.get("phase")
-        if (
-            "oracle_policy" not in payload
-            and "test_ids" not in payload
-            and "oracle_hashes" not in payload
-            and isinstance(phase, str)
-            and phase
-        ):
-            try:
-                phase_record = (
-                    load_phase(phase)
-                    if load_phase is not None
-                    else default_load_phase(phase, store_root=resolved_store)
-                )
-                phase_payload = record_payload(phase_record)
-            except (LookupError, StoreBindingError, StoreError, OSError) as exc:
-                raise CloseRefused(f"phase {phase!r} policy unavailable: {exc}") from exc
-        try:
-            return resolve_oracle_policy(payload, phase_payload)
-        except ValueError as exc:
-            raise CloseRefused(
-                f"criterion {acceptance['id']!r}: incomplete oracle freeze or invalid policy: {exc}"
-            ) from exc
+    def phase_loader(phase: str) -> Record:
+        if load_phase is not None:
+            return load_phase(phase)
+        return default_load_phase(phase, store_root=resolved_store)
 
     def amendment_lister(acceptance_id: str) -> list[Record]:
         if list_oracle_amendments is not None:
@@ -904,76 +367,22 @@ def build_batch(
                 f"criteria entry {criterion_id!r} has unknown method {method!r}"
             )
 
-    # Store authority for done closes: resolve every runner check-run id.
-    green_by_criterion: dict[JsonValue, Mapping[str, object]] = {}
-    if transition == "done":
-        acceptances: dict[str, Record] = {}
-        for aid in acceptance_ids:
-            try:
-                acceptances[aid] = acceptance_loader(aid)
-            except (LookupError, StoreBindingError, StoreError, OSError) as exc:
-                raise CloseRefused(
-                    f"criterion {aid!r}: acceptance could not be loaded: {exc}"
-                ) from exc
-        policies = {aid: oracle_policy(acceptance) for aid, acceptance in acceptances.items()}
-        passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
-        for aid, acceptance in acceptances.items():
-            if record_payload(acceptance).get("method") == "tdd" and aid not in passed_ids:
-                raise CloseRefused(f"criterion {aid!r}: TDD close requires a passing criterion")
-        for entry in criteria:
-            aid = entry["criterion_id"]
-            _match_field(
-                criterion_id=aid,
-                label="acceptance",
-                field="method",
-                requested=entry["method"],
-                stored=record_payload(acceptances[aid]).get("method"),
-            )
-            if entry.get("method") not in RUNNER_METHODS:
-                continue
-            green_by_criterion[entry.get("criterion_id")] = _resolve_green_check_run(
-                entry, loader=loader
-            )
-        _enforce_claim_gates(
-            criteria,
-            green_by_criterion=green_by_criterion,
-            cwd=work_cwd,
-            acceptances=acceptances,
-        )
-
-        for entry in criteria:
-            if not _entry_passed(entry) or entry.get("method") not in RUNNER_METHODS:
-                continue
-            green_payload = green_by_criterion[entry["criterion_id"]]
-            red_record = None
-            if entry["method"] == "tdd":
-                red_record, red_payload = _resolve_red_check_run(entry, loader=loader)
-                _enforce_red_first_from_store(
-                    entry,
-                    green_payload=green_payload,
-                    red_payload=red_payload,
-                    cwd=work_cwd,
-                )
-            if policies[entry["criterion_id"]] == "frozen":
-                _enforce_oracle_gates(
-                    entry,
-                    green_payload=green_payload,
-                    red_record=red_record,
-                    cwd=work_cwd,
-                    acceptance=acceptances[entry["criterion_id"]],
-                    list_oracle_amendments=amendment_lister,
-                )
-
-    passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
-    unmet = [aid for aid in acceptance_ids if aid not in passed_ids]
-
-    if transition == "done" and unmet and not finding:
-        raise CloseRefused(
-            "closing to done with unmet or unverified criterion(s) "
-            f"{unmet} and no finding -- refusing. Either resolve those "
-            "criteria first, or supply `finding` (claim, basis, "
-            "invalidated_when, body) to close anyway."
-        )
+    records = CloseRecords(
+        check_run=loader,
+        acceptance=acceptance_loader,
+        phase=phase_loader,
+        amendments=amendment_lister,
+    )
+    decision = decide_close_with(
+        records,
+        criteria,
+        acceptance_ids=acceptance_ids,
+        cwd=work_cwd,
+        transition=transition,
+        has_finding=bool(finding),
+    )
+    if isinstance(decision, CloseRefusal):
+        raise CloseRefused(decision.reason)
 
     ops: list[JsonObject] = []
     for entry in criteria:
@@ -1092,9 +501,6 @@ def main(argv: list[str] | None = None) -> int:
         ops = build_batch(request, cwd=args.cwd)
     except CloseRefused as exc:
         print(f"close refused: {exc}", file=sys.stderr)
-        return 2
-    except OracleAdapterUnavailable as exc:
-        print(f"close-batch: {exc}", file=sys.stderr)
         return 2
     except CloseRequestError as exc:
         print(f"close-request malformed: {exc}", file=sys.stderr)
