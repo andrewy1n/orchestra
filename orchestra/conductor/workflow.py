@@ -9,7 +9,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor import suite
-from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, parse_landing
+from orchestra.conductor.gate import format_missing, gate_terms, missing_terms
 from orchestra.conductor.head_evidence import (
     EvidenceIndex,
     acceptance_latest,
@@ -18,7 +18,7 @@ from orchestra.conductor.head_evidence import (
     review_at_head,
     suite_check_runs,
 )
-from orchestra.conductor.landing import latest_landing, proof_packet
+from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
 from orchestra.score.lookups import dependencies as item_dependencies

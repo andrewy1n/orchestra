@@ -23,7 +23,6 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
-from orchestra.conductor.landing import parse_landing as parse_landing
 from orchestra.conductor.landing import phase_place
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers

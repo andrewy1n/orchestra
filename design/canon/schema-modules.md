@@ -258,5 +258,5 @@ canon does not check the caller.
 
 ## Open questions
 
-1. Name the orchestra step that moves a phase to `done`. No skill names it
-   today, yet 75 of 80 phases in orchestra's store are `done`.
+1. Resolved: `orchestra close` moves a phase to `done`. `close._apply` makes
+   the transition after the pull request merges.
