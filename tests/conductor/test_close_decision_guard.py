@@ -90,7 +90,9 @@ def _opens_store_from_cwd(node: ast.Call) -> bool:
         root = _root_argument(node, "store")
     else:
         return False
-    return root is not None and _is_cwd_call(root)
+    return root is not None and any(
+        isinstance(part, ast.Call) and _is_cwd_call(part) for part in ast.walk(root)
+    )
 
 
 def r19_violations(root: Path) -> list[str]:
