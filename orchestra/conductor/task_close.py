@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, TypedDict, TypeGuard
 from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError
-from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.model_types import PlanningPayload, planning_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
@@ -756,7 +756,7 @@ class Closure:
     question_id: str = ""
 
 
-def _red_check_run(project: Project, criterion: str, green: Record) -> str:
+def _earlier_red_id(project: Project, criterion: str, green: Record) -> str:
     earlier = [
         r
         for r in project.list("tuner:check-run")
@@ -768,53 +768,46 @@ def _red_check_run(project: Project, criterion: str, green: Record) -> str:
     return max(earlier, key=lambda r: r["recorded_at"])["id"] if earlier else ""
 
 
-def _policy_problem(
-    project: Project, landed: land_task.LandedTask, item: Record, tree: Path
-) -> str:
-    criteria: list[JsonObject] = []
-    for check in landed.checks:
-        acceptance = project.get(check.acceptance_id, "score:acceptance")
-        green = project.get(check.check_run_id, "tuner:check-run")
-        entry: JsonObject = {
-            "criterion_id": check.acceptance_id,
-            "method": record_payload(acceptance).get("method"),
-            "result": record_payload(green).get("result"),
-        }
-        if entry["method"] == "manual":
-            entry["revision"] = record_payload(green).get("revision")
-            entry["signed_by"] = record_payload(green).get("signed_by")
-        else:
-            entry["check_run_id"] = check.check_run_id
-            red = _red_check_run(project, check.acceptance_id, green)
-            if entry["method"] == "tdd" and red:
-                entry["red_check_run_id"] = red
-                entry["revision"] = record_payload(green).get("revision")
-        criteria.append(entry)
+def _text(value: JsonValue) -> str:
+    return value if isinstance(value, str) else ""
 
-    from orchestra.conductor.close_batch import CloseRequestError, build_batch
 
-    records = project_records(project)
-    request: JsonObject = {
-        "subject": landed.task,
-        "effort": str(record_payload(item).get("effort") or ""),
-        "work_item_id": item["id"],
-        "transition": "done",
-        "acceptance_ids": [c.acceptance_id for c in landed.checks],
-        "criteria": list(criteria),
-        "execution_report_id": landed.report_id,
+def _criterion_request(project: Project, check: land_task.CheckResult) -> CriterionRequest:
+    acceptance = project.get(check.acceptance_id, "score:acceptance")
+    green = project.get(check.check_run_id, "tuner:check-run")
+    method = record_payload(acceptance).get("method")
+    green_payload = record_payload(green)
+    provided = ["criterion_id", "method", "result"]
+    request: CriterionRequest = {
+        "criterion_id": check.acceptance_id,
+        "method": method if isinstance(method, str) else None,
+        "result": _text(green_payload.get("result")),
+        "revision": "",
+        "signed_by": "",
+        "check_run_id": "",
+        "red_check_run_id": "",
+        "red_result": "",
+        "red_runner": "",
+        "red_revision": "",
+        "red_diff_sha256": "",
+        "red_body": "",
+        "red_failing_node_ids": "",
+        "runner": "",
+        "_provided_fields": provided,
     }
-    try:
-        build_batch(
-            request,
-            cwd=tree,
-            load_check_run=records.check_run,
-            load_acceptance=records.acceptance,
-            load_phase=records.phase,
-            list_oracle_amendments=records.amendments,
-        )
-    except (CloseRefused, CloseRequestError) as exc:
-        return str(exc)
-    return ""
+    if method == "manual":
+        request["revision"] = _text(green_payload.get("revision"))
+        request["signed_by"] = _text(green_payload.get("signed_by"))
+        provided += ["revision", "signed_by"]
+        return request
+    request["check_run_id"] = check.check_run_id
+    provided.append("check_run_id")
+    red = _earlier_red_id(project, check.acceptance_id, green)
+    if method == "tdd" and red:
+        request["red_check_run_id"] = red
+        request["revision"] = _text(green_payload.get("revision"))
+        provided += ["red_check_run_id", "revision"]
+    return request
 
 
 def close(
@@ -869,9 +862,14 @@ def close(
             reasons.append(f"requirements not verified: {', '.join(unverified)}")
             failed = True
     if not failed and not pending and landed.checks:
-        problem = _policy_problem(project, landed, item, tree)
-        if problem:
-            reasons.append(problem)
+        decision = decide_close(
+            project,
+            [_criterion_request(project, check) for check in landed.checks],
+            acceptance_ids=[check.acceptance_id for check in landed.checks],
+            cwd=tree,
+        )
+        if isinstance(decision, CloseRefusal):
+            reasons.append(decision.reason)
             failed = True
 
     if failed or pending:

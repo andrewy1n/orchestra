@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -135,8 +136,9 @@ def test_r12_task_close_ignores_superseded_phase(tmp_path: Path) -> None:
         payload={"title": "Next", "ordinal": 1, "effort": EFFORT, "oracle_policy": "none"},
     )
     landed, item = _landed_task(project, tmp_path)
+    project.update(item["id"], record_type="score:work-item", transition="in_progress")
 
-    assert task_close._policy_problem(project, landed, item, tmp_path) == ""
+    assert task_close.close(project, replace(landed, verdict="pass"), frozenset()).state == "done"
 
 
 def test_r13_workflow_all_superseded_phase_not_found(tmp_path: Path) -> None:
