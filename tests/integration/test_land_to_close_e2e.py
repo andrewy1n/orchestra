@@ -14,9 +14,9 @@ from conftest import git
 import orchestra.conductor.github_pr as github_pr
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
-from orchestra.cli import main as cli_main
-from orchestra.conductor import close
+from orchestra.conductor import close, land
 from orchestra.conductor.github_pr import GitHubGh
+from orchestra.store import StoreLocation
 from orchestra.tools import Version
 from orchestra.tools.testing import ScriptedRun, scripted
 
@@ -87,20 +87,26 @@ def _landing_records(phase: Phase) -> list[Record]:
     return records
 
 
-def test_merged_phase_closes_end_to_end(phase: Phase, monkeypatch: pytest.MonkeyPatch) -> None:
+def _land(phase: Phase, tree: Path, run: ScriptedRun) -> land.LandingResult:
+    return land.land_phase(
+        StoreLocation(phase.store, None),
+        PHASE,
+        tree,
+        GitHubGh(tree, "origin", {}, run=run),
+        base="main",
+        remote="origin",
+        poll_interval_s=1,
+        timeout_s=10,
+    )
+
+
+def test_merged_phase_closes_end_to_end(phase: Phase) -> None:
     tree, head = _landing_setup(phase)
     land_run = _land_run(head)
-    real_gh = GitHubGh
-    monkeypatch.setattr(
-        github_pr,
-        "GitHubGh",
-        lambda root, remote, config: real_gh(root, remote, config, run=land_run),
-    )
     _review_repo_head(phase)
     _packet(phase)
-    land_args = ["land", "--phase", PHASE, "--cwd", str(tree), "--store", str(phase.store)]
 
-    assert cli_main(land_args) == 0
+    assert _land(phase, tree, land_run).result == "success"
 
     create = next(call for call in land_run.calls if call[:3] == ("gh", "pr", "create"))
     assert create[-2:] == ("--body-file", "-")
@@ -110,24 +116,20 @@ def test_merged_phase_closes_end_to_end(phase: Phase, monkeypatch: pytest.Monkey
     assert git(phase.repo, "ls-remote", "--heads", "origin", BRANCH).stdout.strip()
 
     merged_run = _merged_run(head)
-    monkeypatch.setattr(
-        close,
-        "github_states",
-        lambda root: real_gh(root, "origin", {}, run=merged_run),
-    )
-    close_args = ["close", "--phase", PHASE, "--cwd", str(phase.repo), "--store", str(phase.store)]
+    states = GitHubGh(phase.repo, "origin", {}, run=merged_run)
+    project = open_store(phase.store)
 
-    assert cli_main(close_args) == 0
+    assert close.close_phase(project, phase.repo, PHASE, states).ready
 
     assert not tree.exists()
     assert not (phase.repo / ".worktrees" / f"{PHASE}--task").exists()
     assert git(phase.repo, "branch", "--list", BRANCH, f"task/{PHASE}/*").stdout.strip() == ""
     assert open_store(phase.store).resolve("score:phase", PHASE)["lifecycle_state"] == "done"
-    assert cli_main(close_args) == 0
+    assert close.close_phase(project, phase.repo, PHASE, states).ready
     assert merged_run.calls[-1] == ("gh", "pr", "view", "7", "--json", "state,headRefOid")
 
 
-def test_land_and_close_use_gh_only(phase: Phase, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_land_and_close_use_gh_only(phase: Phase) -> None:
     banned = {"urllib", "requests", "httpx", "http", "socket", "aiohttp"}
     for module in (close, github_pr):
         source = Path(module.__file__ or "").read_text(encoding="utf-8")
@@ -145,16 +147,9 @@ def test_land_and_close_use_gh_only(phase: Phase, monkeypatch: pytest.MonkeyPatc
 
     tree, head = _landing_setup(phase)
     land_run = _land_run(head)
-    monkeypatch.setattr(
-        github_pr,
-        "GitHubGh",
-        lambda root, remote, config: GitHubGh(root, remote, config, run=land_run),
-    )
     _review_repo_head(phase)
     _packet(phase)
-    assert (
-        cli_main(["land", "--phase", PHASE, "--cwd", str(tree), "--store", str(phase.store)]) == 0
-    )
+    assert _land(phase, tree, land_run).result == "success"
     merged_run = _merged_run(head)
     close.close_phase(
         open_store(phase.store),

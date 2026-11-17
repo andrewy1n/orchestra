@@ -9,7 +9,7 @@ from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.query import latest
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.revision import revision_matches
 
 LANDING = "conductor:landing"
@@ -26,6 +26,21 @@ def latest_landing(records: Sequence[Record], phase: str) -> Record | None:
     if not found:
         return None
     return max(enumerate(found), key=lambda pair: (pair[1].get("recorded_at", ""), pair[0]))[1]
+
+
+def landing_payload(
+    phase: str, number: int, url: str, head_sha: str, result: str, effort: str | None
+) -> JsonObject:
+    payload: JsonObject = {
+        "phase": phase,
+        "number": number,
+        "url": url,
+        "head_sha": head_sha,
+        "result": result,
+    }
+    if effort:
+        payload["effort"] = effort
+    return payload
 
 
 _HEADING = re.compile(r"^## (.+?)\s*$", re.MULTILINE)

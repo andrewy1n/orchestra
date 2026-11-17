@@ -17,6 +17,7 @@ from orchestra.canon.backend import open_backend
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close
+from orchestra.conductor.github_pr import github_client
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.tools.git import Git
 
@@ -171,7 +172,7 @@ def _close_sweep(project: Project, root: Path) -> list[str]:
         if not close.landed_phases(project):
             return []
         repo = Git(root).primary_checkout()
-        results = close.close_all(project, repo, close.github_states(repo), root)
+        results = close.close_all(project, repo, github_client(repo), root)
     except Exception as exc:
         return [f"Close sweep failed: {exc}"]
     lines: list[str] = []

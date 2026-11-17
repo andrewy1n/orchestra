@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import helpers as h
+import pytest
 from canon_support import create, make_project, seed_effort
 from conftest import git, make_git_repo
 
@@ -34,6 +36,35 @@ class FakeStates:
         assert number == 7
         self.calls += 1
         return self.state, self.head_sha
+
+
+def fake_gh_on_path(
+    directory: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    landed: Landed,
+    state: str,
+    *,
+    fail: bool = False,
+) -> None:
+    """Put a scripted `gh` first on PATH; it reports one pull request state, or fails."""
+    directory.mkdir(parents=True, exist_ok=True)
+    write_policy(landed.repo)
+    reply = (
+        "echo 'gh is not installed' >&2; exit 1"
+        if fail
+        else f"echo '{_pull_request(state, landed.head)}'"
+    )
+    script = directory / "gh"
+    script.write_text(
+        f'#!/bin/sh\nif [ "$1" = "--version" ]; then echo "gh version 2.60.0"; exit 0; fi\n{reply}\n',
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{directory}{os.pathsep}{os.environ['PATH']}")
+
+
+def _pull_request(state: str, head: str) -> str:
+    return json.dumps({"state": state, "headRefOid": head})
 
 
 def _git(root: Path, *args: str) -> str:

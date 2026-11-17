@@ -9,9 +9,7 @@ from typing import Protocol
 from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
-from orchestra.conductor.github_pr import GitHubGh
 from orchestra.conductor.landing import (
     LANDING,
     LandingPlace,
@@ -43,10 +41,6 @@ class CloseResult:
     refusals: tuple[str, ...]
     message: str
     actions: tuple[str, ...] = ()
-
-
-def github_states(repo: Path) -> PullRequestStates:
-    return GitHubGh(repo, "origin", load_project_config(repo).land_config)
 
 
 def close_phase(

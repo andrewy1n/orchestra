@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from canon_support import make_project, seed_effort
 from conductor_support import CLOSE_PHASE as PHASE
-from conductor_support import FakeStates, Landed, _commit, _git, make_landed
+from conductor_support import FakeStates, Landed, _commit, _git, fake_gh_on_path, make_landed
 
 from orchestra.conductor import close
 
@@ -102,7 +102,7 @@ def test_close_cli_reports_the_pull_request_state(
 ) -> None:
     from orchestra.cli import main
 
-    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("OPEN"))
+    fake_gh_on_path(landed.repo.parent / "bin", monkeypatch, landed, "OPEN")
 
     code = main(
         [
@@ -128,7 +128,7 @@ def test_close_cli_exits_one_when_a_refusal_stands(
     from orchestra.cli import main
 
     (landed.task_tree / "scratch.txt").write_text("x", encoding="utf-8")
-    monkeypatch.setattr(close, "github_states", lambda _repo: landed.states("MERGED"))
+    fake_gh_on_path(landed.repo.parent / "bin", monkeypatch, landed, "MERGED")
 
     code = main(
         [
