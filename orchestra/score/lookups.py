@@ -102,3 +102,7 @@ def acceptances_of(
         if owner is not None and owner["id"] == item["id"]:
             owned.append(acceptance)
     return owned
+
+
+def check_run_criteria(acceptance: Record) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((acceptance["id"], acceptance["subject"])))

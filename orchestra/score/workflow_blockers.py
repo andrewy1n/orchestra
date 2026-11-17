@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.score.lookups import current_phase, current_phases
+from orchestra.score.lookups import check_run_criteria, current_phase, current_phases
 
 
 class WorkflowBlockerError(ValueError):
@@ -16,6 +17,86 @@ class WorkflowBlocker:
     record: Record
     scope: Literal["phase", "effort"]
     phase: str | None
+
+
+@dataclass(frozen=True)
+class HumanGate:
+    kind: Literal["blocking-question", "open-question", "needs-human", "unsigned-check"]
+    record: Record
+    clears: str
+
+
+OPEN_FINDING_STATES = ("asserted", "supported", "disputed")
+CHECK_RUN_TYPE = "tuner:check-run"
+QUESTION_TYPE = "score:continuity-question"
+FINDING_TYPE = "tuner:finding"
+
+
+def is_open_finding(record: Record) -> bool:
+    return (
+        record["record_type"] == FINDING_TYPE
+        and _payload_text(record, "needs") == "human"
+        and record["lifecycle_state"] in OPEN_FINDING_STATES
+    )
+
+
+def _is_open_question(record: Record) -> bool:
+    return record["record_type"] == QUESTION_TYPE and record["lifecycle_state"] == "open"
+
+
+def _is_blocking_question(record: Record) -> bool:
+    return _is_open_question(record) and record["payload"].get("blocking") is True
+
+
+def _uncorrected_manual_checks(records: list[Record]) -> list[Record]:
+    corrected = {
+        target
+        for record in records
+        for target in (record.get("relationships") or {}).get("corrects") or []
+    }
+    return [
+        record
+        for record in records
+        if record["record_type"] == CHECK_RUN_TYPE
+        and _payload_text(record, "method") == "manual"
+        and record["id"] not in corrected
+    ]
+
+
+def _latest_among(acceptance: Record, runs: list[Record]) -> Record | None:
+    names = check_run_criteria(acceptance)
+    return latest(run for run in runs if _payload_text(run, "criterion_id") in names)
+
+
+def latest_manual_check(acceptance: Record, records: list[Record]) -> Record | None:
+    return _latest_among(acceptance, _uncorrected_manual_checks(records))
+
+
+def unsigned_manual_checks(records: list[Record]) -> list[Record]:
+    runs = _uncorrected_manual_checks(records)
+    unsigned: list[Record] = []
+    for acceptance in records:
+        if acceptance["record_type"] != "score:acceptance":
+            continue
+        run = _latest_among(acceptance, runs)
+        if run is not None and not _payload_text(run, "signed_by") and run not in unsigned:
+            unsigned.append(run)
+    return unsigned
+
+
+def human_gates(records: list[Record]) -> list[HumanGate]:
+    gates: list[HumanGate] = []
+    for record in records:
+        if _is_blocking_question(record):
+            gates.append(HumanGate("blocking-question", record, QUESTION_TYPE))
+        elif _is_open_question(record):
+            gates.append(HumanGate("open-question", record, QUESTION_TYPE))
+        elif is_open_finding(record):
+            gates.append(HumanGate("needs-human", record, FINDING_TYPE))
+    gates.extend(
+        HumanGate("unsigned-check", run, CHECK_RUN_TYPE) for run in unsigned_manual_checks(records)
+    )
+    return gates
 
 
 def _payload_text(record: Record, key: str) -> str:
@@ -74,17 +155,9 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
     blockers: list[WorkflowBlocker] = []
     for record in records:
         payload = record["payload"]
-        record_type = record["record_type"]
-        if record_type == "tuner:finding":
-            if _payload_text(record, "needs") != "human" or record["lifecycle_state"] in (
-                "refuted",
-                "retracted",
-            ):
-                continue
+        if is_open_finding(record):
             record_effort = _payload_text(record, "effort")
-        elif record_type == "score:continuity-question":
-            if payload.get("blocking") is not True or record["lifecycle_state"] != "open":
-                continue
+        elif _is_blocking_question(record):
             record_effort = record["subject"]
         else:
             continue
