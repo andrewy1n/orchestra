@@ -281,7 +281,10 @@ def _close_in_process(repo: Path, request: dict, monkeypatch) -> int:
 
     monkeypatch.chdir(repo)
     monkeypatch.setattr(subprocess, "run", spy)
-    code = close_batch.main(["--input", str(path), "--out", str(out), "--cwd", str(repo)])
+    code = close_batch.main(
+        ["--input", str(path), "--out", str(out), "--cwd", str(repo)],
+        open_project=lambda _store: open_store(repo),
+    )
     assert spawned == [], f"in-process close started {spawned}"
     return code
 

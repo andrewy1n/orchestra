@@ -39,7 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TypedDict, TypeGuard
 
@@ -54,7 +54,6 @@ from orchestra.conductor.task_close import (
     decide_close,
 )
 from orchestra.conductor.task_close import entry_has as _entry_has
-from orchestra.store import resolve_location
 
 
 class FindingRequest(TypedDict):
@@ -375,7 +374,7 @@ def _write(path: str, text: str) -> None:
         fh.write(text)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None, *, open_project: Callable[[str | None], Project]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input", default="-", help="close-request JSON path, or '-' for stdin (default)"
@@ -403,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        project = resolve_location(args.store, Path.cwd()).open()
+        project = open_project(args.store)
     except StoreBindingError as exc:
         print(f"close refused: {exc}", file=sys.stderr)
         return 2
@@ -419,7 +418,3 @@ def main(argv: list[str] | None = None) -> int:
 
     _write(args.out, "\n".join(json.dumps(op) for op in ops) + "\n")
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

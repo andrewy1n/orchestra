@@ -1539,7 +1539,9 @@ def main(argv: list[str] | None = None) -> int:
             argv.extend(["--cwd", args.cwd])
         if args.store is not None:
             argv.extend(["--store", args.store])
-        return close_batch_main(argv)
+        return close_batch_main(
+            argv, open_project=lambda store: resolve_location(store, Path.cwd()).open()
+        )
     if args.command == "install":
         from orchestra.stage.install import main as install_main  # noqa: I001  # pyright: ignore[reportUnknownVariableType]
 
