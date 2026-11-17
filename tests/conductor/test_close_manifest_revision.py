@@ -54,19 +54,19 @@ def test_r7_accepts_a_claim_listed_in_the_committed_manifest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     s = _check_scenario(tmp_path, acceptance={"claim": CLAIM})
-    sha, run = _commit_manifest(s, CLAIM)
+    _, run = _commit_manifest(s, CLAIM)
     _tuner_outcomes(monkeypatch, "pass", "pass")
 
-    _approved(_decide(s, _entry(s, check_run_id=run["id"], revision=sha)))
+    _approved(_decide(s, _entry(s, check_run_id=run["id"])))
 
 
 def test_r7_refuses_a_claim_the_committed_manifest_does_not_list(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     s = _check_scenario(tmp_path, acceptance={"claim": CLAIM})
-    sha, run = _commit_manifest(s, "claim-other")
+    _, run = _commit_manifest(s, "claim-other")
     _tuner_outcomes(monkeypatch, "pass", "pass")
 
-    reason = _reason(_decide(s, _entry(s, check_run_id=run["id"], revision=sha)))
+    reason = _reason(_decide(s, _entry(s, check_run_id=run["id"])))
 
     assert reason == f"criterion {s.aid!r}: claim {CLAIM!r} is not listed in .tuner/manifest.json"

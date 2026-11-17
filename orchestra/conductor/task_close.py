@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
@@ -374,6 +373,58 @@ def _approved_amendment_covers_tree(
 
 
 def criterion_problem(criteria: Sequence[CriterionRequest], acceptance_ids: Sequence[str]) -> str:
+    ids = list(acceptance_ids)
+    for entry in criteria:
+        criterion_id = entry.get("criterion_id")
+        if criterion_id not in ids:
+            return f"criteria entry {criterion_id!r} is not in acceptance_ids {ids}"
+        method = entry.get("method")
+        if method is None:
+            return "criteria entry missing field: 'method'"
+        if method in RUNNER_METHODS:
+            if not entry.get("check_run_id"):
+                return (
+                    f"criteria entry {criterion_id!r} method={method!r} must "
+                    "reference a runner-produced check_run_id (from "
+                    "orchestra check); do not invent pass/fail"
+                )
+            if not entry_has(entry, "result"):
+                return (
+                    f"criteria entry {criterion_id!r} method={method!r} must "
+                    "copy result from the runner check-run"
+                )
+            if entry_has(entry, "signed_by"):
+                return (
+                    f"criteria entry {criterion_id!r} method={method!r} must "
+                    "not carry signed_by; reference check_run_id only"
+                )
+            if method == "check" and entry_has(entry, "revision"):
+                return (
+                    f"criteria entry {criterion_id!r} method={method!r} must "
+                    "not carry revision/signed_by; reference check_run_id only"
+                )
+            if (
+                method == "tdd"
+                and entry_has(entry, "revision")
+                and not entry.get("red_check_run_id")
+            ):
+                return (
+                    f"criteria entry {criterion_id!r} method=tdd must not "
+                    "carry revision without red-first fields "
+                    "(red_check_run_id); reference check_run_id only or "
+                    "include red evidence"
+                )
+        elif method == "manual":
+            for field in ("result", "revision"):
+                if not entry_has(entry, field):
+                    return f"criteria entry missing field: '{field}'"
+            if entry.get("check_run_id"):
+                return (
+                    f"criteria entry {criterion_id!r} method=manual must not "
+                    "carry check_run_id; create the manual check-run via the batch"
+                )
+        else:
+            return f"criteria entry {criterion_id!r} has unknown method {method!r}"
     return ""
 
 
@@ -385,7 +436,12 @@ def _tuner_not_importable(claim_id: str) -> CloseRefused:
 
 def _claim_ids_at_revision(cwd: Path, revision: str, claim_id: str) -> set[str]:
     try:
-        from orchestra.tuner.manifest import MANIFEST_PATH, ManifestError, load_manifest
+        from orchestra.tuner.manifest import (
+            ManifestError,
+            ManifestMissing,
+            ManifestUnreadable,
+            load_manifest,
+        )
     except ImportError as exc:
         raise _tuner_not_importable(claim_id) from exc
 
@@ -393,9 +449,9 @@ def _claim_ids_at_revision(cwd: Path, revision: str, claim_id: str) -> set[str]:
         manifest = load_manifest(cwd, revision)
     except ManifestError as exc:
         message = str(exc)
-        if message.startswith(f"missing {MANIFEST_PATH} at "):
+        if isinstance(exc, ManifestMissing):
             raise CloseRefused("claim manifest is missing") from exc
-        if message.startswith(f"invalid JSON in {MANIFEST_PATH} at "):
+        if isinstance(exc, ManifestUnreadable):
             raise CloseRefused(f"claim manifest is unreadable or invalid: {message}") from exc
         raise CloseRefused(f"claim manifest is invalid: {message}") from exc
     ids = [claim.id.strip() for claim in manifest.claims]
@@ -552,7 +608,7 @@ def _enforce_oracle_gates(
     if tree == frozen:
         return
 
-    amendments = _oracle_amendments(project, str(criterion_id))
+    amendments = _oracle_amendments(project, acceptance)
     if _approved_amendment_covers_tree(amendments, tree):
         return
 
@@ -563,10 +619,8 @@ def _enforce_oracle_gates(
     )
 
 
-def _oracle_amendments(project: Project, acceptance_id: str) -> list[Record]:
-    refs = {acceptance_id}
-    with contextlib.suppress(StoreError):
-        refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
+def _oracle_amendments(project: Project, acceptance: Record) -> list[Record]:
+    refs = {acceptance["id"], str(acceptance["subject"])}
     return [
         record
         for record in project.list("tuner:oracle-amendment")
@@ -691,6 +745,9 @@ def decide_close(
     transition: str = "done",
     has_finding: bool = False,
 ) -> CloseDecision:
+    problem = criterion_problem(criteria, acceptance_ids)
+    if problem:
+        return CloseRefusal(problem)
     try:
         _enforce_close_gates(
             project,

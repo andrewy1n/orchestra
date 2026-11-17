@@ -12,6 +12,7 @@ from phase_record_support import supersede_all, supersede_late
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.conductor import task_close
 from orchestra.conductor.task_close import (
     CloseApproval,
     CloseDecision,
@@ -20,7 +21,6 @@ from orchestra.conductor.task_close import (
     decide_close,
 )
 from orchestra.tools import Git
-from orchestra.conductor import task_close
 from orchestra.tuner.manifest import DEFAULT_RUNNER
 
 EFFORT = "ef"
@@ -167,8 +167,9 @@ def _entry(s: Scenario, **over: str | None) -> CriterionRequest:
         "method": s.method,
         "result": "pass",
         "check_run_id": s.green["id"],
-        "revision": s.green_sha,
     }
+    if s.method != "check":
+        values["revision"] = s.green_sha
     if s.red is not None:
         values["red_check_run_id"] = s.red["id"]
         values["red_result"] = "fail"
@@ -244,8 +245,9 @@ def test_r1_refuses_tdd_criterion_naming_no_check_run(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, check_run_id=None)))
 
-    assert (
-        reason == f"criterion {s.aid!r}: check_run_id check_run_id '' not found in artifact store"
+    assert reason == (
+        f"criteria entry {s.aid!r} method='tdd' must reference a runner-produced "
+        "check_run_id (from orchestra check); do not invent pass/fail"
     )
 
 
@@ -254,8 +256,9 @@ def test_r1_refuses_check_criterion_naming_no_check_run(tmp_path: Path) -> None:
 
     reason = _reason(_decide(s, _entry(s, check_run_id=None)))
 
-    assert (
-        reason == f"criterion {s.aid!r}: check_run_id check_run_id '' not found in artifact store"
+    assert reason == (
+        f"criteria entry {s.aid!r} method='check' must reference a runner-produced "
+        "check_run_id (from orchestra check); do not invent pass/fail"
     )
 
 
@@ -308,7 +311,7 @@ def test_r2_refuses_stated_result_that_differs_from_store(tmp_path: Path) -> Non
 
 
 def test_r2_refuses_stated_revision_that_differs_from_store(tmp_path: Path) -> None:
-    s = _check_scenario(tmp_path)
+    s = _scenario(tmp_path)
 
     reason = _reason(_decide(s, _entry(s, revision="deadbeef")))
 
@@ -341,7 +344,7 @@ def test_r2_refuses_stated_method_that_differs_from_acceptance(tmp_path: Path) -
 def test_r2_refuses_acceptance_missing_from_store(tmp_path: Path) -> None:
     s = _check_scenario(tmp_path)
 
-    reason = _reason(_decide(s, ids=["rec-ghost"]))
+    reason = _reason(_decide(s, _entry(s, criterion_id="rec-ghost"), ids=["rec-ghost"]))
 
     assert reason.startswith("criterion 'rec-ghost': acceptance could not be loaded: ")
 
@@ -406,7 +409,7 @@ def test_r2_passes_matching_red_and_green_check_runs(tmp_path: Path) -> None:
 def test_r3_refuses_tdd_criterion_without_red_check_run(tmp_path: Path) -> None:
     s = _scenario(tmp_path, frozen=False)
 
-    reason = _reason(_decide(s, _entry(s, red_check_run_id=None, red_result=None)))
+    reason = _reason(_decide(s, _entry(s, red_check_run_id=None, red_result=None, revision=None)))
 
     assert reason == (
         f"criterion {s.aid!r}: tdd done close requires "

@@ -51,9 +51,9 @@ from orchestra.conductor.task_close import (
     CloseRefusal,
     CloseRefused,
     CriterionRequest,
+    criterion_problem,
     decide_close,
 )
-from orchestra.conductor.task_close import entry_has as _entry_has
 
 
 class FindingRequest(TypedDict):
@@ -212,64 +212,9 @@ def build_batch(
     finding = parsed_request.get("finding")
     work_cwd = Path(cwd) if cwd is not None else Path.cwd()
 
-    for entry in criteria:
-        criterion_id = entry.get("criterion_id")
-        if criterion_id not in acceptance_ids:
-            raise CloseRequestError(
-                f"criteria entry {criterion_id!r} is not in acceptance_ids {acceptance_ids}"
-            )
-        method = entry.get("method")
-        if method is None:
-            raise CloseRequestError("criteria entry missing field: 'method'")
-        if method in RUNNER_METHODS:
-            if not entry.get("check_run_id"):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method={method!r} must "
-                    "reference a runner-produced check_run_id (from "
-                    "orchestra check); do not invent pass/fail"
-                )
-            if not _entry_has(entry, "result"):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method={method!r} must "
-                    "copy result from the runner check-run"
-                )
-            # Invented create shape: signed_by without going through the
-            # runner — refuse. For tdd, revision may be copied only when
-            # red-first fields are present; for check it remains forbidden.
-            if _entry_has(entry, "signed_by"):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method={method!r} must "
-                    "not carry signed_by; reference check_run_id only"
-                )
-            if method == "check" and _entry_has(entry, "revision"):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method={method!r} must "
-                    "not carry revision/signed_by; reference check_run_id only"
-                )
-            if (
-                method == "tdd"
-                and _entry_has(entry, "revision")
-                and not entry.get("red_check_run_id")
-            ):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method=tdd must not "
-                    "carry revision without red-first fields "
-                    "(red_check_run_id); reference check_run_id only or "
-                    "include red evidence"
-                )
-        elif method == "manual":
-            for field in ("result", "revision"):
-                if not _entry_has(entry, field):
-                    raise CloseRequestError(f"criteria entry missing field: '{field}'")
-            if entry.get("check_run_id"):
-                raise CloseRequestError(
-                    f"criteria entry {criterion_id!r} method=manual must not "
-                    "carry check_run_id; create the manual check-run via the batch"
-                )
-        else:
-            raise CloseRequestError(
-                f"criteria entry {criterion_id!r} has unknown method {method!r}"
-            )
+    problem = criterion_problem(criteria, acceptance_ids)
+    if problem:
+        raise CloseRequestError(problem)
 
     decision = decide_close(
         project,

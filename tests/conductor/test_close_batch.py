@@ -160,10 +160,10 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
             payload: JsonObject = {
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("result"),
-                "runner": entry["runner"] if close_batch._entry_has(entry, "runner") else RUNNER,
+                "runner": entry["runner"] if task_close.entry_has(entry, "runner") else RUNNER,
                 "revision": (
                     entry["revision"]
-                    if close_batch._entry_has(entry, "revision")
+                    if task_close.entry_has(entry, "revision")
                     else ("HEAD" if entry.get("method") == "check" else "deadbeef")
                 ),
                 "method": entry.get("method"),
@@ -175,16 +175,16 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("red_result", "fail"),
                 "runner": (
-                    entry["red_runner"] if close_batch._entry_has(entry, "red_runner") else RUNNER
+                    entry["red_runner"] if task_close.entry_has(entry, "red_runner") else RUNNER
                 ),
                 "revision": (
                     entry["red_revision"]
-                    if close_batch._entry_has(entry, "red_revision")
+                    if task_close.entry_has(entry, "red_revision")
                     else "dirty"
                 ),
                 "method": "tdd",
             }
-            if close_batch._entry_has(entry, "red_diff_sha256"):
+            if task_close.entry_has(entry, "red_diff_sha256"):
                 red_payload["diff_sha256"] = entry["red_diff_sha256"]
             red_payload["failing_node_ids"] = [ORACLE_NODE]
             by_id[red_id] = _record(red_id, red_payload, body=ASSERTION_RED_BODY)
@@ -980,7 +980,7 @@ def _oracle_loader(
         if red_id:
             rec = base(red_id)
             payload = dict(rec["payload"])
-            if close_batch._entry_has(entry, "red_failing_node_ids"):
+            if task_close.entry_has(entry, "red_failing_node_ids"):
                 payload["failing_node_ids"] = json.loads(entry["red_failing_node_ids"])
             by_id[red_id] = _record(red_id, payload, body=entry.get("red_body", ""))
 
@@ -1054,7 +1054,11 @@ def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, reso
     by_subject = amend(acceptance["subject"])
     amend(other["subject"])
 
-    listed = task_close._oracle_amendments(open_store(store), acceptance["id"])
+    project = open_store(store)
+
+    listed = task_close._oracle_amendments(
+        project, project.get(acceptance["id"], "score:acceptance")
+    )
 
     assert [record["id"] for record in listed] == [by_subject["id"]]
 
@@ -1084,7 +1088,9 @@ def test_default_amendment_lister_still_matches_a_legacy_acceptance_id() -> None
         ]
     )
 
-    listed = task_close._oracle_amendments(project, store_id("rec-ac1"))
+    listed = task_close._oracle_amendments(
+        project, project.get(store_id("rec-ac1"), "score:acceptance")
+    )
 
     assert sorted(record["id"] for record in listed) == sorted(
         [store_id("rec-legacy"), store_id("rec-subject")]

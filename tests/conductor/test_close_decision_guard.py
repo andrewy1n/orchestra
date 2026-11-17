@@ -10,6 +10,7 @@ REPO = Path(__file__).resolve().parents[2]
 CONDUCTOR = Path("orchestra/conductor")
 TASK_CLOSE = CONDUCTOR / "task_close.py"
 CLOSE_BATCH = CONDUCTOR / "close_batch.py"
+STORE_DISCOVERY_CALLS = frozenset({"resolve_location", "find_store_root"})
 LOADER_PREFIXES = ("load_", "list_")
 LOADER_SUFFIXES = ("_loader", "_lister")
 
@@ -84,12 +85,11 @@ def _root_argument(node: ast.Call, keyword: str) -> ast.expr | None:
 
 def _opens_store_from_cwd(node: ast.Call) -> bool:
     name = _callee(node)
-    if name == "open_store":
-        root = _root_argument(node, "directory")
-    elif name == "resolve_location":
-        root = _root_argument(node, "store")
-    else:
+    if name in STORE_DISCOVERY_CALLS:
+        return True
+    if name != "open_store":
         return False
+    root = _root_argument(node, "directory")
     return root is not None and any(
         isinstance(part, ast.Call) and _is_cwd_call(part) for part in ast.walk(root)
     )
