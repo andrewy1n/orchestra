@@ -389,3 +389,21 @@ def test_r15_refuses_a_check_run_the_named_store_does_not_hold(
 
     assert code == 2
     assert err.startswith("close refused: ")
+
+
+def test_r14_refuses_with_exit_2_when_no_store_resolves(
+    store: Store,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    monkeypatch.delenv("ORCHESTRA_STORE", raising=False)
+    monkeypatch.delenv("CANON_STORE", raising=False)
+
+    code, out, err = _close_batch(tmp_path, capsys, _check_request(store))
+
+    assert (code, out) == (2, "")
+    assert err.startswith("close refused: ")

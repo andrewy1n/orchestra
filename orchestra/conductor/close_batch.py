@@ -405,8 +405,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         project = resolve_location(args.store, Path.cwd()).open()
     except StoreBindingError as exc:
-        print(f"orchestra close-batch: {exc}", file=sys.stderr)
-        return 4
+        print(f"close refused: {exc}", file=sys.stderr)
+        return 2
 
     try:
         ops = build_batch(request, project, cwd=args.cwd)
