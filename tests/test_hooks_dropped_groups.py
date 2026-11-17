@@ -54,7 +54,7 @@ def test_r14_needs_human_finding_reaches_start_context(repo, monkeypatch, capsys
     assert "orphan-risk" in ctx or "orphan-risk" in not_shown_line(ctx)
 
 
-def test_legacy_finding_without_effort_is_not_shown_in_hook() -> None:
+def test_legacy_finding_without_effort_is_shown_in_hook() -> None:
     finding: Record = {
         "id": "rec-legacy",
         "record_type": "tuner:finding",
@@ -66,7 +66,9 @@ def test_legacy_finding_without_effort_is_not_shown_in_hook() -> None:
         "recorded_at": "2026-01-01T00:00:00+00:00",
         "revision": "sha256:legacy",
     }
-    assert hook_handoff_sections([finding]) == []
+    sections = hook_handoff_sections([finding])
+    assert [label for label, _ in sections] == ["orphan-risk"]
+    assert "### Needs Human" in sections[0][1]
 
 
 def test_r14_blocking_question_with_non_effort_subject_reaches_start_context(
