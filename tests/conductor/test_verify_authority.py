@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 import pytest
+from close_store_support import build_in_store
 from conftest import REPO_ROOT
 from helpers import section_text, skill_text
 from skill_extraction import extract_invocations
@@ -120,7 +121,7 @@ def test_close_batch_refuses_invented_tdd_pass_without_check_run_id():
         "finding": None,
     }
     with pytest.raises(close_batch.CloseRequestError, match="check_run_id"):
-        close_batch.build_batch(request)
+        build_in_store(request)
 
 
 def test_close_batch_refuses_invented_check_fail_without_check_run_id():
@@ -148,7 +149,7 @@ def test_close_batch_refuses_invented_check_fail_without_check_run_id():
         },
     }
     with pytest.raises(close_batch.CloseRequestError, match="check_run_id"):
-        close_batch.build_batch(request)
+        build_in_store(request)
 
 
 def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
@@ -178,9 +179,7 @@ def test_close_batch_does_not_emit_check_run_create_for_runner_methods():
             }
         ],
     }
-    ops = close_batch.build_batch(
-        request, load_acceptance=lambda _: acceptance, load_check_run=lambda _: green
-    )
+    ops = build_in_store(request, acceptances=lambda _: acceptance, check_runs=lambda _: green)
     assert [op["op"] for op in ops] == ["update"]
     assert not any(op.get("type") == "tuner:check-run" for op in ops)
 
@@ -189,7 +188,7 @@ def test_close_batch_still_creates_manual_check_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    ops = close_batch.build_batch(
+    ops = build_in_store(
         {
             "subject": "task-1",
             "effort": "effort-1",
@@ -208,7 +207,7 @@ def test_close_batch_still_creates_manual_check_runs(
             ],
             "finding": None,
         },
-        load_acceptance=lambda _: _check_run("rec-ac1", {"method": "manual"}),
+        acceptances=lambda _: _check_run("rec-ac1", {"method": "manual"}),
     )
     assert ops[0]["type"] == "tuner:check-run"
     payload = ops[0].get("payload")

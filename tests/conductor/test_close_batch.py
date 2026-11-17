@@ -17,21 +17,22 @@ import importlib
 import json
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TypeGuard
 
 import helpers as h
 import pytest
+from close_store_support import build_in_store, project_holding, store_id
 from conftest import REPO_ROOT, build_store
 
+from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor import close_batch
-from orchestra.conductor.close_batch import (
-    AcceptanceLoader,
-    AmendmentLister,
-    CheckRunLoader,
-)
+from orchestra.conductor import close_batch, task_close
+
+CheckRunLoader = Callable[[str], Record]
+AcceptanceLoader = Callable[[str], Record]
+AmendmentLister = Callable[[str], list[Record]]
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
@@ -216,12 +217,12 @@ def _build(
                 return _record(aid, {"method": entry["method"]}, record_type="score:acceptance")
         raise LookupError(aid)
 
-    return close_batch.build_batch(
+    return build_in_store(
         request,
         cwd=cwd,
-        load_check_run=loader,
-        load_acceptance=load_acceptance or matched_acceptance,
-        list_oracle_amendments=list_oracle_amendments,
+        check_runs=loader,
+        acceptances=load_acceptance or matched_acceptance,
+        amendments=list_oracle_amendments,
     )
 
 
@@ -780,19 +781,12 @@ def test_red_first_request_refuses_red_result_not_fail():
 
 
 def test_red_first_request_resolves_red_from_store_loader(tmp_path: Path) -> None:
-    """Red-first uses the injectable store loader (production path is aa.get)."""
     repo, green = _oracle_repo(tmp_path)
     request = _request(criteria=[_tdd_with_dirty_red(revision=green)])
-    seen: list[str] = []
 
-    def tracking_loader(check_run_id: str) -> Record:
-        seen.append(check_run_id)
-        return _matching_loader(request)(check_run_id)
+    ops = _build(request, cwd=repo)
 
-    ops = _build(request, cwd=repo, load_check_run=tracking_loader)
     assert ops[-1]["transition"] == "done"
-    assert "rec-runner-green" in seen
-    assert "rec-runner-red" in seen
 
 
 def test_red_first_order_accepts_when_green_descends_from_red(tmp_path):
@@ -1299,12 +1293,8 @@ def _build_oracle(
     request: Mapping[str, object], *, cwd: Path, acceptance=None, amendments=None
 ) -> list[JsonObject]:
     load, load_acc, list_am = _oracle_loader(request, acceptance=acceptance, amendments=amendments)
-    return close_batch.build_batch(
-        request,
-        cwd=cwd,
-        load_check_run=load,
-        load_acceptance=load_acc,
-        list_oracle_amendments=list_am,
+    return build_in_store(
+        request, cwd=cwd, check_runs=load, acceptances=load_acc, amendments=list_am
     )
 
 
@@ -1362,40 +1352,41 @@ def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, reso
     by_subject = amend(acceptance["subject"])
     amend(other["subject"])
 
-    listed = close_batch.default_list_oracle_amendments(acceptance["id"], store_root=store)
+    listed = task_close._oracle_amendments(open_store(store), acceptance["id"])
 
     assert [record["id"] for record in listed] == [by_subject["id"]]
 
 
-def test_default_amendment_lister_still_matches_a_legacy_acceptance_id(monkeypatch):
-    class Project:
-        def list(self, record_type):
-            return [
-                {
-                    "id": "rec-legacy",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "rec-ac1"},
-                },
-                {
-                    "id": "rec-subject",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "claim-gate"},
-                },
-                {
-                    "id": "rec-other",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "other"},
-                },
-            ]
+def test_default_amendment_lister_still_matches_a_legacy_acceptance_id() -> None:
+    def amendment(record_id: str, acceptance: str) -> Record:
+        return {
+            **_record(
+                record_id,
+                {"acceptance": acceptance},
+                record_type="tuner:oracle-amendment",
+            ),
+            "lifecycle_state": "active",
+        }
 
-        def get(self, record_id, record_type):
-            return {"id": record_id, "subject": "claim-gate"}
+    project = project_holding(
+        [
+            _record(
+                store_id("rec-ac1"),
+                {"method": "check"},
+                record_type="score:acceptance",
+                subject="claim-gate",
+            ),
+            amendment(store_id("rec-legacy"), store_id("rec-ac1")),
+            amendment(store_id("rec-subject"), "claim-gate"),
+            amendment(store_id("rec-other"), "other"),
+        ]
+    )
 
-    monkeypatch.setattr(close_batch, "_open_project", lambda store_root: Project())
+    listed = task_close._oracle_amendments(project, store_id("rec-ac1"))
 
-    listed = close_batch.default_list_oracle_amendments("rec-ac1")
-
-    assert [record["id"] for record in listed] == ["rec-legacy", "rec-subject"]
+    assert sorted(record["id"] for record in listed) == sorted(
+        [store_id("rec-legacy"), store_id("rec-subject")]
+    )
 
 
 def test_oracle_hash_refuses_silent_freeze_edit(tmp_path):

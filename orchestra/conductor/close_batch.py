@@ -10,8 +10,8 @@ script does not invent pass/fail or emit a `tuner:check-run` create
 for those methods.
 
 On a `done` transition, each referenced check-run is loaded from the
-artifact store (same discovery as `orchestra check`: store from process cwd,
-`--cwd` for git ancestry only) and matched on criterion_id, runner,
+artifact store (same discovery as `orchestra check`: store from `--store` or the
+location bound to the process cwd, `--cwd` for git ancestry only) and matched on criterion_id, runner,
 result, and revision when the request carries them. Fabricated ids or
 field mismatches refuse the batch.
 
@@ -37,31 +37,24 @@ is refused outright rather than silently written without one. Pass-only
 from __future__ import annotations
 
 import argparse
-import contextlib
 import json
 import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TypedDict, TypeGuard
 
-from orchestra.canon.errors import StoreError
-from orchestra.canon.project import StoreBindingError, open_store
-from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.project import Project, StoreBindingError
+from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.task_close import (
     RUNNER_METHODS,
-    AcceptanceLoader,
-    AmendmentLister,
-    CheckRunLoader,
-    CloseRecords,
     CloseRefusal,
     CloseRefused,
     CriterionRequest,
-    PhaseLoader,
-    decide_close_with,
+    decide_close,
 )
 from orchestra.conductor.task_close import entry_has as _entry_has
-from orchestra.score.lookups import current_phase
+from orchestra.store import resolve_location
 
 
 class FindingRequest(TypedDict):
@@ -199,73 +192,11 @@ def _parse_close_request(raw: Mapping[str, object]) -> CloseRequest:
     }
 
 
-def _open_project(store_root: Path | None):
-    return open_store(store_root if store_root is not None else Path.cwd())
-
-
-def default_load_check_run(
-    check_run_id: str,
-    *,
-    store_root: Path | None = None,
-) -> Record:
-    """Load a check-run from the store opened for the primary cwd."""
-    try:
-        return _open_project(store_root).get(check_run_id, "tuner:check-run")
-    except (StoreBindingError, StoreError, OSError) as exc:
-        raise LookupError(str(exc)) from exc
-
-
-def default_load_acceptance(
-    acceptance_id: str,
-    *,
-    store_root: Path | None = None,
-) -> Record:
-    """Load an acceptance from the store opened for the primary cwd."""
-    try:
-        return _open_project(store_root).get(acceptance_id, "score:acceptance")
-    except (StoreBindingError, StoreError, OSError) as exc:
-        raise LookupError(str(exc)) from exc
-
-
-def default_load_phase(phase: str, *, store_root: Path | None = None) -> Record:
-    record = current_phase(phase, _open_project(store_root).list("score:phase"))
-    if record is None:
-        raise LookupError(f"phase {phase!r} not found")
-    return record
-
-
-def default_list_oracle_amendments(
-    acceptance_id: str,
-    *,
-    store_root: Path | None = None,
-) -> list[Record]:
-    """Active oracle-amendment records whose payload.acceptance is the id or the subject."""
-    try:
-        project = _open_project(store_root)
-        records = project.list("tuner:oracle-amendment")
-    except StoreError:
-        return []
-    refs = {str(acceptance_id)}
-    with contextlib.suppress(StoreError):
-        refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
-    matched: list[Record] = []
-    for record in records:
-        if record.get("lifecycle_state") not in (None, "active"):
-            continue
-        if str(record_payload(record).get("acceptance")) in refs:
-            matched.append(record)
-    return matched
-
-
 def build_batch(
     request: Mapping[str, object],
+    project: Project,
     *,
     cwd: str | Path | None = None,
-    store_root: str | Path | None = None,
-    load_check_run: CheckRunLoader | None = None,
-    load_acceptance: AcceptanceLoader | None = None,
-    load_phase: PhaseLoader | None = None,
-    list_oracle_amendments: AmendmentLister | None = None,
 ) -> list[JsonObject]:
     parsed_request = _parse_close_request(request)
     try:
@@ -281,32 +212,6 @@ def build_batch(
     execution_report_id = parsed_request.get("execution_report_id")
     finding = parsed_request.get("finding")
     work_cwd = Path(cwd) if cwd is not None else Path.cwd()
-    resolved_store = Path(store_root) if store_root is not None else None
-
-    loader: CheckRunLoader
-    if load_check_run is not None:
-        loader = load_check_run
-    else:
-
-        def _store_check_run(check_run_id: str) -> Record:
-            return default_load_check_run(check_run_id, store_root=resolved_store)
-
-        loader = _store_check_run
-
-    def acceptance_loader(acceptance_id: str) -> Record:
-        if load_acceptance is not None:
-            return load_acceptance(acceptance_id)
-        return default_load_acceptance(acceptance_id, store_root=resolved_store)
-
-    def phase_loader(phase: str) -> Record:
-        if load_phase is not None:
-            return load_phase(phase)
-        return default_load_phase(phase, store_root=resolved_store)
-
-    def amendment_lister(acceptance_id: str) -> list[Record]:
-        if list_oracle_amendments is not None:
-            return list_oracle_amendments(acceptance_id)
-        return default_list_oracle_amendments(acceptance_id, store_root=resolved_store)
 
     for entry in criteria:
         criterion_id = entry.get("criterion_id")
@@ -367,14 +272,8 @@ def build_batch(
                 f"criteria entry {criterion_id!r} has unknown method {method!r}"
             )
 
-    records = CloseRecords(
-        check_run=loader,
-        acceptance=acceptance_loader,
-        phase=phase_loader,
-        amendments=amendment_lister,
-    )
-    decision = decide_close_with(
-        records,
+    decision = decide_close(
+        project,
         criteria,
         acceptance_ids=acceptance_ids,
         cwd=work_cwd,
@@ -417,7 +316,7 @@ def build_batch(
         try:
             phase: object = finding.get("phase")
             if phase is None:
-                work_item = _open_project(resolved_store).get(work_item_id, "score:work-item")
+                work_item = project.get(work_item_id, "score:work-item")
                 phase = record_payload(work_item).get("phase")
             if not isinstance(phase, str):
                 raise CloseRequestError(f"work-item {work_item_id!r} has no phase")
@@ -489,6 +388,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="git cwd for red-first ancestry checks (default: process cwd)",
     )
+    parser.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -498,7 +403,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        ops = build_batch(request, cwd=args.cwd)
+        project = resolve_location(args.store, Path.cwd()).open()
+    except StoreBindingError as exc:
+        print(f"orchestra close-batch: {exc}", file=sys.stderr)
+        return 4
+
+    try:
+        ops = build_batch(request, project, cwd=args.cwd)
     except CloseRefused as exc:
         print(f"close refused: {exc}", file=sys.stderr)
         return 2

@@ -6,7 +6,7 @@ import contextlib
 import hashlib
 import json
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, TypeGuard
@@ -31,11 +31,6 @@ CODE_PENDING_HUMAN = 3
 MANUAL_EXIT = 3
 RUNNER_METHODS = frozenset({"tdd", "check"})
 RUNNER_MARKER = "orchestra"
-
-CheckRunLoader = Callable[[str], Record]
-AcceptanceLoader = Callable[[str], Record]
-PhaseLoader = Callable[[str], Record]
-AmendmentLister = Callable[[str], list[Record]]
 
 
 class CloseRefused(Exception):
@@ -79,14 +74,6 @@ class CloseApproval:
 
 
 CloseDecision = CloseRefusal | CloseApproval
-
-
-@dataclass(frozen=True)
-class CloseRecords:
-    check_run: CheckRunLoader
-    acceptance: AcceptanceLoader
-    phase: PhaseLoader
-    amendments: AmendmentLister
 
 
 def entry_has(entry: CriterionRequest, key: str) -> bool:
@@ -139,11 +126,11 @@ def _load_check_run(
     *,
     criterion_id: JsonValue,
     label: str,
-    loader: CheckRunLoader,
+    project: Project,
 ) -> Record:
     try:
-        return loader(check_run_id)
-    except LookupError as exc:
+        return project.get(check_run_id, "tuner:check-run")
+    except StoreError as exc:
         raise CloseRefused(
             f"criterion {criterion_id!r}: {label} check_run_id "
             f"{check_run_id!r} not found in artifact store"
@@ -168,7 +155,7 @@ def _match_field(
 def _resolve_green_check_run(
     entry: CriterionRequest,
     *,
-    loader: CheckRunLoader,
+    project: Project,
 ) -> PlanningPayload:
     """Load and match the green/primary check-run; return its payload."""
     criterion_id = entry.get("criterion_id")
@@ -177,7 +164,7 @@ def _resolve_green_check_run(
         check_run_id,
         criterion_id=criterion_id,
         label="check_run_id",
-        loader=loader,
+        project=project,
     )
     payload = planning_payload(record)
 
@@ -226,7 +213,7 @@ def _resolve_green_check_run(
 def _resolve_red_check_run(
     entry: CriterionRequest,
     *,
-    loader: CheckRunLoader,
+    project: Project,
 ) -> tuple[Record, PlanningPayload]:
     """Load and match the red check-run; return (full record, payload)."""
     criterion_id = entry.get("criterion_id")
@@ -241,7 +228,7 @@ def _resolve_red_check_run(
         red_id,
         criterion_id=criterion_id,
         label="red_check_run_id",
-        loader=loader,
+        project=project,
     )
     payload = planning_payload(record)
 
@@ -509,7 +496,7 @@ def _enforce_oracle_gates(
     red_record: Record | None,
     cwd: Path,
     acceptance: Record,
-    list_oracle_amendments: AmendmentLister,
+    project: Project,
 ) -> None:
     criterion_id = entry["criterion_id"]
     try:
@@ -562,7 +549,7 @@ def _enforce_oracle_gates(
     if tree == frozen:
         return
 
-    amendments = list_oracle_amendments(str(criterion_id))
+    amendments = _oracle_amendments(project, str(criterion_id))
     if _approved_amendment_covers_tree(amendments, tree):
         return
 
@@ -573,40 +560,26 @@ def _enforce_oracle_gates(
     )
 
 
-def project_records(project: Project) -> CloseRecords:
-    def check_run(check_run_id: str) -> Record:
-        try:
-            return project.get(check_run_id, "tuner:check-run")
-        except StoreError as exc:
-            raise LookupError(str(exc)) from exc
-
-    def acceptance(acceptance_id: str) -> Record:
-        try:
-            return project.get(acceptance_id, "score:acceptance")
-        except StoreError as exc:
-            raise LookupError(str(exc)) from exc
-
-    def phase(slug: str) -> Record:
-        record = current_phase(slug, project.list("score:phase"))
-        if record is None:
-            raise LookupError(f"phase {slug!r} not found")
-        return record
-
-    def amendments(acceptance_id: str) -> list[Record]:
-        refs = {acceptance_id}
-        with contextlib.suppress(StoreError):
-            refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
-        return [
-            record
-            for record in project.list("tuner:oracle-amendment")
-            if record.get("lifecycle_state") in (None, "active")
-            and str(planning_payload(record).get("acceptance")) in refs
-        ]
-
-    return CloseRecords(check_run, acceptance, phase, amendments)
+def _oracle_amendments(project: Project, acceptance_id: str) -> list[Record]:
+    refs = {acceptance_id}
+    with contextlib.suppress(StoreError):
+        refs.add(str(project.get(acceptance_id, "score:acceptance")["subject"]))
+    return [
+        record
+        for record in project.list("tuner:oracle-amendment")
+        if record.get("lifecycle_state") in (None, "active")
+        and str(planning_payload(record).get("acceptance")) in refs
+    ]
 
 
-def _oracle_policy(records: CloseRecords, acceptance: Record) -> OraclePolicy:
+def _phase_record(project: Project, slug: str) -> Record:
+    record = current_phase(slug, project.list("score:phase"))
+    if record is None:
+        raise LookupError(f"phase {slug!r} not found")
+    return record
+
+
+def _oracle_policy(project: Project, acceptance: Record) -> OraclePolicy:
     payload = planning_payload(acceptance)
     phase_payload = None
     phase = payload.get("phase")
@@ -618,7 +591,7 @@ def _oracle_policy(records: CloseRecords, acceptance: Record) -> OraclePolicy:
         and phase
     ):
         try:
-            phase_payload = planning_payload(records.phase(phase))
+            phase_payload = planning_payload(_phase_record(project, phase))
         except (LookupError, StoreBindingError, StoreError, OSError) as exc:
             raise CloseRefused(f"phase {phase!r} policy unavailable: {exc}") from exc
     try:
@@ -630,7 +603,7 @@ def _oracle_policy(records: CloseRecords, acceptance: Record) -> OraclePolicy:
 
 
 def _enforce_close_gates(
-    records: CloseRecords,
+    project: Project,
     criteria: Sequence[CriterionRequest],
     *,
     acceptance_ids: Sequence[str],
@@ -643,10 +616,10 @@ def _enforce_close_gates(
     acceptances: dict[str, Record] = {}
     for aid in acceptance_ids:
         try:
-            acceptances[aid] = records.acceptance(aid)
+            acceptances[aid] = project.get(aid, "score:acceptance")
         except (LookupError, StoreBindingError, StoreError, OSError) as exc:
             raise CloseRefused(f"criterion {aid!r}: acceptance could not be loaded: {exc}") from exc
-    policies = {aid: _oracle_policy(records, acceptance) for aid, acceptance in acceptances.items()}
+    policies = {aid: _oracle_policy(project, acceptance) for aid, acceptance in acceptances.items()}
     passed_ids = {entry["criterion_id"] for entry in criteria if _entry_passed(entry)}
     for aid, acceptance in acceptances.items():
         if planning_payload(acceptance).get("method") == "tdd" and aid not in passed_ids:
@@ -664,7 +637,7 @@ def _enforce_close_gates(
         if entry.get("method") not in RUNNER_METHODS:
             continue
         green_by_criterion[entry.get("criterion_id")] = _resolve_green_check_run(
-            entry, loader=records.check_run
+            entry, project=project
         )
     _enforce_claim_gates(
         list(criteria),
@@ -679,7 +652,7 @@ def _enforce_close_gates(
         green_payload = green_by_criterion[entry["criterion_id"]]
         red_record = None
         if entry["method"] == "tdd":
-            red_record, red_payload = _resolve_red_check_run(entry, loader=records.check_run)
+            red_record, red_payload = _resolve_red_check_run(entry, project=project)
             _enforce_red_first_from_store(
                 entry,
                 green_payload=green_payload,
@@ -693,7 +666,7 @@ def _enforce_close_gates(
                 red_record=red_record,
                 cwd=cwd,
                 acceptance=acceptances[entry["criterion_id"]],
-                list_oracle_amendments=records.amendments,
+                project=project,
             )
 
     unmet = [aid for aid in acceptance_ids if aid not in passed_ids]
@@ -706,29 +679,6 @@ def _enforce_close_gates(
         )
 
 
-def decide_close_with(
-    records: CloseRecords,
-    criteria: Sequence[CriterionRequest],
-    *,
-    acceptance_ids: Sequence[str],
-    cwd: Path,
-    transition: str = "done",
-    has_finding: bool = False,
-) -> CloseDecision:
-    try:
-        _enforce_close_gates(
-            records,
-            criteria,
-            acceptance_ids=acceptance_ids,
-            cwd=cwd,
-            transition=transition,
-            has_finding=has_finding,
-        )
-    except CloseRefused as exc:
-        return CloseRefusal(str(exc))
-    return CloseApproval()
-
-
 def decide_close(
     project: Project,
     criteria: Sequence[CriterionRequest],
@@ -738,14 +688,18 @@ def decide_close(
     transition: str = "done",
     has_finding: bool = False,
 ) -> CloseDecision:
-    return decide_close_with(
-        project_records(project),
-        criteria,
-        acceptance_ids=acceptance_ids,
-        cwd=cwd,
-        transition=transition,
-        has_finding=has_finding,
-    )
+    try:
+        _enforce_close_gates(
+            project,
+            criteria,
+            acceptance_ids=acceptance_ids,
+            cwd=cwd,
+            transition=transition,
+            has_finding=has_finding,
+        )
+    except CloseRefused as exc:
+        return CloseRefusal(str(exc))
+    return CloseApproval()
 
 
 @dataclass(frozen=True)

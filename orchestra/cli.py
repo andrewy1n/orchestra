@@ -123,6 +123,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="git cwd for red-first ancestry checks (default: process cwd)",
     )
+    close_batch.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
+    )
 
     install = sub.add_parser(
         "install",
@@ -1531,6 +1537,8 @@ def main(argv: list[str] | None = None) -> int:
         argv = ["--input", args.input, "--out", args.out]
         if args.cwd is not None:
             argv.extend(["--cwd", args.cwd])
+        if args.store is not None:
+            argv.extend(["--store", args.store])
         return close_batch_main(argv)
     if args.command == "install":
         from orchestra.stage.install import main as install_main  # noqa: I001  # pyright: ignore[reportUnknownVariableType]
