@@ -5,7 +5,12 @@ from typing import Literal
 
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.score.lookups import check_run_criteria, current_phase, current_phases
+from orchestra.score.lookups import (
+    check_run_criteria,
+    corrected_ids,
+    current_phase,
+    current_phases,
+)
 
 
 class WorkflowBlockerError(ValueError):
@@ -58,11 +63,7 @@ def _is_blocking_question(record: Record) -> bool:
 
 
 def _uncorrected_manual_checks(records: list[Record]) -> list[Record]:
-    corrected = {
-        target
-        for record in records
-        for target in (record.get("relationships") or {}).get("corrects") or []
-    }
+    corrected = corrected_ids(records)
     return [
         record
         for record in records
@@ -70,6 +71,10 @@ def _uncorrected_manual_checks(records: list[Record]) -> list[Record]:
         and _payload_text(record, "method") == "manual"
         and record["id"] not in corrected
     ]
+
+
+def is_signed(run: Record) -> bool:
+    return bool(_payload_text(run, "signed_by").strip())
 
 
 def _latest_among(acceptance: Record, runs: list[Record]) -> Record | None:
@@ -101,7 +106,7 @@ def unsigned_manual_checks(records: list[Record]) -> list[Record]:
     latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
     unsigned: list[Record] = []
     for run in latest_runs:
-        if not _payload_text(run, "signed_by") and run not in unsigned:
+        if not is_signed(run) and run not in unsigned:
             unsigned.append(run)
     return unsigned
 

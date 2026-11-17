@@ -14,7 +14,7 @@ from heapq import merge
 
 from orchestra.canon.types import Record
 from orchestra.conductor.revision import revision_matches
-from orchestra.score.lookups import check_run_criteria
+from orchestra.score.lookups import check_run_criteria, corrected_ids
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -35,9 +35,7 @@ class EvidenceIndex:
     """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
-        corrected: set[str] = set()
-        for record in records:
-            corrected.update((record.get("relationships") or {}).get("corrects") or [])
+        corrected = corrected_ids(records)
         self.check_runs: list[Record] = [
             record
             for record in records

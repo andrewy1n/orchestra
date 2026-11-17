@@ -12,6 +12,7 @@ from orchestra.score.workflow_blockers import (
     WorkflowBlocker,
     human_gates,
     is_open_finding,
+    is_signed,
     latest_manual_check,
     phase_blockers,
     unsigned_manual_checks,
@@ -627,3 +628,13 @@ def test_r6_unsigned_runs_without_a_criterion_are_each_a_gate(project: Project) 
             records.append(blank)
 
     assert _ids(_gates(records, "unsigned-check")) == [first["id"]]
+
+
+def test_r6_whitespace_only_signature_is_unsigned_and_matches_the_gate_rule(
+    project: Project,
+) -> None:
+    acceptance = _acceptance(project)
+    run = _run(project, acceptance, signed_by="   ")
+
+    assert is_signed(run) is False
+    assert _ids(_gates(_stored(project), "unsigned-check")) == [run["id"]]

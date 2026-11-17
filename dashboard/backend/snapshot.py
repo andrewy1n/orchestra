@@ -27,6 +27,7 @@ from dashboard.backend.phase import (
 from dashboard.backend.records import (
     CHECK_RESULT,
     INACTIVE_STATES,
+    derived_values,
     list_records,
     live_records,
     merge_aliases,
@@ -293,6 +294,10 @@ def _phase_updated_at(
     for task in members:
         stamps.extend(recorded_at(check) for check in checks if belongs(check, task, tasks))
     return max(stamps, default=None)
+
+
+def _uncorrected(checks: list[Record]) -> list[Record]:
+    return [check for check in checks if not derived_values(check).get("corrected")]
 
 
 def _needs_you(
@@ -623,7 +628,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                     [
                         *questions.get(effort, []),
                         *findings.get(effort, []),
-                        *effort_checks,
+                        *_uncorrected(effort_checks),
                         *effort_acceptances,
                     ],
                     acceptances_by_id,
@@ -787,7 +792,7 @@ def load_work_snapshot(
                     [
                         *questions.get(effort, []),
                         *grouped["tuner:finding"].get(effort, []),
-                        *checks,
+                        *_uncorrected(checks),
                         *acceptances,
                     ],
                     acceptances_by_id,

@@ -27,6 +27,7 @@ from orchestra.conductor.landing import phase_place
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import (
     WorkflowBlockerError,
+    is_signed,
     latest_manual_check,
     phase_blockers,
 )
@@ -132,7 +133,7 @@ def gate_terms(
     for acceptance in acceptances:
         manual = latest_manual_check(acceptance, records)
         if manual is not None:
-            signed = bool(_str(manual, "signed_by").strip())
+            signed = is_signed(manual)
             terms.append(
                 Term(
                     f"manual-check-signed:{acceptance['subject']}",

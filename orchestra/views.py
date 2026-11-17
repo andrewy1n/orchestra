@@ -65,10 +65,6 @@ def _any(record: Record) -> bool:
     return True
 
 
-def _gate_records(records: list[Record], kind: str) -> list[Record]:
-    return [gate.record for gate in human_gates(records) if gate.kind == kind]
-
-
 @dataclass(frozen=True)
 class Role:
     name: str
@@ -76,7 +72,7 @@ class Role:
     fields: tuple[str, ...]
     select: Predicate = _any
     own_group: bool = False
-    pick: Callable[[list[Record]], list[Record]] | None = None
+    gate: str | None = None
 
 
 @dataclass(frozen=True)
@@ -139,19 +135,19 @@ HANDOFF = View(
             "blocking-question",
             "score:continuity-question",
             ("blocking", "scope"),
-            pick=lambda records: _gate_records(records, "blocking-question"),
+            gate="blocking-question",
         ),
         Role(
             "needs-human",
             "tuner:finding",
             ("claim", "needs"),
-            pick=lambda records: _gate_records(records, "needs-human"),
+            gate="needs-human",
         ),
         Role(
             "unsigned-manual-check",
             "tuner:check-run",
             ("criterion_id", "result", "method", "signed_by"),
-            pick=lambda records: _gate_records(records, "unsigned-check"),
+            gate="unsigned-check",
         ),
         Role(
             "backlog",
@@ -563,12 +559,16 @@ def _group_records(
 ) -> dict[str, dict[str, list[Record]]]:
     scoped = [r for r in records if _in_effort(r, effort)]
     groups: dict[str, dict[str, list[Record]]] = {}
+    gates: dict[str, list[Record]] | None = None
     for role in view.roles:
-        picked = (
-            [r for r in role.pick(scoped) if r["record_type"] == role.record_type]
-            if role.pick
-            else [r for r in scoped if r["record_type"] == role.record_type and role.select(r)]
-        )
+        if role.gate is None:
+            picked = [r for r in scoped if r["record_type"] == role.record_type and role.select(r)]
+        else:
+            if gates is None:
+                gates = {}
+                for human_gate in human_gates(scoped):
+                    gates.setdefault(human_gate.kind, []).append(human_gate.record)
+            picked = [r for r in gates.get(role.gate, []) if r["record_type"] == role.record_type]
         for record in picked:
             if role.name == "pending-phase-close":
                 progress = phase_progress(
