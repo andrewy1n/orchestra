@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
@@ -19,6 +20,49 @@ CODE_DONE = 0
 CODE_FAILED = 1
 CODE_PENDING_HUMAN = 3
 MANUAL_EXIT = 3
+
+
+class CriterionRequest(TypedDict):
+    criterion_id: str
+    method: str | None
+    result: str
+    revision: str
+    signed_by: str
+    check_run_id: str
+    red_check_run_id: str
+    red_result: str
+    red_runner: str
+    red_revision: str
+    red_diff_sha256: str
+    red_body: str
+    red_failing_node_ids: str
+    runner: str
+    _provided_fields: list[str]
+
+
+@dataclass(frozen=True)
+class CloseRefusal:
+    reason: str
+
+
+@dataclass(frozen=True)
+class CloseApproval:
+    pass
+
+
+CloseDecision = CloseRefusal | CloseApproval
+
+
+def decide_close(
+    project: Project,
+    criteria: Sequence[CriterionRequest],
+    *,
+    acceptance_ids: Sequence[str],
+    cwd: Path,
+    transition: str = "done",
+    has_finding: bool = False,
+) -> CloseDecision:
+    return CloseApproval()
 
 
 @dataclass(frozen=True)
