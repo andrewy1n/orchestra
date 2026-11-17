@@ -19,6 +19,7 @@ from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.landing import LandingPlace, phase_place, task_branch, task_worktree
 from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
 from orchestra.score.lookups import (
     acceptances_of,
@@ -122,10 +123,10 @@ def _execution_report(records: list[Record], task: str) -> Record | None:
     )
 
 
-def _integrated(repo: Path, phase: str, item: Record, records: list[Record]) -> bool:
-    phase_branch = f"phase/{phase}"
-    branch = f"task/{phase}/{item['subject']}"
-    git = Git(repo)
+def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Record]) -> bool:
+    phase_branch = place.branch
+    branch = task_branch(phase, item["subject"])
+    git = Git(place.repo)
     phase_head = git.resolve(phase_branch)
     if phase_head is None:
         raise WaveError(f"phase branch {phase_branch!r} could not be read")
@@ -141,7 +142,7 @@ def _integrated(repo: Path, phase: str, item: Record, records: list[Record]) -> 
 
 
 def _runner_start(
-    project: Project, repo: Path, phase: str, item: Record, items: list[Record]
+    project: Project, place: LandingPlace, phase: str, item: Record, items: list[Record]
 ) -> RunnerOutcome:
     from orchestra.conductor import land_task, task_close, verification
 
@@ -158,7 +159,7 @@ def _runner_start(
         )
     for other in others:
         try:
-            integrated = _integrated(repo, phase, other, project.records())
+            integrated = _integrated(place, phase, other, project.records())
         except (ToolError, WaveError) as exc:
             return RunnerOutcome(item["subject"], item["lifecycle_state"], "", (), (str(exc),), 1)
         if not integrated:
@@ -175,9 +176,9 @@ def _runner_start(
             item["id"],
             record_type="score:work-item",
             transition="in_progress",
-            payload={"assignee": "runner", "write_root": str(repo / ".worktrees" / phase)},
+            payload={"assignee": "runner", "write_root": str(place.worktree)},
         )
-    tree = repo / ".worktrees" / phase
+    tree = place.worktree
     try:
         revision = Git(tree).head()
     except ToolError as exc:
@@ -292,21 +293,20 @@ def _small_wave_budget(project: Project) -> int:
         raise WaveError(str(exc)) from exc
 
 
-def _prepare(repo: Path, phase: str, item: Record, closing: bool) -> tuple[Path, str]:
-    phase_branch = f"phase/{phase}"
-    phase_tree = repo / ".worktrees" / phase
+def _prepare(place: LandingPlace, phase: str, item: Record, closing: bool) -> tuple[Path, str]:
+    phase_branch = place.branch
     if closing:
-        return phase_tree, phase_branch
-    branch = f"task/{phase}/{item['subject']}"
-    tree = repo / ".worktrees" / f"{phase}--{item['subject']}"
-    if not _branch_exists(repo, branch):
+        return place.worktree, phase_branch
+    branch = task_branch(phase, item["subject"])
+    tree = task_worktree(place, phase, item["subject"])
+    if not _branch_exists(place.repo, branch):
         try:
-            Git(repo).create_branch(branch, phase_branch)
+            Git(place.repo).create_branch(branch, phase_branch)
         except ToolError as error:
             raise _wave_error(error) from error
     if not tree.exists():
         try:
-            Git(repo).add_worktree(tree, branch)
+            Git(place.repo).add_worktree(tree, branch)
         except ToolError as error:
             raise _wave_error(error) from error
     task_git = Git(tree)
@@ -366,6 +366,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     derived = project.derived(records)
     phase_rec = phase_record(records, phase)
     landing = has_landing(phase_rec)
+    place = phase_place(phase_rec, repo)
     items = phase_items(records, phase)
     if landing and len(closing_work_items(phase, records)) > 1:
         raise WaveError("phase has more than one closing task")
@@ -373,7 +374,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     if closer is not None and all(
         item["lifecycle_state"] == "done" for item in items if item["id"] != closer["id"]
     ):
-        outcome = _runner_start(project, repo, phase, closer, items)
+        outcome = _runner_start(project, place, phase, closer, items)
         return WaveStart(phase, None, (), "runner", outcome)
     wave, chosen = select_wave(records, derived, phase)
     executor = check_executors(chosen, _small_wave_budget(project))
@@ -381,7 +382,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     for item in chosen:
         if landing:
             try:
-                tree, branch = _prepare(repo, phase, item, is_closing_task(records, phase, item))
+                tree, branch = _prepare(place, phase, item, is_closing_task(records, phase, item))
             except WaveError as exc:
                 _block(project, phase_rec, phase, f"merge:{item['subject']}")
                 started_names = ", ".join(i["subject"] for i, _, _ in prepared) or "none"
@@ -427,27 +428,28 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     records = project.records()
     index = EvidenceIndex(records)
     items = phase_items(records, phase)
-    phase_tree = repo / ".worktrees" / phase
-    phase_branch = f"phase/{phase}"
     phase_rec = phase_record(records, phase)
+    place = phase_place(phase_rec, repo)
+    phase_tree = place.worktree
+    phase_branch = place.branch
     merged: list[str] = []
     skipped: list[tuple[str, str]] = []
     for item in sorted(items, key=lambda r: r["subject"]):
         task = item["subject"]
-        branch = f"task/{phase}/{task}"
-        if is_closing_task(records, phase, item) or not _branch_exists(repo, branch):
+        branch = task_branch(phase, task)
+        if is_closing_task(records, phase, item) or not _branch_exists(place.repo, branch):
             continue
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
             continue
         try:
-            landed = Git(repo).is_ancestor(branch, phase_branch)
+            landed = Git(place.repo).is_ancestor(branch, phase_branch)
         except ToolError as error:
             raise _wave_error(error) from error
         if landed:
             continue
         acceptances = task_acceptances(records, task, phase)
-        tip = Git(repo).resolve(branch)
+        tip = Git(place.repo).resolve(branch)
         if tip is None:
             raise WaveError(f"cannot resolve task branch {branch}")
         if not acceptances or not all(acceptance_latest(index, a, tip).holds for a in acceptances):
@@ -514,32 +516,33 @@ def _guard_refusals(
     return refusals
 
 
-def _merged_tasks(repo: Path, records: list[Record], phase: str, task: str) -> list[str]:
+def _merged_tasks(place: LandingPlace, records: list[Record], phase: str, task: str) -> list[str]:
     merged: list[str] = []
     for item in phase_items(records, phase):
         slug = item["subject"]
-        branch = f"task/{phase}/{slug}"
+        branch = task_branch(phase, slug)
         if (
             slug == task
             or is_closing_task(records, phase, item)
-            or not _branch_exists(repo, branch)
+            or not _branch_exists(place.repo, branch)
         ):
             continue
-        if Git(repo).is_ancestor(branch, f"phase/{phase}"):
+        if Git(place.repo).is_ancestor(branch, place.branch):
             merged.append(slug)
     return merged
 
 
 def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
     phase_rec = phase_record(project.records(), phase)
-    tree = repo / ".worktrees" / phase
+    place = phase_place(phase_rec, repo)
+    tree = place.worktree
     from orchestra.conductor.land_task import acceptances_for
 
     refusals = _guard_refusals(project, phase_rec, phase, task, tree)
     if refusals:
         return WaveResolve(phase, task, tuple(refusals))
     _git_text(tree, "add", "-A", "--", ".", ":!.canon")
-    branch = f"task/{phase}/{task}"
+    branch = task_branch(phase, task)
     merged_tree = _git_text(tree, "write-tree")
     commit = _git_text(
         tree,
@@ -550,14 +553,14 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
         "-p",
         branch,
         "-m",
-        f"Merge branch '{branch}' into phase/{phase}",
+        f"Merge branch '{branch}' into {place.branch}",
     )
-    trial = repo / ".worktrees" / f"{phase}--resolve-{task}"
-    _git_text(repo, "worktree", "add", "--detach", "--force", str(trial), commit)
+    trial = task_worktree(place, phase, f"resolve-{task}")
+    _git_text(place.repo, "worktree", "add", "--detach", "--force", str(trial), commit)
     failures: list[str] = []
     outcomes: list[tuple[str, int]] = []
     try:
-        tasks = [task, *_merged_tasks(repo, project.records(), phase, task)]
+        tasks = [task, *_merged_tasks(place, project.records(), phase, task)]
         for slug in tasks:
             for acceptance in sorted(
                 acceptances_for(project, slug, phase), key=lambda r: r["subject"]
@@ -572,7 +575,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
                 if outcome.exit_code != 0:
                     failures.append(acceptance["subject"])
     finally:
-        _git_text(repo, "worktree", "remove", "--force", str(trial))
+        _git_text(place.repo, "worktree", "remove", "--force", str(trial))
     if failures:
         reason = "acceptance failed on the merge: " + ", ".join(failures)
         return WaveResolve(phase, task, (reason,), commit, tuple(outcomes))

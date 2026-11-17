@@ -27,7 +27,7 @@ from conftest import REPO_ROOT, git
 
 from orchestra.canon.types import Record
 from orchestra.cli import main as cli_main
-from orchestra.conductor import gate, land
+from orchestra.conductor import gate, landing
 
 OTHER_HEAD = "b" * 40
 
@@ -487,72 +487,38 @@ def test_landing_parses_repo_and_worktree_lines() -> None:
         "- Worktree: `/code/repo/.worktrees/x`\n\n"
         "## Proof\n\nrepo: ignored\n"
     )
-    landing = gate.parse_landing(body)
-    assert landing.present
-    assert landing.repo == "/code/repo"
-    assert landing.worktree == "/code/repo/.worktrees/x"
+    spec = landing.parse_landing(body)
+    assert spec.present
+    assert spec.repo == "/code/repo"
+    assert spec.worktree == "/code/repo/.worktrees/x"
 
 
 def test_landing_is_absent_without_a_landing_section() -> None:
-    landing = gate.parse_landing("## Approach\n\nrepo: `/code/repo`\n")
-    assert not landing.present
-    assert landing.repo == ""
-
-
-@dataclass
-class FakeAdapter:
-    calls: list[land.LandRequest]
-
-    def run(self, request: land.LandRequest) -> land.LandingResult:
-        self.calls.append(request)
-        return land.LandingResult("success", 7, "https://example.test/pull/7", HEAD, (), ())
-
-
-@pytest.fixture
-def adapter(monkeypatch: pytest.MonkeyPatch) -> FakeAdapter:
-    fake = FakeAdapter([])
-
-    def dispatch(root: Path, proof_packet: str, **kwargs: object) -> land.LandingResult:
-        return fake.run(land.LandRequest(root, proof_packet, "main", "origin", 0, 0, {}))
-
-    monkeypatch.setattr(land, "dispatch_land", dispatch)
-    return fake
+    spec = landing.parse_landing("## Approach\n\nrepo: `/code/repo`\n")
+    assert not spec.present
+    assert spec.repo == ""
 
 
 def test_land_refuses_when_gate_fails_no_push(
-    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+    phase: Phase, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _packet(phase)
     phase.finding()
     assert cli_main(_land_args(phase)) == 5
     assert "finding-needs-human" in capsys.readouterr().err
-    assert adapter.calls == []
 
 
 def test_land_refuses_with_each_missing_term_once(
-    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+    phase: Phase, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _packet(phase)
     phase.check_run("fail")
     assert cli_main(_land_args(phase)) == 5
     assert capsys.readouterr().err.count(f"acceptance-passes:{PHASE}-ac") == 1
-    assert adapter.calls == []
-
-
-def test_land_runs_adapter_after_gate_holds(
-    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _review_repo_head(phase)
-    _packet(phase)
-    assert cli_main(_land_args(phase)) == 0
-    assert len(adapter.calls) == 1
-    assert adapter.calls[0].root == phase.repo.resolve()
-    assert adapter.calls[0].proof_packet.startswith("## Look")
-    assert '"result": "success"' in capsys.readouterr().out
 
 
 def test_land_cwd_refuses_code_commit_after_review(
-    store: Path, cli: Cli, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+    store: Path, cli: Cli, capsys: pytest.CaptureFixture[str]
 ) -> None:
     phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
     _review_repo_head(phase)
@@ -562,18 +528,6 @@ def test_land_cwd_refuses_code_commit_after_review(
     err = capsys.readouterr().err
     assert "head-descends-from-review" in err
     assert "src/new.py" in err
-    assert adapter.calls == []
-
-
-def test_land_cwd_proceeds_after_canon_only_commit(
-    store: Path, cli: Cli, adapter: FakeAdapter
-) -> None:
-    phase = seed(store, cli, review=False, runner_check=False, prose_landing=True)
-    _review_repo_head(phase)
-    _commit(phase.repo, ".canon/config.json")
-    _packet(phase)
-    assert cli_main(_land_args(phase)) == 0
-    assert len(adapter.calls) == 1
 
 
 def test_gate_cwd_checks_that_head(store: Path, cli: Cli) -> None:
@@ -605,10 +559,9 @@ def test_gate_cwd_reads_suite_policy_from_that_worktree(store: Path, cli: Cli) -
 
 
 def test_land_exits_2_for_an_unknown_phase(
-    phase: Phase, adapter: FakeAdapter, capsys: pytest.CaptureFixture[str]
+    phase: Phase, capsys: pytest.CaptureFixture[str]
 ) -> None:
     args = _land_args(phase)
     args[2] = "no-such-phase"
     assert cli_main(args) == 2
     assert "not found" in capsys.readouterr().err
-    assert adapter.calls == []

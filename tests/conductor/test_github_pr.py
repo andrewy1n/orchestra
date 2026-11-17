@@ -9,9 +9,6 @@ from typing import Literal, overload
 
 import pytest
 
-import orchestra.cli as cli
-import orchestra.conductor.github_pr as github_pr
-from orchestra.canon.types import JsonObject
 from orchestra.conductor.github_pr import (
     GitHubCheck,
     GitHubClient,
@@ -21,7 +18,7 @@ from orchestra.conductor.github_pr import (
     open_pull_request,
     wait_for_checks,
 )
-from orchestra.conductor.land import LandingCheck, LandingResult, dispatch_land
+from orchestra.conductor.land import LandingCheck, dispatch_land
 
 
 class FakeGitHub:
@@ -328,9 +325,7 @@ def test_github_pr_waits_through_open_pull_request(tmp_path: Path) -> None:
     assert sleeps == [2, 2]
 
 
-def test_github_pr_adapter_runs_through_dispatch_land(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_github_pr_adapter_runs_through_dispatch_land(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
     _add_origin(root)
@@ -351,26 +346,18 @@ def test_github_pr_adapter_runs_through_dispatch_land(
             ),
         },
     )
-    configured: list[tuple[str, JsonObject]] = []
-    real_gh = github_pr.GitHubGh
+    client = GitHubGh(root, "origin", {"repository": "owner/repo"}, run=run)
 
-    def create_client(root: Path, remote: str, config: JsonObject | None) -> GitHubGh:
-        configured.append((remote, config or {}))
-        return real_gh(root, remote, config, run=run)
-
-    monkeypatch.setattr(github_pr, "GitHubGh", create_client)
-
-    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10)
+    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10, client=client)
 
     assert result.result == "fail"
     assert result.number == 42
     assert result.checks == (LandingCheck("CI", "completed", "failure"),)
-    assert configured == [("origin", {"repository": "owner/repo"})]
     create = next(call for call in run.calls if call[:3] == ("gh", "pr", "create"))
     assert create[-2:] == ("-R", "owner/repo")
 
 
-def test_adapter_statuses_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_adapter_statuses_empty(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_project(root)
     _add_origin(root)
@@ -384,14 +371,9 @@ def test_adapter_statuses_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             ),
         },
     )
-    real_gh = github_pr.GitHubGh
-    monkeypatch.setattr(
-        github_pr,
-        "GitHubGh",
-        lambda root, remote, config: real_gh(root, remote, config, run=run),
-    )
+    client = GitHubGh(root, run=run)
 
-    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10)
+    result = dispatch_land(root, "proof packet", poll_interval_s=1, timeout_s=10, client=client)
 
     assert result.result == "success"
     assert result.statuses == ()
@@ -498,92 +480,6 @@ def test_duplicate_pull_request_carries_url(tmp_path: Path) -> None:
         _open(root, GitHubGh(root, run=run))
 
     assert PR_URL in str(raised.value)
-
-
-def test_land_cli_reports_pull_request_and_final_checks(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    from orchestra.canon.types import Record
-
-    packet: Record = {
-        "id": "packet-id",
-        "record_type": "conductor:proof-packet",
-        "subject": "project-config",
-        "payload": {"revision": "head-sha"},
-        "lifecycle_state": "recorded",
-        "relationships": {},
-        "revision": "store-revision",
-        "recorded_at": "now",
-        "body": "proof packet",
-    }
-
-    phase: Record = {
-        "id": "phase-id",
-        "record_type": "score:phase",
-        "subject": "project-config",
-        "payload": {"title": "Project config"},
-        "lifecycle_state": "in_progress",
-        "relationships": {},
-        "revision": "r",
-        "recorded_at": "now",
-        "body": "## Problem\n\np\n",
-    }
-
-    class FakeProject:
-        project_root = tmp_path
-
-        def list(self, record_type: str) -> list[Record]:
-            assert record_type == "conductor:proof-packet"
-            return [packet]
-
-        def records(self) -> list[Record]:
-            return [phase]
-
-        def create(self, *, record_type: str, subject: str, payload: JsonObject) -> Record:
-            assert record_type == "conductor:landing"
-            assert subject == "project-config"
-            assert payload["number"] == 42
-            return packet
-
-    def fake_open_pull_request(
-        root: Path,
-        proof_packet: str,
-        *,
-        base: str,
-        remote: str,
-        poll_interval_s: float,
-        timeout_s: float,
-        title: str,
-        description: Mapping[str, str],
-    ) -> LandingResult:
-        assert title == "Project config (project-config)"
-        assert description == {"problem": "p"}
-        assert root == tmp_path.resolve()
-        assert proof_packet == "proof packet"
-        assert base == "main"
-        assert remote == "origin"
-        assert poll_interval_s == 10
-        assert timeout_s == 1800
-        return LandingResult(
-            result="success",
-            number=42,
-            url="https://github.com/owner/repo/pull/42",
-            head_sha="head-sha",
-            checks=(LandingCheck("CI", "completed", "success"),),
-            statuses=(),
-        )
-
-    monkeypatch.setattr("orchestra.store.open_store", lambda _root, store=None: FakeProject())
-    monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(cli.Git, "head", lambda _self: "head-sha")
-    monkeypatch.setattr(cli.land, "dispatch_land", fake_open_pull_request)
-
-    exit_code = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
-
-    assert exit_code == 0
-    output = capsys.readouterr().out
-    assert '"url": "https://github.com/owner/repo/pull/42"' in output
-    assert '"result": "success"' in output
 
 
 def test_land_pushes_the_branch_before_waiting_for_checks(tmp_path: Path) -> None:

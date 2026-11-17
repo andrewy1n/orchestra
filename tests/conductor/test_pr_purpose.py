@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from conductor_support import PHASE, Cli, Phase, _land_args, _packet, _review_repo_head, seed
+from conductor_support import PHASE, Cli, Phase, _packet, _review_repo_head, seed
+from test_land_sequence import FakeGh, land_through, use_adapter
 
 from orchestra.canon.types import Record
-from orchestra.cli import main as cli_main
-from orchestra.conductor import land
 from orchestra.conductor.github_pr import GitHubCheck, open_pull_request
 from orchestra.conductor.landing import describe_phase, pull_request_body, pull_request_title
 
@@ -136,29 +134,20 @@ def test_open_pull_request_sends_the_title_and_the_description(tmp_path: Path) -
     assert client.body == _body()
 
 
-def test_land_passes_the_phase_title_and_purpose_to_the_adapter(
-    store: Path, cli: Cli, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_land_sends_the_phase_title_and_purpose_to_the_pull_request(store: Path, cli: Cli) -> None:
     phase: Phase = seed(store, cli)
-    seen: dict[str, object] = {}
-
-    def dispatch(root: Path, proof_packet: str, **kwargs: object) -> land.LandingResult:
-        del root, proof_packet
-        seen.update(kwargs)
-        return land.LandingResult("success", 7, "u", "f" * 40, (), ())
-
-    monkeypatch.setattr(land, "dispatch_land", dispatch)
+    use_adapter(phase, "github-pr")
     _review_repo_head(phase)
     _packet(phase)
+    gh = FakeGh()
 
-    assert cli_main(_land_args(phase)) == 0
+    land_through(phase, gh)
 
-    assert seen["title"] == f"{PHASE} ({PHASE})"
-    description = seen["description"]
-    assert isinstance(description, dict)
-    assert description["problem"] == "p"
-    assert description["approach"] == "a"
-    assert description["exit_criteria"] == "e"
+    [(title, body)] = gh.created
+    assert title == f"{PHASE} ({PHASE})"
+    assert "## What this PR is for\n\np\n" in body
+    assert "## Approach\n\na\n" in body
+    assert "## Exit criteria\n\ne\n" in body
 
 
 def _rerun(tmp_path: Path) -> Recorder:

@@ -15,8 +15,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.query import latest
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor.gate import parse_landing
-from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
 from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
 from orchestra.derive import (
     effort_dormant,
@@ -590,22 +589,15 @@ def _phase_close_step(phase: Record, records: list[Record]) -> str:
         if landed.get("result") == "success":
             return (
                 f"Awaiting merge: PR {landed.get('number')} ({landed.get('url')}). "
-                f"Run `orchestra close --phase {shlex.quote(slug)}` after the merge."
+                f"After the merge, `orchestra close --phase {shlex.quote(slug)}` moves the phase to done."
             )
     gate = f"Run `orchestra gate {shlex.quote(slug)}`."
-    has_packet = any(
-        record["record_type"] == "conductor:proof-packet"
-        and record["lifecycle_state"] == "recorded"
-        and record_payload(record).get("phase") == slug
-        and effort_of(record) == effort_of(phase)
-        for record in records
-    )
-    if not has_packet:
+    if proof_packet(records, phase) is None:
         return f"{gate} After it passes, record the proof packet for any code or claim changes."
     checks = "verify the proof packet covers the phase head"
     if parse_landing(phase.get("body", "")).present:
         checks += " and confirm landing"
-    return f"{gate} After it passes, {checks} before marking the phase done."
+    return f"{gate} After it passes, {checks}."
 
 
 def _group_lines(

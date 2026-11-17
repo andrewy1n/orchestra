@@ -17,7 +17,7 @@ LANDING = (
     "## Problem\n\nA test phase.\n\n## Approach\n\nTest dispatch.\n\n"
     "## Exit criteria\n\nWave dispatch passes.\n\n"
     "## Landing\n\nbranch: phase/derived-executor\n"
-    "worktree: <repo>/.worktrees/derived-executor\nbase: main\n"
+    "base: main\n"
 )
 
 

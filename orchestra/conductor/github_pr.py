@@ -64,15 +64,13 @@ def open_pull_request(
     description: Mapping[str, str] | None = None,
     poll_interval_s: float = 10,
     timeout_s: float = 1800,
-    client: GitHubClient | None = None,
+    client: GitHubClient,
     sleep: Callable[[float], None] | None = None,
     monotonic: Callable[[], float] | None = None,
-    adapter_config: JsonObject | None = None,
 ) -> GitHubPRResult:
     """Push a committed branch, open a PR with its proof packet, and await CI."""
     project_root = Path(root)
     config = load_project_config(project_root)
-    adapter_config = adapter_config or config.land_config
     if config.merge_policy != "human":
         raise GitHubPRError("land.merge must remain human")
     if not proof_packet.strip():
@@ -92,22 +90,21 @@ def open_pull_request(
     if dirty:
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
-    github = client or GitHubGh(project_root, remote, adapter_config)
     pr_title = title or f"{branch}: phase proof"
     sleep_fn = sleep if sleep is not None else time.sleep
     monotonic_fn = monotonic if monotonic is not None else time.monotonic
     try:
-        github.push_branch(remote, branch)
-        existing = github.find_pull_request(branch)
+        client.push_branch(remote, branch)
+        existing = client.find_pull_request(branch)
         body = pull_request_body(description or {}, proof_packet)
         if existing is None:
-            number, url = github.create_pull_request(branch, base, pr_title, body)
+            number, url = client.create_pull_request(branch, base, pr_title, body)
         else:
             number, url = existing
             if description:
-                github.update_pull_request(number, pr_title, body)
+                client.update_pull_request(number, pr_title, body)
         checks = wait_for_checks(
-            github,
+            client,
             number,
             head_sha=head_sha,
             poll_interval_s=poll_interval_s,
@@ -125,6 +122,10 @@ def open_pull_request(
         statuses=(),
         result=_final_result(checks),
     )
+
+
+def github_client(root: Path, remote: str = "origin") -> GitHubGh:
+    return GitHubGh(root, remote, load_project_config(root).land_config)
 
 
 def wait_for_checks(

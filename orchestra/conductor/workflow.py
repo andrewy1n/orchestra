@@ -9,7 +9,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor import suite
-from orchestra.conductor.gate import format_missing, gate_terms, missing_terms, parse_landing
+from orchestra.conductor.gate import format_missing, gate_terms, missing_terms
 from orchestra.conductor.head_evidence import (
     EvidenceIndex,
     acceptance_latest,
@@ -18,8 +18,7 @@ from orchestra.conductor.head_evidence import (
     review_at_head,
     suite_check_runs,
 )
-from orchestra.conductor.landing import latest_landing
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
 from orchestra.score.lookups import dependencies as item_dependencies
@@ -368,18 +367,9 @@ def _verification_gate(project: Project, records: list[Record], phase: str) -> t
         raise WorkflowRunError(str(exc)) from exc
     if missing:
         return False, "phase gate is not met: " + "; ".join(format_missing(missing))
-    if _proof_packet(records, phase) is None:
+    if proof_packet(records, phase_record) is None:
         return False, "phase has no proof packet"
     return True, ""
-
-
-def _proof_packet(records: list[Record], phase: str) -> Record | None:
-    packets = [
-        record
-        for record in records
-        if record["record_type"] == "conductor:proof-packet" and record["subject"] == phase
-    ]
-    return max(packets, key=lambda row: (row["recorded_at"], row["id"])) if packets else None
 
 
 def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
@@ -393,7 +383,7 @@ def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         return False, "phase has no landing record"
     if landing["payload"].get("result") != "success":
         return False, "latest landing did not succeed"
-    latest = _proof_packet(records, phase)
+    latest = proof_packet(records, phase_record)
     if latest is None:
         return False, "phase has no proof packet"
     if landing["payload"].get("head_sha") != latest["payload"].get("revision"):
@@ -510,8 +500,7 @@ def _verify_stage(project: Project, records: list[Record], phase: str) -> str | 
         return "reviewer"
     if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
         return "gate"
-    packet = _proof_packet(records, phase)
-    if packet is None or not revision_matches(_text(packet, "revision"), head):
+    if proof_packet(records, phase_record, head) is None:
         return "proof"
     return None
 
@@ -528,7 +517,7 @@ def _land_stage(project: Project, records: list[Record], phase: str) -> str | No
     if landing["payload"].get("result") != "success":
         config = load_project_config(project.project_root)
         return "repair-ci" if config.land_adapter == "github-pr" else "land"
-    packet = _proof_packet(records, phase)
+    packet = proof_packet(records, phase_record)
     if packet is None or landing["payload"].get("head_sha") != packet["payload"].get("revision"):
         return "land"
     return "close"

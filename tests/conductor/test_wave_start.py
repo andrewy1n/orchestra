@@ -14,7 +14,7 @@ from orchestra.conductor import wave
 
 PHASE = "ph"
 EFFORT = "ef"
-LANDING = "\n\n## Landing\n\nbranch: phase/ph\nworktree: <repo>/.worktrees/ph\nbase: main\n"
+LANDING = "\n\n## Landing\n\nbranch: phase/ph\nbase: main\n"
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne"
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from conductor_support import CLOSE_PHASE as PHASE
-from conductor_support import Landed, _git, make_landed
+from conductor_support import Landed, _git, fake_gh_on_path, make_landed
 
 from orchestra.conductor import close
 
@@ -124,7 +124,7 @@ def test_close_cli_all_closes_and_reports(
 ) -> None:
     from orchestra.cli import main
 
-    monkeypatch.setattr(close, "github_states", lambda _repo: merged.states("MERGED"))
+    fake_gh_on_path(merged.repo.parent / "bin", monkeypatch, merged, "MERGED")
 
     code = main(
         ["close", "--all", "--cwd", str(merged.repo), "--store", str(merged.project.project_root)]

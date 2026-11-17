@@ -47,7 +47,7 @@ def _world(root: Path) -> tuple[Project, Path, Path]:
         {"title": "Execution cost", "ordinal": 1, "effort": EFFORT},
         "## Problem\n\nProblem.\n\n## Approach\n\nApproach.\n\n"
         "## Exit criteria\n\nCriteria.\n\n## Landing\n\n"
-        "branch: phase/cost-phase\nworktree: <repo>/.worktrees/cost-phase\nbase: main\n",
+        "branch: phase/cost-phase\nbase: main\n",
     )
     _git(root, "branch", f"phase/{PHASE}", "main")
     worktrees = root / ".worktrees"

@@ -14,7 +14,7 @@ EFFORT = "runner-cli-effort"
 PHASE_BODY = (
     "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne\n\n"
     "## Requirements\n\nR1: Closing verification passes.\n\n"
-    f"## Landing\n\nbranch: phase/{PHASE}\nworktree: <repo>/.worktrees/{PHASE}\nbase: main\n"
+    f"## Landing\n\nbranch: phase/{PHASE}\nbase: main\n"
 )
 
 

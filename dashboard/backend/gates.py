@@ -250,13 +250,13 @@ def landings_for_snapshot(root: Path, snapshot: Snapshot) -> dict[str, dict[str,
     return {view.effort: landing_for_view(root, view) for view in snapshot.efforts}
 
 
-def landing_refs_for_snapshot(snapshot: Snapshot) -> list[str]:
+def landing_refs_for_snapshot(root: Path, snapshot: Snapshot) -> list[str]:
     """main plus distinct Landing branch names from phase bodies (no git)."""
     refs: list[str] = ["main"]
     seen = {"main"}
     for view in snapshot.efforts:
         for phase in view.phases:
-            branch = landing_branch(phase.body, phase.subject)
+            branch = landing_branch(phase.body, phase.subject, root)
             if branch is not None and branch not in seen:
                 seen.add(branch)
                 refs.append(branch)
@@ -266,7 +266,7 @@ def landing_refs_for_snapshot(snapshot: Snapshot) -> list[str]:
 def landing_cache_token(root: Path, snapshot: Snapshot) -> str | None:
     """Cache key from per-ref commit lookup of main and Landing branches."""
     parts: list[str] = []
-    for ref in landing_refs_for_snapshot(snapshot):
+    for ref in landing_refs_for_snapshot(root, snapshot):
         sha = rev_parse_token(root, ref)
         parts.append(sha.strip() if sha else f"missing:{ref}")
     return "\n".join(parts) if parts else None

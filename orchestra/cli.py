@@ -32,8 +32,7 @@ from orchestra.conductor import (
 )
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
-from orchestra.conductor.github_pr import GitHubPRError
-from orchestra.conductor.landing import describe_phase, pull_request_title
+from orchestra.conductor.github_pr import GitHubPRError, github_client
 from orchestra.derive import requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import current_phase
@@ -1171,54 +1170,22 @@ def _cmd_land(args: argparse.Namespace) -> int:
     work = _cwd(args).resolve()
     try:
         location = resolve_location(args.store, work)
-        missing = gate.missing_terms(
-            gate.gate_terms(location.root, args.phase, store_dir=location.store, head_worktree=work)
-        )
-        if missing:
-            for line in gate.format_missing(missing):
-                print(f"orchestra land: {args.phase}: {line}", file=sys.stderr)
-            return GATE_FAILED_EXIT
-        project = location.open()
-        head = Git(work).head()
-        packets = project.list("conductor:proof-packet")
-        packet = next(
-            (
-                record
-                for record in reversed(packets)
-                if record["subject"] == args.phase and record["payload"].get("revision") == head
-            ),
-            None,
-        )
-        if packet is None:
-            raise ValueError(f"no proof packet for phase {args.phase!r} at HEAD {head}")
-        body = packet.get("body")
-        if not isinstance(body, str):
-            raise ValueError("phase proof packet has no body")
-        phase_record = current_phase(args.phase, project.records())
-        if phase_record is None:
-            raise StoreError(f"unknown record: no score:phase with subject {args.phase!r}")
-        result = land.dispatch_land(
+        result = land.land_phase(
+            location.root,
+            location.store,
+            location.open,
+            args.phase,
             work,
-            body,
+            github_client(work, args.remote),
             base=args.base,
             remote=args.remote,
             poll_interval_s=args.poll_interval,
             timeout_s=args.timeout,
-            title=pull_request_title(phase_record),
-            description=describe_phase(phase_record),
         )
-        if result.result != "skipped":
-            landing: JsonObject = {
-                "phase": args.phase,
-                "number": result.number,
-                "url": result.url,
-                "head_sha": result.head_sha,
-                "result": result.result,
-            }
-            effort = packet["payload"].get("effort")
-            if isinstance(effort, str) and effort:
-                landing["effort"] = effort
-            project.create(record_type="conductor:landing", subject=args.phase, payload=landing)
+    except land.LandGateError as exc:
+        for line in exc.lines:
+            print(f"orchestra land: {args.phase}: {line}", file=sys.stderr)
+        return GATE_FAILED_EXIT
     except (
         GitHubPRError,
         LookupError,
@@ -1278,7 +1245,7 @@ def _cmd_close(args: argparse.Namespace) -> int:
         location = resolve_location(args.store, work)
         project = location.open()
         repo = Git(work).primary_checkout()
-        states = close.github_states(repo)
+        states = github_client(repo)
         if args.all:
             outcomes = close.close_all(project, repo, states, work)
         else:

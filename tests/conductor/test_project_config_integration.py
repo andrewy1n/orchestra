@@ -6,12 +6,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import CANON_CMD
 
 import orchestra.cli as cli
-import orchestra.conductor.github_pr as github_pr
-from orchestra.canon.project import open_store
 from orchestra.canon.project_config import DEFAULT_RUNNER, load_project_config_at_revision
+from orchestra.conductor import land
 from orchestra.conductor.github_pr import GitHubCheck
 from orchestra.tuner import plugins
 
@@ -190,60 +188,15 @@ def test_builtins_only_are_registered() -> None:
     assert plugins.registered_plugin_ids() == ("review", "unit")
 
 
-def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(tmp_path: Path) -> None:
     _init_repo(tmp_path, branch="phase/project-config")
-    (tmp_path / ".gitignore").write_text(".canon/\n", encoding="utf-8")
-    _git(tmp_path, "add", ".gitignore")
-    _git(tmp_path, "commit", "-qm", "ignore local store")
     revision = _commit_config(tmp_path, _config_text(landing=True), "landing config")
-    (tmp_path / ".canon").mkdir()
-    init = subprocess.run(
-        [
-            *CANON_CMD,
-            "--root",
-            str(tmp_path),
-            "init",
-            "--schemas",
-            "score,conductor,tuner",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert init.returncode == 0, init.stdout + init.stderr
-    project = open_store(tmp_path)
     packet_body = "## Look\nOpen the final phase proof.\n\n## Machine\nproof id\n\n## Attention\nnone\n\n## Diff\n1 file changed\n"
-    project.create(
-        record_type="score:effort",
-        subject="workflow-loop",
-        payload={"goal": "Project config integration", "kind": "deliver"},
-    )
-    project.create(
-        record_type="score:phase",
-        subject="project-config",
-        payload={"title": "Project config", "ordinal": 1, "effort": "workflow-loop"},
-        body=(
-            "## Problem\n\nProject config policy is required.\n\n"
-            "## Approach\n\nUse a configured adapter.\n\n"
-            "## Exit criteria\n\nThe adapter reports completed CI.\n"
-        ),
-    )
-    project.create(
-        record_type="conductor:proof-packet",
-        subject="project-config",
-        payload={
-            "phase": "project-config",
-            "effort": "workflow-loop",
-            "revision": revision,
-            "base": "main",
-            "kind": "claims",
-        },
-        body=packet_body,
-    )
+    description = {
+        "problem": "Project config policy is required.",
+        "approach": "Use a configured adapter.",
+        "exit_criteria": "The adapter reports completed CI.",
+    }
 
     class FakeGitHub:
         def __init__(self) -> None:
@@ -281,13 +234,19 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
 
     github = FakeGitHub()
     github.head = revision
-    monkeypatch.setattr(github_pr, "GitHubGh", lambda _root, _remote, _config: github)
-    monkeypatch.setattr(github_pr.time, "sleep", lambda _seconds: None)
-    monkeypatch.setattr(cli.gate, "gate_terms", lambda *_args, **_kwargs: [])
 
-    result = cli.main(["land", "--phase", "project-config", "--cwd", str(tmp_path)])
+    result = land.dispatch_land(
+        tmp_path,
+        packet_body,
+        poll_interval_s=0.001,
+        timeout_s=10,
+        title="Project config (project-config)",
+        description=description,
+        client=github,
+    )
 
-    assert result == 0
+    assert result.result == "success"
+    assert (result.number, result.url) == (42, "https://github.com/owner/repo/pull/42")
     assert github.body.startswith("## What this PR is for\n\nProject config policy is required.\n")
     assert "\n## Approach\n\nUse a configured adapter.\n" in github.body
     assert "\n## Exit criteria\n\nThe adapter reports completed CI.\n" in github.body
@@ -299,6 +258,3 @@ def test_github_lifecycle_uses_packet_waits_and_reports_without_merge(
     assert "1 file changed" not in github.body
     assert github.poll == 2
     assert all("merge" not in event for event in github.events)
-    output = capsys.readouterr().out
-    assert '"result": "success"' in output
-    assert "https://github.com/owner/repo/pull/42" in output

@@ -19,7 +19,7 @@ PHASE = "cost-phase"
 EFFORT = "cost-effort"
 PHASE_BODY = (
     "## Problem\n\nProblem.\n\n## Approach\n\nApproach.\n\n## Exit criteria\n\nCriteria.\n\n"
-    "## Landing\n\nbranch: phase/cost-phase\nworktree: <repo>/.worktrees/cost-phase\nbase: main\n"
+    "## Landing\n\nbranch: phase/cost-phase\nbase: main\n"
 )
 START = datetime(2026, 1, 1, tzinfo=timezone.utc)
 EVIDENCE = {

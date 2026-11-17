@@ -13,10 +13,7 @@ from orchestra.conductor import execution_cost, task_redispatch, wave
 
 PHASE = "cost-phase"
 EFFORT = "cost-effort"
-LANDING = (
-    "\n\n## Landing\n\nbranch: phase/cost-phase\n"
-    "worktree: <repo>/.worktrees/cost-phase\nbase: main\n"
-)
+LANDING = "\n\n## Landing\n\nbranch: phase/cost-phase\nbase: main\n"
 START = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
