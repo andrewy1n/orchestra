@@ -14,6 +14,7 @@ from heapq import merge
 
 from orchestra.canon.types import Record
 from orchestra.conductor.revision import revision_matches
+from orchestra.score.lookups import check_run_criteria, corrected_ids
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -34,9 +35,7 @@ class EvidenceIndex:
     """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
-        corrected: set[str] = set()
-        for record in records:
-            corrected.update((record.get("relationships") or {}).get("corrects") or [])
+        corrected = corrected_ids(records)
         self.check_runs: list[Record] = [
             record
             for record in records
@@ -47,11 +46,8 @@ class EvidenceIndex:
             self._by_criterion.setdefault(_text(run, "criterion_id"), []).append((position, run))
 
     def acceptance_runs(self, acceptance: Record) -> list[Record]:
-        by_id = self._by_criterion.get(acceptance["id"], [])
-        if acceptance["id"] == acceptance["subject"]:
-            return [run for _, run in by_id]
-        by_subject = self._by_criterion.get(acceptance["subject"], [])
-        return [run for _, run in merge(by_id, by_subject, key=lambda item: item[0])]
+        groups = [self._by_criterion.get(name, []) for name in check_run_criteria(acceptance)]
+        return [run for _, run in merge(*groups, key=lambda item: item[0])]
 
 
 def suite_subject(phase_slug: str) -> str:

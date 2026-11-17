@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from orchestra.canon import record_payload
 from orchestra.canon.query import latest
@@ -102,3 +102,15 @@ def acceptances_of(
         if owner is not None and owner["id"] == item["id"]:
             owned.append(acceptance)
     return owned
+
+
+def corrected_ids(records: Iterable[Record]) -> set[str]:
+    return {
+        target
+        for record in records
+        for target in (record.get("relationships") or {}).get("corrects") or []
+    }
+
+
+def check_run_criteria(acceptance: Record) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((acceptance["id"], acceptance["subject"])))

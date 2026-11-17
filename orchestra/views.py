@@ -29,6 +29,7 @@ from orchestra.score.executor import (
     task_executor,
 )
 from orchestra.score.requirements import phase_requirements
+from orchestra.score.workflow_blockers import human_gates
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -71,6 +72,7 @@ class Role:
     fields: tuple[str, ...]
     select: Predicate = _any
     own_group: bool = False
+    gate: str | None = None
 
 
 @dataclass(frozen=True)
@@ -133,27 +135,19 @@ HANDOFF = View(
             "blocking-question",
             "score:continuity-question",
             ("blocking", "scope"),
-            _all(_state("open"), _payload_is("blocking", True)),
+            gate="blocking-question",
         ),
         Role(
             "needs-human",
             "tuner:finding",
             ("claim", "needs"),
-            _all(
-                _payload_is("needs", "human"),
-                _payload_truthy("effort"),
-                _state("asserted", "supported", "disputed"),
-            ),
+            gate="needs-human",
         ),
         Role(
             "unsigned-manual-check",
             "tuner:check-run",
             ("criterion_id", "result", "method", "signed_by"),
-            _all(
-                _payload_is("method", "manual"),
-                _payload_is("signed_by", ""),
-                lambda r: (r.get("derived") or {}).get("corrected") is not True,
-            ),
+            gate="unsigned-check",
         ),
         Role(
             "backlog",
@@ -565,10 +559,17 @@ def _group_records(
 ) -> dict[str, dict[str, list[Record]]]:
     scoped = [r for r in records if _in_effort(r, effort)]
     groups: dict[str, dict[str, list[Record]]] = {}
+    gates: dict[str, list[Record]] | None = None
     for role in view.roles:
-        for record in scoped:
-            if record["record_type"] != role.record_type or not role.select(record):
-                continue
+        if role.gate is None:
+            picked = [r for r in scoped if r["record_type"] == role.record_type and role.select(r)]
+        else:
+            if gates is None:
+                gates = {}
+                for human_gate in human_gates(scoped):
+                    gates.setdefault(human_gate.kind, []).append(human_gate.record)
+            picked = [r for r in gates.get(role.gate, []) if r["record_type"] == role.record_type]
+        for record in picked:
             if role.name == "pending-phase-close":
                 progress = phase_progress(
                     _effort_pool(scoped, effort_of(record)), record["subject"]

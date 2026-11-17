@@ -10,15 +10,9 @@ from dashboard.backend.snapshot import NeedsYouItem
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue
+from orchestra.score.workflow_blockers import CLEARS
 
-HUMAN_DISMISSIBLE = frozenset(
-    {
-        "blocking-question",
-        "open-question",
-        "needs-human",
-        "unsigned-check",
-    }
-)
+HUMAN_DISMISSIBLE = frozenset(CLEARS)
 
 DEFAULT_SIGNER_ENV = "ORCHESTRA_SIGNED_BY"
 
@@ -173,12 +167,7 @@ def _check_sign(item: NeedsYouItem, signer: str, note: str | None) -> dict[str, 
 
 
 def _current_revision(target: Project, item: NeedsYouItem) -> str:
-    record_type = item.record_type or {
-        "blocking-question": "score:continuity-question",
-        "open-question": "score:continuity-question",
-        "needs-human": "tuner:finding",
-        "unsigned-check": "tuner:check-run",
-    }.get(item.kind, "")
+    record_type = item.record_type or CLEARS.get(item.kind, "")
     try:
         record = store.stored_record(target, item.id, record_type or None)
     except StoreError as exc:

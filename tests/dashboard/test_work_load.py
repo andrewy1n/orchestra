@@ -366,7 +366,7 @@ def test_compact_work_preserves_needs_records_and_task_event_timestamps(project:
                 subject,
                 {
                     "effort": "alpha",
-                    "criterion_id": acceptance["id"],
+                    "criterion_id": acceptance["id"] if subject == "unsigned" else subject,
                     "revision": "abc",
                     "result": "pass",
                     "method": "manual",

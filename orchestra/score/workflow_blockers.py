@@ -3,8 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.score.lookups import current_phase, current_phases
+from orchestra.score.lookups import (
+    check_run_criteria,
+    corrected_ids,
+    current_phase,
+    current_phases,
+)
 
 
 class WorkflowBlockerError(ValueError):
@@ -16,6 +22,109 @@ class WorkflowBlocker:
     record: Record
     scope: Literal["phase", "effort"]
     phase: str | None
+
+
+HumanGateKind = Literal["blocking-question", "open-question", "needs-human", "unsigned-check"]
+
+
+@dataclass(frozen=True)
+class HumanGate:
+    kind: HumanGateKind
+    record: Record
+    clears: str
+
+
+OPEN_FINDING_STATES = ("asserted", "supported", "disputed")
+CHECK_RUN_TYPE = "tuner:check-run"
+QUESTION_TYPE = "score:continuity-question"
+FINDING_TYPE = "tuner:finding"
+CLEARS: dict[str, str] = {
+    "blocking-question": QUESTION_TYPE,
+    "open-question": QUESTION_TYPE,
+    "needs-human": FINDING_TYPE,
+    "unsigned-check": CHECK_RUN_TYPE,
+}
+
+
+def is_open_finding(record: Record) -> bool:
+    return (
+        record["record_type"] == FINDING_TYPE
+        and _payload_text(record, "needs") == "human"
+        and record["lifecycle_state"] in OPEN_FINDING_STATES
+    )
+
+
+def _is_open_question(record: Record) -> bool:
+    return record["record_type"] == QUESTION_TYPE and record["lifecycle_state"] == "open"
+
+
+def _is_blocking_question(record: Record) -> bool:
+    return _is_open_question(record) and record["payload"].get("blocking") is True
+
+
+def _uncorrected_manual_checks(records: list[Record]) -> list[Record]:
+    corrected = corrected_ids(records)
+    return [
+        record
+        for record in records
+        if record["record_type"] == CHECK_RUN_TYPE
+        and _payload_text(record, "method") == "manual"
+        and record["id"] not in corrected
+    ]
+
+
+def is_signed(run: Record) -> bool:
+    return bool(_payload_text(run, "signed_by").strip())
+
+
+def _latest_among(acceptance: Record, runs: list[Record]) -> Record | None:
+    names = check_run_criteria(acceptance)
+    return latest(run for run in runs if _payload_text(run, "criterion_id") in names)
+
+
+def latest_manual_check(acceptance: Record, records: list[Record]) -> Record | None:
+    return _latest_among(acceptance, _uncorrected_manual_checks(records))
+
+
+def unsigned_manual_checks(records: list[Record]) -> list[Record]:
+    runs = _uncorrected_manual_checks(records)
+    claimed: set[str] = set()
+    latest_runs: list[Record] = []
+    for acceptance in records:
+        if acceptance["record_type"] != "score:acceptance":
+            continue
+        names = check_run_criteria(acceptance)
+        owned = [run for run in runs if _payload_text(run, "criterion_id") in names]
+        claimed.update(run["id"] for run in owned)
+        deciding = latest(owned)
+        if deciding is not None:
+            latest_runs.append(deciding)
+    unowned: dict[str, list[Record]] = {}
+    for run in runs:
+        if run["id"] not in claimed:
+            unowned.setdefault(_payload_text(run, "criterion_id") or run["id"], []).append(run)
+    latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
+    unsigned: list[Record] = []
+    for run in latest_runs:
+        if not is_signed(run) and run not in unsigned:
+            unsigned.append(run)
+    return unsigned
+
+
+def human_gates(records: list[Record]) -> list[HumanGate]:
+    gates: list[HumanGate] = []
+    for record in records:
+        if _is_blocking_question(record):
+            gates.append(HumanGate("blocking-question", record, CLEARS["blocking-question"]))
+        elif _is_open_question(record):
+            gates.append(HumanGate("open-question", record, CLEARS["open-question"]))
+        elif is_open_finding(record):
+            gates.append(HumanGate("needs-human", record, CLEARS["needs-human"]))
+    gates.extend(
+        HumanGate("unsigned-check", run, CLEARS["unsigned-check"])
+        for run in unsigned_manual_checks(records)
+    )
+    return gates
 
 
 def _payload_text(record: Record, key: str) -> str:
@@ -74,17 +183,9 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
     blockers: list[WorkflowBlocker] = []
     for record in records:
         payload = record["payload"]
-        record_type = record["record_type"]
-        if record_type == "tuner:finding":
-            if _payload_text(record, "needs") != "human" or record["lifecycle_state"] in (
-                "refuted",
-                "retracted",
-            ):
-                continue
+        if is_open_finding(record):
             record_effort = _payload_text(record, "effort")
-        elif record_type == "score:continuity-question":
-            if payload.get("blocking") is not True or record["lifecycle_state"] != "open":
-                continue
+        elif _is_blocking_question(record):
             record_effort = record["subject"]
         else:
             continue

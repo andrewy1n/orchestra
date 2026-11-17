@@ -193,14 +193,18 @@ def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cl
     h.transition(cli, "tuner:finding", retracted, "retracted")
     check_payload = {"method": "manual", "signed_by": "", "result": "pass", "effort": "alpha"}
     h.create_generic_record(
-        cli, defs, "tuner:check-run", subject="c-unsigned", extra_payload=check_payload
+        cli,
+        defs,
+        "tuner:check-run",
+        subject="c-unsigned",
+        extra_payload={**check_payload, "criterion_id": "c-unsigned"},
     )
     h.create_generic_record(
         cli,
         defs,
         "tuner:check-run",
         subject="c-signed",
-        extra_payload={**check_payload, "signed_by": "ayin"},
+        extra_payload={**check_payload, "signed_by": "ayin", "criterion_id": "c-signed"},
     )
     h.create_generic_record(
         cli,
@@ -210,7 +214,11 @@ def test_collects_needs_you_items_and_drops_resolved_or_corrected_ones(store, cl
         extra_payload={**check_payload, "method": "check"},
     )
     corrected = h.create_generic_record(
-        cli, defs, "tuner:check-run", subject="c-corrected", extra_payload=check_payload
+        cli,
+        defs,
+        "tuner:check-run",
+        subject="c-corrected",
+        extra_payload={**check_payload, "criterion_id": "c-corrected"},
     )
     result = cli(
         "correct",

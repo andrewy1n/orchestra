@@ -6,10 +6,12 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from canon_support import create, make_project
 from conductor_support import (
     EFFORT,
     HEAD,
@@ -25,7 +27,8 @@ from conductor_support import (
 )
 from conftest import REPO_ROOT, git
 
-from orchestra.canon.types import Record
+from orchestra.canon.project import Project
+from orchestra.canon.types import JsonObject, Record
 from orchestra.cli import main as cli_main
 from orchestra.conductor import gate, landing
 
@@ -565,3 +568,147 @@ def test_land_exits_2_for_an_unknown_phase(
     args[2] = "no-such-phase"
     assert cli_main(args) == 2
     assert "not found" in capsys.readouterr().err
+
+
+GOLDEN = Path(__file__).resolve().parent.parent / "fixtures" / "gate_terms_main.json"
+R10_PHASE = "r10-phase"
+R10_EFFORT = "r10-effort"
+R10_OTHER_EFFORT = "r10-other"
+MANUAL_DETAIL = "latest manual check-run has no signed_by"
+
+
+class _Clock:
+    def __init__(self) -> None:
+        self.ticks = 0
+
+    def __call__(self) -> str:
+        self.ticks += 1
+        return f"2030-01-01T00:{self.ticks // 60:02d}:{self.ticks % 60:02d}+00:00"
+
+
+@pytest.fixture
+def clock(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    ticking = _Clock()
+    monkeypatch.setattr("orchestra.canon.record.now", ticking)
+    monkeypatch.setattr("orchestra.canon.project.now", ticking)
+    yield
+
+
+def _r10_project(root: Path) -> Project:
+    project = make_project(root)
+    for effort in (R10_EFFORT, R10_OTHER_EFFORT):
+        create(project, "score:effort", effort, {"goal": "g", "kind": "deliver"})
+    create(project, "score:phase", R10_PHASE, {"title": "p", "ordinal": 1, "effort": R10_EFFORT})
+    return project
+
+
+def _r10_acceptance(project: Project, subject: str) -> Record:
+    return create(
+        project,
+        "score:acceptance",
+        subject,
+        {
+            "criterion": "c",
+            "method": "manual",
+            "phase": R10_PHASE,
+            "effort": R10_EFFORT,
+            "verify_command": "true",
+            "requirement": "R1",
+        },
+    )
+
+
+def _r10_run(
+    project: Project, acceptance: Record, *, signed_by: str = "", by_subject: bool = False
+) -> Record:
+    return create(
+        project,
+        "tuner:check-run",
+        acceptance["subject"],
+        {
+            "criterion_id": acceptance["subject"] if by_subject else acceptance["id"],
+            "revision": HEAD,
+            "result": "pass",
+            "effort": R10_EFFORT,
+            "method": "manual",
+            "signed_by": signed_by,
+        },
+    )
+
+
+def _r10_finding(project: Project, subject: str, effort: str) -> Record:
+    payload: JsonObject = {
+        "claim": f"claim of {subject}",
+        "basis": "observed",
+        "invalidated_when": "human clears",
+        "effort": effort,
+        "needs": "human",
+    }
+    return create(project, "tuner:finding", subject, payload)
+
+
+def _r10_gate_store(root: Path) -> Project:
+    project = _r10_project(root)
+    _r10_run(project, _r10_acceptance(project, "ac-unsigned"))
+    unsigned_then_signed = _r10_acceptance(project, "ac-unsigned-then-signed")
+    _r10_run(project, unsigned_then_signed)
+    _r10_run(project, unsigned_then_signed, signed_by="me")
+    signed_then_unsigned = _r10_acceptance(project, "ac-signed-then-unsigned")
+    _r10_run(project, signed_then_unsigned, signed_by="me")
+    _r10_run(project, signed_then_unsigned)
+    corrected = _r10_acceptance(project, "ac-corrected")
+    project.correct(_r10_run(project, corrected)["id"], payload={"result": "fail"})
+    _r10_run(project, _r10_acceptance(project, "ac-by-subject"), by_subject=True)
+    create(
+        project,
+        "score:continuity-question",
+        R10_EFFORT,
+        {"owner": "me", "blocking": True, "scope": "which way"},
+    )
+    _r10_finding(project, "needs-human-here", R10_EFFORT)
+    _r10_finding(project, "needs-human-elsewhere", R10_OTHER_EFFORT)
+    return project
+
+
+def _r10_snapshot(root: Path) -> list[dict[str, object]]:
+    terms = gate.gate_terms(root, R10_PHASE)
+    families = [term.name.partition(":")[0] for term in terms]
+    ordered = sorted(
+        zip(terms, families, strict=True),
+        key=lambda pair: (families.index(pair[1]), pair[0].name),
+    )
+    return [{"name": term.name, "holds": term.holds, "detail": term.detail} for term, _ in ordered]
+
+
+def _r10_manual_term(root: Path, acceptance: Record) -> gate.Term:
+    terms = {term.name: term for term in gate.gate_terms(root, R10_PHASE)}
+    return terms[f"manual-check-signed:{acceptance['subject']}"]
+
+
+def test_r10_gate_terms_equal_the_golden_terms(tmp_path: Path, clock: None) -> None:
+    _r10_gate_store(tmp_path)
+
+    assert _r10_snapshot(tmp_path) == json.loads(GOLDEN.read_text())
+
+
+def test_r10_latest_unsigned_manual_run_names_the_unsigned_term(
+    tmp_path: Path, clock: None
+) -> None:
+    project = _r10_project(tmp_path)
+    acceptance = _r10_acceptance(project, "ac-one")
+    _r10_run(project, acceptance)
+
+    term = _r10_manual_term(tmp_path, acceptance)
+
+    assert term == gate.Term("manual-check-signed:ac-one", False, MANUAL_DETAIL)
+
+
+def test_r10_older_unsigned_run_followed_by_signed_run_holds(tmp_path: Path, clock: None) -> None:
+    project = _r10_project(tmp_path)
+    acceptance = _r10_acceptance(project, "ac-one")
+    _r10_run(project, acceptance)
+    _r10_run(project, acceptance, signed_by="me")
+
+    term = _r10_manual_term(tmp_path, acceptance)
+
+    assert term == gate.Term("manual-check-signed:ac-one", True, "")
