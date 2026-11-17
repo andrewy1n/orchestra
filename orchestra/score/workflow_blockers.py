@@ -19,9 +19,12 @@ class WorkflowBlocker:
     phase: str | None
 
 
+HumanGateKind = Literal["blocking-question", "open-question", "needs-human", "unsigned-check"]
+
+
 @dataclass(frozen=True)
 class HumanGate:
-    kind: Literal["blocking-question", "open-question", "needs-human", "unsigned-check"]
+    kind: HumanGateKind
     record: Record
     clears: str
 
@@ -30,6 +33,12 @@ OPEN_FINDING_STATES = ("asserted", "supported", "disputed")
 CHECK_RUN_TYPE = "tuner:check-run"
 QUESTION_TYPE = "score:continuity-question"
 FINDING_TYPE = "tuner:finding"
+CLEARS: dict[str, str] = {
+    "blocking-question": QUESTION_TYPE,
+    "open-question": QUESTION_TYPE,
+    "needs-human": FINDING_TYPE,
+    "unsigned-check": CHECK_RUN_TYPE,
+}
 
 
 def is_open_finding(record: Record) -> bool:
@@ -101,13 +110,14 @@ def human_gates(records: list[Record]) -> list[HumanGate]:
     gates: list[HumanGate] = []
     for record in records:
         if _is_blocking_question(record):
-            gates.append(HumanGate("blocking-question", record, QUESTION_TYPE))
+            gates.append(HumanGate("blocking-question", record, CLEARS["blocking-question"]))
         elif _is_open_question(record):
-            gates.append(HumanGate("open-question", record, QUESTION_TYPE))
+            gates.append(HumanGate("open-question", record, CLEARS["open-question"]))
         elif is_open_finding(record):
-            gates.append(HumanGate("needs-human", record, FINDING_TYPE))
+            gates.append(HumanGate("needs-human", record, CLEARS["needs-human"]))
     gates.extend(
-        HumanGate("unsigned-check", run, CHECK_RUN_TYPE) for run in unsigned_manual_checks(records)
+        HumanGate("unsigned-check", run, CLEARS["unsigned-check"])
+        for run in unsigned_manual_checks(records)
     )
     return gates
 

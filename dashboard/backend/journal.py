@@ -12,6 +12,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
+from orchestra.score.workflow_blockers import is_open_finding
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -21,7 +22,6 @@ JOURNAL_TYPES = (
     "conductor:assignment-amendment",
 )
 PLAN_REVIEW_PREFIX = "plan-review:"
-FINDING_OPEN_STATES = ("asserted", "supported", "disputed")
 KIND_JOURNAL = frozenset({"repair", "evaluate"})
 SEPARATOR_KEY = "__separator__"
 TYPE_LABEL = {
@@ -79,13 +79,6 @@ def _question_scope_text(scope: str, phase_titles: dict[str, str]) -> str:
 
 def _question_open(record: Record) -> bool:
     return record.get("lifecycle_state") == "open"
-
-
-def _finding_open(record: Record) -> bool:
-    return (
-        record_payload(record).get("needs") == "human"
-        and record.get("lifecycle_state") in FINDING_OPEN_STATES
-    )
 
 
 def _first_line(text: str) -> str:
@@ -255,7 +248,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 phase,
                 records.recorded_at(record),
                 _finding_text(record_payload(record)),
-                _finding_open(record),
+                is_open_finding(record),
                 task_id,
             )
         )

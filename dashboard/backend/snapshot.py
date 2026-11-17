@@ -27,7 +27,6 @@ from dashboard.backend.phase import (
 from dashboard.backend.records import (
     CHECK_RESULT,
     INACTIVE_STATES,
-    derived_values,
     list_records,
     live_records,
     merge_aliases,
@@ -48,6 +47,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import effort_dormant, phase_progress
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
+from orchestra.score.workflow_blockers import human_gates
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -296,9 +296,7 @@ def _phase_updated_at(
 
 
 def _needs_you(
-    questions: list[Record],
-    findings: list[Record],
-    checks: list[Record],
+    records: list[Record],
     acceptances: dict[str, Record] | None = None,
     tasks: list[Record] | None = None,
     assessments: list[Record] | None = None,
@@ -322,42 +320,19 @@ def _needs_you(
         )
 
     items: list[NeedsYouItem] = []
-    for record in questions:
-        if record["lifecycle_state"] == "open":
-            kind = (
-                "blocking-question"
-                if record_payload(record).get("blocking") is True
-                else "open-question"
-            )
-            items.append(
-                item(kind, record, record["subject"], record_payload(record).get("scope", ""))
-            )
-    for record in findings:
-        if record_payload(record).get("needs") == "human" and record["lifecycle_state"] in (
-            "asserted",
-            "supported",
-            "disputed",
-        ):
-            items.append(
-                item(
-                    "needs-human",
-                    record,
-                    record["subject"],
-                    record_payload(record).get("claim", ""),
-                )
-            )
-    for record in checks:
+    for gate in human_gates(records):
+        record = gate.record
         payload = record_payload(record)
-        if (
-            payload.get("method") == "manual"
-            and payload.get("signed_by") == ""
-            and not derived_values(record).get("corrected")
-        ):
+        if gate.kind == "unsigned-check":
             acceptance = acceptances.get(payload.get("criterion_id", ""))
             subject = acceptance["subject"] if acceptance else record["subject"]
             criterion = record_payload(acceptance).get("criterion", "") if acceptance else ""
             text = f"{criterion} {payload.get('result', '')}".strip()
-            items.append(item("unsigned-check", record, subject, text))
+        elif gate.kind == "needs-human":
+            subject, text = record["subject"], payload.get("claim", "")
+        else:
+            subject, text = record["subject"], payload.get("scope", "")
+        items.append(item(gate.kind, record, subject, text))
     spec_phases = spec_phases or set()
     for (phase, requirement), record in sorted(latest_assessment_map(assessments or []).items()):
         if phase not in spec_phases or not _needs_route(record):
@@ -645,9 +620,12 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                     small_wave_budget_minutes=small_wave_budget_minutes,
                 ),
                 needs_you=_needs_you(
-                    questions.get(effort, []),
-                    findings.get(effort, []),
-                    effort_checks,
+                    [
+                        *questions.get(effort, []),
+                        *findings.get(effort, []),
+                        *effort_checks,
+                        *effort_acceptances,
+                    ],
                     acceptances_by_id,
                     effort_tasks,
                     assessments_by_effort.get(effort, []),
@@ -806,9 +784,12 @@ def load_work_snapshot(
                     small_wave_budget_minutes=small_wave_budget_minutes,
                 ),
                 needs_you=_needs_you(
-                    questions.get(effort, []),
-                    grouped["tuner:finding"].get(effort, []),
-                    checks,
+                    [
+                        *questions.get(effort, []),
+                        *grouped["tuner:finding"].get(effort, []),
+                        *checks,
+                        *acceptances,
+                    ],
                     acceptances_by_id,
                     tasks,
                     assessments,
