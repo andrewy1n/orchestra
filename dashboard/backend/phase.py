@@ -39,6 +39,7 @@ from orchestra.conductor.head_evidence import (
     EvidenceIndex,
     suite_check_runs,
 )
+from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
@@ -968,19 +969,9 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             milestone_title = record_payload(milestone_record).get("title") or milestone_slug
         else:
             milestone_title = milestone_slug
-    proof_records = [
-        r
-        for r in remap_records(
-            list_records(
-                target,
-                "conductor:proof-packet",
-                payload={"phase": phase_subject},
-            ),
-            aliases,
-        )
-        if record_payload(r).get("effort") in (None, "", effort)
-    ]
-    proof_record = newest_record(proof_records)
+    proof_record = proof_packet(
+        remap_records(list_records(target, "conductor:proof-packet"), aliases), record
+    )
     proof = None
     if proof_record is not None:
         proof_body = proof_record.get("body") or ""

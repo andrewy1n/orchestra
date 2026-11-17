@@ -153,10 +153,7 @@ def landing_worktree(store: Path, phase_slug: str, landing: LandingSpec) -> Path
     return landing_repo(store, landing) / ".worktrees" / phase_slug
 
 
-def phase_place(phase: Record, store: Path) -> LandingPlace:
-    """Return where a phase lands; a body with no Landing section gives the default layout."""
-    spec = parse_landing(phase.get("body") or "")
-    slug = phase["subject"]
+def _place(slug: str, spec: LandingSpec, store: Path) -> LandingPlace:
     return LandingPlace(
         repo=landing_repo(store, spec),
         worktree=landing_worktree(store, slug, spec),
@@ -165,11 +162,21 @@ def phase_place(phase: Record, store: Path) -> LandingPlace:
     )
 
 
+def phase_place(phase: Record, store: Path) -> LandingPlace:
+    """Return where a phase lands; a body with no Landing section gives the default layout."""
+    return _place(phase["subject"], parse_landing(phase.get("body") or ""), store)
+
+
+def place_of_body(slug: str, body: str, store: Path) -> LandingPlace | None:
+    spec = parse_landing(body)
+    if not spec.present:
+        return None
+    return _place(slug, spec, store)
+
+
 def landing_place(phase: Record, store: Path) -> LandingPlace | None:
     """Return where a phase lands, or None when its body has no Landing section."""
-    if not parse_landing(phase.get("body") or "").present:
-        return None
-    return phase_place(phase, store)
+    return place_of_body(phase["subject"], phase.get("body") or "", store)
 
 
 def task_worktree(place: LandingPlace, phase: str, task: str) -> Path:
