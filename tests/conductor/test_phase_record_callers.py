@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from phase_record_support import supersede_all, supersede_late
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import close, close_batch, gate, land_task, task_close, wave, workflow
+from orchestra.conductor import close, gate, land_task, task_close, wave, workflow
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
 
 PHASE = "ph"
@@ -52,7 +53,7 @@ def test_r12_close_batch_all_superseded_phase_not_found(tmp_path: Path) -> None:
     project = _retired_project(tmp_path)
 
     with pytest.raises(LookupError, match="phase 'ph' not found"):
-        close_batch.default_load_phase(PHASE, store_root=project.project_root)
+        task_close._phase_record(project, PHASE)
 
 
 def test_r12_close_batch_reads_current_phase(tmp_path: Path) -> None:
@@ -61,7 +62,7 @@ def test_r12_close_batch_reads_current_phase(tmp_path: Path) -> None:
         project, phase, payload={"title": "Next", "ordinal": 1, "effort": EFFORT}
     )
 
-    loaded = close_batch.default_load_phase(PHASE, store_root=project.project_root)
+    loaded = task_close._phase_record(project, PHASE)
 
     assert loaded["id"] == current["id"]
 
@@ -135,8 +136,9 @@ def test_r12_task_close_ignores_superseded_phase(tmp_path: Path) -> None:
         payload={"title": "Next", "ordinal": 1, "effort": EFFORT, "oracle_policy": "none"},
     )
     landed, item = _landed_task(project, tmp_path)
+    project.update(item["id"], record_type="score:work-item", transition="in_progress")
 
-    assert task_close._policy_problem(project, landed, item, tmp_path) == ""
+    assert task_close.close(project, replace(landed, verdict="pass"), frozenset()).state == "done"
 
 
 def test_r13_workflow_all_superseded_phase_not_found(tmp_path: Path) -> None:

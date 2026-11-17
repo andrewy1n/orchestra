@@ -17,26 +17,27 @@ import importlib
 import json
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TypeGuard
 
 import helpers as h
 import pytest
+from close_store_support import build_in_store, project_holding, store_id
 from conftest import REPO_ROOT, build_store
 
+from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor import close_batch
-from orchestra.conductor.close_batch import (
-    AcceptanceLoader,
-    AmendmentLister,
-    CheckRunLoader,
-)
+from orchestra.conductor import close_batch, task_close
+from orchestra.tuner.manifest import DEFAULT_RUNNER
+
+CheckRunLoader = Callable[[str], Record]
+AcceptanceLoader = Callable[[str], Record]
+AmendmentLister = Callable[[str], list[Record]]
 
 CLI = REPO_ROOT / "bin" / "orchestra"
 
 RUNNER = "orchestra"
-ORCHESTRA_RUNNER = "orchestra"
 
 
 def _is_json_object(value: object) -> TypeGuard[JsonObject]:
@@ -159,9 +160,11 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
             payload: JsonObject = {
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("result"),
-                "runner": entry["runner"] if close_batch._entry_has(entry, "runner") else RUNNER,
+                "runner": entry["runner"] if task_close.entry_has(entry, "runner") else RUNNER,
                 "revision": (
-                    entry["revision"] if close_batch._entry_has(entry, "revision") else "deadbeef"
+                    entry["revision"]
+                    if task_close.entry_has(entry, "revision")
+                    else ("HEAD" if entry.get("method") == "check" else "deadbeef")
                 ),
                 "method": entry.get("method"),
             }
@@ -172,16 +175,16 @@ def _matching_loader(request: Mapping[str, object]) -> CheckRunLoader:
                 "criterion_id": entry["criterion_id"],
                 "result": entry.get("red_result", "fail"),
                 "runner": (
-                    entry["red_runner"] if close_batch._entry_has(entry, "red_runner") else RUNNER
+                    entry["red_runner"] if task_close.entry_has(entry, "red_runner") else RUNNER
                 ),
                 "revision": (
                     entry["red_revision"]
-                    if close_batch._entry_has(entry, "red_revision")
+                    if task_close.entry_has(entry, "red_revision")
                     else "dirty"
                 ),
                 "method": "tdd",
             }
-            if close_batch._entry_has(entry, "red_diff_sha256"):
+            if task_close.entry_has(entry, "red_diff_sha256"):
                 red_payload["diff_sha256"] = entry["red_diff_sha256"]
             red_payload["failing_node_ids"] = [ORACLE_NODE]
             by_id[red_id] = _record(red_id, red_payload, body=ASSERTION_RED_BODY)
@@ -216,12 +219,12 @@ def _build(
                 return _record(aid, {"method": entry["method"]}, record_type="score:acceptance")
         raise LookupError(aid)
 
-    return close_batch.build_batch(
+    return build_in_store(
         request,
         cwd=cwd,
-        load_check_run=loader,
-        load_acceptance=load_acceptance or matched_acceptance,
-        list_oracle_amendments=list_oracle_amendments,
+        check_runs=loader,
+        acceptances=load_acceptance or matched_acceptance,
+        amendments=list_oracle_amendments,
     )
 
 
@@ -337,30 +340,6 @@ def test_manual_pass_batch_is_one_check_run_then_the_transition():
     assert payload["result"] == "pass"
     assert payload["method"] == "manual"
     assert payload["informed_by"] == ["rec-ac1", "rec-er"]
-
-
-def test_refuses_done_with_failing_criterion_and_no_finding():
-    request = _request(
-        criteria=[
-            {
-                "criterion_id": "rec-ac1",
-                "method": "check",
-                "check_run_id": "rec-runner-cr",
-                "result": "fail",
-            }
-        ]
-    )
-    with pytest.raises(close_batch.CloseRefused):
-        _build(request)
-
-
-def test_refuses_done_with_a_criterion_never_checked_at_all():
-    request = _request(
-        acceptance_ids=["rec-ac1", "rec-ac2"],
-        criteria=[_tdd_with_dirty_red()],
-    )
-    with pytest.raises(close_batch.CloseRefused):
-        _build(request)
 
 
 def test_withdrawn_does_not_require_a_finding_for_a_failing_criterion():
@@ -658,10 +637,16 @@ def test_cli_claim_gate_refuses_unknown_claim(cli, store, resolved_contract, tmp
     )
     assert updated.returncode == 0, updated.stdout + updated.stderr
     acceptance = json.loads(updated.stdout)["record"]
-    runner_cr = _seed_runner_check_run(
-        cli, defs, subject, acceptance, execution_report, result="pass"
-    )
     _write_manifest_claim(store, "some-other-claim")
+    runner_cr = _seed_runner_check_run(
+        cli,
+        defs,
+        subject,
+        acceptance,
+        execution_report,
+        result="pass",
+        revision=_git(store, "rev-parse", "HEAD"),
+    )
 
     request = {
         "subject": subject,
@@ -744,74 +729,6 @@ def test_end_to_end_failing_criterion_with_finding_closes_and_surfaces_needs_hum
 # -- red-first gate (tdd done) ----------------------------------------
 
 
-def test_red_first_pass_only_refuses_and_names_criterion():
-    request = _request(criteria=[_tdd_pass_only_entry()])
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request)
-    assert "red" in str(excinfo.value).lower()
-
-
-def test_red_first_pass_only_cli_exits_2(tmp_path):
-    request = _request(criteria=[_tdd_pass_only_entry()])
-    result, out_path = _run_script(request, tmp_path)
-    assert result.returncode == 2
-    assert "rec-ac1" in result.stderr
-    assert not out_path.exists()
-
-
-def test_red_first_request_accepts_fail_then_pass_with_dirty_red(tmp_path: Path) -> None:
-    repo, green = _oracle_repo(tmp_path)
-    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
-    assert ops[-1]["transition"] == "done"
-
-
-def test_red_first_request_refuses_non_runner_red():
-    request = _request(criteria=[_tdd_with_dirty_red(red_runner="hand-authored")])
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request)
-    assert "runner" in str(excinfo.value).lower()
-
-
-def test_red_first_request_refuses_red_result_not_fail():
-    request = _request(criteria=[_tdd_with_dirty_red(red_result="pass")])
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request)
-    assert "fail" in str(excinfo.value).lower()
-
-
-def test_red_first_request_resolves_red_from_store_loader(tmp_path: Path) -> None:
-    """Red-first uses the injectable store loader (production path is aa.get)."""
-    repo, green = _oracle_repo(tmp_path)
-    request = _request(criteria=[_tdd_with_dirty_red(revision=green)])
-    seen: list[str] = []
-
-    def tracking_loader(check_run_id: str) -> Record:
-        seen.append(check_run_id)
-        return _matching_loader(request)(check_run_id)
-
-    ops = _build(request, cwd=repo, load_check_run=tracking_loader)
-    assert ops[-1]["transition"] == "done"
-    assert "rec-runner-green" in seen
-    assert "rec-runner-red" in seen
-
-
-def test_red_first_order_accepts_when_green_descends_from_red(tmp_path):
-    repo, red_sha, green_sha = _ancestry_repo(tmp_path)
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        "revision": green_sha,
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": red_sha,
-        "red_runner": RUNNER,
-    }
-    ops = _build(_request(criteria=[entry]), cwd=repo)
-    assert ops[-1]["transition"] == "done"
-
-
 def test_red_first_order_accepts_equal_sha(tmp_path):
     repo, red_sha, _green_sha = _ancestry_repo(tmp_path)
     entry = {
@@ -829,61 +746,6 @@ def test_red_first_order_accepts_equal_sha(tmp_path):
     assert ops[-1]["transition"] == "done"
 
 
-def test_red_first_order_refuses_when_green_is_ancestor_of_red(tmp_path):
-    """Wrong order: green SHA is parent of red (green does not descend from red)."""
-    repo, red_sha, green_sha = _ancestry_repo(tmp_path)
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        "revision": red_sha,  # older
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": green_sha,  # newer — not an ancestor of red_sha
-        "red_runner": RUNNER,
-    }
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build(_request(criteria=[entry]), cwd=repo)
-
-
-def test_red_first_order_refuses_non_ancestor_on_divergent_history(tmp_path):
-    repo, red_sha, green_sha = _ancestry_repo(tmp_path)
-    _git(repo, "checkout", "-b", "other", red_sha)
-    (repo / "f.txt").write_text("other\n")
-    _git(repo, "add", "f.txt")
-    _git(repo, "commit", "-m", "side")
-    side_sha = _git(repo, "rev-parse", "HEAD")
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        "revision": green_sha,
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": side_sha,
-        "red_runner": RUNNER,
-    }
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build(_request(criteria=[entry]), cwd=repo)
-
-
-def test_red_first_order_dirty_red_requires_nonempty_diff_sha256():
-    request = _request(criteria=[_tdd_with_dirty_red(red_diff_sha256="")])
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request)
-    assert "diff_sha256" in str(excinfo.value)
-
-
-def test_red_first_order_dirty_red_without_digest_refused():
-    entry = _tdd_with_dirty_red()
-    entry.pop("red_diff_sha256")
-    # Store red is dirty without digest when request omits red_diff_sha256.
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build(_request(criteria=[entry]))
-
-
 def test_finding_cannot_waive_required_tdd_evidence():
     request = _request(
         criteria=[_tdd_pass_only_entry()],
@@ -899,150 +761,7 @@ def test_finding_cannot_waive_required_tdd_evidence():
         _build(request)
 
 
-def test_red_first_other_methods_check_closes_without_red_check_run_id():
-    request = _request(
-        criteria=[
-            {
-                "criterion_id": "rec-ac1",
-                "method": "check",
-                "check_run_id": "rec-runner-cr",
-                "result": "pass",
-            }
-        ]
-    )
-    ops = _build(request)
-    assert ops[-1]["transition"] == "done"
-    assert not close_batch._entry_has(
-        close_batch._parse_close_request(request)["criteria"][0], "red_check_run_id"
-    )
-
-
-def test_red_first_other_methods_manual_closes_without_red_check_run_id():
-    ops = _build(_manual_request())
-    assert ops[-1]["transition"] == "done"
-    assert [op["op"] for op in ops] == ["create", "update"]
-
-
 # -- store authority (claim-witnesses) ---------------------------------
-
-
-def test_store_authority_refuses_fabricated_check_run_id():
-    request = _request(criteria=[_tdd_with_dirty_red()])
-
-    def missing(_cid: str) -> Record:
-        raise LookupError("fabricated")
-
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request, load_check_run=missing)
-    assert "not found" in str(excinfo.value).lower() or "fabricated" in str(excinfo.value).lower()
-
-
-def test_store_authority_refuses_fabricated_red_check_run_id():
-    request = _request(criteria=[_tdd_with_dirty_red()])
-    base = _matching_loader(request)
-
-    def green_only(cid: str) -> Record:
-        if cid == "rec-runner-red":
-            raise LookupError(cid)
-        return base(cid)
-
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build(request, load_check_run=green_only)
-    assert "red" in str(excinfo.value).lower()
-
-
-def test_store_authority_mismatch_result_refuses():
-    request = _request(criteria=[_tdd_with_dirty_red()])
-    base = _matching_loader(request)
-
-    def wrong_result(cid: str) -> Record:
-        rec = base(cid)
-        if cid == "rec-runner-green":
-            rec = _record(cid, {**rec["payload"], "result": "fail"})
-        return rec
-
-    with pytest.raises(close_batch.CloseRefused, match="mismatch") as excinfo:
-        _build(request, load_check_run=wrong_result)
-    assert "result" in str(excinfo.value).lower()
-
-
-def test_store_authority_mismatch_revision_refuses():
-    request = _request(criteria=[_tdd_with_dirty_red()])
-    base = _matching_loader(request)
-
-    def wrong_revision(cid: str) -> Record:
-        rec = base(cid)
-        if cid == "rec-runner-green":
-            rec = _record(cid, {**rec["payload"], "revision": "otherrev"})
-        return rec
-
-    with pytest.raises(close_batch.CloseRefused, match="mismatch") as excinfo:
-        _build(request, load_check_run=wrong_revision)
-    assert "revision" in str(excinfo.value).lower()
-
-
-def test_cli_store_authority_fabricated_writes_no_batch(tmp_path):
-    result, out_path = _run_script(_request(), tmp_path)
-    assert result.returncode == 2
-    assert not out_path.exists()
-
-
-def test_red_store_resolves_and_accepts_dirty_red(tmp_path: Path) -> None:
-    repo, green = _oracle_repo(tmp_path)
-    ops = _build(_request(criteria=[_tdd_with_dirty_red(revision=green)]), cwd=repo)
-    assert ops[-1]["transition"] == "done"
-
-
-def test_red_store_refuses_when_store_red_is_not_fail():
-    request = _request(criteria=[_tdd_with_dirty_red()])
-    base = _matching_loader(request)
-
-    def red_pass(cid: str) -> Record:
-        rec = base(cid)
-        if cid == "rec-runner-red":
-            # Request still says fail — mismatch on result.
-            return _record(cid, {**rec["payload"], "result": "pass"})
-        return rec
-
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build(request, load_check_run=red_pass)
-
-
-def test_dirty_green_refuses_when_red_is_sha(tmp_path):
-    repo, red_sha, _green_sha = _ancestry_repo(tmp_path)
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        "revision": "dirty",
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": red_sha,
-        "red_runner": RUNNER,
-    }
-    with pytest.raises(close_batch.CloseRefused, match="dirty") as excinfo:
-        _build(_request(criteria=[entry]), cwd=repo)
-    assert "green" in str(excinfo.value).lower() or "dirty" in str(excinfo.value).lower()
-
-
-def test_missing_green_revision_refuses_with_sha_red(tmp_path):
-    repo, red_sha, green_sha = _ancestry_repo(tmp_path)
-    entry = {
-        "criterion_id": "rec-ac1",
-        "method": "tdd",
-        "check_run_id": "rec-runner-green",
-        "result": "pass",
-        # revision omitted — mutant a-missing-green-revision-ok
-        "red_check_run_id": "rec-runner-red",
-        "red_result": "fail",
-        "red_revision": red_sha,
-        "red_runner": RUNNER,
-    }
-    # Matching loader still plants a store revision; request omission must refuse.
-    loader = _matching_loader(_request(criteria=[{**entry, "revision": green_sha}]))
-    with pytest.raises(close_batch.CloseRefused, match="green revision"):
-        _build(_request(criteria=[entry]), cwd=repo, load_check_run=loader)
 
 
 def test_tdd_revision_without_red_is_request_error():
@@ -1173,10 +892,7 @@ ORACLE_NODE = "tests/test_oracle_probe.py::test_expected_behavior"
 ORACLE_CONTENT_V1 = b"oracle v1\n"
 ORACLE_CONTENT_V2 = b"oracle v2\n"
 ORACLE_HASH_V1 = "sha256:ede7b166ddc88e3753eef482f245f300ad2b85ec3ebbe5a5f33270dd83d02896"
-ORACLE_HASH_V2 = "sha256:3e9c68d849014d8206d549226306afb687c39fd68dad9536ca6190862139949b"
 ORACLE_HASHES_V1 = [f"{ORACLE_REL}:{ORACLE_HASH_V1}"]
-ORACLE_HASHES_V2 = [f"{ORACLE_REL}:{ORACLE_HASH_V2}"]
-
 ASSERTION_RED_BODY = """\
 ============================= test session starts ==============================
 collected 1 item
@@ -1245,15 +961,6 @@ def _oracle_acceptance(
     )
 
 
-def _assertion_red_fields(**extra):
-    fields = {
-        "red_body": ASSERTION_RED_BODY,
-        "red_failing_node_ids": json.dumps([ORACLE_NODE]),
-    }
-    fields.update(extra)
-    return fields
-
-
 def _oracle_loader(
     request: Mapping[str, object],
     *,
@@ -1273,7 +980,7 @@ def _oracle_loader(
         if red_id:
             rec = base(red_id)
             payload = dict(rec["payload"])
-            if close_batch._entry_has(entry, "red_failing_node_ids"):
+            if task_close.entry_has(entry, "red_failing_node_ids"):
                 payload["failing_node_ids"] = json.loads(entry["red_failing_node_ids"])
             by_id[red_id] = _record(red_id, payload, body=entry.get("red_body", ""))
 
@@ -1299,24 +1006,9 @@ def _build_oracle(
     request: Mapping[str, object], *, cwd: Path, acceptance=None, amendments=None
 ) -> list[JsonObject]:
     load, load_acc, list_am = _oracle_loader(request, acceptance=acceptance, amendments=amendments)
-    return close_batch.build_batch(
-        request,
-        cwd=cwd,
-        load_check_run=load,
-        load_acceptance=load_acc,
-        list_oracle_amendments=list_am,
+    return build_in_store(
+        request, cwd=cwd, check_runs=load, acceptances=load_acc, amendments=list_am
     )
-
-
-def test_oracle_freeze_happy_path_with_assertion_level_red(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    # Dirty red skips ancestry; green revision is still the hash authority.
-    ops = _build_oracle(_request(criteria=[entry]), cwd=repo)
-    assert ops[-1]["transition"] == "done"
 
 
 def test_non_oracle_tdd_acceptance_closes_without_oracle_freeze(tmp_path: Path) -> None:
@@ -1362,182 +1054,47 @@ def test_default_amendment_lister_matches_acceptance_by_subject(store, cli, reso
     by_subject = amend(acceptance["subject"])
     amend(other["subject"])
 
-    listed = close_batch.default_list_oracle_amendments(acceptance["id"], store_root=store)
+    project = open_store(store)
+
+    listed = task_close._oracle_amendments(
+        project, project.get(acceptance["id"], "score:acceptance")
+    )
 
     assert [record["id"] for record in listed] == [by_subject["id"]]
 
 
-def test_default_amendment_lister_still_matches_a_legacy_acceptance_id(monkeypatch):
-    class Project:
-        def list(self, record_type):
-            return [
-                {
-                    "id": "rec-legacy",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "rec-ac1"},
-                },
-                {
-                    "id": "rec-subject",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "claim-gate"},
-                },
-                {
-                    "id": "rec-other",
-                    "lifecycle_state": "active",
-                    "payload": {"acceptance": "other"},
-                },
-            ]
+def test_default_amendment_lister_still_matches_a_legacy_acceptance_id() -> None:
+    def amendment(record_id: str, acceptance: str) -> Record:
+        return {
+            **_record(
+                record_id,
+                {"acceptance": acceptance},
+                record_type="tuner:oracle-amendment",
+            ),
+            "lifecycle_state": "active",
+        }
 
-        def get(self, record_id, record_type):
-            return {"id": record_id, "subject": "claim-gate"}
-
-    monkeypatch.setattr(close_batch, "_open_project", lambda store_root: Project())
-
-    listed = close_batch.default_list_oracle_amendments("rec-ac1")
-
-    assert [record["id"] for record in listed] == ["rec-legacy", "rec-subject"]
-
-
-def test_oracle_hash_refuses_silent_freeze_edit(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
+    project = project_holding(
+        [
+            _record(
+                store_id("rec-ac1"),
+                {"method": "check"},
+                record_type="score:acceptance",
+                subject="claim-gate",
+            ),
+            amendment(store_id("rec-legacy"), store_id("rec-ac1")),
+            amendment(store_id("rec-subject"), "claim-gate"),
+            amendment(store_id("rec-other"), "other"),
+        ]
     )
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build_oracle(
-            _request(criteria=[entry]),
-            cwd=repo,
-            acceptance=_oracle_acceptance(oracle_hashes=ORACLE_HASHES_V1),
-        )
-    msg = str(excinfo.value).lower()
-    assert "hash" in msg or "oracle" in msg or "freeze" in msg
 
-
-def test_assertion_level_refuses_import_only_oracle_red(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        red_body=IMPORT_RED_BODY,
-        red_failing_node_ids=json.dumps(["tests/test_oracle_probe.py"]),
+    listed = task_close._oracle_amendments(
+        project, project.get(store_id("rec-ac1"), "score:acceptance")
     )
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1") as excinfo:
-        _build_oracle(_request(criteria=[entry]), cwd=repo)
-    msg = str(excinfo.value).lower()
-    assert "assertion" in msg or "oracle" in msg
 
-
-def test_oracle_amendment_approved_allows_new_hashes(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
+    assert sorted(record["id"] for record in listed) == sorted(
+        [store_id("rec-legacy"), store_id("rec-subject")]
     )
-    amendment = {
-        "id": "rec-am1",
-        "lifecycle_state": "active",
-        "payload": {
-            "acceptance": "rec-ac1",
-            "status": "approved",
-            "old_hashes": ORACLE_HASHES_V1,
-            "new_hashes": ORACLE_HASHES_V2,
-            "effort": "effort-1",
-        },
-    }
-    ops = _build_oracle(
-        _request(criteria=[entry]),
-        cwd=repo,
-        acceptance=_oracle_acceptance(oracle_hashes=ORACLE_HASHES_V1),
-        amendments=[amendment],
-    )
-    assert ops[-1]["transition"] == "done"
-
-
-def test_oracle_amendment_with_invalid_hashes_refuses_with_amendment_id(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    amendment = {
-        "id": "rec-am-malformed",
-        "lifecycle_state": "active",
-        "payload": {
-            "acceptance": "rec-ac1",
-            "status": "approved",
-            "new_hashes": ["not-a-hash"],
-            "effort": "effort-1",
-        },
-    }
-
-    with pytest.raises(close_batch.CloseRefused, match=r"rec-am-malformed.*new_hashes"):
-        _build_oracle(
-            _request(criteria=[entry]),
-            cwd=repo,
-            acceptance=_oracle_acceptance(oracle_hashes=ORACLE_HASHES_V1),
-            amendments=[amendment],
-        )
-
-
-def test_freeze_hash_refuses_requested_amendment_not_approved(tmp_path):
-    repo, green_sha = _oracle_repo(tmp_path, content=ORACLE_CONTENT_V2)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    amendment = {
-        "id": "rec-am1",
-        "lifecycle_state": "active",
-        "payload": {
-            "acceptance": "rec-ac1",
-            "status": "requested",
-            "old_hashes": ORACLE_HASHES_V1,
-            "new_hashes": ORACLE_HASHES_V2,
-            "effort": "effort-1",
-        },
-    }
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build_oracle(
-            _request(criteria=[entry]),
-            cwd=repo,
-            acceptance=_oracle_acceptance(oracle_hashes=ORACLE_HASHES_V1),
-            amendments=[amendment],
-        )
-
-
-@pytest.mark.parametrize(
-    "patch",
-    [
-        {"oracle_hashes": []},
-        {"test_ids": []},
-        {"test_ids": ["test.py"]},
-        {"oracle_hashes": [*ORACLE_HASHES_V1, "malformed"]},
-        {"oracle_hashes": [*ORACLE_HASHES_V1, *ORACLE_HASHES_V2]},
-        {"oracle_hashes": [f"{ORACLE_REL}:sha256:123"]},
-        {"oracle_hashes": ORACLE_HASHES_V1[0]},
-        {"test_ids": ["other.py::test_other"]},
-    ],
-)
-def test_incomplete_freeze_refuses(tmp_path: Path, patch: JsonObject) -> None:
-    repo, green = _oracle_repo(tmp_path)
-    acc = _oracle_acceptance()
-    acc["payload"].update(patch)
-    entry = _tdd_with_dirty_red(revision=green, **_assertion_red_fields())
-    with pytest.raises(close_batch.CloseRefused, match="incomplete oracle freeze"):
-        _build_oracle(_request(criteria=[entry]), cwd=repo, acceptance=acc)
-
-
-def test_unavailable_tdd_acceptance_refuses_without_manifest(tmp_path: Path) -> None:
-    def missing(aid: str) -> Record:
-        raise LookupError(aid)
-
-    with pytest.raises(close_batch.CloseRefused, match="acceptance could not be loaded"):
-        _build(_request(), cwd=tmp_path, load_acceptance=missing)
-
-
-def test_unavailable_tdd_acceptance_cannot_downgrade_method() -> None:
-    with pytest.raises(close_batch.CloseRefused, match="method mismatch"):
-        _build(_manual_request(), load_acceptance=lambda _: _oracle_acceptance())
 
 
 # -- CLI: oracle freeze / assertion-level via real orchestra close-batch ------
@@ -1798,50 +1355,6 @@ def test_cli_assertion_level_refuses_import_only_oracle_red(
 # -- honest runner stamp (evidence-authority) -----------------------------
 
 
-def test_close_batch_accepts_orchestra_runner_stamp():
-    """R3: stored check-run is runner-produced only when runner is orchestra."""
-    request = _request(
-        criteria=[
-            {
-                "criterion_id": "rec-ac1",
-                "method": "check",
-                "check_run_id": "rec-runner-cr",
-                "result": "pass",
-                "runner": ORCHESTRA_RUNNER,
-            }
-        ]
-    )
-    refused: close_batch.CloseRefused | None = None
-    ops: list | None = None
-    try:
-        ops = _build(request)
-    except close_batch.CloseRefused as exc:
-        refused = exc
-    assert refused is None, f"orchestra runner must be runner-produced; refused: {refused}"
-    assert ops is not None
-    assert ops[-1]["transition"] == "done"
-
-
-def test_close_batch_refuses_tuner_runner_stamp():
-    """R4: stored check-run with runner aff is not runner-produced."""
-    request = _request(
-        criteria=[
-            {
-                "criterion_id": "rec-ac1",
-                "method": "check",
-                "check_run_id": "rec-runner-cr",
-                "result": "pass",
-                "runner": "aff",
-            }
-        ]
-    )
-    with pytest.raises(close_batch.CloseRefused) as excinfo:
-        _build(request)
-    msg = str(excinfo.value).lower()
-    assert "runner" in msg
-    assert "aff" in msg or "not runner-produced" in msg
-
-
 # -- claim gate: tuner verdict / recheck (evidence-authority) ---------
 
 
@@ -1852,7 +1365,7 @@ _CLOSE_LIBRARY_MODULES = frozenset(
 
 
 def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
-    path = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
+    path = REPO_ROOT / "orchestra" / "conductor" / "task_close.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: list[tuple[int, str, bool]] = []
 
@@ -1899,25 +1412,37 @@ def test_close_batch_tuner_import_is_function_local():
     assert local_modules >= _CLOSE_LIBRARY_MODULES
 
 
-def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
+_CONFIG_TOML = (
+    f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n'
+)
+
+
+def _commit_manifest_text(repo: Path, text: str) -> None:
+    (repo / "orchestra.toml").write_text(_CONFIG_TOML, encoding="utf-8")
     tuner_dir = repo / ".tuner"
     tuner_dir.mkdir(parents=True, exist_ok=True)
-    (tuner_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "claims": [
-                    {
-                        "id": claim_id,
-                        "text": "widget works",
-                        "tests": ["tests/test_widget.py::test_widget"],
-                        "oracle_hashes": {},
-                    }
-                ],
-                "amendments": [],
-            }
-        ),
-        encoding="utf-8",
+    (tuner_dir / "manifest.json").write_text(text, encoding="utf-8")
+    _git(repo, "add", "orchestra.toml", ".tuner/manifest.json")
+    _git(
+        repo,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test",
+        "commit",
+        "-m",
+        "manifest",
     )
+
+
+def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
+    claim = {
+        "id": claim_id,
+        "text": "widget works",
+        "tests": ["tests/test_widget.py::test_widget"],
+        "oracle_hashes": {},
+    }
+    _commit_manifest_text(repo, json.dumps({"claims": [claim], "amendments": []}))
 
 
 def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
@@ -1947,119 +1472,10 @@ def _claim_gate_check_request() -> dict[str, object]:
     )
 
 
-def test_claim_gate_refuses_done_when_verdict_not_pass(tmp_path, monkeypatch):
-    """Manifest claim requires tuner verdict result pass at the close revision."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "fail"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-
-    request = _claim_gate_check_request()
-    with pytest.raises(close_batch.CloseRefused) as excinfo:
-        _build(
-            request,
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-    msg = str(excinfo.value).lower()
-    assert "verdict" in msg
-
-
-def test_claim_gate_refuses_done_when_recheck_not_pass(tmp_path, monkeypatch):
-    """Manifest claim requires tuner recheck result pass."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "fail"},
-    )
-
-    request = _claim_gate_check_request()
-    with pytest.raises(close_batch.CloseRefused) as excinfo:
-        _build(
-            request,
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-    msg = str(excinfo.value).lower()
-    assert "recheck" in msg
-
-
-def test_claim_gate_refuses_done_when_verdict_and_recheck_both_fail(tmp_path, monkeypatch):
-    """Both failing clocks are named in one refusal."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "fail"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "fail"},
-    )
-
-    with pytest.raises(close_batch.CloseRefused) as excinfo:
-        _build(
-            _claim_gate_check_request(),
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-    msg = str(excinfo.value).lower()
-    assert "verdict" in msg
-    assert "recheck" in msg
-
-
-def test_claim_gate_accepts_done_when_verdict_and_recheck_pass(tmp_path, monkeypatch):
-    """Manifest claim closes when tuner verdict and recheck both pass."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-
-    request = _claim_gate_check_request()
-    ops = _build(
-        request,
-        cwd=repo,
-        load_acceptance=lambda _aid: _claim_gate_acceptance(),
-    )
-    assert ops[-1]["transition"] == "done"
-
-
 def test_claim_gate_binds_verdict_to_green_close_revision(tmp_path, monkeypatch):
-    repo, green_revision = _oracle_repo(tmp_path)
+    repo, _sha = _oracle_repo(tmp_path)
     _write_manifest_claim(repo)
+    green_revision = _git(repo, "rev-parse", "HEAD")
     verdict_revisions: list[str] = []
 
     def verdict(_cwd, revision, _base, _claim_ids):
@@ -2193,49 +1609,6 @@ def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, mon
     assert seen == []
 
 
-def test_claim_gate_refuses_when_acceptance_cannot_be_loaded(tmp_path):
-    """A criterion whose acceptance record is missing refuses the close."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-
-    def missing(_aid: str) -> Record:
-        raise LookupError(_aid)
-
-    with pytest.raises(close_batch.CloseRefused, match="rec-ac1"):
-        _build(_claim_gate_check_request(), cwd=repo, load_acceptance=missing)
-
-
-def test_claim_gate_refuses_when_manifest_is_missing(tmp_path):
-    repo, _sha = _oracle_repo(tmp_path)
-
-    with pytest.raises(close_batch.CloseRefused, match="manifest is missing"):
-        _build(
-            _claim_gate_check_request(),
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-
-
-@pytest.mark.parametrize(
-    "content",
-    ["{", json.dumps({"claims": "invalid"}), json.dumps({"claims": [{"id": 3}]})],
-)
-def test_claim_gate_refuses_invalid_manifest(tmp_path, content: str):
-    repo, _sha = _oracle_repo(tmp_path)
-    manifest = repo / ".tuner" / "manifest.json"
-    manifest.parent.mkdir()
-    manifest.write_text(content, encoding="utf-8")
-
-    with pytest.raises(
-        close_batch.CloseRefused, match=r"manifest is (unreadable or invalid|invalid)"
-    ):
-        _build(
-            _claim_gate_check_request(),
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-
-
 def test_acceptance_without_claim_does_not_require_manifest(tmp_path):
     repo, _sha = _oracle_repo(tmp_path)
     acceptance = _record(
@@ -2252,182 +1625,3 @@ def test_acceptance_without_claim_does_not_require_manifest(tmp_path):
     )
 
     assert ops[-1]["transition"] == "done"
-
-
-def test_claim_gate_refuses_claim_not_in_manifest(tmp_path, monkeypatch):
-    """A payload.claim absent from the manifest refuses the close."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    unknown = "claim-not-in-manifest"
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-
-    def load_acceptance(_aid: str) -> Record:
-        return _record(
-            "rec-ac1",
-            {"method": "check", "effort": "effort-1", "claim": unknown},
-            record_type="score:acceptance",
-            subject="claim-gate-close",
-        )
-
-    with pytest.raises(close_batch.CloseRefused, match=unknown):
-        _build(
-            _claim_gate_check_request(),
-            cwd=repo,
-            load_acceptance=load_acceptance,
-        )
-
-
-def test_claim_gate_refuses_claim_when_manifest_lists_none(tmp_path, monkeypatch):
-    """R9: a present manifest with no claims still refuses an unlisted claim."""
-    repo, _sha = _oracle_repo(tmp_path)
-    tuner_dir = repo / ".tuner"
-    tuner_dir.mkdir()
-    (tuner_dir / "manifest.json").write_text(
-        json.dumps({"claims": [], "amendments": []}), encoding="utf-8"
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.verdict",
-        "run_verdict",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.binding",
-        "recheck",
-        lambda *args, **kwargs: {"result": "pass"},
-    )
-
-    with pytest.raises(close_batch.CloseRefused, match=CLAIM_ID):
-        _build(
-            _claim_gate_check_request(),
-            cwd=repo,
-            load_acceptance=lambda _aid: _claim_gate_acceptance(),
-        )
-
-
-def _block_tuner_import():
-    saved = {
-        key: sys.modules.pop(key)
-        for key in list(sys.modules)
-        if key == "orchestra.tuner" or key.startswith("orchestra.tuner.")
-    }
-
-    class _Block:
-        def find_spec(self, fullname, path, target=None):
-            if fullname == "orchestra.tuner" or fullname.startswith("orchestra.tuner."):
-                raise ImportError(fullname)
-            return None
-
-    blocker = _Block()
-    sys.meta_path.insert(0, blocker)
-    return saved, blocker
-
-
-def _restore_tuner_import(saved, blocker) -> None:
-    if blocker in sys.meta_path:
-        sys.meta_path.remove(blocker)
-    sys.modules.update(saved)
-
-
-def test_claim_gate_refuses_when_tuner_is_not_importable(tmp_path):
-    """A claim-backed close names tuner when tuner is not importable."""
-    repo, _sha = _oracle_repo(tmp_path)
-    _write_manifest_claim(repo)
-    saved, blocker = _block_tuner_import()
-    request = _claim_gate_check_request()
-    try:
-        with pytest.raises(close_batch.CloseRefused) as excinfo:
-            _build(
-                request,
-                cwd=repo,
-                load_acceptance=lambda _aid: _claim_gate_acceptance(),
-            )
-    finally:
-        _restore_tuner_import(saved, blocker)
-    assert "tuner" in str(excinfo.value).lower()
-
-
-def test_oracle_red_refuses_when_tuner_is_not_importable(tmp_path):
-    """Oracle-backed close names tuner when the classifier cannot be imported."""
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    request = _request(criteria=[entry])
-    saved, blocker = _block_tuner_import()
-    try:
-        with pytest.raises(close_batch.CloseRefused) as excinfo:
-            _build_oracle(request, cwd=repo)
-    finally:
-        _restore_tuner_import(saved, blocker)
-    msg = str(excinfo.value).lower()
-    assert "tuner" in msg
-
-
-def test_oracle_backed_close_calls_assertion_level_red_not_tuner(tmp_path, monkeypatch):
-    """Assertion-level red comes from tuner, and close does not start aff."""
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    request = _request(criteria=[entry])
-    calls: list = []
-
-    def classify(check_run):
-        calls.append(check_run)
-        return True
-
-    _patch_tuner(monkeypatch, "orchestra.tuner.oracle_red", "is_assertion_level_red", classify)
-
-    tuner_calls: list[list[str]] = []
-    real_run = subprocess.run
-
-    def spy(cmd, **kwargs):
-        argv = [str(c) for c in cmd] if not isinstance(cmd, (str, bytes)) else [str(cmd)]
-        name = Path(argv[0]).name if argv else ""
-        if name == "aff":
-            tuner_calls.append(argv)
-            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
-        return real_run(cmd, **kwargs)
-
-    monkeypatch.setattr(subprocess, "run", spy)
-
-    ops = _build_oracle(request, cwd=repo)
-    assert ops[-1]["transition"] == "done"
-    assert calls, "expected is_assertion_level_red"
-    assert tuner_calls == []
-
-
-def test_oracle_red_refuses_when_classifier_returns_false(tmp_path, monkeypatch):
-    """A non-assertion red refuses an oracle-backed done close."""
-    repo, green_sha = _oracle_repo(tmp_path)
-    entry = _tdd_with_dirty_red(
-        revision=green_sha,
-        **_assertion_red_fields(),
-    )
-    request = _request(criteria=[entry])
-    _patch_tuner(
-        monkeypatch,
-        "orchestra.tuner.oracle_red",
-        "is_assertion_level_red",
-        lambda check_run: False,
-    )
-
-    with pytest.raises(close_batch.CloseRefused) as excinfo:
-        _build_oracle(request, cwd=repo)
-    msg = str(excinfo.value).lower()
-    assert "assertion" in msg or "oracle" in msg

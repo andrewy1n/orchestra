@@ -4,14 +4,15 @@ from pathlib import Path
 
 import pytest
 from conductor_support import close_request, green, run_acceptance, setup_acceptance
+from phase_record_support import supersede_all
 
 from orchestra.canon.project import Project
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import JsonObject
 from orchestra.conductor.close_batch import CloseRefused, build_batch
 
 
 def close(project: Project, request: JsonObject) -> list[JsonObject]:
-    return build_batch(request, cwd=project.project_root, store_root=project.project_root)
+    return build_batch(request, project, cwd=project.project_root)
 
 
 @pytest.mark.parametrize(
@@ -53,14 +54,11 @@ def test_unfrozen_legacy_tdd_needs_no_freeze(tmp_path: Path) -> None:
 def test_missing_phase_policy_read_is_refused(tmp_path: Path) -> None:
     project, acceptance = setup_acceptance(tmp_path, "check", None)
     passed = green(project, acceptance)
-
-    def missing(_: str) -> Record:
-        raise LookupError("phase unavailable")
+    phase = project.resolve("score:phase", "p1")
+    supersede_all(project, phase, payload={"title": "Next", "ordinal": 1, "effort": "alpha"})
 
     with pytest.raises(CloseRefused, match=r"phase.*unavailable"):
-        build_batch(
-            close_request(acceptance, passed), cwd=tmp_path, store_root=tmp_path, load_phase=missing
-        )
+        close(project, close_request(acceptance, passed))
 
 
 def test_phase_frozen_default_requires_complete_metadata(tmp_path: Path) -> None:

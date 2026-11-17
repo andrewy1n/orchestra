@@ -13,6 +13,7 @@ from pathlib import Path
 from conductor_support import _commit_all, _seed_acceptance
 from conftest import REPO_ROOT, git, run_cli
 
+from orchestra.canon.project import open_store
 from orchestra.conductor.close_batch import build_batch
 from orchestra.conductor.policy import (
     dirty_pass_decision,
@@ -694,7 +695,7 @@ def test_red_first_gate_after_reuse(store, cli, resolved_contract, tmp_path):
         ],
         "finding": None,
     }
-    ops = build_batch(request, cwd=store, store_root=store)
+    ops = build_batch(request, open_store(store), cwd=store)
     assert ops[-1]["transition"] == "done"
     assert red_again["record"]["id"] == red["record"]["id"]
 

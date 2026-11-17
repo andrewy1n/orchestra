@@ -5,12 +5,13 @@ from __future__ import annotations
 import ast
 import contextlib
 import importlib
-import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import Record
 from orchestra.conductor import close_batch
@@ -225,7 +226,7 @@ def _check_loader(check_run_id: str) -> Record:
             "criterion_id": "rec-ac1",
             "result": "pass",
             "runner": "orchestra",
-            "revision": "abc123",
+            "revision": "HEAD",
             "method": "check",
         },
     }
@@ -245,24 +246,7 @@ def _claim_acceptance() -> Record:
 
 
 def _write_manifest(repo: Path) -> None:
-    directory = repo / ".tuner"
-    directory.mkdir(parents=True)
-    (directory / "manifest.json").write_text(
-        json.dumps(
-            {
-                "claims": [
-                    {
-                        "id": CLAIM_ID,
-                        "text": "widget works",
-                        "tests": ["tests/test_widget.py::test_widget"],
-                        "oracle_hashes": {},
-                    }
-                ],
-                "amendments": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    commit_claim_manifest(repo, (CLAIM_ID,))
 
 
 def _claim_request() -> dict:
@@ -285,11 +269,11 @@ def _claim_request() -> dict:
 
 def _run_claim_close(repo: Path):
     try:
-        close_batch.build_batch(
+        build_in_store(
             _claim_request(),
             cwd=repo,
-            load_check_run=_check_loader,
-            load_acceptance=lambda _acceptance_id: _claim_acceptance(),
+            check_runs=_check_loader,
+            acceptances=lambda _acceptance_id: _claim_acceptance(),
         )
     except Exception as exc:
         return exc
@@ -451,12 +435,12 @@ def test_r5(tmp_path, monkeypatch):
     _patch_tuner(monkeypatch, started)
     request, acceptance = _oracle_request()
     with contextlib.suppress(close_batch.CloseRefused):
-        close_batch.build_batch(
+        build_in_store(
             request,
             cwd=tmp_path,
-            load_check_run=_oracle_loader,
-            load_acceptance=lambda _acceptance_id: acceptance,
-            list_oracle_amendments=lambda _acceptance_id: [],
+            check_runs=_oracle_loader,
+            acceptances=lambda _acceptance_id: acceptance,
+            amendments=lambda _acceptance_id: [],
         )
     tuner_red = [cmd for cmd in started if "assertion-red" in cmd]
     assert calls, f"close_batch did not call is_assertion_level_red; aff starts={started!r}"

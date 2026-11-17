@@ -39,6 +39,14 @@ class ManifestError(Exception):
     """The revision is not a commit, or the manifest blob cannot be parsed."""
 
 
+class ManifestMissing(ManifestError):
+    pass
+
+
+class ManifestUnreadable(ManifestError):
+    pass
+
+
 @dataclass(frozen=True)
 class Claim:
     id: str
@@ -112,11 +120,11 @@ def load_manifest(cwd: Path | str, revision: str) -> Manifest:
     try:
         blob = _show_blob(cwd, commit, MANIFEST_PATH)
     except FileNotFoundError as exc:
-        raise ManifestError(f"missing {MANIFEST_PATH} at {revision}") from exc
+        raise ManifestMissing(f"missing {MANIFEST_PATH} at {revision}") from exc
     try:
         parsed = json.loads(blob)
     except json.JSONDecodeError as exc:
-        raise ManifestError(f"invalid JSON in {MANIFEST_PATH} at {revision}") from exc
+        raise ManifestUnreadable(f"invalid JSON in {MANIFEST_PATH} at {revision}") from exc
     try:
         config = load_project_config_at_revision(cwd, commit)
     except ProjectConfigError as exc:
