@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import shutil
 from pathlib import Path
 
@@ -13,12 +14,95 @@ LOADER_PREFIXES = ("load_", "list_")
 LOADER_SUFFIXES = ("_loader", "_lister")
 
 
+def _is_loader_parameter(arg: ast.arg) -> bool:
+    if arg.arg.startswith(LOADER_PREFIXES) or arg.arg.endswith(LOADER_SUFFIXES):
+        return True
+    if arg.annotation is None:
+        return False
+    return any(
+        (isinstance(node, ast.Name) and node.id == "Callable")
+        or (isinstance(node, ast.Attribute) and node.attr == "Callable")
+        or (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and "Callable" in node.value
+        )
+        for node in ast.walk(arg.annotation)
+    )
+
+
+def _parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.arg]:
+    args = node.args
+    found = [*args.posonlyargs, *args.args, *args.kwonlyargs]
+    found.extend(arg for arg in (args.vararg, args.kwarg) if arg is not None)
+    return found
+
+
+def _is_gate_function(path: Path, name: str) -> bool:
+    if path == CLOSE_BATCH:
+        return name == "build_batch"
+    return name == "decide_close" or "enforce" in name or name.endswith("_gate") or "_gate_" in name
+
+
 def r18_violations(root: Path) -> list[str]:
-    return []
+    found: list[str] = []
+    for relative in (TASK_CLOSE, CLOSE_BATCH):
+        tree = ast.parse((root / relative).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_gate_function(
+                relative, node.name
+            ):
+                found.extend(
+                    f"{relative}:{arg.lineno}:{node.name}({arg.arg})"
+                    for arg in _parameters(node)
+                    if _is_loader_parameter(arg)
+                )
+    return found
+
+
+def _is_cwd_call(node: ast.expr) -> bool:
+    if not isinstance(node, ast.Call):
+        return False
+    func = node.func
+    if isinstance(func, ast.Attribute) and func.attr in {"cwd", "getcwd"}:
+        return True
+    if isinstance(func, ast.Name) and func.id == "Path" and len(node.args) == 1:
+        return _is_cwd_call(node.args[0])
+    return False
+
+
+def _callee(node: ast.Call) -> str:
+    func = node.func
+    return func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+
+
+def _root_argument(node: ast.Call, keyword: str) -> ast.expr | None:
+    if node.args:
+        return node.args[0]
+    return next((kw.value for kw in node.keywords if kw.arg == keyword), None)
+
+
+def _opens_store_from_cwd(node: ast.Call) -> bool:
+    name = _callee(node)
+    if name == "open_store":
+        root = _root_argument(node, "directory")
+    elif name == "resolve_location":
+        root = _root_argument(node, "store")
+    else:
+        return False
+    return root is not None and _is_cwd_call(root)
 
 
 def r19_violations(root: Path) -> list[str]:
-    return []
+    found: list[str] = []
+    for path in sorted((root / CONDUCTOR).rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        found.extend(
+            f"{path.relative_to(root)}:{node.lineno}"
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and _opens_store_from_cwd(node)
+        )
+    return found
 
 
 def _copy_conductor(tmp_path: Path) -> Path:
@@ -68,17 +152,16 @@ def test_r18_guard_fails_on_callable_parameter_in_a_gate(tmp_path: Path) -> None
     assert len(r18_violations(root)) == 1
 
 
-@pytest.mark.parametrize(
-    "seed",
-    [
-        "from pathlib import Path\n\n\ndef decide_close(project, *, cwd: Path) -> None:\n    pass\n",
-        "def build_batch(request, project, *, cwd=None):\n    return []\n",
-    ],
-)
-def test_r18_guard_accepts_signatures_without_loaders(tmp_path: Path, seed: str) -> None:
-    target = tmp_path / TASK_CLOSE
-    target.parent.mkdir(parents=True)
-    target.write_text(seed, encoding="utf-8")
+def test_r18_guard_accepts_signatures_without_loaders(tmp_path: Path) -> None:
+    (tmp_path / CONDUCTOR).mkdir(parents=True)
+    (tmp_path / TASK_CLOSE).write_text(
+        "from pathlib import Path\n\n\n"
+        "def decide_close(project, *, cwd: Path) -> None:\n    pass\n",
+        encoding="utf-8",
+    )
+    (tmp_path / CLOSE_BATCH).write_text(
+        "def build_batch(request, project, *, cwd=None):\n    return []\n", encoding="utf-8"
+    )
     assert r18_violations(tmp_path) == []
 
 
