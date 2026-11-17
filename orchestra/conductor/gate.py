@@ -25,7 +25,11 @@ from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.conductor.landing import phase_place
 from orchestra.score.lookups import closing_work_item, current_phase
-from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.score.workflow_blockers import (
+    WorkflowBlockerError,
+    latest_manual_check,
+    phase_blockers,
+)
 from orchestra.tools import Git
 from orchestra.tools.errors import ToolError
 
@@ -126,14 +130,8 @@ def gate_terms(
         terms.extend(_acceptance_terms(acceptance, index, head))
 
     for acceptance in acceptances:
-        manual = head_evidence.latest(
-            [
-                r
-                for r in head_evidence.acceptance_runs(index, acceptance)
-                if _str(r, "method") == "manual"
-            ]
-        )
-        if manual:
+        manual = latest_manual_check(acceptance, records)
+        if manual is not None:
             signed = bool(_str(manual, "signed_by").strip())
             terms.append(
                 Term(

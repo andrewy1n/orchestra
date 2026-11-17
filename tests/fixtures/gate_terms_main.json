@@ -1,0 +1,72 @@
+[
+  {
+    "name": "verification-task-done",
+    "holds": false,
+    "detail": "no verification task"
+  },
+  {
+    "name": "acceptance-passes:ac-by-subject",
+    "holds": true,
+    "detail": ""
+  },
+  {
+    "name": "acceptance-passes:ac-corrected",
+    "holds": false,
+    "detail": "latest check-run result is fail"
+  },
+  {
+    "name": "acceptance-passes:ac-signed-then-unsigned",
+    "holds": true,
+    "detail": ""
+  },
+  {
+    "name": "acceptance-passes:ac-unsigned",
+    "holds": true,
+    "detail": ""
+  },
+  {
+    "name": "acceptance-passes:ac-unsigned-then-signed",
+    "holds": true,
+    "detail": ""
+  },
+  {
+    "name": "manual-check-signed:ac-by-subject",
+    "holds": false,
+    "detail": "latest manual check-run has no signed_by"
+  },
+  {
+    "name": "manual-check-signed:ac-corrected",
+    "holds": false,
+    "detail": "latest manual check-run has no signed_by"
+  },
+  {
+    "name": "manual-check-signed:ac-signed-then-unsigned",
+    "holds": false,
+    "detail": "latest manual check-run has no signed_by"
+  },
+  {
+    "name": "manual-check-signed:ac-unsigned",
+    "holds": false,
+    "detail": "latest manual check-run has no signed_by"
+  },
+  {
+    "name": "manual-check-signed:ac-unsigned-then-signed",
+    "holds": true,
+    "detail": ""
+  },
+  {
+    "name": "review-at-head",
+    "holds": false,
+    "detail": "no review check-run at unknown head"
+  },
+  {
+    "name": "question-needs-human:r10-effort",
+    "holds": false,
+    "detail": "which way"
+  },
+  {
+    "name": "finding-needs-human:needs-human-here",
+    "holds": false,
+    "detail": "claim of needs-human-here"
+  }
+]
