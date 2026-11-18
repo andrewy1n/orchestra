@@ -72,7 +72,6 @@ dev = [
     "tomli>=2",
     # 2.15 is the newest import-linter that still runs on Python 3.10.
     "import-linter==2.15",
-    "vulture==2.16",
 ]
 
 [project.entry-points."canon.schemas"]
@@ -220,7 +219,3 @@ source_modules = ["installer"]
 forbidden_modules = ["orchestra", "dashboard"]
 allow_indirect_imports = false
 as_packages = true
-
-[tool.vulture]
-min_confidence = 80
-paths = ["orchestra", "dashboard/backend", "installer", "vulture_whitelist.py"]
