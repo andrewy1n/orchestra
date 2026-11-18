@@ -54,6 +54,8 @@ jobs:
           python3 scripts/check_lint_config.py --base "$base"
       - run: uvx ruff@0.13.1 check .
       - run: uvx ruff@0.13.1 format --check .
+      - run: uv run lint-imports --no-cache
+      - run: uv run vulture orchestra dashboard/backend installer vulture_whitelist.py --min-confidence 80
 
   test-canon:
     runs-on: ubuntu-24.04
