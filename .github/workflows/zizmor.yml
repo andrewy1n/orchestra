@@ -1,0 +1,39 @@
+# zizmor audits GitHub Actions workflows for security issues such as
+# template injection, unpinned actions, and persistent credentials.
+# This job is advisory. Findings upload to code scanning and do not fail
+# the workflow, and the job is not a required check.
+# Fix the flagged workflow, or suppress one finding with a narrowly
+# scoped `# zizmor: ignore[audit]` comment or a `zizmor.yml`
+# `rules.<audit>.ignore` entry, and include a justification.
+name: zizmor
+
+on:
+  push:
+    branches: [main, "phase/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          inputs: .github/workflows
+          version: "1.32.0"
+          online-audits: true
+          advanced-security: true

@@ -398,6 +398,42 @@ def test_r1_web_job_runs_the_five_commands_in_order():
         )
 
 
+def test_zizmor_audit_is_a_separate_advisory_job() -> None:
+    path = WORKFLOWS / "zizmor.yml"
+    assert path.is_file()
+    text = path.read_text()
+    assert "zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1" in text
+    yaml = pytest.importorskip("yaml")
+    loaded = yaml.safe_load(text)
+    assert isinstance(loaded, dict)
+    assert set(loaded["jobs"]) == {"zizmor"}
+    spec = loaded["jobs"]["zizmor"]
+    assert isinstance(spec, dict)
+    assert spec["continue-on-error"] is True
+    assert loaded["permissions"] == {}
+    assert spec["permissions"] == {"security-events": "write"}
+    steps = spec["steps"]
+    assert isinstance(steps, list)
+    zizmor_step = next(
+        step
+        for step in steps
+        if isinstance(step, dict) and "zizmor-action@" in str(step.get("uses", ""))
+    )
+    assert (
+        zizmor_step["uses"] == "zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd"
+    )
+    options = zizmor_step["with"]
+    assert options["inputs"] == ".github/workflows"
+    assert options["version"] == "1.32.0"
+    assert options["advanced-security"] is True
+    assert "zizmor" not in jobs()
+    for name, job_spec in jobs().items():
+        needs = job_spec.get("needs") or []
+        if isinstance(needs, str):
+            needs = [needs]
+        assert "zizmor" not in needs, name
+
+
 def test_r2_web_job_has_no_path_filter():
     spec = job("web")
     assert "if" not in spec, "web job has a job-level if"
