@@ -54,6 +54,9 @@ def _text(record_id: str, field: str, value: JsonValue | None) -> str:
 
 
 def _strings(record_id: str, field: str, value: JsonValue | None) -> tuple[str, ...]:
-    if not isinstance(value, list) or not all(isinstance(entry, str) for entry in value):
+    if not isinstance(value, list):
         raise WorkItemShapeError(record_id, field, "a list of strings")
-    return tuple(entry for entry in value if isinstance(entry, str))
+    strings = tuple(entry for entry in value if isinstance(entry, str))
+    if len(strings) != len(value):
+        raise WorkItemShapeError(record_id, field, "a list of strings")
+    return strings
