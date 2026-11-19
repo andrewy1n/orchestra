@@ -172,7 +172,6 @@ def _store_access(directory: Path) -> tuple[list[str], list[str]]:
 
 def _module(name: str):
     try:
-        # nosemgrep: orchestra.dynamic-import -- existing: test imports a caller-list module
         return importlib.import_module(name)
     except ImportError:
         return None
@@ -269,7 +268,6 @@ def _claim_request() -> dict:
 
 
 def _run_claim_close(repo: Path):
-    # nosemgrep: orchestra.broad-except -- existing: test returns the close error to the assertion
     try:
         build_in_store(
             _claim_request(),

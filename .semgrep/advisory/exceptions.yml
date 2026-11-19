@@ -1,0 +1,94 @@
+rules:
+- id: orchestra.broad-except
+  languages:
+  - python
+  severity: WARNING
+  message: Review this broad handler against the operation's failure contract. Required failures must
+    remain visible; optional operations need an explicit substitute.
+  metadata:
+    category: correctness
+  pattern-either:
+  - pattern: "try:\n  ...\nexcept:\n  ...\n"
+  - pattern: "try:\n  ...\nexcept:\n  ...\nelse:\n  ...\n"
+  - pattern: "try:\n  ...\nexcept:\n  ...\nfinally:\n  ...\n"
+  - pattern: "try:\n  ...\nexcept:\n  ...\nelse:\n  ...\nfinally:\n  ...\n"
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR:\n  ...\nelse:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR:\n  ...\nelse:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR as $NAME:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR as $NAME:\n  ...\nelse:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR as $NAME:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept $ERROR as $NAME:\n  ...\nelse:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...):\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...):\n  ...\nelse:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...):\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...):\n  ...\nelse:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...) as $NAME:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...) as $NAME:\n  ...\nelse:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...) as $NAME:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$
+  - patterns:
+    - pattern: "try:\n  ...\nexcept (..., $ERROR, ...) as $NAME:\n  ...\nelse:\n  ...\nfinally:\n  ...\n"
+    - metavariable-regex:
+        metavariable: $ERROR
+        regex: ^(?:builtins\.)?(?:Exception|BaseException)$

@@ -60,6 +60,7 @@ def main(argv: list[str]) -> int:
     command = [uv, "run", "--script", str(APP), *argv]
     try:
         os.chdir(target.project_root)
+        # nosemgrep: orchestra.process-boundary -- the launcher must retain its PID for dashboard signal handling.
         os.execv(command[0], command)
     except OSError as exc:
         return fail(f"Cannot run {command[0]}: {exc}")

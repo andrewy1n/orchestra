@@ -31,7 +31,6 @@ def _write_manifest_claim(repo: Path, claim_id: str = CLAIM_ID) -> None:
 
 
 def _patch_tuner(monkeypatch, module_name: str, attr: str, fn) -> None:
-    # nosemgrep: orchestra.dynamic-import -- existing: test patches the named tuner module
     module = importlib.import_module(module_name)
     monkeypatch.setattr(module, attr, fn)
 

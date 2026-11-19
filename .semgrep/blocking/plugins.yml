@@ -1,0 +1,20 @@
+rules:
+- id: orchestra.plugin-catalog-bypass
+  languages:
+  - python
+  severity: ERROR
+  message: Select product plugins through orchestra.canon.extensions.resolve_plugin. Do not load plugin
+    modules or files directly.
+  metadata:
+    category: correctness
+  paths:
+    include:
+    - /orchestra/composer/**
+    - /orchestra/conductor/**
+    - /orchestra/tuner/**
+    - /orchestra/canon/extensions.py
+  pattern-either:
+  - pattern: importlib.import_module(...)
+  - pattern: __import__(...)
+  - pattern: importlib.util.spec_from_file_location(...)
+  - pattern: $LOADER.exec_module(...)

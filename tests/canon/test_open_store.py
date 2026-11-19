@@ -117,7 +117,6 @@ def _as_path(value):
 
 def store_path_of(opened) -> Path:
     for name in _PATH_ATTRS:
-        # nosemgrep: orchestra.broad-except -- existing: test skips an unreadable store attribute
         try:
             value = getattr(opened, name)
         except Exception:

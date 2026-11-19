@@ -179,7 +179,7 @@ def _baseline(repo: Path, commit: str, commands: list[str]) -> dict[str, str]:
         results: dict[str, str] = {}
         for command in commands:
             try:
-                # nosemgrep: orchestra.shell-true -- existing: scaffold runs the verify_command
+                # nosemgrep: orchestra.shell-true -- eval cases define executable verification programs, not command arguments.
                 done = subprocess.run(
                     command,
                     shell=True,

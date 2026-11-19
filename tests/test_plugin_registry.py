@@ -93,6 +93,17 @@ def test_resolve_loads_only_the_selected_plugin(monkeypatch: pytest.MonkeyPatch)
     assert loaded == ["second"]
 
 
+@pytest.mark.parametrize("plugin_id", ["os", "os:system", "./plugin.py", "../plugin.py"])
+@pytest.mark.parametrize("scope", tuple(extensions.PLUGIN_GROUPS))
+def test_plugin_selection_rejects_unregistered_module_names_and_paths(
+    plugin_id: str, scope: extensions.PluginScope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _install_entries(monkeypatch, {})
+
+    with pytest.raises(extensions.PluginCatalogError, match=r"unknown .* plugin"):
+        extensions.resolve_plugin(scope, plugin_id)
+
+
 def test_resolve_rejects_unsupported_api_version(monkeypatch: pytest.MonkeyPatch) -> None:
     plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
     plugin.dist.entry_points = (

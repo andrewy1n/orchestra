@@ -7,6 +7,17 @@ ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 CI = WORKFLOWS / "ci.yml"
 TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra")
+SEMGREP_COMMANDS = [
+    "semgrep scan --metrics=off --disable-version-check --strict --test "
+    "--config .semgrep/blocking .semgrep/tests/blocking",
+    "semgrep scan --metrics=off --disable-version-check --strict --test "
+    "--config .semgrep/advisory .semgrep/tests/advisory",
+    "semgrep scan --metrics=off --disable-version-check --strict --test "
+    "--config .semgrep/vendor .semgrep/tests/vendor",
+    "semgrep scan --metrics=off --disable-version-check --error --strict "
+    "--config .semgrep/blocking --config .semgrep/vendor/secrets.yml",
+    "semgrep scan --metrics=off --disable-version-check --strict --config .semgrep/advisory",
+]
 
 
 def load():
@@ -73,11 +84,30 @@ def runs_only_pinned_semgrep(name: str) -> bool:
     image = container.get("image")
     if not isinstance(image, str):
         return False
-    pinned = image.startswith("semgrep/semgrep:") and "@sha256:" in image and "latest" not in image
-    if not pinned:
+    if re.fullmatch(r"semgrep/semgrep:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}", image) is None:
         return False
-    lines = run_lines(name)
-    return bool(lines) and all(line.startswith(("semgrep ", "--")) for line in lines)
+    commands = [
+        " ".join(step["run"].replace("\\\n", " ").split())
+        for step in spec.get("steps", [])
+        if "run" in step
+    ]
+    return commands == SEMGREP_COMMANDS
+
+
+def test_semgrep_runs_rule_tests_blocking_scan_and_advisory_scan() -> None:
+    assert runs_only_pinned_semgrep("semgrep")
+
+
+@pytest.mark.parametrize("suffix", [" && pip install foo", "; curl example.com", " | sh"])
+def test_semgrep_python_exemption_rejects_extra_shell_commands(
+    suffix: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spec = job("semgrep")
+    scan = next(step for step in spec["steps"] if step.get("name") == "Scan blocking rules")
+    scan["run"] += suffix
+    monkeypatch.setattr(__name__ + ".job", lambda _name: spec)
+
+    assert not runs_only_pinned_semgrep("semgrep")
 
 
 def test_r1_workflow_installs_plugins_and_attests_replay_identity() -> None:

@@ -146,6 +146,29 @@ def test_hook_stop_blocks_on_error_when_no_baseline_exists(repo, monkeypatch, ca
     assert "ghost-effort" in out["reason"]
 
 
+def test_baseline_write_failure_reports_warning_and_preserves_full_stop_check(
+    repo: Project,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    blocked = tmp_path / "baseline-file"
+    blocked.write_text("not a directory")
+    monkeypatch.setenv("ORCHESTRA_BASELINE_DIR", str(blocked))
+    corrupt_reference(repo, monkeypatch)
+    stdin = claude_input(repo)
+
+    start = hooks.cmd_start(hooks.CLAUDE, stdin)
+
+    assert "# Project Handoff" in _output(start)["hookSpecificOutput"]["additionalContext"]
+    assert "Session baseline unavailable" in capsys.readouterr().err
+
+    stop = hooks.cmd_stop(hooks.CLAUDE, stdin)
+
+    assert _output(stop)["decision"] == "block"
+    assert "ghost-effort" in _output(stop)["reason"]
+
+
 def test_hook_stop_allows_errors_already_present_at_session_start(repo, monkeypatch, capsys):
     corrupt_reference(repo, monkeypatch)
     stdin = claude_input(repo)

@@ -64,7 +64,6 @@ def _runs_process(node: ast.AST) -> bool:
 
 def _defined_output_hashers(path: Path) -> list[str]:
     tree = _parse(path)
-    # nosemgrep: orchestra.dynamic-import -- existing: test imports the module for that file
     module = importlib.import_module(_module_name(path))
     expected = hashlib.sha256(SAMPLE_OUTPUT.encode("utf-8")).hexdigest()
     found: list[str] = []
@@ -74,7 +73,6 @@ def _defined_output_hashers(path: Path) -> list[str]:
         fn = getattr(module, node.name, None)
         if not callable(fn) or getattr(fn, "__module__", None) != module.__name__:
             continue
-        # nosemgrep: orchestra.broad-except -- existing: test skips a hasher that rejects the sample
         try:
             digest = fn(SAMPLE_OUTPUT)
         except Exception:
@@ -203,7 +201,6 @@ def _returns_record_payload(fn: object) -> bool:
         {"id": "rec", "payload": "x"},
         {"id": "rec", "payload": ["a"]},
     )
-    # nosemgrep: orchestra.broad-except -- existing: test treats a probe failure as not the reader
     try:
         results = [fn(sample) for sample in samples]
     except (Exception, SystemExit):
@@ -225,7 +222,6 @@ def _canon_record_payload_getters() -> list[FunctionType]:
         if not candidates:
             continue
         try:
-            # nosemgrep: orchestra.dynamic-import -- existing: test imports the module for that file
             module = importlib.import_module(_module_name(path))
         except SystemExit:
             continue

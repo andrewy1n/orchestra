@@ -1,0 +1,23 @@
+rules:
+  - id: orchestra.process-boundary
+    languages: [python]
+    severity: ERROR
+    message: Run external programs through CliTool. Direct process APIs require an execution-code exception.
+    metadata:
+      category: correctness
+    paths:
+      include:
+        - /orchestra/**
+        - /installer/**
+        - /dashboard/**
+        - /scripts/**
+      exclude:
+        - /orchestra/tools/**
+    pattern-either:
+      - pattern: asyncio.create_subprocess_exec(...)
+      - pattern: asyncio.create_subprocess_shell(...)
+      - patterns:
+          - pattern: os.$FUNC(...)
+          - metavariable-regex:
+              metavariable: $FUNC
+              regex: ^(system|popen|startfile|posix_spawnp?|(exec|spawn)(l|le|lp|lpe|v|ve|vp|vpe))$

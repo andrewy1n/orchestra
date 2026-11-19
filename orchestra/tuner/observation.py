@@ -24,10 +24,10 @@ def _is_value_sequence(value: object) -> TypeGuard[Sequence[object]]:
 
 def store_usable(cwd: Path | str) -> bool:
     """True when the subject cwd has an openable artifact store."""
-    # nosemgrep: orchestra.broad-except -- existing: an unopenable store is reported as false
     try:
         open_store(Path(cwd))
-    except Exception:
+    except Exception as exc:
+        print(f"observation store unavailable: {exc}", file=sys.stderr)
         return False
     return True
 
@@ -98,7 +98,6 @@ def maybe_record_observation(
     subject: str | None = None,
 ) -> bool:
     """Return whether the observation was stored."""
-    # nosemgrep: orchestra.broad-except -- existing: a record failure is printed and returns false
     try:
         record = record_observation(
             cwd,
@@ -156,7 +155,6 @@ def maybe_record_verdict_observation(
     result: str,
 ) -> bool:
     """Return whether the verdict observation was stored."""
-    # nosemgrep: orchestra.broad-except -- existing: a record failure is printed and returns false
     try:
         record = record_verdict_observation(
             cwd, at=at, base=base, claim_ids=claim_ids, result=result

@@ -61,7 +61,7 @@ def run_verify_command(
     """Return (exit_code, duration_s, combined_output, timed_out, missing)."""
     started = time.monotonic()
     try:
-        # nosemgrep: orchestra.shell-true -- existing: verify_command is a shell command string
+        # nosemgrep: orchestra.shell-true -- verify_command intentionally executes shell programs from the work contract.
         proc = subprocess.run(
             command,
             shell=True,

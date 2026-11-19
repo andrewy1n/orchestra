@@ -139,7 +139,7 @@ def test_rejected_observation_leaves_store_unchanged(store: Path) -> None:
 
 
 def test_observation_without_usable_store_returns_none(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setenv("CANON_STORE", str(tmp_path / "missing"))
 
@@ -153,6 +153,7 @@ def test_observation_without_usable_store_returns_none(
         )
         is None
     )
+    assert "observation store unavailable:" in capsys.readouterr().err
 
 
 def test_best_effort_observation_reports_canon_failure(
@@ -174,3 +175,20 @@ def test_best_effort_observation_reports_canon_failure(
     assert captured.err.startswith("observation record skipped: ")
     assert "subject must be a non-empty slug" in captured.err
     assert open_store(store).records() == before
+
+
+def test_optional_observation_reports_unreadable_store(
+    store: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (store / ".canon" / "config.json").write_text("{", encoding="utf-8")
+
+    recorded = maybe_record_observation(
+        store,
+        technique="verdict",
+        base_rev="base-pin",
+        head_rev="head-pin",
+        result="pass",
+    )
+
+    assert recorded is False
+    assert "malformed JSON in config.json" in capsys.readouterr().err

@@ -1,0 +1,126 @@
+rules:
+- id: orchestra.unsafe-pickle
+  languages:
+  - python
+  severity: ERROR
+  message: Unpickling (pickle, _pickle, dill) or shelve can run attacker-controlled code. Deserialize
+    with JSON or another format that does not execute.
+  metadata:
+    category: security
+    cwe: 'CWE-502: Deserialization of Untrusted Data'
+    references:
+    - https://semgrep.dev/r/python.lang.security.deserialization.pickle.avoid-pickle
+  pattern-either:
+  - pattern: pickle.load(...)
+  - pattern: pickle.loads(...)
+  - pattern: pickle.Unpickler(...)
+  - pattern: _pickle.load(...)
+  - pattern: _pickle.loads(...)
+  - pattern: _pickle.Unpickler(...)
+  - pattern: dill.load(...)
+  - pattern: dill.loads(...)
+  - pattern: dill.Unpickler(...)
+  - pattern: shelve.open(...)
+- id: orchestra.unsafe-marshal
+  languages:
+  - python
+  severity: ERROR
+  message: marshal.load and marshal.loads are not safe for untrusted data. Do not unmarshal data the process
+    did not produce.
+  metadata:
+    category: security
+    cwe: 'CWE-502: Deserialization of Untrusted Data'
+    references:
+    - https://semgrep.dev/r/python.lang.security.audit.marshal.marshal-usage
+  pattern-either:
+  - pattern: marshal.load(...)
+  - pattern: marshal.loads(...)
+- id: orchestra.unsafe-yaml-load
+  languages:
+  - python
+  severity: ERROR
+  message: yaml.load, yaml.load_all, and yaml.unsafe_load can execute tags unless the loader is SafeLoader
+    or CSafeLoader. Use yaml.safe_load or pass that loader.
+  metadata:
+    category: security
+    cwe: 'CWE-502: Deserialization of Untrusted Data'
+    references:
+    - https://semgrep.dev/r/python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load
+  patterns:
+  - pattern-either:
+    - pattern: yaml.load(...)
+    - pattern: yaml.load_all(...)
+    - pattern: yaml.unsafe_load(...)
+    - pattern: yaml.unsafe_load_all(...)
+    - pattern: yaml.full_load(...)
+    - pattern: yaml.full_load_all(...)
+  - pattern-not: yaml.load($DATA, Loader=yaml.SafeLoader, ...)
+  - pattern-not: yaml.load($DATA, Loader=yaml.CSafeLoader, ...)
+  - pattern-not: yaml.load($DATA, Loader=SafeLoader, ...)
+  - pattern-not: yaml.load($DATA, Loader=CSafeLoader, ...)
+  - pattern-not: yaml.load($DATA, yaml.SafeLoader, ...)
+  - pattern-not: yaml.load($DATA, yaml.CSafeLoader, ...)
+  - pattern-not: yaml.load($DATA, SafeLoader, ...)
+  - pattern-not: yaml.load($DATA, CSafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, Loader=yaml.SafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, Loader=yaml.CSafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, Loader=SafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, Loader=CSafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, yaml.SafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, yaml.CSafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, SafeLoader, ...)
+  - pattern-not: yaml.load_all($DATA, CSafeLoader, ...)
+- id: orchestra.shell-true
+  languages:
+  - python
+  severity: ERROR
+  message: This call runs a command through the shell. Metacharacters in the command string are shell
+    syntax. Pass an argument list and do not set shell=True. os.system, os.popen, and create_subprocess_shell
+    always use the shell.
+  metadata:
+    category: security
+    cwe: 'CWE-78: Improper Neutralization of Special Elements used in an OS Command (''OS Command Injection'')'
+    references:
+    - https://semgrep.dev/r/python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+  pattern-either:
+  - patterns:
+    - pattern: subprocess.$FUNC(..., shell=$FLAG, ...)
+    - pattern-not: subprocess.$FUNC(..., shell=False, ...)
+  - pattern: os.system(...)
+  - pattern: os.popen(...)
+  - pattern: asyncio.create_subprocess_shell(...)
+  - pattern: commands.getoutput(...)
+  - pattern: commands.getstatusoutput(...)
+- id: orchestra.shell-string-command
+  languages:
+  - python
+  severity: ERROR
+  message: Review command construction. Use an argument list for values and reserve shell syntax for approved
+    command runners.
+  metadata:
+    category: security
+    cwe: 'CWE-78: Improper Neutralization of Special Elements used in an OS Command (''OS Command Injection'')'
+  patterns:
+  - pattern-either:
+    - pattern: subprocess.$FUNC($CMD, ...)
+    - pattern: os.system($CMD)
+    - pattern: os.popen($CMD, ...)
+    - pattern: os.popen($CMD)
+    - pattern: asyncio.create_subprocess_shell($CMD, ...)
+    - pattern: commands.getoutput($CMD)
+    - pattern: commands.getstatusoutput($CMD)
+  - pattern-not: subprocess.$FUNC([...], ...)
+  - pattern-not: os.popen([...], ...)
+  - pattern-not: asyncio.create_subprocess_shell([...], ...)
+  - metavariable-pattern:
+      metavariable: $CMD
+      pattern-either:
+      - pattern: f"..."
+      - pattern: f'...'
+      - pattern: $LEFT + $RIGHT
+      - pattern: $LEFT % $RIGHT
+      - pattern: $TEMPLATE.format(...)
+      - pattern: shlex.split(f"...")
+      - pattern: shlex.split(f'...')
+      - pattern: shlex.split($LEFT + $RIGHT)
+      - pattern: shlex.split($TEMPLATE.format(...))

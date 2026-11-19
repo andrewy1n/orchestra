@@ -19,7 +19,6 @@ def test_orchestration_directory_absent(dirname: str) -> None:
 @pytest.mark.parametrize("module", _ABSENT_MODULES)
 def test_moved_module_does_not_import(module: str) -> None:
     with pytest.raises(ImportError):
-        # nosemgrep: orchestra.dynamic-import -- existing: expects ImportError for a removed name
         importlib.import_module(module)
 
 

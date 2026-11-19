@@ -1,0 +1,10 @@
+{
+  "source": "https://semgrep.dev/c/p/secrets",
+  "retrieved": "2026-11-19",
+  "sha256": "736738096f266b355a2d5dd21451eb4b260b01931c425b23e839d5a82fb87a55",
+  "rules": 52,
+  "license": "https://semgrep.dev/legal/rules-license",
+  "upstream_sha256": "64bc763d47a751a9950705cad60c4d840e598409700b2f01ab0fb249f51a880c",
+  "parsed_sha256": "3447bbcee300fcaaed753095054d2d4e293362f8b9d10b91773ec17001f60c4d",
+  "normalization": "Encode the Slack documentation placeholder with a YAML Unicode escape; parsed rules are unchanged."
+}

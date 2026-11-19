@@ -84,13 +84,15 @@ def _save_baseline(project: Project, root: Path, data: JsonObject) -> None:
     path = baseline_path(root, data)
     if path is None:
         return
-    # nosemgrep: orchestra.broad-except -- existing: baseline write failure returns without raising
     try:
         errors = project.validate()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(errors))
-    except Exception:
-        return
+    except Exception as exc:
+        print(
+            f"Session baseline unavailable; session-end checks all store errors: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _load_baseline(root: Path, data: JsonObject) -> set[str] | None:
@@ -169,7 +171,6 @@ def _wrap_start(fmt: str, ctx: str) -> JsonObject:
 
 
 def _close_sweep(project: Project, root: Path) -> list[str]:
-    # nosemgrep: orchestra.broad-except -- existing: close-sweep failure is returned as text
     try:
         if not close.landed_phases(project):
             return []
@@ -190,7 +191,6 @@ def _close_sweep(project: Project, root: Path) -> list[str]:
 
 def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
     root = _root_from_hook(data, fmt)
-    # nosemgrep: orchestra.broad-except -- existing: session-start failure becomes the handoff text
     try:
         project = _open_project(root)
         if project is None:
@@ -228,14 +228,12 @@ def cmd_stop(fmt: str, data: JsonObject) -> JsonObject | None:
         if loop_count > 0:
             return {}
     root = _root_from_hook(data, fmt)
-    # nosemgrep: orchestra.broad-except -- existing: session-end open failure is returned as a block
     try:
         project = _open_project(root)
     except Exception as exc:
         return _block(fmt, f"Session-end store check failed:\n\n{exc}")
     if project is None:
         return None
-    # nosemgrep: orchestra.broad-except -- existing: session-end validate failure is a block message
     try:
         errors = project.validate()
     except Exception as exc:
