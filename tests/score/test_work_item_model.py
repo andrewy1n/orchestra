@@ -4,8 +4,17 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from orchestra.canon.types import JsonObject, Record
-from orchestra.score.work_item import WorkItem, current_work_item, read_work_item
+from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.score.work_item import (
+    WorkItem,
+    WorkItemShapeError,
+    current_work_item,
+    read_work_item,
+)
+
+
+def _valid(**overrides: JsonValue) -> JsonObject:
+    return {"phase": "landing", "effort": "code-quality", **overrides}
 
 
 def _record(
@@ -22,7 +31,7 @@ def _record(
         "id": record_id,
         "record_type": record_type,
         "subject": subject,
-        "payload": payload if payload is not None else {},
+        "payload": payload if payload is not None else _valid(),
         "lifecycle_state": state,
         "relationships": {"corrects": corrects} if corrects else {},
         "revision": f"rev-{record_id}",
@@ -55,31 +64,57 @@ def test_r14_read_work_item_exposes_payload_fields() -> None:
     )
 
 
-def test_r14_read_work_item_reads_missing_text_as_empty() -> None:
-    item = read_work_item(_record("wi-1"))
+def test_r14_read_work_item_reads_absent_write_root_and_requirements_as_empty() -> None:
+    item = read_work_item(_record("wi-1", payload=_valid()))
 
-    assert (item.phase, item.effort, item.write_root) == ("", "", "")
+    assert item.write_root == ""
     assert item.requirements == ()
 
 
-def test_r14_read_work_item_reads_non_string_text_as_empty() -> None:
-    item = read_work_item(
-        _record("wi-1", payload={"phase": 3, "effort": None, "write_root": ["x"]})
-    )
+def test_r14_read_work_item_accepts_an_empty_phase() -> None:
+    item = read_work_item(_record("wi-1", payload=_valid(phase="")))
 
-    assert (item.phase, item.effort, item.write_root) == ("", "", "")
+    assert item.phase == ""
 
 
-def test_r14_read_work_item_keeps_only_string_requirements() -> None:
-    item = read_work_item(_record("wi-1", payload={"requirements": ["R1", 2, None, "R3"]}))
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("phase", None),
+        ("phase", 3),
+        ("effort", None),
+        ("effort", ["x"]),
+        ("write_root", ["x"]),
+        ("requirements", "R1"),
+        ("requirements", ["R1", 2, None]),
+    ],
+)
+def test_r14_read_work_item_raises_naming_the_record_and_field(
+    field: str, value: JsonValue
+) -> None:
+    with pytest.raises(WorkItemShapeError) as raised:
+        read_work_item(_record("wi-1", payload=_valid(**{field: value})))
 
-    assert item.requirements == ("R1", "R3")
+    assert raised.value.record_id == "wi-1"
+    assert raised.value.field == field
+    assert "wi-1" in str(raised.value)
+    assert field in str(raised.value)
 
 
-def test_r14_read_work_item_reads_non_list_requirements_as_empty() -> None:
-    item = read_work_item(_record("wi-1", payload={"requirements": "R1"}))
+@pytest.mark.parametrize("field", ["phase", "effort"])
+def test_r14_read_work_item_raises_for_a_missing_required_field(field: str) -> None:
+    payload = _valid()
+    del payload[field]
 
-    assert item.requirements == ()
+    with pytest.raises(WorkItemShapeError) as raised:
+        read_work_item(_record("wi-1", payload=payload))
+
+    assert raised.value.field == field
+
+
+def test_r14_current_work_item_raises_for_a_malformed_current_version() -> None:
+    with pytest.raises(WorkItemShapeError):
+        current_work_item("task", [_record("wi-1", payload=_valid(effort=1))])
 
 
 def test_r14_work_item_is_frozen() -> None:
@@ -136,7 +171,6 @@ def test_r14_current_work_item_with_superseded_corrected_and_current_versions() 
         "wi-3",
         recorded_at="2026-03-01T00:00:00Z",
         corrects=["wi-2"],
-        payload={"phase": "landing"},
     )
     later_superseded = _record("wi-4", state="superseded", recorded_at="2026-04-01T00:00:00Z")
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import json
 import os
 import re
@@ -8,11 +7,17 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from canon_support import REPO, create, make_project
 
 from orchestra import cli
+from orchestra.canon.project import open_store
+from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import wave
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA
+from orchestra.conductor.land_task import LandedTask
+from orchestra.conductor.task_close import Closure
+from orchestra.conductor.task_landing import TaskLanding
 
 PHASE = "ph"
 EFFORT = "ef"
@@ -207,9 +212,70 @@ def test_r8_schema_prints_the_evidence_schema_and_exits_0(tmp_path: Path) -> Non
     assert result.stderr == ""
 
 
-def test_r13_handler_calls_land_and_close_and_computes_no_requirement_status() -> None:
-    source = inspect.getsource(cli._cmd_task_land)
-    assert "land_and_close" in source
-    assert "requirement_status" not in source
-    assert "task_close" not in source
-    assert hasattr(cli, "land_and_close")
+def _malform_work_item(repo: Path, field: str, value: JsonValue) -> str:
+    project = open_store(repo)
+    record = next(r for r in project.list("score:work-item") if r["subject"] == "a")
+    store, _ = project._session()
+    changed = Record(**record)
+    changed["payload"] = {**record["payload"], field: value}
+    store.write_record(changed, expected_revision=record["revision"])
+    return record["id"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("phase", 3),
+        ("effort", None),
+        ("requirements", "R1"),
+        ("requirements", ["R1", 2]),
+    ],
+)
+def test_r19_malformed_work_item_exits_2_naming_the_id_and_field(
+    tmp_path: Path, field: str, value: JsonValue
+) -> None:
+    repo = _world(tmp_path, "true")
+    record_id = _malform_work_item(repo, field, value)
+    result = _orchestra(repo, "task", "land", "a", "--evidence", str(_evidence(tmp_path)))
+    assert result.returncode == 2
+    assert result.stderr.startswith("orchestra task land: a: ")
+    assert record_id in result.stderr
+    assert field in result.stderr
+    assert result.stdout == ""
+
+
+def test_r19_malformed_work_item_writes_no_execution_report(tmp_path: Path) -> None:
+    repo = _world(tmp_path, "true")
+    _malform_work_item(repo, "effort", 7)
+    _orchestra(repo, "task", "land", "a", "--evidence", str(_evidence(tmp_path)))
+    assert open_store(repo).list("conductor:execution-report") == []
+
+
+def test_r13_handler_delegates_to_land_and_close_and_renders_its_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _world(tmp_path, "true")
+    evidence = _evidence(tmp_path)
+    calls: list[tuple[str, Path, Path]] = []
+    landing = TaskLanding(
+        landed=LandedTask(
+            task="a",
+            phase=PHASE,
+            commit="",
+            revision="r" * 40,
+            report_id="rec-report",
+            checks=(),
+            evidence_result="pass",
+        ),
+        closure=Closure(state="done", code=0, reasons=()),
+    )
+
+    def fake(_project: object, checkout: Path, task: str, evidence_path: Path) -> TaskLanding:
+        calls.append((task, checkout, evidence_path))
+        return landing
+
+    monkeypatch.setattr(cli, "land_and_close", fake)
+    code = cli.main(["task", "land", "a", "--evidence", str(evidence), "--cwd", str(repo)])
+    assert code == 0
+    assert calls == [("a", repo, evidence)]
+    assert capsys.readouterr().out == f"a: done (report rec-report, revision {'r' * 40})\n"

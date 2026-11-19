@@ -35,6 +35,7 @@ from orchestra.conductor.github_pr import GitHubPRError, github_client
 from orchestra.conductor.task_landing import land_and_close
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import current_phase
+from orchestra.score.work_item import WorkItemShapeError
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
@@ -915,6 +916,7 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         RuntimeError,
         StoreBindingError,
         StoreError,
+        WorkItemShapeError,
     ) as exc:
         print(f"orchestra task land: {args.task}: {exc}", file=sys.stderr)
         return 2

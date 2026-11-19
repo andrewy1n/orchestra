@@ -4,8 +4,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from orchestra.canon import record_payload
-from orchestra.canon.query import latest
 from orchestra.canon.types import JsonValue, Record
+from orchestra.score.lookups import current_version
+
+
+class WorkItemShapeError(ValueError):
+    def __init__(self, record_id: str, field: str, expected: str) -> None:
+        super().__init__(f"work-item {record_id}: field {field!r} must be {expected}")
+        self.record_id = record_id
+        self.field = field
 
 
 @dataclass(frozen=True)
@@ -22,40 +29,31 @@ class WorkItem:
 
 def read_work_item(record: Record) -> WorkItem:
     payload = record_payload(record)
+    record_id = record["id"]
     return WorkItem(
-        id=record["id"],
+        id=record_id,
         subject=record["subject"],
         lifecycle_state=record["lifecycle_state"],
-        phase=_text(payload.get("phase")),
-        effort=_text(payload.get("effort")),
-        write_root=_text(payload.get("write_root")),
-        requirements=_strings(payload.get("requirements")),
+        phase=_text(record_id, "phase", payload.get("phase")),
+        effort=_text(record_id, "effort", payload.get("effort")),
+        write_root=_text(record_id, "write_root", payload.get("write_root", "")),
+        requirements=_strings(record_id, "requirements", payload.get("requirements", [])),
         record=record,
     )
 
 
 def current_work_item(subject: str, records: Sequence[Record]) -> WorkItem | None:
-    corrected = {
-        target
-        for record in records
-        for target in (record.get("relationships") or {}).get("corrects") or []
-    }
-    found = latest(
-        record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["subject"] == subject
-        and record["lifecycle_state"] != "superseded"
-        and record["id"] not in corrected
-    )
+    found = current_version("score:work-item", subject, records)
     return None if found is None else read_work_item(found)
 
 
-def _text(value: JsonValue | None) -> str:
-    return value if isinstance(value, str) else ""
+def _text(record_id: str, field: str, value: JsonValue | None) -> str:
+    if not isinstance(value, str):
+        raise WorkItemShapeError(record_id, field, "a string")
+    return value
 
 
-def _strings(value: JsonValue | None) -> tuple[str, ...]:
-    if not isinstance(value, list):
-        return ()
+def _strings(record_id: str, field: str, value: JsonValue | None) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(entry, str) for entry in value):
+        raise WorkItemShapeError(record_id, field, "a list of strings")
     return tuple(entry for entry in value if isinstance(entry, str))

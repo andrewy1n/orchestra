@@ -17,18 +17,20 @@ def phase_versions(slug: str, records: Sequence[Record]) -> list[Record]:
     ]
 
 
-def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
-    phases = phase_versions(slug, records)
-    corrected = {
-        target
-        for record in records
-        for target in (record.get("relationships") or {}).get("corrects") or []
-    }
+def current_version(record_type: str, subject: str, records: Sequence[Record]) -> Record | None:
+    corrected = corrected_ids(records)
     return latest(
-        phase
-        for phase in phases
-        if phase["lifecycle_state"] != "superseded" and phase["id"] not in corrected
+        record
+        for record in records
+        if record["record_type"] == record_type
+        and record["subject"] == subject
+        and record["lifecycle_state"] != "superseded"
+        and record["id"] not in corrected
     )
+
+
+def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
+    return current_version("score:phase", slug, records)
 
 
 def current_phases(records: Sequence[Record]) -> dict[str, Record]:
