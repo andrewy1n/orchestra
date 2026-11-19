@@ -10,10 +10,12 @@ from dashboard.backend import store
 from dashboard.backend.journal import JournalItem, load_journal
 from dashboard.backend.journal import ordered as journal_ordered
 from dashboard.backend.phase import (
+    LIVE_PHASE_STATES,
     MilestoneRow,
     PhaseEvidence,
     PhaseRow,
     attach_milestones,
+    current_phase_models,
     evidence_records_by_phase,
     latest_assessment_map,
     phase_evidence,
@@ -197,9 +199,9 @@ def _structured_phases(specs: list[Record]) -> set[tuple[str, str]]:
 
 def _light_phases(phase_records: list[Record]) -> set[tuple[str, str]]:
     return {
-        (record_payload(record).get("effort") or "", record["subject"])
-        for record in live_records(phase_records)
-        if record_payload(record).get("weight") == "light"
+        (phase.effort, phase.subject)
+        for phase in current_phase_models(phase_records)
+        if phase.weight == "light"
     }
 
 
@@ -705,11 +707,12 @@ def load_work_snapshot(
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
-        phases = [
-            record
-            for record in grouped["score:phase"].get(effort, [])
-            if record["lifecycle_state"] in ("planned", "in_progress", "done")
+        phase_models = [
+            phase
+            for phase in current_phase_models(grouped["score:phase"].get(effort, []))
+            if phase.record["lifecycle_state"] in LIVE_PHASE_STATES
         ]
+        phases = [phase.record for phase in phase_models]
         tasks = grouped["score:work-item"].get(effort, [])
         counted = [record for record in tasks if record["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
         if (
@@ -732,10 +735,10 @@ def load_work_snapshot(
             task for task in tasks if record_payload(task).get("phase") in active_subjects
         ]
         rows: list[PhaseRow] = []
-        for record in phases:
-            if record["lifecycle_state"] != "in_progress":
+        for current in phase_models:
+            if current.record["lifecycle_state"] != "in_progress":
                 continue
-            phase = record["subject"]
+            phase = current.subject
             progress = phase_progress(tasks, phase)
             evidence = None
             if (effort, phase) in structured:
@@ -755,14 +758,14 @@ def load_work_snapshot(
                 )
             row = PhaseRow(
                 subject=phase,
-                title=record_payload(record).get("title", ""),
-                ordinal=record_payload(record).get("ordinal", 0),
-                state=record["lifecycle_state"],
+                title=current.title,
+                ordinal=current.ordinal,
+                state=current.record["lifecycle_state"],
                 done=progress.done,
                 total=progress.total,
-                id=record["id"],
+                id=current.id,
                 evidence=evidence,
-                body=record.get("body") or "",
+                body=current.body,
                 in_progress=progress.in_progress,
             )
             rows.append(

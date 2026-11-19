@@ -2610,7 +2610,7 @@ def test_estimate_view_row_fields(store, cli, defs):
         "record_type": "score:phase",
         "subject": "p-est",
         "lifecycle_state": "in_progress",
-        "payload": {"title": "Estimates", "ordinal": 1},
+        "payload": {"title": "Estimates", "ordinal": 1, "effort": "est"},
         "body": "Size: more than one sitting.",
         "relationships": {},
         "revision": "sha256:test",
