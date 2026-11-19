@@ -409,11 +409,17 @@ def test_zizmor_audit_is_a_separate_advisory_job() -> None:
     assert set(loaded["jobs"]) == {"zizmor"}
     spec = loaded["jobs"]["zizmor"]
     assert isinstance(spec, dict)
-    assert spec["continue-on-error"] is True
+    assert not spec.get("continue-on-error")
     assert loaded["permissions"] == {}
     assert spec["permissions"] == {"security-events": "write"}
     steps = spec["steps"]
     assert isinstance(steps, list)
+    checkout = next(
+        step
+        for step in steps
+        if isinstance(step, dict) and str(step.get("uses", "")).startswith("actions/checkout@")
+    )
+    assert checkout["with"]["persist-credentials"] is False
     zizmor_step = next(
         step
         for step in steps
@@ -425,6 +431,7 @@ def test_zizmor_audit_is_a_separate_advisory_job() -> None:
     options = zizmor_step["with"]
     assert options["inputs"] == ".github/workflows"
     assert options["version"] == "1.32.0"
+    assert options["online-audits"] is True
     assert options["advanced-security"] is True
     assert "zizmor" not in jobs()
     for name, job_spec in jobs().items():

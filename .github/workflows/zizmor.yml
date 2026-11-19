@@ -1,7 +1,8 @@
 # zizmor audits GitHub Actions workflows for security issues such as
 # template injection, unpinned actions, and persistent credentials.
-# This job is advisory. Findings upload to code scanning and do not fail
-# the workflow, and the job is not a required check.
+# Findings upload to code scanning. SARIF mode exits 0 when findings
+# are present, so they do not fail this job. A broken audit run does.
+# The job is not a required check.
 # Fix the flagged workflow, or suppress one finding with a narrowly
 # scoped `# zizmor: ignore[audit]` comment or a `zizmor.yml`
 # `rules.<audit>.ignore` entry, and include a justification.
@@ -23,7 +24,6 @@ jobs:
   zizmor:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    continue-on-error: true
     permissions:
       security-events: write
     steps:
