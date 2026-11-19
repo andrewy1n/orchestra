@@ -88,6 +88,7 @@ def _read_all(
     failed_cwds: set[str] = set()
     cwds = {cwd for row in rows if isinstance((cwd := row.get("cwd")), str) and cwd}
     for cwd in sorted(cwds):
+        # nosemgrep: orchestra.broad-except -- existing: one cwd failure is recorded and reported
         try:
             project = open_store(cwd)
             key = str(project.store_path)
@@ -180,6 +181,7 @@ def main(argv: list[str]) -> int:
     root = Path(args[0]) if args else Path.home() / ".claude" / "projects"
     rows: list[SessionOutput] = []
     for path in sorted(root.glob("*/*.jsonl")):
+        # nosemgrep: orchestra.broad-except -- existing: one transcript failure becomes an error row
         try:
             summary = summarize(path)
         except Exception as exc:

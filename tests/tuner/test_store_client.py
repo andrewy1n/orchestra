@@ -112,6 +112,7 @@ def _install_project_spy(monkeypatch):
 
 
 def _call(fn):
+    # nosemgrep: orchestra.broad-except -- existing: helper returns the error to the caller
     try:
         return fn(), None
     except AssertionError:
@@ -330,6 +331,7 @@ def test_store_client_no_canon_process(tmp_path: Path, monkeypatch) -> None:
         )
 
     modules = [
+        # nosemgrep: orchestra.dynamic-import -- existing: test imports tuner modules by filename
         importlib.import_module(f"orchestra.tuner.{info.name}")
         for info in pkgutil.iter_modules(tuner.__path__)
     ]
@@ -359,6 +361,7 @@ def test_store_client_no_canon_process(tmp_path: Path, monkeypatch) -> None:
         )
         binding.list_bindings(root)
 
+    # nosemgrep: orchestra.broad-except -- existing: test ignores a non-assertion failure here
     try:
         exercise()
     except AssertionError:

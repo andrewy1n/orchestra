@@ -108,6 +108,7 @@ def test_cutover_r9_worktree_reads_primary_global_database(
         capture_output=True,
     )
     primary_record = open_store(primary).get(EFFORT_ID)
+    # nosemgrep: orchestra.broad-except -- existing: missing secondary record counts as absent
     try:
         secondary_record = open_store(worktree).get(EFFORT_ID)
     except Exception:

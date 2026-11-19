@@ -631,6 +631,35 @@ schemas do not allow.
 Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
 `installer`. CI runs the same command in the `types` job.
 
+### Semgrep
+
+Semgrep is the static check for security and for fail-loud correctness.
+The `semgrep` job in `.github/workflows/ci.yml` runs on pull requests and
+on pushes to `main` (and `phase/**`). It uses the official
+`semgrep/semgrep` image pinned to 1.186.0.
+
+The scan loads the checked-in rules in `.semgrep/` and the registry pack
+`p/secrets`. The checked-in rules flag unsafe deserialization, shell
+injection, broad `except` handlers that swallow or fall back, and dynamic
+imports from a non-literal name or path. A handler that re-raises is
+allowed. `p/secrets` is the hardcoded-secret check. The engine version is
+pinned; the registry pack is not.
+
+Run the same scan locally:
+
+```bash
+docker run --rm -v "${PWD}:/src" -w /src semgrep/semgrep:1.186.0 \
+  semgrep scan --metrics=off --disable-version-check --error --strict \
+  --config .semgrep --config p/secrets
+```
+
+Without Docker, `uvx semgrep@1.186.0` runs that same version. Add a custom
+rule by appending an item under `rules` in `.semgrep/` (`id`, `languages`,
+`severity`, `message`, and `pattern` or `patterns`).
+`semgrep scan --validate --config .semgrep` checks the rule file. An
+accepted finding needs a `nosemgrep: <rule-id>` comment on that line, with
+the reason.
+
 ### Wheel check
 
 Run `npm ci && npm run build` in `dashboard/frontend`, then run

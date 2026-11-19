@@ -958,6 +958,7 @@ def _dispatch(argv: list[str] | None = None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point (console script, ``python -m orchestra.canon``)."""
+    # nosemgrep: orchestra.broad-except -- existing CLI boundary returns JSON and EXIT_ERROR
     try:
         return _dispatch(argv)
     except json.JSONDecodeError as exc:

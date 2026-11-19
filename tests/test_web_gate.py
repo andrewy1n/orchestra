@@ -117,6 +117,7 @@ def test_web_job_run_lines_pass(tmp_path):
     assert lines, "web job has no run lines"
     copy = _ui_copy(tmp_path, link_modules=False)
     for line in lines:
+        # nosemgrep: orchestra.shell-true -- existing: test runs the web job shell lines from ci.yml
         result = subprocess.run(
             line, shell=True, cwd=copy, capture_output=True, text=True, check=False
         )

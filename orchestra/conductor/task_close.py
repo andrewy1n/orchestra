@@ -473,6 +473,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
         raise _tuner_not_importable(claim_id) from exc
     failed: list[str] = []
     details: list[str] = []
+    # nosemgrep: orchestra.broad-except -- existing: verdict failure is recorded, then CloseRefused
     try:
         verdict = run_verdict(cwd, revision, None, [claim_id])
     except Exception as exc:
@@ -481,6 +482,7 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
     else:
         if not _is_pass_result(verdict):
             failed.append("verdict")
+    # nosemgrep: orchestra.broad-except -- existing: recheck failure is recorded, then CloseRefused
     try:
         outcome = recheck(cwd, claim_id)
     except Exception as exc:

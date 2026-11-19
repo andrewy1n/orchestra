@@ -1,0 +1,10 @@
+# Semgrep's built-in ignore skips tests/. This file replaces that default
+# so the checked-in rules scan tests too. Dependency and VCS trees stay out.
+node_modules/
+build/
+dist/
+vendor/
+.venv/
+venv/
+.tox/
+.git/

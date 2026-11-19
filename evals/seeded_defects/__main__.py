@@ -19,6 +19,7 @@ def _verbs() -> dict[str, ModuleType]:
             continue
         name = f"{package.__name__}.{info.name}"
         try:
+            # nosemgrep: orchestra.dynamic-import -- existing: eval CLI loads sibling *_cmd modules
             table[info.name[: -len(_SUFFIX)]] = importlib.import_module(name)
         except ModuleNotFoundError as exc:
             if exc.name != name:

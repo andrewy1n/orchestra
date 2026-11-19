@@ -309,6 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result == "pass" else 1
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
+        # nosemgrep: orchestra.broad-except -- existing: trail prints the error and returns exit 2
         try:
             items = list_observations(work, claim=args.claim, technique=args.technique)
         except Exception as exc:

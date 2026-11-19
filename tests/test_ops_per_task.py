@@ -17,11 +17,13 @@ BODY = (
 
 
 def _script() -> ModuleType:
+    # nosemgrep: orchestra.dynamic-import -- existing: test loads scripts/ops_per_task.py by path
     spec = importlib.util.spec_from_file_location(
         "ops_per_task", REPO / "scripts" / "ops_per_task.py"
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    # nosemgrep: orchestra.dynamic-import -- existing: test executes the loader for the path above
     spec.loader.exec_module(module)
     return module
 

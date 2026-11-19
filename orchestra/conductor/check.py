@@ -61,6 +61,7 @@ def run_verify_command(
     """Return (exit_code, duration_s, combined_output, timed_out, missing)."""
     started = time.monotonic()
     try:
+        # nosemgrep: orchestra.shell-true -- existing: verify_command is a shell command string
         proc = subprocess.run(
             command,
             shell=True,
