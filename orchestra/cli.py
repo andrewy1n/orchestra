@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
@@ -535,6 +536,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print the resolved root, store, and binding as JSON",
     )
+    store_scan = store_sub.add_parser(
+        "scan",
+        help="Report phase, landing and proof packet records the typed readers reject",
+    )
+    store_scan.add_argument("--cwd", default=None, help="Directory (default: cwd)")
+    store_scan.add_argument("--json", action="store_true", help="Print one JSON object per finding")
     recover = store_sub.add_parser(
         "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
     )
@@ -1364,6 +1371,22 @@ def _cmd_store_path(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_store_scan(args: argparse.Namespace) -> int:
+    from orchestra.conductor.record_scan import scan_phase_records
+
+    try:
+        findings = scan_phase_records(open_store(_cwd(args), read_only=True).records())
+    except (OSError, StoreBindingError, StoreError) as exc:
+        print(f"orchestra store scan: {exc}", file=sys.stderr)
+        return 2
+    for finding in findings:
+        if args.json:
+            print(json.dumps(asdict(finding)))
+        else:
+            print(f"{finding.record_id} {finding.record_type} {finding.field}: {finding.message}")
+    return 1 if findings else 0
+
+
 def _cmd_store_run(args: argparse.Namespace) -> int:
     argv = list(args.args)
     if argv and argv[0] == "--":
@@ -1573,6 +1596,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_store_path(args)
         if args.action == "run":
             return _cmd_store_run(args)
+        if args.action == "scan":
+            return _cmd_store_scan(args)
         return _cmd_store_ensure(args)
     if args.command == "idea":
         return _cmd_idea(args)
