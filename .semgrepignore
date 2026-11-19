@@ -1,0 +1,9 @@
+node_modules/
+build/
+dist/
+vendor/
+.venv/
+venv/
+.tox/
+.git/
+.semgrep/

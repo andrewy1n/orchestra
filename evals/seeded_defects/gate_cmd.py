@@ -39,6 +39,7 @@ def _verify_commands(case_folder: Path) -> list[tuple[str, str]]:
 
 def _passes(command: str, tree: Path) -> bool:
     try:
+        # nosemgrep: orchestra.shell-true -- eval cases define executable verification programs, not command arguments.
         result = subprocess.run(
             command,
             shell=True,

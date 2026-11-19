@@ -29,8 +29,7 @@ def _project(root: Path) -> Project:
 
 def _require_store(cwd: Path | str) -> Path:
     root = Path(cwd)
-    if not store_usable(root):
-        raise BindingError("no usable artifact store")
+    _project(root)
     return root
 
 
@@ -49,9 +48,9 @@ def is_active(row: Record) -> bool:
 def list_bindings(cwd: Path | str) -> list[Record]:
     """List evidence-binding records from the subject store."""
     root = Path(cwd)
-    if not store_usable(root):
-        return []
     try:
+        if not store_usable(root):
+            return []
         return list(_project(root).list(record_type=_BIND_TYPE))
     except BindingError:
         raise

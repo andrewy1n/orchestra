@@ -88,8 +88,11 @@ def _save_baseline(project: Project, root: Path, data: JsonObject) -> None:
         errors = project.validate()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(errors))
-    except Exception:
-        return
+    except Exception as exc:
+        print(
+            f"Session baseline unavailable; session-end checks all store errors: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _load_baseline(root: Path, data: JsonObject) -> set[str] | None:

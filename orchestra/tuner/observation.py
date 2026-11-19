@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.canon.project import Project, open_store
+from orchestra.canon.project import NoArtifactStoreError, Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
@@ -26,7 +26,7 @@ def store_usable(cwd: Path | str) -> bool:
     """True when the subject cwd has an openable artifact store."""
     try:
         open_store(Path(cwd))
-    except Exception:
+    except NoArtifactStoreError:
         return False
     return True
 
@@ -52,8 +52,8 @@ def record_observation(
     """Create one unbound evidence-observation for a finished technique run.
 
     ``replay`` is optional re-invoke metadata (a JSON string is enough).
-    Returns the created record dict, or None when no usable store is present.
-    Raises on create failure. Does not create a binding.
+    Returns the created record dict, or None when no store is configured.
+    Raises on invalid stores and create failures. Does not create a binding.
     """
     root = Path(cwd)
     if not store_usable(root):
@@ -124,8 +124,8 @@ def record_verdict_observation(
 ) -> Record | None:
     """Create one evidence-observation for a finished verdict run.
 
-    Returns the created record dict, or None when no usable store is present.
-    Raises on create failure (caller should not flip the judge result).
+    Returns the created record dict, or None when no store is configured.
+    Raises on invalid stores and create failures (caller should not flip the judge result).
     """
     root = Path(cwd)
     if not store_usable(root):

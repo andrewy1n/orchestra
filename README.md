@@ -631,6 +631,86 @@ schemas do not allow.
 Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
 `installer`. CI runs the same command in the `types` job.
 
+### Semgrep
+
+Semgrep checks security patterns and Orchestra design rules. CI pins the
+engine to 1.186.0 and loads only checked-in rules. Findings in
+`.semgrep/blocking/` and `.semgrep/vendor/secrets.yml` fail CI. Findings in
+`.semgrep/advisory/` require review and do not fail CI. Scan errors fail
+both scans. CI publishes advisory findings in the workflow run summary.
+
+The contract is:
+
+- Run external programs through `CliTool`. `tests/test_subprocess_rule.py`
+  enforces the import boundary and its existing execution-code exceptions.
+  The process rule also checks direct `os` and `asyncio` execution calls
+  outside `orchestra/tools/` in product code and scripts.
+  The dashboard launcher uses a specific exception to replace its process
+  and retain its PID for signal handling.
+- Keep data separate from shell syntax. The shell rules flag shell calls
+  and formatted command strings. Verification command runners intentionally
+  execute shell programs and have specific exceptions.
+  In product code, `os.system`, `os.popen`, and
+  `asyncio.create_subprocess_shell` match both `orchestra.process-boundary`
+  and `orchestra.shell-true`. An accepted exception must satisfy both
+  requirements and name both rule IDs in its `nosemgrep` annotation.
+- Select product plugins through `orchestra.canon.extensions.resolve_plugin`.
+  The import rule covers composer, conductor, tuner, and the plugin catalog.
+  Normal imports remain allowed. Test discovery, eval discovery, and installer
+  adapters are outside this rule's scope.
+- Do not use pickle, dill, shelve, or marshal readers, or unsafe YAML loaders,
+  without a reviewed exception. These API checks do not establish input trust.
+- Do not commit credentials. The 52-rule secrets snapshot includes its source,
+  retrieval date, checksum, and license under `.semgrep/vendor/`.
+  The Slack placeholder uses a YAML Unicode escape to avoid a push-protection
+  false positive. The upstream, vendored, and parsed-rule checksums are recorded.
+- Treat operations as required unless their product contract permits failure.
+  Report required failures and stop dependent actions. Use a substitute only
+  when the contract defines it. Broad catches can report failure correctly;
+  the advisory rule asks for review and makes no control-flow judgment.
+
+Session baseline files are optional. If a baseline write fails, the hook
+reports the failure on stderr and continues with the handoff. Without a
+baseline, the session-end hook checks all store errors. Evidence observation
+writes through `maybe_record_*` are also optional: failures are reported on
+stderr and never change the verification verdict. Strict observation writes
+and binding reads raise on invalid stores. With no configured store,
+observation writes return `None` and binding reads return `[]`, without a
+warning. An explicitly selected store that is missing its configuration is
+an error. Tests enforce these behaviors with temporary stores.
+
+Run the blocking scan locally:
+
+```bash
+docker run --rm -v "${PWD}:/src" -w /src \
+  semgrep/semgrep:1.186.0@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1 \
+  semgrep scan --metrics=off --disable-version-check --error --strict \
+  --config .semgrep/blocking --config .semgrep/vendor/secrets.yml
+```
+
+Without Docker, use `uvx semgrep@1.186.0 scan` with the same options.
+Run the advisory scan with `--strict --config .semgrep/advisory` and no
+`--error`. CI runs both scans and tests the custom rules first:
+
+```bash
+uvx semgrep@1.186.0 scan --metrics=off --disable-version-check --strict --test \
+  --config .semgrep/blocking .semgrep/tests/blocking
+uvx semgrep@1.186.0 scan --metrics=off --disable-version-check --strict --test \
+  --config .semgrep/advisory .semgrep/tests/advisory
+uvx semgrep@1.186.0 scan --metrics=off --disable-version-check --strict --test \
+  --config .semgrep/vendor .semgrep/tests/vendor
+```
+
+Each custom rule needs forbidden and allowed examples under `.semgrep/tests/`.
+Use `ruleid` and `ok` annotations to assert findings. Rule fixtures contain
+intentional violations, so normal scans exclude `.semgrep/`; application tests
+remain scanned. A blocking exception needs a rule-specific `nosemgrep` comment
+on or immediately above the flagged statement. State the condition that makes
+the exception acceptable. Existing code gets no automatic exception. Review
+secrets-rule snapshot updates as code changes and update `snapshot.lock`.
+These syntax checks can miss aliases and code built from strings. A clean
+scan does not prove that the program is secure.
+
 ### Wheel check
 
 Run `npm ci && npm run build` in `dashboard/frontend`, then run
