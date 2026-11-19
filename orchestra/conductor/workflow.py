@@ -18,7 +18,12 @@ from orchestra.conductor.head_evidence import (
     review_at_head,
     suite_check_runs,
 )
-from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
+from orchestra.conductor.landing import (
+    landed_at_proof,
+    latest_landing,
+    parse_landing,
+    proof_packet,
+)
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
 from orchestra.score.lookups import dependencies as item_dependencies
@@ -383,10 +388,9 @@ def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         return False, "phase has no landing record"
     if landing["payload"].get("result") != "success":
         return False, "latest landing did not succeed"
-    latest = proof_packet(records, phase_record)
-    if latest is None:
+    if proof_packet(records, phase_record) is None:
         return False, "phase has no proof packet"
-    if landing["payload"].get("head_sha") != latest["payload"].get("revision"):
+    if not landed_at_proof(records, phase_record):
         return False, "landing is not at the proof packet head"
     return True, ""
 
@@ -517,10 +521,7 @@ def _land_stage(project: Project, records: list[Record], phase: str) -> str | No
     if landing["payload"].get("result") != "success":
         config = load_project_config(project.project_root)
         return "repair-ci" if config.land_adapter == "github-pr" else "land"
-    packet = proof_packet(records, phase_record)
-    if packet is None or landing["payload"].get("head_sha") != packet["payload"].get("revision"):
-        return "land"
-    return "close"
+    return "close" if landed_at_proof(records, phase_record) else "land"
 
 
 def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:

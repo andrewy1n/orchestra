@@ -241,3 +241,14 @@ def proof_packet(
         and (head is None or revision_matches(str(record_payload(record).get("revision")), head))
     ]
     return latest(found)
+
+
+def landed_at_proof(records: Sequence[Record], phase: Record) -> bool:
+    landing = latest_landing(records, phase["subject"])
+    packet = proof_packet(records, phase)
+    if landing is None or packet is None:
+        return False
+    payload = record_payload(landing)
+    return payload.get("result") == "success" and revision_matches(
+        str(payload.get("head_sha")), str(record_payload(packet).get("revision"))
+    )
