@@ -16,6 +16,7 @@ from orchestra.conductor.execution_cost import (
     utc_now,
 )
 from orchestra.conductor.wave import is_closing_task, task_acceptances
+from orchestra.score.work_item import WorkItem, current_work_item
 from orchestra.tools import Git
 
 
@@ -45,20 +46,15 @@ class LandedTask:
     needs_human: bool = False
 
 
-def _text(record: Record, key: str) -> str:
-    value = record_payload(record).get(key)
-    return value if isinstance(value, str) else ""
+def in_progress_item(project: Project, task: str) -> WorkItem:
+    item = current_work_item(task, project.records())
+    if item is None or item.lifecycle_state != "in_progress":
+        raise LandError(f"no in_progress work-item {task!r}")
+    return item
 
 
 def work_item(project: Project, task: str) -> Record:
-    found = [
-        r
-        for r in project.list("score:work-item")
-        if r["subject"] == task and r["lifecycle_state"] == "in_progress"
-    ]
-    if not found:
-        raise LandError(f"no in_progress work-item {task!r}")
-    return found[0]
+    return in_progress_item(project, task).record
 
 
 def _verify_evidence_revision(tree: Path, claimed: object) -> None:
@@ -102,18 +98,18 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
     evidence: JsonObject = parse_evidence(evidence_path)
     if evidence["subject"] != task:
         raise LandError(f"evidence subject {evidence['subject']!r} is not {task!r}")
-    item = work_item(project, task)
-    phase = _text(item, "phase")
+    item = in_progress_item(project, task)
+    phase = item.phase
     try:
         cost_fields = landing_cost_fields(
-            item,
+            item.record,
             evidence,
             received_at,
         )
     except ExecutionCostError as exc:
         raise LandError(str(exc)) from exc
-    tree = Path(_text(item, "write_root") or str(repo))
-    closing = is_closing_task(project.records(), phase, item)
+    tree = Path(item.write_root or str(repo))
+    closing = is_closing_task(project.records(), phase, item.record)
     if tree.is_dir():
         _verify_evidence_revision(tree, evidence.get("revision"))
     commit = "" if closing or not tree.is_dir() else _commit(tree, phase, task)
