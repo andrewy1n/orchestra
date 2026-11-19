@@ -18,7 +18,13 @@ from orchestra.conductor.head_evidence import (
     review_at_head,
     suite_check_runs,
 )
-from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
+from orchestra.conductor.landing import (
+    LandingProofError,
+    LandingProofState,
+    landing_proof_state,
+    parse_landing,
+    proof_packet,
+)
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
 from orchestra.score.lookups import dependencies as item_dependencies
@@ -372,23 +378,30 @@ def _verification_gate(project: Project, records: list[Record], phase: str) -> t
     return True, ""
 
 
+_LANDING_REASONS: dict[LandingProofState, str] = {
+    "landed": "",
+    "no-landing": "phase has no landing record",
+    "failed": "latest landing did not succeed",
+    "no-packet": "phase has no proof packet",
+    "not-at-head": "landing is not at the proof packet head",
+}
+
+
+def _landing_proof_state(records: list[Record], phase_record: Record) -> LandingProofState:
+    try:
+        return landing_proof_state(records, phase_record)
+    except LandingProofError as exc:
+        raise WorkflowRunError(str(exc)) from exc
+
+
 def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
     phase_record = _current_phase(records, phase)
     if phase_record["lifecycle_state"] == "done":
         return True, ""
     if not parse_landing(phase_record.get("body") or "").present:
         return True, ""
-    landing = latest_landing(records, phase)
-    if landing is None:
-        return False, "phase has no landing record"
-    if landing["payload"].get("result") != "success":
-        return False, "latest landing did not succeed"
-    latest = proof_packet(records, phase_record)
-    if latest is None:
-        return False, "phase has no proof packet"
-    if landing["payload"].get("head_sha") != latest["payload"].get("revision"):
-        return False, "landing is not at the proof packet head"
-    return True, ""
+    state = _landing_proof_state(records, phase_record)
+    return state == "landed", _LANDING_REASONS[state]
 
 
 def _step_completion(
@@ -511,16 +524,14 @@ def _land_stage(project: Project, records: list[Record], phase: str) -> str | No
         return None
     if not parse_landing(phase_record.get("body") or "").present:
         return None
-    landing = latest_landing(records, phase)
-    if landing is None:
-        return "land"
-    if landing["payload"].get("result") != "success":
-        config = load_project_config(project.project_root)
-        return "repair-ci" if config.land_adapter == "github-pr" else "land"
-    packet = proof_packet(records, phase_record)
-    if packet is None or landing["payload"].get("head_sha") != packet["payload"].get("revision"):
-        return "land"
-    return "close"
+    match _landing_proof_state(records, phase_record):
+        case "landed":
+            return "close"
+        case "failed":
+            config = load_project_config(project.project_root)
+            return "repair-ci" if config.land_adapter == "github-pr" else "land"
+        case _:
+            return "land"
 
 
 def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:
