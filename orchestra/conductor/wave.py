@@ -19,7 +19,12 @@ from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
-from orchestra.conductor.landing import LandingPlace, phase_place, task_branch, task_worktree
+from orchestra.conductor.landing import (
+    LandingPlace,
+    phase_place_of_record,
+    task_branch,
+    task_worktree,
+)
 from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
 from orchestra.score.lookups import (
     acceptances_of,
@@ -366,7 +371,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
     derived = project.derived(records)
     phase_rec = phase_record(records, phase)
     landing = has_landing(phase_rec)
-    place = phase_place(phase_rec, repo)
+    place = phase_place_of_record(phase_rec, repo)
     items = phase_items(records, phase)
     if landing and len(closing_work_items(phase, records)) > 1:
         raise WaveError("phase has more than one closing task")
@@ -429,7 +434,7 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     index = EvidenceIndex(records)
     items = phase_items(records, phase)
     phase_rec = phase_record(records, phase)
-    place = phase_place(phase_rec, repo)
+    place = phase_place_of_record(phase_rec, repo)
     phase_tree = place.worktree
     phase_branch = place.branch
     merged: list[str] = []
@@ -534,7 +539,7 @@ def _merged_tasks(place: LandingPlace, records: list[Record], phase: str, task: 
 
 def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
     phase_rec = phase_record(project.records(), phase)
-    place = phase_place(phase_rec, repo)
+    place = phase_place_of_record(phase_rec, repo)
     tree = place.worktree
     from orchestra.conductor.land_task import acceptances_for
 

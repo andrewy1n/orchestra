@@ -39,7 +39,7 @@ from orchestra.conductor.head_evidence import (
     EvidenceIndex,
     suite_check_runs,
 )
-from orchestra.conductor.landing import proof_packet
+from orchestra.conductor.landing import proof_packet_record
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
@@ -969,7 +969,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             milestone_title = record_payload(milestone_record).get("title") or milestone_slug
         else:
             milestone_title = milestone_slug
-    proof_record = proof_packet(
+    proof_record = proof_packet_record(
         remap_records(list_records(target, "conductor:proof-packet"), aliases), record
     )
     proof = None

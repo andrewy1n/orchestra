@@ -23,7 +23,7 @@ from orchestra.conductor.landing import (
     LandingProofState,
     landing_proof_state,
     parse_landing,
-    proof_packet,
+    proof_packet_record,
 )
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
@@ -373,7 +373,7 @@ def _verification_gate(project: Project, records: list[Record], phase: str) -> t
         raise WorkflowRunError(str(exc)) from exc
     if missing:
         return False, "phase gate is not met: " + "; ".join(format_missing(missing))
-    if proof_packet(records, phase_record) is None:
+    if proof_packet_record(records, phase_record) is None:
         return False, "phase has no proof packet"
     return True, ""
 
@@ -513,7 +513,7 @@ def _verify_stage(project: Project, records: list[Record], phase: str) -> str | 
         return "reviewer"
     if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
         return "gate"
-    if proof_packet(records, phase_record, head) is None:
+    if proof_packet_record(records, phase_record, head) is None:
         return "proof"
     return None
 

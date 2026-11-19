@@ -13,8 +13,8 @@ from orchestra.canon.types import Record
 from orchestra.conductor.landing import (
     LANDING,
     LandingPlace,
-    latest_landing,
-    phase_place,
+    latest_landing_record,
+    phase_place_of_record,
     task_branch,
     task_worktree,
 )
@@ -50,7 +50,7 @@ def close_phase(
     states: PullRequestStates,
     cwd: Path | None = None,
 ) -> CloseResult:
-    landing = latest_landing(project.list("conductor:landing"), phase)
+    landing = latest_landing_record(project.list("conductor:landing"), phase)
     if landing is None:
         raise CloseError(f"no landing record for phase {phase!r}; run orchestra land first")
     landed = record_payload(landing)
@@ -63,7 +63,7 @@ def close_phase(
         message = f"pull request {number} is {state}; close waits for the merge"
         return CloseResult(phase, number, url, state, head_sha, False, (), message)
     record = _phase_record(project, phase)
-    place = phase_place(record, repo)
+    place = phase_place_of_record(record, repo)
     refusals = _refusals(place, phase, head_sha, cwd)
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
@@ -96,7 +96,7 @@ def pending_close(project: Project, repo: Path, phase: str) -> bool:
     record = _phase_record(project, phase)
     if record["lifecycle_state"] != "done":
         return True
-    place = phase_place(record, repo)
+    place = phase_place_of_record(record, repo)
     if place.worktree.is_dir() or task_worktrees(place, phase):
         return True
     git = Git(place.repo)

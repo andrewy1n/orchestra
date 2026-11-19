@@ -17,7 +17,7 @@ from orchestra.conductor.landing import (
     LANDING,
     describe_phase,
     landing_payload,
-    proof_packet,
+    proof_packet_record,
     pull_request_title,
 )
 from orchestra.score.lookups import current_phase
@@ -204,7 +204,7 @@ def land_phase(
     if phase_record is None:
         raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
     head = Git(work).head()
-    packet = proof_packet(records, phase_record, head)
+    packet = proof_packet_record(records, phase_record, head)
     if packet is None:
         raise ValueError(f"no proof packet for phase {phase!r} at HEAD {head}")
     body = packet.get("body")

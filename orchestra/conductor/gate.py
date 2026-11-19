@@ -23,7 +23,7 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
-from orchestra.conductor.landing import phase_place
+from orchestra.conductor.landing import phase_place_of_record
 from orchestra.score.lookups import closing_work_item, current_phase
 from orchestra.score.workflow_blockers import (
     WorkflowBlockerError,
@@ -101,7 +101,7 @@ def gate_terms(
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")
     effort = _str(phase, "effort")
-    place = phase_place(phase, store)
+    place = phase_place_of_record(phase, store)
 
     def of_type(record_type: str) -> list[Record]:
         return [r for r in records if r["record_type"] == record_type]

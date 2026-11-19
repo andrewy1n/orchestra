@@ -8,7 +8,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import PROOF_PACKET, proof_packet
+from orchestra.conductor.landing import PROOF_PACKET, proof_packet_record
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import current_phase
@@ -48,7 +48,7 @@ def _landing(
 ) -> tuple[str, str] | None:
     phase = phase_record["subject"]
     landings = [r for r in records if r["record_type"] == LANDING and _text(r, "phase") == phase]
-    packet = proof_packet(records, phase_record)
+    packet = proof_packet_record(records, phase_record)
     proofs = [] if packet is None else [packet]
     checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
     for source, pool in ((LANDING, landings), (PROOF_PACKET, proofs), (CHECK_RUN, checks)):
