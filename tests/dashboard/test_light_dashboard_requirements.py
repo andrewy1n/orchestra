@@ -29,6 +29,10 @@ def _record(
     }
 
 
+def _phase_payload(weight: str) -> JsonObject:
+    return {"title": "P", "ordinal": 1, "effort": "e", "weight": weight}
+
+
 def _evidence(phase_record: Record, results: list[str]) -> PhaseEvidence | None:
     acceptance = _record(
         "score:acceptance",
@@ -50,7 +54,7 @@ def _evidence(phase_record: Record, results: list[str]) -> PhaseEvidence | None:
 
 
 def test_light_phase_requirements_come_from_the_phase_body() -> None:
-    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     evidence = _evidence(phase, ["pass"])
     assert evidence is not None
     rows = {row.id: row for row in evidence.requirements}
@@ -62,19 +66,19 @@ def test_light_phase_requirements_come_from_the_phase_body() -> None:
 
 
 def test_light_phase_failing_multi_requirement_check_verifies_no_listed_id() -> None:
-    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     evidence = _evidence(phase, ["fail"])
     assert evidence is not None
     assert {row.status for row in evidence.requirements} == {"unassessed"}
 
 
 def test_full_phase_without_a_specification_has_no_evidence() -> None:
-    phase = _record("score:phase", "p", {"effort": "e", "weight": "full"}, _BODY, "in_progress")
+    phase = _record("score:phase", "p", _phase_payload("full"), _BODY, "in_progress")
     assert _evidence(phase, ["pass"]) is None
 
 
 def test_light_phase_multi_requirement_check_is_attached_to_each_listed_row() -> None:
-    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     evidence = _evidence(phase, ["pass"])
     assert evidence is not None
     attached = {row.id: row.latest_check for row in evidence.requirements}
@@ -126,7 +130,7 @@ def test_requirement_detail_reads_a_light_phase_body(tmp_path: Path) -> None:
 
 
 def test_light_phase_ignores_an_old_active_specification() -> None:
-    phase = _record("score:phase", "p", {"effort": "e", "weight": "light"}, _BODY, "in_progress")
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     old_spec = _record(
         "score:specification",
         "p",
