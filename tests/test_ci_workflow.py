@@ -1,12 +1,25 @@
+import os
 import re
 from pathlib import Path
 
 import pytest
 
+from orchestra.tools import CliTool
+
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 CI = WORKFLOWS / "ci.yml"
 TEST_JOBS = ("test-canon", "test-tuner", "test-orchestra")
+SEMGREP_ADVISORY_SCRIPT = r"""semgrep scan --metrics=off --disable-version-check --strict --config .semgrep/advisory \
+  --text --output "$RUNNER_TEMP/semgrep-advisory.txt"
+{
+  printf '### Broad exception review\n\n'
+  printf 'Review each handler against its failure contract. Findings are advisory.\n\n'
+  printf '```text\n'
+  cat "$RUNNER_TEMP/semgrep-advisory.txt"
+  printf '\n```\n'
+} >> "$GITHUB_STEP_SUMMARY"
+"""
 SEMGREP_COMMANDS = [
     "semgrep scan --metrics=off --disable-version-check --strict --test "
     "--config .semgrep/blocking .semgrep/tests/blocking",
@@ -16,7 +29,7 @@ SEMGREP_COMMANDS = [
     "--config .semgrep/vendor .semgrep/tests/vendor",
     "semgrep scan --metrics=off --disable-version-check --error --strict "
     "--config .semgrep/blocking --config .semgrep/vendor/secrets.yml",
-    "semgrep scan --metrics=off --disable-version-check --strict --config .semgrep/advisory",
+    SEMGREP_ADVISORY_SCRIPT,
 ]
 
 
@@ -76,7 +89,7 @@ def setup_uv_steps(name):
     ]
 
 
-def runs_only_pinned_semgrep(name: str) -> bool:
+def runs_pinned_semgrep_job(name: str) -> bool:
     spec = job(name)
     container = spec.get("container")
     if not isinstance(container, dict):
@@ -91,11 +104,12 @@ def runs_only_pinned_semgrep(name: str) -> bool:
         for step in spec.get("steps", [])
         if "run" in step
     ]
-    return commands == SEMGREP_COMMANDS
+    expected = [" ".join(command.replace("\\\n", " ").split()) for command in SEMGREP_COMMANDS]
+    return commands == expected
 
 
 def test_semgrep_runs_rule_tests_blocking_scan_and_advisory_scan() -> None:
-    assert runs_only_pinned_semgrep("semgrep")
+    assert runs_pinned_semgrep_job("semgrep")
     spec = job("semgrep")
     assert spec["permissions"] == {"contents": "read"}
     checkout = next(
@@ -114,7 +128,40 @@ def test_semgrep_python_exemption_rejects_extra_shell_commands(
     scan["run"] += suffix
     monkeypatch.setattr(__name__ + ".job", lambda _name: spec)
 
-    assert not runs_only_pinned_semgrep("semgrep")
+    assert not runs_pinned_semgrep_job("semgrep")
+
+
+@pytest.mark.parametrize("exit_code", [0, 2])
+def test_advisory_step_publishes_findings_and_preserves_scan_failures(
+    tmp_path: Path, exit_code: int
+) -> None:
+    script = _step_run(job("semgrep")["steps"], "name", "Review broad exception handlers")
+    executable = tmp_path / "semgrep"
+    executable.write_text(
+        "#!/bin/sh\n"
+        'for argument do report="$argument"; done\n'
+        'printf "%s\\n" "example.py:4 broad handler" > "$report"\n'
+        f"exit {exit_code}\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o700)
+    summary = tmp_path / "summary.md"
+    summary.touch()
+    environment = dict(os.environ)
+    environment.update(
+        PATH=str(tmp_path) + os.pathsep + environment.get("PATH", ""),
+        RUNNER_TEMP=str(tmp_path),
+        GITHUB_STEP_SUMMARY=str(summary),
+    )
+
+    process = CliTool(tmp_path).start_process(["bash", "-e", "-c", script], env=environment)
+
+    assert process.wait(timeout=10) == exit_code
+    if exit_code == 0:
+        assert "### Broad exception review" in summary.read_text()
+        assert "example.py:4 broad handler" in summary.read_text()
+    else:
+        assert summary.read_text() == ""
 
 
 def test_r1_workflow_installs_plugins_and_attests_replay_identity() -> None:
@@ -214,7 +261,7 @@ def test_r8_every_job_runs_python_3_10():
     found = jobs()
     assert found
     for name in found:
-        if not setup_uv_steps(name) and (runs_only_npm(name) or runs_only_pinned_semgrep(name)):
+        if not setup_uv_steps(name) and (runs_only_npm(name) or runs_pinned_semgrep_job(name)):
             continue
         versions = [
             str(step.get("with", {}).get("python-version")) for step in setup_uv_steps(name)

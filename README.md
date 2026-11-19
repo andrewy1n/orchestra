@@ -637,7 +637,7 @@ Semgrep checks security patterns and Orchestra design rules. CI pins the
 engine to 1.186.0 and loads only checked-in rules. Findings in
 `.semgrep/blocking/` and `.semgrep/vendor/secrets.yml` fail CI. Findings in
 `.semgrep/advisory/` require review and do not fail CI. Scan errors fail
-both scans.
+both scans. CI publishes advisory findings in the workflow run summary.
 
 The contract is:
 
@@ -650,6 +650,10 @@ The contract is:
 - Keep data separate from shell syntax. The shell rules flag shell calls
   and formatted command strings. Verification command runners intentionally
   execute shell programs and have specific exceptions.
+  In product code, `os.system`, `os.popen`, and
+  `asyncio.create_subprocess_shell` match both `orchestra.process-boundary`
+  and `orchestra.shell-true`. An accepted exception must satisfy both
+  requirements and name both rule IDs in its `nosemgrep` annotation.
 - Select product plugins through `orchestra.canon.extensions.resolve_plugin`.
   The import rule covers composer, conductor, tuner, and the plugin catalog.
   Normal imports remain allowed. Test discovery, eval discovery, and installer
@@ -668,8 +672,12 @@ The contract is:
 Session baseline files are optional. If a baseline write fails, the hook
 reports the failure on stderr and continues with the handoff. Without a
 baseline, the session-end hook checks all store errors. Evidence observation
-writes are also optional: failures are reported on stderr and never change
-the verification verdict. Tests enforce these behaviors with temporary stores.
+writes through `maybe_record_*` are also optional: failures are reported on
+stderr and never change the verification verdict. Strict observation writes
+and binding reads raise on invalid stores. With no configured store,
+observation writes return `None` and binding reads return `[]`, without a
+warning. An explicitly selected store that is missing its configuration is
+an error. Tests enforce these behaviors with temporary stores.
 
 Run the blocking scan locally:
 

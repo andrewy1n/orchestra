@@ -4,11 +4,33 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.canon.project import open_store
+from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
-from orchestra.tuner.binding import BindingError, bind_observation
-from orchestra.tuner.observation import maybe_record_observation, record_observation
+from orchestra.tuner.binding import BindingError, active_for_claim, bind_observation, list_bindings
+from orchestra.tuner.observation import (
+    maybe_record_observation,
+    maybe_record_verdict_observation,
+    record_observation,
+)
+
+STORE_FAILURES = (
+    ("binding", "Invalid store binding JSON"),
+    ("config", "malformed JSON in config.json"),
+    ("selected", "has no config.json"),
+)
+
+
+def _break_store(store: Path, fault: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CANON_STORE", raising=False)
+    if fault == "binding":
+        (store / ".canon" / "store-binding.json").write_text("{", encoding="utf-8")
+    elif fault == "config":
+        (store / ".canon" / "config.json").write_text("{", encoding="utf-8")
+    elif fault == "selected":
+        monkeypatch.setenv("CANON_STORE", str(store / "missing"))
+    else:
+        raise AssertionError(f"unknown store fault: {fault}")
 
 
 def _seed_observation(root: Path) -> Record:
@@ -141,7 +163,7 @@ def test_rejected_observation_leaves_store_unchanged(store: Path) -> None:
 def test_observation_without_usable_store_returns_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("CANON_STORE", str(tmp_path / "missing"))
+    monkeypatch.delenv("CANON_STORE", raising=False)
 
     assert (
         record_observation(
@@ -153,7 +175,92 @@ def test_observation_without_usable_store_returns_none(
         )
         is None
     )
-    assert "observation store unavailable:" in capsys.readouterr().err
+    assert list_bindings(tmp_path) == []
+    assert active_for_claim(tmp_path, "claim-widget") == []
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize(("fault", "diagnostic"), STORE_FAILURES)
+def test_strict_observation_raises_for_invalid_stores(
+    store: Path, fault: str, diagnostic: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _break_store(store, fault, monkeypatch)
+
+    with pytest.raises((StoreBindingError, RuntimeError), match=diagnostic):
+        record_observation(
+            store,
+            technique="verdict",
+            base_rev="base-pin",
+            head_rev="head-pin",
+            result="pass",
+        )
+
+
+@pytest.mark.parametrize(("fault", "diagnostic"), STORE_FAILURES)
+@pytest.mark.parametrize("reader", ["list", "active"])
+def test_binding_reads_raise_for_invalid_stores(
+    store: Path,
+    fault: str,
+    diagnostic: str,
+    reader: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _break_store(store, fault, monkeypatch)
+
+    with pytest.raises(BindingError, match=diagnostic):
+        if reader == "list":
+            list_bindings(store)
+        else:
+            active_for_claim(store, "claim-widget")
+
+
+@pytest.mark.parametrize(("fault", "diagnostic"), STORE_FAILURES)
+def test_binding_writes_preserve_invalid_store_diagnostics(
+    store: Path, fault: str, diagnostic: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _break_store(store, fault, monkeypatch)
+
+    with pytest.raises(BindingError, match=diagnostic):
+        bind_observation(
+            store,
+            observation_id="existing-observation",
+            claim_id="claim-widget",
+            base_rev="base-pin",
+            head_rev="head-pin",
+        )
+
+
+@pytest.mark.parametrize(("fault", "diagnostic"), STORE_FAILURES)
+@pytest.mark.parametrize("record_verdict", [False, True])
+def test_optional_recording_reports_invalid_stores_once(
+    store: Path,
+    fault: str,
+    diagnostic: str,
+    record_verdict: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _break_store(store, fault, monkeypatch)
+
+    if record_verdict:
+        recorded = maybe_record_verdict_observation(
+            store, at="HEAD", base="HEAD", claim_ids=(), result="pass"
+        )
+    else:
+        recorded = maybe_record_observation(
+            store,
+            technique="verdict",
+            base_rev="base-pin",
+            head_rev="head-pin",
+            result="pass",
+        )
+
+    captured = capsys.readouterr()
+    assert recorded is False
+    assert captured.out == ""
+    assert captured.err.startswith("observation record skipped: ")
+    assert diagnostic in captured.err
+    assert len(captured.err.splitlines()) == 1
 
 
 def test_best_effort_observation_reports_canon_failure(
