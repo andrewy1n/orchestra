@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.query import latest
@@ -14,6 +15,8 @@ from orchestra.conductor.revision import revision_matches
 
 LANDING = "conductor:landing"
 PROOF_PACKET = "conductor:proof-packet"
+
+LandingProofState = Literal["landed", "no-landing", "failed", "no-packet", "not-at-head"]
 
 
 def latest_landing(records: Sequence[Record], phase: str) -> Record | None:
@@ -243,12 +246,30 @@ def proof_packet(
     return latest(found)
 
 
-def landed_at_proof(records: Sequence[Record], phase: Record) -> bool:
+class LandingProofError(ValueError):
+    def __init__(self, record_id: str, field: str) -> None:
+        super().__init__(f"{record_id}: payload field {field!r} is missing or not a string")
+        self.record_id = record_id
+        self.field = field
+
+
+def _required_text(record: Record, field: str) -> str:
+    value = record_payload(record).get(field)
+    if not isinstance(value, str):
+        raise LandingProofError(record["id"], field)
+    return value
+
+
+def landing_proof_state(records: Sequence[Record], phase: Record) -> LandingProofState:
+    """Decide where a phase's latest landing stands against its latest proof packet."""
     landing = latest_landing(records, phase["subject"])
+    if landing is None:
+        return "no-landing"
+    if record_payload(landing).get("result") != "success":
+        return "failed"
     packet = proof_packet(records, phase)
-    if landing is None or packet is None:
-        return False
-    payload = record_payload(landing)
-    return payload.get("result") == "success" and revision_matches(
-        str(payload.get("head_sha")), str(record_payload(packet).get("revision"))
-    )
+    if packet is None:
+        return "no-packet"
+    head = _required_text(landing, "head_sha")
+    revision = _required_text(packet, "revision")
+    return "landed" if revision_matches(head, revision) else "not-at-head"
