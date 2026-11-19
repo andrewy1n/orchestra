@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
 from orchestra.canon.project import Project
@@ -17,10 +16,10 @@ from orchestra.conductor.landing import (
     LANDING,
     describe_phase,
     landing_payload,
-    proof_packet_record,
+    proof_packet,
     pull_request_title,
 )
-from orchestra.score.lookups import current_phase
+from orchestra.score.phase import current_phase_model
 from orchestra.tools import Git
 
 
@@ -200,14 +199,14 @@ def land_phase(
         raise LandGateError(phase, gate.format_missing(missing))
     project = open_project()
     records = project.records()
-    phase_record = current_phase(phase, records)
-    if phase_record is None:
+    current = current_phase_model(phase, records)
+    if current is None:
         raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
     head = Git(work).head()
-    packet = proof_packet_record(records, phase_record, head)
+    packet = proof_packet(records, current, head)
     if packet is None:
         raise ValueError(f"no proof packet for phase {phase!r} at HEAD {head}")
-    body = packet.get("body")
+    body = packet.record.get("body")
     if not isinstance(body, str):
         raise ValueError("phase proof packet has no body")
     result = dispatch_land(
@@ -217,12 +216,11 @@ def land_phase(
         remote=remote,
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
-        title=pull_request_title(phase_record),
-        description=describe_phase(phase_record),
+        title=pull_request_title(current.record),
+        description=describe_phase(current.record),
         client=client,
     )
     if result.result != "skipped":
-        effort = record_payload(packet).get("effort")
         project.create(
             record_type=LANDING,
             subject=phase,
@@ -232,7 +230,7 @@ def land_phase(
                 result.url,
                 result.head_sha,
                 result.result,
-                effort if isinstance(effort, str) else None,
+                packet.effort,
             ),
         )
     return result

@@ -154,7 +154,7 @@ def test_r13_workflow_reads_current_phase(tmp_path: Path) -> None:
         project, phase, payload={"title": "Next", "ordinal": 1, "effort": EFFORT}
     )
 
-    assert workflow._current_phase(project.records(), PHASE)["id"] == current["id"]
+    assert workflow._current_phase(project.records(), PHASE).id == current["id"]
 
 
 def test_r13_gate_all_superseded_phase_not_found(tmp_path: Path) -> None:

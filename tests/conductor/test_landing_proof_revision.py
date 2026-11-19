@@ -76,12 +76,12 @@ def _packet(project: Project, revision: JsonValue | _Missing = HEAD) -> str:
     payload: dict[str, object] = {
         "phase": PHASE,
         "effort": EFFORT,
-        "revision": HEAD,
+        "revision": revision if isinstance(revision, str) else HEAD,
         "base": "main",
         "kind": "claims",
     }
     record = create(project, "conductor:proof-packet", PHASE, payload)
-    if revision == HEAD:
+    if isinstance(revision, str):
         return record["id"]
     return _store_without_validation(project, record, "revision", revision)
 
@@ -94,11 +94,11 @@ def _landing(
         "effort": EFFORT,
         "number": 7,
         "url": "https://github.com/o/r/pull/7",
-        "head_sha": HEAD,
+        "head_sha": head_sha if isinstance(head_sha, str) else HEAD,
         "result": result,
     }
     record = create(project, "conductor:landing", PHASE, payload)
-    if head_sha == HEAD:
+    if isinstance(head_sha, str):
         return record["id"]
     return _store_without_validation(project, record, "head_sha", head_sha)
 

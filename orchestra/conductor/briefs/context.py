@@ -5,7 +5,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.briefs.render import BriefContext
 from orchestra.conductor.workflow import step_stage
-from orchestra.score.lookups import current_phase
+from orchestra.score.phase import current_phase_model
 
 
 def _adapter(project: Project) -> str:
@@ -13,21 +13,17 @@ def _adapter(project: Project) -> str:
     return config.land_adapter if config.land_configured else ""
 
 
-def _text(value: object, default: str) -> str:
-    return value if isinstance(value, str) and value else default
-
-
 def brief_context(project: Project, phase: str, step: str) -> BriefContext:
-    record = current_phase(phase, project.records())
-    if record is None:
+    records = project.records()
+    model = current_phase_model(phase, records)
+    if model is None:
         raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
-    stage = step_stage(project, project.records(), phase, step)
-    payload = record["payload"]
+    stage = step_stage(project, records, phase, step)
     return BriefContext(
         step=step,
         phase=phase,
-        effort=_text(payload.get("effort"), ""),
+        effort=model.effort,
         stage=stage,
         adapter=_adapter(project),
-        weight=_text(payload.get("weight"), "full"),
+        weight=model.weight or "full",
     )

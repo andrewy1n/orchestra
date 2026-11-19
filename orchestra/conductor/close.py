@@ -13,12 +13,12 @@ from orchestra.canon.types import Record
 from orchestra.conductor.landing import (
     LANDING,
     LandingPlace,
-    latest_landing_record,
-    phase_place_of_record,
+    latest_landing,
+    phase_place,
     task_branch,
     task_worktree,
 )
-from orchestra.score.lookups import current_phase
+from orchestra.score.phase import Phase, current_phase_model
 from orchestra.tools import Git, ToolError
 
 
@@ -50,25 +50,22 @@ def close_phase(
     states: PullRequestStates,
     cwd: Path | None = None,
 ) -> CloseResult:
-    landing = latest_landing_record(project.list("conductor:landing"), phase)
+    landing = latest_landing(project.list(LANDING), phase)
     if landing is None:
         raise CloseError(f"no landing record for phase {phase!r}; run orchestra land first")
-    landed = record_payload(landing)
-    number = landed.get("number")
-    url = landed.get("url")
-    if isinstance(number, bool) or not isinstance(number, int) or not isinstance(url, str):
-        raise CloseError(f"the landing record for phase {phase!r} has no pull request")
+    number = landing.number
+    url = landing.url
     state, head_sha = states.pull_request_state(number)
     if state != "MERGED":
         message = f"pull request {number} is {state}; close waits for the merge"
         return CloseResult(phase, number, url, state, head_sha, False, (), message)
-    record = _phase_record(project, phase)
-    place = phase_place_of_record(record, repo)
+    current = _current_phase(project, phase)
+    place = phase_place(current, repo)
     refusals = _refusals(place, phase, head_sha, cwd)
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
         return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
-    actions = _apply(project, place, record, number, head_sha)
+    actions = _apply(project, place, current, number, head_sha)
     if actions:
         message = f"pull request {number} is MERGED; phase {phase} closed"
     else:
@@ -85,18 +82,18 @@ def landed_phases(project: Project) -> tuple[str, ...]:
     return tuple(seen)
 
 
-def _phase_record(project: Project, phase: str) -> Record:
-    record = current_phase(phase, project.records())
-    if record is None:
+def _current_phase(project: Project, phase: str) -> Phase:
+    current = current_phase_model(phase, project.records())
+    if current is None:
         raise StoreError(f"unknown record: no score:phase with subject {phase!r}")
-    return record
+    return current
 
 
 def pending_close(project: Project, repo: Path, phase: str) -> bool:
-    record = _phase_record(project, phase)
-    if record["lifecycle_state"] != "done":
+    current = _current_phase(project, phase)
+    if current.record["lifecycle_state"] != "done":
         return True
-    place = phase_place_of_record(record, repo)
+    place = phase_place(current, repo)
     if place.worktree.is_dir() or task_worktrees(place, phase):
         return True
     git = Git(place.repo)
@@ -166,9 +163,10 @@ _TRANSITIONS = {"planned": ("in_progress", "done"), "in_progress": ("done",)}
 
 
 def _apply(
-    project: Project, place: LandingPlace, record: Record, number: int, head_sha: str
+    project: Project, place: LandingPlace, phase_model: Phase, number: int, head_sha: str
 ) -> tuple[str, ...]:
-    phase = record["subject"]
+    record = phase_model.record
+    phase = phase_model.subject
     git = Git(place.repo)
     actions: list[str] = []
     trees = [*task_worktrees(place, phase), place.worktree]
@@ -185,9 +183,10 @@ def _apply(
     steps = _TRANSITIONS.get(record["lifecycle_state"], ())
     if not steps:
         return tuple(actions)
-    effort = record_payload(record).get("effort")
-    if isinstance(effort, str) and effort:
-        actions.extend(_update_effort_position(project, effort, phase, number, head_sha))
+    if phase_model.effort:
+        actions.extend(
+            _update_effort_position(project, phase_model.effort, phase, number, head_sha)
+        )
     actions.extend(_close_phase_position(project, phase))
     for step in steps:
         record = project.update(record["id"], transition=step)
