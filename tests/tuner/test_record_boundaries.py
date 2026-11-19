@@ -186,7 +186,8 @@ def test_strict_observation_raises_for_invalid_stores(
 ) -> None:
     _break_store(store, fault, monkeypatch)
 
-    with pytest.raises((StoreBindingError, RuntimeError), match=diagnostic):
+    expected_error = RuntimeError if fault == "config" else StoreBindingError
+    with pytest.raises(expected_error, match=diagnostic):
         record_observation(
             store,
             technique="verdict",
