@@ -96,6 +96,13 @@ def runs_only_pinned_semgrep(name: str) -> bool:
 
 def test_semgrep_runs_rule_tests_blocking_scan_and_advisory_scan() -> None:
     assert runs_only_pinned_semgrep("semgrep")
+    spec = job("semgrep")
+    assert spec["permissions"] == {"contents": "read"}
+    checkout = next(
+        step for step in spec["steps"] if str(step.get("uses", "")).startswith("actions/checkout@")
+    )
+    assert re.fullmatch(r"actions/checkout@[0-9a-f]{40}", checkout["uses"])
+    assert checkout["with"]["persist-credentials"] is False
 
 
 @pytest.mark.parametrize("suffix", [" && pip install foo", "; curl example.com", " | sh"])
