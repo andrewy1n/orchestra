@@ -8,12 +8,11 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import PROOF_PACKET, proof_packet_record
+from orchestra.conductor.landing import LANDING, PROOF_PACKET, latest_landing, proof_packet
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
-from orchestra.score.lookups import current_phase
+from orchestra.score.phase import Phase, current_phase_model
 
-LANDING = "conductor:landing"
 CHECK_RUN = "tuner:check-run"
 REPAIR_LINK = "conductor:repair-link"
 QUESTION = "score:continuity-question"
@@ -43,18 +42,16 @@ def _text(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _landing(
-    records: list[Record], phase_record: Record, members: set[str]
-) -> tuple[str, str] | None:
-    phase = phase_record["subject"]
-    landings = [r for r in records if r["record_type"] == LANDING and _text(r, "phase") == phase]
-    packet = proof_packet_record(records, phase_record)
-    proofs = [] if packet is None else [packet]
-    checks = [r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members]
-    for source, pool in ((LANDING, landings), (PROOF_PACKET, proofs), (CHECK_RUN, checks)):
-        chosen = latest(pool)
-        if chosen is not None:
-            return chosen["recorded_at"], source
+def _landing(records: list[Record], phase: Phase, members: set[str]) -> tuple[str, str] | None:
+    landing = latest_landing(records, phase.subject)
+    if landing is not None:
+        return landing.recorded_at, LANDING
+    packet = proof_packet(records, phase)
+    if packet is not None:
+        return packet.recorded_at, PROOF_PACKET
+    check = latest(r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members)
+    if check is not None:
+        return check["recorded_at"], CHECK_RUN
     return None
 
 
@@ -73,9 +70,9 @@ def _human_decisions(records: list[Record], phase: str) -> int:
     return total
 
 
-def _row(project: Project, records: list[Record], phase_record: Record) -> PhaseRow:
-    phase = phase_record["subject"]
-    weight = _text(phase_record, "weight") or None
+def _row(project: Project, records: list[Record], phase_model: Phase) -> PhaseRow:
+    phase = phase_model.subject
+    weight = phase_model.weight
     acceptance_ids = {
         r["id"]
         for r in records
@@ -87,7 +84,7 @@ def _row(project: Project, records: list[Record], phase_record: Record) -> Phase
     missing: dict[str, str] = {}
     if weight is None:
         missing["weight"] = "the phase record has no weight"
-    landed = _landing(records, phase_record, members)
+    landed = _landing(records, phase_model, members)
     landing_time = landed[0] if landed else None
     landing_source = landed[1] if landed else None
     if landed is None:
@@ -123,7 +120,7 @@ def _row(project: Project, records: list[Record], phase_record: Record) -> Phase
         operations_per_task = sum(counts.values()) / task_count
     return PhaseRow(
         phase=phase,
-        effort=_text(phase_record, "effort"),
+        effort=phase_model.effort,
         weight=weight,
         tasks=len(tasks),
         landing_time=landing_time,
@@ -142,12 +139,12 @@ def build_phase_rows(directory: Path, *, effort: str | None = None) -> list[Phas
     project = open_store(directory, read_only=True)
     records = project.records()
     slugs = dict.fromkeys(r["subject"] for r in records if r["record_type"] == "score:phase")
-    current = (current_phase(slug, records) for slug in slugs)
+    current = (current_phase_model(slug, records) for slug in slugs)
     phases = [
-        r
-        for r in current
-        if r is not None
-        and r["lifecycle_state"] == "done"
-        and (effort is None or _text(r, "effort") == effort)
+        p
+        for p in current
+        if p is not None
+        and p.record["lifecycle_state"] == "done"
+        and (effort is None or p.effort == effort)
     ]
     return [_row(project, records, p) for p in phases]

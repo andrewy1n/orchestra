@@ -6,7 +6,7 @@ from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import Record
-from orchestra.score.lookups import current_phases
+from orchestra.score.phase import Phase, current_phase_model
 
 _RANGE = re.compile(r"^(\d+)-(\d+)$")
 
@@ -23,20 +23,13 @@ class PhaseSelection:
     external_dependencies: tuple[str, ...]
 
 
-PhaseMap: TypeAlias = dict[str, Record]
+PhaseMap: TypeAlias = dict[str, Phase]
 
 
-def _ordinal(record: Record) -> int:
-    value = record["payload"].get("ordinal")
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise PhaseSelectionError(f"phase {record['subject']!r} has no valid ordinal")
-    return value
-
-
-def _dependency_values(record: Record) -> list[str]:
-    value = record["payload"].get("depends_on", [])
+def _dependency_values(phase: Phase) -> list[str]:
+    value = phase.record["payload"].get("depends_on", [])
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        raise PhaseSelectionError(f"phase {record['subject']!r} has invalid dependencies")
+        raise PhaseSelectionError(f"phase {phase.subject!r} has invalid dependencies")
     return [item for item in value if isinstance(item, str)]
 
 
@@ -45,11 +38,11 @@ def _effort_phases(records: list[Record], effort_subject: str) -> tuple[Record, 
     effort = index.resolve_subject("score:effort", effort_subject)
     if effort is None:
         raise PhaseSelectionError(f"unknown effort {effort_subject!r}")
-    all_phases = current_phases(records)
+    slugs = dict.fromkeys(r["subject"] for r in records if r["record_type"] == "score:phase")
+    current = ((slug, current_phase_model(slug, records)) for slug in slugs)
+    all_phases = {slug: phase for slug, phase in current if phase is not None}
     phases = {
-        subject: record
-        for subject, record in all_phases.items()
-        if record["payload"].get("effort") == effort_subject
+        subject: phase for subject, phase in all_phases.items() if phase.effort == effort_subject
     }
     return effort, phases, all_phases
 
@@ -57,7 +50,7 @@ def _effort_phases(records: list[Record], effort_subject: str) -> tuple[Record, 
 def _select_tokens(scoped: PhaseMap, all_phases: PhaseMap, selector: str) -> list[str]:
     ordinals: dict[int, list[str]] = {}
     for subject, phase in scoped.items():
-        ordinals.setdefault(_ordinal(phase), []).append(subject)
+        ordinals.setdefault(phase.ordinal, []).append(subject)
     for subjects in ordinals.values():
         subjects.sort()
     selected: list[str] = []
@@ -115,7 +108,7 @@ def resolve_phase_selection(
                 raise PhaseSelectionError(
                     f"phase {subject!r} depends on unknown phase {dependency!r}"
                 )
-            if target["payload"].get("effort") != effort_subject:
+            if target.effort != effort_subject:
                 raise PhaseSelectionError(
                     f"phase {subject!r} depends on phase {dependency!r} from another effort"
                 )
@@ -131,7 +124,7 @@ def resolve_phase_selection(
         ready = [subject for subject, items in remaining.items() if not items]
         if not ready:
             raise PhaseSelectionError("phase dependencies contain a cycle")
-        ready.sort(key=lambda subject: (_ordinal(scoped[subject]), subject))
+        ready.sort(key=lambda subject: (scoped[subject].ordinal, subject))
         for subject in ready:
             ordered.append(subject)
             remaining.pop(subject)
@@ -139,7 +132,7 @@ def resolve_phase_selection(
             items.difference_update(ready)
 
     external_dependencies = tuple(
-        sorted(external, key=lambda subject: (_ordinal(all_phases[subject]), subject))
+        sorted(external, key=lambda subject: (all_phases[subject].ordinal, subject))
     )
     return PhaseSelection(
         effort=effort,

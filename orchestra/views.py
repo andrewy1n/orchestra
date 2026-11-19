@@ -14,8 +14,9 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.query import latest
+from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor.landing import latest_landing_record, parse_landing, proof_packet_record
+from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
 from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
 from orchestra.derive import (
     effort_dormant,
@@ -28,6 +29,7 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
+from orchestra.score.phase import read_phase
 from orchestra.score.requirements import phase_requirements
 from orchestra.score.workflow_blockers import human_gates
 
@@ -582,21 +584,20 @@ def _group_records(
     return groups
 
 
-def _phase_close_step(phase: Record, records: list[Record]) -> str:
-    slug = phase["subject"]
-    landing = latest_landing_record(records, slug)
-    if landing is not None:
-        landed = record_payload(landing)
-        if landed.get("result") == "success":
-            return (
-                f"Awaiting merge: PR {landed.get('number')} ({landed.get('url')}). "
-                f"After the merge, `orchestra close --phase {shlex.quote(slug)}` moves the phase to done."
-            )
+def _phase_close_step(record: Record, records: list[Record]) -> str:
+    phase = read_phase(record)
+    slug = phase.subject
+    landing = latest_landing(records, slug)
+    if landing is not None and landing.result == "success":
+        return (
+            f"Awaiting merge: PR {landing.number} ({landing.url}). "
+            f"After the merge, `orchestra close --phase {shlex.quote(slug)}` moves the phase to done."
+        )
     gate = f"Run `orchestra gate {shlex.quote(slug)}`."
-    if proof_packet_record(records, phase) is None:
+    if proof_packet(records, phase) is None:
         return f"{gate} After it passes, record the proof packet for any code or claim changes."
     checks = "verify the proof packet covers the phase head"
-    if parse_landing(phase.get("body", "")).present:
+    if parse_landing(phase.body).present:
         checks += " and confirm landing"
     return f"{gate} After it passes, {checks}."
 
@@ -769,21 +770,11 @@ def _brief_block(record: Record, role: Role) -> str:
     return "\n".join(lines)
 
 
-_SECTION_HEADING = re.compile(r"^## (.+?)\s*$")
 _REQUIREMENT_ID_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 
 
 def _body_sections(record: Record) -> dict[str, str]:
-    body = record.get("body") or ""
-    sections: dict[str, list[str]] = {}
-    current: list[str] | None = None
-    for line in body.splitlines():
-        heading = _SECTION_HEADING.match(line)
-        if heading:
-            current = sections.setdefault(heading.group(1), [])
-        elif current is not None:
-            current.append(line)
-    return {name: "\n".join(lines).strip() for name, lines in sections.items()}
+    return body_sections(record.get("body") or "")
 
 
 def _requirement_lines(text: str) -> dict[str, str]:
