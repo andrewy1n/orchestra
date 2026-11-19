@@ -141,11 +141,7 @@ def test_r6_landing_proof_state_uses_the_id_tiebreak() -> None:
     failed = _landing("rec-a", result="success")
     newest = _landing("rec-b", result="fail")
 
-    assert landing_proof_state([failed, newest, _packet("rec-p")], _phase_record()) == "failed"
-
-
-def _phase_record() -> Record:
-    return _phase().record
+    assert landing_proof_state([failed, newest, _packet("rec-p")], _phase()) == "failed"
 
 
 def test_r8_proof_packet_without_effort_reads_with_no_effort() -> None:
@@ -229,7 +225,7 @@ def test_r9_landing_without_effort_is_the_latest_landing_of_its_phase() -> None:
 
 
 def test_r9_landing_without_effort_lands_the_phase() -> None:
-    state = landing_proof_state([_landing("rec-a"), _packet("rec-p")], _phase_record())
+    state = landing_proof_state([_landing("rec-a"), _packet("rec-p")], _phase())
 
     assert state == "landed"
 

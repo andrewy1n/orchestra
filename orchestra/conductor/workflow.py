@@ -406,8 +406,8 @@ def _proof_packet(
 
 def _landing_proof_state(records: list[Record], phase: Phase) -> LandingProofState:
     try:
-        return landing_proof_state(records, phase.record)
-    except LandingProofError as exc:
+        return landing_proof_state(records, phase)
+    except (LandingProofError, RecordShapeError) as exc:
         raise WorkflowRunError(str(exc)) from exc
 
 

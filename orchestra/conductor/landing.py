@@ -14,6 +14,7 @@ from orchestra.canon.query import latest
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.revision import revision_matches
+from orchestra.score.lookups import corrected_ids
 from orchestra.score.phase import Phase
 
 LANDING = "conductor:landing"
@@ -112,19 +113,15 @@ def read_proof_packet(record: Record) -> ProofPacket:
     )
 
 
-def latest_landing_record(records: Sequence[Record], phase: str) -> Record | None:
-    return latest(
+def latest_landing(records: Sequence[Record], phase: str) -> Landing | None:
+    """Return the newest landing for a phase, or None."""
+    record = latest(
         [
             record
             for record in records
             if record["record_type"] == LANDING and record_payload(record).get("phase") == phase
         ]
     )
-
-
-def latest_landing(records: Sequence[Record], phase: str) -> Landing | None:
-    """Return the newest landing for a phase, or None."""
-    record = latest_landing_record(records, phase)
     return read_landing(record) if record is not None else None
 
 
@@ -272,10 +269,6 @@ def phase_place(phase: Phase, store: Path) -> LandingPlace:
     return _place(phase.subject, parse_landing(phase.body), store)
 
 
-def phase_place_of_record(phase: Record, store: Path) -> LandingPlace:
-    return _place(phase["subject"], parse_landing(phase.get("body") or ""), store)
-
-
 def place_of_body(slug: str, body: str, store: Path) -> LandingPlace | None:
     spec = parse_landing(body)
     if not spec.present:
@@ -296,14 +289,6 @@ def task_branch(phase: str, task: str) -> str:
     return f"task/{phase}/{task}"
 
 
-def _corrected_ids(records: Sequence[Record]) -> set[str]:
-    return {
-        target
-        for record in records
-        for target in (record.get("relationships") or {}).get("corrects") or []
-    }
-
-
 def _effort(record: Record) -> str | None:
     value = record_payload(record).get("effort")
     return value if isinstance(value, str) and value else None
@@ -317,13 +302,13 @@ def _belongs(packet: Record, slug: str, effort: str | None, corrected: set[str])
 
 
 def belongs_to_phase(records: Sequence[Record], phase: Record, packet: Record) -> bool:
-    return _belongs(packet, phase["subject"], _effort(phase), _corrected_ids(records))
+    return _belongs(packet, phase["subject"], _effort(phase), corrected_ids(records))
 
 
 def _latest_packet_record(
     records: Sequence[Record], slug: str, effort: str | None, head: str | None
 ) -> Record | None:
-    corrected = _corrected_ids(records)
+    corrected = corrected_ids(records)
     return latest(
         [
             record
@@ -345,12 +330,6 @@ def proof_packet(
     return read_proof_packet(record) if record is not None else None
 
 
-def proof_packet_record(
-    records: Sequence[Record], phase: Record, head: str | None = None
-) -> Record | None:
-    return _latest_packet_record(records, phase["subject"], _effort(phase), head)
-
-
 class LandingProofError(ValueError):
     def __init__(self, record_id: str, field: str) -> None:
         super().__init__(f"{record_id}: payload field {field!r} is missing or not a string")
@@ -358,23 +337,33 @@ class LandingProofError(ValueError):
         self.field = field
 
 
-def _proof_text(record: Record, field: str) -> str:
-    value = record_payload(record).get(field)
-    if not isinstance(value, str):
-        raise LandingProofError(record["id"], field)
-    return value
+def _failed_landing(records: Sequence[Record], record_id: str) -> bool:
+    return any(
+        record["id"] == record_id and record_payload(record).get("result") != "success"
+        for record in records
+    )
 
 
-def landing_proof_state(records: Sequence[Record], phase: Record) -> LandingProofState:
+def landing_proof_state(records: Sequence[Record], phase: Phase) -> LandingProofState:
     """Decide where a phase's latest landing stands against its latest proof packet."""
-    landing = latest_landing_record(records, phase["subject"])
+    try:
+        landing = latest_landing(records, phase.subject)
+    except RecordShapeError as error:
+        if error.field != "head_sha":
+            raise
+        if _failed_landing(records, error.record_id):
+            return "failed"
+        raise LandingProofError(error.record_id, error.field) from error
     if landing is None:
         return "no-landing"
-    if record_payload(landing).get("result") != "success":
+    if landing.result != "success":
         return "failed"
-    packet = proof_packet_record(records, phase)
+    try:
+        packet = proof_packet(records, phase)
+    except RecordShapeError as error:
+        if error.field != "revision":
+            raise
+        raise LandingProofError(error.record_id, error.field) from error
     if packet is None:
         return "no-packet"
-    head = _proof_text(landing, "head_sha")
-    revision = _proof_text(packet, "revision")
-    return "landed" if revision_matches(head, revision) else "not-at-head"
+    return "landed" if revision_matches(landing.head_sha, packet.revision) else "not-at-head"
