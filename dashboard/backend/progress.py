@@ -9,12 +9,13 @@ from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.stages import surface_progress, unavailable_progress
 from dashboard.backend.task import TaskRow, run_fact_int
+from orchestra.conductor.phase_progress import STAGES
 
 BLOCKER_LIMIT = 2
 DEFAULT_FIX_TASK_LIMIT = 3
 _FINISHED = ("done", "withdrawn")
 _READY_TO_CLOSE = "ready-to-close"
-_REASONED_STAGES = ("verify", "land", "close")
+_REASONED_FROM = STAGES.index("verify")
 
 
 @dataclass(frozen=True)
@@ -131,7 +132,8 @@ def build_progress(
         blockers.append(f"{_plural(len(statuses) - proven, 'requirement')} not proven")
     if (
         not surface.blocked_by
-        and surface.current in _REASONED_STAGES
+        and surface.current is not None
+        and STAGES.index(surface.current) >= _REASONED_FROM
         and surface.reason not in ("", _READY_TO_CLOSE)
     ):
         blockers.append(f"{surface.current}: {surface.reason}")
