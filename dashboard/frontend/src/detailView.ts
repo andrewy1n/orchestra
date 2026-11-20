@@ -449,8 +449,15 @@ export function taskBoard(payload: unknown): TaskBoardRow[] {
 export function evidenceBoard(payload: unknown): EvidenceBoard {
 	const evidence = obj(obj(obj(payload).detail).evidence);
 	const facts: EvidenceFact[] = [];
-	if (evidence.stage)
-		facts.push({ label: "stage", value: str(evidence.stage) });
+	if (evidence.stage) {
+		const reason = str(evidence.stage_reason);
+		facts.push({
+			label: "stage",
+			value: reason
+				? `${str(evidence.stage)} · ${reason}`
+				: str(evidence.stage),
+		});
+	}
 	if (evidence.weight)
 		facts.push({ label: "weight", value: str(evidence.weight) });
 	if (evidence.release_state) {

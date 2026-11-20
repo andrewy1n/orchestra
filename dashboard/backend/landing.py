@@ -61,16 +61,6 @@ def rev_parse_token(root: Path, *refs: str) -> str | None:
         return None
 
 
-def landings_for_phases(root: Path, phases: list[tuple[str, str]]) -> dict[str, Landing]:
-    """Map phase subject → Landing for phases whose body has a Landing section."""
-    out: dict[str, Landing] = {}
-    for subject, body in phases:
-        state = phase_landing(root, body, subject)
-        if state is not None:
-            out[subject] = state
-    return out
-
-
 def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
     branch = landing_branch(body, subject, root)
     if branch is None:

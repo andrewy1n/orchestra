@@ -8,7 +8,6 @@ from datetime import datetime
 
 from dashboard.backend.records import (
     INACTIVE_STATES,
-    derived_values,
     list_records,
     live_records,
     merge_aliases,
@@ -18,7 +17,8 @@ from dashboard.backend.records import (
     remap_records,
     section,
 )
-from dashboard.backend.store import ModelError
+from dashboard.backend.stages import load_phase_progress, surface_progress
+from dashboard.backend.store import ModelError, change_token
 from dashboard.backend.task import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     AcceptanceRow,
@@ -40,13 +40,13 @@ from orchestra.conductor.head_evidence import (
 )
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.phase_progress import PhaseProgress
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
-LOOP_NEXT = ("specify", "design", "plan", "execute", "integrate", "verify", "release")
 
 
 @dataclass(frozen=True)
@@ -69,6 +69,7 @@ class PhaseRow:
     milestone_title: str = ""
     in_progress: tuple[str, ...] = ()
     updated_at: datetime | None = None
+    progress: PhaseProgress | None = None
 
 
 @dataclass(frozen=True)
@@ -519,6 +520,7 @@ class PhaseEvidence:
     decisions: tuple[DecisionChoice, ...]
     non_goals: str
     release_state: str = ""
+    stage_reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -575,76 +577,22 @@ def _derivation_pool(
     ]
 
 
-def _stage(
+def _release_ready(
     phase: str,
     effort: str,
-    spec_ids: list[str],
-    designs: list[Record],
-    tasks: list[Record],
-    acceptances: list[Record],
-    checks: list[Record],
     assessments: list[Record],
-    reports: list[Record],
     releases: list[Record],
-    derived_ready: bool = False,
-) -> tuple[str, bool]:
+    derived_ready: bool,
+) -> bool:
     latest_release = newest_record(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
-        return "release", True
-    latest = {
-        requirement: record
-        for (record_phase, requirement), record in latest_assessment_map(assessments).items()
+        return True
+    unproven = any(
+        record_payload(record).get("status") != "verified"
+        for (record_phase, _), record in latest_assessment_map(assessments).items()
         if record_phase == phase
-    }
-    non_verified = [
-        record for record in latest.values() if record_payload(record).get("status") != "verified"
-    ]
-    if non_verified:
-
-        def rank(record: Record) -> int:
-            nxt = record_payload(record).get("next", "")
-            return LOOP_NEXT.index(nxt) if nxt in LOOP_NEXT else len(LOOP_NEXT)
-
-        return record_payload(min(non_verified, key=rank)).get("next", ""), False
-    if derived_ready:
-        return "release", True
-    if spec_ids and all(
-        record_payload(latest.get(req) or {}).get("status") == "verified" for req in spec_ids
-    ):
-        return "release", False
-    if not _for_phase(designs, phase, effort):
-        return "design", False
-    counted = [
-        task
-        for task in tasks
-        if record_payload(task).get("phase") == phase
-        and task.get("lifecycle_state") in LIVE_WORK_ITEM_STATES
-    ]
-    if not counted:
-        return "plan", False
-    if any(task.get("lifecycle_state") != "done" for task in counted):
-        return "execute", False
-    waves: dict[int | None, int] = {}
-    for task in counted:
-        wave = derived_values(task).get("wave")
-        waves[wave] = waves.get(wave, 0) + 1
-    passing = any(
-        record_payload(report).get("result") == "pass"
-        for report in _for_phase(reports, phase, effort)
     )
-    if any(count > 1 for count in waves.values()) and not passing:
-        return "integrate", False
-    checked = {
-        record_payload(check).get("criterion_id")
-        for check in checks
-        if check.get("lifecycle_state") not in INACTIVE_STATES
-    }
-    if any(
-        record_payload(record).get("requirement") and record["id"] not in checked
-        for record in _for_phase(acceptances, phase, effort)
-    ):
-        return "verify", False
-    return "assess", False
+    return derived_ready and not unproven
 
 
 def phase_evidence(
@@ -660,6 +608,7 @@ def phase_evidence(
     reports: list[Record],
     releases: list[Record],
     phases: list[Record] | None = None,
+    progress: PhaseProgress | None = None,
 ) -> PhaseEvidence | None:
     spec = light_specification(phase, effort, phases or []) or newest_record(
         _for_phase(specs, phase, effort)
@@ -710,31 +659,22 @@ def phase_evidence(
             record_payload(report).get("result", ""),
             section(report.get("body") or "", "Conflicts"),
         )
-    stage, release_ready = _stage(
-        phase,
-        effort,
-        spec_ids,
-        designs,
-        tasks,
-        acceptances,
-        checks,
-        assessments,
-        reports,
-        releases,
-        ready,
-    )
+    weight = record_payload(spec).get("weight", "")
+    surface = surface_progress(weight, progress) if progress is not None else None
+    release_ready = _release_ready(phase, effort, assessments, releases, ready)
     latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
     return PhaseEvidence(
         phase,
-        record_payload(spec).get("weight", ""),
+        weight,
         tuple(rows),
-        stage,
+        (surface.current or "") if surface is not None else "",
         integration,
         release_ready,
         _choices(subjects, decisions),
         section(spec.get("body") or "", "Non-goals"),
         release_state=release_state,
+        stage_reason=surface.reason if surface is not None else "",
     )
 
 
@@ -937,6 +877,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         by_effort("conductor:integration-report").get(effort, []),
         by_effort("conductor:release").get(effort, []),
         snapshot_phases,
+        load_phase_progress(target, change_token(target)).get(phase_subject),
     )
     decisions = [
         RelatedRecord("decision", r["id"], r["subject"], record_payload(r).get("choice", ""))

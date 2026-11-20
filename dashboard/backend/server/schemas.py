@@ -176,6 +176,8 @@ class BlockerSummary(Model):
 
 class Progress(Model):
     weight: str
+    current: str
+    reason: str
     stages: list[Stage]
     tasks: TaskProgress
     requirements: RequirementProgress
@@ -345,6 +347,7 @@ class PhaseEvidence(Model):
     decisions: list[DecisionChoice]
     non_goals: str
     release_state: str
+    stage_reason: str
 
 
 class ProofView(Model):

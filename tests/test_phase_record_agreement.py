@@ -524,7 +524,7 @@ def test_r5_every_reader_selects_the_same_latest_landing_record(
     assert _agreed(picks, R5_CASES, "landing") == {name: {LANDING_WINNER} for name in R5_CASES}
 
 
-def test_r5_dashboard_exposes_no_landing_record(
+def test_r5_dashboard_reads_the_latest_landing_through_the_progress_model_and_exposes_no_record(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     picks = _drive(tmp_path, monkeypatch, {"dashboard": Case(_through_phase_detail)})
@@ -532,7 +532,7 @@ def test_r5_dashboard_exposes_no_landing_record(
 
     shown = repr(load_snapshot(project)) + repr(load_phase_detail(project, EFFORT, PHASE))
 
-    assert picks.of("dashboard", "landing") == set()
+    assert picks.of("dashboard", "landing") == {LANDING_WINNER}
     assert not [record_id for record_id in LANDING_NUMBERS.values() if record_id in shown]
 
 

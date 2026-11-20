@@ -278,7 +278,7 @@ def test_snapshot_release_ready_derived(store, cli, defs):
     assert view.release_ready is True
     evidence = view.phases[0].evidence
     assert evidence is not None
-    assert (evidence.stage, evidence.release_ready, evidence.release_state) == ("release", True, "")
+    assert (evidence.stage, evidence.release_ready, evidence.release_state) == ("tasks", True, "")
 
 
 def test_phase_progress_derived(store, cli, defs):

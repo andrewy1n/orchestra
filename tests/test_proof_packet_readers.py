@@ -15,8 +15,7 @@ from orchestra.canon.types import JsonObject
 from orchestra.metrics.phases import build_phase_rows
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend.gates import landing_branch
-from dashboard.backend.landing import phase_landing
+from dashboard.backend.landing import landing_branch, phase_landing
 from dashboard.backend.phase import load_phase_detail
 
 EFFORT = "alpha"

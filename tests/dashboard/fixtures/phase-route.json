@@ -35,7 +35,8 @@
             "text": ""
           }
         ],
-        "stage": "design",
+        "stage": "tasks",
+        "stage_reason": "human gate: alpha, human-finding",
         "weight": "light"
       },
       "milestone": "",

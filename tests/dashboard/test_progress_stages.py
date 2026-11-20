@@ -1,229 +1,260 @@
-"""Tests for phase progress stages (R5, R6, R7)."""
+"""Tests for the shared stage list on the hub card and the phase page (R3)."""
 
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
-from conftest import REPO_ROOT
+from conftest import REPO_ROOT, git
+from test_review_stage import EFFORT, _project_with_phases
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend.progress import derive_stages
+from dashboard.backend import stages
+from dashboard.backend.phase import PhaseEvidence, PhaseRow
+from dashboard.backend.progress import build_progress
+from dashboard.backend.server import service
+from dashboard.backend.stages import surface_progress
+from orchestra.canon.types import Record
+from orchestra.conductor.phase_progress import (
+    STAGES,
+    AcceptanceHold,
+    ExecutionVerdict,
+    HumanGateFact,
+    PhaseFacts,
+    PhaseProgress,
+    Readiness,
+    TaskFact,
+    VerifyFacts,
+    assess,
+)
+from orchestra.score.phase import Phase, read_phase
+from orchestra.tools import Unmerged, branch_state
 
-FULL_IDS = ["spec", "design", "tasks", "execute", "verify", "review", "land", "close"]
-LIGHT_IDS = ["tasks", "execute", "verify", "review", "land", "close"]
-
-ALL_DONE = {
-    "weight": "full",
-    "phase_state": "done",
-    "approved": frozenset({"spec", "design", "plan"}),
-    "task_states": ("done", "done"),
-    "requirement_statuses": ("verified", "verified"),
-    "review_passed_at_head": True,
-    "branch_merged": True,
-}
-
-
-def _stages(**overrides):
-    return derive_stages(**{**ALL_DONE, **overrides})
-
-
-def _states(**overrides) -> dict[str, str]:
-    return {stage.id: stage.state for stage in _stages(**overrides)}
-
-
-def _current(**overrides) -> str | None:
-    current = [stage.id for stage in _stages(**overrides) if stage.state == "current"]
-    assert len(current) <= 1
-    return current[0] if current else None
+FULL_IDS = list(STAGES)
+LIGHT_IDS = ["tasks", "execute", "verify", "land", "close"]
+READY = Readiness(True)
 
 
-def _in_progress(**overrides):
-    base = {
-        "phase_state": "in_progress",
-        "approved": frozenset(),
-        "task_states": (),
-        "requirement_statuses": ("unverified",),
-        "review_passed_at_head": False,
-        "branch_merged": False,
+def _record(weight: str) -> Record:
+    return {
+        "id": "rec-phase",
+        "record_type": "score:phase",
+        "subject": "ph",
+        "payload": {"title": "Ph", "ordinal": 1, "effort": "ef", "weight": weight},
+        "lifecycle_state": "in_progress",
+        "relationships": {},
+        "revision": "r1",
+        "recorded_at": "2026-01-01T00:00:00Z",
+        "body": "",
     }
-    return {**base, **overrides}
 
 
-def test_r5_lists_eight_stages_in_order() -> None:
-    stages = _stages(**_in_progress())
-    assert [stage.id for stage in stages] == FULL_IDS
-
-
-def test_r5_nothing_done_marks_first_stage_current_and_rest_pending() -> None:
-    states = [stage.state for stage in _stages(**_in_progress())]
-    assert states == ["current"] + ["pending"] * 7
-
-
-def test_r5_states_are_done_current_or_pending() -> None:
-    stages = _stages(**_in_progress(approved=frozenset({"spec"})))
-    assert {stage.state for stage in stages} == {"done", "current", "pending"}
-
-
-def test_r5_exactly_one_current_with_done_stages_before_it() -> None:
-    stages = _stages(
-        **_in_progress(
-            approved=frozenset({"spec", "design", "plan"}),
-            task_states=("done", "in_progress"),
-        )
-    )
-    states = [stage.state for stage in stages]
-    assert states.count("current") == 1
-    assert states == ["done", "done", "done", "current", "pending", "pending", "pending", "pending"]
-
-
-def test_r5_finished_phase_has_every_stage_done_and_no_current() -> None:
-    stages = _stages()
-    assert [stage.id for stage in stages] == FULL_IDS
-    assert {stage.state for stage in stages} == {"done"}
-
-
-def test_r6_light_phase_omits_spec_and_design() -> None:
-    stages = _stages(**_in_progress(weight="light"))
-    assert [stage.id for stage in stages] == LIGHT_IDS
-
-
-def test_r6_light_phase_has_six_stages_and_first_is_current() -> None:
-    stages = _stages(**_in_progress(weight="light"))
-    assert len(stages) == 6
-    assert stages[0].state == "current"
-
-
-def test_r6_light_phase_ignores_missing_spec_and_design_approval() -> None:
-    states = _states(**_in_progress(weight="light", approved=frozenset({"plan"})))
-    assert states["tasks"] == "done"
-    assert states["execute"] == "current"
-
-
-def test_r6_full_phase_keeps_spec_and_design() -> None:
-    assert [stage.id for stage in _stages(weight="full")] == FULL_IDS
-
-
-@pytest.mark.parametrize(
-    ("stage", "approved", "expected"),
-    [
-        ("spec", frozenset({"spec"}), "done"),
-        ("spec", frozenset({"design", "plan"}), "pending"),
-        ("design", frozenset({"design"}), "done"),
-        ("design", frozenset({"spec", "plan"}), "pending"),
-        ("tasks", frozenset({"plan"}), "done"),
-        ("tasks", frozenset({"spec", "design"}), "pending"),
-    ],
-)
-def test_r7_approval_stages_follow_approved_records(stage, approved, expected) -> None:
-    states = _states(**_in_progress(approved=approved))
-    assert (states[stage] == "done") is (expected == "done")
-
-
-def test_r7_execute_done_when_every_task_done() -> None:
-    states = _states(**_in_progress(task_states=("done", "done", "done")))
-    assert states["execute"] == "done"
-
-
-@pytest.mark.parametrize("task_states", [("done", "in_progress"), ("done", "planned"), ()])
-def test_r7_execute_not_done_when_a_task_is_open_or_absent(task_states) -> None:
-    states = _states(**_in_progress(task_states=task_states))
-    assert states["execute"] != "done"
-
-
-def test_r7_verify_done_when_every_requirement_verified() -> None:
-    states = _states(**_in_progress(requirement_statuses=("verified", "verified")))
-    assert states["verify"] == "done"
-
-
-@pytest.mark.parametrize(
-    "statuses", [("verified", "unverified"), ("verified", "failing"), ("unverified",)]
-)
-def test_r7_verify_not_done_when_a_requirement_is_not_proven(statuses) -> None:
-    states = _states(**_in_progress(requirement_statuses=statuses))
-    assert states["verify"] != "done"
-
-
-def test_r7_review_done_with_passing_review_at_head() -> None:
-    assert _states(**_in_progress(review_passed_at_head=True))["review"] == "done"
-
-
-def test_r7_review_not_done_without_passing_review_at_head() -> None:
-    assert _states(**_in_progress(review_passed_at_head=False))["review"] != "done"
-
-
-def test_r7_land_done_when_branch_merged() -> None:
-    assert _states(**_in_progress(branch_merged=True))["land"] == "done"
-
-
-def test_r7_land_not_done_when_branch_unmerged() -> None:
-    assert _states(**_in_progress(branch_merged=False))["land"] != "done"
-
-
-def test_r7_close_done_when_phase_done() -> None:
-    assert _states(**_in_progress(phase_state="done"))["close"] == "done"
-
-
-def test_r7_close_not_done_when_phase_in_progress() -> None:
-    assert _states(**_in_progress(phase_state="in_progress"))["close"] != "done"
-
-
-def test_r7_current_is_first_stage_not_done() -> None:
-    assert _current(**_in_progress()) == "spec"
-    assert _current(**_in_progress(approved=frozenset({"spec"}))) == "design"
-    assert _current(**_in_progress(approved=frozenset({"spec", "design"}))) == "tasks"
-    approved = frozenset({"spec", "design", "plan"})
-    assert _current(**_in_progress(approved=approved)) == "execute"
-    done_tasks = ("done",)
-    assert _current(**_in_progress(approved=approved, task_states=done_tasks)) == "verify"
-    proven = ("verified",)
-    assert (
-        _current(
-            **_in_progress(approved=approved, task_states=done_tasks, requirement_statuses=proven)
-        )
-        == "review"
+def _facts(weight: str) -> PhaseFacts:
+    return PhaseFacts(
+        phase=read_phase(_record(weight)),
+        lifecycle="in_progress",
+        spec=Readiness(False, "spec review is missing"),
+        design=Readiness(False, "design review is missing"),
+        tasks_review=Readiness(False, "tasks review is missing"),
+        plan=Readiness(False, "task plan is not ready"),
+        tasks=(),
+        acceptances=(),
+        integration="not-required",
+        verify=None,
+        landing=None,
+        branch=None,
+        gates=(),
+        prerequisites=(),
     )
 
 
-def test_r7_current_skips_back_to_earliest_gap_when_later_stages_are_done() -> None:
-    assert _current(**_in_progress(approved=frozenset({"design", "plan"}))) == "spec"
-    assert _current(task_states=("done", "planned")) == "execute"
-    assert _current(branch_merged=False, phase_state="in_progress") == "land"
-    states = _states(**_in_progress(approved=frozenset({"design", "plan"})))
-    assert states["spec"] == "current"
-    assert states["design"] == "done"
+def _executed(weight: str) -> PhaseFacts:
+    return replace(
+        _facts(weight),
+        spec=READY,
+        design=READY,
+        tasks_review=READY,
+        plan=READY,
+        tasks=(TaskFact("t1", "done", ExecutionVerdict("pass", "pass")),),
+        acceptances=(AcceptanceHold("a1", True, True),),
+    )
 
 
-def test_r7_land_is_current_after_review_passes_and_branch_unmerged() -> None:
-    assert _current(**{**ALL_DONE, "branch_merged": False, "phase_state": "in_progress"}) == "land"
+def _row(weight: str, progress: PhaseProgress) -> PhaseRow:
+    return PhaseRow(
+        subject="ph",
+        title="Ph",
+        ordinal=1,
+        state="in_progress",
+        done=1,
+        total=1,
+        evidence=PhaseEvidence(
+            phase="ph",
+            weight=weight,
+            requirements=(),
+            stage="",
+            integration=None,
+            release_ready=False,
+            decisions=(),
+            non_goals="",
+        ),
+        progress=progress,
+    )
 
 
-def test_r7_close_is_current_after_land() -> None:
-    assert _current(phase_state="in_progress") == "close"
+def _states(progress: PhaseProgress) -> dict[str, str]:
+    return {state.stage: state.status for state in progress.stages}
 
 
-def test_r18_full_phase_with_tasks_and_no_approvals_shows_execute_current() -> None:
-    states = _states(**_in_progress(task_states=("todo", "todo", "todo", "todo")))
-    assert states["spec"] == "done"
-    assert states["design"] == "done"
-    assert states["tasks"] == "done"
-    assert _current(**_in_progress(task_states=("todo", "todo", "todo", "todo"))) == "execute"
+def test_light_phase_surface_lists_tasks_through_close() -> None:
+    surface = surface_progress("light", assess(_facts("light")))
+
+    assert [state.stage for state in surface.stages] == LIGHT_IDS
 
 
-def test_r18_full_phase_without_tasks_or_approvals_shows_spec_current() -> None:
-    assert _current(**_in_progress()) == "spec"
+def test_full_phase_surface_lists_all_seven_stages() -> None:
+    surface = surface_progress("full", assess(_facts("full")))
+
+    assert [state.stage for state in surface.stages] == FULL_IDS
 
 
-def test_r18_light_phase_with_tasks_still_omits_spec_and_design() -> None:
-    kwargs = _in_progress(weight="light", task_states=("todo", "todo"))
-    stages = _stages(**kwargs)
-    assert [stage.id for stage in stages] == LIGHT_IDS
-    assert _states(**kwargs)["tasks"] == "done"
-    assert _current(**kwargs) == "execute"
+def test_light_phase_surface_keeps_the_assessed_status_of_later_stages() -> None:
+    facts = replace(
+        _executed("light"),
+        verify=VerifyFacts("", False, (), False),
+    )
+
+    surface = surface_progress("light", assess(facts))
+
+    assert _states(surface) == {
+        "tasks": "done",
+        "execute": "done",
+        "verify": "current",
+        "land": "pending",
+        "close": "pending",
+    }
+    assert (surface.current, surface.reason) == ("verify", "reviewer")
 
 
-def test_r18_approvals_without_tasks_keep_their_stage_done() -> None:
-    states = _states(**_in_progress(approved=frozenset({"spec"})))
-    assert states["spec"] == "done"
-    assert states["design"] == "current"
-    assert states["tasks"] == "pending"
+def test_light_phase_surface_marks_tasks_current_while_spec_or_design_is_open() -> None:
+    surface = surface_progress("light", assess(_facts("light")))
+
+    assert _states(surface)["tasks"] == "current"
+    assert surface.current == "tasks"
+    assert surface.reason == "spec review is missing"
+
+
+def test_light_phase_surface_marks_tasks_blocked_while_a_gate_blocks_the_open_spec() -> None:
+    facts = replace(_facts("light"), gates=(HumanGateFact("needs-a-human"),))
+
+    surface = surface_progress("light", assess(facts))
+
+    assert _states(surface)["tasks"] == "blocked"
+    assert surface.blocked_by == ("needs-a-human",)
+
+
+def test_light_phase_surface_never_marks_a_later_stage_done_after_an_unknown_close() -> None:
+    facts = replace(_executed("light"), verify=VerifyFacts("", True, (), True), landing="landed")
+
+    surface = surface_progress("light", assess(facts))
+
+    assert _states(surface)["land"] == "done"
+    assert _states(surface)["close"] == "unknown"
+
+
+def test_light_phase_card_shows_tasks_through_close() -> None:
+    surface = assess(replace(_executed("light"), verify=VerifyFacts("", False, (), False)))
+
+    card = build_progress(_row("light", surface), [], [])
+
+    assert [stage.id for stage in card.stages] == LIGHT_IDS
+
+
+def test_full_phase_card_shows_all_seven_stages() -> None:
+    surface = assess(replace(_executed("full"), verify=VerifyFacts("", False, (), False)))
+
+    card = build_progress(_row("full", surface), [], [])
+
+    assert [stage.id for stage in card.stages] == FULL_IDS
+
+
+def test_light_phase_card_carries_the_current_stage_and_reason() -> None:
+    surface = assess(replace(_executed("light"), verify=VerifyFacts("", False, (), False)))
+
+    card = build_progress(_row("light", surface), [], [])
+
+    assert (card.current, card.reason) == ("verify", "reviewer")
+
+
+def test_light_phase_card_blocker_names_the_close_reason_for_an_unmerged_branch() -> None:
+    facts = replace(
+        _executed("light"),
+        verify=VerifyFacts("", True, (), True),
+        landing="landed",
+        branch=Unmerged("abc", 2),
+    )
+
+    card = build_progress(_row("light", assess(facts)), [], [])
+
+    assert card.blockers.shown == ("close: awaiting-merge",)
+
+
+@pytest.fixture()
+def light_reader(tmp_path: Path) -> service.Reader:
+    project, _ = _project_with_phases(tmp_path, "p")
+    return service.Reader(project)
+
+
+def test_light_phase_hub_card_shows_tasks_through_close(light_reader: service.Reader) -> None:
+    hub = light_reader.hub()
+    card = next(item for item in hub.active_phases if item.subject == "p")
+
+    assert card.progress is not None
+    assert [stage.id for stage in card.progress.stages] == LIGHT_IDS
+    assert card.progress.stages[0].state == "current"
+    assert card.step == "tasks"
+
+
+def test_light_phase_page_stage_is_the_current_stage_with_its_reason(
+    light_reader: service.Reader,
+) -> None:
+    evidence = light_reader.phase(EFFORT, "p").detail.evidence
+
+    assert evidence is not None
+    assert evidence.stage == "tasks"
+    assert evidence.stage_reason == "approval review is missing"
+
+
+def test_light_phase_close_reason_follows_a_branch_merge_made_outside_the_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project, _ = _project_with_phases(tmp_path, "p")
+    root = project.project_root
+
+    def landed_facts(_target: object, _records: object, phase: Phase) -> PhaseFacts:
+        return replace(
+            _executed("light"),
+            phase=phase,
+            verify=VerifyFacts("", True, (), True),
+            landing="landed",
+            branch=branch_state(root, f"phase/{phase.subject}", "main"),
+        )
+
+    monkeypatch.setattr(stages, "phase_facts", landed_facts)
+    reader = service.Reader(project)
+
+    def reasons() -> tuple[str, str]:
+        card = next(item for item in reader.hub().active_phases if item.subject == "p")
+        evidence = reader.phase(EFFORT, "p").detail.evidence
+        assert card.progress is not None and evidence is not None
+        return card.progress.reason, evidence.stage_reason
+
+    assert reasons() == ("awaiting-merge", "awaiting-merge")
+    token = reader.cache.token_only()
+
+    git(root, "merge", "-q", "phase/p")
+
+    assert reader.cache.token_only() == token
+    assert reasons() == ("ready-to-close", "ready-to-close")

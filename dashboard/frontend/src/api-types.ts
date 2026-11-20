@@ -665,6 +665,8 @@ export interface components {
             requirements: components["schemas"]["RequirementRow"][];
             /** Stage */
             stage: string;
+            /** Stage Reason */
+            stage_reason: string;
             /** Weight */
             weight: string;
         };
@@ -719,6 +721,10 @@ export interface components {
         /** Progress */
         Progress: {
             blockers: components["schemas"]["BlockerSummary"];
+            /** Current */
+            current: string;
+            /** Reason */
+            reason: string;
             repairs: components["schemas"]["RepairProgress"] | null;
             requirements: components["schemas"]["RequirementProgress"];
             /** Stages */

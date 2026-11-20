@@ -32,6 +32,8 @@ const snapshot = {
 
 const progress: Progress = {
 	weight: "full",
+	current: "execute",
+	reason: "",
 	stages: ["spec", "design", "tasks", "execute"].map((id, i) => ({
 		id,
 		state: i < 3 ? "done" : "current",

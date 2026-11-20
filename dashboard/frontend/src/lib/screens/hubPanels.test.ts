@@ -46,6 +46,8 @@ function item(overrides: Partial<HubItem>): HubItem {
 
 const progress: NonNullable<HubItem["progress"]> = {
 	weight: "full",
+	current: "execute",
+	reason: "",
 	stages: [{ id: "execute", state: "current" }],
 	tasks: {
 		done: 1,
