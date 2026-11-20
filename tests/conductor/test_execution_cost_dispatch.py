@@ -121,6 +121,24 @@ def test_redispatch_rejects_stale_revision_without_writing(tmp_path: Path) -> No
     assert project.get(current["id"])["payload"] == current["payload"]
 
 
+def test_redispatch_refuses_held_work_without_consuming_an_attempt(tmp_path: Path) -> None:
+    project, repo = _repo(tmp_path)
+    _item(project, "task")
+    wave.start(project, repo, PHASE)
+    task = project.resolve("score:work-item", "task")
+    create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": True, "phase": PHASE, "scope": "task:task"},
+    )
+
+    with pytest.raises(task_redispatch.RedispatchError, match="task 'task' is blocked"):
+        task_redispatch.redispatch(project, "task", expected_revision=task["revision"])
+
+    assert project.get(task["id"]) == task
+
+
 @pytest.mark.parametrize("state", ["planned", "done"])
 def test_redispatch_rejects_tasks_outside_in_progress(tmp_path: Path, state: str) -> None:
     project, _ = _repo(tmp_path)

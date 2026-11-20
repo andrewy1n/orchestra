@@ -143,6 +143,8 @@ def _behavior_question(record: Record, phase: str) -> bool:
     ):
         return False
     scope = payload.get("scope")
+    if isinstance(scope, str) and scope.startswith("task:"):
+        return False
     question = payload.get("question")
     text = " ".join(item for item in (scope, question) if isinstance(item, str)).lower()
     return any(term in text for term in ("spec", "behavior", "behaviour"))

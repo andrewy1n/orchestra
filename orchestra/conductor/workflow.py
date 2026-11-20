@@ -30,7 +30,7 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, live_work_items, record_order
 from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.phase import Phase, current_phase_model
-from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
 
@@ -444,8 +444,19 @@ def _action_for(
         blockers = phase_blockers(records, subject)
     except WorkflowBlockerError as exc:
         return RunAction(subject, step, "blocked", str(exc))
+    if blockers and step == "execute" and all(blocker.scope == "task" for blocker in blockers):
+        items = live_work_items(subject, records)
+        held = blocked_tasks(items, blockers)
+        derived = project.derived(records)
+        if any(
+            item["subject"] not in held
+            and item["lifecycle_state"] in ("planned", "in_progress")
+            and derived.get(item["id"], {}).get("ready")
+            for item in items
+        ):
+            blockers = []
     if blockers:
-        names = ", ".join(blocker.record["subject"] for blocker in blockers)
+        names = ", ".join(blocker.task or blocker.record["subject"] for blocker in blockers)
         return RunAction(subject, step, "blocked", f"human decision blocks this phase: {names}")
     for dependency in _dependencies(phase):
         if prepare and selected_phases is not None and dependency in selected_phases:
