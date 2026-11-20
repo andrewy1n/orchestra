@@ -16,7 +16,9 @@ from orchestra.conductor.execution_cost import (
     utc_now,
 )
 from orchestra.conductor.wave import is_closing_task, task_acceptances
+from orchestra.score.lookups import live_work_items
 from orchestra.score.work_item import WorkItem, current_work_item
+from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 from orchestra.tools import Git
 
 
@@ -47,9 +49,17 @@ class LandedTask:
 
 
 def in_progress_item(project: Project, task: str) -> WorkItem:
-    item = current_work_item(task, project.records())
+    records = project.records()
+    item = current_work_item(task, records)
     if item is None or item.lifecycle_state != "in_progress":
         raise LandError(f"no in_progress work-item {task!r}")
+    if item.phase:
+        try:
+            blockers = phase_blockers(records, item.phase)
+        except WorkflowBlockerError as exc:
+            raise LandError(str(exc)) from exc
+        if task in blocked_tasks(live_work_items(item.phase, records), blockers):
+            raise LandError(f"task {task!r} is blocked by a human decision")
     return item
 
 

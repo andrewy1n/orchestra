@@ -557,6 +557,31 @@ def test_check_reuses_identical_check_run(store, cli, resolved_contract):
     assert len(_list_check_runs(store)) == len(before)
 
 
+def test_check_records_fresh_evidence_after_command_change(store: Path) -> None:
+    project = open_store(store)
+    project.create(
+        record_type="score:effort",
+        subject="command-repair",
+        payload={"goal": "g", "kind": "deliver"},
+    )
+    acceptance = project.create(
+        record_type="score:acceptance",
+        subject="repaired-command",
+        payload={"effort": "command-repair", "method": "check", "verify_command": "test -d ."},
+    )
+    _commit_all(store, "seed acceptance")
+    code, first = _run_check_json(store, acceptance["id"])
+    assert code == 0
+    project.update(acceptance["id"], payload={"verify_command": "test -d './'"})
+
+    code, second = _run_check_json(store, acceptance["id"])
+
+    assert code == 0
+    assert second["reused"] is False
+    assert second["record"]["id"] != first["record"]["id"]
+    assert second["record"]["payload"]["revision"] == first["record"]["payload"]["revision"]
+
+
 def test_check_reuses_identical_failing_check_run(store, cli, resolved_contract):
     acceptance = _seed_acceptance(
         store, cli, resolved_contract, subject="reuse-fail-task", verify_command="false"

@@ -21,7 +21,8 @@ Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> 
 1. Resolve the focus and selected phases from the handoff. Read
    `orchestra view plan --effort <focus>` and blocking questions for that
    effort. Do not dispatch another effort or work blocked by an open plan
-   review. Retry eligible `in_progress` tasks first.
+   review. Scope questions about one task to `task:<task-slug>` and its phase.
+   Continue independent tasks. Retry eligible `in_progress` tasks first.
 2. Run:
 
 ```bash
@@ -33,10 +34,12 @@ orchestra wave start <phase-slug>
 3. Follow each task brief verbatim. A subagent receives only its assigned
    write root, brief, scope, constraints, frozen oracle paths, and kind
    instruction. Subagents return evidence as JSON. They never write the store
-   or `.canon/`. Inline work follows the same boundary.
+   or `.canon/`. Inline work follows the same boundary. Confirm the runner
+   records the expected TDD failure before implementation starts.
 4. Land each task with `orchestra task land`. It commits the task branch,
-   records the report, and runs active acceptance checks. On a non-zero result,
-   stop and follow verify; do not merge that branch.
+   records the report, and runs active acceptance checks. On a non-zero
+   result, follow verify for that task. Keep its branch out of the merge and
+   continue independent tasks when the issue affects only that task.
 5. Run `orchestra wave end <phase-slug>`. Do not resolve merge conflicts or
    merge task branches by hand. A merge conflict opens a blocking question;
    leave it unresolved and stop.

@@ -37,7 +37,7 @@ from orchestra.score.lookups import (
 from orchestra.score.phase import Phase, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.work_item import WorkItemShapeError, read_work_item
-from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 from orchestra.tools import Git, ToolError
 
 
@@ -251,12 +251,18 @@ def _runner_start(
 
 
 def select_wave(
-    records: list[Record], derived: dict[str, DerivedValues], phase: str
+    records: list[Record],
+    derived: dict[str, DerivedValues],
+    phase: str,
+    *,
+    blocked: frozenset[str] = frozenset(),
 ) -> tuple[int | None, list[Record]]:
     ready = [
         item
         for item in phase_items(records, phase)
-        if item["lifecycle_state"] == "planned" and derived.get(item["id"], {}).get("ready")
+        if item["lifecycle_state"] == "planned"
+        and item["subject"] not in blocked
+        and derived.get(item["id"], {}).get("ready")
     ]
     if not ready:
         raise WaveError(f"no ready work-item in phase {phase!r}")
@@ -365,23 +371,26 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
         blockers = phase_blockers(records, phase)
     except WorkflowBlockerError as exc:
         raise WaveError(str(exc)) from exc
-    if blockers:
-        names = ", ".join(blocker.record["subject"] for blocker in blockers)
+    if broad := [blocker for blocker in blockers if blocker.scope != "task"]:
+        names = ", ".join(blocker.record["subject"] for blocker in broad)
         raise WaveError(f"phase {phase!r} is blocked by human decision: {names}")
     derived = project.derived(records)
     phase_rec = _phase(records, phase)
     landing = has_landing(phase_rec)
     place = phase_place(phase_rec, repo)
     items = phase_items(records, phase)
+    blocked = blocked_tasks(items, blockers)
     if landing and len(closing_work_items(phase, records)) > 1:
         raise WaveError("phase has more than one closing task")
     closer = closing_task(records, phase) if landing else None
-    if closer is not None and all(
-        item["lifecycle_state"] == "done" for item in items if item["id"] != closer["id"]
+    if (
+        closer is not None
+        and not blocked
+        and all(item["lifecycle_state"] == "done" for item in items if item["id"] != closer["id"])
     ):
         outcome = _runner_start(project, place, phase, closer, items)
         return WaveStart(phase, None, (), "runner", outcome)
-    wave, chosen = select_wave(records, derived, phase)
+    wave, chosen = select_wave(records, derived, phase, blocked=frozenset(blocked))
     executor = check_executors(chosen, _small_wave_budget(project))
     prepared: list[tuple[Record, str, str]] = []
     for item in chosen:
@@ -433,6 +442,10 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     records = project.records()
     index = EvidenceIndex(records)
     items = phase_items(records, phase)
+    try:
+        blocked = blocked_tasks(items, phase_blockers(records, phase))
+    except WorkflowBlockerError as exc:
+        raise WaveError(str(exc)) from exc
     phase_rec = _phase(records, phase)
     place = phase_place(phase_rec, repo)
     phase_tree = place.worktree
@@ -443,6 +456,9 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
         task = item["subject"]
         branch = task_branch(phase, task)
         if is_closing_task(records, phase, item) or not _branch_exists(place.repo, branch):
+            continue
+        if task in blocked:
+            skipped.append((task, "task is blocked by a human decision"))
             continue
         if item["lifecycle_state"] != "done":
             skipped.append((task, "task is not closed"))
