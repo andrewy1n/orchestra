@@ -116,6 +116,7 @@ class PhaseFacts:
     branch: BranchState | None
     gates: tuple[HumanGateFact, ...]
     prerequisites: tuple[PrerequisiteFact, ...]
+    has_landing: bool = True
 
     @property
     def weight(self) -> Literal["light", "full"] | None:
@@ -243,6 +244,8 @@ def _first_open(facts: PhaseFacts) -> tuple[Stage, str, StageStatus]:
     step = open_verify_step(facts.acceptances, facts.integration, facts.verify)
     if step is not None:
         return "verify", step, "current"
+    if not facts.has_landing:
+        return "close", "ready-to-close", "current"
     if facts.landing != "landed":
         return "land", _land_reason(facts.landing), "current"
     reason, status = _close_state(facts.branch)
@@ -487,6 +490,7 @@ def phase_facts(
         branch=_landed_branch(project, phase) if reached_verify and landing == "landed" else None,
         gates=_gates(records, phase),
         prerequisites=_prerequisites(records, phase),
+        has_landing=has_landing,
     )
 
 
