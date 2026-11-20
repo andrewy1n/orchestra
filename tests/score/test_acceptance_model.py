@@ -119,6 +119,14 @@ def test_r14_acceptance_reads_optional_fields_as_absent() -> None:
     )
 
 
+def test_r14_acceptance_reads_blank_optional_fields_as_absent() -> None:
+    record = _record({**ACCEPTANCE, "phase": "", "criterion": "", "requirement": ""})
+
+    acceptance = read_acceptance(record)
+
+    assert (acceptance.phase, acceptance.criteria, acceptance.requirements) == (None, None, ())
+
+
 def test_r14_acceptance_reads_present_optional_fields() -> None:
     record = _record(
         {

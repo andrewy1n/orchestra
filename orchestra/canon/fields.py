@@ -42,6 +42,15 @@ def optional_bool(record: Record, payload: JsonObject, field: str) -> bool | Non
     return value
 
 
+def optional_blank_text(record: Record, payload: JsonObject, field: str) -> str | None:
+    if field not in payload:
+        return None
+    value = payload[field]
+    if not isinstance(value, str):
+        raise RecordShapeError(record["id"], field, "must be a string")
+    return value or None
+
+
 def optional_text_list(record: Record, payload: JsonObject, field: str) -> tuple[str, ...]:
     if field not in payload:
         return ()

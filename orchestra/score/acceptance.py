@@ -5,7 +5,7 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
-from orchestra.canon.fields import optional_text, optional_text_list, required_text
+from orchestra.canon.fields import optional_blank_text, optional_text_list, required_text
 from orchestra.canon.types import JsonObject, Record
 from orchestra.score.requirements import acceptance_requirement_ids
 
@@ -32,7 +32,7 @@ def _method(record: Record, payload: JsonObject) -> Literal["tdd", "check", "man
 
 
 def _oracle_policy(record: Record, payload: JsonObject) -> Literal["none", "frozen"] | None:
-    value = optional_text(record, payload, "oracle_policy")
+    value = optional_blank_text(record, payload, "oracle_policy")
     if value is None or value == "none" or value == "frozen":
         return value
     raise RecordShapeError(record["id"], "oracle_policy", "must be none or frozen")
@@ -40,7 +40,7 @@ def _oracle_policy(record: Record, payload: JsonObject) -> Literal["none", "froz
 
 def _requirements(record: Record, payload: JsonObject) -> tuple[str, ...]:
     optional_text_list(record, payload, "requirements")
-    optional_text(record, payload, "requirement")
+    optional_blank_text(record, payload, "requirement")
     return tuple(acceptance_requirement_ids(record))
 
 
@@ -49,12 +49,12 @@ def read_acceptance(record: Record) -> Acceptance:
     return Acceptance(
         id=record["id"],
         subject=record["subject"],
-        phase=optional_text(record, payload, "phase"),
+        phase=optional_blank_text(record, payload, "phase"),
         effort=required_text(record, payload, "effort"),
         requirements=_requirements(record, payload),
         method=_method(record, payload),
         oracle_policy=_oracle_policy(record, payload),
         verify_command=required_text(record, payload, "verify_command"),
-        criteria=optional_text(record, payload, "criterion"),
+        criteria=optional_blank_text(record, payload, "criterion"),
         record=record,
     )

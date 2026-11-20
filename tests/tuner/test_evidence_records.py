@@ -211,6 +211,12 @@ def test_r14_finding_leaves_absent_optional_fields_empty() -> None:
     )
 
 
+def test_r14_finding_reads_blank_optional_fields_as_absent() -> None:
+    finding = read_finding(_finding({**FINDING, "phase": "", "resolution_note": ""}))
+
+    assert (finding.phase, finding.resolution_note) == (None, None)
+
+
 def test_r14_finding_reads_present_optional_fields() -> None:
     finding = read_finding(
         _finding(

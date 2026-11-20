@@ -5,7 +5,12 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
-from orchestra.canon.fields import optional_bool, optional_text, optional_text_list, required_text
+from orchestra.canon.fields import (
+    optional_blank_text,
+    optional_bool,
+    optional_text_list,
+    required_text,
+)
 from orchestra.canon.types import JsonObject, Record
 
 CheckResult = Literal["pass", "fail", "blocked", "insufficient"]
@@ -80,9 +85,9 @@ def read_finding(record: Record) -> Finding:
         invalidated_when=required_text(record, payload, "invalidated_when"),
         effort=required_text(record, payload, "effort"),
         needs=required_text(record, payload, "needs"),
-        phase=optional_text(record, payload, "phase"),
-        resolution_note=optional_text(record, payload, "resolution_note"),
-        severity=optional_text(record, payload, "severity"),
+        phase=optional_blank_text(record, payload, "phase"),
+        resolution_note=optional_blank_text(record, payload, "resolution_note"),
+        severity=optional_blank_text(record, payload, "severity"),
         contradicted_by=optional_text_list(record, payload, "contradicted_by"),
         record=record,
     )
@@ -96,7 +101,7 @@ def read_evidence_binding(record: Record) -> EvidenceBinding:
         claim_id=required_text(record, payload, "claim_id"),
         base_rev=required_text(record, payload, "base_rev"),
         head_rev=required_text(record, payload, "head_rev"),
-        effort=optional_text(record, payload, "effort"),
+        effort=optional_blank_text(record, payload, "effort"),
         retired=optional_bool(record, payload, "retired") is True,
         record=record,
     )
