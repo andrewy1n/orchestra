@@ -6,10 +6,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from canon_support import REPO, create, make_project
 
+from orchestra.canon import record as canon_record
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task, wave
+from orchestra.conductor import gate, land_task, wave
+from orchestra.conductor.acceptance_amendment import amend_acceptance
+from orchestra.conductor.check import run_check
 
 PHASE = "ph"
 EFFORT = "ef"
@@ -101,6 +105,105 @@ def test_r12_merges_passing_task_branches_in_task_slug_order(tmp_path: Path) -> 
     first_b = _git(tree, "log", "--format=%H", "--diff-filter=A", "--", "b.txt").splitlines()[-1]
     order = _git(tree, "rev-list", "--topo-order", "--reverse", "HEAD").splitlines()
     assert order.index(first_a) < order.index(first_b)
+
+
+def test_wave_end_merges_independent_work_and_holds_the_blocked_branch(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path, {"a": "true", "b": "true"})
+    _land(project, repo, "a", "a.txt", "a\n")
+    _land(project, repo, "b", "b.txt", "b\n")
+    question = create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": True, "phase": PHASE, "scope": "task:a"},
+    )
+
+    result = wave.end(project, repo, PHASE)
+    assert result.merged == ("b",)
+    assert result.skipped == (("a", "task is blocked by a human decision"),)
+
+    project.update(question["id"], transition="answered")
+    assert wave.end(project, repo, PHASE).merged == ("a",)
+
+
+def test_wave_end_and_gate_require_fresh_evidence_after_command_amendment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    flag = tmp_path / "flag"
+    flag.touch()
+    project, repo = _world(tmp_path, {"a": f"test -f {flag}"})
+    effort = project.resolve("score:effort", EFFORT)
+    project.update(effort["id"], payload={"autonomy": "auto-plan"})
+    tree = repo / ".worktrees" / f"{PHASE}--a"
+    (tree / "a.txt").write_text("a\n")
+    _git(tree, "add", "a.txt")
+    _git(tree, "commit", "-qm", "task revision")
+    head = _git(tree, "rev-parse", "HEAD")
+    acceptance = project.resolve("score:acceptance", "a")
+
+    def check() -> int:
+        return run_check(
+            acceptance_id=acceptance["id"], cwd=tree, store_root=repo, store_dir=project.store_path
+        ).exit_code
+
+    assert check() == 0
+    create(
+        project,
+        "tuner:check-run",
+        "a",
+        {
+            "criterion_id": acceptance["id"],
+            "revision": head,
+            "result": "pass",
+            "effort": EFFORT,
+            "method": "check",
+            "signed_by": "",
+            "runner": "orchestra",
+        },
+    )
+    create(
+        project,
+        "tuner:check-run",
+        f"{PHASE}-review",
+        {
+            "criterion_id": f"{PHASE}-review",
+            "revision": head,
+            "result": "pass",
+            "effort": EFFORT,
+            "method": "review",
+            "signed_by": "",
+        },
+    )
+    amend_acceptance(
+        project,
+        acceptance["id"],
+        expected_revision=acceptance["revision"],
+        basis="Both commands check that the same flag is a file.",
+        equivalent_command=f"[ -f {flag} ]",
+    )
+    task = project.resolve("score:work-item", "a")
+    project.update(task["id"], transition="done")
+
+    def acceptance_terms() -> list[gate.Term]:
+        return [
+            term for term in gate.gate_terms(repo, PHASE) if term.name.startswith("acceptance-")
+        ]
+
+    assert wave.end(project, repo, PHASE).skipped == (("a", "checks did not pass"),)
+    assert [term.holds for term in acceptance_terms()] == [False, False]
+    assert all("current acceptance revision" in term.detail for term in acceptance_terms())
+
+    flag.unlink()
+    monkeypatch.setattr(canon_record, "now", lambda: "2026-01-01T00:00:00+00:00")
+    assert check() == 1
+    assert wave.end(project, repo, PHASE).skipped == (("a", "checks did not pass"),)
+    assert [term.holds for term in acceptance_terms()] == [False, False]
+
+    flag.touch()
+    monkeypatch.setattr(canon_record, "now", lambda: "2026-01-01T00:00:01+00:00")
+    assert check() == 0
+    assert wave.end(project, repo, PHASE).merged == ("a",)
+    assert [term.holds for term in acceptance_terms()] == [True, True]
 
 
 def test_r13_stops_at_a_conflict_and_opens_a_blocking_question(tmp_path: Path) -> None:

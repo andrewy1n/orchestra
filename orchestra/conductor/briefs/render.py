@@ -71,6 +71,7 @@ STEP_TABLE: Mapping[str, tuple[Section, ...]] = {
         Section("execute-overview"),
         Section("execute-steps"),
         Section("execute-landing"),
+        Section("verification-policy"),
         Section("execute-dispatch"),
         Section("execute-evidence"),
         Section("execute-record-vs-bind"),

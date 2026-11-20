@@ -1,6 +1,5 @@
-3. Group results by `derived.wave`. Lower waves first; waves stay
-   serial. Re-run the step-2 `list` before each wave — wave numbers
-   can shift.
+3. Group unblocked results by `derived.wave`. Lower ready waves come first.
+   Re-run the step-2 list before each wave.
 
    When Landing is present, at the start of a wave, execute
    creates branch `task/{phase}/<task-slug>` from the current
