@@ -225,7 +225,7 @@ def test_wave_end_skips_task_without_run_at_tip(tmp_path: Path) -> None:
 
 
 def _phase(state: str = "done") -> Record:
-    return _record("score:phase", PHASE, {"effort": "e"}, state)
+    return _record("score:phase", PHASE, {"title": "p", "ordinal": 1, "effort": "e"}, state)
 
 
 def _ready(records: Sequence[Record]) -> tuple[bool, str]:
