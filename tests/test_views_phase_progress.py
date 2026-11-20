@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -8,19 +9,21 @@ from canon_support import create, make_project, seed_effort
 from orchestra import cli, views
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor import phase_progress
 from orchestra.conductor.landing import LandingProofState
 from orchestra.conductor.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,
     PhaseFacts,
     PhaseProgress,
+    PhaseProgressError,
     Readiness,
     TaskFact,
     VerifyFacts,
     assess,
 )
-from orchestra.score.phase import read_phase
-from orchestra.tools import BranchState, Unmerged
+from orchestra.score.phase import Phase, read_phase
+from orchestra.tools import BranchState, Git, Unmerged
 
 READY = Readiness(True)
 
@@ -32,18 +35,18 @@ def project(tmp_path: Path) -> Project:
     return project
 
 
-def _start_phase(project: Project) -> Record:
-    phase = project.resolve("score:phase", "p1")
+def _start_phase(project: Project, slug: str = "p1") -> Record:
+    phase = project.resolve("score:phase", slug)
     project.update(phase["id"], transition="in_progress")
     task = create(
         project,
         "score:work-item",
-        "build-it",
-        {"title": "Build", "phase": "p1", "kind": "deliver", "assignee": "", "effort": "alpha"},
+        f"build-{slug}",
+        {"title": "Build", "phase": slug, "kind": "deliver", "assignee": "", "effort": "alpha"},
     )
     project.update(task["id"], transition="in_progress")
     project.update(task["id"], transition="done")
-    return project.resolve("score:phase", "p1")
+    return project.resolve("score:phase", slug)
 
 
 def _verified_facts(
@@ -157,3 +160,34 @@ def test_cli_handoff_attention_lists_blocking_questions_before_other_items(
     text = capsys.readouterr().out
 
     assert text.index("### Blocking Question") < text.index("### Needs Human")
+
+
+def test_cli_handoff_marks_one_unavailable_phase_and_renders_the_others(
+    project: Project, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _start_phase(project)
+    create(
+        project,
+        "score:phase",
+        "p2",
+        {"title": "Phase two", "ordinal": 2, "effort": "alpha"},
+    )
+    _start_phase(project, "p2")
+    real = phase_progress.phase_facts
+
+    def facts(
+        target: Project, records: Sequence[Record], phase: Phase, *, git: Callable[[Path], Git]
+    ) -> PhaseFacts:
+        if phase.subject == "p2":
+            raise PhaseProgressError("required phase 'ghost' could not be read")
+        return real(target, records, phase, git=git)
+
+    monkeypatch.setattr(phase_progress, "phase_facts", facts)
+    monkeypatch.chdir(project.project_root)
+    monkeypatch.delenv("CANON_STORE", raising=False)
+
+    assert cli.main(["handoff"]) == 0
+    out = capsys.readouterr().out
+
+    assert "**p1**: stage: spec" in out
+    assert "**p2**: stage: unavailable: required phase 'ghost' could not be read" in out

@@ -17,7 +17,7 @@ from dashboard.backend.records import (
     remap_records,
     section,
 )
-from dashboard.backend.stages import load_phase_progress, surface_progress
+from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import ModelError, change_token
 from dashboard.backend.task import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
@@ -660,7 +660,6 @@ def phase_evidence(
             section(report.get("body") or "", "Conflicts"),
         )
     weight = record_payload(spec).get("weight", "")
-    surface = surface_progress(weight, progress) if progress is not None else None
     release_ready = _release_ready(phase, effort, assessments, releases, ready)
     latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
@@ -668,13 +667,13 @@ def phase_evidence(
         phase,
         weight,
         tuple(rows),
-        (surface.current or "") if surface is not None else "",
+        (progress.current or "") if progress is not None else "",
         integration,
         release_ready,
         _choices(subjects, decisions),
         section(spec.get("body") or "", "Non-goals"),
         release_state=release_state,
-        stage_reason=surface.reason if surface is not None else "",
+        stage_reason=progress.reason if progress is not None else "",
     )
 
 

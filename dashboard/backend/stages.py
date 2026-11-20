@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Sequence
-from dataclasses import replace
 from pathlib import Path
 
 from dashboard.backend import store
@@ -17,36 +16,20 @@ from orchestra.conductor.phase_progress import (
     StageState,
     assess,
     phase_facts,
+    unavailable_progress,
 )
 from orchestra.score.lookups import current_phases
 from orchestra.score.phase import read_phase
 from orchestra.tools import ToolError
 
-_LIGHT_FIRST = STAGES.index("tasks")
 _OPEN_STATES = ("planned", "in_progress")
 _cache_lock = threading.Lock()
 _cache: dict[str, tuple[str, dict[str, PhaseProgress]]] = {}
 _READ_ERRORS = (StoreError, ToolError, OSError, ValueError)
 
 
-def unavailable_progress(reason: str) -> PhaseProgress:
-    return PhaseProgress(tuple(StageState(stage, "unknown") for stage in STAGES), None, reason, ())
-
-
 def finished_progress() -> PhaseProgress:
     return PhaseProgress(tuple(StageState(stage, "done") for stage in STAGES), None, "", ())
-
-
-def surface_progress(weight: str, progress: PhaseProgress) -> PhaseProgress:
-    if weight != "light":
-        return progress
-    stages = progress.stages[_LIGHT_FIRST:]
-    current = progress.current
-    if current in ("spec", "design"):
-        opened = next(state for state in progress.stages if state.stage == current)
-        stages = (StageState("tasks", opened.status), *stages[1:])
-        current = "tasks"
-    return replace(progress, stages=stages, current=current)
 
 
 def assess_phases(target: Project, records: Sequence[Record]) -> dict[str, PhaseProgress]:

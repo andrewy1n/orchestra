@@ -19,54 +19,71 @@ sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend import stages
 from dashboard.backend.progress import build_progress
 from dashboard.backend.server import service
-from dashboard.backend.stages import surface_progress
+from orchestra.conductor.phase_progress import StageState, visible_stages
 
-LIGHT_IDS = ["tasks", "execute", "verify", "land", "close"]
+FULL_IDS = ["spec", "design", "tasks", "execute", "verify", "land", "close"]
+LIGHT_IDS = FULL_IDS[2:]
+
+
+def _states_of(stages: tuple[StageState, ...]) -> dict[str, str]:
+    return {state.stage: state.status for state in stages}
 
 
 def _states(progress: PhaseProgress) -> dict[str, str]:
-    return {state.stage: state.status for state in progress.stages}
+    return _states_of(progress.stages)
 
 
-def test_light_phase_surface_lists_tasks_through_close() -> None:
-    surface = surface_progress("light", assessed("light"))
+def test_light_phase_lists_tasks_through_close_once_spec_and_design_are_done() -> None:
+    stages = visible_stages("light", assessed("light", "verifying"))
 
-    assert [state.stage for state in surface.stages] == LIGHT_IDS
+    assert [state.stage for state in stages] == LIGHT_IDS
 
 
-def test_light_phase_surface_keeps_the_assessed_status_of_later_stages() -> None:
-    surface = surface_progress("light", assessed("light", "verifying"))
+def test_light_phase_lists_every_stage_while_spec_or_design_is_open() -> None:
+    stages = visible_stages("light", assessed("light"))
 
-    assert _states(surface) == {
+    assert [state.stage for state in stages] == FULL_IDS
+
+
+def test_light_phase_keeps_the_assessed_status_of_later_stages() -> None:
+    progress = assessed("light", "verifying")
+
+    assert _states_of(visible_stages("light", progress)) == {
         "tasks": "done",
         "execute": "done",
         "verify": "current",
         "land": "pending",
         "close": "pending",
     }
-    assert (surface.current, surface.reason) == ("verify", "reviewer")
+    assert (progress.current, progress.reason) == ("verify", "reviewer")
 
 
-def test_light_phase_surface_marks_tasks_current_while_spec_or_design_is_open() -> None:
-    surface = surface_progress("light", assessed("light"))
+def test_light_phase_with_an_open_spec_stays_at_spec_with_its_reason() -> None:
+    progress = assessed("light")
 
-    assert _states(surface)["tasks"] == "current"
-    assert surface.current == "tasks"
-    assert surface.reason == "spec review is missing"
-
-
-def test_light_phase_surface_marks_tasks_blocked_while_a_gate_blocks_the_open_spec() -> None:
-    surface = surface_progress("light", assessed("light", "gated"))
-
-    assert _states(surface)["tasks"] == "blocked"
-    assert surface.blocked_by == ("needs-a-human",)
+    assert _states(progress)["spec"] == "current"
+    assert (progress.current, progress.reason) == ("spec", "spec review is missing")
 
 
-def test_light_phase_surface_never_marks_a_later_stage_done_after_an_unknown_close() -> None:
-    surface = surface_progress("light", assessed("light", "landed"))
+def test_light_phase_with_a_gate_on_the_open_spec_marks_spec_blocked() -> None:
+    progress = assessed("light", "gated")
 
-    assert _states(surface)["land"] == "done"
-    assert _states(surface)["close"] == "unknown"
+    assert _states(progress)["spec"] == "blocked"
+    assert progress.blocked_by == ("needs-a-human",)
+
+
+def test_light_phase_never_marks_a_later_stage_done_after_an_unknown_close() -> None:
+    stages = visible_stages("light", assessed("light", "landed"))
+    states = {state.stage: state.status for state in stages}
+
+    assert states["land"] == "done"
+    assert states["close"] == "unknown"
+
+
+def test_full_phase_lists_every_stage_when_spec_and_design_are_done() -> None:
+    stages = visible_stages("full", assessed("full", "verifying"))
+
+    assert [state.stage for state in stages] == FULL_IDS
 
 
 def test_light_phase_card_shows_tasks_through_close() -> None:
@@ -93,14 +110,16 @@ def light_reader(tmp_path: Path) -> service.Reader:
     return service.Reader(project)
 
 
-def test_light_phase_hub_card_shows_tasks_through_close(light_reader: service.Reader) -> None:
+def test_light_phase_hub_card_shows_spec_as_current_while_its_review_is_open(
+    light_reader: service.Reader,
+) -> None:
     hub = light_reader.hub()
     card = next(item for item in hub.active_phases if item.subject == "p")
 
     assert card.progress is not None
-    assert [stage.id for stage in card.progress.stages] == LIGHT_IDS
+    assert [stage.id for stage in card.progress.stages] == FULL_IDS
     assert card.progress.stages[0].state == "current"
-    assert card.step == "tasks"
+    assert card.step == "spec"
 
 
 def test_light_phase_page_stage_is_the_current_stage_with_its_reason(
@@ -109,7 +128,7 @@ def test_light_phase_page_stage_is_the_current_stage_with_its_reason(
     evidence = light_reader.phase(EFFORT, "p").detail.evidence
 
     assert evidence is not None
-    assert evidence.stage == "tasks"
+    assert evidence.stage == "spec"
     assert evidence.stage_reason == "approval review is missing"
 
 

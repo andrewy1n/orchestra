@@ -250,3 +250,32 @@ def test_workflow_handoff_and_dashboard_report_the_same_reason(
     assert _hub(client).reason == case.expected.reason
     assert _phase_page(client).reason == case.expected.reason
     assert _workflow(store, capsys).reason == _as_workflow_reason(case)
+
+
+def test_light_phase_with_an_open_spec_review_reports_spec_on_every_surface(
+    store: Path,
+    cli: Cli,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    phase = seed_phase(store, cli)
+    ready_for_verify(phase)
+    project = open_store(store)
+    record = project.resolve("score:phase", PHASE)
+    project.update(
+        record["id"],
+        record_type="score:phase",
+        transition="in_progress",
+        body=(record.get("body") or "").replace("Preserve the contract.", "Change the contract."),
+    )
+    monkeypatch.chdir(store)
+    client = TestClient(create_app(open_store(store)))
+
+    seen = {
+        "handoff": _handoff(capsys).stage,
+        "hub": _hub(client).stage,
+        "phase page": _phase_page(client).stage,
+        "workflow": _workflow(store, capsys).stage,
+    }
+
+    assert seen == dict.fromkeys(seen, "spec")

@@ -7,9 +7,8 @@ from dataclasses import dataclass
 
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
-from dashboard.backend.stages import surface_progress, unavailable_progress
 from dashboard.backend.task import TaskRow, run_fact_int
-from orchestra.conductor.phase_progress import STAGES
+from orchestra.conductor.phase_progress import STAGES, unavailable_progress, visible_stages
 
 BLOCKER_LIMIT = 2
 DEFAULT_FIX_TASK_LIMIT = 3
@@ -120,8 +119,7 @@ def build_progress(
         repairs = RepairProgress(fix_tasks, limit, f"{fix_tasks} of {limit} fix tasks used")
 
     weight = evidence.weight if evidence else "full"
-    assessed = phase.progress or unavailable_progress("progress unavailable")
-    surface = surface_progress(weight, assessed)
+    surface = phase.progress or unavailable_progress("progress unavailable")
     blockers = [n.text for n in needs if n.phase == phase.subject and n.status == "open"]
     if surface.blocked_by:
         blockers.append(surface.reason)
@@ -142,7 +140,7 @@ def build_progress(
         weight=weight,
         current=surface.current or "",
         reason=surface.reason,
-        stages=tuple(Stage(state.stage, state.status) for state in surface.stages),
+        stages=tuple(Stage(state.stage, state.status) for state in visible_stages(weight, surface)),
         tasks=task_progress,
         requirements=requirements,
         repairs=repairs,

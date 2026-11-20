@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import suite
@@ -18,6 +19,7 @@ from orchestra.conductor.head_evidence import (
     suite_check_runs,
 )
 from orchestra.conductor.landing import (
+    LandingProofError,
     LandingProofState,
     landing_proof_state,
     parse_landing,
@@ -33,7 +35,7 @@ from orchestra.score.lookups import (
 )
 from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.phase import Phase, read_phase
-from orchestra.score.workflow_blockers import phase_blockers
+from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.tools import Absent, BranchState, Git, Merged, ReadFailed, Unmerged, branch_state
 
@@ -43,10 +45,20 @@ VerifyStep = Literal["analyze", "suite", "reviewer", "integration-report", "gate
 IntegrationState = Literal["not-required", "missing", "failing", "passing"]
 
 STAGES: tuple[Stage, ...] = ("spec", "design", "tasks", "execute", "verify", "land", "close")
+_LIGHT_FIRST = STAGES.index("tasks")
 
 
 class PhaseProgressError(ValueError):
     pass
+
+
+_UNAVAILABLE = (
+    LandingProofError,
+    LookupError,
+    RecordShapeError,
+    WorkflowBlockerError,
+    PhaseProgressError,
+)
 
 
 @dataclass(frozen=True)
@@ -268,6 +280,18 @@ def assess(facts: PhaseFacts) -> PhaseProgress:
         for index, stage in enumerate(STAGES)
     )
     return PhaseProgress(stages, current, reason, blocked_by)
+
+
+def visible_stages(weight: str | None, progress: PhaseProgress) -> tuple[StageState, ...]:
+    if weight == "light" and all(
+        state.status == "done" for state in progress.stages[:_LIGHT_FIRST]
+    ):
+        return progress.stages[_LIGHT_FIRST:]
+    return progress.stages
+
+
+def unavailable_progress(reason: str) -> PhaseProgress:
+    return PhaseProgress(tuple(StageState(stage, "unknown") for stage in STAGES), None, reason, ())
 
 
 def _text(record: Record, field: str) -> str:
@@ -494,6 +518,15 @@ def phase_facts(
     )
 
 
+def _progress_of(
+    project: Project, records: Sequence[Record], record: Record, git: Callable[[Path], Git]
+) -> PhaseProgress:
+    try:
+        return assess(phase_facts(project, records, read_phase(record), git=git))
+    except _UNAVAILABLE as exc:
+        return unavailable_progress(f"unavailable: {exc}")
+
+
 def open_phase_progress(
     project: Project,
     records: Sequence[Record],
@@ -501,7 +534,7 @@ def open_phase_progress(
     git: Callable[[Path], Git] = Git,
 ) -> dict[str, PhaseProgress]:
     return {
-        slug: assess(phase_facts(project, records, read_phase(record), git=git))
+        slug: _progress_of(project, records, record, git)
         for slug, record in current_phases(records).items()
         if record["lifecycle_state"] != "done"
     }

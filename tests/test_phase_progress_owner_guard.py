@@ -62,6 +62,15 @@ def _called(node: ast.AST) -> str:
     return ""
 
 
+def _rewrites_current(node: ast.AST) -> bool:
+    if isinstance(node, ast.Call) and _called(node.func) == "replace":
+        return any(keyword.arg == "current" for keyword in node.keywords)
+    if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        return any(isinstance(t, ast.Attribute) and t.attr == "current" for t in targets)
+    return False
+
+
 def violations(root: Path) -> list[str]:
     found: list[str] = []
     for base in ROOTS:
@@ -79,6 +88,8 @@ def violations(root: Path) -> list[str]:
                     lines.add(getattr(node, "lineno", 0))
                 elif isinstance(node, ast.Call) and _called(node.func) in DERIVER_CALLS:
                     lines.add(node.lineno)
+                if _rewrites_current(node):
+                    lines.add(getattr(node, "lineno", 0))
             found.extend(f"{relative}:{line}" for line in sorted(lines))
     return found
 
@@ -128,6 +139,26 @@ def test_r18_guard_fails_on_seeded_stage_from_facts(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert _new(tmp_path) == ["orchestra/seeded_facts.py:5"]
+
+
+def test_r18_guard_fails_on_seeded_current_stage_rewrite(tmp_path: Path) -> None:
+    _copy(tmp_path)
+    (tmp_path / "dashboard" / "backend" / "seeded_relabel.py").write_text(
+        "from dataclasses import replace\n\n\n"
+        "def surface(progress):\n"
+        "    return replace(progress, current='tasks')\n",
+        encoding="utf-8",
+    )
+    assert _new(tmp_path) == ["dashboard/backend/seeded_relabel.py:5"]
+
+
+def test_r18_guard_fails_on_seeded_current_stage_assignment(tmp_path: Path) -> None:
+    _copy(tmp_path)
+    (tmp_path / "orchestra" / "seeded_assign.py").write_text(
+        "def surface(progress):\n    progress.current = 'tasks'\n",
+        encoding="utf-8",
+    )
+    assert _new(tmp_path) == ["orchestra/seeded_assign.py:2"]
 
 
 def test_r18_guard_allows_reading_the_assessed_stage(tmp_path: Path) -> None:

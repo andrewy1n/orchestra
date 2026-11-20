@@ -473,8 +473,10 @@ def _phase_derived_lines(
 
 
 def _stage_text(progress: PhaseProgress | None) -> str:
-    if progress is None or progress.current is None:
+    if progress is None:
         return ""
+    if progress.current is None:
+        return progress.reason
     return f"{progress.current} ({progress.reason})" if progress.reason else progress.current
 
 
