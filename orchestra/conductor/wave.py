@@ -255,7 +255,7 @@ def select_wave(
     derived: dict[str, DerivedValues],
     phase: str,
     *,
-    blocked: frozenset[str] = frozenset(),
+    blocked: frozenset[str],
 ) -> tuple[int | None, list[Record]]:
     ready = [
         item

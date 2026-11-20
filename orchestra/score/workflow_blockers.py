@@ -183,7 +183,6 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
         raise WorkflowBlockerError(f"phase {phase_slug!r} not found")
     effort = _payload_text(phase, "effort")
     chain = _phase_chain(records, phase)
-    tasks = {item["subject"] for item in live_work_items(phase_slug, records)}
     blockers: list[WorkflowBlocker] = []
     for record in records:
         payload = record["payload"]
@@ -193,9 +192,16 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
             record_effort = record["subject"]
         else:
             continue
+        scope = _payload_text(record, "scope") if record["record_type"] == QUESTION_TYPE else ""
+        is_task_question = scope.startswith("task:")
+        task = scope.removeprefix("task:")
         owned_phase = payload.get("phase")
         if owned_phase is None:
             if record_effort == effort:
+                if is_task_question:
+                    raise WorkflowBlockerError(
+                        f"question {record['id']!r} needs a phase for task {task!r}"
+                    )
                 blockers.append(WorkflowBlocker(record, "effort", None))
             continue
         if not isinstance(owned_phase, str):
@@ -206,14 +212,13 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
                 f"blocker {record['subject']!r} has a phase from another effort or no phase"
             )
         if record_effort == effort and owned_phase in chain:
-            scope = _payload_text(record, "scope")
-            task = scope.removeprefix("task:")
-            if (
-                owned_phase == phase_slug
-                and _is_blocking_question(record)
-                and scope.startswith("task:")
-                and task in tasks
+            if is_task_question and not any(
+                item["subject"] == task for item in live_work_items(owned_phase, records)
             ):
+                raise WorkflowBlockerError(
+                    f"question {record['id']!r} holds unknown task {task!r} in phase {owned_phase!r}"
+                )
+            if is_task_question and owned_phase == phase_slug:
                 blockers.append(WorkflowBlocker(record, "task", owned_phase, task))
             else:
                 blockers.append(WorkflowBlocker(record, "phase", owned_phase))

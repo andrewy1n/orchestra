@@ -7,6 +7,7 @@ from orchestra.score.lookups import current_phase, live_work_items, owning_work_
 from orchestra.score.oracle_policy import resolve_oracle_policy
 
 ROUTINE_CHECKS = ("documentation", "packaging", "final-verification")
+COMMAND_AMENDMENT_KEY = "amended_verify_command_for"
 
 
 def amend_acceptance(
@@ -77,6 +78,11 @@ def amend_acceptance(
                 "subject": task["subject"],
                 "payload": {"work_item": task["subject"], "effort": effort},
                 "body": f"## Correction\n\n{acceptance['subject']}. {detail}\n\n{basis.strip()}",
+                "provenance": (
+                    {COMMAND_AMENDMENT_KEY: acceptance_id}
+                    if equivalent_command is not None
+                    else None
+                ),
             },
         ],
         token,

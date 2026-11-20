@@ -123,6 +123,39 @@ def test_task_question_holds_its_dependency_chain_and_phase_close(tmp_path: Path
     assert [task.task for task in wave.start(project, repo, "one").tasks] == ["dependent"]
 
 
+def test_task_question_reports_a_task_in_the_wrong_phase(tmp_path: Path) -> None:
+    project, repo = _repo(tmp_path)
+    _phase(project, "one", 1)
+    _phase(project, "two", 2)
+    _task(project, "one")
+    _task(project, "two")
+    create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": True, "phase": "one", "scope": "task:task-two"},
+    )
+
+    with pytest.raises(wave.WaveError, match="holds unknown task 'task-two' in phase 'one'"):
+        wave.start(project, repo, "one")
+    assert [task.task for task in wave.start(project, repo, "two").tasks] == ["task-two"]
+
+
+def test_task_question_reports_a_missing_phase(tmp_path: Path) -> None:
+    project, repo = _repo(tmp_path)
+    _phase(project, "one", 1)
+    _task(project, "one")
+    create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": True, "scope": "task:task-one"},
+    )
+
+    with pytest.raises(wave.WaveError, match="needs a phase for task 'task-one'"):
+        wave.start(project, repo, "one")
+
+
 def test_phase_owned_finding_blocks_only_its_phase(tmp_path: Path) -> None:
     project, store = _repo(tmp_path)
     _phase(project, "one", 1)
