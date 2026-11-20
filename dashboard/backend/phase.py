@@ -546,19 +546,12 @@ class RequirementDetail:
 def _requirement_view(
     written: Record | None, derived: RequirementStatus | None
 ) -> tuple[str, str, str]:
-    payload = record_payload(written) if written is not None else None
-    written_status = payload.get("status", "") if payload is not None else ""
-    superseded = (
-        derived is not None and derived.status == "verified" and derived.assessment_id is None
-    )
-    if payload is not None and written_status != "verified" and not superseded:
-        return written_status, payload.get("next", ""), payload.get("confidence", "")
-    confidence = payload.get("confidence", "") if payload is not None else ""
-    if derived is not None and derived.status == "verified":
-        return "verified", "", confidence
-    if payload is not None:
-        return written_status, "", confidence
-    return "unassessed", "", ""
+    status = derived.status if derived is not None else "unverified"
+    if written is None:
+        return status, "", ""
+    payload = record_payload(written)
+    nxt = payload.get("next", "") if derived is not None and derived.assessment_id else ""
+    return status, nxt, payload.get("confidence", "")
 
 
 def _derivation_pool(
@@ -578,7 +571,6 @@ def _derivation_pool(
 def _stage(
     phase: str,
     effort: str,
-    spec_ids: list[str],
     designs: list[Record],
     tasks: list[Record],
     acceptances: list[Record],
@@ -586,7 +578,7 @@ def _stage(
     assessments: list[Record],
     reports: list[Record],
     releases: list[Record],
-    derived_ready: bool = False,
+    derived: dict[str, RequirementStatus],
 ) -> tuple[str, bool]:
     latest_release = newest_record(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
@@ -597,7 +589,11 @@ def _stage(
         if record_phase == phase
     }
     non_verified = [
-        record for record in latest.values() if record_payload(record).get("status") != "verified"
+        record
+        for requirement, record in latest.items()
+        if record_payload(record).get("status") != "verified"
+        and (status := derived.get(requirement)) is not None
+        and status.status != "verified"
     ]
     if non_verified:
 
@@ -606,12 +602,8 @@ def _stage(
             return LOOP_NEXT.index(nxt) if nxt in LOOP_NEXT else len(LOOP_NEXT)
 
         return record_payload(min(non_verified, key=rank)).get("next", ""), False
-    if derived_ready:
+    if derived and all(row.status == "verified" for row in derived.values()):
         return "release", True
-    if spec_ids and all(
-        record_payload(latest.get(req) or {}).get("status") == "verified" for req in spec_ids
-    ):
-        return "release", False
     if not _for_phase(designs, phase, effort):
         return "design", False
     counted = [
@@ -678,7 +670,6 @@ def phase_evidence(
     checks = checks_by_phase.get(phase, [])
     pool = _derivation_pool([spec], acceptances, checks, assessments)
     derived = requirement_status(pool, phase)
-    ready = bool(derived) and all(row.status == "verified" for row in derived.values())
     rows: list[RequirementRow] = []
     for requirement in spec_ids:
         status, nxt, confidence = _requirement_view(
@@ -713,7 +704,6 @@ def phase_evidence(
     stage, release_ready = _stage(
         phase,
         effort,
-        spec_ids,
         designs,
         tasks,
         acceptances,
@@ -721,7 +711,7 @@ def phase_evidence(
         assessments,
         reports,
         releases,
-        ready,
+        derived,
     )
     latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
@@ -1063,8 +1053,6 @@ def load_requirement_detail(
         active,
     )
     status, nxt, _ = _requirement_view(latest, requirement_status(pool, phase).get(requirement))
-    if latest is not None and status == record_payload(latest).get("status", ""):
-        nxt = record_payload(latest).get("next", "")
     assignments = listed("conductor:assignment")
     return RequirementDetail(
         phase,

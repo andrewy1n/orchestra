@@ -302,6 +302,16 @@ def _uncorrected(checks: list[Record]) -> list[Record]:
     return [check for check in checks if not derived_values(check).get("corrected")]
 
 
+def _requirement_statuses(
+    evidence_by_phase: dict[str, PhaseEvidence],
+) -> dict[tuple[str, str], str]:
+    return {
+        (phase, row.id): row.status
+        for phase, evidence in evidence_by_phase.items()
+        for row in evidence.requirements
+    }
+
+
 def _needs_you(
     records: list[Record],
     acceptances: dict[str, Record] | None = None,
@@ -309,6 +319,7 @@ def _needs_you(
     assessments: list[Record] | None = None,
     integrations: list[Record] | None = None,
     spec_phases: set[str] | None = None,
+    requirement_statuses: dict[tuple[str, str], str] | None = None,
 ) -> list[NeedsYouItem]:
     acceptances = acceptances or {}
     tasks = tasks or []
@@ -341,11 +352,15 @@ def _needs_you(
             subject, text = record["subject"], payload.get("scope", "")
         items.append(item(gate.kind, record, subject, text))
     spec_phases = spec_phases or set()
+    requirement_statuses = requirement_statuses or {}
     for (phase, requirement), record in sorted(latest_assessment_map(assessments or []).items()):
         if phase not in spec_phases or not _needs_route(record):
             continue
         payload = record_payload(record)
-        status, nxt = payload.get("status", ""), payload.get("next", "")
+        status = requirement_statuses.get((phase, requirement), payload.get("status", ""))
+        if status == "verified":
+            continue
+        nxt = payload.get("next", "")
         text = " ".join(part for part in (requirement, status, nxt) if part)
         items.append(
             NeedsYouItem(
@@ -638,6 +653,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                     assessments_by_effort.get(effort, []),
                     integrations_by_effort.get(effort, []),
                     {phase for spec_effort, phase in structured if spec_effort == effort},
+                    _requirement_statuses(evidence_by_phase),
                 ),
                 activity=activity.get(effort, []),
                 release_ready=any(
@@ -803,6 +819,9 @@ def load_work_snapshot(
                     assessments,
                     integrations,
                     {phase for spec_effort, phase in structured if spec_effort == effort},
+                    _requirement_statuses(
+                        {row.subject: row.evidence for row in rows if row.evidence is not None}
+                    ),
                 ),
                 backlog=_backlog_items(grouped["composer:idea"].get(effort, [])),
             )
