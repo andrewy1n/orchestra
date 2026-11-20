@@ -31,3 +31,21 @@ def required_int(record: Record, payload: JsonObject, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise RecordShapeError(record["id"], field, "must be an integer")
     return value
+
+
+def optional_bool(record: Record, payload: JsonObject, field: str) -> bool | None:
+    if field not in payload:
+        return None
+    value = payload[field]
+    if not isinstance(value, bool):
+        raise RecordShapeError(record["id"], field, "must be a boolean")
+    return value
+
+
+def optional_text_list(record: Record, payload: JsonObject, field: str) -> tuple[str, ...]:
+    if field not in payload:
+        return ()
+    value = payload[field]
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise RecordShapeError(record["id"], field, "must be a list of strings")
+    return tuple(item for item in value if isinstance(item, str))

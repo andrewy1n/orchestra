@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon import record_payload
+from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.score.lookups import current_phase
 
 SPECIFICATION = "score:specification"
 
+_REQUIREMENTS_HEADING = "## Requirements"
 _REQUIREMENT_LINE = re.compile(r"^(R\d+):\s*(.*)$")
 
 
@@ -91,3 +94,21 @@ def phase_requirements(records: Sequence[Record], phase: str) -> list[tuple[str,
     ]
     spec = latest(specs)
     return requirements_in_body(spec.get("body", "")) if spec is not None else []
+
+
+@dataclass(frozen=True)
+class Requirement:
+    id: str
+    text: str
+
+
+def read_requirements(record: Record) -> tuple[Requirement, ...]:
+    body: object = record.get("body", "")
+    if not isinstance(body, str):
+        raise RecordShapeError(record["id"], "body", "must be a string")
+    if _REQUIREMENTS_HEADING not in body.splitlines():
+        return ()
+    problems = requirement_body_problems(body)
+    if problems:
+        raise RecordShapeError(record["id"], "body", problems[0])
+    return tuple(Requirement(rid, text) for rid, text in requirements_in_body(body))
