@@ -256,23 +256,26 @@ def _ready(records: Sequence[Record]) -> tuple[bool, str]:
 
 def test_workflow_readiness_holds_with_a_passing_run_at_any_revision() -> None:
     acceptance = _acceptance("a1")
-    assert _ready([_phase(), acceptance, _run(acceptance, "pass", "f" * 40)]) == (True, "")
+    assert _ready([_phase(), _spec("R1"), acceptance, _run(acceptance, "pass", "f" * 40)]) == (
+        True,
+        "",
+    )
 
 
 def test_workflow_readiness_requires_a_run_for_each_acceptance() -> None:
     first, second = _acceptance("a1"), _acceptance("a2")
-    ready, reason = _ready([_phase(), first, second, _run(first, "pass")])
+    ready, reason = _ready([_phase(), _spec("R1"), first, second, _run(first, "pass")])
     assert not ready
-    assert "a2" in reason
+    assert "R1" in reason
 
 
 def test_workflow_readiness_fails_when_latest_run_is_not_pass() -> None:
     acceptance = _acceptance("a1")
     ready, reason = _ready(
-        [_phase(), acceptance, _run(acceptance, "pass"), _run(acceptance, "fail")]
+        [_phase(), _spec("R1"), acceptance, _run(acceptance, "pass"), _run(acceptance, "fail")]
     )
     assert not ready
-    assert "a1" in reason
+    assert "R1" in reason
 
 
 def test_workflow_readiness_ignores_corrected_runs() -> None:
@@ -281,10 +284,15 @@ def test_workflow_readiness_ignores_corrected_runs() -> None:
     correction = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "pass", "revision": HEAD},
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": HEAD,
+            "signed_by": "",
+        },
         corrects=failing["id"],
     )
-    assert _ready([_phase(), acceptance, failing, correction]) == (True, "")
+    assert _ready([_phase(), _spec("R1"), acceptance, failing, correction]) == (True, "")
 
 
 def _suite_run(revision: str, result: str, **payload: str) -> Record:

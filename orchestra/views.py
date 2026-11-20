@@ -16,7 +16,7 @@ from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
-from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
+from orchestra.conductor.requirements import RequirementIndex, RequirementStatus, all_verified
 from orchestra.derive import (
     effort_dormant,
     phase_progress,
@@ -485,8 +485,7 @@ def _release_state(
     )
     if written is not None:
         return str(record_payload(written).get("state", "ready"))
-    ready = bool(statuses) and all(status.status == "verified" for status in statuses.values())
-    return "ready" if ready else "not ready"
+    return "ready" if all_verified(statuses) else "not ready"
 
 
 def _status_bits(

@@ -103,12 +103,29 @@ def test_latest_order_takes_greatest_recorded_at(phase: Phase) -> None:
     assert first["id"] != second["id"]
 
 
-def test_latest_order_breaks_timestamp_tie_by_record_id(phase: Phase) -> None:
+def _stamped(record: Record, write_order: int) -> Record:
+    stamped = _at(record, "2026-11-01T00:00:00Z")
+    return {**stamped, "derived": {**stamped.get("derived", {}), "write_order": write_order}}
+
+
+def test_latest_order_breaks_timestamp_tie_by_later_write_order(phase: Phase) -> None:
     one = phase.check_run("pass")
     two = phase.check_run("fail")
     low, high = sorted([one["id"], two["id"]])
-    stamp = "2026-11-01T00:00:00Z"
-    runs = [_at(_by_id(phase, high), stamp), _at(_by_id(phase, low), stamp)]
+    runs = [_stamped(_by_id(phase, low), 2), _stamped(_by_id(phase, high), 1)]
+    latest = head_evidence.latest(runs)
+    assert latest is not None
+    assert latest["id"] == low
+    reversed_latest = head_evidence.latest(list(reversed(runs)))
+    assert reversed_latest is not None
+    assert reversed_latest["id"] == low
+
+
+def test_latest_order_breaks_equal_write_order_tie_by_record_id(phase: Phase) -> None:
+    one = phase.check_run("pass")
+    two = phase.check_run("fail")
+    low, high = sorted([one["id"], two["id"]])
+    runs = [_stamped(_by_id(phase, high), 1), _stamped(_by_id(phase, low), 1)]
     latest = head_evidence.latest(runs)
     assert latest is not None
     assert latest["id"] == high

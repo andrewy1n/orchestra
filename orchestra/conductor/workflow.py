@@ -12,7 +12,6 @@ from orchestra.conductor import suite
 from orchestra.conductor.gate import format_missing, gate_terms, missing_terms
 from orchestra.conductor.head_evidence import (
     EvidenceIndex,
-    acceptance_latest,
     latest,
     latest_review,
     review_at_head,
@@ -26,6 +25,7 @@ from orchestra.conductor.landing import (
     parse_landing,
     proof_packet,
 )
+from orchestra.conductor.requirements import all_verified, requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, live_work_items, record_order
 from orchestra.score.lookups import dependencies as item_dependencies
@@ -329,24 +329,16 @@ def _requires_integration_report(records: list[Record], phase: str) -> bool:
     return False
 
 
-def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
+def _verification_ready(
+    records: list[Record], phase: str, head: str | None = None
+) -> tuple[bool, str]:
     current = _current_phase(records, phase)
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == "score:acceptance"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
-    ]
-    if not acceptances:
-        return False, "phase has no active acceptances"
-    index = EvidenceIndex(records)
-    for acceptance in acceptances:
-        answer = acceptance_latest(index, acceptance, None)
-        if answer.run is None:
-            return False, f"acceptance {acceptance['subject']!r} has no check-run"
-        if not answer.holds:
-            return False, f"acceptance {acceptance['subject']!r} check-run is not pass"
+    statuses = requirement_status(records, phase, head)
+    if not statuses:
+        return False, "phase has no requirements"
+    for requirement, status in statuses.items():
+        if status.status != "verified":
+            return False, f"requirement {requirement} is {status.status}"
     if _requires_integration_report(records, phase):
         effort = current.effort
         integrations = [
@@ -504,20 +496,11 @@ def _text_of(record: Record | None, field: str) -> str:
 def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
     current = _current_phase(records, phase)
     effort = current.effort
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == "score:acceptance"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
-    ]
     index = EvidenceIndex(records)
-    if not acceptances or not all(
-        acceptance_latest(index, acceptance, None).holds for acceptance in acceptances
-    ):
-        return "analyze"
     review = latest_review(index, phase, effort)
     head = _text_of(review, "revision")
+    if not all_verified(requirement_status(records, phase, head or None)):
+        return "analyze"
     check_runs = [record for record in records if record["record_type"] == "tuner:check-run"]
     policy = suite.load_suite_policy(project.project_root)
     latest_suite = latest(suite_check_runs(index, phase))
@@ -526,7 +509,7 @@ def _verify_stage(project: Project, records: list[Record], phase: str) -> str | 
         return "suite"
     if not review_at_head(index, phase, effort, head).holds:
         return "reviewer"
-    if not _verification_ready(records, phase)[0]:
+    if not _verification_ready(records, phase, head or None)[0]:
         return "reviewer"
     if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
         return "gate"

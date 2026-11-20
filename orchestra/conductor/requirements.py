@@ -167,3 +167,13 @@ def requirement_status(
             )
         statuses[requirement] = derived
     return statuses
+
+
+def verified_requirements(statuses: dict[str, RequirementStatus]) -> frozenset[str]:
+    return frozenset(
+        requirement for requirement, status in statuses.items() if status.status == "verified"
+    )
+
+
+def all_verified(statuses: dict[str, RequirementStatus]) -> bool:
+    return bool(statuses) and all(status.status == "verified" for status in statuses.values())

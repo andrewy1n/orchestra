@@ -15,6 +15,7 @@ from orchestra.conductor.requirements import (
     RequirementStatus as RequirementStatus,
 )
 from orchestra.conductor.requirements import (
+    all_verified,
     requirement_status,
 )
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, latest_record, live_work_items
@@ -54,8 +55,7 @@ def _text(record: Record, key: str) -> str | None:
 
 
 def release_ready(records: list[Record], phase: str, head: str | None = None) -> bool:
-    statuses = requirement_status(records, phase, head)
-    return bool(statuses) and all(s.status == "verified" for s in statuses.values())
+    return all_verified(requirement_status(records, phase, head))
 
 
 def phase_progress(records: list[Record], phase: str) -> PhaseProgress:

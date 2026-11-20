@@ -403,7 +403,13 @@ def seed(
         {"title": PHASE, "ordinal": 1, "effort": EFFORT},
         PROSE_LANDING if prose_landing else _landing(repo, *landing_lines),
     )
-    item = {"phase": PHASE, "kind": "deliver", "assignee": "agent", "effort": EFFORT}
+    item = {
+        "phase": PHASE,
+        "kind": "deliver",
+        "assignee": "agent",
+        "effort": EFFORT,
+        "requirements": ["R1"],
+    }
     impl = phase.create(
         "score:work-item", f"{PHASE}-impl", {"title": "impl", **item}, "## Description\n\nd"
     )
