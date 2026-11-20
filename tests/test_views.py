@@ -7,6 +7,7 @@ from canon_support import create, make_project, seed_effort
 from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.phase_progress import open_phase_progress
 
 
 @pytest.fixture
@@ -36,7 +37,13 @@ def render(project, view, **kwargs):
     previous = Path.cwd()
     os.chdir(project.project_root)
     try:
-        return views.render_view(views.VIEWS[view], views.load_records(project), **kwargs)
+        records = views.load_records(project)
+        return views.render_view(
+            views.VIEWS[view],
+            records,
+            progress=open_phase_progress(project, records),
+            **kwargs,
+        )
     finally:
         os.chdir(previous)
 
@@ -84,7 +91,7 @@ def test_handoff_resumes_phase_close_after_the_last_task(project: Project) -> No
     project.update(task["id"], transition="done")
     text = render(project, "handoff", effort="alpha")
     assert "### Pending Phase Close" in text
-    assert "Run `orchestra gate p1`. After it passes, record the proof packet" in text
+    assert "stage: spec" in text
 
     create(
         project,
@@ -92,8 +99,9 @@ def test_handoff_resumes_phase_close_after_the_last_task(project: Project) -> No
         "p1",
         {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
     )
-    sections = dict(views.hook_handoff_sections(views.load_records(project)))
-    assert "verify the proof packet covers the phase head and confirm landing" in sections["alpha"]
+    records = views.load_records(project)
+    sections = dict(views.hook_handoff_sections(records, (), open_phase_progress(project, records)))
+    assert "stage: spec" in sections["alpha"]
     assert "Pending Phase Close" not in render(project, "handoff", effort="beta")
     project.update(phase["id"], transition="done")
     assert "Pending Phase Close" not in render(project, "handoff")
@@ -437,49 +445,3 @@ def test_r11_cli_handoff_keeps_ids_latest_proof_and_backlog(project, monkeypatch
     assert "### Latest Proof\n- **p1**: p1; alpha; abc123; demo _(id: rec-" in out.out
     assert "### Backlog\n- **later-idea**: alpha; open _(id: rec-" in out.out
     assert ".canon/" not in out.out
-
-
-def _landed_phase(project: Project, result: str, number: int = 7) -> Record:
-    phase = project.resolve("score:phase", "p1")
-    assert "body" in phase
-    project.update(phase["id"], transition="in_progress", body=phase["body"] + "\n## Landing\n")
-    task = work_item(project, "build-it")
-    project.update(task["id"], transition="in_progress")
-    project.update(task["id"], transition="done")
-    create(
-        project,
-        "conductor:landing",
-        "p1",
-        {
-            "phase": "p1",
-            "effort": "alpha",
-            "number": number,
-            "url": f"https://github.com/o/r/pull/{number}",
-            "head_sha": "abc123",
-            "result": result,
-        },
-    )
-    return phase
-
-
-def test_handoff_shows_awaiting_merge(project: Project) -> None:
-    phase = _landed_phase(project, "success")
-
-    text = render(project, "handoff", effort="alpha")
-
-    assert "Awaiting merge: PR 7" in text
-    assert "https://github.com/o/r/pull/7" in text
-    assert "orchestra close --phase p1" in text
-    sections = dict(views.hook_handoff_sections(views.load_records(project)))
-    assert "Awaiting merge: PR 7" in sections["alpha"]
-    project.update(phase["id"], transition="done")
-    assert "Awaiting merge" not in render(project, "handoff")
-
-
-def test_handoff_omits_awaiting_merge_while_ci_fails(project: Project) -> None:
-    _landed_phase(project, "fail")
-
-    text = render(project, "handoff", effort="alpha")
-
-    assert "Awaiting merge" not in text
-    assert "Run `orchestra gate p1`" in text

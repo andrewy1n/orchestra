@@ -4,12 +4,6 @@ import ast
 import shutil
 from pathlib import Path
 
-import pytest
-from canon_support import create, make_project, seed_effort
-
-from orchestra import views
-from orchestra.canon.project import Project
-
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/conductor/landing.py")
 ROOTS = ("orchestra", "dashboard/backend", "scripts")
@@ -187,66 +181,6 @@ def test_r22_guard_allows_listing_packets_without_selecting(tmp_path: Path) -> N
 def test_r22_guard_ignores_owner_module(tmp_path: Path) -> None:
     _copy(tmp_path)
     assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
-
-
-@pytest.fixture
-def project(tmp_path: Path) -> Project:
-    project = make_project(tmp_path / "repo")
-    seed_effort(project, "alpha")
-    return project
-
-
-def _landing(project: Project, result: str) -> None:
-    phase = project.resolve("score:phase", "p1")
-    assert "body" in phase
-    project.update(phase["id"], transition="in_progress", body=phase["body"] + "\n## Landing\n")
-    create(
-        project,
-        "conductor:landing",
-        "p1",
-        {
-            "phase": "p1",
-            "effort": "alpha",
-            "number": 7,
-            "url": "https://github.com/o/r/pull/7",
-            "head_sha": "abc123",
-            "result": result,
-        },
-    )
-
-
-def test_r21_landed_phase_names_close_as_the_done_step(project: Project) -> None:
-    _landing(project, "success")
-    records = views.load_records(project)
-    phase = project.resolve("score:phase", "p1")
-
-    step = views._phase_close_step(phase, records)
-
-    assert "`orchestra close --phase p1` moves the phase to done" in step
-    assert "Awaiting merge: PR 7" in step
-
-
-def test_r21_unlanded_phase_does_not_tell_agent_to_mark_done(project: Project) -> None:
-    _landing(project, "fail")
-    records = views.load_records(project)
-    phase = project.resolve("score:phase", "p1")
-
-    step = views._phase_close_step(phase, records)
-
-    assert "Run `orchestra gate p1`." in step
-    assert "marking the phase done" not in step
-    assert "orchestra close" not in step
-
-
-def test_r21_phase_without_landing_record_does_not_tell_agent_to_mark_done(
-    project: Project,
-) -> None:
-    records = views.load_records(project)
-    phase = project.resolve("score:phase", "p1")
-
-    step = views._phase_close_step(phase, records)
-
-    assert "marking the phase done" not in step
 
 
 def test_r21_schema_modules_answers_open_question_one() -> None:

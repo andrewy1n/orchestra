@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-import shlex
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,11 +12,10 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
-from orchestra.canon.query import latest
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
-from orchestra.conductor.requirements import RequirementIndex, RequirementStatus
+from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.conductor.requirements import RequirementIndex
 from orchestra.derive import (
     effort_dormant,
     phase_progress,
@@ -29,7 +27,6 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
-from orchestra.score.phase import read_phase
 from orchestra.score.requirements import phase_requirements
 from orchestra.score.workflow_blockers import human_gates
 
@@ -261,7 +258,6 @@ VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
 
 EFFORT_TYPE = "score:effort"
 WORK_ITEM_TYPE = "score:work-item"
-RELEASE_TYPE = "conductor:release"
 
 
 def subject_related(parent: str, other: str) -> bool:
@@ -450,11 +446,13 @@ def _phase_derived_lines(
     phase: str,
     effort: str | None = None,
     requirement_index: RequirementIndex | None = None,
+    stage: PhaseProgress | None = None,
 ) -> list[str]:
     records = _effort_pool(records, effort)
     progress = phase_progress(records, phase)
     statuses = requirement_status(records, phase, index=requirement_index)
-    if progress.total == 0 and not statuses:
+    stage_text = _stage_text(stage)
+    if progress.total == 0 and not statuses and not stage_text:
         return []
     lines: list[str] = []
     if progress.total:
@@ -469,24 +467,15 @@ def _phase_derived_lines(
             suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
             lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
         lines.append("")
-        lines += ["### Release", f"- {_release_state(records, phase, statuses)}", ""]
+    if stage_text:
+        lines += ["### Stage", f"- {stage_text}", ""]
     return lines
 
 
-def _release_state(
-    records: list[Record], phase: str, statuses: dict[str, RequirementStatus]
-) -> str:
-    written = latest(
-        r
-        for r in records
-        if r["record_type"] == RELEASE_TYPE
-        and r.get("lifecycle_state") == "current"
-        and record_payload(r).get("phase") == phase
-    )
-    if written is not None:
-        return str(record_payload(written).get("state", "ready"))
-    ready = bool(statuses) and all(status.status == "verified" for status in statuses.values())
-    return "ready" if ready else "not ready"
+def _stage_text(progress: PhaseProgress | None) -> str:
+    if progress is None or progress.current is None:
+        return ""
+    return f"{progress.current} ({progress.reason})" if progress.reason else progress.current
 
 
 def _status_bits(
@@ -584,24 +573,6 @@ def _group_records(
     return groups
 
 
-def _phase_close_step(record: Record, records: list[Record]) -> str:
-    phase = read_phase(record)
-    slug = phase.subject
-    landing = latest_landing(records, slug)
-    if landing is not None and landing.result == "success":
-        return (
-            f"Awaiting merge: PR {landing.number} ({landing.url}). "
-            f"After the merge, `orchestra close --phase {shlex.quote(slug)}` moves the phase to done."
-        )
-    gate = f"Run `orchestra gate {shlex.quote(slug)}`."
-    if proof_packet(records, phase) is None:
-        return f"{gate} After it passes, record the proof packet for any code or claim changes."
-    checks = "verify the proof packet covers the phase head"
-    if parse_landing(phase.body).present:
-        checks += " and confirm landing"
-    return f"{gate} After it passes, {checks}."
-
-
 def _group_lines(
     view: View,
     name: str,
@@ -613,7 +584,9 @@ def _group_lines(
     effort: str | None = None,
     budget: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     requirement_index: RequirementIndex | None = None,
+    progress: Mapping[str, PhaseProgress] | None = None,
 ) -> list[str]:
+    progress = progress or {}
     lines = [f"## {name}", ""]
     for role in view.roles:
         items = sorted(
@@ -626,11 +599,13 @@ def _group_lines(
         for record in items:
             bits = _status_bits(record, view, tally, records, budget)
             if role.name == "pending-phase-close":
-                bits.append(_phase_close_step(record, records))
+                stage_text = _stage_text(progress.get(record["subject"]))
+                if stage_text:
+                    bits.append(f"stage: {stage_text}")
             lines.append(_record_line(record, role, bits, link))
         lines.append("")
     if view.show_phase_derived:
-        lines += _phase_derived_lines(records, name, effort, requirement_index)
+        lines += _phase_derived_lines(records, name, effort, requirement_index, progress.get(name))
     return lines
 
 
@@ -654,6 +629,7 @@ def render_view(
     *,
     effort: str | None = None,
     dormant: Collection[str] = (),
+    progress: Mapping[str, PhaseProgress] | None = None,
 ) -> str:
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
     if view.name == "plan":
@@ -688,9 +664,10 @@ def render_view(
             effort=effort,
             budget=budget,
             requirement_index=requirement_index,
+            progress=progress,
         )
     if groups and view.phase_derived_section:
-        lines += _phase_section_lines(groups, records, effort, requirement_index)
+        lines += _phase_section_lines(groups, records, effort, requirement_index, progress or {})
     if dormant:
         lines += [f"Dormant: {', '.join(sorted(dormant))}", ""]
     return "\n".join(lines)
@@ -700,7 +677,8 @@ def _phase_section_lines(
     groups: dict[str, dict[str, list[Record]]],
     records: list[Record],
     effort: str | None,
-    requirement_index: RequirementIndex | None = None,
+    requirement_index: RequirementIndex | None,
+    progress: Mapping[str, PhaseProgress],
 ) -> list[str]:
     phases = sorted(
         {
@@ -713,7 +691,9 @@ def _phase_section_lines(
     )
     lines: list[str] = []
     for phase in phases:
-        derived = _phase_derived_lines(records, phase, effort, requirement_index)
+        derived = _phase_derived_lines(
+            records, phase, effort, requirement_index, progress.get(phase)
+        )
         if derived:
             lines += [f"## Phase {phase}", "", *derived]
     return lines
@@ -934,7 +914,9 @@ def _group_subjects(group: dict[str, list[Record]]) -> list[str]:
 
 
 def hook_handoff_sections(
-    records: list[Record], dormant: Collection[str] = ()
+    records: list[Record],
+    dormant: Collection[str] = (),
+    progress: Mapping[str, PhaseProgress] | None = None,
 ) -> list[tuple[str, str]]:
     live = live_efforts(records) - set(dormant)
     groups = {
@@ -949,7 +931,9 @@ def hook_handoff_sections(
     rest = sorted(n for n in groups if n not in live)
     sections: list[tuple[str, str]] = []
     for name in (*stamped, *unstamped, *rest):
-        lines = _group_lines(HOOK_VIEW, name, groups[name], [], records, link=False)
+        lines = _group_lines(
+            HOOK_VIEW, name, groups[name], [], records, link=False, progress=progress
+        )
         label = name or ", ".join(_group_subjects(groups[name]))
         sections.append((label, "\n".join(lines).rstrip()))
     return sections

@@ -42,9 +42,11 @@ def run(args: argparse.Namespace) -> int:
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError, open_store
     from orchestra.canon.project_config import ProjectConfigError
+    from orchestra.conductor.phase_progress import PhaseProgressError, open_phase_progress
 
     try:
-        records = views.load_records(open_store(Path.cwd()))
+        project = open_store(Path.cwd())
+        records = views.load_records(project)
         if args.command == "brief":
             text = views.render_brief(args.subject, records)
         else:
@@ -59,8 +61,15 @@ def run(args: argparse.Namespace) -> int:
                 records,
                 effort=args.effort,
                 dormant=hide,
+                progress=open_phase_progress(project, records),
             )
-    except (StoreBindingError, StoreError, views.ViewError, ProjectConfigError) as exc:
+    except (
+        StoreBindingError,
+        StoreError,
+        views.ViewError,
+        ProjectConfigError,
+        PhaseProgressError,
+    ) as exc:
         print(f"orchestra {args.command}: {exc}", file=sys.stderr)
         return 1
     print(text)
