@@ -25,7 +25,7 @@ from orchestra.conductor.landing import (
     parse_landing,
     proof_packet,
 )
-from orchestra.conductor.requirements import all_verified, requirement_status
+from orchestra.conductor.requirements import all_verified, is_verified, requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import closing_work_item, live_work_items, record_order
 from orchestra.score.lookups import dependencies as item_dependencies
@@ -337,7 +337,7 @@ def _verification_ready(
     if not statuses:
         return False, "phase has no requirements"
     for requirement, status in statuses.items():
-        if status.status != "verified":
+        if not is_verified(status.status):
             return False, f"requirement {requirement} is {status.status}"
     if _requires_integration_report(records, phase):
         effort = current.effort

@@ -16,6 +16,7 @@ from orchestra.score.requirements import (
 from orchestra.score.workflow_blockers import is_signed
 
 RequirementState = Literal["verified", "failed", "unverified"]
+UNVERIFIED: RequirementState = "unverified"
 
 _WORK_ITEM = "score:work-item"
 _SPECIFICATION = "score:specification"
@@ -169,11 +170,15 @@ def requirement_status(
     return statuses
 
 
+def is_verified(status: str) -> bool:
+    return status == "verified"
+
+
 def verified_requirements(statuses: dict[str, RequirementStatus]) -> frozenset[str]:
     return frozenset(
-        requirement for requirement, status in statuses.items() if status.status == "verified"
+        requirement for requirement, status in statuses.items() if is_verified(status.status)
     )
 
 
 def all_verified(statuses: dict[str, RequirementStatus]) -> bool:
-    return bool(statuses) and all(status.status == "verified" for status in statuses.values())
+    return bool(statuses) and all(is_verified(status.status) for status in statuses.values())

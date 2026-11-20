@@ -36,7 +36,6 @@ from orchestra.score.lookups import (
     record_order,
 )
 from orchestra.score.phase import Phase, read_phase
-from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.work_item import WorkItemShapeError, read_work_item
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
@@ -158,7 +157,7 @@ def _runner_start(
     from orchestra.conductor import land_task, task_close, verification
 
     try:
-        required = read_work_item(item).requirements
+        read_work_item(item)
     except WorkItemShapeError as exc:
         raise WaveError(str(exc)) from exc
     others = [other for other in items if other["id"] != item["id"]]
@@ -216,18 +215,7 @@ def _runner_start(
         item["subject"], phase, "", revision, report["id"], (), "pass", "pass"
     )
     run = verification.run_closing_checks(project, landed)
-    verified = set(run.verified)
-    acceptances = land_task.acceptances_for(project, item["subject"], phase)
-    outcomes = {check.acceptance_id: check.exit_code for check in run.checks}
-    for requirement in required:
-        related = [
-            acceptance
-            for acceptance in acceptances
-            if requirement in acceptance_requirement_ids(acceptance)
-        ]
-        if related and all(outcomes.get(acceptance["id"]) == 0 for acceptance in related):
-            verified.add(requirement)
-    closure = task_close.close(project, landed, frozenset(verified), verification=run)
+    closure = task_close.close(project, landed, run.verified, verification=run)
     checks = tuple(
         {
             "subject": check.subject,

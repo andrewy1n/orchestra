@@ -9,6 +9,7 @@ from dashboard.backend.landing import Landing
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow, run_fact_int
+from orchestra.conductor.requirements import is_verified
 
 FULL_STAGES = ("spec", "design", "tasks", "execute", "verify", "review", "land", "close")
 LIGHT_STAGES = FULL_STAGES[2:]
@@ -39,7 +40,7 @@ def derive_stages(
         "design": has_tasks or "design" in approved,
         "tasks": has_tasks or "plan" in approved,
         "execute": bool(task_states) and all(state == "done" for state in task_states),
-        "verify": all(status == "verified" for status in requirement_statuses),
+        "verify": all(is_verified(status) for status in requirement_statuses),
         "review": review_passed_at_head,
         "land": branch_merged,
         "close": phase_state == "done",
@@ -143,7 +144,7 @@ def build_progress(
 
     evidence = phase.evidence
     statuses = [row.status for row in evidence.requirements] if evidence else []
-    proven = sum(1 for status in statuses if status == "verified")
+    proven = sum(1 for status in statuses if is_verified(status))
     requirements = RequirementProgress(
         proven,
         len(statuses),

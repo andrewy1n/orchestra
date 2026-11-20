@@ -2,6 +2,9 @@
   "body": {
     "record": {
       "body": "## Evidence\n\nplaceholder text for Evidence.\n\n## Consequence\n\nplaceholder text for Consequence.\n\n## Follow-up\n\nplaceholder text for Follow-up.\n",
+      "derived": {
+        "write_order": 35
+      },
       "id": "<tuner:finding:human-finding>",
       "lifecycle_state": "asserted",
       "payload": {

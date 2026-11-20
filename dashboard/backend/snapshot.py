@@ -48,6 +48,7 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.requirements import is_verified
 from orchestra.derive import effort_dormant, phase_progress
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 from orchestra.score.workflow_blockers import human_gates
@@ -358,7 +359,7 @@ def _needs_you(
             continue
         payload = record_payload(record)
         status = requirement_statuses.get((phase, requirement), payload.get("status", ""))
-        if status == "verified":
+        if is_verified(status):
             continue
         nxt = payload.get("next", "")
         text = " ".join(part for part in (requirement, status, nxt) if part)

@@ -40,6 +40,7 @@ from orchestra.conductor.head_evidence import (
 )
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.requirements import UNVERIFIED, is_verified
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases
 from orchestra.score.phase import Phase, current_phase_model, read_phase
@@ -546,7 +547,7 @@ class RequirementDetail:
 def _requirement_view(
     written: Record | None, derived: RequirementStatus | None
 ) -> tuple[str, str, str]:
-    status = derived.status if derived is not None else "unverified"
+    status = derived.status if derived is not None else UNVERIFIED
     if written is None:
         return status, "", ""
     payload = record_payload(written)
@@ -591,9 +592,9 @@ def _stage(
     non_verified = [
         record
         for requirement, record in latest.items()
-        if record_payload(record).get("status") != "verified"
+        if not is_verified(record_payload(record).get("status", ""))
         and (status := derived.get(requirement)) is not None
-        and status.status != "verified"
+        and not is_verified(status.status)
     ]
     if non_verified:
 
@@ -602,7 +603,7 @@ def _stage(
             return LOOP_NEXT.index(nxt) if nxt in LOOP_NEXT else len(LOOP_NEXT)
 
         return record_payload(min(non_verified, key=rank)).get("next", ""), False
-    if derived and all(row.status == "verified" for row in derived.values()):
+    if derived and all(is_verified(row.status) for row in derived.values()):
         return "release", True
     if not _for_phase(designs, phase, effort):
         return "design", False
