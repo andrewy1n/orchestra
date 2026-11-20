@@ -15,7 +15,7 @@ Each term is one line of the "Phase gate" list in verify's phase-end.md.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,9 +23,10 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
-from orchestra.conductor.landing import phase_place
+from orchestra.conductor.landing import LandingPlace, phase_place
+from orchestra.conductor.suite import SuitePolicy
 from orchestra.score.lookups import closing_work_item
-from orchestra.score.phase import current_phase_model
+from orchestra.score.phase import Phase, current_phase_model
 from orchestra.score.workflow_blockers import (
     WorkflowBlockerError,
     is_signed,
@@ -45,15 +46,15 @@ class Term:
     detail: str = ""
 
 
-def _descent_term(worktree: Path, reviewed: str) -> Term:
+def _descent_term(worktree: Path, reviewed: str, git_at: Callable[[Path], Git] = Git) -> Term:
     name = "head-descends-from-review"
     if not reviewed:
         return Term(name, False, "no review check-run")
     try:
-        head = Git(worktree).head()
+        head = git_at(worktree).head()
     except (OSError, RuntimeError) as exc:
         return Term(name, False, f"cannot resolve the worktree HEAD: {exc}")
-    git = Git(worktree)
+    git = git_at(worktree)
     try:
         descends = git.is_ancestor(reviewed, head)
     except ToolError as error:
@@ -101,8 +102,23 @@ def gate_terms(
     phase = current_phase_model(phase_slug, records)
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")
-    effort = phase.effort
     place = phase_place(phase, store)
+    policy = suite.load_suite_policy(head_worktree if head_worktree is not None else store)
+    return gate_terms_for(records, phase, place, policy, head_worktree=head_worktree)
+
+
+def gate_terms_for(
+    records: list[Record],
+    phase: Phase,
+    place: LandingPlace,
+    policy: SuitePolicy,
+    *,
+    head_worktree: Path | None = None,
+    git_at: Callable[[Path], Git] = Git,
+) -> list[Term]:
+    """Every phase gate term for a phase over an in-memory record snapshot."""
+    phase_slug = phase.subject
+    effort = phase.effort
 
     def of_type(record_type: str) -> list[Record]:
         return [r for r in records if r["record_type"] == record_type]
@@ -147,12 +163,11 @@ def gate_terms(
     terms.append(Term("review-at-head", review.holds, review.reason))
 
     if head_worktree is not None:
-        terms.append(_descent_term(head_worktree, head))
+        terms.append(_descent_term(head_worktree, head, git_at))
     else:
         if place.worktree.is_dir():
-            terms.append(_descent_term(place.worktree, head))
+            terms.append(_descent_term(place.worktree, head, git_at))
 
-    policy = suite.load_suite_policy(head_worktree if head_worktree is not None else store)
     if policy.gate == "required" and policy.mode not in ("none", ""):
         at_head = head_evidence.suite_at_head(index, phase_slug, head)
         terms.append(Term("suite-at-head", at_head.holds, at_head.reason))

@@ -8,7 +8,7 @@ from conductor_support import EFFORT, HEAD, PHASE, PHASE_BODY, Cli, Phase, seed
 
 from orchestra.canon.project import open_store
 from orchestra.cli import main
-from orchestra.conductor import suite, workflow
+from orchestra.conductor import phase_progress, suite
 from orchestra.conductor.briefs import render
 from orchestra.conductor.workflow import step_stage
 
@@ -197,7 +197,7 @@ def test_stage_read_failures_raise_from_step_stage(
     def unreadable(*args: object, **kwargs: object) -> None:
         raise OSError("review evidence unreadable")
 
-    monkeypatch.setattr(workflow, "latest_review", unreadable)
+    monkeypatch.setattr(phase_progress, "latest_review", unreadable)
 
     with pytest.raises(OSError, match="review evidence unreadable"):
         _stage(phase)
@@ -213,7 +213,7 @@ def test_stage_read_failures_fail_workflow_brief(
     def unreadable(*args: object, **kwargs: object) -> None:
         raise OSError("review evidence unreadable")
 
-    monkeypatch.setattr(workflow, "latest_review", unreadable)
+    monkeypatch.setattr(phase_progress, "latest_review", unreadable)
 
     code, output, error = _invoke(store, capsys, "brief", PHASE, "verify")
 
@@ -233,7 +233,7 @@ def test_stage_read_failures_fail_workflow_next(
     def unreadable(*args: object, **kwargs: object) -> None:
         raise OSError("review evidence unreadable")
 
-    monkeypatch.setattr(workflow, "latest_review", unreadable)
+    monkeypatch.setattr(phase_progress, "latest_review", unreadable)
 
     code, output, error = _invoke(store, capsys, "next", run, "--json")
 
