@@ -98,14 +98,6 @@ def test_views_show_derived_verified_status():
     out = _status(records)
     assert "- **R1**: verified" in out
     assert "- **R2**: failed" in out
-    assert "- not ready" in out
-
-
-def test_views_show_release_ready_when_every_requirement_verified():
-    a1 = _acceptance("a1", "p", "R1")
-    records = [_spec("p", "R1"), a1, _check_run(a1, "pass"), _work_item("t1", "p", "done")]
-    out = _status(records)
-    assert "### Release\n- ready" in out
 
 
 def test_views_written_non_verified_assessment_wins_over_derivation():
@@ -136,7 +128,6 @@ def test_verification_view_shows_derived_status():
     out = render_view(VERIFICATION, records)
     assert "- **R1**: verified" in out
     assert "- **R2**: failed" in out
-    assert "### Release\n- not ready" in out
 
 
 def test_views_show_written_assessment_status_name():

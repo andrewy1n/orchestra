@@ -25,9 +25,14 @@ from orchestra.conductor.landing import (
     proof_packet,
 )
 from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
+from orchestra.score.lookups import (
+    closing_work_item,
+    current_phase,
+    current_phases,
+    live_work_items,
+)
 from orchestra.score.lookups import dependencies as item_dependencies
-from orchestra.score.phase import Phase
+from orchestra.score.phase import Phase, read_phase
 from orchestra.score.workflow_blockers import phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.tools import Absent, BranchState, Git, Merged, ReadFailed, Unmerged, branch_state
@@ -483,3 +488,16 @@ def phase_facts(
         gates=_gates(records, phase),
         prerequisites=_prerequisites(records, phase),
     )
+
+
+def open_phase_progress(
+    project: Project,
+    records: Sequence[Record],
+    *,
+    git: Callable[[Path], Git] = Git,
+) -> dict[str, PhaseProgress]:
+    return {
+        slug: assess(phase_facts(project, records, read_phase(record), git=git))
+        for slug, record in current_phases(records).items()
+        if record["lifecycle_state"] != "done"
+    }

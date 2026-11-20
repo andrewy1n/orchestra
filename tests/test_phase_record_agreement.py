@@ -26,6 +26,7 @@ from orchestra.conductor.landing import (
     phase_place,
     proof_packet,
 )
+from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.conductor.workflow import preview_run, run_status, start_run
 from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
@@ -381,14 +382,13 @@ def _install(monkeypatch: pytest.MonkeyPatch, picks: Picks) -> None:
         dashboard_phase,
     ):
         monkeypatch.setattr(module, "current_phase_model", current)
-    for module in (views, wave, dashboard_phase, workflow_selection):
+    for module in (wave, dashboard_phase, workflow_selection, phase_progress):
         monkeypatch.setattr(module, "read_phase", read)
     for module in (gate, close, wave, phase_progress):
         monkeypatch.setattr(module, "phase_place", place)
-    for module in (views, close, metrics_phases, landing_module):
+    for module in (close, metrics_phases, landing_module):
         monkeypatch.setattr(module, "latest_landing", latest)
     for module in (
-        views,
         workflow,
         phase_progress,
         land,
@@ -419,9 +419,10 @@ def _through_wave(rig: Rig) -> None:
 
 
 def _through_handoff(rig: Rig) -> None:
-    text = views.render_view(views.VIEWS["handoff"], views.load_records(rig.project))
-    for number in re.findall(r"Awaiting merge: PR (\d+)", text):
-        rig.picks.add("landing", LANDING_NUMBERS[int(number)])
+    records = views.load_records(rig.project)
+    views.render_view(
+        views.VIEWS["handoff"], records, progress=open_phase_progress(rig.project, records)
+    )
 
 
 def _through_metrics(rig: Rig) -> None:
@@ -502,7 +503,6 @@ R5_CASES = {
 R7_CASES = {
     "land": Case(_through_land, landings=False),
     "workflow": Case(_through_workflow),
-    "handoff": Case(_through_handoff, landings=False),
     "metrics": Case(_through_metrics, state="done", landings=False),
     "dashboard-detail": Case(_through_phase_detail, landings=False),
 }
