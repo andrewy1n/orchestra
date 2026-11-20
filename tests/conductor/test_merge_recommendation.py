@@ -112,7 +112,7 @@ def test_refresh_reports_pending_failure_rerun_and_new_head(
         (head, "pending", "unresolved", 1),
         (head, "fail", "blocked", 1),
         (head, "pass", "ready", 0),
-        ("a" * 40, "pass", "blocked", 1),
+        ("a" * 40, "pass", "unresolved", 1),
     )
     snapshots = iter(
         EvidenceSnapshot(remote_head, (REQUIRED,), (CheckEvidence(REQUIRED, state, head, RUN),))
@@ -177,3 +177,22 @@ def test_phase_review_failure_blocks_ready_with_passing_ci(
     output = json.loads(capsys.readouterr().out)
     assert output["recommendation"] == "blocked"
     assert any("review-at-head" in reason for reason in output["blockers"])
+
+
+def test_missing_required_result_leaves_mixed_evidence_unresolved(
+    project: Project, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    head = Git(project.project_root).head()
+    missing = RequiredCheck("package")
+
+    def read(_self: GitHubActionsAdapter, request: EvidenceRequest) -> EvidenceSnapshot:
+        return EvidenceSnapshot(
+            head, (REQUIRED, missing), (CheckEvidence(REQUIRED, "fail", head, RUN),)
+        )
+
+    monkeypatch.setattr(GitHubActionsAdapter, "read", read)
+    _invoke(project, 1)
+    output = json.loads(capsys.readouterr().out)
+    assert output["recommendation"] == "unresolved"
+    assert any("required CI check failed" in reason for reason in output["blockers"])
+    assert any("required CI result is missing" in reason for reason in output["blockers"])

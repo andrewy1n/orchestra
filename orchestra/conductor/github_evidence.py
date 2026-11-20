@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import quote, urlsplit
 
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.conductor.github_pr import GitHubGh
@@ -15,8 +14,8 @@ from orchestra.conductor.merge_evidence import (
     RequiredCheck,
 )
 from orchestra.tools import ToolError
+from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
-_PR_PATH = re.compile(r"/([\w.-]+)/([\w.-]+)/pull/([1-9][0-9]*)/?")
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PULL_REQUEST = """
 query($owner: String!, $name: String!, $number: Int!) {
@@ -125,7 +124,7 @@ class _GitHubEvidenceClient(GitHubGh):
 
     def rules(self, host: str, repository: str, branch: str) -> tuple[RequiredCheck, ...]:
         checks: list[RequiredCheck] = []
-        for page in self.pages(host, f"{repository}/rules/branches/{quote(branch, safe='')}"):
+        for page in self.pages(host, branch_rules_endpoint(repository, branch)):
             for row in _array(page):
                 rule = _object(row)
                 kind = _string(rule.get("type"))
@@ -205,12 +204,7 @@ class GitHubActionsAdapter:
     def read(self, request: EvidenceRequest) -> EvidenceSnapshot:
         head = ""
         try:
-            url = urlsplit(request.pull_request_url)
-            match = _PR_PATH.fullmatch(url.path)
-            host = url.hostname
-            if url.scheme != "https" or not host or url.netloc != host or match is None:
-                raise EvidenceError("CI evidence requires a GitHub pull request URL")
-            owner, repo, number = match.groups()
+            host, owner, repo, number = pull_request_coordinates(request.pull_request_url)
             repository = f"repos/{owner}/{repo}"
             client = _GitHubEvidenceClient(request.root)
             pull = client.pull(host, owner, repo, number)
@@ -224,11 +218,14 @@ class GitHubActionsAdapter:
                 if pull.merge_commit and pull.merge_commit != head
                 else {}
             )
+            latest_rules = client.rules(host, repository, pull.base)
             latest = client.pull(host, owner, repo, number)
             if latest.head != head:
                 raise EvidenceError("pull request head changed during refresh")
             if latest != pull:
                 raise EvidenceError("pull request base or test merge commit changed during refresh")
+            if set(required) != {*latest.protected_checks, *latest_rules}:
+                raise EvidenceError("GitHub required checks changed during refresh")
             if at_merge:
                 return EvidenceSnapshot(
                     head,

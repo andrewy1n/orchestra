@@ -22,8 +22,23 @@ def _read(
     changed_head: bool = False,
     lookup_fails: bool = False,
     app: int = 42,
+    merge_commit: bool = False,
+    rules_changed: bool = False,
 ) -> tuple[str, str, str]:
     heads = iter((HEAD, NEXT if changed_head else HEAD))
+    rule_sets: list[JsonValue] = [
+        [[]],
+        [
+            [
+                {
+                    "type": "required_status_checks",
+                    "parameters": {"required_status_checks": [{"context": "new"}]},
+                }
+            ]
+        ]
+        if rules_changed
+        else [[]],
+    ]
 
     def api(_self: GitHubGh, *args: str) -> JsonValue:
         if "graphql" in args:
@@ -34,7 +49,7 @@ def _read(
                             "state": "OPEN",
                             "headRefOid": next(heads),
                             "baseRefName": "main",
-                            "potentialMergeCommit": None,
+                            "potentialMergeCommit": {"oid": NEXT} if merge_commit else None,
                             "baseRef": {
                                 "branchProtectionRule": {
                                     "requiresStatusChecks": True,
@@ -50,21 +65,22 @@ def _read(
         if args[-1].endswith("/rules/branches/main"):
             if lookup_fails:
                 raise ToolError("gh failed", args, 1, "rules lookup denied")
-            return [[]]
+            return rule_sets.pop(0)
         if "/check-runs?" in args[-1]:
+            revision = NEXT if f"/{NEXT}/" in args[-1] else HEAD
             runs: list[JsonValue] = (
                 [
                     {
                         "id": 43,
                         "name": "test",
-                        "head_sha": HEAD,
+                        "head_sha": revision,
                         "app": {"id": app},
                         "conclusion": conclusion,
                         "status": "completed" if conclusion else "in_progress",
                         "details_url": LINK,
                     }
                 ]
-                if include_run
+                if include_run and (not merge_commit or revision == NEXT)
                 else []
             )
             return [{"check_runs": runs}]
@@ -109,3 +125,22 @@ def test_lookup_failure_leaves_ci_unresolved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert "rules lookup denied" in _read(tmp_path, monkeypatch, lookup_fails=True)[2]
+
+
+def test_result_on_test_merge_commit_leaves_ci_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert _read(tmp_path, monkeypatch, conclusion="success", merge_commit=True) == (
+        "pass",
+        LINK,
+        "required checks report on GitHub's test merge commit",
+    )
+
+
+def test_ruleset_change_leaves_ci_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert (
+        "required checks changed"
+        in _read(tmp_path, monkeypatch, conclusion="success", rules_changed=True)[2]
+    )

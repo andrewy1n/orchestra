@@ -166,12 +166,10 @@ def refresh_recommendation(project: Project, phase_slug: str, cwd: Path) -> Json
         project, records, phase, work, snapshot.head
     )
     ci_failed, ci_unresolved, ci_blockers = _ci_evidence(snapshot)
-    if snapshot.unresolved or phase_status == "unresolved":
+    if ci_unresolved or phase_status == "unresolved":
         recommendation = "unresolved"
     elif phase_status == "blocked" or ci_failed:
         recommendation = "blocked"
-    elif ci_unresolved:
-        recommendation = "unresolved"
     else:
         recommendation = "ready"
 
