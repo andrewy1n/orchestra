@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
-from orchestra.canon.extensions import resolve_plugin, validate_plugin_config
-from orchestra.canon.project_config import ProjectConfig
-from orchestra.canon.types import JsonObject
+from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
+from orchestra.canon.project import Project
+from orchestra.canon.project_config import ProjectConfig, load_project_config
+from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.conductor import gate
+from orchestra.conductor.landing import latest_landing, phase_place, proof_packet
+from orchestra.score.phase import Phase, current_phase_model
+from orchestra.tools import Git, ToolError
 
 CheckState = Literal["pass", "fail", "pending", "missing"]
 
@@ -88,3 +94,124 @@ def _validate(snapshot: EvidenceSnapshot) -> None:
         if result.state != "missing" and not result.revision:
             raise EvidenceError("CI check evidence has no checked revision")
         seen.add(result.check)
+
+
+def _phase_evidence(
+    project: Project, records: list[Record], phase: Phase, work: Path, head: str
+) -> tuple[str, list[str], str | None]:
+    if not head:
+        return "unresolved", ["pull request head is unavailable"], None
+    packet = proof_packet(records, phase, head)
+    if packet is None:
+        return "blocked", [f"no phase proof packet for {head}"], None
+    try:
+        if Git(work).head() != head:
+            return "blocked", ["phase worktree HEAD differs from the pull request head"], packet.id
+    except ToolError as error:
+        return "unresolved", [f"cannot read the phase worktree head: {error}"], packet.id
+    terms = gate.gate_terms(
+        project.project_root, phase.subject, store_dir=project.store_path, head_worktree=work
+    )
+    missing = gate.format_missing(gate.missing_terms(terms))
+    if Git(work).head() != head:
+        return "unresolved", ["phase worktree head changed during refresh"], packet.id
+    return ("blocked" if missing else "pass"), missing, packet.id
+
+
+def _ci_evidence(snapshot: EvidenceSnapshot) -> tuple[bool, bool, list[str]]:
+    unresolved = bool(snapshot.unresolved)
+    blockers = [snapshot.unresolved] if snapshot.unresolved else []
+    failed = False
+    results = {evidence.check: evidence for evidence in snapshot.results}
+    for check in snapshot.required_checks:
+        label = f"{check.name} ({check.source})" if check.source else check.name
+        result = results.get(check)
+        if result is None or result.state == "missing":
+            blockers.append(f"{label}: required CI result is missing")
+            unresolved = True
+        elif result.revision != snapshot.head:
+            blockers.append(f"{label}: CI result covers {result.revision}")
+            unresolved = True
+        elif result.state == "pending":
+            blockers.append(f"{label}: required CI check is pending")
+            unresolved = True
+        elif result.state == "fail":
+            blockers.append(f"{label}: required CI check failed")
+            failed = True
+    return failed, unresolved, blockers
+
+
+def refresh_recommendation(project: Project, phase_slug: str, cwd: Path) -> JsonObject:
+    records = project.records()
+    phase = current_phase_model(phase_slug, records)
+    if phase is None:
+        raise EvidenceError(f"unknown phase {phase_slug!r}")
+    landing = latest_landing(records, phase_slug)
+    if landing is None or not landing.url:
+        raise EvidenceError(f"no pull request recorded for {phase_slug!r}")
+
+    work = phase_place(phase, project.project_root).worktree
+    if not work.is_dir():
+        work = cwd
+    config = load_project_config(work)
+    provider = config.merge_evidence_adapter
+    if provider is None:
+        raise EvidenceError("merge_evidence.adapter must be configured")
+    try:
+        snapshot = collect_evidence(work, landing.url, config)
+    except (EvidenceError, PluginCatalogError, ToolError) as error:
+        snapshot = EvidenceSnapshot("", unresolved=str(error))
+
+    phase_status, phase_blockers, packet = _phase_evidence(
+        project, records, phase, work, snapshot.head
+    )
+    ci_failed, ci_unresolved, ci_blockers = _ci_evidence(snapshot)
+    if snapshot.unresolved or phase_status == "unresolved":
+        recommendation = "unresolved"
+    elif phase_status == "blocked" or ci_failed:
+        recommendation = "blocked"
+    elif ci_unresolved:
+        recommendation = "unresolved"
+    else:
+        recommendation = "ready"
+
+    checks: list[JsonValue] = [
+        {
+            "name": result.check.name,
+            "source": result.check.source,
+            "state": result.state,
+            "revision": result.revision,
+            "run_url": result.run_url,
+        }
+        for result in snapshot.results
+    ]
+    required: list[JsonValue] = [
+        {"name": check.name, "source": check.source} for check in snapshot.required_checks
+    ]
+    output: JsonObject = {
+        "phase": phase_slug,
+        "provider": provider,
+        "pull_request": landing.url,
+        "head": snapshot.head,
+        "phase_verification": phase_status,
+        "proof_packet": packet,
+        "required_checks": required,
+        "checks": checks,
+        "recommendation": recommendation,
+        "blockers": [*phase_blockers, *ci_blockers],
+    }
+    observation = project.create(
+        record_type="conductor:ci-observation",
+        subject=phase_slug,
+        payload={
+            "phase": phase_slug,
+            "effort": phase.effort,
+            "provider": provider,
+            "url": landing.url,
+            "revision": snapshot.head,
+            "recommendation": recommendation,
+        },
+        body=json.dumps(output, indent=2, sort_keys=True),
+    )
+    output["observation"] = observation["id"]
+    return output

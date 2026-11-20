@@ -68,7 +68,7 @@ def open_pull_request(
     sleep: Callable[[float], None] | None = None,
     monotonic: Callable[[], float] | None = None,
 ) -> GitHubPRResult:
-    """Push a committed branch, open a PR with its proof packet, and await CI."""
+    """Publish a committed branch and its proof packet; await CI in legacy projects."""
     project_root = Path(root)
     config = load_project_config(project_root)
     if config.merge_policy != "human":
@@ -103,15 +103,23 @@ def open_pull_request(
             number, url = existing
             if description:
                 client.update_pull_request(number, pr_title, body)
-        checks = wait_for_checks(
-            client,
-            number,
-            head_sha=head_sha,
-            poll_interval_s=poll_interval_s,
-            timeout_s=timeout_s,
-            sleep=sleep_fn,
-            monotonic=monotonic_fn,
-        )
+        if config.merge_evidence_adapter is not None:
+            current = client.head_sha(number)
+            if current != head_sha:
+                raise GitHubPRError(
+                    f"published pull request head is {current}, expected {head_sha}"
+                )
+            checks: tuple[GitHubCheck, ...] = ()
+        else:
+            checks = wait_for_checks(
+                client,
+                number,
+                head_sha=head_sha,
+                poll_interval_s=poll_interval_s,
+                timeout_s=timeout_s,
+                sleep=sleep_fn,
+                monotonic=monotonic_fn,
+            )
     except ToolError as error:
         raise GitHubPRError(_tool_error_message(error)) from error
     return GitHubPRResult(
