@@ -55,7 +55,7 @@ def _facts(lifecycle: str = "active") -> PhaseFacts:
         integration="not-required",
         verify=None,
         landing=None,
-        branch="unread",
+        branch=None,
         gates=(),
         prerequisites=(),
     )
@@ -317,7 +317,7 @@ def test_phase_facts_reads_prerequisites_and_skips_verify_reads_before_verify(
 
     assert facts.prerequisites == (PrerequisiteFact("base", "planned"),)
     assert facts.verify is None
-    assert facts.branch == "unread"
+    assert facts.branch is None
     progress = assess(facts)
     assert progress.current == "spec"
     assert progress.blocked_by == ("base",)

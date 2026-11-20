@@ -30,13 +30,11 @@ from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.phase import Phase
 from orchestra.score.workflow_blockers import phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
-from orchestra.tools import Git
-from orchestra.tools.errors import ToolError
+from orchestra.tools import Absent, BranchState, Git, Merged, ReadFailed, Unmerged, branch_state
 
 Stage = Literal["spec", "design", "tasks", "execute", "verify", "land", "close"]
 StageStatus = Literal["done", "current", "pending", "blocked", "unknown"]
 VerifyStep = Literal["analyze", "suite", "reviewer", "integration-report", "gate", "proof"]
-BranchState = Literal["unread", "absent", "unmerged", "merged", "read-failed"]
 IntegrationState = Literal["not-required", "missing", "failing", "passing"]
 
 STAGES: tuple[Stage, ...] = ("spec", "design", "tasks", "execute", "verify", "land", "close")
@@ -110,7 +108,7 @@ class PhaseFacts:
     integration: IntegrationState
     verify: VerifyFacts | None
     landing: LandingProofState | None
-    branch: BranchState
+    branch: BranchState | None
     gates: tuple[HumanGateFact, ...]
     prerequisites: tuple[PrerequisiteFact, ...]
 
@@ -181,7 +179,29 @@ def open_verify_step(
 
 
 def _land_reason(landing: LandingProofState | None) -> str:
-    return "no-landing" if landing is None else landing
+    match landing:
+        case None | "no-landing":
+            return "no-landing"
+        case "no-packet":
+            return "no-packet"
+        case "not-at-head":
+            return "stale-proof"
+        case "failed":
+            return "failed-landing"
+        case "landed":
+            return "landed"
+
+
+def _close_state(branch: BranchState | None) -> tuple[str, StageStatus]:
+    match branch:
+        case None:
+            return "branch-unread", "unknown"
+        case Unmerged():
+            return "awaiting-merge", "current"
+        case Merged() | Absent():
+            return "ready-to-close", "current"
+        case ReadFailed():
+            return "git-read-failed", "unknown"
 
 
 def _assess_done() -> PhaseProgress:
@@ -220,7 +240,8 @@ def _first_open(facts: PhaseFacts) -> tuple[Stage, str, StageStatus]:
         return "verify", step, "current"
     if facts.landing != "landed":
         return "land", _land_reason(facts.landing), "current"
-    return "close", "close", "current"
+    reason, status = _close_state(facts.branch)
+    return "close", reason, status
 
 
 def assess(facts: PhaseFacts) -> PhaseProgress:
@@ -398,18 +419,6 @@ def verify_step(
     )
 
 
-def _branch_state(project: Project, phase: Phase, git: Callable[[Path], Git]) -> BranchState:
-    place = phase_place(phase, project.project_root)
-    try:
-        client = git(place.repo)
-        tip = client.branch_tip(place.branch)
-        if tip is None:
-            return "absent"
-        return "merged" if client.is_ancestor(tip, place.base) else "unmerged"
-    except (OSError, ToolError):
-        return "read-failed"
-
-
 def _gates(records: Sequence[Record], phase: Phase) -> tuple[HumanGateFact, ...]:
     return tuple(
         HumanGateFact(blocker.record["subject"])
@@ -428,6 +437,11 @@ def _prerequisites(records: Sequence[Record], phase: Phase) -> tuple[Prerequisit
             raise PhaseProgressError(f"required phase {subject!r} could not be read")
         facts.append(PrerequisiteFact(subject, record["lifecycle_state"]))
     return tuple(facts)
+
+
+def _landed_branch(project: Project, phase: Phase) -> BranchState:
+    place = phase_place(phase, project.project_root)
+    return branch_state(place.repo, place.branch, place.base)
 
 
 def phase_facts(
@@ -452,6 +466,7 @@ def phase_facts(
         and lifecycle != "done"
     )
     has_landing = parse_landing(phase.body).present
+    landing = landing_proof_state(records, phase) if has_landing else None
     return PhaseFacts(
         phase=phase,
         lifecycle=lifecycle,
@@ -463,8 +478,8 @@ def phase_facts(
         acceptances=acceptance_holds(records, phase.subject),
         integration=integration_state(records, phase),
         verify=verify_facts(project, records, phase, git) if reached_verify else None,
-        landing=landing_proof_state(records, phase) if has_landing else None,
-        branch=_branch_state(project, phase, git) if reached_verify and has_landing else "unread",
+        landing=landing,
+        branch=_landed_branch(project, phase) if reached_verify and landing == "landed" else None,
         gates=_gates(records, phase),
         prerequisites=_prerequisites(records, phase),
     )
