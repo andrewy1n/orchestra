@@ -27,7 +27,7 @@ from orchestra.conductor.landing import (
     proof_packet,
 )
 from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import closing_work_item, live_work_items
+from orchestra.score.lookups import closing_work_item, live_work_items, record_order
 from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.phase import Phase, current_phase_model
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
@@ -297,7 +297,7 @@ def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         ]
         if not own:
             return False, f"task {item['subject']!r} has no execution report"
-        report = max(own, key=lambda row: (row["recorded_at"], row["id"]))
+        report = max(own, key=record_order)
         if report["payload"].get("result") != "pass" or report["payload"].get("verdict") != "pass":
             result = report["payload"].get("result")
             verdict = report["payload"].get("verdict")
@@ -358,7 +358,7 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         ]
         if not integrations:
             return False, "phase integration report is missing"
-        latest = max(integrations, key=lambda row: (row["recorded_at"], row["id"]))
+        latest = max(integrations, key=record_order)
         if latest["payload"].get("result") != "pass" or not _text(latest, "revision"):
             return False, "phase integration report is not passing"
     return True, ""

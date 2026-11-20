@@ -12,6 +12,7 @@ from orchestra.score.analyze import analyze_phase
 from orchestra.score.workflow_reviews import (
     Authority,
     Step,
+    StepReadiness,
     light_phase_fingerprints,
     step_readiness,
 )
@@ -165,6 +166,10 @@ def test_light_phase_tracks_contract_approach_and_proof_separately(project: Proj
     assert changed_operations == original
 
 
+def _review_id(readiness: StepReadiness) -> str | None:
+    return readiness.review["id"] if readiness.review is not None else None
+
+
 def test_upstream_change_marks_affected_outputs_stale(project: Project) -> None:
     effort = _effort(project)
     _phase(project, effort, "phase-a")
@@ -191,7 +196,9 @@ def test_upstream_change_marks_affected_outputs_stale(project: Project) -> None:
     )
 
     assert step_readiness(project.records(), "phase-a", "design").status == "stale"
-    assert step_readiness(project.records(), "phase-b", "spec").review == unaffected_review
+    assert (
+        _review_id(step_readiness(project.records(), "phase-b", "spec")) == unaffected_review["id"]
+    )
 
 
 def test_approval_or_explicit_delegation_establishes_readiness(project: Project) -> None:
@@ -202,7 +209,7 @@ def test_approval_or_explicit_delegation_establishes_readiness(project: Project)
     assert step_readiness(project.records(), "phase", "spec").status == "missing"
     user_review = _review(project, "phase", "spec", specification, "user-approval", "Approved.")
 
-    assert step_readiness(project.records(), "phase", "spec").review == user_review
+    assert _review_id(step_readiness(project.records(), "phase", "spec")) == user_review["id"]
     project.update(
         specification["id"],
         payload={"requirements": ["R2"]},
@@ -225,7 +232,7 @@ def test_approval_or_explicit_delegation_establishes_readiness(project: Project)
     )
 
     assert delegated_review["payload"]["authority"] == "explicit-delegation"
-    assert step_readiness(project.records(), "phase", "spec").review == delegated_review
+    assert _review_id(step_readiness(project.records(), "phase", "spec")) == delegated_review["id"]
 
 
 def test_spec_analysis_does_not_require_task_coverage(project: Project) -> None:

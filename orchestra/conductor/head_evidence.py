@@ -14,7 +14,7 @@ from heapq import merge
 
 from orchestra.canon.types import Record
 from orchestra.conductor.revision import revision_matches
-from orchestra.score.lookups import check_run_criteria, corrected_ids
+from orchestra.score.lookups import check_run_criteria, corrected_ids, record_order
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -71,7 +71,7 @@ def _names(record: Record, subject: str) -> bool:
 def latest(runs: Sequence[Record]) -> Record | None:
     if not runs:
         return None
-    return max(runs, key=lambda run: (run.get("recorded_at", ""), run["id"]))
+    return max(runs, key=record_order)
 
 
 def _at_head(runs: Sequence[Record], head: str | None) -> list[Record]:

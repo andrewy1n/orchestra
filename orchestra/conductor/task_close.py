@@ -630,7 +630,7 @@ def _oracle_amendments(project: Project, acceptance: Record) -> list[Record]:
 
 
 def _phase_record(project: Project, slug: str) -> Record:
-    record = current_phase(slug, project.list("score:phase"))
+    record = current_phase(slug, project.records())
     if record is None:
         raise LookupError(f"phase {slug!r} not found")
     return record

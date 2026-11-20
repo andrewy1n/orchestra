@@ -50,7 +50,7 @@ def close_phase(
     states: PullRequestStates,
     cwd: Path | None = None,
 ) -> CloseResult:
-    landing = latest_landing(project.list(LANDING), phase)
+    landing = latest_landing(project.records(), phase)
     if landing is None:
         raise CloseError(f"no landing record for phase {phase!r}; run orchestra land first")
     number = landing.number

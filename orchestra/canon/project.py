@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from orchestra.canon.backend import Backend, open_backend
-from orchestra.canon.derive import compute_derived
+from orchestra.canon.derive import compute_derived, with_write_order
 from orchestra.canon.errors import (
     ReadOnlyStoreError,
     StaleWriteError,
@@ -97,18 +97,29 @@ class Project:
         store, schemas = self._session()
         return _read_record(store, schemas, record_id, record_type)
 
+    def get_with_write_order(self, record_id: str, record_type: str | None = None) -> Record:
+        """Return the stored record with `derived.write_order` attached."""
+        store, schemas = self._session()
+        record = _read_record(store, schemas, record_id, record_type)
+        return with_write_order(record, store.write_order(record["id"]))
+
     def list(self, record_type: str) -> list[Record]:
         """Return every stored record of this type."""
         store, schemas = self._session()
         return store.list_records(schemas.resolve_type(record_type))
 
     def records(self) -> list[Record]:
-        """Return every stored record of every type."""
+        """Return every stored record of every type, each with `derived.write_order`."""
         store, _ = self._session()
-        return list(store.iter_records())
+        return [
+            with_write_order(record, write_order)
+            for record, write_order in store.iter_ordered_records()
+        ]
 
     def derived(self, records: list[Record] | None = None) -> dict[str, DerivedValues]:
         """Return read-time values (`ready`, `wave`, `referenced_by`, `corrected`) by record id.
+
+        `write_order` is attached by `records()` and `get_with_write_order()`.
 
         Pass the full record list from `records()` to skip a second read of the store.
         """

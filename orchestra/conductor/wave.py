@@ -33,6 +33,7 @@ from orchestra.score.lookups import (
     closing_work_items,
     current_phase,
     live_work_items,
+    record_order,
 )
 from orchestra.score.phase import Phase, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids
@@ -130,9 +131,7 @@ def _execution_report(records: list[Record], task: str) -> Record | None:
         if record["record_type"] == "conductor:execution-report"
         and record_payload(record).get("work_item") == task
     ]
-    return (
-        max(reports, key=lambda record: (record["recorded_at"], record["id"])) if reports else None
-    )
+    return max(reports, key=record_order) if reports else None
 
 
 def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Record]) -> bool:

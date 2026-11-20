@@ -13,7 +13,6 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
-from orchestra.canon.query import latest
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.landing import latest_landing, parse_landing, proof_packet
@@ -29,6 +28,7 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
+from orchestra.score.lookups import latest_record
 from orchestra.score.phase import read_phase
 from orchestra.score.requirements import phase_requirements
 from orchestra.score.workflow_blockers import human_gates
@@ -476,7 +476,7 @@ def _phase_derived_lines(
 def _release_state(
     records: list[Record], phase: str, statuses: dict[str, RequirementStatus]
 ) -> str:
-    written = latest(
+    written = latest_record(
         r
         for r in records
         if r["record_type"] == RELEASE_TYPE
