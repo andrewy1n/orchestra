@@ -770,10 +770,12 @@ class Closure:
     question_id: str = ""
 
 
-def _earlier_red_id(project: Project, criterion: str, green: Record) -> str:
+def _earlier_red_id(project: Project, criterion: str, green_id: str) -> str:
+    runs = [r for r in project.records() if r["record_type"] == "tuner:check-run"]
+    green = next(r for r in runs if r["id"] == green_id)
     earlier = [
         r
-        for r in project.list("tuner:check-run")
+        for r in runs
         if record_payload(r).get("criterion_id") == criterion
         and record_payload(r).get("result") == "fail"
         and r["id"] != green["id"]
@@ -817,7 +819,7 @@ def _criterion_request(project: Project, check: land_task.CheckResult) -> Criter
         return request
     request["check_run_id"] = check.check_run_id
     provided.append("check_run_id")
-    red = _earlier_red_id(project, check.acceptance_id, green)
+    red = _earlier_red_id(project, check.acceptance_id, check.check_run_id)
     if method == "tdd" and red:
         request["red_check_run_id"] = red
         request["revision"] = _text(green_payload.get("revision"))
