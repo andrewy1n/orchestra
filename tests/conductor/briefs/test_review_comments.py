@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from conductor_support import EFFORT, HEAD, PHASE, PHASE_BODY, Cli, Phase, seed
+from conductor_support import EFFORT, HEAD, PHASE, PHASE_BODY, Cli, Phase, ready_for_verify, seed
 
 from orchestra.canon.project import open_store
 from orchestra.cli import main
@@ -44,48 +44,6 @@ def _suite_reason(phase: Phase) -> str:
         phase_slug=PHASE,
         phase_head=HEAD,
     )
-
-
-def _ready_for_verify(phase: Phase) -> None:
-    from orchestra.conductor import workflow_review
-
-    project = open_store(phase.store)
-    record = project.resolve("score:phase", PHASE)
-    body = record.get("body") or ""
-    project.update(
-        record["id"],
-        record_type="score:phase",
-        payload={"weight": "light"},
-        body=body.replace(
-            "## Approach", "## Requirements\n\nR1: Preserve the contract.\n\n## Approach"
-        ),
-    )
-    item = project.resolve("score:work-item", f"{PHASE}-impl")
-    project.update(item["id"], record_type="score:work-item", payload={"requirements": ["R1"]})
-    for step in ("spec", "design", "tasks"):
-        workflow_review.record_step_review(
-            project,
-            phase=PHASE,
-            step=step,
-            artifact=project.resolve("score:phase", PHASE),
-            authority="user-approval",
-            basis="Approved in the test fixture.",
-        )
-
-
-def _execution_reports(phase: Phase) -> None:
-    for subject in (f"{PHASE}-impl", f"verify-{PHASE}"):
-        phase.create(
-            "conductor:execution-report",
-            subject,
-            {
-                "work_item": subject,
-                "result": "pass",
-                "verdict": "pass",
-                "revision": HEAD,
-                "effort": EFFORT,
-            },
-        )
 
 
 def _start_verify(store: Path, capsys: pytest.CaptureFixture[str]) -> str:
@@ -145,7 +103,7 @@ def test_verify_skill_brief_prints_while_the_phase_verify_step_is_blocked(
     store: Path, cli: Cli, capsys: pytest.CaptureFixture[str]
 ) -> None:
     phase = seed(store, cli, verification="in_progress")
-    _ready_for_verify(phase)
+    ready_for_verify(phase)
 
     code, output, error = _invoke(store, capsys, "brief", PHASE, "verify")
 
@@ -162,6 +120,7 @@ def test_verify_skill_brief_prints_while_the_phase_verify_step_is_blocked(
 @pytest.fixture
 def advisory_phase(store: Path, cli: Cli) -> Phase:
     phase = seed(store, cli, review=False)
+    ready_for_verify(phase)
     phase.set_suite_policy("advisory")
     return phase
 
@@ -193,6 +152,7 @@ def test_stage_read_failures_raise_from_step_stage(
     store: Path, cli: Cli, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     phase = seed(store, cli)
+    ready_for_verify(phase)
 
     def unreadable(*args: object, **kwargs: object) -> None:
         raise OSError("review evidence unreadable")
@@ -207,8 +167,7 @@ def test_stage_read_failures_fail_workflow_brief(
     store: Path, cli: Cli, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     phase = seed(store, cli)
-    _ready_for_verify(phase)
-    _execution_reports(phase)
+    ready_for_verify(phase)
 
     def unreadable(*args: object, **kwargs: object) -> None:
         raise OSError("review evidence unreadable")
@@ -226,8 +185,7 @@ def test_stage_read_failures_fail_workflow_next(
     store: Path, cli: Cli, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     phase = seed(store, cli)
-    _ready_for_verify(phase)
-    _execution_reports(phase)
+    ready_for_verify(phase)
     run = _start_verify(store, capsys)
 
     def unreadable(*args: object, **kwargs: object) -> None:
