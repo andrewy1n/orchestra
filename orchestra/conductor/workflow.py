@@ -11,6 +11,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor import phase_progress
 from orchestra.conductor.landing import LandingProofError
 from orchestra.conductor.phase_progress import PhaseProgress, PhaseProgressError, assess
+from orchestra.score.lookups import live_work_items
 from orchestra.score.phase import Phase, current_phase_model
 from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -248,6 +249,7 @@ def _stage_done(progress: PhaseProgress, step: Step) -> bool:
 
 
 def _action_for(
+    project: Project,
     records: list[Record],
     phase: Phase,
     step: Step,
@@ -349,7 +351,7 @@ def _with_brief(project: Project, action: RunAction) -> RunAction:
 def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
     records = project.records()
     current = _current_phase(records, phase)
-    action = _action_for(records, current, step, _progress(project, records, current))
+    action = _action_for(project, records, current, step, _progress(project, records, current))
     return _with_brief(project, action)
 
 
@@ -370,6 +372,7 @@ def _all_actions(
             if prepare_barrier and step == "design" and not specs_complete:
                 break
             action = _action_for(
+                project,
                 records,
                 phase,
                 step,
