@@ -42,7 +42,6 @@ from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import change_token
 from dashboard.backend.task import (
     TaskRow,
-    belongs,
     configured_small_wave_budget,
     task_rows,
 )
@@ -279,6 +278,74 @@ def _backlog_items(records: list[Record]) -> list[BacklogItem]:
     return items
 
 
+def _earliest_by_subject(items: list[tuple[int, Record]]) -> dict[str, tuple[int, Record]]:
+    found: dict[str, tuple[int, Record]] = {}
+    for index, record in items:
+        current = found.get(record["subject"])
+        if current is None or index < current[0]:
+            found[record["subject"]] = (index, record)
+    return found
+
+
+def _prefixed_owner(
+    subject: str, owners: dict[str, tuple[int, Record]]
+) -> tuple[int, Record] | None:
+    parts = subject.split("-")
+    for count in range(len(parts), 0, -1):
+        found = owners.get("-".join(parts[:count]))
+        if found is not None:
+            return found
+    return None
+
+
+def _effort_matches(check: Record, task: Record) -> bool:
+    effort = record_payload(task).get("effort", "")
+    return record_payload(check).get("effort", effort) == effort
+
+
+def _owns_against_live(
+    index: int, task: Record, subject: str, live: tuple[int, Record] | None
+) -> bool:
+    name = task["subject"]
+    if subject != name and not subject.startswith(f"{name}-"):
+        return False
+    if live is None:
+        return True
+    live_index, live_task = live
+    length = len(name)
+    live_length = len(live_task["subject"])
+    return length > live_length or (length == live_length and index < live_index)
+
+
+def _check_stamps(
+    phase: str, members: list[Record], tasks: list[Record], checks: list[Record]
+) -> list[datetime]:
+    member_ids = {task["id"] for task in members}
+    live: list[tuple[int, Record]] = []
+    other: list[tuple[int, Record]] = []
+    for index, task in enumerate(tasks):
+        if (
+            task["lifecycle_state"] in LIVE_WORK_ITEM_STATES
+            and record_payload(task).get("phase") == phase
+        ):
+            live.append((index, task))
+        elif task["id"] in member_ids:
+            other.append((index, task))
+    owners = _earliest_by_subject(live)
+    stamps: list[datetime] = []
+    for check in checks:
+        subject = check["subject"]
+        winner = _prefixed_owner(subject, owners)
+        if winner is not None and _effort_matches(check, winner[1]):
+            stamps.append(recorded_at(check))
+            continue
+        for index, task in other:
+            if _owns_against_live(index, task, subject, winner) and _effort_matches(check, task):
+                stamps.append(recorded_at(check))
+                break
+    return stamps
+
+
 def _phase_updated_at(
     row: PhaseRow,
     phase_records: list[Record],
@@ -294,8 +361,7 @@ def _phase_updated_at(
     for record in (*assignments, *reports):
         if record_payload(record).get("work_item") in names:
             stamps.append(recorded_at(record))
-    for task in members:
-        stamps.extend(recorded_at(check) for check in checks if belongs(check, task, tasks))
+    stamps.extend(_check_stamps(row.subject, members, tasks, checks))
     return max(stamps, default=None)
 
 
@@ -554,7 +620,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         record["subject"]: record_payload(record).get("area") or ""
         for record in live_records(listed[PLACEMENT_TYPE])
     }
-    every_record = target.records()
+    every_record = store.catalog_records(target)
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
