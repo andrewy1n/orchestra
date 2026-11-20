@@ -15,6 +15,7 @@ from heapq import merge
 from orchestra.canon.types import Record
 from orchestra.conductor.revision import revision_matches
 from orchestra.score.lookups import check_run_criteria, corrected_ids, record_order
+from orchestra.tuner.records import CheckRun, read_check_run
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -44,6 +45,14 @@ class EvidenceIndex:
         self._by_criterion: dict[str, list[tuple[int, Record]]] = {}
         for position, run in enumerate(self.check_runs):
             self._by_criterion.setdefault(_text(run, "criterion_id"), []).append((position, run))
+        self._typed: dict[str, CheckRun] = {}
+
+    def check_run(self, record: Record) -> CheckRun:
+        typed = self._typed.get(record["id"])
+        if typed is None:
+            write_order = record.get("derived", {}).get("write_order", 0)
+            typed = self._typed[record["id"]] = read_check_run(record, write_order)
+        return typed
 
     def acceptance_runs(self, acceptance: Record) -> list[Record]:
         groups = [self._by_criterion.get(name, []) for name in check_run_criteria(acceptance)]

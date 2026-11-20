@@ -37,13 +37,25 @@ def _evidence(phase_record: Record, results: list[str]) -> PhaseEvidence | None:
     acceptance = _record(
         "score:acceptance",
         "a",
-        {"phase": "p", "effort": "e", "requirements": ["R1", "R2"]},
+        {
+            "phase": "p",
+            "effort": "e",
+            "requirements": ["R1", "R2"],
+            "method": "check",
+            "verify_command": "true",
+        },
     )
     checks = [
         _record(
             "tuner:check-run",
             "a",
-            {"criterion_id": acceptance["id"], "result": result, "effort": "e"},
+            {
+                "criterion_id": acceptance["id"],
+                "result": result,
+                "revision": "abc",
+                "effort": "e",
+                "signed_by": "",
+            },
             state="recorded",
         )
         for result in results

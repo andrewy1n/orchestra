@@ -7,12 +7,13 @@ from orchestra.canon import record_payload
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.score.acceptance import Acceptance, read_acceptance
 from orchestra.score.lookups import current_phases, live_work_items
 from orchestra.score.requirements import (
-    acceptance_requirement_ids,
     phase_requirements,
     phase_weight,
 )
+from orchestra.score.workflow_blockers import is_signed
 
 RequirementState = Literal["verified", "failed", "unverified"]
 
@@ -73,7 +74,7 @@ class RequirementIndex:
         self.sources: dict[str, list[Record]] = {
             slug: [phase] for slug, phase in current_phases(records).items()
         }
-        self.acceptances: dict[tuple[str, str], list[Record]] = {}
+        self.acceptances: dict[tuple[str, str], list[Acceptance]] = {}
         self.assessments: dict[tuple[str, str], Record] = {}
         for record in records:
             self.by_id[record["id"]] = record
@@ -84,8 +85,9 @@ class RequirementIndex:
             if record["lifecycle_state"] != "active" or phase is None:
                 continue
             if record_type == _ACCEPTANCE:
-                for requirement in dict.fromkeys(acceptance_requirement_ids(record)):
-                    self.acceptances.setdefault((phase, requirement), []).append(record)
+                acceptance = read_acceptance(record)
+                for requirement in dict.fromkeys(acceptance.requirements):
+                    self.acceptances.setdefault((phase, requirement), []).append(acceptance)
             elif record_type == _ASSESSMENT:
                 requirement = _text(record, "requirement")
                 if requirement is not None:
@@ -99,13 +101,18 @@ def _derive_requirement(
     index: RequirementIndex, phase: str, requirement: str, head: str | None
 ) -> RequirementStatus:
     acceptances = index.acceptances.get((phase, requirement), [])
-    acceptance_ids = tuple(acceptance["id"] for acceptance in acceptances)
+    acceptance_ids = tuple(acceptance.id for acceptance in acceptances)
     latest_runs: list[Record] = []
+    results: list[str] = []
     for acceptance in acceptances:
-        run = acceptance_latest(index.evidence, acceptance, head).run
-        if run is not None:
-            latest_runs.append(run)
-    results = [_text(record, "result") for record in latest_runs]
+        run = acceptance_latest(index.evidence, acceptance.record, head).run
+        if run is None:
+            continue
+        result = index.evidence.check_run(run).result
+        if result == "pass" and acceptance.method == "manual" and not is_signed(run):
+            continue
+        latest_runs.append(run)
+        results.append(result)
     status: RequirementState = "unverified"
     if "fail" in results:
         status = "failed"
