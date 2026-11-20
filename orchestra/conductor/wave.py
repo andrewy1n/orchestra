@@ -29,6 +29,7 @@ from orchestra.score.lookups import (
     live_work_items,
 )
 from orchestra.score.requirements import acceptance_requirement_ids
+from orchestra.score.work_item import WorkItemShapeError, read_work_item
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.tools import Git, ToolError
 
@@ -146,6 +147,10 @@ def _runner_start(
 ) -> RunnerOutcome:
     from orchestra.conductor import land_task, task_close, verification
 
+    try:
+        required = read_work_item(item).requirements
+    except WorkItemShapeError as exc:
+        raise WaveError(str(exc)) from exc
     others = [other for other in items if other["id"] != item["id"]]
     incomplete = [other["subject"] for other in others if other["lifecycle_state"] != "done"]
     if incomplete:
@@ -202,12 +207,6 @@ def _runner_start(
     )
     run = verification.run_closing_checks(project, landed)
     verified = set(run.verified)
-    requirements = record_payload(item).get("requirements")
-    required = (
-        [value for value in requirements if isinstance(value, str)]
-        if isinstance(requirements, list)
-        else []
-    )
     acceptances = land_task.acceptances_for(project, item["subject"], phase)
     outcomes = {check.acceptance_id: check.exit_code for check in run.checks}
     for requirement in required:

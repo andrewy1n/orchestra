@@ -26,16 +26,16 @@ from orchestra.conductor import (
     land_task,
     reviewer,
     suite,
-    task_close,
     task_redispatch,
     wave,
 )
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError, github_client
-from orchestra.derive import requirement_status
+from orchestra.conductor.task_landing import land_and_close
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import current_phase
+from orchestra.score.work_item import WorkItemShapeError
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.store import StoreLocation, resolve_location
@@ -907,13 +907,7 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         location = resolve_location(args.store, _cwd(args))
         project = open_store(location.root, store=location.store)
         repo = Git(_cwd(args)).primary_checkout()
-        landed = land_task.land(project, repo, args.task, Path(args.evidence))
-        statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
-        closure = task_close.close(
-            project,
-            landed,
-            frozenset(r for r, s in statuses.items() if s.status == "verified"),
-        )
+        landing = land_and_close(project, repo, args.task, Path(args.evidence))
     except (
         EvidenceError,
         land_task.LandError,
@@ -922,9 +916,11 @@ def _cmd_task_land(args: argparse.Namespace) -> int:
         RuntimeError,
         StoreBindingError,
         StoreError,
+        WorkItemShapeError,
     ) as exc:
         print(f"orchestra task land: {args.task}: {exc}", file=sys.stderr)
         return 2
+    landed, closure = landing.landed, landing.closure
     if args.json:
         _print_json(
             {
