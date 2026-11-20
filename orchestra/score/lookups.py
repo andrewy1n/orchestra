@@ -37,9 +37,7 @@ def prepare_records(records: Sequence[Record]) -> Generator[None, None, None]:
     by_type: dict[str, list[Record]] = {}
     for record in records:
         by_type.setdefault(record["record_type"], []).append(record)
-    token = _prepared.set(
-        _Prepared(corrected, _phases_from(records, corrected), by_type)
-    )
+    token = _prepared.set(_Prepared(corrected, _phases_from(records, corrected), by_type))
     try:
         yield
     finally:
