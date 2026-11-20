@@ -151,6 +151,48 @@ def test_tasks_action_is_ready_before_work_items_exist(tmp_path: Path) -> None:
     assert [(action.step, action.state) for action in actions] == [("tasks", "ready")]
 
 
+def test_deliver_keeps_execute_ready_until_only_held_work_remains(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    _phase(project, "p1", 1)
+    independent = create(
+        project,
+        "score:work-item",
+        "independent",
+        {
+            "title": "Independent task",
+            "phase": "p1",
+            "kind": "deliver",
+            "assignee": "",
+            "effort": EFFORT,
+            "requirements": ["R1"],
+        },
+        "## Description\nIndependent part of R1.",
+    )
+    _ready_through_tasks(project, "p1")
+    run = _start(project, "p1", "deliver")
+    create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {
+            "owner": "user",
+            "blocking": True,
+            "phase": "p1",
+            "scope": "task:task-p1",
+            "question": "Which behavior should this task implement?",
+        },
+    )
+
+    actions = next_actions(project, run["subject"])
+    assert [(action.step, action.state) for action in actions] == [("execute", "ready")]
+
+    project.update(independent["id"], transition="in_progress")
+    project.update(independent["id"], transition="done")
+    actions = next_actions(project, run["subject"])
+    assert [(action.step, action.state) for action in actions] == [("execute", "blocked")]
+    assert "task-p1" in actions[0].reason
+
+
 def test_single_step_run_never_advances_to_another_step(tmp_path: Path) -> None:
     project = _project(tmp_path)
     _phase(project, "p1", 1)

@@ -138,7 +138,7 @@ def parse_failing_node_ids(output: str) -> list[str]:
 def _find_identical_check_run(
     project: Project,
     *,
-    criterion_id: str,
+    acceptance: Record,
     revision: str,
     result: str,
 ) -> Record | None:
@@ -154,8 +154,10 @@ def _find_identical_check_run(
         if record["record_type"] == "tuner:check-run"
         and record["lifecycle_state"] not in ("superseded", "retracted")
         and record["id"] not in corrected
-        and record["payload"].get("criterion_id") == criterion_id
+        and record["payload"].get("criterion_id") == acceptance["id"]
         and record["payload"].get("revision") == revision
+        and isinstance(provenance := record.get("provenance"), dict)
+        and provenance.get("acceptance_revision") == acceptance["revision"]
     ]
     if not matches:
         return None
@@ -241,7 +243,7 @@ def run_check(
         try:
             existing = _find_identical_check_run(
                 project,
-                criterion_id=acceptance["id"],
+                acceptance=acceptance,
                 revision=decision.revision,
                 result=result,
             )
@@ -295,6 +297,7 @@ def run_check(
             subject=acceptance.get("subject") or acceptance["id"],
             payload=check_payload,
             body=_body_tail(output),
+            provenance={"acceptance_revision": acceptance["revision"]},
         )
     except (StoreError, ValidationError, OSError) as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))

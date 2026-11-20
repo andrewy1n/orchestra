@@ -10,6 +10,8 @@ from orchestra.score.lookups import (
     corrected_ids,
     current_phase,
     current_phases,
+    dependencies,
+    live_work_items,
 )
 
 
@@ -20,8 +22,9 @@ class WorkflowBlockerError(ValueError):
 @dataclass(frozen=True)
 class WorkflowBlocker:
     record: Record
-    scope: Literal["phase", "effort"]
+    scope: Literal["task", "phase", "effort"]
     phase: str | None
+    task: str | None = None
 
 
 HumanGateKind = Literal["blocking-question", "open-question", "needs-human", "unsigned-check"]
@@ -189,9 +192,16 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
             record_effort = record["subject"]
         else:
             continue
+        scope = _payload_text(record, "scope") if record["record_type"] == QUESTION_TYPE else ""
+        is_task_question = scope.startswith("task:")
+        task = scope.removeprefix("task:")
         owned_phase = payload.get("phase")
         if owned_phase is None:
             if record_effort == effort:
+                if is_task_question:
+                    raise WorkflowBlockerError(
+                        f"question {record['id']!r} needs a phase for task {task!r}"
+                    )
                 blockers.append(WorkflowBlocker(record, "effort", None))
             continue
         if not isinstance(owned_phase, str):
@@ -202,5 +212,31 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
                 f"blocker {record['subject']!r} has a phase from another effort or no phase"
             )
         if record_effort == effort and owned_phase in chain:
-            blockers.append(WorkflowBlocker(record, "phase", owned_phase))
+            if is_task_question and not any(
+                item["subject"] == task for item in live_work_items(owned_phase, records)
+            ):
+                raise WorkflowBlockerError(
+                    f"question {record['id']!r} holds unknown task {task!r} in phase {owned_phase!r}"
+                )
+            if is_task_question and owned_phase == phase_slug:
+                blockers.append(WorkflowBlocker(record, "task", owned_phase, task))
+            else:
+                blockers.append(WorkflowBlocker(record, "phase", owned_phase))
     return blockers
+
+
+def blocked_tasks(items: list[Record], blockers: list[WorkflowBlocker]) -> set[str]:
+    blocked = {blocker.task for blocker in blockers if blocker.task is not None}
+    if not blocked:
+        return blocked
+    dependents: dict[str, list[str]] = {}
+    for item in items:
+        for dependency in dependencies(item):
+            dependents.setdefault(dependency, []).append(item["subject"])
+    pending = list(blocked)
+    while pending:
+        for dependent in dependents.get(pending.pop(), []):
+            if dependent not in blocked:
+                blocked.add(dependent)
+                pending.append(dependent)
+    return blocked

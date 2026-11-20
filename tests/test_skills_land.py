@@ -61,9 +61,9 @@ def test_landing_section_has_no_merge_or_suite_command() -> None:
     assert "`orchestra.toml` `[land]` and `[suite]` configure the adapter" in shared
 
 
-def test_execute_phase_keeps_wave_end_task_branch_merges() -> None:
+def test_execute_phase_uses_wave_end_to_merge_task_branches() -> None:
     flat = _flat(skill_text("execute"))
-    assert "merge task/<phase-slug>/<task-slug>" in flat
+    assert "orchestra wave end <phase-slug>" in flat
 
 
 def test_phase_gate_terms_name_needs_human_and_orchestra_gate() -> None:

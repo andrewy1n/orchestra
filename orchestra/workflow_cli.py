@@ -7,6 +7,8 @@ from pathlib import Path
 
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError
+from orchestra.canon.validation import ValidationError
+from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.workflow import (
     RunAction,
@@ -95,6 +97,15 @@ def add_parser(parser: argparse.ArgumentParser) -> None:
     )
     review.add_argument("--basis", required=True, help="Approval or review basis")
     _add_read_options(review)
+
+    amend = actions.add_parser("amend-check", help="Apply a parent-approved verification change")
+    amend.add_argument("acceptance", help="Active acceptance record id")
+    amend.add_argument("--expected-revision", required=True, help="Exact acceptance revision")
+    amend.add_argument("--basis", required=True, help="Reason and evidence for the change")
+    changes = amend.add_mutually_exclusive_group(required=True)
+    changes.add_argument("--equivalent-command", help="Command that runs the same checks")
+    changes.add_argument("--routine-check", choices=ROUTINE_CHECKS, help="Change TDD to check")
+    _add_read_options(amend)
 
 
 def _add_read_options(parser: argparse.ArgumentParser) -> None:
@@ -317,4 +328,18 @@ def run(args: argparse.Namespace) -> int:
         return _status_command(project, args, actions_only=True)
     if args.action == "brief":
         return _brief_command(project, args)
+    if args.action == "amend-check":
+        try:
+            record = amend_acceptance(
+                project,
+                args.acceptance,
+                expected_revision=args.expected_revision,
+                basis=args.basis,
+                equivalent_command=args.equivalent_command,
+                routine_check=args.routine_check,
+            )
+        except (OSError, RuntimeError, StoreError, ValidationError, ValueError) as exc:
+            return _fail(args.action, args.acceptance, exc)
+        print(json.dumps(record, indent=2) if args.json else record["id"])
+        return 0
     return _review_command(project, args)

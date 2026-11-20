@@ -49,10 +49,11 @@ canon create --type conductor:execution-report \
    worktree `<repo>/.worktrees/{phase}`. Those wave-end merges
    run in task-slug order. The wave-end integration does not rebase
    the task branch. The parent does not merge a task branch whose
-   check did not pass. Use `git merge` only.
+   check did not pass. `orchestra wave end` also holds tasks with open
+   questions and their dependents.
 
 ```bash
-git -C <repo>/.worktrees/{phase} merge task/{phase}/<task-slug>
+orchestra wave end {phase}
 ```
 
    When a merge between a task branch and the phase branch conflicts,
@@ -73,7 +74,7 @@ canon create --type score:continuity-question \
   --payload '{"owner":"user","blocking":true,"scope":"merge:<task-slug>"}'
 ```
 
-   Next wave only after every passing task branch in this wave has
+   Start the next wave only after every passing, unblocked branch has
    merged cleanly. After the last implementation wave's
    execution-reports, return to step 3 for the closing verification
    task (do **not** write an integration-report before verification).

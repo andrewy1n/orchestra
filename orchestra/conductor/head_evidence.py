@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from heapq import merge
 
 from orchestra.canon.types import Record
+from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
 from orchestra.conductor.revision import revision_matches
 from orchestra.score.lookups import check_run_criteria, corrected_ids
 
@@ -36,18 +37,38 @@ class EvidenceIndex:
 
     def __init__(self, records: Sequence[Record]) -> None:
         corrected = corrected_ids(records)
-        self.check_runs: list[Record] = [
-            record
-            for record in records
-            if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected
-        ]
+        self.check_runs: list[Record] = []
+        self._amended_commands: set[str] = set()
         self._by_criterion: dict[str, list[tuple[int, Record]]] = {}
-        for position, run in enumerate(self.check_runs):
-            self._by_criterion.setdefault(_text(run, "criterion_id"), []).append((position, run))
+        for record in records:
+            if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected:
+                position = len(self.check_runs)
+                self.check_runs.append(record)
+                self._by_criterion.setdefault(_text(record, "criterion_id"), []).append(
+                    (position, record)
+                )
+            elif (
+                record["record_type"] == "conductor:assignment-amendment"
+                and isinstance(provenance := record.get("provenance"), dict)
+                and isinstance(acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str)
+            ):
+                self._amended_commands.add(acceptance_id)
 
     def acceptance_runs(self, acceptance: Record) -> list[Record]:
         groups = [self._by_criterion.get(name, []) for name in check_run_criteria(acceptance)]
-        return [run for _, run in merge(*groups, key=lambda item: item[0])]
+        require_revision = self.command_was_amended(acceptance)
+        runs: list[Record] = []
+        for _, run in merge(*groups, key=lambda item: item[0]):
+            provenance = run.get("provenance")
+            if isinstance(provenance, dict) and "acceptance_revision" in provenance:
+                if provenance["acceptance_revision"] == acceptance["revision"]:
+                    runs.append(run)
+            elif not require_revision:
+                runs.append(run)
+        return runs
+
+    def command_was_amended(self, acceptance: Record) -> bool:
+        return acceptance["id"] in self._amended_commands
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -99,7 +120,12 @@ def _decide(run: Record | None, what: str, head: str | None) -> Answer:
 
 def acceptance_latest(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
     candidates = _at_head(acceptance_runs(index, acceptance), head)
-    return _decide(latest(candidates), "check-run", head)
+    what = (
+        "check-run for the current acceptance revision"
+        if index.command_was_amended(acceptance)
+        else "check-run"
+    )
+    return _decide(latest(candidates), what, head)
 
 
 def acceptance_runner_at_head(index: EvidenceIndex, acceptance: Record, head: str | None) -> Answer:
@@ -111,7 +137,10 @@ def acceptance_runner_at_head(index: EvidenceIndex, acceptance: Record, head: st
     ]
     deciding = latest(passing)
     if deciding is None:
-        return Answer(False, None, f"no passing runner check-run {_where(head)}")
+        revision = (
+            " for the current acceptance revision" if index.command_was_amended(acceptance) else ""
+        )
+        return Answer(False, None, f"no passing runner check-run{revision} {_where(head)}")
     return Answer(True, deciding)
 
 
