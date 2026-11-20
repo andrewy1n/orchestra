@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.score.lookups import record_order
 
 LEVELS = ("gated", "auto-plan", "auto-phases")
 
@@ -81,7 +82,7 @@ def _goal(project: Project, effort: str) -> Record:
     ]
     if not found:
         raise AutonomyError(f"unknown effort {effort!r}")
-    return max(found, key=lambda r: r["recorded_at"])
+    return max(found, key=record_order)
 
 
 def set_autonomy(project: Project, effort: str, level: str) -> Record:

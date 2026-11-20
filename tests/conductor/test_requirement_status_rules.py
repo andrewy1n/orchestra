@@ -222,6 +222,44 @@ def test_written_assessment_holds_against_a_later_failing_run() -> None:
     assert status.assessed == "insufficient"
 
 
+def _same_second(records: list[Record]) -> None:
+    for record in records:
+        record["recorded_at"] = "2026-11-01T00:00:00Z"
+
+
+def test_written_assessment_yields_to_a_same_second_pass_written_later() -> None:
+    acceptance = _acceptance("a-one")
+    assessment = _assessment("R1", "failed")
+    run = _run(acceptance, "pass")
+    _same_second([assessment, run])
+    status = _status([_spec("R1"), acceptance, assessment, run])
+    assert status.status == "verified"
+    assert status.assessment_id is None
+
+
+def test_written_assessment_holds_against_a_same_second_pass_written_earlier() -> None:
+    acceptance = _acceptance("a-one")
+    run = _run(acceptance, "pass")
+    assessment = _assessment("R1", "failed")
+    _same_second([run, assessment])
+    status = _status([_spec("R1"), acceptance, run, assessment])
+    assert status.status == "failed"
+    assert status.assessment_id == assessment["id"]
+
+
+def test_same_second_assessments_pick_the_later_written_one() -> None:
+    acceptance = _acceptance("a-one")
+    later = _assessment("R1", "blocked")
+    earlier = _assessment("R1", "failed")
+    earlier["id"], later["id"] = "<z>", "<a>"
+    earlier["derived"] = {"write_order": 1}
+    later["derived"] = {"write_order": 2}
+    _same_second([earlier, later])
+    status = _status([_spec("R1"), acceptance, earlier, later])
+    assert status.assessment_id == later["id"]
+    assert status.assessed == "blocked"
+
+
 def test_written_assessment_that_is_verified_changes_nothing() -> None:
     acceptance = _acceptance("a-one")
     records = [_spec("R1"), acceptance, _assessment("R1", "verified"), _run(acceptance, "pass")]

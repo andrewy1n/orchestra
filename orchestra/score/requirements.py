@@ -7,9 +7,8 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, latest_record
 
 SPECIFICATION = "score:specification"
 
@@ -92,7 +91,7 @@ def phase_requirements(records: Sequence[Record], phase: str) -> list[tuple[str,
         and r["lifecycle_state"] == "active"
         and _text(r, "phase") == phase
     ]
-    spec = latest(specs)
+    spec = latest_record(specs)
     return requirements_in_body(spec.get("body", "")) if spec is not None else []
 
 

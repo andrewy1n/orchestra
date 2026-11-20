@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon import record_payload
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.acceptance import Acceptance, read_acceptance
-from orchestra.score.lookups import current_phases, live_work_items
+from orchestra.score.lookups import current_phases, latest_record, live_work_items, record_order
 from orchestra.score.requirements import (
     phase_requirements,
     phase_weight,
@@ -53,7 +52,7 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
     ]
     if phase_weight(records, phase) == "light":
         return [requirement for requirement, _ in phase_requirements(records, phase)]
-    specification = latest(specifications)
+    specification = latest_record(specifications)
     sources = [specification] if specification is not None else _phase_work_items(records, phase)
     requirements: list[str] = []
     for source in sources:
@@ -94,7 +93,7 @@ class RequirementIndex:
                 if requirement is not None:
                     key = (phase, requirement)
                     previous = self.assessments.get(key)
-                    if previous is None or latest((previous, record)) is record:
+                    if previous is None or record_order(record) > record_order(previous):
                         self.assessments[key] = record
 
 
@@ -135,7 +134,7 @@ def _passes_after(derived: RequirementStatus, written: Record, by_id: dict[str, 
     if derived.status != "verified":
         return False
     return all(
-        by_id[run_id]["recorded_at"] > written["recorded_at"] for run_id in derived.check_run_ids
+        record_order(by_id[run_id]) > record_order(written) for run_id in derived.check_run_ids
     )
 
 

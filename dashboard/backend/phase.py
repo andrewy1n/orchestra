@@ -42,7 +42,7 @@ from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.requirements import UNVERIFIED, is_verified
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases, record_order
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
@@ -172,7 +172,7 @@ def _for_phase(records: list[Record], phase: str, effort: str) -> list[Record]:
 
 def latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record]:
     grouped: dict[tuple[str, str], Record] = {}
-    for record in sorted(live_records(records), key=recorded_at):
+    for record in sorted(live_records(records), key=record_order):
         payload = record_payload(record)
         grouped[(payload.get("phase", ""), payload.get("requirement", ""))] = record
     return grouped
