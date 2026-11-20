@@ -379,10 +379,9 @@ def _install(monkeypatch: pytest.MonkeyPatch, picks: Picks) -> None:
         land,
         metrics_phases,
         dashboard_phase,
-        workflow_selection,
     ):
         monkeypatch.setattr(module, "current_phase_model", current)
-    for module in (views, wave, dashboard_phase):
+    for module in (views, wave, dashboard_phase, workflow_selection):
         monkeypatch.setattr(module, "read_phase", read)
     for module in (gate, close, wave):
         monkeypatch.setattr(module, "phase_place", place)

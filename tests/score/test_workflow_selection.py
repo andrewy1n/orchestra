@@ -92,3 +92,43 @@ def test_dependency_order_and_cycles(project: Project) -> None:
 
     with pytest.raises(PhaseSelectionError, match="cycle"):
         resolve_phase_selection(project.records(), "first", "cycle-a,cycle-b")
+
+
+def _legacy_phase(project: Project, effort: str, subject: str) -> None:
+    record = _phase(project, effort, subject, 1)
+    store, _ = project._session()
+    changed = Record(**record)
+    changed["payload"] = {
+        key: value for key, value in record["payload"].items() if key != "ordinal"
+    }
+    store.write_record(changed, expected_revision=record["revision"])
+
+
+def test_malformed_phase_in_another_effort_does_not_block_selection(project: Project) -> None:
+    _effort(project, "first")
+    _effort(project, "second")
+    _phase(project, "first", "alpha", 1)
+    _legacy_phase(project, "second", "legacy")
+
+    result = resolve_phase_selection(project.records(), "first", "alpha")
+
+    assert result.phase_subjects == ("alpha",)
+
+
+def test_malformed_phase_in_the_selected_effort_is_a_selection_error(project: Project) -> None:
+    _effort(project, "first")
+    _phase(project, "first", "alpha", 1)
+    _legacy_phase(project, "first", "legacy")
+
+    with pytest.raises(PhaseSelectionError, match=r"legacy.*ordinal"):
+        resolve_phase_selection(project.records(), "first", "alpha")
+
+
+def test_dependency_on_a_phase_from_another_effort_still_refuses(project: Project) -> None:
+    _effort(project, "first")
+    _effort(project, "second")
+    _phase(project, "second", "other", 1)
+    _phase(project, "first", "alpha", 1, depends_on=["other"])
+
+    with pytest.raises(PhaseSelectionError, match="another effort"):
+        resolve_phase_selection(project.records(), "first", "alpha")

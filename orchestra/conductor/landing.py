@@ -10,6 +10,7 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
+from orchestra.canon.fields import optional_text, required_int, required_text
 from orchestra.canon.query import latest
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonObject, Record
@@ -30,7 +31,7 @@ class Landing:
     effort: str | None
     number: int
     url: str
-    head_sha: str
+    head_sha: str | None
     result: Literal["success", "fail", "blocked", "skipped"]
     recorded_at: str
     record: Record
@@ -48,37 +49,10 @@ class ProofPacket:
     record: Record
 
 
-def _required_text(record: Record, payload: JsonObject, field: str) -> str:
-    if field not in payload:
-        raise RecordShapeError(record["id"], field, "is required")
-    value = payload[field]
-    if not isinstance(value, str):
-        raise RecordShapeError(record["id"], field, "must be a string")
-    return value
-
-
-def _optional_text(record: Record, payload: JsonObject, field: str) -> str | None:
-    if field not in payload:
-        return None
-    value = payload[field]
-    if not isinstance(value, str):
-        raise RecordShapeError(record["id"], field, "must be a string")
-    return value or None
-
-
-def _number(record: Record, payload: JsonObject) -> int:
-    if "number" not in payload:
-        raise RecordShapeError(record["id"], "number", "is required")
-    value = payload["number"]
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise RecordShapeError(record["id"], "number", "must be an integer")
-    return value
-
-
 def _result(
     record: Record, payload: JsonObject
 ) -> Literal["success", "fail", "blocked", "skipped"]:
-    value = _required_text(record, payload, "result")
+    value = required_text(record, payload, "result")
     if value == "success" or value == "fail" or value == "blocked" or value == "skipped":
         return value
     raise RecordShapeError(record["id"], "result", "must be success, fail, blocked or skipped")
@@ -86,14 +60,19 @@ def _result(
 
 def read_landing(record: Record) -> Landing:
     payload = record_payload(record)
+    result = _result(record, payload)
     return Landing(
         id=record["id"],
-        phase=_required_text(record, payload, "phase"),
-        effort=_optional_text(record, payload, "effort"),
-        number=_number(record, payload),
-        url=_required_text(record, payload, "url"),
-        head_sha=_required_text(record, payload, "head_sha"),
-        result=_result(record, payload),
+        phase=required_text(record, payload, "phase"),
+        effort=optional_text(record, payload, "effort"),
+        number=required_int(record, payload, "number"),
+        url=required_text(record, payload, "url"),
+        head_sha=(
+            required_text(record, payload, "head_sha")
+            if result == "success"
+            else optional_text(record, payload, "head_sha")
+        ),
+        result=result,
         recorded_at=record.get("recorded_at", ""),
         record=record,
     )
@@ -103,11 +82,11 @@ def read_proof_packet(record: Record) -> ProofPacket:
     payload = record_payload(record)
     return ProofPacket(
         id=record["id"],
-        phase=_required_text(record, payload, "phase"),
-        effort=_optional_text(record, payload, "effort"),
-        revision=_required_text(record, payload, "revision"),
-        base=_optional_text(record, payload, "base"),
-        kind=_required_text(record, payload, "kind"),
+        phase=required_text(record, payload, "phase"),
+        effort=optional_text(record, payload, "effort"),
+        revision=required_text(record, payload, "revision"),
+        base=optional_text(record, payload, "base"),
+        kind=required_text(record, payload, "kind"),
         recorded_at=record.get("recorded_at", ""),
         record=record,
     )
@@ -337,23 +316,9 @@ class LandingProofError(ValueError):
         self.field = field
 
 
-def _failed_landing(records: Sequence[Record], record_id: str) -> bool:
-    return any(
-        record["id"] == record_id and record_payload(record).get("result") != "success"
-        for record in records
-    )
-
-
 def landing_proof_state(records: Sequence[Record], phase: Phase) -> LandingProofState:
     """Decide where a phase's latest landing stands against its latest proof packet."""
-    try:
-        landing = latest_landing(records, phase.subject)
-    except RecordShapeError as error:
-        if error.field != "head_sha":
-            raise
-        if _failed_landing(records, error.record_id):
-            return "failed"
-        raise LandingProofError(error.record_id, error.field) from error
+    landing = latest_landing(records, phase.subject)
     if landing is None:
         return "no-landing"
     if landing.result != "success":
@@ -366,4 +331,4 @@ def landing_proof_state(records: Sequence[Record], phase: Phase) -> LandingProof
         raise LandingProofError(error.record_id, error.field) from error
     if packet is None:
         return "no-packet"
-    return "landed" if revision_matches(landing.head_sha, packet.revision) else "not-at-head"
+    return "landed" if revision_matches(landing.head_sha or "", packet.revision) else "not-at-head"
