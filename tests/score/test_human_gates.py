@@ -437,7 +437,13 @@ def test_r8_unsigned_check_gate_reports_kind_record_and_clearing_type(project: P
     acceptance = _acceptance(project)
     run = _run(project, acceptance)
 
-    assert human_gates(_stored(project)) == [HumanGate("unsigned-check", run, "tuner:check-run")]
+    [gate] = human_gates(_stored(project))
+
+    assert (gate.kind, gate.record["id"], gate.clears) == (
+        "unsigned-check",
+        run["id"],
+        "tuner:check-run",
+    )
 
 
 def test_r8_one_store_yields_one_gate_of_each_kind(project: Project) -> None:

@@ -402,27 +402,18 @@ class _FixedStore:
         return self.fixed
 
 
-def test_gate_head_evidence_timestamp_tie_takes_greatest_record_id(
+def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     store: Path, cli: Cli, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     phase = seed(store, cli, runner_check=False)
-    first = phase.check_run("pass")
-    second = phase.check_run("fail")
-    high, low = sorted([first["id"], second["id"]], reverse=True)
+    earlier = phase.check_run("fail")
+    later = phase.check_run("pass")
     stamp = "2026-11-01T00:00:00Z"
     stored = {r["id"]: r for r in gate.open_store(store).records()}
-    others = [r for rid, r in stored.items() if rid not in {high, low}]
+    others = [r for rid, r in stored.items() if rid not in {earlier["id"], later["id"]}]
     tied = [
-        {
-            **stored[high],
-            "recorded_at": stamp,
-            "payload": {**stored[high]["payload"], "result": "pass"},
-        },
-        {
-            **stored[low],
-            "recorded_at": stamp,
-            "payload": {**stored[low]["payload"], "result": "fail"},
-        },
+        {**stored[earlier["id"]], "id": "rec-zzzz", "recorded_at": stamp},
+        {**stored[later["id"]], "id": "rec-aaaa", "recorded_at": stamp},
     ]
     records = [*others, *tied]
 

@@ -11,7 +11,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.check import RUNNER
 from orchestra.conductor.oracle_freeze import parse_freeze
-from orchestra.score.lookups import current_phase, owning_work_item
+from orchestra.score.lookups import current_phase, owning_work_item, record_order
 from orchestra.tuner.manifest import ManifestError, hash_oracle_files, load_manifest, resolve_commit
 from orchestra.tuner.oracle_red import is_assertion_level_red
 
@@ -145,7 +145,7 @@ def recover_evidence(project: Project, *, apply: bool = False) -> RecoveryReport
                 "payload": freeze,
             }
         )
-    for run in sorted(runs, key=lambda r: (r["recorded_at"], r["id"])):
+    for run in sorted(runs, key=record_order):
         subject = run["subject"]
         if not subject.endswith("-tier2"):
             continue

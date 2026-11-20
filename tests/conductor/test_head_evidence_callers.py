@@ -168,23 +168,25 @@ def test_acceptance_subject_check_run_counts_in_status_and_wave(tmp_path: Path) 
     assert wave.end(project, repo, wave_world.PHASE).merged == ("a",)
 
 
-def test_timestamp_tie_resolves_by_record_id_in_status() -> None:
+def test_timestamp_tie_resolves_by_write_order_in_status() -> None:
     acceptance = _acceptance("a1")
     stamp = "2026-11-01T00:00:00Z"
     passing = _record(
         "tuner:check-run",
         "a1",
         {"criterion_id": acceptance["id"], "result": "pass", "revision": HEAD},
-        record_id="<run-b>",
+        record_id="<run-a>",
         recorded_at=stamp,
     )
     failing = _record(
         "tuner:check-run",
         "a1",
         {"criterion_id": acceptance["id"], "result": "fail", "revision": HEAD},
-        record_id="<run-a>",
+        record_id="<run-b>",
         recorded_at=stamp,
     )
+    passing["derived"] = {"write_order": 2}
+    failing["derived"] = {"write_order": 1}
     assert _status([_spec("R1"), acceptance, passing, failing]) == "verified"
     assert _status([_spec("R1"), acceptance, failing, passing]) == "verified"
 

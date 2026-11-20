@@ -20,8 +20,11 @@ def test_create_get_roundtrip(ready):
     assert created["ok"] and created["op"] == "create"
     record = created["record"]
     assert record["lifecycle_state"] == "planned"
-    assert ready.ok("get", "--id", record["id"]) == record
-    assert ready.ok("get", "--id", record["id"], "--type", "task") == record
+    for fetched in (
+        ready.ok("get", "--id", record["id"]),
+        ready.ok("get", "--id", record["id"], "--type", "task"),
+    ):
+        assert {k: v for k, v in fetched.items() if k != "derived"} == record
     assert ready.ok("get", "--id", record["id"], "--field", "payload.title") == "x"
 
 

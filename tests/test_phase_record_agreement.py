@@ -296,10 +296,10 @@ def _build(root: Path, *, state: str, landings: bool, packets: bool) -> tuple[Pr
 
     if landings:
         _put_landing(
-            project, LANDING_WINNER, 4, at=_stamp(5), result="success", head=head, effort=None
+            project, LANDING_NUMBERS[3], 3, at=_stamp(5), result="fail", head=head, effort=EFFORT
         )
         _put_landing(
-            project, LANDING_NUMBERS[3], 3, at=_stamp(5), result="fail", head=head, effort=EFFORT
+            project, LANDING_WINNER, 4, at=_stamp(5), result="success", head=head, effort=None
         )
         _put_landing(
             project,
@@ -331,11 +331,11 @@ def _build(root: Path, *, state: str, landings: bool, packets: bool) -> tuple[Pr
             phase=ELSEWHERE,
         )
     if packets:
-        _put_packet(project, PACKET_WINNER, head, at=_stamp(8), effort=None)
+        _put_packet(project, PACKET_CORRECTED, head, at=_stamp(8), effort=EFFORT)
         _put_packet(
             project, PACKET_FIX, head, at=_stamp(8), effort=EFFORT, corrects=[PACKET_CORRECTED]
         )
-        _put_packet(project, PACKET_CORRECTED, head, at=_stamp(8), effort=EFFORT)
+        _put_packet(project, PACKET_WINNER, head, at=_stamp(8), effort=None)
         _put_packet(project, PACKET_OLD, head, at=_stamp(3), effort=EFFORT)
         _put_packet(project, PACKET_OTHER_EFFORT, head, at=_stamp(9), effort=OTHER_EFFORT)
         _put_packet(project, PACKET_ELSEWHERE, head, at=_stamp(9), effort=EFFORT, phase=ELSEWHERE)

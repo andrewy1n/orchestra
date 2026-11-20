@@ -119,7 +119,8 @@ def test_compute_inverse_sorts_sources():
 def test_derived_values_are_never_persisted(project):
     task = make_task(project, "a")
     attached = attach_derived_all(project.records(), project.derived())
-    assert attached[0].get("derived") == {"ready": True, "wave": 1}
+    derived = {k: v for k, v in attached[0].get("derived", {}).items() if k != "write_order"}
+    assert derived == {"ready": True, "wave": 1}
     stored = project.get(task["id"])
     assert stored is not None
     assert stored.get("derived") is None
