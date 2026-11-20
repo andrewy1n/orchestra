@@ -15,7 +15,7 @@ from dashboard.backend.snapshot import load_snapshot
 from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close, gate, land, wave, workflow
+from orchestra.conductor import close, gate, land, phase_progress, wave, workflow
 from orchestra.conductor import landing as landing_module
 from orchestra.conductor.github_pr import GitHubCheck
 from orchestra.conductor.landing import (
@@ -383,11 +383,19 @@ def _install(monkeypatch: pytest.MonkeyPatch, picks: Picks) -> None:
         monkeypatch.setattr(module, "current_phase_model", current)
     for module in (views, wave, dashboard_phase, workflow_selection):
         monkeypatch.setattr(module, "read_phase", read)
-    for module in (gate, close, wave):
+    for module in (gate, close, wave, phase_progress):
         monkeypatch.setattr(module, "phase_place", place)
     for module in (views, close, metrics_phases, landing_module):
         monkeypatch.setattr(module, "latest_landing", latest)
-    for module in (views, workflow, land, metrics_phases, dashboard_phase, landing_module):
+    for module in (
+        views,
+        workflow,
+        phase_progress,
+        land,
+        metrics_phases,
+        dashboard_phase,
+        landing_module,
+    ):
         monkeypatch.setattr(module, "proof_packet", packet)
 
 
