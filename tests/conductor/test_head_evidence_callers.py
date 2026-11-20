@@ -51,7 +51,16 @@ def _spec(*requirements: str) -> Record:
 
 def _acceptance(subject: str, requirement: str = "R1") -> Record:
     return _record(
-        "score:acceptance", subject, {"phase": PHASE, "requirement": requirement}, "active"
+        "score:acceptance",
+        subject,
+        {
+            "phase": PHASE,
+            "effort": "e",
+            "requirement": requirement,
+            "method": "check",
+            "verify_command": "true",
+        },
+        "active",
     )
 
 
@@ -70,6 +79,7 @@ def _run(
             "criterion_id": acceptance["id"] if criterion is None else criterion,
             "result": result,
             "revision": revision,
+            "signed_by": "",
             **extra,
         },
         **{k: v for k, v in extra.items() if k in ("record_id", "recorded_at")},
@@ -174,14 +184,24 @@ def test_timestamp_tie_resolves_by_write_order_in_status() -> None:
     passing = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "pass", "revision": HEAD},
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": HEAD,
+            "signed_by": "",
+        },
         record_id="<run-a>",
         recorded_at=stamp,
     )
     failing = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "fail", "revision": HEAD},
+        {
+            "criterion_id": acceptance["id"],
+            "result": "fail",
+            "revision": HEAD,
+            "signed_by": "",
+        },
         record_id="<run-b>",
         recorded_at=stamp,
     )

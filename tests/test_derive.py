@@ -38,7 +38,16 @@ def _spec(phase: str, *requirements: str) -> Record:
 
 def _acceptance(subject: str, phase: str, requirement: str) -> Record:
     return _record(
-        "score:acceptance", subject, {"phase": phase, "requirement": requirement}, "active"
+        "score:acceptance",
+        subject,
+        {
+            "phase": phase,
+            "effort": "e",
+            "requirement": requirement,
+            "method": "check",
+            "verify_command": "true",
+        },
+        "active",
     )
 
 
@@ -46,7 +55,12 @@ def _check_run(acceptance: Record, result: str, revision: str = "abc") -> Record
     return _record(
         "tuner:check-run",
         acceptance["subject"],
-        {"criterion_id": acceptance["id"], "result": result, "revision": revision},
+        {
+            "criterion_id": acceptance["id"],
+            "result": result,
+            "revision": revision,
+            "signed_by": "",
+        },
     )
 
 
