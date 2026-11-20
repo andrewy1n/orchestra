@@ -10,7 +10,8 @@ from pathlib import Path
 from conftest import REPO_ROOT, git, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend.landing import Landing, phase_landing
+from dashboard.backend.landing import phase_landing
+from orchestra.tools import Absent, Merged, ReadFailed, Unmerged
 
 LANDING_BODY = """\
 ## Approach
@@ -62,7 +63,12 @@ def test_phase_landing_reports_branch_ahead_and_not_merged():
     git(root, "checkout", "-q", "main")
 
     result = phase_landing(root, LANDING_BODY, "human-gates")
-    assert result == Landing(branch="phase/human-gates", exists=True, ahead=2, merged=False)
+    assert result is not None
+    assert result.branch == "phase/human-gates"
+    assert result.state == Unmerged(
+        head=git(root, "rev-parse", "phase/human-gates").stdout.strip(), ahead=2
+    )
+    assert (result.exists, result.ahead, result.merged) == (True, 2, False)
 
 
 def test_phase_landing_reports_merged():
@@ -75,7 +81,9 @@ def test_phase_landing_reports_merged():
     git(root, "merge", "-q", "--no-ff", "phase/human-gates", "-m", "merge landing")
 
     result = phase_landing(root, LANDING_BODY, "human-gates")
-    assert result == Landing(branch="phase/human-gates", exists=True, ahead=0, merged=True)
+    assert result is not None
+    assert result.state == Merged(head=git(root, "rev-parse", "phase/human-gates").stdout.strip())
+    assert (result.exists, result.ahead, result.merged) == (True, 0, True)
 
 
 def test_phase_landing_reports_merged_when_tip_is_patch_equivalent():
@@ -105,7 +113,9 @@ def test_phase_landing_reports_merged_when_tip_is_patch_equivalent():
     assert ancestor.returncode == 1
 
     result = phase_landing(root, LANDING_BODY, "human-gates")
-    assert result == Landing(branch="phase/human-gates", exists=True, ahead=0, merged=True)
+    assert result is not None
+    assert result.state == Merged(head=git(root, "rev-parse", "phase/human-gates").stdout.strip())
+    assert (result.exists, result.ahead, result.merged) == (True, 0, True)
 
 
 def test_phase_landing_no_landing_heading_returns_none():
@@ -116,28 +126,40 @@ def test_phase_landing_no_landing_heading_returns_none():
 def test_phase_landing_missing_branch_exists_false():
     root = _scratch_main()
     result = phase_landing(root, LANDING_BODY, "human-gates")
-    assert result == Landing(branch="phase/human-gates", exists=False, ahead=0, merged=False)
+    assert result is not None
+    assert result.branch == "phase/human-gates"
+    assert result.state == Absent()
+    assert (result.exists, result.merged, result.read_failure) == (False, False, None)
 
 
 def test_phase_landing_defaults_branch_to_phase_subject():
     root = _scratch_main()
     result = phase_landing(root, DEFAULT_BRANCH_BODY, "human-gates")
-    assert result == Landing(branch="phase/human-gates", exists=False, ahead=0, merged=False)
+    assert result is not None
+    assert result.branch == "phase/human-gates"
+    assert result.state == Absent()
+    assert (result.exists, result.merged, result.read_failure) == (False, False, None)
 
 
-def test_phase_landing_nogr_returns_none(tmp_path):
-    assert phase_landing(tmp_path, LANDING_BODY, "human-gates") is None
+def test_phase_landing_outside_a_repository_carries_read_failed(tmp_path):
+    result = phase_landing(tmp_path, LANDING_BODY, "human-gates")
+    assert result is not None
+    assert isinstance(result.state, ReadFailed)
+    assert result.read_failure == result.state.reason
+    assert (result.exists, result.merged) == (False, False)
 
 
-def test_phase_landing_no_git_returns_none(tmp_path, monkeypatch):
+def test_phase_landing_no_git_carries_read_failed(tmp_path, monkeypatch):
     root = _scratch_main()
     empty = tmp_path / "empty-bin"
     empty.mkdir()
     monkeypatch.setenv("PATH", str(empty))
-    assert phase_landing(root, LANDING_BODY, "human-gates") is None
+    result = phase_landing(root, LANDING_BODY, "human-gates")
+    assert result is not None
+    assert isinstance(result.state, ReadFailed)
 
 
-def test_phase_landing_fail_returns_none(monkeypatch):
+def test_phase_landing_git_timeout_carries_read_failed(monkeypatch):
     root = _scratch_main()
     git(root, "checkout", "-qb", "phase/human-gates")
     git(root, "checkout", "-q", "main")
@@ -150,7 +172,9 @@ def test_phase_landing_fail_returns_none(monkeypatch):
         return real(cmd, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", flaky)
-    assert phase_landing(root, LANDING_BODY, "human-gates") is None
+    result = phase_landing(root, LANDING_BODY, "human-gates")
+    assert result is not None
+    assert isinstance(result.state, ReadFailed)
 
 
 def test_phase_landing_readonly_unchanged():
@@ -187,12 +211,9 @@ def test_phase_landing_readonly_missing_branch_leaves_repo():
     before_status = git(root, "status", "--porcelain").stdout
     before_files = sorted(p.relative_to(store).as_posix() for p in store.rglob("*"))
 
-    assert phase_landing(root, LANDING_BODY, "human-gates") == Landing(
-        branch="phase/human-gates",
-        exists=False,
-        ahead=0,
-        merged=False,
-    )
+    result = phase_landing(root, LANDING_BODY, "human-gates")
+    assert result is not None
+    assert result.state == Absent()
 
     assert git(root, "status", "--porcelain").stdout == before_status
     assert sorted(p.relative_to(store).as_posix() for p in store.rglob("*")) == before_files

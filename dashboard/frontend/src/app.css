@@ -1674,6 +1674,18 @@ a.lrow {
 	font-weight: 700;
 }
 
+.pc-stage[data-state="blocked"] {
+	border-top-color: var(--fail);
+	color: var(--fail);
+	font-weight: 700;
+}
+
+.pc-stage[data-state="unknown"] {
+	border-top-style: dashed;
+	border-top-color: var(--warn);
+	color: var(--warn);
+}
+
 .pc-row {
 	display: flex;
 	flex-wrap: wrap;

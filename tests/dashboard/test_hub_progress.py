@@ -12,16 +12,29 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.hub import WORK_NEXT_LIMIT, HubItem, build_hub
-from dashboard.backend.landing import Landing
 from dashboard.backend.phase import PhaseEvidence, PhaseRow
 from dashboard.backend.progress import Progress
 from dashboard.backend.server.app import create_app
 from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
+from orchestra.conductor.phase_progress import STAGES, PhaseProgress, StageState
+from orchestra.conductor.phase_progress import Stage as StageId
 
 NOW = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
-MERGED = Landing(branch="phase/x", exists=True, ahead=0, merged=True)
+
+
+def _progress(current: StageId | None) -> PhaseProgress:
+    position = len(STAGES) if current is None else STAGES.index(current)
+    return PhaseProgress(
+        tuple(
+            StageState(stage, "done" if i < position else "current" if i == position else "pending")
+            for i, stage in enumerate(STAGES)
+        ),
+        current,
+        "",
+        (),
+    )
 
 
 def _phase(
@@ -32,6 +45,7 @@ def _phase(
     age: timedelta = timedelta(hours=2),
     done: int = 1,
     total: int = 2,
+    current: StageId | None = "execute",
 ) -> PhaseRow:
     return PhaseRow(
         subject=subject,
@@ -52,6 +66,7 @@ def _phase(
         ),
         in_progress=("t",) if running else (),
         updated_at=NOW - age,
+        progress=_progress(current),
     )
 
 
@@ -111,14 +126,8 @@ def _snapshot(*efforts: EffortView) -> Snapshot:
     return Snapshot(efforts=list(efforts), token="t", generated_at=NOW)
 
 
-def _hub(snap: Snapshot, **extra):
-    return build_hub(
-        snap,
-        NOW,
-        landings=extra.pop("landings", {}),
-        approvals=extra.pop("approvals", {}),
-        review_passed=extra.pop("review_passed", frozenset()),
-    )
+def _hub(snap: Snapshot):
+    return build_hub(snap, NOW)
 
 
 def _subjects(items: list[HubItem]) -> list[str]:
@@ -137,19 +146,17 @@ def test_r2_one_card_per_in_progress_phase_of_each_active_effort() -> None:
 
 
 def test_r2_each_card_carries_a_progress_object() -> None:
-    snap = _snapshot(_effort("alpha", [_phase("a1")]), _effort("beta", [_phase("b1")]))
-    hub = _hub(
-        snap,
-        landings={"a1": MERGED},
-        approvals={"a1": {"spec", "design", "plan"}},
-        review_passed=frozenset({"a1"}),
+    snap = _snapshot(
+        _effort("alpha", [_phase("a1", current=None)]),
+        _effort("beta", [_phase("b1")]),
     )
+    hub = _hub(snap)
     assert len(hub.active_phases) == 2
     for card in hub.active_phases:
         progress = card.progress
         assert isinstance(progress, Progress)
         assert progress.weight == "full"
-        assert progress.stages[0].id == "spec"
+        assert [stage.id for stage in progress.stages] == list(STAGES)
         assert progress.tasks.done == 1
         assert progress.tasks.total == 2
         assert hasattr(progress, "requirements")
@@ -158,13 +165,12 @@ def test_r2_each_card_carries_a_progress_object() -> None:
     by_subject = {
         card.subject: card.progress for card in hub.active_phases if card.progress is not None
     }
-    spec_state = {s.id: s.state for s in by_subject["a1"].stages}
-    assert spec_state["spec"] == "done"
-    assert spec_state["review"] == "done"
-    assert spec_state["land"] == "done"
+    assert {s.state for s in by_subject["a1"].stages} == {"done"}
     b1_states = {s.id: s.state for s in by_subject["b1"].stages}
     assert b1_states["spec"] == "done"
     assert b1_states["execute"] == "current"
+    assert b1_states["verify"] == "pending"
+    assert by_subject["b1"].current == "execute"
 
 
 def test_r2_needs_and_ideas_carry_no_progress() -> None:
@@ -262,7 +268,16 @@ def test_r2_hub_endpoint_serialises_the_progress_object(store, cli) -> None:
     cards = [c for c in body["active_phases"] if c["subject"] == "card-phase"]
     assert len(cards) == 1, body
     progress = cards[0]["progress"]
-    assert set(progress) >= {"weight", "stages", "tasks", "requirements", "repairs", "blockers"}
+    assert set(progress) >= {
+        "weight",
+        "current",
+        "reason",
+        "stages",
+        "tasks",
+        "requirements",
+        "repairs",
+        "blockers",
+    }
     assert progress["tasks"]["total"] == 1
     assert {"id", "state"} <= set(progress["stages"][0])
     assert {"shown", "more", "text"} <= set(progress["blockers"])

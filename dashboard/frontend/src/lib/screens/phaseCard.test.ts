@@ -25,7 +25,6 @@ const FULL_STAGES = [
 	"tasks",
 	"execute",
 	"verify",
-	"review",
 	"land",
 	"close",
 ];
@@ -37,6 +36,8 @@ function stages(states: string[], ids: string[] = FULL_STAGES) {
 function progress(over: Partial<Progress> = {}): Progress {
 	return {
 		weight: "full",
+		current: "execute",
+		reason: "task 't2' is not done",
 		stages: stages(["done", "done", "done", "current"]),
 		tasks: {
 			done: 3,
@@ -131,7 +132,7 @@ describe("phase card header", () => {
 });
 
 describe("phase card stepper", () => {
-	it("R5 stepper shows the eight stages in order with state marks", async () => {
+	it("R5 stepper shows the seven stages in order with state marks", async () => {
 		const card = await render(item());
 		const segs = Array.from(card.querySelectorAll<HTMLElement>("[data-stage]"));
 		expect(segs.map((s) => s.getAttribute("data-stage"))).toEqual(FULL_STAGES);
@@ -141,7 +142,6 @@ describe("phase card stepper", () => {
 			"done",
 			"done",
 			"current",
-			"pending",
 			"pending",
 			"pending",
 			"pending",
@@ -155,21 +155,57 @@ describe("phase card stepper", () => {
 		expect(current[0]?.getAttribute("data-stage")).toBe("execute");
 	});
 
-	it("R5 a light phase renders the six stages it receives", async () => {
-		const light = ["spec", "tasks", "execute", "verify", "land", "close"];
+	it("R3 a light phase renders the five stages from tasks onward", async () => {
+		const light = ["tasks", "execute", "verify", "land", "close"];
 		const card = await render(
-			item({}, { weight: "light", stages: stages(["done", "done"], light) }),
+			item({}, { weight: "light", stages: stages(["done", "current"], light) }),
 		);
 		const segs = Array.from(card.querySelectorAll<HTMLElement>("[data-stage]"));
 		expect(segs.map((s) => s.getAttribute("data-stage"))).toEqual(light);
 		expect(segs.map((s) => s.getAttribute("data-state"))).toEqual([
 			"done",
-			"done",
-			"pending",
+			"current",
 			"pending",
 			"pending",
 			"pending",
 		]);
+	});
+
+	it("R3 the stepper has no review cell", async () => {
+		const card = await render(item());
+		expect(card.querySelector('[data-stage="review"]')).toBeNull();
+	});
+
+	it("R3 the current stage carries its reason as a tooltip", async () => {
+		const card = await render(item());
+		const current = card.querySelector<HTMLElement>('[data-stage="execute"]');
+		expect(current?.getAttribute("title")).toBe("task 't2' is not done");
+		const other = card.querySelector<HTMLElement>('[data-stage="spec"]');
+		expect(other?.hasAttribute("title")).toBe(false);
+	});
+
+	it("R3 a blocked or unknown stage keeps its state mark", async () => {
+		const card = await render(
+			item(
+				{},
+				{
+					current: "verify",
+					stages: [
+						{ id: "execute", state: "done" },
+						{ id: "verify", state: "blocked" },
+						{ id: "land", state: "pending" },
+						{ id: "close", state: "unknown" },
+					],
+				},
+			),
+		);
+		const states = Array.from(
+			card.querySelectorAll<HTMLElement>("[data-stage]"),
+		).map((s) => s.getAttribute("data-state"));
+		expect(states).toEqual(["done", "blocked", "pending", "unknown"]);
+		expect(
+			card.querySelector('[data-stage="verify"]')?.getAttribute("aria-current"),
+		).toBe("step");
 	});
 });
 

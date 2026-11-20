@@ -2,61 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from dashboard.backend.landing import Landing
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow, run_fact_int
+from orchestra.conductor.phase_progress import STAGES, unavailable_progress, visible_stages
 
-FULL_STAGES = ("spec", "design", "tasks", "execute", "verify", "review", "land", "close")
-LIGHT_STAGES = FULL_STAGES[2:]
 BLOCKER_LIMIT = 2
 DEFAULT_FIX_TASK_LIMIT = 3
 _FINISHED = ("done", "withdrawn")
+_READY_TO_CLOSE = "ready-to-close"
+_REASONED_FROM = STAGES.index("verify")
 
 
 @dataclass(frozen=True)
 class Stage:
     id: str
     state: str
-
-
-def derive_stages(
-    *,
-    weight: str,
-    phase_state: str,
-    approved: Collection[str],
-    task_states: Sequence[str],
-    requirement_statuses: Sequence[str],
-    review_passed_at_head: bool,
-    branch_merged: bool,
-) -> list[Stage]:
-    has_tasks = bool(task_states)
-    done = {
-        "spec": has_tasks or "spec" in approved,
-        "design": has_tasks or "design" in approved,
-        "tasks": has_tasks or "plan" in approved,
-        "execute": bool(task_states) and all(state == "done" for state in task_states),
-        "verify": all(status == "verified" for status in requirement_statuses),
-        "review": review_passed_at_head,
-        "land": branch_merged,
-        "close": phase_state == "done",
-    }
-    ids = LIGHT_STAGES if weight == "light" else FULL_STAGES
-    stages: list[Stage] = []
-    current_found = False
-    for stage_id in ids:
-        if done[stage_id]:
-            state = "done"
-        elif not current_found:
-            state = "current"
-            current_found = True
-        else:
-            state = "pending"
-        stages.append(Stage(stage_id, state))
-    return stages
 
 
 @dataclass(frozen=True)
@@ -93,6 +57,8 @@ class BlockerSummary:
 @dataclass(frozen=True)
 class Progress:
     weight: str
+    current: str
+    reason: str
     stages: tuple[Stage, ...]
     tasks: TaskProgress
     requirements: RequirementProgress
@@ -117,10 +83,6 @@ def build_progress(
     phase: PhaseRow,
     tasks: Sequence[TaskRow],
     needs: Sequence[NeedsYouItem],
-    *,
-    landing: Landing | None,
-    approved: Collection[str],
-    review_passed_at_head: bool,
 ) -> Progress:
     members = [t for t in tasks if t.phase == phase.subject and t.status != "withdrawn"]
     running = sum(1 for t in members if t.status == "running")
@@ -156,31 +118,29 @@ def build_progress(
         limit = run_fact_int(phase.body, "retry_max_fix_tasks", DEFAULT_FIX_TASK_LIMIT)
         repairs = RepairProgress(fix_tasks, limit, f"{fix_tasks} of {limit} fix tasks used")
 
+    weight = evidence.weight if evidence else "full"
+    surface = phase.progress or unavailable_progress("progress unavailable")
     blockers = [n.text for n in needs if n.phase == phase.subject and n.status == "open"]
+    if surface.blocked_by:
+        blockers.append(surface.reason)
     open_tasks = sum(1 for t in members if t.status != "done")
     if open_tasks:
         blockers.append(f"{_plural(open_tasks, 'task')} not done")
     if len(statuses) - proven:
         blockers.append(f"{_plural(len(statuses) - proven, 'requirement')} not proven")
-    if not review_passed_at_head:
-        blockers.append("No passing review")
-    if landing is not None and not landing.merged:
-        blockers.append("Branch not merged")
+    if (
+        not surface.blocked_by
+        and surface.current is not None
+        and STAGES.index(surface.current) >= _REASONED_FROM
+        and surface.reason not in ("", _READY_TO_CLOSE)
+    ):
+        blockers.append(f"{surface.current}: {surface.reason}")
 
-    task_states = [t.status for t in members]
     return Progress(
-        weight=evidence.weight if evidence else "full",
-        stages=tuple(
-            derive_stages(
-                weight=evidence.weight if evidence else "full",
-                phase_state=phase.state,
-                approved=approved,
-                task_states=task_states,
-                requirement_statuses=statuses,
-                review_passed_at_head=review_passed_at_head,
-                branch_merged=landing.merged if landing is not None else False,
-            )
-        ),
+        weight=weight,
+        current=surface.current or "",
+        reason=surface.reason,
+        stages=tuple(Stage(state.stage, state.status) for state in visible_stages(weight, surface)),
         tasks=task_progress,
         requirements=requirements,
         repairs=repairs,

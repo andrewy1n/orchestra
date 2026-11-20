@@ -9,7 +9,7 @@ from conductor_support import write_policy
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import workflow_review
+from orchestra.conductor import phase_progress, workflow_review
 from orchestra.conductor.workflow import (
     WorkflowRunError,
     next_actions,
@@ -17,6 +17,7 @@ from orchestra.conductor.workflow import (
     run_status,
     start_run,
 )
+from orchestra.score.phase import current_phase_model
 from orchestra.score.workflow_reviews import Authority, Step
 
 EFFORT = "run-effort"
@@ -344,11 +345,18 @@ def test_serial_phase_verification_does_not_require_integration_report(tmp_path:
     assert status.complete is True
 
 
+def _integration(project: Project) -> str:
+    records = project.records()
+    phase = current_phase_model("p1", records)
+    assert phase is not None
+    return phase_progress.integration_state(records, phase)
+
+
 def test_parallel_implementation_wave_needs_integration_report_at_verification(
     tmp_path: Path,
 ) -> None:
     project = _project(tmp_path)
-    phase = _phase(project, "p1", 1)
+    _phase(project, "p1", 1)
     _review(project, "p1", "spec")
     _review(project, "p1", "design")
     for subject in ("task-a", "task-b"):
@@ -412,9 +420,7 @@ def test_parallel_implementation_wave_needs_integration_report_at_verification(
 
     action = next_actions(project, run["subject"])[0]
     assert (action.step, action.state) == ("verify", "ready")
-    project.update(phase["id"], record_type="score:phase", transition="in_progress")
-    project.update(phase["id"], record_type="score:phase", transition="done")
-    assert run_status(project, run["subject"]).complete is False
+    assert _integration(project) == "missing"
 
     create(
         project,
@@ -425,7 +431,7 @@ def test_parallel_implementation_wave_needs_integration_report_at_verification(
         "## Invariants\nReviewed.\n## Conflicts\nNone.",
     )
 
-    assert run_status(project, run["subject"]).complete is True
+    assert _integration(project) == "passing"
 
 
 def _landing_phase(project: Project, heading: str = "## Landing") -> None:

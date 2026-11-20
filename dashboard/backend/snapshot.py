@@ -38,6 +38,7 @@ from dashboard.backend.records import (
     records_by_effort,
     remap_records,
 )
+from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import change_token
 from dashboard.backend.task import (
     TaskRow,
@@ -489,6 +490,7 @@ def load_snapshot(
 
 
 def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
+    progress = load_phase_progress(target, token)
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
     small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
     aliases = merge_aliases(listed["score:effort"])
@@ -579,6 +581,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 integrations_by_effort.get(effort, []),
                 releases_by_effort.get(effort, []),
                 phases.get(effort, []),
+                progress.get(phase),
             )
             if evidence is not None:
                 evidence_by_phase[phase] = evidence
@@ -593,6 +596,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         phase_rows = [
             replace(
                 row,
+                progress=progress.get(row.subject),
                 updated_at=_phase_updated_at(
                     row,
                     phases.get(effort, []),
@@ -680,6 +684,7 @@ def load_work_snapshot(
     target = replace(target, read_only=True)
     now = now or datetime.now(timezone.utc)
     token = token or change_token(target)
+    progress = load_phase_progress(target, token)
     with store.pinned_token(token):
         every_record = store.catalog_records(target)
     listed: dict[str, list[Record]] = {record_type: [] for record_type in _WORK_TYPES}
@@ -739,7 +744,7 @@ def load_work_snapshot(
             if current.record["lifecycle_state"] != "in_progress":
                 continue
             phase = current.subject
-            progress = phase_progress(tasks, phase)
+            counts = phase_progress(tasks, phase)
             evidence = None
             if (effort, phase) in structured:
                 evidence = phase_evidence(
@@ -755,18 +760,20 @@ def load_work_snapshot(
                     integrations,
                     grouped["conductor:release"].get(effort, []),
                     phases,
+                    progress.get(phase),
                 )
             row = PhaseRow(
                 subject=phase,
                 title=current.title,
                 ordinal=current.ordinal,
                 state=current.record["lifecycle_state"],
-                done=progress.done,
-                total=progress.total,
+                done=counts.done,
+                total=counts.total,
                 id=current.id,
                 evidence=evidence,
                 body=current.body,
-                in_progress=progress.in_progress,
+                in_progress=counts.in_progress,
+                progress=progress.get(phase),
             )
             rows.append(
                 replace(

@@ -14,9 +14,9 @@ import pytest
 from canon_support import create, make_project, seed_effort
 from conftest import git, make_git_repo
 
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close, gate
+from orchestra.conductor import close, gate, workflow_review
 from orchestra.conductor.check import run_check
 from orchestra.tools import Git
 
@@ -567,3 +567,40 @@ def close_request(acceptance: Record, passed: Record, red: Record | None = None)
         "acceptance_ids": [acceptance["id"]],
         "criteria": [entry],
     }
+
+
+def ready_for_verify(phase: Phase) -> None:
+    project = open_store(phase.store)
+    record = project.resolve("score:phase", PHASE)
+    body = record.get("body") or ""
+    project.update(
+        record["id"],
+        record_type="score:phase",
+        payload={"weight": "light"},
+        body=body.replace(
+            "## Approach", "## Requirements\n\nR1: Preserve the contract.\n\n## Approach"
+        ),
+    )
+    item = project.resolve("score:work-item", f"{PHASE}-impl")
+    project.update(item["id"], record_type="score:work-item", payload={"requirements": ["R1"]})
+    for step in ("spec", "design", "tasks"):
+        workflow_review.record_step_review(
+            project,
+            phase=PHASE,
+            step=step,
+            artifact=project.resolve("score:phase", PHASE),
+            authority="user-approval",
+            basis="Approved in the test fixture.",
+        )
+    for subject in (f"{PHASE}-impl", f"verify-{PHASE}"):
+        phase.create(
+            "conductor:execution-report",
+            subject,
+            {
+                "work_item": subject,
+                "result": "pass",
+                "verdict": "pass",
+                "revision": HEAD,
+                "effort": EFFORT,
+            },
+        )
