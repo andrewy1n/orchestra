@@ -48,7 +48,7 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.derive import effort_dormant, phase_progress
+from orchestra.derive import efforts_dormant, phase_progress
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 from orchestra.score.workflow_blockers import human_gates
 
@@ -346,6 +346,83 @@ def _check_stamps(
     return stamps
 
 
+def _max_check_stamp_by_phase(tasks: list[Record], checks: list[Record]) -> dict[str, datetime]:
+    live_by_phase: dict[str, list[tuple[int, Record]]] = {}
+    other_by_subject: dict[str, list[tuple[str, int, Record]]] = {}
+    for index, task in enumerate(tasks):
+        phase_name = record_payload(task).get("phase")
+        if not isinstance(phase_name, str):
+            continue
+        if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES:
+            live_by_phase.setdefault(phase_name, []).append((index, task))
+        else:
+            other_by_subject.setdefault(task["subject"], []).append((phase_name, index, task))
+    by_subject: dict[str, list[tuple[str, int, Record]]] = {}
+    for phase_name, items in live_by_phase.items():
+        for subject, (index, record) in _earliest_by_subject(items).items():
+            by_subject.setdefault(subject, []).append((phase_name, index, record))
+    stamps: dict[str, datetime] = {}
+
+    def consider(phase_name: str, stamp: datetime) -> None:
+        current = stamps.get(phase_name)
+        if current is None or stamp > current:
+            stamps[phase_name] = stamp
+
+    for check in checks:
+        subject = check["subject"]
+        parts = subject.split("-")
+        live_best: dict[str, tuple[int, int, Record]] = {}
+        for count in range(len(parts), 0, -1):
+            name = "-".join(parts[:count])
+            hits = by_subject.get(name)
+            if not hits:
+                continue
+            length = len(name)
+            for phase_name, index, record in hits:
+                current = live_best.get(phase_name)
+                if (
+                    current is None
+                    or length > current[0]
+                    or (length == current[0] and index < current[1])
+                ):
+                    live_best[phase_name] = (length, index, record)
+        stamp = recorded_at(check)
+        matched: set[str] = set()
+        for phase_name, (_length, _index, record) in live_best.items():
+            if _effort_matches(check, record):
+                consider(phase_name, stamp)
+                matched.add(phase_name)
+        for count in range(len(parts), 0, -1):
+            name = "-".join(parts[:count])
+            hits = other_by_subject.get(name)
+            if not hits:
+                continue
+            for phase_name, index, record in hits:
+                if phase_name in matched:
+                    continue
+                live = live_best.get(phase_name)
+                live_pair = None if live is None else (live[1], live[2])
+                if _owns_against_live(index, record, subject, live_pair) and _effort_matches(
+                    check, record
+                ):
+                    consider(phase_name, stamp)
+                    matched.add(phase_name)
+    return stamps
+
+
+def _work_item_stamps(records: list[Record]) -> dict[str, datetime]:
+    stamps: dict[str, datetime] = {}
+    for record in records:
+        work_item = record_payload(record).get("work_item")
+        if not isinstance(work_item, str) or not work_item:
+            continue
+        stamp = recorded_at(record)
+        current = stamps.get(work_item)
+        if current is None or stamp > current:
+            stamps[work_item] = stamp
+    return stamps
+
+
 def _phase_updated_at(
     row: PhaseRow,
     phase_records: list[Record],
@@ -353,15 +430,28 @@ def _phase_updated_at(
     assignments: list[Record],
     reports: list[Record],
     checks: list[Record],
+    check_stamps: dict[str, datetime] | None = None,
+    work_stamps: dict[str, datetime] | None = None,
 ) -> datetime | None:
     members = [task for task in tasks if record_payload(task).get("phase") == row.subject]
     names = {task["id"] for task in members} | {task["subject"] for task in members}
     stamps = [recorded_at(record) for record in phase_records if record["id"] == row.id]
     stamps.extend(recorded_at(task) for task in members)
-    for record in (*assignments, *reports):
-        if record_payload(record).get("work_item") in names:
-            stamps.append(recorded_at(record))
-    stamps.extend(_check_stamps(row.subject, members, tasks, checks))
+    if work_stamps is None:
+        for record in (*assignments, *reports):
+            if record_payload(record).get("work_item") in names:
+                stamps.append(recorded_at(record))
+    else:
+        for name in names:
+            stamp = work_stamps.get(name)
+            if stamp is not None:
+                stamps.append(stamp)
+    if check_stamps is None:
+        stamps.extend(_check_stamps(row.subject, members, tasks, checks))
+    else:
+        stamp = check_stamps.get(row.subject)
+        if stamp is not None:
+            stamps.append(stamp)
     return max(stamps, default=None)
 
 
@@ -621,6 +711,10 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
         for record in live_records(listed[PLACEMENT_TYPE])
     }
     every_record = store.catalog_records(target)
+    dormant_by_effort = efforts_dormant(every_record, now)
+    work_stamps = _work_item_stamps(
+        [*listed["conductor:assignment"], *listed["conductor:execution-report"]]
+    )
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -659,6 +753,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
             evidence_by_phase,
             small_wave_budget_minutes=small_wave_budget_minutes,
         )
+        check_stamps = _max_check_stamp_by_phase(effort_tasks, effort_checks)
         phase_rows = [
             replace(
                 row,
@@ -670,6 +765,8 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                     listed["conductor:assignment"],
                     listed["conductor:execution-report"],
                     effort_checks,
+                    check_stamps,
+                    work_stamps,
                 ),
             )
             for row in phase_rows
@@ -718,7 +815,7 @@ def _load_snapshot(target: Project, now: datetime, token: str) -> Snapshot:
                 journal_open=journal_open,
                 backlog=_backlog_items(backlog_by_effort.get(effort, [])),
                 area=areas.get(effort, ""),
-                dormant=effort_dormant(every_record, effort, now),
+                dormant=dormant_by_effort.get(effort, False),
             )
         )
     efforts.sort(key=lambda view: view.finished)
@@ -775,6 +872,10 @@ def load_work_snapshot(
         if record["lifecycle_state"] == "active"
         and record_payload(record).get("status") != "closed"
     ]
+    dormant_by_effort = efforts_dormant(every_record, now)
+    work_stamps = _work_item_stamps(
+        [*listed["conductor:assignment"], *listed["conductor:execution-report"]]
+    )
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -792,7 +893,7 @@ def load_work_snapshot(
             and all(record["lifecycle_state"] == "done" for record in counted)
         ):
             continue
-        if effort_dormant(every_record, effort, now):
+        if dormant_by_effort.get(effort, False):
             continue
         acceptances = grouped["score:acceptance"].get(effort, [])
         checks = grouped["tuner:check-run"].get(effort, [])
@@ -805,6 +906,7 @@ def load_work_snapshot(
         active_tasks = [
             task for task in tasks if record_payload(task).get("phase") in active_subjects
         ]
+        check_stamps = _max_check_stamp_by_phase(tasks, checks)
         rows: list[PhaseRow] = []
         for current in phase_models:
             if current.record["lifecycle_state"] != "in_progress":
@@ -851,6 +953,8 @@ def load_work_snapshot(
                         listed["conductor:assignment"],
                         listed["conductor:execution-report"],
                         checks,
+                        check_stamps,
+                        work_stamps,
                     ),
                 )
             )

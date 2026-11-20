@@ -1,12 +1,80 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+import contextvars
+from collections.abc import Callable, Generator, Iterable, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 
 from orchestra.canon import record_payload
 from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 
 LIVE_WORK_ITEM_STATES = ("planned", "in_progress", "done")
+
+
+@dataclass
+class _Prepared:
+    corrected: set[str]
+    phases: dict[str, Record]
+    by_type: dict[str, list[Record]]
+    lists: dict[str, list[Record]] = field(default_factory=dict[str, list[Record]])
+    objects: dict[str, object] = field(default_factory=dict[str, object])
+
+
+_prepared: contextvars.ContextVar[_Prepared | None] = contextvars.ContextVar(
+    "prepared_records", default=None
+)
+
+
+def _active() -> _Prepared | None:
+    return _prepared.get()
+
+
+@contextmanager
+def prepare_records(records: Sequence[Record]) -> Generator[None, None, None]:
+    """Reuse one corrected-id set and type index for repeated reads of ``records``."""
+    corrected = _corrected_ids(records)
+    by_type: dict[str, list[Record]] = {}
+    for record in records:
+        by_type.setdefault(record["record_type"], []).append(record)
+    token = _prepared.set(
+        _Prepared(corrected, _phases_from(records, corrected), by_type)
+    )
+    try:
+        yield
+    finally:
+        _prepared.reset(token)
+
+
+def records_of_type(records: Sequence[Record], record_type: str) -> Sequence[Record]:
+    prepared = _active()
+    if prepared is not None:
+        return prepared.by_type.get(record_type, ())
+    return [record for record in records if record["record_type"] == record_type]
+
+
+def cached_object(key: str, build: Callable[[], object]) -> object:
+    prepared = _active()
+    if prepared is None:
+        return build()
+    found = prepared.objects.get(key)
+    if found is None:
+        found = build()
+        prepared.objects[key] = found
+    return found
+
+
+def cached_records(
+    records: Sequence[Record], key: str, build: Callable[[], list[Record]]
+) -> list[Record]:
+    prepared = _active()
+    if prepared is None:
+        return build()
+    found = prepared.lists.get(key)
+    if found is None:
+        found = build()
+        prepared.lists[key] = found
+    return found
 
 
 def phase_versions(slug: str, records: Sequence[Record]) -> list[Record]:
@@ -30,23 +98,43 @@ def current_version(record_type: str, subject: str, records: Sequence[Record]) -
 
 
 def current_phase(slug: str, records: Sequence[Record]) -> Record | None:
+    prepared = _active()
+    if prepared is not None:
+        return prepared.phases.get(slug)
     return current_version("score:phase", slug, records)
 
 
+def _phases_from(records: Sequence[Record], corrected: set[str]) -> dict[str, Record]:
+    order: dict[str, None] = {}
+    best: dict[str, Record] = {}
+    for record in records:
+        if record["record_type"] != "score:phase":
+            continue
+        subject = record["subject"]
+        order.setdefault(subject, None)
+        if record["lifecycle_state"] == "superseded" or record["id"] in corrected:
+            continue
+        current = best.get(subject)
+        if current is None or (record.get("recorded_at") or "", record["id"]) > (
+            current.get("recorded_at") or "",
+            current["id"],
+        ):
+            best[subject] = record
+    return {subject: best[subject] for subject in order if subject in best}
+
+
 def current_phases(records: Sequence[Record]) -> dict[str, Record]:
-    slugs = dict.fromkeys(
-        record["subject"] for record in records if record["record_type"] == "score:phase"
-    )
-    found = {slug: current_phase(slug, records) for slug in slugs}
-    return {slug: record for slug, record in found.items() if record is not None}
+    prepared = _active()
+    if prepared is not None:
+        return prepared.phases
+    return _phases_from(records, corrected_ids(records))
 
 
 def live_work_items(slug: str, records: Sequence[Record]) -> list[Record]:
     return [
         record
-        for record in records
-        if record["record_type"] == "score:work-item"
-        and record["lifecycle_state"] in LIVE_WORK_ITEM_STATES
+        for record in records_of_type(records, "score:work-item")
+        if record["lifecycle_state"] in LIVE_WORK_ITEM_STATES
         and record_payload(record).get("phase") == slug
     ]
 
@@ -106,12 +194,19 @@ def acceptances_of(
     return owned
 
 
-def corrected_ids(records: Iterable[Record]) -> set[str]:
+def _corrected_ids(records: Iterable[Record]) -> set[str]:
     return {
         target
         for record in records
         for target in (record.get("relationships") or {}).get("corrects") or []
     }
+
+
+def corrected_ids(records: Iterable[Record]) -> set[str]:
+    prepared = _active()
+    if prepared is not None:
+        return prepared.corrected
+    return _corrected_ids(records)
 
 
 def check_run_criteria(acceptance: Record) -> tuple[str, ...]:

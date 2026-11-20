@@ -15,7 +15,12 @@ from heapq import merge
 from orchestra.canon.types import Record
 from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
 from orchestra.conductor.revision import revision_matches
-from orchestra.score.lookups import check_run_criteria, corrected_ids
+from orchestra.score.lookups import (
+    cached_object,
+    check_run_criteria,
+    corrected_ids,
+    records_of_type,
+)
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -32,27 +37,42 @@ class Answer:
     reason: str = ""
 
 
+@dataclass
+class _EvidenceParts:
+    check_runs: list[Record]
+    amended_commands: set[str]
+    by_criterion: dict[str, list[tuple[int, Record]]]
+
+
+def _evidence_parts(records: Sequence[Record]) -> _EvidenceParts:
+    corrected = corrected_ids(records)
+    check_runs: list[Record] = []
+    by_criterion: dict[str, list[tuple[int, Record]]] = {}
+    for record in records_of_type(records, CHECK_RUN_TYPE):
+        if record["id"] not in corrected:
+            position = len(check_runs)
+            check_runs.append(record)
+            by_criterion.setdefault(_text(record, "criterion_id"), []).append((position, record))
+    amended: set[str] = set()
+    for record in records_of_type(records, "conductor:assignment-amendment"):
+        provenance = record.get("provenance")
+        if isinstance(provenance, dict) and isinstance(
+            acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str
+        ):
+            amended.add(acceptance_id)
+    return _EvidenceParts(check_runs, amended, by_criterion)
+
+
 class EvidenceIndex:
     """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
-        corrected = corrected_ids(records)
-        self.check_runs: list[Record] = []
-        self._amended_commands: set[str] = set()
-        self._by_criterion: dict[str, list[tuple[int, Record]]] = {}
-        for record in records:
-            if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected:
-                position = len(self.check_runs)
-                self.check_runs.append(record)
-                self._by_criterion.setdefault(_text(record, "criterion_id"), []).append(
-                    (position, record)
-                )
-            elif (
-                record["record_type"] == "conductor:assignment-amendment"
-                and isinstance(provenance := record.get("provenance"), dict)
-                and isinstance(acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str)
-            ):
-                self._amended_commands.add(acceptance_id)
+        shared = cached_object("evidence-index", lambda: _evidence_parts(records))
+        if not isinstance(shared, _EvidenceParts):
+            shared = _evidence_parts(records)
+        self.check_runs = shared.check_runs
+        self._amended_commands = shared.amended_commands
+        self._by_criterion = shared.by_criterion
 
     def acceptance_runs(self, acceptance: Record) -> list[Record]:
         groups = [self._by_criterion.get(name, []) for name in check_run_criteria(acceptance)]

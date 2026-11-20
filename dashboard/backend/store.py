@@ -17,7 +17,7 @@ class ModelError(RuntimeError):
 
 
 _catalog_lock = threading.Lock()
-_catalog_cache: dict[str, tuple[str, list[Record]]] = {}
+_catalog_cache: dict[str, tuple[str, list[Record], dict[str, list[Record]]]] = {}
 _pin = threading.local()
 
 
@@ -28,11 +28,12 @@ def change_token(target: Project) -> str:
 
 @contextlib.contextmanager
 def pinned_token(token: str) -> Generator[None, None, None]:
+    previous = getattr(_pin, "token", None)
     _pin.token = token
     try:
         yield
     finally:
-        _pin.token = None
+        _pin.token = previous
 
 
 def _catalog(target: Project, *, required: bool = False) -> list[Record]:
@@ -49,8 +50,27 @@ def _catalog(target: Project, *, required: bool = False) -> list[Record]:
             if required:
                 raise ModelError(f"catalog read failed: {exc}") from exc
             return []
-        _catalog_cache[key] = (token, rows)
+        by_type: dict[str, list[Record]] = {}
+        for row in rows:
+            by_type.setdefault(row["record_type"], []).append(row)
+        _catalog_cache[key] = (token, rows, by_type)
         return rows
+
+
+def _catalog_types(target: Project) -> dict[str, list[Record]]:
+    key = str(target.store_path)
+    with _catalog_lock:
+        token = getattr(_pin, "token", None) or change_token(target)
+        cached = _catalog_cache.get(key)
+        if cached is not None and cached[0] == token:
+            return cached[2]
+    _catalog(target)
+    with _catalog_lock:
+        token = getattr(_pin, "token", None) or change_token(target)
+        cached = _catalog_cache.get(key)
+        if cached is not None and cached[0] == token:
+            return cached[2]
+    return {}
 
 
 def catalog_records(target: Project) -> list[Record]:
@@ -94,12 +114,12 @@ def list_records(
 ) -> list[Record]:
     """Return catalog records, filtered by type, lifecycle state, subject prefix, and payload fields."""
     try:
-        rows = _catalog(target)
+        rows = (
+            list(_catalog_types(target).get(record_type, ())) if record_type else _catalog(target)
+        )
     except (OSError, ValueError) as exc:
         label = f"list --type {record_type}" if record_type else f"list --subject {subject}"
         raise ModelError(f"{label} failed: {exc}") from exc
-    if record_type:
-        rows = [row for row in rows if row.get("record_type") == record_type]
     if state:
         rows = [row for row in rows if row.get("lifecycle_state") == state]
     if subject:

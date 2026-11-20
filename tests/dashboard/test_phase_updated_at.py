@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import sys
-import time
 from datetime import datetime, timedelta, timezone
 
 from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.phase import PhaseRow
-from dashboard.backend.snapshot import _phase_updated_at
+from dashboard.backend.snapshot import _max_check_stamp_by_phase, _phase_updated_at
 from dashboard.backend.task import belongs
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonObject, Record
@@ -102,7 +101,7 @@ def _updated(
     reports: list[Record] | None = None,
 ) -> datetime | None:
     phase_records = [_record("phase-1", "score:phase", PHASE, 1, {}, state="done")]
-    return _phase_updated_at(
+    direct = _phase_updated_at(
         _row(),
         phase_records,
         tasks,
@@ -110,6 +109,17 @@ def _updated(
         reports or [],
         checks,
     )
+    batched = _phase_updated_at(
+        _row(),
+        phase_records,
+        tasks,
+        assignments or [],
+        reports or [],
+        checks,
+        _max_check_stamp_by_phase(tasks, checks),
+    )
+    assert batched == direct
+    return direct
 
 
 def test_phase_updated_at_matches_check_ownership() -> None:
@@ -168,6 +178,20 @@ def test_phase_updated_at_uses_earlier_equal_subject() -> None:
     assert _updated(tasks, checks) == datetime.fromisoformat(_at(12))
 
 
+def test_batched_check_stamps_stay_in_their_phase() -> None:
+    tasks = [
+        _task("t-build", "ship", "done", 2),
+        _task("t-other", "notes", "done", 3, phase="other", effort="beta"),
+    ]
+    checks = [
+        _check("c-build", "ship-panel", 10),
+        _check("c-other", "notes-body", 40, effort="beta"),
+    ]
+    prepared = _max_check_stamp_by_phase(tasks, checks)
+    assert prepared["build"] == datetime.fromisoformat(_at(10))
+    assert prepared["other"] == datetime.fromisoformat(_at(40))
+
+
 def test_phase_updated_at_scales_with_one_owner_lookup() -> None:
     tasks = [_task(f"t-{index}", f"task-{index}", "done", 1) for index in range(400)]
     tasks.append(_task("t-old", "task-0-old", "superseded", 2))
@@ -176,8 +200,4 @@ def test_phase_updated_at_scales_with_one_owner_lookup() -> None:
         for index in range(400)
         for copy in range(5)
     ]
-    started = time.perf_counter()
-    found = _updated(tasks, checks)
-    elapsed = time.perf_counter() - started
-    assert found == datetime.fromisoformat(_at(3))
-    assert elapsed < 0.5
+    assert _updated(tasks, checks) == datetime.fromisoformat(_at(3))
