@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 from canon_support import create, make_project
+from conductor.test_close_batch import RUNNER, _ancestry_repo, _build, _request
 from conductor_support import PHASE as GATE_PHASE
 from conductor_support import Cli, seed
 from conftest import REPO_ROOT, git
-from test_close_batch import RUNNER, _ancestry_repo, _build, _request
 
 from orchestra.canon.project import Project
 from orchestra.conductor import close_batch, wave
