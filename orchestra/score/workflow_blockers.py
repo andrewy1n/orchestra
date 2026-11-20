@@ -180,6 +180,14 @@ def _phase_chain(phase: Record, phases: dict[str, Record]) -> set[str]:
     return found
 
 
+def _blocker_candidates(records: list[Record]) -> list[Record]:
+    def build() -> list[Record]:
+        kinds = {"tuner:finding", QUESTION_TYPE}
+        return [record for record in records if record["record_type"] in kinds]
+
+    return cached_records(records, "workflow-blockers", build)
+
+
 def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlocker]:
     phases = current_phases(records)
     phase = phases.get(phase_slug)
@@ -188,11 +196,7 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
     effort = _payload_text(phase, "effort")
     chain = _phase_chain(phase, phases)
     blockers: list[WorkflowBlocker] = []
-    candidates = (
-        *records_of_type(records, "tuner:finding"),
-        *records_of_type(records, "score:continuity-question"),
-    )
-    for record in candidates:
+    for record in _blocker_candidates(records):
         payload = record["payload"]
         if is_open_finding(record):
             record_effort = _payload_text(record, "effort")
