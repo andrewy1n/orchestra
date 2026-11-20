@@ -13,13 +13,16 @@ class RecordIndex:
     def __init__(self, records: Iterable[Record] = ()) -> None:
         self.by_id: dict[str, Record] = {}
         self.by_subject: dict[tuple[str, str], list[Record]] = {}
+        self.by_type: dict[str, list[Record]] = {}
         self.corrected: set[str] = set()
         for record in records:
             self.add(record)
 
     def add(self, record: Record) -> None:
         self.by_id[record["id"]] = record
-        key = (record.get("record_type", ""), record.get("subject", ""))
+        record_type = record.get("record_type", "")
+        self.by_type.setdefault(record_type, []).append(record)
+        key = (record_type, record.get("subject", ""))
         self.by_subject.setdefault(key, []).append(record)
         self.corrected.update((record.get("relationships") or {}).get("corrects") or [])
 
@@ -45,4 +48,4 @@ class RecordIndex:
         return max(pool, key=lambda r: (r.get("recorded_at") or "", r["id"]))
 
     def of_type(self, record_type: str) -> list[Record]:
-        return [r for (t, _), items in self.by_subject.items() if t == record_type for r in items]
+        return list(self.by_type.get(record_type, []))

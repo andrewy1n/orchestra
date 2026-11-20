@@ -19,7 +19,13 @@ from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
-from orchestra.conductor.landing import LandingPlace, phase_place, task_branch, task_worktree
+from orchestra.conductor.landing import (
+    LandingPlace,
+    parse_landing,
+    phase_place,
+    task_branch,
+    task_worktree,
+)
 from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
 from orchestra.score.lookups import (
     acceptances_of,
@@ -28,6 +34,7 @@ from orchestra.score.lookups import (
     current_phase,
     live_work_items,
 )
+from orchestra.score.phase import Phase, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids
 from orchestra.score.work_item import WorkItemShapeError, read_work_item
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
@@ -82,8 +89,8 @@ def _branch_exists(repo: Path, branch: str) -> bool:
     return Git(repo).resolve(f"refs/heads/{branch}") is not None
 
 
-def has_landing(phase_record: Record) -> bool:
-    return any(line.strip() == "## Landing" for line in phase_record.get("body", "").splitlines())
+def has_landing(phase: Phase) -> bool:
+    return parse_landing(phase.body).present
 
 
 def phase_record(records: list[Record], phase: str) -> Record:
@@ -91,6 +98,10 @@ def phase_record(records: list[Record], phase: str) -> Record:
     if record is None:
         raise WaveError(f"phase {phase!r} not found")
     return record
+
+
+def _phase(records: list[Record], phase: str) -> Phase:
+    return read_phase(phase_record(records, phase))
 
 
 def phase_items(records: list[Record], phase: str) -> list[Record]:
@@ -318,11 +329,6 @@ def _prepare(place: LandingPlace, phase: str, item: Record, closing: bool) -> tu
     return tree, branch
 
 
-def _effort(phase_rec: Record, phase: str) -> str:
-    effort = record_payload(phase_rec).get("effort")
-    return effort if isinstance(effort, str) else phase
-
-
 def _open_question(project: Project, effort: str, phase: str, scope: str) -> Record | None:
     for record in project.list("score:continuity-question"):
         payload = record_payload(record)
@@ -337,8 +343,8 @@ def _open_question(project: Project, effort: str, phase: str, scope: str) -> Rec
     return None
 
 
-def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Record:
-    effort = _effort(phase_rec, phase)
+def _block(project: Project, phase_rec: Phase, phase: str, scope: str) -> Record:
+    effort = phase_rec.effort
     existing = _open_question(project, effort, phase, scope)
     if existing is not None:
         return existing
@@ -350,7 +356,7 @@ def _block(project: Project, phase_rec: Record, phase: str, scope: str) -> Recor
 
 
 def block(project: Project, phase: str, scope: str) -> Record:
-    return _block(project, phase_record(project.records(), phase), phase, scope)
+    return _block(project, _phase(project.records(), phase), phase, scope)
 
 
 def start(project: Project, repo: Path, phase: str, workdir: Path | None = None) -> WaveStart:
@@ -363,7 +369,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
         names = ", ".join(blocker.record["subject"] for blocker in blockers)
         raise WaveError(f"phase {phase!r} is blocked by human decision: {names}")
     derived = project.derived(records)
-    phase_rec = phase_record(records, phase)
+    phase_rec = _phase(records, phase)
     landing = has_landing(phase_rec)
     place = phase_place(phase_rec, repo)
     items = phase_items(records, phase)
@@ -427,7 +433,7 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
     records = project.records()
     index = EvidenceIndex(records)
     items = phase_items(records, phase)
-    phase_rec = phase_record(records, phase)
+    phase_rec = _phase(records, phase)
     place = phase_place(phase_rec, repo)
     phase_tree = place.worktree
     phase_branch = place.branch
@@ -497,11 +503,11 @@ def _marker_paths(tree: Path, paths: list[str]) -> list[str]:
 
 
 def _guard_refusals(
-    project: Project, phase_rec: Record, phase: str, task: str, tree: Path
+    project: Project, phase_rec: Phase, phase: str, task: str, tree: Path
 ) -> list[str]:
     refusals: list[str] = []
     scope = f"merge:{task}"
-    if _open_question(project, _effort(phase_rec, phase), phase, scope) is None:
+    if _open_question(project, phase_rec.effort, phase, scope) is None:
         refusals.append(f"no open {scope} question")
     unmerged = _lines(_git_text(tree, "diff", "--name-only", "--diff-filter=U"))
     if unmerged:
@@ -532,7 +538,7 @@ def _merged_tasks(place: LandingPlace, records: list[Record], phase: str, task: 
 
 
 def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
-    phase_rec = phase_record(project.records(), phase)
+    phase_rec = _phase(project.records(), phase)
     place = phase_place(phase_rec, repo)
     tree = place.worktree
     from orchestra.conductor.land_task import acceptances_for
@@ -580,7 +586,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
         return WaveResolve(phase, task, (reason,), commit, tuple(outcomes))
     _git_text(tree, "merge", "--quit")
     _git_text(tree, "reset", "--soft", commit)
-    question = _open_question(project, _effort(phase_rec, phase), phase, f"merge:{task}")
+    question = _open_question(project, phase_rec.effort, phase, f"merge:{task}")
     if question is not None:
         project.update(
             question["id"], record_type="score:continuity-question", transition="answered"

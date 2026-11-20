@@ -8,14 +8,15 @@ from pathlib import Path
 
 import pytest
 from canon_support import create, make_project
+from conductor.test_close_batch import RUNNER, _ancestry_repo, _build, _request
 from conductor_support import PHASE as GATE_PHASE
 from conductor_support import Cli, seed
 from conftest import REPO_ROOT, git
-from test_close_batch import RUNNER, _ancestry_repo, _build, _request
 
 from orchestra.canon.project import Project
 from orchestra.conductor import close_batch, wave
 from orchestra.conductor.landing import phase_place
+from orchestra.score.phase import read_phase
 from orchestra.tools import Git
 from orchestra.tuner.manifest import Claim, Manifest
 from orchestra.tuner.provenance import AFTER, check_provenance
@@ -106,7 +107,10 @@ def _lose_phase_branch(repo: Path) -> None:
 def _prepare(project: Project, repo: Path) -> tuple[Path, str]:
     item = project.resolve("score:work-item", "t")
     return wave._prepare(
-        phase_place(wave.phase_record(project.records(), PHASE), repo), PHASE, item, closing=False
+        phase_place(read_phase(wave.phase_record(project.records(), PHASE)), repo),
+        PHASE,
+        item,
+        closing=False,
     )
 
 

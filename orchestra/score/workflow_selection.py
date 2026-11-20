@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TypeAlias
 
+from orchestra.canon import record_payload
+from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import Record
 from orchestra.score.lookups import current_phases
+from orchestra.score.phase import Phase, read_phase
 
 _RANGE = re.compile(r"^(\d+)-(\d+)$")
 
@@ -23,41 +27,44 @@ class PhaseSelection:
     external_dependencies: tuple[str, ...]
 
 
-PhaseMap: TypeAlias = dict[str, Record]
+PhaseMap: TypeAlias = dict[str, Phase]
 
 
-def _ordinal(record: Record) -> int:
-    value = record["payload"].get("ordinal")
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise PhaseSelectionError(f"phase {record['subject']!r} has no valid ordinal")
-    return value
-
-
-def _dependency_values(record: Record) -> list[str]:
-    value = record["payload"].get("depends_on", [])
+def _dependency_values(phase: Phase) -> list[str]:
+    value = phase.record["payload"].get("depends_on", [])
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        raise PhaseSelectionError(f"phase {record['subject']!r} has invalid dependencies")
+        raise PhaseSelectionError(f"phase {phase.subject!r} has invalid dependencies")
     return [item for item in value if isinstance(item, str)]
 
 
-def _effort_phases(records: list[Record], effort_subject: str) -> tuple[Record, PhaseMap, PhaseMap]:
+def _read_scoped(slug: str, record: Record) -> Phase:
+    try:
+        return read_phase(record)
+    except RecordShapeError as exc:
+        raise PhaseSelectionError(f"phase {slug!r}: {exc}") from exc
+
+
+def _effort_phases(
+    records: list[Record], effort_subject: str
+) -> tuple[Record, PhaseMap, Mapping[str, object]]:
     index = RecordIndex(records)
     effort = index.resolve_subject("score:effort", effort_subject)
     if effort is None:
         raise PhaseSelectionError(f"unknown effort {effort_subject!r}")
-    all_phases = current_phases(records)
+    current = current_phases(records)
+    efforts = {slug: record_payload(record).get("effort") for slug, record in current.items()}
     phases = {
-        subject: record
-        for subject, record in all_phases.items()
-        if record["payload"].get("effort") == effort_subject
+        slug: _read_scoped(slug, record)
+        for slug, record in current.items()
+        if efforts[slug] == effort_subject
     }
-    return effort, phases, all_phases
+    return effort, phases, efforts
 
 
-def _select_tokens(scoped: PhaseMap, all_phases: PhaseMap, selector: str) -> list[str]:
+def _select_tokens(scoped: PhaseMap, all_efforts: Mapping[str, object], selector: str) -> list[str]:
     ordinals: dict[int, list[str]] = {}
     for subject, phase in scoped.items():
-        ordinals.setdefault(_ordinal(phase), []).append(subject)
+        ordinals.setdefault(phase.ordinal, []).append(subject)
     for subjects in ordinals.values():
         subjects.sort()
     selected: list[str] = []
@@ -87,7 +94,7 @@ def _select_tokens(scoped: PhaseMap, all_phases: PhaseMap, selector: str) -> lis
                     f"phase range {token!r} has ambiguous members {ambiguous}"
                 )
             matches = [ordinals[number][0] for number in range(start, end + 1)]
-        elif token in all_phases:
+        elif token in all_efforts:
             raise PhaseSelectionError(f"phase {token!r} belongs to another effort")
         else:
             raise PhaseSelectionError(f"unknown phase selector {token!r}")
@@ -100,8 +107,8 @@ def _select_tokens(scoped: PhaseMap, all_phases: PhaseMap, selector: str) -> lis
 def resolve_phase_selection(
     records: list[Record], effort_subject: str, selector: str
 ) -> PhaseSelection:
-    effort, scoped, all_phases = _effort_phases(records, effort_subject)
-    selected = _select_tokens(scoped, all_phases, selector)
+    effort, scoped, all_efforts = _effort_phases(records, effort_subject)
+    selected = _select_tokens(scoped, all_efforts, selector)
     selected_set = set(selected)
     dependencies: dict[str, list[str]] = {}
     external: set[str] = set()
@@ -110,12 +117,11 @@ def resolve_phase_selection(
         for dependency in _dependency_values(scoped[subject]):
             if dependency == subject:
                 raise PhaseSelectionError(f"phase {subject!r} depends on itself")
-            target = all_phases.get(dependency)
-            if target is None:
+            if dependency not in all_efforts:
                 raise PhaseSelectionError(
                     f"phase {subject!r} depends on unknown phase {dependency!r}"
                 )
-            if target["payload"].get("effort") != effort_subject:
+            if all_efforts[dependency] != effort_subject:
                 raise PhaseSelectionError(
                     f"phase {subject!r} depends on phase {dependency!r} from another effort"
                 )
@@ -131,7 +137,7 @@ def resolve_phase_selection(
         ready = [subject for subject, items in remaining.items() if not items]
         if not ready:
             raise PhaseSelectionError("phase dependencies contain a cycle")
-        ready.sort(key=lambda subject: (_ordinal(scoped[subject]), subject))
+        ready.sort(key=lambda subject: (scoped[subject].ordinal, subject))
         for subject in ready:
             ordered.append(subject)
             remaining.pop(subject)
@@ -139,7 +145,7 @@ def resolve_phase_selection(
             items.difference_update(ready)
 
     external_dependencies = tuple(
-        sorted(external, key=lambda subject: (_ordinal(all_phases[subject]), subject))
+        sorted(external, key=lambda subject: (scoped[subject].ordinal, subject))
     )
     return PhaseSelection(
         effort=effort,

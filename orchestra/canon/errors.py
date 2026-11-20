@@ -20,3 +20,11 @@ class StoreLockError(StoreError):
 
 class ReadOnlyStoreError(StoreError):
     pass
+
+
+class RecordShapeError(StoreError):
+    def __init__(self, record_id: str, field: str, message: str) -> None:
+        super().__init__(f"record {record_id}: field {field}: {message}")
+        self.record_id = record_id
+        self.field = field
+        self.message = message

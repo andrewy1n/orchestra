@@ -12,23 +12,28 @@ from orchestra.conductor.landing import (
     task_branch,
     task_worktree,
 )
+from orchestra.score.phase import Phase, read_phase
 
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 _CLOCK = itertools.count()
 
 
-def _phase(body: str, effort: str = "code-quality") -> Record:
+def _phase_record(body: str, effort: str = "code-quality") -> Record:
     return {
         "id": "<score:phase:p>",
         "record_type": "score:phase",
         "subject": "p",
-        "payload": {"effort": effort},
+        "payload": {"title": "P", "ordinal": 1, "effort": effort},
         "lifecycle_state": "active",
         "relationships": {},
         "revision": "r0",
         "recorded_at": "2026-11-01T00:00:00Z",
         "body": body,
     }
+
+
+def _phase(body: str, effort: str = "code-quality") -> Phase:
+    return read_phase(_phase_record(body, effort))
 
 
 def _packet(
@@ -39,7 +44,7 @@ def _packet(
         "id": name or f"<conductor:proof-packet:{n}>",
         "record_type": "conductor:proof-packet",
         "subject": phase,
-        "payload": payload,
+        "payload": {"kind": "claims", **payload},
         "lifecycle_state": "recorded",
         "relationships": {"corrects": [corrects]} if corrects else {},
         "revision": f"r{n}",
@@ -123,31 +128,31 @@ def test_r09_task_branch_is_task_phase_task() -> None:
 
 
 def test_r10_matching_phase_and_effort_belongs() -> None:
-    phase = _phase("")
+    phase = _phase_record("")
     packet = _packet({"phase": "p", "effort": "code-quality"})
     assert belongs_to_phase([packet], phase, packet)
 
 
 def test_r10_missing_effort_belongs() -> None:
     packet = _packet({"phase": "p"})
-    assert belongs_to_phase([packet], _phase(""), packet)
+    assert belongs_to_phase([packet], _phase_record(""), packet)
 
 
 def test_r10_other_phase_does_not_belong() -> None:
     packet = _packet({"phase": "q", "effort": "code-quality"})
-    assert not belongs_to_phase([packet], _phase(""), packet)
+    assert not belongs_to_phase([packet], _phase_record(""), packet)
 
 
 def test_r10_other_effort_does_not_belong() -> None:
     packet = _packet({"phase": "p", "effort": "other"})
-    assert not belongs_to_phase([packet], _phase(""), packet)
+    assert not belongs_to_phase([packet], _phase_record(""), packet)
 
 
 def test_r10_corrected_packet_does_not_belong() -> None:
     old = _packet({"phase": "p"}, name="old")
     new = _packet({"phase": "p"}, corrects="old")
-    assert not belongs_to_phase([old, new], _phase(""), old)
-    assert belongs_to_phase([old, new], _phase(""), new)
+    assert not belongs_to_phase([old, new], _phase_record(""), old)
+    assert belongs_to_phase([old, new], _phase_record(""), new)
 
 
 def test_r11_packet_at_head_is_latest_matching(tmp_path: Path) -> None:
@@ -155,7 +160,8 @@ def test_r11_packet_at_head_is_latest_matching(tmp_path: Path) -> None:
     newer = _packet({"phase": "p", "revision": HEAD})
     later_other = _packet({"phase": "p", "revision": "b" * 40})
     found = proof_packet([older, newer, later_other], _phase(""), HEAD)
-    assert found is newer
+    assert found is not None
+    assert found.record is newer
 
 
 def test_r11_older_revision_is_not_matched() -> None:
@@ -165,7 +171,9 @@ def test_r11_older_revision_is_not_matched() -> None:
 
 def test_r11_seven_character_prefix_matches() -> None:
     packet = _packet({"phase": "p", "revision": HEAD[:7]})
-    assert proof_packet([packet], _phase(""), HEAD) is packet
+    found = proof_packet([packet], _phase(""), HEAD)
+    assert found is not None
+    assert found.record is packet
     assert proof_packet([_packet({"phase": "p", "revision": HEAD})], _phase(""), HEAD[:7])
 
 
@@ -173,14 +181,18 @@ def test_r11_non_belonging_packets_are_skipped() -> None:
     mine = _packet({"phase": "p", "revision": HEAD})
     other = _packet({"phase": "q", "revision": HEAD})
     wrong_effort = _packet({"phase": "p", "revision": HEAD, "effort": "x"})
-    assert proof_packet([mine, other, wrong_effort], _phase(""), HEAD) is mine
+    found = proof_packet([mine, other, wrong_effort], _phase(""), HEAD)
+    assert found is not None
+    assert found.record is mine
 
 
 def test_r12_no_head_gives_latest_belonging_packet() -> None:
     first = _packet({"phase": "p", "revision": HEAD})
     second = _packet({"phase": "p", "revision": "c" * 40})
     other = _packet({"phase": "q"})
-    assert proof_packet([first, second, other], _phase("")) is second
+    found = proof_packet([first, second, other], _phase(""))
+    assert found is not None
+    assert found.record is second
 
 
 def test_r12_no_belonging_packet_gives_none() -> None:

@@ -6,7 +6,6 @@ from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import datetime
 
-from dashboard.backend import store
 from dashboard.backend.records import (
     INACTIVE_STATES,
     derived_values,
@@ -42,7 +41,8 @@ from orchestra.conductor.head_evidence import (
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases
+from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
@@ -91,14 +91,16 @@ def _requirement_texts(body: str) -> dict[str, str]:
     return texts
 
 
+def current_phase_models(records: list[Record]) -> list[Phase]:
+    return [read_phase(record) for record in current_phases(records).values()]
+
+
 def light_specification(phase: str, effort: str, phases: list[Record]) -> Record | None:
-    record = next(
-        (r for r in phases if r["subject"] == phase and record_payload(r).get("weight") == "light"),
-        None,
-    )
-    if record is None:
+    current = current_phase_model(phase, phases)
+    if current is None or current.weight != "light":
         return None
-    body = record.get("body", "")
+    record = current.record
+    body = current.body
     payload: JsonObject = {
         "phase": phase,
         "effort": effort,
@@ -382,13 +384,11 @@ def phase_rows(
     evidence_by_phase = evidence_by_phase or {}
     counted = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
     rows: list[PhaseRow] = []
-    for record in records:
+    for phase in current_phase_models(records):
+        record = phase.record
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
             continue
-        members = [
-            task for task in counted if record_payload(task).get("phase") == record["subject"]
-        ]
-        payload = record_payload(record)
+        members = [task for task in counted if record_payload(task).get("phase") == phase.subject]
         open_tasks = [task for task in members if task["lifecycle_state"] != "done"]
         awaiting = (
             record["lifecycle_state"] != "done"
@@ -398,25 +398,25 @@ def phase_rows(
         elapsed_minutes, unset_estimates = phase_elapsed(
             task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
         )
-        progress = phase_progress(tasks, record["subject"])
-        body = record.get("body") or ""
+        progress = phase_progress(tasks, phase.subject)
+        body = phase.body
         rows.append(
             PhaseRow(
-                subject=record["subject"],
-                title=payload.get("title", ""),
-                ordinal=payload.get("ordinal", 0),
+                subject=phase.subject,
+                title=phase.title,
+                ordinal=phase.ordinal,
                 state=record["lifecycle_state"],
                 done=progress.done,
                 total=progress.total,
-                id=record["id"],
+                id=phase.id,
                 awaiting_signoff=awaiting,
-                evidence=evidence_by_phase.get(record["subject"]),
+                evidence=evidence_by_phase.get(phase.subject),
                 sitting=sitting_phrase(body),
                 body=body,
                 elapsed_minutes=elapsed_minutes,
                 unset_estimates=unset_estimates,
-                suite=suite_status_label(record["subject"], checks or []),
-                milestone=payload.get("milestone") or "",
+                suite=suite_status_label(phase.subject, checks or []),
+                milestone=phase.milestone or "",
                 in_progress=progress.in_progress,
             )
         )
@@ -832,18 +832,17 @@ def load_decision_log(
 ) -> DecisionLog:
     """Phase- or effort-scoped decisions, with optional superseded chains (R7)."""
     aliases = merge_aliases(list_records(target, "score:effort"))
-    phase_records = [
-        record
-        for record in remap_records(list_records(target, "score:phase"), aliases)
-        if record_payload(record).get("effort") == effort
-    ]
-    phase_records.sort(
-        key=lambda record: (record_payload(record).get("ordinal", 0), record["subject"])
+    effort_phases = sorted(
+        (
+            phase
+            for phase in current_phase_models(
+                remap_records(list_records(target, "score:phase"), aliases)
+            )
+            if phase.effort == effort
+        ),
+        key=lambda phase: (phase.ordinal, phase.subject),
     )
-    titles = {
-        record["subject"]: record_payload(record).get("title") or record["subject"]
-        for record in phase_records
-    }
+    titles = {phase.subject: phase.title or phase.subject for phase in effort_phases}
 
     listed = remap_records(
         list_records(target, "score:decision", payload={"effort": effort}),
@@ -878,9 +877,7 @@ def load_decision_log(
         grouped.setdefault(title, []).append(_decision_entry(record, by_id, history))
 
     ordered_titles = [
-        titles[record["subject"]]
-        for record in phase_records
-        if titles[record["subject"]] in grouped
+        titles[phase.subject] for phase in effort_phases if titles[phase.subject] in grouped
     ]
     for title in grouped:
         if title not in ordered_titles:
@@ -896,10 +893,10 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         return records_by_effort(remap_records(list_records(target, record_type), aliases))
 
     snapshot_phases = by_effort("score:phase").get(effort, [])
-    record = next((r for r in snapshot_phases if r["subject"] == phase_subject), None)
-    if record is None:
+    phase = current_phase_model(phase_subject, snapshot_phases)
+    if phase is None:
         raise ModelError(f"phase {phase_subject} not found in {effort}")
-    item = store.get_record(target, record["id"], "score:phase")
+    record = phase.record
     tasks = records_by_effort(list_records(target, "score:work-item")).get(effort, [])
     effort_acceptances = by_effort("score:acceptance").get(effort, [])
     effort_checks = by_effort("tuner:check-run").get(effort, [])
@@ -953,8 +950,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         if record_payload(r).get("applies_to") == phase_subject
         and r["lifecycle_state"] not in INACTIVE_STATES
     ]
-    payload = record_payload(record)
-    milestone_slug = payload.get("milestone") or ""
+    milestone_slug = phase.milestone or ""
     milestone_title = ""
     if milestone_slug:
         milestone_record = next(
@@ -969,18 +965,17 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             milestone_title = record_payload(milestone_record).get("title") or milestone_slug
         else:
             milestone_title = milestone_slug
-    proof_record = proof_packet(
-        remap_records(list_records(target, "conductor:proof-packet"), aliases), record
+    packet = proof_packet(
+        remap_records(list_records(target, "conductor:proof-packet"), aliases), phase
     )
     proof = None
-    if proof_record is not None:
-        proof_body = proof_record.get("body") or ""
-        proof_payload = record_payload(proof_record)
+    if packet is not None:
+        proof_body = packet.record.get("body") or ""
         proof = ProofView(
-            id=proof_record["id"],
-            kind=proof_payload.get("kind") or "",
-            revision=proof_payload.get("revision") or "",
-            base=proof_payload.get("base") or "",
+            id=packet.id,
+            kind=packet.kind,
+            revision=packet.revision,
+            base=packet.base or "",
             look=section(proof_body, "Look"),
             attention=section(proof_body, "Attention"),
             machine=section(proof_body, "Machine"),
@@ -989,10 +984,10 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     return PhaseDetail(
         subject=phase_subject,
         effort=effort,
-        title=payload.get("title", ""),
+        title=phase.title,
         state=record["lifecycle_state"],
         awaiting_signoff=bool(row and row.awaiting_signoff),
-        body=item.get("body") or "",
+        body=phase.body,
         decisions=decisions,
         constraints=constraints,
         tasks=[

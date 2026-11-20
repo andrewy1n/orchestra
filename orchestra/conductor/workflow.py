@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 from uuid import uuid4
 
-from orchestra.canon.errors import StaleWriteError
+from orchestra.canon.errors import RecordShapeError, StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
@@ -21,13 +21,15 @@ from orchestra.conductor.head_evidence import (
 from orchestra.conductor.landing import (
     LandingProofError,
     LandingProofState,
+    ProofPacket,
     landing_proof_state,
     parse_landing,
     proof_packet,
 )
 from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import closing_work_item, current_phase, live_work_items
+from orchestra.score.lookups import closing_work_item, live_work_items
 from orchestra.score.lookups import dependencies as item_dependencies
+from orchestra.score.phase import Phase, current_phase_model
 from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
 from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
@@ -148,7 +150,7 @@ def start_run(project: Project, preview: RunPreview) -> Record:
     records = project.records()
     for subject in preview.phases:
         phase = _current_phase(records, subject)
-        if _text(phase, "effort") != preview.effort:
+        if phase.effort != preview.effort:
             raise WorkflowRunError(f"phase {subject!r} belongs to another effort")
     subject = f"{preview.effort}-{preview.operation}-{uuid4().hex[:12]}"
     project.apply_at_snapshot(
@@ -197,16 +199,16 @@ def _run_steps(run: Record) -> tuple[Step, ...]:
     return steps
 
 
-def _phase_records(records: list[Record], run: Record) -> list[Record]:
+def _phase_records(records: list[Record], run: Record) -> list[Phase]:
     phases = run["payload"].get("phases")
     if not isinstance(phases, list) or not all(isinstance(item, str) for item in phases):
         raise WorkflowRunError(f"run {run['subject']!r} has invalid phase selection")
-    selected: list[Record] = []
+    selected: list[Phase] = []
     for subject in (item for item in phases if isinstance(item, str)):
-        phase = current_phase(subject, records)
+        phase = _read_current_phase(records, subject)
         if phase is None:
             raise WorkflowRunError(f"run {run['subject']!r} requires missing phase {subject!r}")
-        if _text(phase, "effort") != _text(run, "effort"):
+        if phase.effort != _text(run, "effort"):
             raise WorkflowRunError(
                 f"run {run['subject']!r} phase {subject!r} has a different effort"
             )
@@ -214,15 +216,22 @@ def _phase_records(records: list[Record], run: Record) -> list[Record]:
     return selected
 
 
-def _dependencies(phase: Record) -> list[str]:
-    raw = phase["payload"].get("depends_on", [])
+def _dependencies(phase: Phase) -> list[str]:
+    raw = phase.record["payload"].get("depends_on", [])
     if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
-        raise WorkflowRunError(f"phase {phase['subject']!r} has invalid dependencies")
+        raise WorkflowRunError(f"phase {phase.subject!r} has invalid dependencies")
     return [item for item in raw if isinstance(item, str)]
 
 
-def _current_phase(records: list[Record], subject: str) -> Record:
-    phase = current_phase(subject, records)
+def _read_current_phase(records: list[Record], subject: str) -> Phase | None:
+    try:
+        return current_phase_model(subject, records)
+    except RecordShapeError as exc:
+        raise WorkflowRunError(str(exc)) from exc
+
+
+def _current_phase(records: list[Record], subject: str) -> Phase:
+    phase = _read_current_phase(records, subject)
     if phase is None:
         raise WorkflowRunError(f"required phase {subject!r} could not be read")
     return phase
@@ -254,8 +263,7 @@ def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, 
             and readiness.review is not None
             and readiness.review["payload"].get("authority") == "task-plan-policy"
         ):
-            phase_record = _current_phase(records, phase)
-            effort_subject = _text(phase_record, "effort")
+            effort_subject = _current_phase(records, phase).effort
             effort = next(
                 (
                     record
@@ -322,7 +330,7 @@ def _requires_integration_report(records: list[Record], phase: str) -> bool:
 
 
 def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    phase_record = _current_phase(records, phase)
+    current = _current_phase(records, phase)
     acceptances = [
         record
         for record in records
@@ -340,7 +348,7 @@ def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
         if not answer.holds:
             return False, f"acceptance {acceptance['subject']!r} check-run is not pass"
     if _requires_integration_report(records, phase):
-        effort = _text(phase_record, "effort")
+        effort = current.effort
         integrations = [
             record
             for record in records
@@ -360,20 +368,20 @@ def _verification_gate(project: Project, records: list[Record], phase: str) -> t
     ready, reason = _verification_ready(records, phase)
     if not ready:
         return False, reason
-    phase_record = _current_phase(records, phase)
-    if phase_record["lifecycle_state"] == "done":
+    current = _current_phase(records, phase)
+    if current.record["lifecycle_state"] == "done":
         return True, ""
-    if not parse_landing(phase_record.get("body") or "").present:
+    if not parse_landing(current.body).present:
         return False, "phase is not closed"
     try:
         missing = missing_terms(
             gate_terms(project.project_root, phase, store_dir=project.store_path)
         )
-    except LookupError as exc:
+    except (LookupError, RecordShapeError) as exc:
         raise WorkflowRunError(str(exc)) from exc
     if missing:
         return False, "phase gate is not met: " + "; ".join(format_missing(missing))
-    if proof_packet(records, phase_record) is None:
+    if _proof_packet(records, current) is None:
         return False, "phase has no proof packet"
     return True, ""
 
@@ -387,20 +395,29 @@ _LANDING_REASONS: dict[LandingProofState, str] = {
 }
 
 
-def _landing_proof_state(records: list[Record], phase_record: Record) -> LandingProofState:
+def _proof_packet(
+    records: list[Record], phase: Phase, head: str | None = None
+) -> ProofPacket | None:
     try:
-        return landing_proof_state(records, phase_record)
-    except LandingProofError as exc:
+        return proof_packet(records, phase, head)
+    except RecordShapeError as exc:
+        raise WorkflowRunError(str(exc)) from exc
+
+
+def _landing_proof_state(records: list[Record], phase: Phase) -> LandingProofState:
+    try:
+        return landing_proof_state(records, phase)
+    except (LandingProofError, RecordShapeError) as exc:
         raise WorkflowRunError(str(exc)) from exc
 
 
 def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    phase_record = _current_phase(records, phase)
-    if phase_record["lifecycle_state"] == "done":
+    current = _current_phase(records, phase)
+    if current.record["lifecycle_state"] == "done":
         return True, ""
-    if not parse_landing(phase_record.get("body") or "").present:
+    if not parse_landing(current.body).present:
         return True, ""
-    state = _landing_proof_state(records, phase_record)
+    state = _landing_proof_state(records, current)
     return state == "landed", _LANDING_REASONS[state]
 
 
@@ -424,13 +441,13 @@ def _step_completion(
 def _action_for(
     project: Project,
     records: list[Record],
-    phase: Record,
+    phase: Phase,
     step: Step,
     *,
     prepare: bool = False,
     selected_phases: set[str] | None = None,
 ) -> RunAction:
-    subject = phase["subject"]
+    subject = phase.subject
     try:
         blockers = phase_blockers(records, subject)
     except WorkflowBlockerError as exc:
@@ -442,7 +459,7 @@ def _action_for(
         if prepare and selected_phases is not None and dependency in selected_phases:
             continue
         dependency_record = _current_phase(records, dependency)
-        if dependency_record["lifecycle_state"] != "done":
+        if dependency_record.record["lifecycle_state"] != "done":
             return RunAction(
                 subject, step, "blocked", f"prerequisite phase {dependency!r} is not done"
             )
@@ -485,8 +502,8 @@ def _text_of(record: Record | None, field: str) -> str:
 
 
 def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
-    phase_record = _current_phase(records, phase)
-    effort = _text(phase_record, "effort")
+    current = _current_phase(records, phase)
+    effort = current.effort
     acceptances = [
         record
         for record in records
@@ -513,24 +530,24 @@ def _verify_stage(project: Project, records: list[Record], phase: str) -> str | 
         return "reviewer"
     if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
         return "gate"
-    if proof_packet(records, phase_record, head) is None:
+    if _proof_packet(records, current, head) is None:
         return "proof"
     return None
 
 
 def _land_stage(project: Project, records: list[Record], phase: str) -> str | None:
-    phase_record = _current_phase(records, phase)
-    if phase_record["lifecycle_state"] == "done":
+    current = _current_phase(records, phase)
+    if current.record["lifecycle_state"] == "done":
         return None
-    if not parse_landing(phase_record.get("body") or "").present:
+    if not parse_landing(current.body).present:
         return None
-    match _landing_proof_state(records, phase_record):
+    match _landing_proof_state(records, current):
         case "landed":
             return "close"
         case "failed":
             config = load_project_config(project.project_root)
             return "repair-ci" if config.land_adapter == "github-pr" else "land"
-        case _:
+        case "no-landing" | "no-packet" | "not-at-head":
             return "land"
 
 
@@ -566,13 +583,13 @@ def _all_actions(
     phases = _phase_records(records, run)
     actions: list[RunAction] = []
     prepare_barrier = _text(run, "operation") == "prepare"
-    selected_phases = {phase["subject"] for phase in phases}
+    selected_phases = {phase.subject for phase in phases}
     specs_complete = all(
-        _step_completion(project, records, phase["subject"], "spec")[0] for phase in phases
+        _step_completion(project, records, phase.subject, "spec")[0] for phase in phases
     )
     for phase in phases:
         for step in steps:
-            complete, _ = _step_completion(project, records, phase["subject"], step)
+            complete, _ = _step_completion(project, records, phase.subject, step)
             if complete:
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
