@@ -35,7 +35,7 @@
             "text": ""
           }
         ],
-        "stage": "tasks",
+        "stage": "spec",
         "stage_reason": "human gate: alpha, human-finding",
         "weight": "light"
       },

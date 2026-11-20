@@ -86,7 +86,7 @@
             ],
             "text": "human gate: alpha, human-finding; 1 requirement not proven"
           },
-          "current": "tasks",
+          "current": "spec",
           "reason": "human gate: alpha, human-finding",
           "repairs": null,
           "requirements": {
@@ -96,8 +96,16 @@
           },
           "stages": [
             {
-              "id": "tasks",
+              "id": "spec",
               "state": "blocked"
+            },
+            {
+              "id": "design",
+              "state": "pending"
+            },
+            {
+              "id": "tasks",
+              "state": "pending"
             },
             {
               "id": "execute",
@@ -128,7 +136,7 @@
         },
         "reason": "Updated <elapsed>",
         "running": false,
-        "step": "tasks",
+        "step": "spec",
         "subject": "route-phase",
         "title": "title of route-phase",
         "updated_at": "<timestamp>"

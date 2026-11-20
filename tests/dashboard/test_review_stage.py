@@ -77,14 +77,14 @@ def _stage_ids(project: Project, phase: str) -> list[str]:
     return [stage.id for stage in card.progress.stages]
 
 
-LIGHT_STAGES = ["tasks", "execute", "verify", "land", "close"]
+OPEN_SPEC_STAGES = ["spec", "design", "tasks", "execute", "verify", "land", "close"]
 
 
 def test_passing_review_check_run_at_phase_head_adds_no_review_cell(tmp_path: Path) -> None:
     project, head = _project_with_phases(tmp_path, "p")
     _review_run(project, "p", head)
 
-    assert _stage_ids(project, "p") == LIGHT_STAGES
+    assert _stage_ids(project, "p") == OPEN_SPEC_STAGES
 
 
 @pytest.mark.parametrize(
@@ -97,13 +97,13 @@ def test_failed_foreign_effort_or_stale_review_check_run_adds_no_review_cell(
     project, head = _project_with_phases(tmp_path, "p")
     _review_run(project, "p", "deadbeefcafe" if stale else head, result=result, effort=effort)
 
-    assert _stage_ids(project, "p") == LIGHT_STAGES
+    assert _stage_ids(project, "p") == OPEN_SPEC_STAGES
 
 
-def test_review_check_run_of_another_phase_leaves_each_light_card_with_five_stages(
+def test_review_check_run_of_another_phase_leaves_each_light_card_with_the_open_spec_stage_list(
     tmp_path: Path,
 ) -> None:
     project, head = _project_with_phases(tmp_path, "p", "q")
     _review_run(project, "q", head)
 
-    assert _stage_ids(project, "p") == _stage_ids(project, "q") == LIGHT_STAGES
+    assert _stage_ids(project, "p") == _stage_ids(project, "q") == OPEN_SPEC_STAGES
