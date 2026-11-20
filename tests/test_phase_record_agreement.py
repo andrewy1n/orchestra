@@ -389,7 +389,6 @@ def _install(monkeypatch: pytest.MonkeyPatch, picks: Picks) -> None:
         monkeypatch.setattr(module, "latest_landing", latest)
     for module in (
         views,
-        workflow,
         phase_progress,
         land,
         metrics_phases,
