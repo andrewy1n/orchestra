@@ -2867,13 +2867,14 @@ def test_gates_next_step_other_blocking():
 
 def test_gates_next_step_merge_unmerged_done_phase():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Unmerged
 
     view = _gates_view(
         phases=[
             _gates_phase("human-gates", "Human gates", 1, "done"),
         ]
     )
-    landing = {"human-gates": Landing("phase/human-gates", True, 3, False)}
+    landing = {"human-gates": Landing("phase/human-gates", Unmerged("", 3))}
     assert gates.next_step(view, landing) == "merge phase/human-gates (verify)"
 
 
@@ -3002,6 +3003,7 @@ def test_gates_quiet_threshold_for_running_tasks():
 
 def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Unmerged
 
     view = _gates_view(
         phases=[
@@ -3022,9 +3024,9 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
         ],
     )
     landing = {
-        "alpha": Landing("phase/alpha", True, 3, False),
-        "beta": Landing("phase/beta", True, 1, False),
-        "gamma": Landing("phase/gamma", True, 2, False),
+        "alpha": Landing("phase/alpha", Unmerged("", 3)),
+        "beta": Landing("phase/beta", Unmerged("", 1)),
+        "gamma": Landing("phase/gamma", Unmerged("", 2)),
     }
     merged = gates.merge_landing_needs(view, landing)
     kinds = [item.kind for item in merged.needs_you]
@@ -3048,6 +3050,7 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
 
 def test_gates_landing_item_skips_merged_missing_and_not_done():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Absent, Merged, Unmerged
 
     view = _gates_view(
         phases=[
@@ -3058,9 +3061,9 @@ def test_gates_landing_item_skips_merged_missing_and_not_done():
         ]
     )
     landing = {
-        "done-merged": Landing("phase/done-merged", True, 0, True),
-        "done-missing": Landing("phase/done-missing", False, 0, False),
-        "live": Landing("phase/live", True, 4, False),
+        "done-merged": Landing("phase/done-merged", Merged("")),
+        "done-missing": Landing("phase/done-missing", Absent()),
+        "live": Landing("phase/live", Unmerged("", 4)),
     }
     merged = gates.merge_landing_needs(view, landing)
     assert [item.kind for item in merged.needs_you] == []

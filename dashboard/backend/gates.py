@@ -202,6 +202,8 @@ def is_quiet(task: TaskRow, now: datetime) -> bool:
 
 def landing_summary(state: Landing) -> str:
     """Selector suffix for a phase Landing (R5): branch/ahead/merged, or no branch yet."""
+    if state.read_failure is not None:
+        return f"git read failed: {state.read_failure}"
     if not state.exists:
         return "no branch yet"
     status = "merged" if state.merged else "not merged"

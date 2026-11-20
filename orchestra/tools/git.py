@@ -26,6 +26,30 @@ class MergeResult:
     output: str = ""
 
 
+@dataclass(frozen=True)
+class Merged:
+    head: str
+
+
+@dataclass(frozen=True)
+class Unmerged:
+    head: str
+    ahead: int
+
+
+@dataclass(frozen=True)
+class Absent:
+    pass
+
+
+@dataclass(frozen=True)
+class ReadFailed:
+    reason: str
+
+
+BranchState = Merged | Unmerged | Absent | ReadFailed
+
+
 class Git(CliTool):
     executable: ClassVar[str] = "git"
     min_version: ClassVar[Version] = Version(2, 17)
@@ -179,3 +203,33 @@ class Git(CliTool):
         if result.returncode != 0:
             return None
         return result.stdout
+
+
+def _read_failure(args: Sequence[str], result: GitResult) -> ReadFailed:
+    detail = result.stderr.strip() or f"exit code {result.returncode}"
+    return ReadFailed(f"git {' '.join(args)}: {detail}")
+
+
+def branch_state(
+    root: Path, branch: str, base: str = "main", *, timeout: float | None = None
+) -> BranchState:
+    git = Git(root, timeout=timeout)
+    ref = f"refs/heads/{branch}"
+    verify = ("rev-parse", "--verify", "--quiet", ref)
+    cherry_args = ("cherry", base, ref)
+    try:
+        tip = git.run(*verify)
+        if tip.returncode == 1 and not tip.stderr.strip():
+            return Absent()
+        if tip.returncode != 0:
+            return _read_failure(verify, tip)
+        cherry = git.run(*cherry_args)
+    except ToolError as error:
+        return ReadFailed(str(error))
+    if cherry.returncode != 0:
+        return _read_failure(cherry_args, cherry)
+    head = tip.stdout.strip()
+    ahead = sum(1 for line in cherry.stdout.splitlines() if line.startswith("+"))
+    if ahead == 0:
+        return Merged(head)
+    return Unmerged(head, ahead)

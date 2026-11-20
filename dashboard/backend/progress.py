@@ -164,7 +164,9 @@ def build_progress(
         blockers.append(f"{_plural(len(statuses) - proven, 'requirement')} not proven")
     if not review_passed_at_head:
         blockers.append("No passing review")
-    if landing is not None and not landing.merged:
+    if landing is not None and landing.read_failure is not None:
+        blockers.append(f"Git read failed: {landing.read_failure}")
+    elif landing is not None and not landing.merged:
         blockers.append("Branch not merged")
 
     task_states = [t.status for t in members]

@@ -26,12 +26,13 @@ from dashboard.backend.progress import build_progress, derive_stages
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
+from orchestra.tools import Merged, Unmerged
 
 PHASE = "p-one"
 EFFORT = "alpha"
 APPROVED = frozenset({"spec", "design", "plan"})
-MERGED = Landing(branch="phase/p-one", exists=True, ahead=0, merged=True)
-UNMERGED = Landing(branch="phase/p-one", exists=True, ahead=2, merged=False)
+MERGED = Landing("phase/p-one", Merged(""))
+UNMERGED = Landing("phase/p-one", Unmerged("", 2))
 
 
 def _task(

@@ -19,9 +19,10 @@ from dashboard.backend.server.app import create_app
 from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
+from orchestra.tools import Merged
 
 NOW = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
-MERGED = Landing(branch="phase/x", exists=True, ahead=0, merged=True)
+MERGED = Landing("phase/x", Merged(""))
 
 
 def _phase(

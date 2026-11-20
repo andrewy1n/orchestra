@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.conductor.landing import place_of_body
 from orchestra.tools.errors import ToolError
-from orchestra.tools.git import Git
+from orchestra.tools.git import (
+    BranchState,
+    Git,
+    Merged,
+    ReadFailed,
+    Unmerged,
+    branch_state,
+)
 
 _TIMEOUT = 2
 
@@ -15,10 +22,27 @@ _TIMEOUT = 2
 @dataclass(frozen=True)
 class Landing:
     branch: str
-    exists: bool
-    ahead: int
-    merged: bool
-    head: str = field(default="", compare=False)
+    state: BranchState
+
+    @property
+    def exists(self) -> bool:
+        return isinstance(self.state, (Merged, Unmerged))
+
+    @property
+    def merged(self) -> bool:
+        return isinstance(self.state, Merged)
+
+    @property
+    def ahead(self) -> int:
+        return self.state.ahead if isinstance(self.state, Unmerged) else 0
+
+    @property
+    def head(self) -> str:
+        return self.state.head if isinstance(self.state, (Merged, Unmerged)) else ""
+
+    @property
+    def read_failure(self) -> str | None:
+        return self.state.reason if isinstance(self.state, ReadFailed) else None
 
 
 def landing_branch(body: str, subject: str, root: Path) -> str | None:
@@ -51,32 +75,4 @@ def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
     branch = landing_branch(body, subject, root)
     if branch is None:
         return None
-
-    git = Git(root, timeout=_TIMEOUT)
-    try:
-        if not git.is_repository():
-            return None
-        tip = git.branch_tip(branch)
-    except ToolError:
-        return None
-    if tip is None:
-        return Landing(branch=branch, exists=False, ahead=0, merged=False)
-
-    # Unique commits only: patch-equivalent tips (cherry-pick / rebased landing)
-    # must not keep Needs you after the work is already on main.
-    try:
-        cherry = git.run("cherry", "main", branch)
-    except ToolError:
-        return None
-    if cherry.returncode != 0:
-        return None
-    ahead = sum(1 for line in cherry.stdout.splitlines() if line.startswith("+"))
-    merged = ahead == 0
-
-    return Landing(
-        branch=branch,
-        exists=True,
-        ahead=ahead,
-        merged=merged,
-        head=tip,
-    )
+    return Landing(branch, branch_state(root, branch, timeout=_TIMEOUT))

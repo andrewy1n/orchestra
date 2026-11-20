@@ -9,6 +9,7 @@ from conftest import REPO_ROOT, git, make_git_repo
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.landing import Landing, phase_landing
+from orchestra.tools import Absent
 
 BODY = """\
 ## Landing
@@ -78,7 +79,7 @@ def test_r7_head_is_empty_when_the_branch_does_not_exist():
 
 
 def test_r7_head_defaults_to_empty_on_a_constructed_landing():
-    landing = Landing(branch="phase/cards", exists=False, ahead=0, merged=False)
+    landing = Landing("phase/cards", Absent())
 
     assert landing.head == ""
 
