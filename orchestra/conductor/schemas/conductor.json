@@ -282,6 +282,30 @@
         }
       }
     },
+    "ci-observation": {
+      "purpose": "CI results and the merge recommendation for one observed pull request head",
+      "lifecycle": "event",
+      "fields": {
+        "phase": {
+          "ref": "score:phase"
+        },
+        "effort": {
+          "ref": "score:effort"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "recommendation": {
+          "enum": ["ready", "blocked", "unresolved"]
+        }
+      }
+    },
     "repair-link": {
       "purpose": "Links a fix to the phase it repairs and the cause",
       "lifecycle": "event",

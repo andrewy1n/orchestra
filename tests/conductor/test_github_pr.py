@@ -493,3 +493,22 @@ def test_land_pushes_the_branch_before_waiting_for_checks(tmp_path: Path) -> Non
     assert github.events.index("push:origin:phase/project-config") < github.events.index(
         "checks:42"
     )
+
+
+def test_github_pr_publishes_without_polling_when_ci_evidence_is_configured(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _write_project(root)
+    config = root / "orchestra.toml"
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write('\n[merge_evidence]\nadapter = "github-actions"\n')
+    _git(root, "add", "orchestra.toml")
+    _git(root, "commit", "-qm", "Configure merge evidence")
+    client = FakeGitHub()
+
+    result = _open(root, client)
+
+    assert result.result == "success"
+    assert result.number == 42
+    assert result.head_sha == client.head
+    assert result.checks == ()
+    assert all(not event.startswith("checks:") for event in client.events)

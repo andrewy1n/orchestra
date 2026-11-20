@@ -560,6 +560,19 @@ The launcher finds `uv` in this order:
 
 If the launcher finds no store or no `uv`, it prints the reason and exits.
 
+### Merge evidence
+
+Set `[merge_evidence]` and `adapter = "github-actions"` in `orchestra.toml` to
+read CI evidence independently from the landing adapter. After
+`orchestra land --phase <phase>` publishes the pull request, run
+`orchestra merge-evidence --phase <phase>`. Run it again after checks finish,
+after a rerun, or after the pull request head changes.
+
+The command records the observation in Canon and prints the recommendation,
+phase verification result, required checks, and run links. Exit status 0
+means the evidence is ready for human merge approval. Exit status 1 means
+the evidence is blocked or unresolved. Exit status 2 means the command failed.
+
 ## Testing
 
 Run the pinned Ruff lint and formatting checks locally:
