@@ -208,8 +208,9 @@ def test_evidence_breaks_equal_timestamp_checks_by_write_order(
     assert evidence is not None
     rows = {row.id: row for row in evidence.requirements}
     assert rows["R1"].latest_check is not None
-    assert rows["R1"].latest_check.id == tied[-1]["id"]
-    assert rows["R1"].status == "unassessed"
+    written_last = next(r for r in tied if r["subject"] == "multi-tie")
+    assert rows["R1"].latest_check.id == written_last["id"]
+    assert rows["R1"].status == "failed"
     assert rows["R2"].status == "verified"
     snapshot = load_snapshot(project)
     row = next(p for e in snapshot.efforts for p in e.phases if p.subject == "finished")

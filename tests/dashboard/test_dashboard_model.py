@@ -1672,7 +1672,7 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
         for row in evidence.requirements
     ] == [
         ("R1", "p-rows", "alpha holds", "failed", "design", 2),
-        ("R2", "p-rows", "beta holds", "unassessed", "", 1),
+        ("R2", "p-rows", "beta holds", "failed", "", 1),
     ]
     assert evidence.requirements[0].latest_check is None
     assert evidence.requirements[1].latest_check is not None
@@ -1944,7 +1944,7 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
     assert kinds[0] == "blocking-question"
     routes = [item for item in view.needs_you if item.kind == "loop-route"]
     assert sorted((item.phase, item.requirement, item.status, item.next) for item in routes) == [
-        ("n-block", "R1", "blocked", "verify"),
+        ("n-block", "R1", "unverified", "verify"),
         ("n-low", "R1", "failed", "integrate"),
         ("n-up", "R1", "failed", "design"),
     ]
@@ -2111,6 +2111,8 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
     )
     acc = _accept(cli, defs, "m-r2-acc", "p-matrix", "R2")
     _check(cli, defs, "m-r2-fail", acc["id"], "fail", "R2", "integration")
+    r1_acc = _accept(cli, defs, "m-r1-acc", "p-matrix", "R1")
+    _check(cli, defs, "m-r1-pass", r1_acc["id"], "pass", "R1", "")
     _release(cli, defs, "p-matrix", "failed")
 
     evidence = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").phases[0].evidence
@@ -2128,7 +2130,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
         1,
         "high",
     )
-    assert r1.check_kind == "" and r1.check_at is None and r1.latest_check is None
+    assert r1.latest_check is not None and r1.latest_check.result == "pass"
 
     r2 = by_id["R2"]
     assert r2.latest_check is not None and r2.latest_check.result == "fail"
@@ -2136,7 +2138,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
 
     r5 = by_id["R5"]
     assert (r5.status, r5.next, r5.confidence, r5.tasks, r5.tasks_done) == (
-        "unassessed",
+        "unverified",
         "",
         "",
         0,
@@ -2422,6 +2424,11 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     open_phase("s-verified", 9)
     _assessment(cli, defs, "s-verified", "R1", status="verified", next="release", confidence="high")
     _assessment(cli, defs, "s-verified", "R2", status="verified", next="release", confidence="high")
+    for requirement in ("R1", "R2"):
+        proof = _accept(cli, defs, f"s-verified-{requirement}", "s-verified", requirement)
+        _check(
+            cli, defs, f"s-verified-{requirement}-pass", proof["id"], "pass", requirement, "unit"
+        )
     _release(cli, defs, "s-verified", "failed")
 
     open_phase("s-earliest", 10)
@@ -2489,7 +2496,7 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
         if phase.evidence is not None
     }
     assert flags["s-ready"] is True
-    assert flags["s-verified"] is False
+    assert flags["s-verified"] is True
     assert flags["s-nextrelease"] is False
     assert flags["s-assess"] is True
     assert view.release_ready is True

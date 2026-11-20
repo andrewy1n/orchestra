@@ -77,11 +77,11 @@ def test_light_phase_requirements_come_from_the_phase_body() -> None:
     assert {row.status for row in rows.values()} == {"verified"}
 
 
-def test_light_phase_failing_multi_requirement_check_verifies_no_listed_id() -> None:
+def test_light_phase_failing_multi_requirement_check_fails_each_listed_id() -> None:
     phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     evidence = _evidence(phase, ["fail"])
     assert evidence is not None
-    assert {row.status for row in evidence.requirements} == {"unassessed"}
+    assert {row.status for row in evidence.requirements} == {"failed"}
 
 
 def test_full_phase_without_a_specification_has_no_evidence() -> None:
