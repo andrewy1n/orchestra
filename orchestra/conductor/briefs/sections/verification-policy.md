@@ -15,8 +15,9 @@ Manifest claims also retain their separate verdict and recheck gates.
 
 ## Select and record
 
-Prefer `tdd` for behavior where a failing test helps define the contract.
-Prefer `check` for documentation, packaging, and final verification.
+Select `tdd` when an assertion failure can demonstrate missing behavior or a bug.
+Select `check` for routine verification such as building a wheel, running an
+installer smoke check, checking documentation, or running the final suite.
 Select `frozen` when independent tests against a stable interface justify the authoring cost.
 Bug reproductions and compatibility contracts are good candidates.
 Do not select frozen oracles for every deliver or repair task automatically.
@@ -34,6 +35,16 @@ records red through `orchestra check`, implements the behavior, and records gree
 An import or collection failure does not prove that an assertion detects incorrect behavior.
 For a new API, create the minimum importable interface and confirm a behavior failure before implementing that behavior.
 
+## Before TDD implementation
+
+For each unfrozen TDD acceptance, prepare the test first. Have the parent run
+`orchestra check` in the task worktree and confirm that the expected assertion
+fails. Use evidence of that failure to release implementation. For a frozen
+acceptance, confirm the recorded assertion-level red and the frozen hashes.
+If the test already passes, check if the approved behavior already exists or
+if the test misses the required case. Fix invalid commands and test setup first.
+Keep the task at this step until the red proof or a permitted correction exists.
+
 ## Selected frozen acceptances
 
 Skip oracle authoring when no acceptance selects `frozen`.
@@ -46,8 +57,26 @@ Do not silently change selected policy when authoring cannot meet its contract.
 
 ## Changes during execution
 
-The parent remains the only store writer. Require explicit parent approval before changing an acceptance's method or oracle policy.
-The executor reports a proposed change and its reason. It does not weaken the verification contract itself.
+The executor reports the proposed change and its evidence to the parent.
+Require explicit parent approval before changing an acceptance. The parent
+remains the only store writer. At `auto-plan` and `auto-phases`, the
+parent can apply either correction to an unfrozen automated acceptance without
+a new user decision:
+
+- Repair the command when both versions select the same cases and assertions.
+  Compare the test selectors and the relevant test changes. Preserve the method.
+- Change `tdd` to `check` for documentation, packaging, or final verification
+  when a passing result proves the same requirement. Keep the command and tests.
+  Missing red evidence after implementing new behavior does not justify a switch.
+
+Use `orchestra workflow amend-check <acceptance-id> --expected-revision <revision>`
+with `--equivalent-command '<command>'` or `--routine-check <category>`.
+Set `--basis` to the reason and the evidence. The command records an assignment
+amendment. Refresh the task-plan review with `task-plan-policy` and cite the
+amendment as its basis. Require a fresh passing check on the final revision.
+At `gated`, ask before changing the acceptance. Ask for any change to required
+behavior, test coverage, or proof outside these corrections.
+
 Frozen file changes use the existing oracle amendment approval path.
 Every frozen hash change requires a parent-approved `tuner:oracle-amendment` record, including changes to manifest claims.
 The parent creates or supersedes that record with the acceptance subject, effort, phase, old hashes, new hashes, and approval reason.

@@ -69,6 +69,24 @@ def test_r1_refuses_a_task_that_is_not_in_progress(tmp_path: Path) -> None:
         _land(project, repo, tmp_path)
 
 
+def test_landing_refuses_held_work_before_committing_or_recording_evidence(tmp_path: Path) -> None:
+    project, repo = _world(tmp_path)
+    tree = _tree(project)
+    head = _git(tree, "rev-parse", "HEAD")
+    (tree / "held.txt").write_text("pending\n")
+    project.create(
+        record_type="score:continuity-question",
+        subject="ef",
+        payload={"owner": "user", "blocking": True, "phase": "ph", "scope": "task:a"},
+    )
+
+    with pytest.raises(land_task.LandError, match="task 'a' is blocked"):
+        _land(project, repo, tmp_path)
+
+    assert _git(tree, "rev-parse", "HEAD") == head
+    assert not project.list("conductor:execution-report")
+
+
 def test_r2_keeps_the_task_in_progress_when_evidence_fails(tmp_path: Path) -> None:
     project, repo = _world(tmp_path)
     landing = _land(project, repo, tmp_path, result="fail", verdict="fail")

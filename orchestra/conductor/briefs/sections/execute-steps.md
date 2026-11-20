@@ -2,9 +2,11 @@
 
 1. Run `orchestra handoff` if the handoff was not injected. Resolve
    **focus**. Read `orchestra view plan --effort {effort}` and blocking
-   `continuity-question`s for that subject. Do not dispatch while a
-   blocking question is open on this focus. A question with `scope`
-   `plan-review:{phase}` gates only that phase; clear on approve:
+   `continuity-question`s for that subject. Hold work with an open blocking
+   question. To hold one task and its dependents, set the question's `phase`
+   and use `scope` `task:<task-slug>`. Continue independent tasks in the same
+   phase. Keep the phase open until the question clears. A question with
+   `scope` `plan-review:{phase}` gates only that phase. Clear on approval:
 
 ```bash
 canon update --type score:continuity-question --id <question-id> \
@@ -14,9 +16,10 @@ canon update --type score:continuity-question --id <question-id> \
    Do not dispatch another effort's tasks.
 
    Before planned ready work, re-dispatch retryable `in_progress`
-   items (same executor mode) using the retry rules in this brief. Then continue with the
-   planned ready list.
-2. Select dispatchable work-items (plan view omits `derived.ready`/`wave`):
+   items (same executor mode) using the retry rules in this brief. Skip tasks
+   held by a question. Then continue with the planned ready list.
+2. Select planned work-items with satisfied dependencies (plan view omits
+   `derived.ready`/`wave`). `orchestra wave start` applies question holds.
 
 ```bash
 canon list --type score:work-item --state planned \
