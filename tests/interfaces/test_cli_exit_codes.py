@@ -940,7 +940,7 @@ TUNER_CANON_STAGE = [
         "nope",
         out=("error", "message"),
     ),
-    canon("schemas_no_store", "bare", 1, "schemas", "show", out=("error", "message")),
+    canon("schemas_show_no_store", "bare", 0, "schemas", "show", out=("schemas",)),
     canon("merge_not_a_store", "shared", 1, "merge", "{root}/missing", out=("error", "message")),
     canon("import_missing_source", "shared", 2, "import", err=ARGS_REQUIRED),
 ]
