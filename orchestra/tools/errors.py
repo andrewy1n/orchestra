@@ -23,3 +23,7 @@ class ToolVersionError(ToolError):
 
 class ToolNotFoundError(ToolError):
     pass
+
+
+class ToolTimeoutError(ToolError):
+    pass

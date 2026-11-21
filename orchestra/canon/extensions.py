@@ -12,11 +12,14 @@ from typing import Literal, TypeGuard
 
 from orchestra.canon.types import JsonObject, JsonValue
 
-PluginScope = Literal["composer.ideas", "tuner.verify", "conductor.land"]
+PluginScope = Literal[
+    "composer.ideas", "tuner.verify", "conductor.land", "conductor.merge_evidence"
+]
 PLUGIN_GROUPS: Mapping[PluginScope, str] = {
     "composer.ideas": "orchestra.composer.ideas",
     "tuner.verify": "orchestra.tuner.verify",
     "conductor.land": "orchestra.conductor.land",
+    "conductor.merge_evidence": "orchestra.conductor.merge_evidence",
 }
 PLUGIN_API_VERSION = "1"
 PLUGIN_API_GROUP = "orchestra.plugin_api"

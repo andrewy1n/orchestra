@@ -25,6 +25,7 @@ from orchestra.conductor import (
     gate,
     land,
     land_task,
+    merge_evidence,
     reviewer,
     suite,
     task_redispatch,
@@ -475,7 +476,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     land = sub.add_parser(
         "land",
-        help="Run the phase gate, then open the configured pull request and wait for CI",
+        help="Run the phase gate and publish the pull request",
+        description=(
+            "Run the phase gate and publish the pull request. The GitHub landing adapter "
+            "waits for CI when no merge evidence adapter is configured."
+        ),
     )
     land.add_argument("--phase", required=True, help="Phase slug")
     land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
@@ -494,6 +499,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
         ),
     )
+
+    evidence = sub.add_parser(
+        "merge-evidence", help="Refresh the CI evidence and show the merge recommendation"
+    )
+    evidence.add_argument("--phase", required=True, help="Phase slug")
+    evidence.add_argument("--cwd", default=None, help="Working directory (default: process cwd)")
+    evidence.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
     close = sub.add_parser(
         "close",
@@ -1227,6 +1239,18 @@ def _cmd_land(args: argparse.Namespace) -> int:
     return 0 if result.result == "success" else 1
 
 
+def _cmd_merge_evidence(args: argparse.Namespace) -> int:
+    cwd = _cwd(args).resolve()
+    try:
+        location = resolve_location(args.store, cwd)
+        result = merge_evidence.refresh_recommendation(location.open(), args.phase)
+    except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
+        print(f"orchestra merge-evidence: {exc}", file=sys.stderr)
+        return 2
+    _print_json(result)
+    return 0 if result["recommendation"] == "ready" else 1
+
+
 def _close_json(result: close.CloseResult) -> JsonObject:
     return {
         "ok": not result.refusals,
@@ -1579,6 +1603,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "cancel":
             return _cmd_suite_cancel(args)
         return _cmd_suite_record(args)
+    if args.command == "merge-evidence":
+        return _cmd_merge_evidence(args)
     if args.command == "land":
         return _cmd_land(args)
     if args.command == "close":

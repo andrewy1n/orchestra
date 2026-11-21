@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TypeGuard
 
@@ -52,6 +52,8 @@ class ProjectConfig:
     land_config: JsonObject
     replay_technique: str
     small_wave_budget_minutes: int
+    merge_evidence_adapter: str | None = None
+    merge_evidence_config: JsonObject = field(default_factory=dict)
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -105,6 +107,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     land_value = root.get("land")
     execute = _table(root.get("execute", {}), "execute")
     small_wave_budget_minutes = _parse_small_wave_budget(execute)
+    evidence_adapter, evidence_config = _parse_merge_evidence(root.get("merge_evidence"))
     return ProjectConfig(
         stages=stages,
         runner=runner,
@@ -116,6 +119,8 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
         land_config=_parse_land_config(land_value),
         replay_technique=_parse_replay_technique(verify.get("replay")),
         small_wave_budget_minutes=small_wave_budget_minutes,
+        merge_evidence_adapter=evidence_adapter,
+        merge_evidence_config=evidence_config,
     )
 
 
@@ -166,6 +171,16 @@ def _parse_verify_config(verify: Mapping[str, object]) -> Mapping[str, JsonObjec
         for plugin_id, value in verify.items()
         if plugin_id not in ("stages", "replay")
     }
+
+
+def _parse_merge_evidence(value: object) -> tuple[str | None, JsonObject]:
+    if value is None:
+        return None, {}
+    raw = _table(value, "merge_evidence")
+    adapter = raw.get("adapter")
+    if not isinstance(adapter, str) or not adapter.strip():
+        raise ProjectConfigError("merge_evidence.adapter must be a non-empty plugin id")
+    return adapter, _json_object(raw.get("config", {}), "merge_evidence.config")
 
 
 def _parse_land_config(value: object) -> JsonObject:
