@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
+from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.conductor import autonomy
@@ -38,8 +38,6 @@ def _build_parser() -> argparse.ArgumentParser:
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     metrics_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
-    workflow = sub.add_parser("workflow", help="Preview and resume built-in workflow playbooks")
-    workflow_cli.add_parser(workflow)
     sub.add_parser(
         "verify",
         add_help=False,
@@ -570,8 +568,6 @@ def main(argv: list[str] | None = None) -> int:
         return conductor_cli.run(args, render_brief=views.render_brief)
     if args.command == "effort":
         return _cmd_effort_autonomy(args)
-    if args.command == "workflow":
-        return workflow_cli.run(args)
     if args.command == "store":
         if args.action == "recover-evidence":
             from orchestra.canon.validation import ValidationError

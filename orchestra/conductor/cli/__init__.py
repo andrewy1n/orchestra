@@ -10,9 +10,21 @@ from orchestra.conductor.cli.parsers import SubparserGroup, add_parsers
 from orchestra.conductor.cli.phase_commands import run_analyze, run_gate, run_review_brief
 from orchestra.conductor.cli.suite_commands import run_suite
 from orchestra.conductor.cli.wave_commands import BriefRenderer, run_task, run_wave
+from orchestra.conductor.cli.workflow_commands import run_workflow
 
 COMMANDS = frozenset(
-    {"suite", "gate", "analyze", "review-brief", "wave", "task", "land", "close", "close-batch"}
+    {
+        "suite",
+        "gate",
+        "analyze",
+        "review-brief",
+        "wave",
+        "task",
+        "land",
+        "close",
+        "close-batch",
+        "workflow",
+    }
 )
 
 __all__ = ["COMMANDS", "SubparserGroup", "add_parsers", "run"]
@@ -35,4 +47,6 @@ def run(args: argparse.Namespace, *, render_brief: BriefRenderer) -> int:
         return run_close(args)
     if args.command == "close-batch":
         return run_close_batch(args)
+    if args.command == "workflow":
+        return run_workflow(args)
     return run_review_brief(args)

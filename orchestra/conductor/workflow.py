@@ -130,6 +130,12 @@ def preview_run(
     )
 
 
+def start_previewed_run(project: Project, preview: RunPreview, snapshot_token: str) -> Record:
+    if preview.change_token != snapshot_token:
+        raise StaleWriteError("snapshot changed; preview again before starting")
+    return start_run(project, preview)
+
+
 def start_run(project: Project, preview: RunPreview) -> Record:
     operation = _operation(preview.operation)
     steps = _requested_steps(

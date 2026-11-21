@@ -33,10 +33,42 @@ CONDUCTOR_LAND_CLOSE = [
     ("close-batch", "--input", "close-request.json"),
 ]
 
+CONDUCTOR_WORKFLOW = [
+    ("workflow", "preview", "alpha", "p1", "spec"),
+    ("workflow", "start", "alpha", "p1", "spec", "--snapshot-token", "x"),
+    ("workflow", "status", "r"),
+    ("workflow", "next", "r"),
+    ("workflow", "brief", "p1", "spec"),
+    (
+        "workflow",
+        "review",
+        "p1",
+        "spec",
+        "--artifact",
+        "x",
+        "--authority",
+        "user-approval",
+        "--basis",
+        "b",
+    ),
+    (
+        "workflow",
+        "amend-check",
+        "a",
+        "--expected-revision",
+        "1",
+        "--basis",
+        "b",
+        "--routine-check",
+        "documentation",
+    ),
+]
+
 GROUPS = {
     "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
     "conductor_land_close": CONDUCTOR_LAND_CLOSE,
+    "conductor_workflow": CONDUCTOR_WORKFLOW,
 }
 
 CASES = [
@@ -59,3 +91,9 @@ def test_no_store_is_store_not_ready_with_searched_paths(
     assert "store_not_ready" in text
     assert "searched" in text
     assert str(bare_dir) in text
+
+
+def test_conductor_workflow_brief_skill_needs_no_store(bare_dir: Path) -> None:
+    result = invoke("orchestra", ["workflow", "brief", "--skill", "init"], bare_dir)
+    assert result.code == 0, result.err
+    assert "store_not_ready" not in result.out + result.err

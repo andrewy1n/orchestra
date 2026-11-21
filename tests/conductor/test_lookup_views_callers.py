@@ -8,11 +8,13 @@ from dashboard.backend.journal import _phase_for_task  # pyright: ignore[reportP
 from dashboard.backend.snapshot import _task_for  # pyright: ignore[reportPrivateUsage]
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.conductor.cli.workflow_commands import (
+    _preview_json,  # pyright: ignore[reportPrivateUsage]
+)
 from orchestra.conductor.phase_progress import phase_counts as phase_progress
 from orchestra.conductor.workflow import RunPreview
 from orchestra.metrics.ops import tasks_of
 from orchestra.metrics.phases import build_phase_rows
-from orchestra.workflow_cli import _preview_json  # pyright: ignore[reportPrivateUsage]
 
 
 def _project(tmp_path: Path) -> Project:

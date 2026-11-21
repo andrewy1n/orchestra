@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 from dataclasses import dataclass
 
 import pytest
@@ -56,7 +57,14 @@ CONDUCTOR_LAND_CLOSE = Group(
     ("_cmd_land", "_cmd_close"),
 )
 
-GROUPS = [CONDUCTOR_SUITE_GATE, CONDUCTOR_WAVE_TASK, CONDUCTOR_LAND_CLOSE]
+CONDUCTOR_WORKFLOW = Group(
+    "conductor_workflow",
+    "orchestra.conductor.cli",
+    ("workflow",),
+    ("_cmd_workflow",),
+)
+
+GROUPS = [CONDUCTOR_SUITE_GATE, CONDUCTOR_WAVE_TASK, CONDUCTOR_LAND_CLOSE, CONDUCTOR_WORKFLOW]
 
 
 def _registered_verbs(component_cli: str) -> set[str]:
@@ -81,3 +89,12 @@ def test_root_cli_defines_no_handlers_for_moved_verbs(group: Group) -> None:
         if getattr(getattr(root_cli, name, None), "__module__", None) == root_cli.__name__
     ]
     assert defined_here == []
+
+
+def test_conductor_workflow_cli_module_is_gone_from_the_root_package() -> None:
+    assert importlib.util.find_spec("orchestra.workflow_cli") is None
+
+
+def test_conductor_workflow_is_a_conductor_command() -> None:
+    conductor_cli = importlib.import_module("orchestra.conductor.cli")
+    assert "workflow" in conductor_cli.COMMANDS

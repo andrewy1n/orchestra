@@ -1,15 +1,19 @@
+"""Parsers and handlers for `orchestra workflow`."""
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.validation import ValidationError
+from orchestra.canon.workspace import Access, StoreNotReady
 from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
+from orchestra.conductor.cli.workspace import command_dir, not_ready_message, resolve_workspace
 from orchestra.conductor.workflow import (
     RunAction,
     RunPreview,
@@ -18,15 +22,18 @@ from orchestra.conductor.workflow import (
     phase_step_action,
     preview_run,
     run_status,
-    start_run,
+    start_previewed_run,
 )
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
 from orchestra.score.lookups import current_phase, dependencies
 from orchestra.score.workflow_reviews import Authority, Step
-from orchestra.store import resolve_location
+
+if TYPE_CHECKING:
+    from orchestra.conductor.cli.parsers import SubparserGroup
 
 
-def add_parser(parser: argparse.ArgumentParser) -> None:
+def add_workflow_parser(sub: SubparserGroup) -> None:
+    parser = sub.add_parser("workflow", help="Preview and resume built-in workflow playbooks")
     actions = parser.add_subparsers(dest="action", required=True)
 
     for action in ("preview", "start"):
@@ -114,11 +121,6 @@ def _add_read_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
 
-def _project(args: argparse.Namespace) -> Project:
-    cwd = Path(args.cwd).expanduser() if args.cwd else Path.cwd()
-    return resolve_location(args.store, cwd).open()
-
-
 def _step(operation: str) -> Step | None:
     match operation:
         case "spec" | "design" | "tasks" | "execute" | "verify" | "land":
@@ -188,9 +190,7 @@ def _preview_command(project: Project, args: argparse.Namespace) -> int:
 def _start_command(project: Project, args: argparse.Namespace) -> int:
     try:
         preview = _preview(project, args)
-        if preview.change_token != args.snapshot_token:
-            raise StaleWriteError("snapshot changed; preview again before starting")
-        run = start_run(project, preview)
+        run = start_previewed_run(project, preview, args.snapshot_token)
         output = {"preview": _preview_json(project, preview), "run": run}
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         return _fail("start", args.effort, exc)
@@ -308,14 +308,39 @@ def _skill_brief_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def run(args: argparse.Namespace) -> int:
+def _access(action: str) -> Access:
+    if action in ("start", "review", "amend-check"):
+        return Access.WRITE
+    return Access.READ
+
+
+def _subject(args: argparse.Namespace) -> str:
+    match args.action:
+        case "preview" | "start":
+            return args.effort
+        case "status" | "next":
+            return args.run
+        case "brief" | "review":
+            return args.phase or "arguments"
+        case _:
+            return args.acceptance
+
+
+def run_workflow(args: argparse.Namespace) -> int:
     if args.action == "brief":
         if args.skill is not None:
             return _skill_brief_command(args)
         if args.phase is None or args.step is None:
             return _fail("brief", "arguments", ValueError("give --skill or both phase and step"))
+    start = command_dir(args)
     try:
-        project = _project(args)
+        project = resolve_workspace(args.store, start, _access(args.action)).open()
+    except StoreNotReady as exc:
+        print(
+            f"orchestra workflow {args.action}: {_subject(args)}: {not_ready_message(exc, start)}",
+            file=sys.stderr,
+        )
+        return 2
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         return _fail(args.action, "store", exc)
     if args.action == "preview":

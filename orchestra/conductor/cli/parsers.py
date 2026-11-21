@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from typing import Protocol
 
+from orchestra.conductor.cli.workflow_commands import add_workflow_parser
+
 
 class SubparserGroup(Protocol):
     def add_parser(
@@ -48,6 +50,7 @@ def _add_suite_job_arguments(
 
 
 def add_parsers(sub: SubparserGroup) -> None:
+    add_workflow_parser(sub)
     _add_wave_task_parsers(sub)
     _add_land_close_parsers(sub)
     review_brief = sub.add_parser(
