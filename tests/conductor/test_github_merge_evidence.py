@@ -161,11 +161,12 @@ def test_lookup_timeout_leaves_ci_unresolved(
     )
 
 
+@pytest.mark.parametrize(
+    "message", ["gh: API rate limit exceeded", "gh: API rate limit already exceeded"]
+)
 def test_graphql_rate_limit_without_http_status_leaves_ci_unresolved(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, message: str
 ) -> None:
-    message = "gh: API rate limit exceeded"
-
     def api(_self: GitHubGh, *args: str) -> JsonValue:
         assert "graphql" in args
         raise ToolError("gh failed", args, 1, message)

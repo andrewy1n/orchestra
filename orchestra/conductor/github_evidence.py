@@ -19,7 +19,7 @@ from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coor
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _TRANSIENT_LOOKUP = re.compile(
-    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit exceeded|exceeded a secondary rate limit",
+    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit (?:already )?exceeded|exceeded a secondary rate limit",
     re.IGNORECASE,
 )
 _PULL_REQUEST = """
