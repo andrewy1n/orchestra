@@ -272,3 +272,17 @@ def test_broken_adapter_entry_point_exits_without_recording_an_observation(
 
     assert "cannot load CI evidence adapter" in capsys.readouterr().err
     assert not project.list("conductor:ci-observation")
+
+
+def test_adapter_constructor_failure_exits_without_recording_an_observation(
+    project: Project, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def construct(_required: str) -> None:
+        raise AssertionError("constructor requires an argument")
+
+    monkeypatch.setattr(PluginRegistration, "load", lambda _self: construct)
+
+    _invoke(project, 2)
+
+    assert "cannot construct CI evidence adapter" in capsys.readouterr().err
+    assert not project.list("conductor:ci-observation")
