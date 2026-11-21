@@ -132,3 +132,94 @@ def test_phase_progress_agrees(case: str) -> None:
     assert got_done == done
     assert total == planned + in_progress + done
     assert got_active == active
+
+
+VIEWS_RENDER = REPO_ROOT / "orchestra" / "views.py"
+
+VIEWS_RENDER_DECIDERS = (
+    "_executor_bits",
+    "_assignment_bits",
+    "_brief_in_scope",
+    "_brief_acceptance_in_scope",
+    "_orientation",
+)
+
+VIEWS_RENDER_MERGED = (
+    "_executor_task",
+    "_requirement_lines",
+    "_body_sections",
+    "_string_list",
+)
+
+VIEWS_RENDER_ALLOWLIST: dict[str, str] = {}
+
+
+def _reads_raw_payload(node: ast.AST) -> bool:
+    if isinstance(node, ast.Call):
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "record_payload":
+            return True
+        if isinstance(func, ast.Attribute) and func.attr == "get":
+            return any(
+                isinstance(arg, ast.Constant) and arg.value == "payload" for arg in node.args[:1]
+            )
+    if isinstance(node, ast.Subscript):
+        key = node.slice
+        return isinstance(key, ast.Constant) and key.value == "payload"
+    return False
+
+
+def raw_payload_readers(path: Path, names: tuple[str, ...]) -> dict[str, list[int]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    wanted = set(names)
+    found: dict[str, list[int]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in wanted:
+            lines = sorted(
+                inner.lineno
+                for inner in ast.walk(node)
+                if isinstance(inner, (ast.Call, ast.Subscript)) and _reads_raw_payload(inner)
+            )
+            found[node.name] = lines
+    return found
+
+
+def test_raw_payload_readers_detects_each_read_form(tmp_path: Path) -> None:
+    source = tmp_path / "sample.py"
+    source.write_text(
+        "def via_call(r):\n    return record_payload(r)\n"
+        "def via_subscript(r):\n    return r['payload']\n"
+        "def via_get(r):\n    return r.get('payload')\n"
+        "def clean(r):\n    return r.get('subject')\n",
+        encoding="utf-8",
+    )
+    found = raw_payload_readers(source, ("via_call", "via_subscript", "via_get", "clean"))
+    assert {name: bool(lines) for name, lines in found.items()} == {
+        "via_call": True,
+        "via_subscript": True,
+        "via_get": True,
+        "clean": False,
+    }
+
+
+def test_views_render_deciders_exist() -> None:
+    found = raw_payload_readers(VIEWS_RENDER, VIEWS_RENDER_DECIDERS)
+    assert sorted(found) == sorted(VIEWS_RENDER_DECIDERS)
+
+
+def test_views_render_merged_helpers_are_gone() -> None:
+    assert raw_payload_readers(VIEWS_RENDER, VIEWS_RENDER_MERGED) == {}
+
+
+def test_views_render_deciders_do_not_read_raw_payloads() -> None:
+    found = raw_payload_readers(VIEWS_RENDER, VIEWS_RENDER_DECIDERS)
+    offenders = {
+        name: lines for name, lines in found.items() if lines and name not in VIEWS_RENDER_ALLOWLIST
+    }
+    assert offenders == {}
+
+
+def test_views_render_allowlist_only_names_current_raw_readers() -> None:
+    found = raw_payload_readers(VIEWS_RENDER, tuple(VIEWS_RENDER_ALLOWLIST))
+    stale = sorted(name for name in VIEWS_RENDER_ALLOWLIST if not found.get(name))
+    assert stale == []
