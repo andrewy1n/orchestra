@@ -123,6 +123,7 @@ class ActivityItem:
 class EffortView:
     effort: str
     goal: str
+    status: EffortStatus
     phases: list[PhaseRow] = field(default_factory=list)
     milestones: list[MilestoneRow] = field(default_factory=list)
     tasks: list[TaskRow] = field(default_factory=list)
@@ -134,7 +135,6 @@ class EffortView:
     journal_open: list[JournalItem] = field(default_factory=list)
     backlog: list[BacklogItem] = field(default_factory=list)
     area: str = ""
-    status: EffortStatus = "live"
 
     @property
     def finished(self) -> bool:
@@ -708,7 +708,7 @@ def _load_snapshot(
                 journal_open=journal_open,
                 backlog=_backlog_items(backlog_by_effort.get(effort, [])),
                 area=areas.get(effort, ""),
-                status=status_by_effort.get(effort, "live"),
+                status=status_by_effort[effort],
             )
         )
     efforts.sort(key=lambda view: view.finished)
@@ -772,7 +772,7 @@ def load_work_snapshot(
         ]
         phases = [phase.record for phase in phase_models]
         tasks = grouped["score:work-item"].get(effort, [])
-        if status_by_effort.get(effort, "live") in ("finished", "dormant"):
+        if status_by_effort[effort] in ("finished", "dormant"):
             continue
         acceptances = grouped["score:acceptance"].get(effort, [])
         checks = grouped["tuner:check-run"].get(effort, [])
@@ -842,6 +842,7 @@ def load_work_snapshot(
             EffortView(
                 effort=effort,
                 goal=record_payload(goal).get("goal", ""),
+                status=status_by_effort[effort],
                 phases=rows,
                 tasks=task_rows(
                     active_tasks,

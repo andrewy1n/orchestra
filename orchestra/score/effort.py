@@ -72,9 +72,15 @@ def current_effort(records: Sequence[Record], subject: str) -> Effort | None:
 
 
 def current_efforts(records: Sequence[Record]) -> dict[str, Effort]:
-    subjects = {record["subject"] for record in _live_efforts(records)}
-    found = {subject: current_effort(records, subject) for subject in sorted(subjects)}
-    return {subject: effort for subject, effort in found.items() if effort is not None}
+    grouped: dict[str, list[Record]] = {}
+    for record in _live_efforts(records):
+        grouped.setdefault(record["subject"], []).append(record)
+    result: dict[str, Effort] = {}
+    for subject in sorted(grouped):
+        latest = latest_record(grouped[subject])
+        if latest is not None:
+            result[subject] = read_effort(latest)
+    return result
 
 
 def scan_effort_records(records: Sequence[Record]) -> list[EffortScanFinding]:

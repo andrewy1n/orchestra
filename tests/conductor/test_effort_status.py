@@ -109,3 +109,22 @@ def test_first_matching_status_wins() -> None:
         "quiet": "dormant",
         "shut": "closed",
     }
+
+
+def _phaseless_item(age_days: float, state: str, subject: str = "w2", effort: str = "e") -> Record:
+    return _record("score:work-item", subject, {"title": "w", "effort": effort}, age_days, state)
+
+
+def test_phaseless_open_item_keeps_done_phase_effort_live() -> None:
+    records = [_effort(1), _phase(1, "done"), _phaseless_item(1, "planned")]
+    assert effort_statuses(records, NOW) == {"e": "live"}
+
+
+def test_phaseless_done_item_with_done_phase_is_finished() -> None:
+    records = [_effort(1), _phase(1, "done"), _phaseless_item(1, "done")]
+    assert effort_statuses(records, NOW) == {"e": "finished"}
+
+
+def test_effort_with_only_phaseless_done_items_is_finished() -> None:
+    records = [_effort(1), _phaseless_item(1, "done")]
+    assert effort_statuses(records, NOW) == {"e": "finished"}

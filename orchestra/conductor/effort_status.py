@@ -52,17 +52,21 @@ def _blocked_efforts(records: Sequence[Record]) -> set[str]:
 
 
 def _all_done(effort: str, records: Sequence[Record], phases: dict[str, Record]) -> bool:
-    states: list[str] = []
+    states: dict[str, str] = {}
     for slug, phase in phases.items():
         if _text(phase, "effort") != effort or phase["lifecycle_state"] not in _LIVE_PHASE_STATES:
             continue
-        states.append(phase["lifecycle_state"])
-        states.extend(
-            item["lifecycle_state"]
-            for item in live_work_items(slug, records)
-            if item["lifecycle_state"] in LIVE_WORK_ITEM_STATES
-        )
-    return bool(states) and all(state == "done" for state in states)
+        states[phase["id"]] = phase["lifecycle_state"]
+        for item in live_work_items(slug, records):
+            states[item["id"]] = item["lifecycle_state"]
+    for record in records:
+        if (
+            record["record_type"] == "score:work-item"
+            and record["lifecycle_state"] in LIVE_WORK_ITEM_STATES
+            and _text(record, "effort") == effort
+        ):
+            states[record["id"]] = record["lifecycle_state"]
+    return bool(states) and all(state == "done" for state in states.values())
 
 
 def effort_statuses(records: Sequence[Record], now: datetime) -> dict[str, EffortStatus]:

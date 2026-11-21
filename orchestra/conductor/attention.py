@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -51,12 +51,7 @@ class AttentionItem:
 
 
 def _recorded_at(record: Record) -> datetime:
-    stamp = record.get("recorded_at")
-    return (
-        datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-        if stamp
-        else datetime.min.replace(tzinfo=timezone.utc)
-    )
+    return datetime.fromisoformat(record["recorded_at"].replace("Z", "+00:00"))
 
 
 def _live(records: list[Record]) -> list[Record]:

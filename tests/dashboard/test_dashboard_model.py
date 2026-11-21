@@ -2673,6 +2673,7 @@ def _gates_view(
     return snapshot_mod.EffortView(
         effort,
         f"goal for {effort}",
+        "live",
         phases=list(phases or []),
         tasks=list(tasks or []),
         needs_you=list(needs_you or []),

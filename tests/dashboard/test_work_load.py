@@ -154,6 +154,7 @@ def test_work_data_matches_the_full_snapshot_hub(project: Project) -> None:
     assert {item.effort for item in actual.open_ideas} == {
         "alpha",
         "empty",
+        "pending",
         "withdrawn",
     }
 
