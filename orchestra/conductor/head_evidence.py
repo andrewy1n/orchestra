@@ -15,7 +15,13 @@ from heapq import merge
 from orchestra.canon.types import Record
 from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
 from orchestra.conductor.revision import revision_matches
-from orchestra.score.lookups import check_run_criteria, corrected_ids, record_order
+from orchestra.score.lookups import (
+    cached_object,
+    check_run_criteria,
+    direct_corrected_ids,
+    record_order,
+    same_prepared_source,
+)
 from orchestra.tuner.records import CheckRun, read_check_run
 
 CHECK_RUN_TYPE = "tuner:check-run"
@@ -33,27 +39,51 @@ class Answer:
     reason: str = ""
 
 
+@dataclass
+class _EvidenceParts:
+    check_runs: list[Record]
+    amended_commands: set[str]
+    by_criterion: dict[str, list[tuple[int, Record]]]
+
+
+def _evidence_parts(records: Sequence[Record]) -> _EvidenceParts:
+    corrected = direct_corrected_ids(records)
+    check_runs: list[Record] = []
+    by_criterion: dict[str, list[tuple[int, Record]]] = {}
+    amended: set[str] = set()
+    for record in records:
+        if record["record_type"] == CHECK_RUN_TYPE:
+            if record["id"] in corrected:
+                continue
+            position = len(check_runs)
+            check_runs.append(record)
+            by_criterion.setdefault(_text(record, "criterion_id"), []).append((position, record))
+            continue
+        if record["record_type"] != "conductor:assignment-amendment":
+            continue
+        provenance = record.get("provenance")
+        if isinstance(provenance, dict) and isinstance(
+            acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str
+        ):
+            amended.add(acceptance_id)
+    return _EvidenceParts(check_runs, amended, by_criterion)
+
+
 class EvidenceIndex:
     """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
-        corrected = corrected_ids(records)
-        self.check_runs: list[Record] = []
-        self._amended_commands: set[str] = set()
-        self._by_criterion: dict[str, list[tuple[int, Record]]] = {}
-        for record in records:
-            if record["record_type"] == CHECK_RUN_TYPE and record["id"] not in corrected:
-                position = len(self.check_runs)
-                self.check_runs.append(record)
-                self._by_criterion.setdefault(_text(record, "criterion_id"), []).append(
-                    (position, record)
+        if same_prepared_source(records):
+            shared = cached_object(records, "evidence-index", lambda: _evidence_parts(records))
+            if not isinstance(shared, _EvidenceParts):
+                raise TypeError(
+                    f"evidence-index cache holds {type(shared).__name__}, expected _EvidenceParts"
                 )
-            elif (
-                record["record_type"] == "conductor:assignment-amendment"
-                and isinstance(provenance := record.get("provenance"), dict)
-                and isinstance(acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str)
-            ):
-                self._amended_commands.add(acceptance_id)
+        else:
+            shared = _evidence_parts(records)
+        self.check_runs = shared.check_runs
+        self._amended_commands = shared.amended_commands
+        self._by_criterion = shared.by_criterion
         self._typed: dict[str, CheckRun] = {}
 
     def check_run(self, record: Record) -> CheckRun:
@@ -78,6 +108,21 @@ class EvidenceIndex:
 
     def command_was_amended(self, acceptance: Record) -> bool:
         return acceptance["id"] in self._amended_commands
+
+    def suite_runs_by_name(self) -> dict[str, list[Record]]:
+        """Suite runs keyed by subject and by criterion id."""
+        grouped: dict[str, list[Record]] = {}
+        for run in self.check_runs:
+            if _text(run, "evidence_kind") != SUITE_EVIDENCE_KIND:
+                continue
+            names = {run["subject"]}
+            criterion = _text(run, "criterion_id")
+            if criterion:
+                names.add(criterion)
+            for name in names:
+                if name:
+                    grouped.setdefault(name, []).append(run)
+        return grouped
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -174,12 +219,7 @@ def review_at_head(index: EvidenceIndex, phase_slug: str, effort: str, head: str
 
 
 def suite_check_runs(index: EvidenceIndex, phase_slug: str) -> list[Record]:
-    subject = suite_subject(phase_slug)
-    return [
-        run
-        for run in index.check_runs
-        if _text(run, "evidence_kind") == SUITE_EVIDENCE_KIND and _names(run, subject)
-    ]
+    return index.suite_runs_by_name().get(suite_subject(phase_slug), []).copy()
 
 
 def suite_at_head(index: EvidenceIndex, phase_slug: str, head: str | None) -> Answer:

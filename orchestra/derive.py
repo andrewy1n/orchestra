@@ -117,28 +117,54 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def effort_dormant(records: list[Record], effort: str, now: datetime) -> bool:
-    goal = _goal(records, effort)
-    if goal is None or _text(goal, "status") == "closed":
-        return False
+def _touch(stamps: dict[str, datetime], effort: str, record: Record) -> None:
+    stamp = _parse_time(record["recorded_at"])
+    current = stamps.get(effort)
+    if current is None or stamp > current:
+        stamps[effort] = stamp
+
+
+def efforts_dormant(records: list[Record], now: datetime) -> dict[str, bool]:
+    goals: dict[str, Record] = {}
+    live: set[str] = set()
+    blocking: set[str] = set()
+    touched: dict[str, datetime] = {}
     for record in records:
-        if (
-            record["record_type"] == PHASE
-            and _text(record, "effort") == effort
+        record_type = record["record_type"]
+        if record_type == EFFORT and record["lifecycle_state"] != "superseded":
+            subject = record["subject"]
+            current = goals.get(subject)
+            if current is None or (
+                record.get("recorded_at") or "",
+                record["id"],
+            ) > (current.get("recorded_at") or "", current["id"]):
+                goals[subject] = record
+        elif (
+            record_type == PHASE
             and record["lifecycle_state"] in ("planned", "in_progress")
+            and (effort_name := _text(record, "effort")) is not None
         ):
-            return False
-    questions = [r for r in records if r["record_type"] == QUESTION and r["subject"] == effort]
-    if any(
-        r["lifecycle_state"] == "open" and record_payload(r).get("blocking") is True
-        for r in questions
-    ):
-        return False
-    touched = [
-        _parse_time(r["recorded_at"])
-        for r in records
-        if _text(r, "effort") == effort
-        or (r["record_type"] == EFFORT and r["subject"] == effort)
-        or r in questions
-    ]
-    return bool(touched) and now - max(touched) >= DORMANT_AFTER
+            live.add(effort_name)
+        elif (
+            record_type == QUESTION
+            and record["lifecycle_state"] == "open"
+            and record_payload(record).get("blocking") is True
+        ):
+            blocking.add(record["subject"])
+        effort_name = _text(record, "effort")
+        if effort_name is not None:
+            _touch(touched, effort_name, record)
+        if record_type in (EFFORT, QUESTION):
+            _touch(touched, record["subject"], record)
+    dormant: dict[str, bool] = {}
+    for effort, goal in goals.items():
+        if _text(goal, "status") == "closed" or effort in live or effort in blocking:
+            dormant[effort] = False
+            continue
+        stamp = touched.get(effort)
+        dormant[effort] = stamp is not None and now - stamp >= DORMANT_AFTER
+    return dormant
+
+
+def effort_dormant(records: list[Record], effort: str, now: datetime) -> bool:
+    return efforts_dormant(records, now).get(effort, False)

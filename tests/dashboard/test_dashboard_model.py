@@ -629,6 +629,27 @@ def test_catalog_reuses_rows_until_token_changes(
     assert reads == [target, target]
 
 
+def test_type_index_returns_the_rows_from_its_catalog_read(
+    store: Path,
+    cli: Callable[..., object],
+    defs: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _goal(cli, defs, "alpha")
+    target = _target(store)
+    backend_store._catalog_cache.clear()
+    issued = 0
+
+    def token(project: Project) -> str:
+        nonlocal issued
+        issued += 1
+        return f"token-{issued}"
+
+    monkeypatch.setattr(Project, "change_token", token)
+    found = backend_store.list_records(target, "score:effort")
+    assert any(row["subject"] == "alpha" for row in found)
+
+
 def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     _goal(cli, defs, "alpha")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")

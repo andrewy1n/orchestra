@@ -36,7 +36,7 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.head_evidence import (
     SUITE_EVIDENCE_KIND,
     EvidenceIndex,
-    suite_check_runs,
+    suite_subject,
 )
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -179,14 +179,23 @@ def latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record
     return grouped
 
 
+def _tasks_by_requirement(tasks: list[Record], phase: str) -> dict[str, list[Record]]:
+    grouped: dict[str, list[Record]] = {}
+    for task in tasks:
+        if task.get("lifecycle_state") == "superseded":
+            continue
+        if record_payload(task).get("phase") != phase:
+            continue
+        requirements = record_payload(task).get("requirements")
+        if not isinstance(requirements, list):
+            continue
+        for item in dict.fromkeys(requirements):
+            grouped.setdefault(item, []).append(task)
+    return grouped
+
+
 def _traced_records(tasks: list[Record], phase: str, requirement: str) -> list[Record]:
-    return [
-        task
-        for task in tasks
-        if task.get("lifecycle_state") != "superseded"
-        and record_payload(task).get("phase") == phase
-        and requirement in (record_payload(task).get("requirements") or [])
-    ]
+    return _tasks_by_requirement(tasks, phase).get(requirement, [])
 
 
 def _choices(subjects: list[str], decisions: list[Record]) -> tuple[DecisionChoice, ...]:
@@ -219,41 +228,6 @@ def evidence_records_by_phase(
     return by_phase, phase_checks
 
 
-def _latest_requirement_check(
-    requirement: str,
-    phase: str,
-    acceptances: list[Record],
-    checks: list[Record],
-) -> CheckRun | None:
-    live = [
-        record
-        for record in acceptances
-        if record.get("lifecycle_state") not in INACTIVE_STATES
-        and record_payload(record).get("phase") == phase
-    ]
-    single_ids = {record["id"] for record in live}
-    listed_ids = {
-        record["id"]
-        for record in live
-        if "requirements" in record_payload(record)
-        and requirement in acceptance_requirement_ids(record)
-    }
-    matched = [
-        record
-        for record in checks
-        if record.get("lifecycle_state") not in INACTIVE_STATES
-        and (
-            record_payload(record).get("criterion_id") in listed_ids
-            or (
-                record_payload(record).get("requirement") == requirement
-                and record_payload(record).get("criterion_id") in single_ids
-            )
-        )
-    ]
-    record = newest_record(matched)
-    return check_from(record) if record else None
-
-
 def sitting_phrase(body: str) -> str:
     """Return the phase sitting phrase from the first Size: line, or empty."""
     for line in (body or "").splitlines():
@@ -284,33 +258,27 @@ def _short_revision(revision: str) -> str:
     return rev[:7]
 
 
-def _suite_check_for_phase(phase: str, checks: list[Record]) -> Record | None:
-    """Newest active suite check-run for phase; fall back to legacy `-tier2`."""
-    record = newest_record(
-        [
-            run
-            for run in suite_check_runs(EvidenceIndex(checks), phase)
-            if run.get("lifecycle_state") not in INACTIVE_STATES
-        ]
-    )
-    if record is not None:
-        return record
-    return newest_record(
-        [
-            run
-            for run in checks
-            if run.get("lifecycle_state") not in INACTIVE_STATES
-            and run.get("subject") == f"{phase}{LEGACY_TIER2_SUBJECT_SUFFIX}"
-            and (record_payload(run).get("evidence_kind") or "") == SUITE_EVIDENCE_KIND
-        ]
-    )
+def _suite_runs_by_name(
+    checks: list[Record],
+) -> tuple[dict[str, list[Record]], dict[str, list[Record]]]:
+    primary = {
+        name: [run for run in runs if run.get("lifecycle_state") not in INACTIVE_STATES]
+        for name, runs in EvidenceIndex(checks).suite_runs_by_name().items()
+    }
+    legacy: dict[str, list[Record]] = {}
+    for run in checks:
+        if run.get("lifecycle_state") in INACTIVE_STATES:
+            continue
+        subject = run.get("subject") or ""
+        if not subject.endswith(LEGACY_TIER2_SUBJECT_SUFFIX):
+            continue
+        if (record_payload(run).get("evidence_kind") or "") != SUITE_EVIDENCE_KIND:
+            continue
+        legacy.setdefault(subject, []).append(run)
+    return primary, legacy
 
 
-def suite_status_label(phase: str, checks: list[Record]) -> str:
-    """Compact suite chrome for a phase header: suite running / suite ok@SHA / suite fail@SHA."""
-    record = _suite_check_for_phase(phase, checks)
-    if record is None:
-        return ""
+def _suite_label_text(record: Record) -> str:
     payload = record_payload(record)
     result = payload.get("result") or ""
     body = record.get("body") or ""
@@ -318,12 +286,29 @@ def suite_status_label(phase: str, checks: list[Record]) -> str:
         SUITE_RUNNING_MARKER in body or LEGACY_TIER2_RUNNING_MARKER in body
     ):
         return "suite running"
-    short = _short_revision(payload.get("revision") or "")
+    short = _short_revision(str(payload.get("revision") or ""))
     if result == "pass":
         return f"suite ok@{short}"
     if result == "fail":
         return f"suite fail@{short}"
     return ""
+
+
+def _indexed_suite_label(
+    phase: str, grouped: tuple[dict[str, list[Record]], dict[str, list[Record]]]
+) -> str:
+    primary, legacy = grouped
+    record = newest_record(primary.get(suite_subject(phase), []))
+    if record is None:
+        record = newest_record(legacy.get(f"{phase}{LEGACY_TIER2_SUBJECT_SUFFIX}", []))
+    if record is None:
+        return ""
+    return _suite_label_text(record)
+
+
+def suite_status_label(phase: str, checks: list[Record]) -> str:
+    """Compact suite chrome for a phase header: suite running / suite ok@SHA / suite fail@SHA."""
+    return _indexed_suite_label(phase, _suite_runs_by_name(checks))
 
 
 def phase_elapsed(tasks: list[TaskRow]) -> tuple[int | None, int]:
@@ -385,12 +370,18 @@ def phase_rows(
     latest = latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
     counted = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
+    counted_by_phase: dict[str, list[Record]] = {}
+    for task in counted:
+        phase_name = record_payload(task).get("phase")
+        if isinstance(phase_name, str):
+            counted_by_phase.setdefault(phase_name, []).append(task)
+    suite_runs = _suite_runs_by_name(checks or [])
     rows: list[PhaseRow] = []
     for phase in current_phase_models(records):
         record = phase.record
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
             continue
-        members = [task for task in counted if record_payload(task).get("phase") == phase.subject]
+        members = counted_by_phase.get(phase.subject, [])
         open_tasks = [task for task in members if task["lifecycle_state"] != "done"]
         awaiting = (
             record["lifecycle_state"] != "done"
@@ -400,7 +391,7 @@ def phase_rows(
         elapsed_minutes, unset_estimates = phase_elapsed(
             task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
         )
-        progress = phase_progress(tasks, phase.subject)
+        progress = phase_progress(members, phase.subject)
         body = phase.body
         rows.append(
             PhaseRow(
@@ -417,7 +408,7 @@ def phase_rows(
                 body=body,
                 elapsed_minutes=elapsed_minutes,
                 unset_estimates=unset_estimates,
-                suite=suite_status_label(phase.subject, checks or []),
+                suite=_indexed_suite_label(phase.subject, suite_runs),
                 milestone=phase.milestone or "",
                 in_progress=progress.in_progress,
             )
@@ -613,6 +604,32 @@ def phase_evidence(
     acceptances_by_phase, checks_by_phase = evidence_records_by_phase(acceptances, checks)
     acceptances = acceptances_by_phase.get(phase, [])
     checks = checks_by_phase.get(phase, [])
+    live_acceptances = [
+        record
+        for record in acceptances
+        if record.get("lifecycle_state") not in INACTIVE_STATES
+        and record_payload(record).get("phase") == phase
+    ]
+    acceptance_ids = {record["id"] for record in live_acceptances}
+    requirements_by_acceptance = {
+        record["id"]: set(acceptance_requirement_ids(record))
+        for record in live_acceptances
+        if "requirements" in record_payload(record)
+    }
+    checks_by_criterion: dict[str, list[Record]] = {}
+    checks_by_requirement: dict[str, list[Record]] = {}
+    for record in checks:
+        if record.get("lifecycle_state") in INACTIVE_STATES:
+            continue
+        payload = record_payload(record)
+        criterion = payload.get("criterion_id") or ""
+        if criterion not in acceptance_ids:
+            continue
+        checks_by_criterion.setdefault(criterion, []).append(record)
+        requirement_name = payload.get("requirement")
+        if isinstance(requirement_name, str) and requirement_name:
+            checks_by_requirement.setdefault(requirement_name, []).append(record)
+    tasks_by_requirement = _tasks_by_requirement(tasks, phase)
     pool = _derivation_pool([spec], acceptances, checks, assessments)
     derived = requirement_status(pool, phase)
     rows: list[RequirementRow] = []
@@ -620,8 +637,14 @@ def phase_evidence(
         status, nxt, confidence = _requirement_view(
             latest.get(requirement), derived.get(requirement)
         )
-        traced = _traced_records(tasks, phase, requirement)
-        check = _latest_requirement_check(requirement, phase, acceptances, checks)
+        traced = tasks_by_requirement.get(requirement, [])
+        matched: list[Record] = []
+        for acceptance_id, names in requirements_by_acceptance.items():
+            if requirement in names:
+                matched.extend(checks_by_criterion.get(acceptance_id, ()))
+        matched.extend(checks_by_requirement.get(requirement, ()))
+        chosen = newest_record(matched)
+        check = check_from(chosen) if chosen else None
         rows.append(
             RequirementRow(
                 phase,
