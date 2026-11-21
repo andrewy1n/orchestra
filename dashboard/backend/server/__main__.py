@@ -16,7 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from dashboard.backend.server.app import create_app
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import StoreBindingError
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 
 HOST = "127.0.0.1"
 
@@ -32,7 +33,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        target = open_store(Path.cwd())
+        target = Workspace.resolve(Path.cwd(), access=Access.WRITE).open()
+    except StoreNotReady as exc:
+        searched = ", ".join(str(path) for path in exc.searched)
+        print(f"store_not_ready: no store found; searched: {searched}", file=sys.stderr)
+        return 1
     except StoreBindingError as exc:
         print(exc, file=sys.stderr)
         return 1
