@@ -52,7 +52,11 @@ class AttentionItem:
 
 def _recorded_at(record: Record) -> datetime:
     stamp = record.get("recorded_at")
-    return datetime.fromisoformat(stamp) if stamp else datetime.min.replace(tzinfo=timezone.utc)
+    return (
+        datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        if stamp
+        else datetime.min.replace(tzinfo=timezone.utc)
+    )
 
 
 def _live(records: list[Record]) -> list[Record]:
