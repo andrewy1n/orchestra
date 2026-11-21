@@ -19,3 +19,18 @@ def body_sections(body: str) -> dict[str, str]:
 
 def body_section(body: str, name: str) -> str:
     return body_sections(body).get(name, "")
+
+
+def body_section_ci(body: str, heading: str) -> str:
+    collected: list[str] = []
+    collecting = False
+    target = heading.strip().lower()
+    for line in (body or "").splitlines():
+        if line.startswith("## "):
+            if collecting:
+                break
+            collecting = line[3:].strip().lower() == target
+            continue
+        if collecting:
+            collected.append(line)
+    return "\n".join(collected).strip()

@@ -408,7 +408,7 @@ def test_r22_model_calls_payload() -> None:
     """R22: dashboard.model calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "dashboard" / "backend" / "records.py", getters[0].__name__)
+    assert _calls_named(ROOT / "dashboard" / "backend" / "journal.py", getters[0].__name__)
 
 
 def test_r23_approval_calls_payload() -> None:

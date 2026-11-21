@@ -8,12 +8,22 @@ from datetime import datetime
 from dashboard.backend import records, store
 from dashboard.backend.task import assigned_to
 from orchestra.canon.project import Project
+from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
-from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.assignment import (
+    FailedAttempt,
+    failed_attempt,
+    referenced_assignment,
+    referenced_work_item,
+)
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.score.effort import current_efforts
+from orchestra.score.continuity import question_scope
+from orchestra.score.effort import current_efforts, record_effort
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
-from orchestra.score.workflow_blockers import is_open_finding
+from orchestra.score.phase import phase_title
+from orchestra.score.work_item_facts import record_scope
+from orchestra.score.workflow_blockers import is_open_finding, is_open_question
+from orchestra.tuner.record_facts import FindingFacts, finding_facts, observation_text
 
 JOURNAL_TYPES = (
     "conductor:failed-attempt",
@@ -62,7 +72,7 @@ def _phase_for_task(subject: str, tasks: list[Record]) -> tuple[str | None, str]
     task = owning_work_item(subject, live)
     if task is None:
         return None, ""
-    return record_payload(task).get("phase") or None, task["id"]
+    return record_scope(task).phase or None, task["id"]
 
 
 def _plan_review_slug(scope: str) -> str | None:
@@ -78,10 +88,6 @@ def _question_scope_text(scope: str, phase_titles: dict[str, str]) -> str:
     return scope
 
 
-def _question_open(record: Record) -> bool:
-    return record.get("lifecycle_state") == "open"
-
-
 def _first_line(text: str) -> str:
     for line in (text or "").splitlines():
         if line.strip():
@@ -89,24 +95,23 @@ def _first_line(text: str) -> str:
     return ""
 
 
-def _attempt_text(payload: PlanningPayload) -> str:
-    parts = [payload.get("attempted_action") or "", "don't retry"]
-    retry = payload.get("retry_when") or ""
-    if retry:
-        parts.append(f"retry when {retry}")
+def _attempt_text(attempt: FailedAttempt) -> str:
+    parts = [attempt.attempted_action, "don't retry"]
+    if attempt.retry_when:
+        parts.append(f"retry when {attempt.retry_when}")
     return " · ".join(part for part in parts if part)
 
 
-def _finding_text(payload: PlanningPayload) -> str:
-    claim = payload.get("claim") or ""
-    needs = payload.get("needs") or ""
+def _finding_text(facts: FindingFacts) -> str:
+    claim = facts.claim
+    needs = facts.needs
     if claim and needs:
         return f"{claim} · needs {needs}"
     return claim or needs
 
 
 def _question_text(record: Record, phase_titles: dict[str, str]) -> str:
-    scope = record_payload(record).get("scope") or ""
+    scope = question_scope(record)
     shown = _question_scope_text(scope, phase_titles)
     state = record.get("lifecycle_state") or ""
     if shown and state:
@@ -115,7 +120,7 @@ def _question_text(record: Record, phase_titles: dict[str, str]) -> str:
 
 
 def _amendment_text(record: Record, task_subject: str) -> str:
-    correction = _first_line(records.section(record.get("body") or "", "Correction"))
+    correction = _first_line(body_section_ci(record.get("body") or "", "Correction"))
     if correction and task_subject:
         return f"{correction} · {task_subject}"
     return correction or task_subject
@@ -130,7 +135,7 @@ def _belongs_to_effort(
 ) -> bool:
     if by_subject:
         return record.get("subject") == effort
-    payload_effort = record_payload(record).get("effort")
+    payload_effort = record_effort(record)
     if payload_effort:
         return payload_effort == effort
     return sole_goal
@@ -142,17 +147,17 @@ def _assignment_task(
     tasks_by_id: dict[str, Record],
     tasks_by_subject: dict[str, Record],
 ) -> tuple[str | None, str, str]:
-    ref = record_payload(record).get("assignment") or ""
+    ref = referenced_assignment(record) or ""
     assignment = assignments.get(ref)
     if assignment is None:
         phase, task_id = _phase_for_task(record["subject"], list(tasks_by_subject.values()))
         return phase, task_id, record["subject"] if task_id else ""
-    work_ref = record_payload(assignment).get("work_item") or ""
+    work_ref = referenced_work_item(assignment) or ""
     task = tasks_by_id.get(work_ref) or tasks_by_subject.get(work_ref)
     if task is None:
         phase, task_id = _phase_for_task(assignment["subject"], list(tasks_by_subject.values()))
         return phase, task_id, assignment["subject"]
-    return record_payload(task).get("phase") or None, task["id"], task["subject"]
+    return record_scope(task).phase or None, task["id"], task["subject"]
 
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
@@ -169,16 +174,13 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
         tasks = [
             record
             for record in _soft_list(target, "score:work-item")
-            if record_payload(record).get("effort") == effort
+            if record_effort(record) == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
     phases = _soft_list(target, "score:phase", payload={"effort": effort})
-    phase_titles = {
-        record["subject"]: record_payload(record).get("title") or record["subject"]
-        for record in phases
-    }
+    phase_titles = {record["subject"]: phase_title(record) for record in phases}
 
     assignments_listed = _soft_list(target, "conductor:assignment")
     assignments: dict[str, Record] = {}
@@ -209,7 +211,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["subject"],
                 phase,
                 records.recorded_at(record),
-                _attempt_text(record_payload(record)),
+                _attempt_text(failed_attempt(record)),
                 False,
                 task_id,
             )
@@ -225,7 +227,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["subject"],
                 phase,
                 records.recorded_at(record),
-                record_payload(record).get("what_was_observed") or "",
+                observation_text(record),
                 open_item,
                 task_id,
             )
@@ -240,14 +242,14 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 record["subject"],
                 phase,
                 records.recorded_at(record),
-                _finding_text(record_payload(record)),
+                _finding_text(finding_facts(record)),
                 is_open_finding(record),
                 task_id,
             )
         )
 
     for record in listed["score:continuity-question"]:
-        scope = record_payload(record).get("scope") or ""
+        scope = question_scope(record)
         slug = _plan_review_slug(scope)
         phase = slug if slug is not None else None
         items.append(
@@ -258,7 +260,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
                 phase,
                 records.recorded_at(record),
                 _question_text(record, phase_titles),
-                _question_open(record),
+                is_open_question(record),
                 "",
             )
         )

@@ -5,7 +5,7 @@ from __future__ import annotations
 import helpers as h
 
 from dashboard.backend import phase as phase_mod
-from dashboard.backend import records
+from orchestra.canon.sections import body_section_ci
 
 
 def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
@@ -18,17 +18,17 @@ def test_smoke_proof_packet_look_usable_from_contract_and_body_shape():
         "## Attention\n\nnone\n\n"
         "## Diff\n\nno tree change\n"
     )
-    assert records.section(sample, "Look").strip() == look
-    assert records.section(sample, "Attention").strip() == "none"
+    assert body_section_ci(sample, "Look").strip() == look
+    assert body_section_ci(sample, "Attention").strip() == "none"
     proof = phase_mod.ProofView(
         id="rec-smoke",
         kind="claims",
         revision="04737710" * 5,
         base="main",
-        look=records.section(sample, "Look"),
-        attention=records.section(sample, "Attention"),
-        machine=records.section(sample, "Machine"),
-        diff=records.section(sample, "Diff"),
+        look=body_section_ci(sample, "Look"),
+        attention=body_section_ci(sample, "Attention"),
+        machine=body_section_ci(sample, "Machine"),
+        diff=body_section_ci(sample, "Diff"),
     )
     detail = phase_mod.PhaseDetail(
         subject="phase-proof-packet",

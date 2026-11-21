@@ -20,6 +20,35 @@ def _text(record: Record, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
+@dataclass(frozen=True)
+class FailedAttempt:
+    attempted_action: str
+    retry_when: str
+
+
+def failed_attempt(record: Record) -> FailedAttempt:
+    payload = record_payload(record)
+    action = payload.get("attempted_action")
+    retry = payload.get("retry_when")
+    return FailedAttempt(
+        attempted_action=action if isinstance(action, str) else "",
+        retry_when=retry if isinstance(retry, str) else "",
+    )
+
+
+def referenced_work_item(record: Record) -> str | None:
+    return _text(record, "work_item")
+
+
+def referenced_assignment(record: Record) -> str | None:
+    return _text(record, "assignment")
+
+
+def assignments_of(work_item: Record, records: list[Record]) -> list[Record]:
+    names = {work_item["id"], work_item["subject"]}
+    return [r for r in records if referenced_work_item(r) in names]
+
+
 def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment | None:
     assignee = _text(work_item, "assignee")
     write_root = _text(work_item, "write_root")

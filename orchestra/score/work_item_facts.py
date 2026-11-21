@@ -68,5 +68,37 @@ def executor_task(record: Record) -> ExecutorTask:
     )
 
 
+@dataclass(frozen=True)
+class TaskPlan:
+    title: str
+    phase: str
+    size: str
+    estimate_minutes: int | None
+    attempts: int
+
+
+def task_plan(record: Record) -> TaskPlan:
+    payload = record_payload(record)
+    title = payload.get("title")
+    phase = payload.get("phase")
+    size = payload.get("size")
+    estimate = payload.get("estimate_minutes")
+    attempts = payload.get("attempts")
+    return TaskPlan(
+        title=title if isinstance(title, str) else "",
+        phase=phase if isinstance(phase, str) else "",
+        size=size if isinstance(size, str) else "",
+        estimate_minutes=estimate if type(estimate) is int else None,
+        attempts=attempts if type(attempts) is int else 0,
+    )
+
+
+def work_item_status(record: Record) -> str | None:
+    state = record["lifecycle_state"]
+    if state == "planned":
+        return "ready" if (record.get("derived") or {}).get("ready") else "waiting"
+    return {"in_progress": "running", "done": "done", "withdrawn": "withdrawn"}.get(state)
+
+
 def decision_choice(record: Record) -> JsonValue | None:
     return record_payload(record).get("choice")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -13,7 +12,6 @@ from dashboard.backend.records import (
     newest_record,
     recorded_at,
     records_by_effort,
-    section,
 )
 from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import ModelError, change_token
@@ -30,6 +28,7 @@ from dashboard.backend.task import (
     task_rows,
 )
 from orchestra.canon.project import Project
+from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.head_evidence import (
     SUITE_EVIDENCE_KIND,
@@ -88,7 +87,7 @@ class MilestoneRow:
 
 def _requirement_texts(body: str) -> dict[str, str]:
     texts: dict[str, str] = {}
-    for line in section(body, "Requirements").splitlines():
+    for line in body_section_ci(body, "Requirements").splitlines():
         ident, sep, text = line.partition(":")
         if sep and ident.strip():
             texts[ident.strip()] = text.strip()
@@ -669,7 +668,7 @@ def phase_evidence(
     if report is not None:
         integration = IntegrationView(
             record_payload(report).get("result", ""),
-            section(report.get("body") or "", "Conflicts"),
+            body_section_ci(report.get("body") or "", "Conflicts"),
         )
     weight = record_payload(spec).get("weight", "")
     release_ready = _release_ready(phase, effort, releases, derived)
@@ -683,7 +682,7 @@ def phase_evidence(
         integration,
         release_ready,
         _choices(subjects, decisions),
-        section(spec.get("body") or "", "Non-goals"),
+        body_section_ci(spec.get("body") or "", "Non-goals"),
         release_state=release_state,
         stage_reason=progress.reason if progress is not None else "",
     )
@@ -769,8 +768,8 @@ def _decision_entry(
         phase=payload.get("phase", ""),
         choice=payload.get("choice", ""),
         alternatives=payload.get("alternatives", "") or "",
-        rationale=section(body, "Rationale"),
-        counter=section(body, "Counter-argument"),
+        rationale=body_section_ci(body, "Rationale"),
+        counter=body_section_ci(body, "Counter-argument"),
         superseded=superseded,
     )
 
@@ -830,7 +829,7 @@ def load_decision_log(
 def load_phase_detail(target: Project, effort: str, phase_subject: str) -> PhaseDetail:
     """Load one phase with its body, decisions, constraints, and tasks."""
 
-    def by_effort(record_type: str) -> dict[Hashable, list[Record]]:
+    def by_effort(record_type: str) -> dict[str | None, list[Record]]:
         return records_by_effort(list_records(target, record_type))
 
     snapshot_phases = by_effort("score:phase").get(effort, [])
@@ -910,10 +909,10 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             kind=packet.kind,
             revision=packet.revision,
             base=packet.base or "",
-            look=section(proof_body, "Look"),
-            attention=section(proof_body, "Attention"),
-            machine=section(proof_body, "Machine"),
-            diff=section(proof_body, "Diff"),
+            look=body_section_ci(proof_body, "Look"),
+            attention=body_section_ci(proof_body, "Attention"),
+            machine=body_section_ci(proof_body, "Machine"),
+            diff=body_section_ci(proof_body, "Diff"),
         )
     return PhaseDetail(
         subject=phase_subject,
