@@ -9,8 +9,7 @@ from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.acceptance import Acceptance, read_acceptance
 from orchestra.score.lookups import current_phases, latest_record, live_work_items, record_order
 from orchestra.score.requirements import (
-    phase_requirements,
-    phase_weight,
+    requirements_in_body,
 )
 from orchestra.score.workflow_blockers import is_signed
 
@@ -42,9 +41,7 @@ def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
     return live_work_items(phase, records)
 
 
-def _phase_requirement_ids(
-    records: list[Record], phase: str, every_record: list[Record]
-) -> list[str]:
+def _phase_requirement_ids(records: list[Record], phase: str, current: Record | None) -> list[str]:
     specifications = [
         record
         for record in records
@@ -52,8 +49,8 @@ def _phase_requirement_ids(
         and record["lifecycle_state"] == "active"
         and _text(record, "phase") == phase
     ]
-    if phase_weight(every_record, phase) == "light":
-        return [requirement for requirement, _ in phase_requirements(every_record, phase)]
+    if current is not None and _text(current, "weight") == "light":
+        return [requirement for requirement, _ in requirements_in_body(current.get("body", ""))]
     specification = latest_record(specifications)
     sources = [specification] if specification is not None else _phase_work_items(records, phase)
     requirements: list[str] = []
@@ -73,8 +70,9 @@ class RequirementIndex:
     def __init__(self, records: list[Record]) -> None:
         self.by_id: dict[str, Record] = {}
         self.evidence = EvidenceIndex(records)
+        self.phases = current_phases(records)
         self.sources: dict[str, list[Record]] = {
-            slug: [phase] for slug, phase in current_phases(records).items()
+            slug: [phase] for slug, phase in self.phases.items()
         }
         self.acceptances: dict[tuple[str, str], list[Acceptance]] = {}
         self.assessments: dict[tuple[str, str], Record] = {}
@@ -150,7 +148,9 @@ def requirement_status(
     if index is None:
         index = RequirementIndex(records)
     statuses: dict[str, RequirementStatus] = {}
-    for requirement in _phase_requirement_ids(index.sources.get(phase, []), phase, records):
+    for requirement in _phase_requirement_ids(
+        index.sources.get(phase, []), phase, index.phases.get(phase)
+    ):
         derived = _derive_requirement(index, phase, requirement, head)
         written = index.assessments.get((phase, requirement))
         written_status = _text(written, "status") if written is not None else None
