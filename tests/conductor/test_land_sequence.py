@@ -9,10 +9,10 @@ from conductor_support import PHASE, Cli, Phase, _land_args, _packet, _review_re
 from conftest import git
 
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
 from orchestra.conductor import land
 from orchestra.conductor.github_pr import GitHubCheck, GitHubPRError
-from orchestra.store import StoreLocation
 from orchestra.tools import Git
 
 URL = "https://github.com/owner/repo/pull/7"
@@ -60,9 +60,7 @@ def use_adapter(phase: Phase, adapter: str) -> None:
 def land_through(phase: Phase, gh: FakeGh) -> land.LandingResult:
     gh.head = Git(phase.repo).head()
     return land.land_phase(
-        phase.store,
-        None,
-        StoreLocation(phase.store, None).open,
+        Workspace(phase.store),
         PHASE,
         phase.repo,
         gh,

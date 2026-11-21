@@ -14,9 +14,9 @@ from conftest import git
 import orchestra.conductor.github_pr as github_pr
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import close, land
 from orchestra.conductor.github_pr import GitHubGh
-from orchestra.store import StoreLocation
 from orchestra.tools import Version
 from orchestra.tools.testing import ScriptedRun, scripted
 
@@ -89,9 +89,7 @@ def _landing_records(phase: Phase) -> list[Record]:
 
 def _land(phase: Phase, tree: Path, run: ScriptedRun) -> land.LandingResult:
     return land.land_phase(
-        phase.store,
-        None,
-        StoreLocation(phase.store, None).open,
+        Workspace(phase.store),
         PHASE,
         tree,
         GitHubGh(tree, "origin", {}, run=run),

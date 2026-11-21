@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from orchestra.canon.project import open_store
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import close_batch
 
 CLAIM_ID = "claim-widget"
@@ -283,7 +284,7 @@ def _close_in_process(repo: Path, request: dict, monkeypatch) -> int:
     monkeypatch.setattr(subprocess, "run", spy)
     code = close_batch.main(
         ["--input", str(path), "--out", str(out), "--cwd", str(repo)],
-        open_project=lambda _store: open_store(repo),
+        workspace=lambda: Workspace(repo),
     )
     assert spawned == [], f"in-process close started {spawned}"
     return code
