@@ -178,14 +178,23 @@ def latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record
     return grouped
 
 
+def _tasks_by_requirement(tasks: list[Record], phase: str) -> dict[str, list[Record]]:
+    grouped: dict[str, list[Record]] = {}
+    for task in tasks:
+        if task.get("lifecycle_state") == "superseded":
+            continue
+        if record_payload(task).get("phase") != phase:
+            continue
+        requirements = record_payload(task).get("requirements")
+        if not isinstance(requirements, list):
+            continue
+        for item in dict.fromkeys(requirements):
+            grouped.setdefault(item, []).append(task)
+    return grouped
+
+
 def _traced_records(tasks: list[Record], phase: str, requirement: str) -> list[Record]:
-    return [
-        task
-        for task in tasks
-        if task.get("lifecycle_state") != "superseded"
-        and record_payload(task).get("phase") == phase
-        and requirement in (record_payload(task).get("requirements") or [])
-    ]
+    return _tasks_by_requirement(tasks, phase).get(requirement, [])
 
 
 def _choices(subjects: list[str], decisions: list[Record]) -> tuple[DecisionChoice, ...]:
@@ -251,20 +260,10 @@ def _short_revision(revision: str) -> str:
 def _suite_runs_by_name(
     checks: list[Record],
 ) -> tuple[dict[str, list[Record]], dict[str, list[Record]]]:
-    primary: dict[str, list[Record]] = {}
-    for run in EvidenceIndex(checks).check_runs:
-        if run.get("lifecycle_state") in INACTIVE_STATES:
-            continue
-        payload = run["payload"]
-        if payload.get("evidence_kind") != SUITE_EVIDENCE_KIND:
-            continue
-        names = {run["subject"]}
-        criterion = payload.get("criterion_id")
-        if isinstance(criterion, str) and criterion:
-            names.add(criterion)
-        for name in names:
-            if name:
-                primary.setdefault(name, []).append(run)
+    primary = {
+        name: [run for run in runs if run.get("lifecycle_state") not in INACTIVE_STATES]
+        for name, runs in EvidenceIndex(checks).suite_runs_by_name().items()
+    }
     legacy: dict[str, list[Record]] = {}
     for run in checks:
         if run.get("lifecycle_state") in INACTIVE_STATES:
@@ -642,14 +641,7 @@ def phase_evidence(
         requirement_name = payload.get("requirement")
         if isinstance(requirement_name, str) and requirement_name:
             checks_by_requirement.setdefault(requirement_name, []).append(record)
-    tasks_by_requirement: dict[str, list[Record]] = {}
-    for task in tasks:
-        if task.get("lifecycle_state") == "superseded":
-            continue
-        if record_payload(task).get("phase") != phase:
-            continue
-        for item in record_payload(task).get("requirements") or []:
-            tasks_by_requirement.setdefault(item, []).append(task)
+    tasks_by_requirement = _tasks_by_requirement(tasks, phase)
     pool = _derivation_pool([spec], acceptances, checks, assessments)
     derived = requirement_status(pool, phase)
     ready = bool(derived) and all(row.status == "verified" for row in derived.values())

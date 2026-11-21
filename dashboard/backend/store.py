@@ -36,41 +36,35 @@ def pinned_token(token: str) -> Generator[None, None, None]:
         _pin.token = previous
 
 
-def _catalog(target: Project, *, required: bool = False) -> list[Record]:
+def _load_catalog(
+    target: Project, *, required: bool = False
+) -> tuple[list[Record], dict[str, list[Record]]]:
     key = str(target.store_path)
     with _catalog_lock:
         token = getattr(_pin, "token", None) or change_token(target)
         cached = _catalog_cache.get(key)
         if cached and cached[0] == token:
-            return cached[1]
+            return cached[1], cached[2]
         try:
             records = target.records()
             rows = attach_derived_all(records, target.derived(records))
         except StoreError as exc:
             if required:
                 raise ModelError(f"catalog read failed: {exc}") from exc
-            return []
+            return [], {}
         by_type: dict[str, list[Record]] = {}
         for row in rows:
             by_type.setdefault(row["record_type"], []).append(row)
         _catalog_cache[key] = (token, rows, by_type)
-        return rows
+        return rows, by_type
+
+
+def _catalog(target: Project, *, required: bool = False) -> list[Record]:
+    return _load_catalog(target, required=required)[0]
 
 
 def _catalog_types(target: Project) -> dict[str, list[Record]]:
-    key = str(target.store_path)
-    with _catalog_lock:
-        token = getattr(_pin, "token", None) or change_token(target)
-        cached = _catalog_cache.get(key)
-        if cached is not None and cached[0] == token:
-            return cached[2]
-    _catalog(target)
-    with _catalog_lock:
-        token = getattr(_pin, "token", None) or change_token(target)
-        cached = _catalog_cache.get(key)
-        if cached is not None and cached[0] == token:
-            return cached[2]
-    return {}
+    return _load_catalog(target)[1]
 
 
 def catalog_records(target: Project) -> list[Record]:

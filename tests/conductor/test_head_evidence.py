@@ -9,9 +9,11 @@ import pytest
 from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, seed
 
 from orchestra.canon.project import open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import head_evidence
+from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
 from orchestra.conductor.head_evidence import EvidenceIndex
+from orchestra.score.lookups import cached_object, prepare_records
 
 OTHER_HEAD = "b" * 40
 
@@ -339,6 +341,58 @@ def test_answer_shape_holding_answer_has_run_and_no_reason(phase: Phase) -> None
         assert answer.holds
         assert answer.run is not None
         assert answer.reason == ""
+
+
+def _bare(
+    record_id: str,
+    record_type: str,
+    subject: str,
+    payload: JsonObject,
+    provenance: JsonObject | None = None,
+) -> Record:
+    record: Record = {
+        "id": record_id,
+        "record_type": record_type,
+        "subject": subject,
+        "payload": payload,
+        "lifecycle_state": "recorded",
+        "relationships": {},
+        "revision": "r",
+        "recorded_at": "2026-01-01T00:00:00Z",
+        "body": "",
+    }
+    if provenance is not None:
+        record["provenance"] = provenance
+    return record
+
+
+def test_subset_index_does_not_reuse_the_prepared_catalog() -> None:
+    check = _bare(
+        "check-1",
+        "tuner:check-run",
+        "p-suite",
+        {"criterion_id": "p-suite", "evidence_kind": "integration", "result": "pass"},
+    )
+    amendment = _bare(
+        "amend-1",
+        "conductor:assignment-amendment",
+        "amend",
+        {},
+        provenance={COMMAND_AMENDMENT_KEY: "acc-1"},
+    )
+    acceptance = _bare("acc-1", "score:acceptance", "acc", {})
+    full = [check, amendment]
+    with prepare_records(full):
+        assert EvidenceIndex([check]).command_was_amended(acceptance) is False
+        assert EvidenceIndex(full).command_was_amended(acceptance) is True
+
+
+def test_wrong_evidence_cache_type_raises() -> None:
+    check = _bare("check-1", "tuner:check-run", "p-suite", {"result": "pass"})
+    with prepare_records([check]):
+        cached_object([check], "evidence-index", lambda: object())
+        with pytest.raises(TypeError, match="evidence-index"):
+            EvidenceIndex([check])
 
 
 def test_answer_shape_suite_naming_rule_lives_in_head_evidence() -> None:

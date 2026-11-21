@@ -18,8 +18,7 @@ from orchestra.conductor.revision import revision_matches
 from orchestra.score.lookups import (
     cached_object,
     check_run_criteria,
-    corrected_ids,
-    records_of_type,
+    same_prepared_source,
 )
 
 CHECK_RUN_TYPE = "tuner:check-run"
@@ -45,16 +44,24 @@ class _EvidenceParts:
 
 
 def _evidence_parts(records: Sequence[Record]) -> _EvidenceParts:
-    corrected = corrected_ids(records)
+    corrected = {
+        target
+        for record in records
+        for target in (record.get("relationships") or {}).get("corrects") or []
+    }
     check_runs: list[Record] = []
     by_criterion: dict[str, list[tuple[int, Record]]] = {}
-    for record in records_of_type(records, CHECK_RUN_TYPE):
-        if record["id"] not in corrected:
+    amended: set[str] = set()
+    for record in records:
+        if record["record_type"] == CHECK_RUN_TYPE:
+            if record["id"] in corrected:
+                continue
             position = len(check_runs)
             check_runs.append(record)
             by_criterion.setdefault(_text(record, "criterion_id"), []).append((position, record))
-    amended: set[str] = set()
-    for record in records_of_type(records, "conductor:assignment-amendment"):
+            continue
+        if record["record_type"] != "conductor:assignment-amendment":
+            continue
         provenance = record.get("provenance")
         if isinstance(provenance, dict) and isinstance(
             acceptance_id := provenance.get(COMMAND_AMENDMENT_KEY), str
@@ -67,8 +74,13 @@ class EvidenceIndex:
     """Check-run lookups for one unchanged record snapshot."""
 
     def __init__(self, records: Sequence[Record]) -> None:
-        shared = cached_object("evidence-index", lambda: _evidence_parts(records))
-        if not isinstance(shared, _EvidenceParts):
+        if same_prepared_source(records):
+            shared = cached_object(records, "evidence-index", lambda: _evidence_parts(records))
+            if not isinstance(shared, _EvidenceParts):
+                raise TypeError(
+                    f"evidence-index cache holds {type(shared).__name__}, expected _EvidenceParts"
+                )
+        else:
             shared = _evidence_parts(records)
         self.check_runs = shared.check_runs
         self._amended_commands = shared.amended_commands
@@ -89,6 +101,21 @@ class EvidenceIndex:
 
     def command_was_amended(self, acceptance: Record) -> bool:
         return acceptance["id"] in self._amended_commands
+
+    def suite_runs_by_name(self) -> dict[str, list[Record]]:
+        """Suite runs keyed by subject and by criterion id."""
+        grouped: dict[str, list[Record]] = {}
+        for run in self.check_runs:
+            if _text(run, "evidence_kind") != SUITE_EVIDENCE_KIND:
+                continue
+            names = {run["subject"]}
+            criterion = _text(run, "criterion_id")
+            if criterion:
+                names.add(criterion)
+            for name in names:
+                if name:
+                    grouped.setdefault(name, []).append(run)
+        return grouped
 
 
 def suite_subject(phase_slug: str) -> str:
@@ -185,12 +212,7 @@ def review_at_head(index: EvidenceIndex, phase_slug: str, effort: str, head: str
 
 
 def suite_check_runs(index: EvidenceIndex, phase_slug: str) -> list[Record]:
-    subject = suite_subject(phase_slug)
-    return [
-        run
-        for run in index.check_runs
-        if _text(run, "evidence_kind") == SUITE_EVIDENCE_KIND and _names(run, subject)
-    ]
+    return index.suite_runs_by_name().get(suite_subject(phase_slug), []).copy()
 
 
 def suite_at_head(index: EvidenceIndex, phase_slug: str, head: str | None) -> Answer:
