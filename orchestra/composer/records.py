@@ -106,6 +106,11 @@ def _live(records: Sequence[Record], record_type: str) -> list[Record]:
     ]
 
 
+def current_area(records: Sequence[Record], subject: str) -> Area | None:
+    record = latest_record(r for r in _live(records, AREA) if r["subject"] == subject)
+    return read_area(record) if record is not None else None
+
+
 def current_placements(records: Sequence[Record]) -> dict[str, str]:
     by_effort: dict[str, list[Record]] = {}
     for record in _live(records, PLACEMENT):

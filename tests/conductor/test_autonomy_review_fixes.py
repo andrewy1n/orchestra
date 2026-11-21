@@ -64,13 +64,13 @@ def test_r07_review_fix_the_real_grants_still_map(statement: str, level: str) ->
     assert autonomy.classify(statement, "record-diet") == level
 
 
-def test_r07_review_fix_the_effort_comes_from_applies_to_or_the_subject_suffix() -> None:
+def test_r07_review_fix_the_effort_comes_from_the_effort_or_applies_to_field() -> None:
     known = {"alpha", "dashboard-features", "features"}
     plain = _constraint("anything", "missing")
     plain["payload"]["applies_to"] = "alpha"
     assert autonomy.resolve_effort(plain, known) == "alpha"
     suffixed = _constraint("dashboard-autonomy-dashboard-features", "missing")
-    assert autonomy.resolve_effort(suffixed, known) == "dashboard-features"
+    assert autonomy.resolve_effort(suffixed, known) == ""
     assert autonomy.resolve_effort(_constraint("unrelated", "missing"), known) == ""
 
 
