@@ -62,10 +62,16 @@ def collect_evidence(root: Path, pull_request_url: str, config: ProjectConfig) -
     registration = resolve_plugin("conductor.merge_evidence", name)
     parameters = config.merge_evidence_config
     validate_plugin_config(name, registration.descriptor.config_shape, parameters)
-    factory = registration.load()
+    try:
+        factory = registration.load()
+    except (ImportError, AttributeError) as error:
+        raise EvidenceError(f"cannot load CI evidence adapter {name!r}: {error}") from error
     if not callable(factory):
         raise EvidenceError(f"CI evidence adapter {name!r} is not constructible")
-    adapter = factory()
+    try:
+        adapter = factory()
+    except TypeError as error:
+        raise EvidenceError(f"cannot construct CI evidence adapter {name!r}: {error}") from error
     if not isinstance(adapter, EvidenceAdapter):
         raise EvidenceError(f"CI evidence adapter {name!r} has no read method")
     snapshot = _read(adapter, EvidenceRequest(root, pull_request_url, dict(parameters)))

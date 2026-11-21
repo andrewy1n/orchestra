@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from canon_support import create, make_project, seed_effort
 
+from orchestra.canon.extensions import PluginRegistration
 from orchestra.canon.project import Project
 from orchestra.cli import main
 from orchestra.conductor.github_evidence import GitHubActionsAdapter
@@ -252,4 +253,22 @@ def test_unreadable_worktree_head_exits_without_recording_an_observation(
     _invoke(project, 2)
 
     assert "cannot read worktree HEAD" in capsys.readouterr().err
+    assert not project.list("conductor:ci-observation")
+
+
+@pytest.mark.parametrize("error_type", [ImportError, AttributeError])
+def test_broken_adapter_entry_point_exits_without_recording_an_observation(
+    project: Project,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error_type: type[Exception],
+) -> None:
+    def load(_self: PluginRegistration) -> object:
+        raise error_type("broken entry point")
+
+    monkeypatch.setattr(PluginRegistration, "load", load)
+
+    _invoke(project, 2)
+
+    assert "cannot load CI evidence adapter" in capsys.readouterr().err
     assert not project.list("conductor:ci-observation")
