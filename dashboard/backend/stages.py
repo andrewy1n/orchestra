@@ -18,7 +18,7 @@ from orchestra.conductor.phase_progress import (
     phase_facts,
     unavailable_progress,
 )
-from orchestra.score.lookups import current_phases
+from orchestra.score.lookups import current_phases, prepare_records
 from orchestra.score.phase import read_phase
 from orchestra.tools import ToolError
 
@@ -34,15 +34,16 @@ def finished_progress() -> PhaseProgress:
 
 def assess_phases(target: Project, records: Sequence[Record]) -> dict[str, PhaseProgress]:
     found: dict[str, PhaseProgress] = {}
-    for subject, record in current_phases(records).items():
-        lifecycle = record["lifecycle_state"]
-        if lifecycle == "done":
-            found[subject] = finished_progress()
-        elif lifecycle in _OPEN_STATES:
-            try:
-                found[subject] = assess(phase_facts(target, records, read_phase(record)))
-            except _READ_ERRORS as exc:
-                found[subject] = unavailable_progress(f"progress unavailable: {exc}")
+    with prepare_records(records):
+        for subject, record in current_phases(records).items():
+            lifecycle = record["lifecycle_state"]
+            if lifecycle == "done":
+                found[subject] = finished_progress()
+            elif lifecycle in _OPEN_STATES:
+                try:
+                    found[subject] = assess(phase_facts(target, records, read_phase(record)))
+                except _READ_ERRORS as exc:
+                    found[subject] = unavailable_progress(f"progress unavailable: {exc}")
     return found
 
 

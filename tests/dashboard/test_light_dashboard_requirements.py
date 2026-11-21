@@ -129,6 +129,19 @@ def test_requirement_detail_reads_a_light_phase_body(tmp_path: Path) -> None:
     assert detail.status == "verified"
 
 
+def test_one_task_listing_a_requirement_twice_is_traced_once() -> None:
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
+    task = _record(
+        "score:work-item",
+        "t",
+        {"phase": "p", "effort": "e", "requirements": ["R1", "R1"]},
+        state="planned",
+    )
+    evidence = phase_evidence("p", "e", [], [], [], [task], [], [], [], [], [], [phase])
+    assert evidence is not None
+    assert next(row.tasks for row in evidence.requirements if row.id == "R1") == 1
+
+
 def test_light_phase_ignores_an_old_active_specification() -> None:
     phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     old_spec = _record(

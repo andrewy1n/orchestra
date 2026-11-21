@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon.types import JsonValue, Record
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, records_of_type
 
 Step = Literal["spec", "design", "tasks", "execute", "verify", "land"]
 Authority = Literal["user-approval", "explicit-delegation", "task-plan-policy"]
@@ -76,10 +76,8 @@ def _phase_record(records: Sequence[Record], phase: str) -> Record | None:
 def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Record | None:
     candidates = [
         record
-        for record in records
-        if record["record_type"] == "score:step-review"
-        and record["payload"].get("phase") == phase
-        and record["payload"].get("step") == step
+        for record in records_of_type(records, "score:step-review")
+        if record["payload"].get("phase") == phase and record["payload"].get("step") == step
     ]
     artifact = _artifact_for_step(records, phase, step)
     dependencies: tuple[Step, ...]
@@ -113,10 +111,8 @@ def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Re
 def _active_artifact(records: Sequence[Record], phase: str, record_type: str) -> Record | None:
     candidates = [
         record
-        for record in records
-        if record["record_type"] == record_type
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
+        for record in records_of_type(records, record_type)
+        if record["payload"].get("phase") == phase and record["lifecycle_state"] == "active"
     ]
     return (
         max(candidates, key=lambda record: (record["recorded_at"], record["id"]))
@@ -159,7 +155,10 @@ def _behavior_question(record: Record, phase: str) -> bool:
 
 
 def has_blocking_behavior_question(records: Sequence[Record], phase: str) -> bool:
-    return any(_behavior_question(record, phase) for record in records)
+    return any(
+        _behavior_question(record, phase)
+        for record in records_of_type(records, "score:continuity-question")
+    )
 
 
 def _source_reviews(records: Sequence[Record], phase: str, step: Step) -> list[Record]:
@@ -189,12 +188,8 @@ def _light_step_fingerprint(step: Step, artifact: Record) -> str:
 
 def _task_plan_fingerprint(phase: str, records: Sequence[Record]) -> str:
     work_items: list[dict[str, JsonValue]] = []
-    for record in records:
-        if (
-            record["record_type"] != "score:work-item"
-            or record["payload"].get("phase") != phase
-            or record["lifecycle_state"] == "superseded"
-        ):
+    for record in records_of_type(records, "score:work-item"):
+        if record["payload"].get("phase") != phase or record["lifecycle_state"] == "superseded":
             continue
         payload = record["payload"]
         item: dict[str, JsonValue] = {"subject": record["subject"]}
@@ -213,12 +208,8 @@ def _task_plan_fingerprint(phase: str, records: Sequence[Record]) -> str:
         item["body"] = record.get("body", "")
         work_items.append(item)
     acceptances: list[dict[str, JsonValue]] = []
-    for record in records:
-        if (
-            record["record_type"] != "score:acceptance"
-            or record["payload"].get("phase") != phase
-            or record["lifecycle_state"] != "active"
-        ):
+    for record in records_of_type(records, "score:acceptance"):
+        if record["payload"].get("phase") != phase or record["lifecycle_state"] != "active":
             continue
         payload = record["payload"]
         item = {"subject": record["subject"]}
