@@ -14,10 +14,13 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.attention import AttentionItem, LandingFact, attention_items
+from orchestra.conductor.effort_status import EffortStatus
+from orchestra.conductor.effort_status import effort_statuses as _effort_statuses
+from orchestra.conductor.landing import place_of_body
 from orchestra.conductor.phase_progress import PhaseProgress
 from orchestra.conductor.requirements import RequirementIndex
 from orchestra.derive import (
-    effort_dormant,
     phase_progress,
     requirement_status,
     task_assignment,
@@ -27,8 +30,10 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
+from orchestra.score.lookups import current_phases
 from orchestra.score.requirements import phase_requirements
 from orchestra.score.workflow_blockers import human_gates
+from orchestra.tools import Merged, Unmerged, branch_state
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -86,6 +91,7 @@ class View:
     show_derived: tuple[str, ...] = ()
     show_assignment: bool = False
     show_phase_derived: bool = False
+    effort_status: bool = False
     phase_derived_section: bool = False
     tally_type: str | None = None
     tally_field: str = "result"
@@ -111,6 +117,27 @@ FINDING_OPEN = Role(
     _state("asserted"),
 )
 
+GATE_ROLES = (
+    Role(
+        "blocking-question",
+        "score:continuity-question",
+        ("blocking", "scope"),
+        gate="blocking-question",
+    ),
+    Role(
+        "needs-human",
+        "tuner:finding",
+        ("claim", "needs"),
+        gate="needs-human",
+    ),
+    Role(
+        "unsigned-manual-check",
+        "tuner:check-run",
+        ("criterion_id", "result", "method", "signed_by"),
+        gate="unsigned-check",
+    ),
+)
+
 HANDOFF = View(
     "handoff",
     "Project Handoff",
@@ -130,24 +157,7 @@ HANDOFF = View(
             ("title", "phase", "kind", "effort"),
             _state("in_progress"),
         ),
-        Role(
-            "blocking-question",
-            "score:continuity-question",
-            ("blocking", "scope"),
-            gate="blocking-question",
-        ),
-        Role(
-            "needs-human",
-            "tuner:finding",
-            ("claim", "needs"),
-            gate="needs-human",
-        ),
-        Role(
-            "unsigned-manual-check",
-            "tuner:check-run",
-            ("criterion_id", "result", "method", "signed_by"),
-            gate="unsigned-check",
-        ),
+        *GATE_ROLES,
         Role(
             "backlog",
             "composer:idea",
@@ -161,6 +171,7 @@ HANDOFF = View(
     ),
     group_by="effort",
     show_assignment=True,
+    effort_status=True,
 )
 
 HOOK_ROLE_NAMES = (
@@ -173,7 +184,7 @@ HOOK_ROLE_NAMES = (
     "unsigned-manual-check",
 )
 HOOK_ROLES = tuple(role for role in HANDOFF.roles if role.name in HOOK_ROLE_NAMES)
-HOOK_VIEW = replace(HANDOFF, roles=HOOK_ROLES)
+HOOK_VIEW = replace(HANDOFF, roles=HOOK_ROLES, effort_status=False)
 
 _WORK_FIELDS = ("title", "phase", "kind", "effort")
 
@@ -587,10 +598,13 @@ def _group_lines(
     budget: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     requirement_index: RequirementIndex | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
+    status: str | None = None,
 ) -> list[str]:
     progress = progress or {}
-    lines = [f"## {name}", ""]
+    lines = [f"## {name}" if status is None else f"## {name} ({status})", ""]
     for role in view.roles:
+        if status is not None and role.gate is not None:
+            continue
         items = sorted(
             group.get(role.name) or [],
             key=lambda r: (r.get("subject", ""), r.get("id", "")),
@@ -619,10 +633,34 @@ def clock() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def dormant_efforts(records: list[Record], now: datetime | None = None) -> list[str]:
-    moment = now or clock()
-    slugs = sorted({r["subject"] for r in records if r["record_type"] == GOAL.record_type})
-    return [slug for slug in slugs if effort_dormant(records, slug, moment)]
+def effort_statuses(records: list[Record], now: datetime | None = None) -> dict[str, EffortStatus]:
+    return _effort_statuses(records, now or clock())
+
+
+def landing_facts(records: list[Record], root: Path) -> dict[str, LandingFact]:
+    facts: dict[str, LandingFact] = {}
+    for subject, phase in current_phases(records).items():
+        if phase["lifecycle_state"] != "done":
+            continue
+        place = place_of_body(subject, phase.get("body") or "", root)
+        if place is None:
+            continue
+        state = branch_state(place.repo, place.branch, place.base)
+        facts[subject] = LandingFact(
+            exists=isinstance(state, (Merged, Unmerged)),
+            merged=isinstance(state, Merged),
+            branch=place.branch,
+            ahead=state.ahead if isinstance(state, Unmerged) else 0,
+        )
+    return facts
+
+
+_ATTENTION_TITLES = {"unsigned-check": "Unsigned Manual Check"}
+
+
+def _attention_lines(item: AttentionItem) -> str:
+    text = f": {item.text}" if item.text else ""
+    return f"- **{item.subject}**{text} _(id: {item.record_id})_"
 
 
 def render_view(
@@ -630,7 +668,8 @@ def render_view(
     records: list[Record],
     *,
     effort: str | None = None,
-    dormant: Collection[str] = (),
+    statuses: Mapping[str, EffortStatus] | None = None,
+    landing: Mapping[str, LandingFact] | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
 ) -> str:
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
@@ -642,11 +681,13 @@ def render_view(
         else None
     )
     tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
-    groups = {
-        name: group
-        for name, group in _group_records(view, records, effort).items()
-        if name not in dormant
-    }
+    groups = _group_records(view, records, effort)
+    labels: Mapping[str, EffortStatus] = {}
+    if view.effort_status:
+        labels = statuses if statuses is not None else effort_statuses(records)
+    for name in labels:
+        if effort in (None, name):
+            groups.setdefault(name, {})
 
     lines = [
         f"# {view.title}",
@@ -667,11 +708,16 @@ def render_view(
             budget=budget,
             requirement_index=requirement_index,
             progress=progress,
+            status=labels.get(name),
         )
+        if name in labels:
+            items = attention_items(records, name, landing or {})
+            for kind in dict.fromkeys(item.kind for item in items):
+                lines.append(f"### {_ATTENTION_TITLES.get(kind, _title(kind))}")
+                lines += [_attention_lines(i) for i in items if i.kind == kind]
+                lines.append("")
     if groups and view.phase_derived_section:
         lines += _phase_section_lines(groups, records, effort, requirement_index, progress or {})
-    if dormant:
-        lines += [f"Dormant: {', '.join(sorted(dormant))}", ""]
     return "\n".join(lines)
 
 
@@ -891,12 +937,8 @@ def load_records(project: Project) -> list[Record]:
     return attach_derived_all(project.records(), project.derived())
 
 
-def live_efforts(records: list[Record]) -> set[str]:
-    return {
-        effort
-        for r in records
-        if r["record_type"] == GOAL.record_type and GOAL.select(r) and (effort := effort_of(r))
-    }
+def _open_efforts(records: list[Record]) -> set[str]:
+    return {name for name, status in effort_statuses(records).items() if status != "closed"}
 
 
 def _position_recorded_at(records: list[Record]) -> dict[str, str]:
@@ -920,7 +962,7 @@ def hook_handoff_sections(
     dormant: Collection[str] = (),
     progress: Mapping[str, PhaseProgress] | None = None,
 ) -> list[tuple[str, str]]:
-    live = live_efforts(records) - set(dormant)
+    live = _open_efforts(records) - set(dormant)
     groups = {
         name: group
         for name, group in _group_records(HOOK_VIEW, records, None).items()
@@ -944,7 +986,7 @@ def hook_handoff_sections(
 def hook_constraints(
     records: list[Record], limit: int, dormant: Collection[str] = ()
 ) -> tuple[list[Record], int]:
-    live = live_efforts(records) - set(dormant)
+    live = _open_efforts(records) - set(dormant)
     role = next(r for r in BRIEF_ROLES if r.name == "constraint")
     matches = sorted(
         (

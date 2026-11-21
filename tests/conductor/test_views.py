@@ -170,8 +170,8 @@ def test_handoff_lists_needs_human_findings_and_unsigned_manual_checks(project):
         },
     )
     text = render(project, "handoff")
-    assert "### Needs Human\n- **risky**: It is risky; human" in text
-    assert "### Unsigned Manual Check\n- **ac-1**: ac-1; pass; manual" in text
+    assert "### Needs Human\n- **risky**: It is risky" in text
+    assert "### Unsigned Manual Check\n- **ac-1**: pass" in text
 
 
 def test_handoff_effort_flag_keeps_only_that_effort(project):

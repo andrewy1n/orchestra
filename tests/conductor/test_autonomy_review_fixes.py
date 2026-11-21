@@ -118,6 +118,7 @@ def test_r12_review_fix_snapshot_dormancy_matches_the_handoff_rule(tmp_path: Pat
         {"statement": "Keep it small.", "applies_to": "all", "effort": "busy"},
     )
     later = datetime.now(timezone.utc) + timedelta(days=10)
-    expected = set(views.dormant_efforts(project.records(), later))
+    statuses = views.effort_statuses(project.records(), later)
+    expected = {name for name, status in statuses.items() if status == "dormant"}
     snapshot = load_snapshot(project, now=later)
     assert {v.effort for v in snapshot.efforts if v.dormant} == expected == {"busy", "quiet"}

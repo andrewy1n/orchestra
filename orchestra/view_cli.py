@@ -17,7 +17,6 @@ class SubparserGroup(Protocol):
 def add_parsers(sub: SubparserGroup) -> None:
     handoff = sub.add_parser("handoff", help="Print the handoff markdown")
     handoff.add_argument("--effort", default=None, help="Limit to one effort slug")
-    handoff.add_argument("--all", action="store_true", help="Show dormant efforts in full")
     view = sub.add_parser("view", help="Print a derived view as markdown")
     view.add_argument("name", choices=("plan", "status", "verification", "roadmap"))
     view.add_argument("--effort", default=None, help="Limit to one effort slug")
@@ -51,16 +50,13 @@ def run(args: argparse.Namespace) -> int:
             text = views.render_brief(args.subject, records)
         else:
             name = "handoff" if args.command == "handoff" else args.name
-            hide = (
-                views.dormant_efforts(records)
-                if args.command == "handoff" and not args.all and not args.effort
-                else []
-            )
+            is_handoff = args.command == "handoff"
             text = views.render_view(
                 views.VIEWS[name],
                 records,
                 effort=args.effort,
-                dormant=hide,
+                statuses=views.effort_statuses(records) if is_handoff else None,
+                landing=views.landing_facts(records, project.project_root) if is_handoff else None,
                 progress=open_phase_progress(project, records),
             )
     except (
