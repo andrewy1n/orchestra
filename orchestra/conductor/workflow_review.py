@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, record_order
 from orchestra.score.workflow_reviews import (
     Authority,
     Step,
@@ -23,9 +23,7 @@ def _latest_review(records: Sequence[Record], phase: str, step: Step) -> Record 
         and record["payload"].get("phase") == phase
         and record["payload"].get("step") == step
     ]
-    return (
-        max(reviews, key=lambda record: (record["recorded_at"], record["id"])) if reviews else None
-    )
+    return max(reviews, key=record_order) if reviews else None
 
 
 def _required_source_reviews(records: Sequence[Record], phase: str, step: Step) -> list[Record]:

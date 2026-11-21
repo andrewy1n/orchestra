@@ -7,7 +7,8 @@ from canon_support import create, make_project, seed_effort
 
 from orchestra import views
 from orchestra.canon.project import Project
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import JsonObject
+from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.metrics.phases import build_phase_rows
 from orchestra.score.workflow_selection import resolve_phase_selection
 
@@ -18,7 +19,6 @@ LANDING: JsonObject = {
     "head_sha": "abc123",
     "result": "success",
 }
-PACKET: JsonObject = {"phase": "p1", "revision": "abc123", "base": "main", "kind": "demo"}
 
 
 @pytest.fixture
@@ -45,48 +45,16 @@ def _phase_state(project: Project, *transitions: str) -> None:
         project.update(phase["id"], transition=transition)
 
 
-def _handoff(project: Project) -> str:
-    return views.render_view(views.VIEWS["handoff"], views.load_records(project))
-
-
-def test_r11_handoff_names_merge_step_for_landing_without_effort(project: Project) -> None:
+def test_r11_handoff_names_a_stage_for_a_phase_without_optional_fields(project: Project) -> None:
     _phase_state(project, "in_progress")
     _finish_tasks(project)
-    create(project, "conductor:landing", "p1", LANDING)
+    records = views.load_records(project)
 
-    text = _handoff(project)
+    text = views.render_view(
+        views.VIEWS["handoff"], records, progress=open_phase_progress(project, records)
+    )
 
-    assert "Awaiting merge: PR 7 (u7)" in text
-
-
-def test_r11_handoff_names_packet_check_for_packet_without_effort(project: Project) -> None:
-    _phase_state(project, "in_progress")
-    _finish_tasks(project)
-    packet: Record = {
-        "id": "rec-packet",
-        "record_type": "conductor:proof-packet",
-        "subject": "p1",
-        "payload": PACKET,
-        "lifecycle_state": "recorded",
-        "relationships": {},
-        "revision": "sha256:x",
-        "recorded_at": "2026-11-08T10:00:00+00:00",
-        "body": "",
-    }
-
-    text = views.render_view(views.VIEWS["handoff"], [*views.load_records(project), packet])
-
-    assert "verify the proof packet covers the phase head." in text
-    assert "confirm landing" not in text
-
-
-def test_r11_handoff_asks_for_packet_when_phase_has_no_optional_fields(project: Project) -> None:
-    _phase_state(project, "in_progress")
-    _finish_tasks(project)
-
-    text = _handoff(project)
-
-    assert "record the proof packet for any code or claim changes" in text
+    assert "stage: spec" in text
 
 
 def test_r11_metrics_row_reports_missing_weight_and_reads_landing_without_effort(

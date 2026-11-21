@@ -1392,10 +1392,17 @@ def _cmd_store_path(args: argparse.Namespace) -> int:
 
 
 def _cmd_store_scan(args: argparse.Namespace) -> int:
-    from orchestra.conductor.record_scan import scan_phase_records
+    from orchestra.composer.records import scan_composer_records
+    from orchestra.conductor.record_scan import ScanFinding, scan_phase_records
+    from orchestra.score.effort import scan_effort_records
 
     try:
-        findings = scan_phase_records(open_store(_cwd(args), read_only=True).records())
+        records = open_store(_cwd(args), read_only=True).records()
+        findings = scan_phase_records(records)
+        findings += [
+            ScanFinding(f.record_id, f.record_type, f.field, f.message)
+            for f in (*scan_effort_records(records), *scan_composer_records(records))
+        ]
     except (OSError, StoreBindingError, StoreError) as exc:
         print(f"orchestra store scan: {exc}", file=sys.stderr)
         return 2

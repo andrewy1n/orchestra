@@ -4,7 +4,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.execution_cost import new_dispatch_markers
-from orchestra.score.lookups import live_work_items
+from orchestra.score.lookups import live_work_items, record_order
 from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 
 
@@ -23,7 +23,7 @@ def redispatch(project: Project, task: str, *, expected_revision: str) -> Record
     ]
     if not candidates:
         raise RedispatchError(f"work-item {task!r} not found")
-    item = max(candidates, key=lambda record: record["recorded_at"])
+    item = max(candidates, key=record_order)
     if item["lifecycle_state"] != "in_progress":
         raise RedispatchError(f"task {task!r} must be in_progress to redispatch")
     payload = record_payload(item)

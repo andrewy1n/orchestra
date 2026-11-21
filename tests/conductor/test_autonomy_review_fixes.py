@@ -64,13 +64,13 @@ def test_r07_review_fix_the_real_grants_still_map(statement: str, level: str) ->
     assert autonomy.classify(statement, "record-diet") == level
 
 
-def test_r07_review_fix_the_effort_comes_from_applies_to_or_the_subject_suffix() -> None:
+def test_r07_review_fix_the_effort_comes_from_the_effort_or_applies_to_field() -> None:
     known = {"alpha", "dashboard-features", "features"}
     plain = _constraint("anything", "missing")
     plain["payload"]["applies_to"] = "alpha"
     assert autonomy.resolve_effort(plain, known) == "alpha"
     suffixed = _constraint("dashboard-autonomy-dashboard-features", "missing")
-    assert autonomy.resolve_effort(suffixed, known) == "dashboard-features"
+    assert autonomy.resolve_effort(suffixed, known) == ""
     assert autonomy.resolve_effort(_constraint("unrelated", "missing"), known) == ""
 
 
@@ -118,6 +118,7 @@ def test_r12_review_fix_snapshot_dormancy_matches_the_handoff_rule(tmp_path: Pat
         {"statement": "Keep it small.", "applies_to": "all", "effort": "busy"},
     )
     later = datetime.now(timezone.utc) + timedelta(days=10)
-    expected = set(views.dormant_efforts(project.records(), later))
+    statuses = views.effort_statuses(project.records(), later)
+    expected = {name for name, status in statuses.items() if status == "dormant"}
     snapshot = load_snapshot(project, now=later)
     assert {v.effort for v in snapshot.efforts if v.dormant} == expected == {"busy", "quiet"}

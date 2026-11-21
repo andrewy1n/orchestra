@@ -2,6 +2,9 @@
   "body": {
     "record": {
       "body": "",
+      "derived": {
+        "write_order": 33
+      },
       "id": "<score:continuity-question:alpha:which backend>",
       "lifecycle_state": "open",
       "payload": {

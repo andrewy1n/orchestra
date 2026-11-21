@@ -45,7 +45,6 @@ class PlanningPayload(TypedDict, total=False):
     invalidated_when: str
     kind: str
     level: str
-    merged_from: list[str]
     method: str
     milestone: str
     missing: str

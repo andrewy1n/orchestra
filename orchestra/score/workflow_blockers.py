@@ -3,15 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.score.lookups import (
+    cached_records,
     check_run_criteria,
     corrected_ids,
-    current_phase,
     current_phases,
     dependencies,
+    latest_record,
     live_work_items,
+    records_of_type,
 )
 
 
@@ -66,14 +67,15 @@ def _is_blocking_question(record: Record) -> bool:
 
 
 def _uncorrected_manual_checks(records: list[Record]) -> list[Record]:
-    corrected = corrected_ids(records)
-    return [
-        record
-        for record in records
-        if record["record_type"] == CHECK_RUN_TYPE
-        and _payload_text(record, "method") == "manual"
-        and record["id"] not in corrected
-    ]
+    def build() -> list[Record]:
+        corrected = corrected_ids(records)
+        return [
+            record
+            for record in records_of_type(records, CHECK_RUN_TYPE)
+            if _payload_text(record, "method") == "manual" and record["id"] not in corrected
+        ]
+
+    return cached_records(records, "manual-checks", build)
 
 
 def is_signed(run: Record) -> bool:
@@ -82,7 +84,7 @@ def is_signed(run: Record) -> bool:
 
 def _latest_among(acceptance: Record, runs: list[Record]) -> Record | None:
     names = check_run_criteria(acceptance)
-    return latest(run for run in runs if _payload_text(run, "criterion_id") in names)
+    return latest_record(run for run in runs if _payload_text(run, "criterion_id") in names)
 
 
 def latest_manual_check(acceptance: Record, records: list[Record]) -> Record | None:
@@ -99,14 +101,16 @@ def unsigned_manual_checks(records: list[Record]) -> list[Record]:
         names = check_run_criteria(acceptance)
         owned = [run for run in runs if _payload_text(run, "criterion_id") in names]
         claimed.update(run["id"] for run in owned)
-        deciding = latest(owned)
+        deciding = latest_record(owned)
         if deciding is not None:
             latest_runs.append(deciding)
     unowned: dict[str, list[Record]] = {}
     for run in runs:
         if run["id"] not in claimed:
             unowned.setdefault(_payload_text(run, "criterion_id") or run["id"], []).append(run)
-    latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
+    latest_runs.extend(
+        run for group in unowned.values() if (run := latest_record(group)) is not None
+    )
     unsigned: list[Record] = []
     for run in latest_runs:
         if not is_signed(run) and run not in unsigned:
@@ -147,11 +151,12 @@ def _dependencies(record: Record) -> set[str]:
     return dependencies
 
 
-def _phase_chain(records: list[Record], phase: Record) -> set[str]:
-    phases = {
+def _phase_chain(phase: Record, phases: dict[str, Record]) -> set[str]:
+    effort = _payload_text(phase, "effort")
+    same_effort = {
         subject: record
-        for subject, record in current_phases(records).items()
-        if _payload_text(record, "effort") == _payload_text(phase, "effort")
+        for subject, record in phases.items()
+        if _payload_text(record, "effort") == effort
     }
     pending = [phase["subject"]]
     found: set[str] = set()
@@ -160,16 +165,16 @@ def _phase_chain(records: list[Record], phase: Record) -> set[str]:
         if subject in found:
             continue
         found.add(subject)
-        current = phases.get(subject)
+        current = same_effort.get(subject)
         if current is None:
             raise WorkflowBlockerError(f"unknown phase dependency {subject!r}")
         for dependency in _dependencies(current):
-            target = current_phase(dependency, records)
+            target = phases.get(dependency)
             if target is None:
                 raise WorkflowBlockerError(
                     f"phase {subject!r} depends on unknown phase {dependency!r}"
                 )
-            if _payload_text(target, "effort") != _payload_text(phase, "effort"):
+            if _payload_text(target, "effort") != effort:
                 raise WorkflowBlockerError(
                     f"phase {subject!r} depends on phase {dependency!r} from another effort"
                 )
@@ -177,14 +182,23 @@ def _phase_chain(records: list[Record], phase: Record) -> set[str]:
     return found
 
 
+def _blocker_candidates(records: list[Record]) -> list[Record]:
+    def build() -> list[Record]:
+        kinds = {"tuner:finding", QUESTION_TYPE}
+        return [record for record in records if record["record_type"] in kinds]
+
+    return cached_records(records, "workflow-blockers", build)
+
+
 def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlocker]:
-    phase = current_phase(phase_slug, records)
+    phases = current_phases(records)
+    phase = phases.get(phase_slug)
     if phase is None:
         raise WorkflowBlockerError(f"phase {phase_slug!r} not found")
     effort = _payload_text(phase, "effort")
-    chain = _phase_chain(records, phase)
+    chain = _phase_chain(phase, phases)
     blockers: list[WorkflowBlocker] = []
-    for record in records:
+    for record in _blocker_candidates(records):
         payload = record["payload"]
         if is_open_finding(record):
             record_effort = _payload_text(record, "effort")
@@ -206,7 +220,7 @@ def phase_blockers(records: list[Record], phase_slug: str) -> list[WorkflowBlock
             continue
         if not isinstance(owned_phase, str):
             raise WorkflowBlockerError(f"blocker {record['subject']!r} has invalid phase")
-        owner = current_phase(owned_phase, records)
+        owner = phases.get(owned_phase)
         if owner is None or _payload_text(owner, "effort") != record_effort:
             raise WorkflowBlockerError(
                 f"blocker {record['subject']!r} has a phase from another effort or no phase"

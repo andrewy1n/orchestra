@@ -7,11 +7,10 @@ from datetime import datetime, timezone
 
 from dashboard.backend import store
 from dashboard.backend.store import ModelError
-from orchestra.canon import record_payload as json_payload
 from orchestra.canon.project import Project
-from orchestra.canon.query import latest
 from orchestra.canon.types import DerivedValues, JsonValue, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.score.lookups import latest_record
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 SOFT_TYPES = frozenset(
@@ -47,31 +46,6 @@ def list_records(
         if record_type in SOFT_TYPES:
             return []
         raise
-
-
-def merge_aliases(goals: list[Record]) -> dict[str, str]:
-    return {
-        old: goal["subject"]
-        for goal in goals
-        for old in record_payload(goal).get("merged_from") or []
-    }
-
-
-def remap_records(records: list[Record], aliases: dict[str, str]) -> list[Record]:
-    rows: list[Record] = []
-    for record in records:
-        if record_payload(record).get("effort") in aliases:
-            moved: Record = {
-                **record,
-                "payload": {
-                    **json_payload(record),
-                    "effort": aliases[record_payload(record)["effort"]],  # pyright: ignore[reportTypedDictNotRequiredAccess]  # Alias membership establishes the field.
-                },
-            }
-            rows.append(moved)
-        else:
-            rows.append(record)
-    return rows
 
 
 def derived_values(record: Record) -> DerivedValues:
@@ -111,7 +85,7 @@ def live_records(records: list[Record]) -> list[Record]:
 
 
 def newest_record(records: list[Record]) -> Record | None:
-    return latest(records)
+    return latest_record(records)
 
 
 def records_by_effort(records: list[Record], key: str = "effort") -> dict[Hashable, list[Record]]:

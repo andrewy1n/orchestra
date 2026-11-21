@@ -296,7 +296,9 @@ def test_failed_supersede_rolls_back_predecessor_and_successor(
     with pytest.raises(StoreError, match="contract successor failure"):
         db_store.project.supersede(old["id"], payload={"title": "new"})
     assert _snapshot(db_store.db) == before
-    assert db_store.project.records() == [old]
+    assert [
+        {k: v for k, v in record.items() if k != "derived"} for record in db_store.project.records()
+    ] == [old]
 
 
 def _write_worker(root: str, worker: int, count: int, barrier, results) -> None:

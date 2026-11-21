@@ -13,6 +13,7 @@ class DerivedValues(TypedDict, total=False):
     wave: int | None
     referenced_by: dict[str, list[str]]
     corrected: bool
+    write_order: int
 
 
 class _OptionalRecord(TypedDict, total=False):

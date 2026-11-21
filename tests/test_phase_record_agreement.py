@@ -15,7 +15,7 @@ from dashboard.backend.snapshot import load_snapshot
 from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close, gate, land, wave, workflow
+from orchestra.conductor import close, gate, land, phase_progress, wave, workflow
 from orchestra.conductor import landing as landing_module
 from orchestra.conductor.github_pr import GitHubCheck
 from orchestra.conductor.landing import (
@@ -26,6 +26,7 @@ from orchestra.conductor.landing import (
     phase_place,
     proof_packet,
 )
+from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.conductor.workflow import preview_run, run_status, start_run
 from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
@@ -296,10 +297,10 @@ def _build(root: Path, *, state: str, landings: bool, packets: bool) -> tuple[Pr
 
     if landings:
         _put_landing(
-            project, LANDING_WINNER, 4, at=_stamp(5), result="success", head=head, effort=None
+            project, LANDING_NUMBERS[3], 3, at=_stamp(5), result="fail", head=head, effort=EFFORT
         )
         _put_landing(
-            project, LANDING_NUMBERS[3], 3, at=_stamp(5), result="fail", head=head, effort=EFFORT
+            project, LANDING_WINNER, 4, at=_stamp(5), result="success", head=head, effort=None
         )
         _put_landing(
             project,
@@ -331,11 +332,11 @@ def _build(root: Path, *, state: str, landings: bool, packets: bool) -> tuple[Pr
             phase=ELSEWHERE,
         )
     if packets:
-        _put_packet(project, PACKET_WINNER, head, at=_stamp(8), effort=None)
+        _put_packet(project, PACKET_CORRECTED, head, at=_stamp(8), effort=EFFORT)
         _put_packet(
             project, PACKET_FIX, head, at=_stamp(8), effort=EFFORT, corrects=[PACKET_CORRECTED]
         )
-        _put_packet(project, PACKET_CORRECTED, head, at=_stamp(8), effort=EFFORT)
+        _put_packet(project, PACKET_WINNER, head, at=_stamp(8), effort=None)
         _put_packet(project, PACKET_OLD, head, at=_stamp(3), effort=EFFORT)
         _put_packet(project, PACKET_OTHER_EFFORT, head, at=_stamp(9), effort=OTHER_EFFORT)
         _put_packet(project, PACKET_ELSEWHERE, head, at=_stamp(9), effort=EFFORT, phase=ELSEWHERE)
@@ -381,13 +382,19 @@ def _install(monkeypatch: pytest.MonkeyPatch, picks: Picks) -> None:
         dashboard_phase,
     ):
         monkeypatch.setattr(module, "current_phase_model", current)
-    for module in (views, wave, dashboard_phase, workflow_selection):
+    for module in (wave, dashboard_phase, workflow_selection, phase_progress):
         monkeypatch.setattr(module, "read_phase", read)
-    for module in (gate, close, wave):
+    for module in (gate, close, wave, phase_progress):
         monkeypatch.setattr(module, "phase_place", place)
-    for module in (views, close, metrics_phases, landing_module):
+    for module in (close, metrics_phases, landing_module):
         monkeypatch.setattr(module, "latest_landing", latest)
-    for module in (views, workflow, land, metrics_phases, dashboard_phase, landing_module):
+    for module in (
+        phase_progress,
+        land,
+        metrics_phases,
+        dashboard_phase,
+        landing_module,
+    ):
         monkeypatch.setattr(module, "proof_packet", packet)
 
 
@@ -411,9 +418,10 @@ def _through_wave(rig: Rig) -> None:
 
 
 def _through_handoff(rig: Rig) -> None:
-    text = views.render_view(views.VIEWS["handoff"], views.load_records(rig.project))
-    for number in re.findall(r"Awaiting merge: PR (\d+)", text):
-        rig.picks.add("landing", LANDING_NUMBERS[int(number)])
+    records = views.load_records(rig.project)
+    views.render_view(
+        views.VIEWS["handoff"], records, progress=open_phase_progress(rig.project, records)
+    )
 
 
 def _through_metrics(rig: Rig) -> None:
@@ -494,7 +502,6 @@ R5_CASES = {
 R7_CASES = {
     "land": Case(_through_land, landings=False),
     "workflow": Case(_through_workflow),
-    "handoff": Case(_through_handoff, landings=False),
     "metrics": Case(_through_metrics, state="done", landings=False),
     "dashboard-detail": Case(_through_phase_detail, landings=False),
 }
@@ -516,7 +523,7 @@ def test_r5_every_reader_selects_the_same_latest_landing_record(
     assert _agreed(picks, R5_CASES, "landing") == {name: {LANDING_WINNER} for name in R5_CASES}
 
 
-def test_r5_dashboard_exposes_no_landing_record(
+def test_r5_dashboard_reads_the_latest_landing_through_the_progress_model_and_exposes_no_record(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     picks = _drive(tmp_path, monkeypatch, {"dashboard": Case(_through_phase_detail)})
@@ -524,7 +531,7 @@ def test_r5_dashboard_exposes_no_landing_record(
 
     shown = repr(load_snapshot(project)) + repr(load_phase_detail(project, EFFORT, PHASE))
 
-    assert picks.of("dashboard", "landing") == set()
+    assert picks.of("dashboard", "landing") == {LANDING_WINNER}
     assert not [record_id for record_id in LANDING_NUMBERS.values() if record_id in shown]
 
 

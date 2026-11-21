@@ -8,27 +8,10 @@ from orchestra.canon.errors import RecordShapeError, StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
-from orchestra.conductor import suite
-from orchestra.conductor.gate import format_missing, gate_terms, missing_terms
-from orchestra.conductor.head_evidence import (
-    EvidenceIndex,
-    acceptance_latest,
-    latest,
-    latest_review,
-    review_at_head,
-    suite_check_runs,
-)
-from orchestra.conductor.landing import (
-    LandingProofError,
-    LandingProofState,
-    ProofPacket,
-    landing_proof_state,
-    parse_landing,
-    proof_packet,
-)
-from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import closing_work_item, live_work_items
-from orchestra.score.lookups import dependencies as item_dependencies
+from orchestra.conductor import phase_progress
+from orchestra.conductor.landing import LandingProofError
+from orchestra.conductor.phase_progress import PhaseProgress, PhaseProgressError, assess
+from orchestra.score.lookups import live_work_items
 from orchestra.score.phase import Phase, current_phase_model
 from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
 from orchestra.score.workflow_reviews import Step, step_readiness
@@ -48,6 +31,16 @@ _STEPS_BY_OPERATION: dict[Operation, tuple[Step, ...]] = {
 _LEGACY_STEPS: dict[Operation, tuple[Step, ...]] = {
     "phase": ("spec", "design", "tasks", "execute", "verify"),
     "deliver": ("tasks", "execute", "verify"),
+}
+
+
+_PREREQUISITES: dict[Step, Step | None] = {
+    "spec": None,
+    "design": "spec",
+    "tasks": "design",
+    "execute": "tasks",
+    "verify": "execute",
+    "land": "verify",
 }
 
 
@@ -237,205 +230,22 @@ def _current_phase(records: list[Record], subject: str) -> Phase:
     return phase
 
 
-def _plan_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    report = analyze_phase(records, phase, stage="plan")
-    errors = [finding.message for finding in report.findings if finding.severity == "error"]
-    if errors:
-        return False, "; ".join(errors)
-    items = live_work_items(phase, records)
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == "score:acceptance"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
-    ]
-    if not items or not acceptances:
-        return False, "analyzed task plan requires work-items and active acceptances"
-    return True, ""
-
-
-def _review_ready(records: list[Record], phase: str, step: Step) -> tuple[bool, str]:
-    readiness = step_readiness(records, phase, step)
-    if readiness.status == "ready":
-        if (
-            step == "tasks"
-            and readiness.review is not None
-            and readiness.review["payload"].get("authority") == "task-plan-policy"
-        ):
-            effort_subject = _current_phase(records, phase).effort
-            effort = next(
-                (
-                    record
-                    for record in records
-                    if record["record_type"] == "score:effort"
-                    and record["subject"] == effort_subject
-                    and record["lifecycle_state"] != "superseded"
-                ),
-                None,
-            )
-            if effort is None:
-                return False, f"required effort {effort_subject!r} could not be read"
-            if effort["payload"].get("autonomy") not in ("auto-plan", "auto-phases"):
-                return False, "task-plan policy does not permit this review"
-        return True, ""
-    return False, readiness.reason or f"{step} review is {readiness.status}"
-
-
-def _execution_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    items = live_work_items(phase, records)
-    if not items:
-        return False, "execution requires a nonempty task plan"
-    reports = [
-        record for record in records if record["record_type"] == "conductor:execution-report"
-    ]
-    for item in items:
-        if item["lifecycle_state"] != "done":
-            return False, f"task {item['subject']!r} is not done"
-        own = [
-            report for report in reports if report["payload"].get("work_item") == item["subject"]
-        ]
-        if not own:
-            return False, f"task {item['subject']!r} has no execution report"
-        report = max(own, key=lambda row: (row["recorded_at"], row["id"]))
-        if report["payload"].get("result") != "pass" or report["payload"].get("verdict") != "pass":
-            result = report["payload"].get("result")
-            verdict = report["payload"].get("verdict")
-            return False, (
-                f"task {item['subject']!r} execution report result={result!r}, verdict={verdict!r}"
-            )
-    return True, ""
-
-
-def _requires_integration_report(records: list[Record], phase: str) -> bool:
-    items = {item["subject"]: item for item in live_work_items(phase, records)}
-    closing = closing_work_item(phase, records)
-    dependencies = {
-        subject: set(item_dependencies(item)) & items.keys() for subject, item in items.items()
-    }
-    implementation_tasks = set(items) - ({closing["subject"]} if closing is not None else set())
-    completed: set[str] = set()
-    while implementation_tasks - completed:
-        wave = {
-            subject
-            for subject in implementation_tasks - completed
-            if dependencies[subject] <= completed
-        }
-        if not wave:
-            return True
-        if len(wave) > 1:
-            return True
-        completed.update(wave)
-    return False
-
-
-def _verification_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    current = _current_phase(records, phase)
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == "score:acceptance"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
-    ]
-    if not acceptances:
-        return False, "phase has no active acceptances"
-    index = EvidenceIndex(records)
-    for acceptance in acceptances:
-        answer = acceptance_latest(index, acceptance, None)
-        if answer.run is None:
-            return False, f"acceptance {acceptance['subject']!r} has no check-run"
-        if not answer.holds:
-            return False, f"acceptance {acceptance['subject']!r} check-run is not pass"
-    if _requires_integration_report(records, phase):
-        effort = current.effort
-        integrations = [
-            record
-            for record in records
-            if record["record_type"] == "conductor:integration-report"
-            and record["payload"].get("phase") == phase
-            and record["payload"].get("effort") == effort
-        ]
-        if not integrations:
-            return False, "phase integration report is missing"
-        latest = max(integrations, key=lambda row: (row["recorded_at"], row["id"]))
-        if latest["payload"].get("result") != "pass" or not _text(latest, "revision"):
-            return False, "phase integration report is not passing"
-    return True, ""
-
-
-def _verification_gate(project: Project, records: list[Record], phase: str) -> tuple[bool, str]:
-    ready, reason = _verification_ready(records, phase)
-    if not ready:
-        return False, reason
-    current = _current_phase(records, phase)
-    if current.record["lifecycle_state"] == "done":
-        return True, ""
-    if not parse_landing(current.body).present:
-        return False, "phase is not closed"
+def _progress(project: Project, records: list[Record], phase: Phase) -> PhaseProgress:
     try:
-        missing = missing_terms(
-            gate_terms(project.project_root, phase, store_dir=project.store_path)
-        )
-    except (LookupError, RecordShapeError) as exc:
+        facts = phase_progress.phase_facts(project, records, phase)
+    except (
+        LandingProofError,
+        LookupError,
+        PhaseProgressError,
+        RecordShapeError,
+        WorkflowBlockerError,
+    ) as exc:
         raise WorkflowRunError(str(exc)) from exc
-    if missing:
-        return False, "phase gate is not met: " + "; ".join(format_missing(missing))
-    if _proof_packet(records, current) is None:
-        return False, "phase has no proof packet"
-    return True, ""
+    return assess(replace(facts, gates=(), prerequisites=()))
 
 
-_LANDING_REASONS: dict[LandingProofState, str] = {
-    "landed": "",
-    "no-landing": "phase has no landing record",
-    "failed": "latest landing did not succeed",
-    "no-packet": "phase has no proof packet",
-    "not-at-head": "landing is not at the proof packet head",
-}
-
-
-def _proof_packet(
-    records: list[Record], phase: Phase, head: str | None = None
-) -> ProofPacket | None:
-    try:
-        return proof_packet(records, phase, head)
-    except RecordShapeError as exc:
-        raise WorkflowRunError(str(exc)) from exc
-
-
-def _landing_proof_state(records: list[Record], phase: Phase) -> LandingProofState:
-    try:
-        return landing_proof_state(records, phase)
-    except (LandingProofError, RecordShapeError) as exc:
-        raise WorkflowRunError(str(exc)) from exc
-
-
-def _landing_ready(records: list[Record], phase: str) -> tuple[bool, str]:
-    current = _current_phase(records, phase)
-    if current.record["lifecycle_state"] == "done":
-        return True, ""
-    if not parse_landing(current.body).present:
-        return True, ""
-    state = _landing_proof_state(records, current)
-    return state == "landed", _LANDING_REASONS[state]
-
-
-def _step_completion(
-    project: Project, records: list[Record], phase: str, step: Step
-) -> tuple[bool, str]:
-    if step in ("spec", "design", "tasks"):
-        ready, reason = _review_ready(records, phase, step)
-        if not ready:
-            return False, reason
-        if step == "tasks":
-            return _plan_ready(records, phase)
-        return True, ""
-    if step == "execute":
-        return _execution_ready(records, phase)
-    if step == "land":
-        return _landing_ready(records, phase)
-    return _verification_gate(project, records, phase)
+def _stage_done(progress: PhaseProgress, step: Step) -> bool:
+    return any(state.stage == step and state.status == "done" for state in progress.stages)
 
 
 def _action_for(
@@ -443,6 +253,7 @@ def _action_for(
     records: list[Record],
     phase: Phase,
     step: Step,
+    progress: PhaseProgress,
     *,
     prepare: bool = False,
     selected_phases: set[str] | None = None,
@@ -474,21 +285,14 @@ def _action_for(
             return RunAction(
                 subject, step, "blocked", f"prerequisite phase {dependency!r} is not done"
             )
-    prerequisites: dict[Step, Step | None] = {
-        "spec": None,
-        "design": "spec",
-        "tasks": "design",
-        "execute": "tasks",
-        "verify": "execute",
-        "land": "verify",
-    }
-    prerequisite = prerequisites[step]
-    if prerequisite is not None:
-        complete, reason = _step_completion(project, records, subject, prerequisite)
-        if not complete:
-            return RunAction(
-                subject, step, "blocked", f"{prerequisite} prerequisite is incomplete: {reason}"
-            )
+    prerequisite = _PREREQUISITES[step]
+    if prerequisite is not None and not _stage_done(progress, prerequisite):
+        return RunAction(
+            subject,
+            step,
+            "blocked",
+            f"{progress.current or prerequisite} prerequisite is incomplete: {progress.reason}",
+        )
     if step == "spec":
         readiness = step_readiness(records, subject, step)
         if readiness.status == "blocked":
@@ -496,70 +300,32 @@ def _action_for(
                 subject, step, "blocked", readiness.reason or "specification is blocked"
             )
         return RunAction(subject, step, "ready")
-    if step == "design":
-        return RunAction(subject, step, "ready")
-    if step == "tasks":
-        return RunAction(subject, step, "ready")
-    if step == "execute":
-        ready, reason = _execution_ready(records, subject)
-        if not ready and "execution report result=" in reason:
-            return RunAction(subject, step, "blocked", reason)
-        return RunAction(subject, step, "ready", reason if not ready else "")
+    if step == "execute" and progress.current == "execute":
+        if "execution report result=" in progress.reason:
+            return RunAction(subject, step, "blocked", progress.reason)
+        return RunAction(subject, step, "ready", progress.reason)
     return RunAction(subject, step, "ready")
 
 
-def _text_of(record: Record | None, field: str) -> str:
-    return _text(record, field) if record is not None else ""
-
-
 def _verify_stage(project: Project, records: list[Record], phase: str) -> str | None:
-    current = _current_phase(records, phase)
-    effort = current.effort
-    acceptances = [
-        record
-        for record in records
-        if record["record_type"] == "score:acceptance"
-        and record["payload"].get("phase") == phase
-        and record["lifecycle_state"] == "active"
-    ]
-    index = EvidenceIndex(records)
-    if not acceptances or not all(
-        acceptance_latest(index, acceptance, None).holds for acceptance in acceptances
-    ):
-        return "analyze"
-    review = latest_review(index, phase, effort)
-    head = _text_of(review, "revision")
-    check_runs = [record for record in records if record["record_type"] == "tuner:check-run"]
-    policy = suite.load_suite_policy(project.project_root)
-    latest_suite = latest(suite_check_runs(index, phase))
-    suite_head = head or _text_of(latest_suite, "revision")
-    if suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=suite_head):
-        return "suite"
-    if not review_at_head(index, phase, effort, head).holds:
-        return "reviewer"
-    if not _verification_ready(records, phase)[0]:
-        return "reviewer"
-    if missing_terms(gate_terms(project.project_root, phase, store_dir=project.store_path)):
-        return "gate"
-    if _proof_packet(records, current, head) is None:
-        return "proof"
-    return None
+    progress = _progress(project, records, _current_phase(records, phase))
+    if progress.current != "verify":
+        return None
+    return "reviewer" if progress.reason == "integration-report" else progress.reason
 
 
 def _land_stage(project: Project, records: list[Record], phase: str) -> str | None:
-    current = _current_phase(records, phase)
-    if current.record["lifecycle_state"] == "done":
-        return None
-    if not parse_landing(current.body).present:
-        return None
-    match _landing_proof_state(records, current):
-        case "landed":
-            return "close"
-        case "failed":
+    progress = _progress(project, records, _current_phase(records, phase))
+    match progress.current:
+        case "land":
+            if progress.reason != "failed-landing":
+                return "land"
             config = load_project_config(project.project_root)
             return "repair-ci" if config.land_adapter == "github-pr" else "land"
-        case "no-landing" | "no-packet" | "not-at-head":
-            return "land"
+        case "close":
+            return "close"
+        case _:
+            return None
 
 
 def step_stage(project: Project, records: list[Record], phase: str, step: str) -> str | None:
@@ -584,7 +350,9 @@ def _with_brief(project: Project, action: RunAction) -> RunAction:
 
 def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
     records = project.records()
-    return _with_brief(project, _action_for(project, records, _current_phase(records, phase), step))
+    current = _current_phase(records, phase)
+    action = _action_for(project, records, current, step, _progress(project, records, current))
+    return _with_brief(project, action)
 
 
 def _all_actions(
@@ -595,13 +363,11 @@ def _all_actions(
     actions: list[RunAction] = []
     prepare_barrier = _text(run, "operation") == "prepare"
     selected_phases = {phase.subject for phase in phases}
-    specs_complete = all(
-        _step_completion(project, records, phase.subject, "spec")[0] for phase in phases
-    )
+    progress = {phase.subject: _progress(project, records, phase) for phase in phases}
+    specs_complete = all(_stage_done(item, "spec") for item in progress.values())
     for phase in phases:
         for step in steps:
-            complete, _ = _step_completion(project, records, phase.subject, step)
-            if complete:
+            if _stage_done(progress[phase.subject], step):
                 continue
             if prepare_barrier and step == "design" and not specs_complete:
                 break
@@ -610,6 +376,7 @@ def _all_actions(
                 records,
                 phase,
                 step,
+                progress[phase.subject],
                 prepare=prepare_barrier,
                 selected_phases=selected_phases,
             )

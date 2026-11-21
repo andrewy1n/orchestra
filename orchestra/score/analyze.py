@@ -13,7 +13,12 @@ from orchestra.score.executor import (
     ExecutorWaveError,
     wave_executor,
 )
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phase, dependencies
+from orchestra.score.lookups import (
+    LIVE_WORK_ITEM_STATES,
+    current_phase,
+    dependencies,
+    records_of_type,
+)
 from orchestra.score.oracle_policy import resolve_oracle_policy
 from orchestra.score.plan_shape import plan_shape_warnings
 from orchestra.score.requirements import (
@@ -117,10 +122,8 @@ def analyze_phase(
     def of_type(record_type: str, *states: str) -> list[RecordData]:
         return [
             r
-            for r in records
-            if r.get("record_type") == record_type
-            and _payload(r).get("phase") == phase
-            and r.get("lifecycle_state") in states
+            for r in records_of_type(records, record_type)
+            if _payload(r).get("phase") == phase and r.get("lifecycle_state") in states
         ]
 
     report = Report(phase=phase, stage=stage)

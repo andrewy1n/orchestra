@@ -6,11 +6,11 @@ from pathlib import Path
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.landing import LANDING, PROOF_PACKET, latest_landing, proof_packet
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
+from orchestra.score.lookups import latest_record
 from orchestra.score.phase import Phase, current_phase_model
 
 CHECK_RUN = "tuner:check-run"
@@ -49,7 +49,9 @@ def _landing(records: list[Record], phase: Phase, members: set[str]) -> tuple[st
     packet = proof_packet(records, phase)
     if packet is not None:
         return packet.recorded_at, PROOF_PACKET
-    check = latest(r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members)
+    check = latest_record(
+        r for r in records if r["record_type"] == CHECK_RUN and r["id"] in members
+    )
     if check is not None:
         return check["recorded_at"], CHECK_RUN
     return None

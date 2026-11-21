@@ -81,13 +81,14 @@
             "latest_check": null,
             "next": "",
             "phase": "p-work",
-            "status": "unassessed",
+            "status": "unverified",
             "tasks": 1,
             "tasks_done": 0,
             "text": ""
           }
         ],
-        "stage": "execute",
+        "stage": "spec",
+        "stage_reason": "human gate: alpha, human-finding",
         "weight": "full"
       },
       "milestone": "m-first",

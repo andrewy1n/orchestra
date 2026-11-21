@@ -7,7 +7,8 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.check import run_check
-from orchestra.conductor.requirements import requirement_status
+from orchestra.conductor.requirements import requirement_status, verified_requirements
+from orchestra.score.lookups import record_order
 from orchestra.tools import Git, ToolError
 
 
@@ -34,7 +35,7 @@ def _manual_check(project: Project, acceptance: Record, revision: str) -> Record
         and record["payload"].get("method") == "manual"
         and record["payload"].get("revision") == revision
     ]
-    return max(matches, key=lambda record: record["recorded_at"]) if matches else None
+    return max(matches, key=record_order) if matches else None
 
 
 def _source_state(tree: Path) -> tuple[str, str]:
@@ -114,7 +115,4 @@ def run_closing_checks(project: Project, landed: land_task.LandedTask) -> Verifi
                 "source HEAD or working tree state changed during closing verification",
             )
     statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
-    verified = frozenset(
-        requirement for requirement, status in statuses.items() if status.status == "verified"
-    )
-    return VerificationRun(tuple(checks), verified)
+    return VerificationRun(tuple(checks), verified_requirements(statuses))

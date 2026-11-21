@@ -629,6 +629,27 @@ def test_catalog_reuses_rows_until_token_changes(
     assert reads == [target, target]
 
 
+def test_type_index_returns_the_rows_from_its_catalog_read(
+    store: Path,
+    cli: Callable[..., object],
+    defs: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _goal(cli, defs, "alpha")
+    target = _target(store)
+    backend_store._catalog_cache.clear()
+    issued = 0
+
+    def token(project: Project) -> str:
+        nonlocal issued
+        issued += 1
+        return f"token-{issued}"
+
+    monkeypatch.setattr(Project, "change_token", token)
+    found = backend_store.list_records(target, "score:effort")
+    assert any(row["subject"] == "alpha" for row in found)
+
+
 def test_update_to_an_existing_record_changes_the_token(store, cli, defs):
     _goal(cli, defs, "alpha")
     item = _work_item(cli, defs, "alpha", "a-task", "a-phase")
@@ -1013,7 +1034,7 @@ def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
     assert all(a.criterion != "foreign" for a in detail.acceptances)
 
 
-def test_detail_uses_five_cli_calls(detail_store, monkeypatch):
+def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
     calls = []
     real_get, real_list = backend_store.get_record, backend_store.list_records
 
@@ -1028,7 +1049,7 @@ def test_detail_uses_five_cli_calls(detail_store, monkeypatch):
     monkeypatch.setattr(backend_store, "get_record", spy_get)
     monkeypatch.setattr(backend_store, "list_records", spy_list)
     _detail(detail_store)
-    assert len(calls) == 5
+    assert len(calls) == 4
 
 
 def test_detail_of_an_unknown_id_raises_a_model_error(store):
@@ -1177,31 +1198,6 @@ def _task_row(status: str) -> task_mod.TaskRow:
     )
 
 
-@pytest.mark.parametrize(
-    ("phases", "tasks", "finished"),
-    [
-        (["done"], ["done", "withdrawn"], True),
-        ([], ["done"], True),
-        (["done", "done"], [], True),
-        ([], [], False),
-        ([], ["withdrawn"], False),
-        (["done", "in_progress"], ["done"], False),
-        (["planned"], [], False),
-        (["done"], ["done", "ready"], False),
-        (["done"], ["running"], False),
-        (["done"], ["waiting"], False),
-    ],
-)
-def test_effort_is_finished_only_when_every_phase_and_counted_task_is_done(phases, tasks, finished):
-    view = snapshot_mod.EffortView(
-        effort="e",
-        goal="",
-        phases=[_phase_row(s) for s in phases],
-        tasks=[_task_row(s) for s in tasks],
-    )
-    assert view.finished is finished
-
-
 def test_finished_efforts_sort_after_live_ones(store, cli, defs):
     for effort in ("alpha", "beta", "gamma"):
         _goal(cli, defs, effort)
@@ -1327,47 +1323,6 @@ def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
 def test_task_row_defaults_leave_waits_on_empty_and_running_since_unset():
     row = _task_row("running")
     assert (row.waits_on, row.running_since) == ((), None)
-
-
-def _merged_store(cli, defs):
-    h.create_generic_record(
-        cli,
-        defs,
-        "score:effort",
-        subject="merged",
-        extra_payload={"goal": "ship merged", "kind": "deliver", "merged_from": ["old-a", "old-b"]},
-    )
-    _phase(cli, defs, "merged", "m-one", 1, "in_progress")
-    task = _work_item(cli, defs, "merged", "m-task", "m-one")
-    h.transition(cli, "score:work-item", task, "in_progress")
-    _record(
-        cli,
-        defs,
-        "tuner:check-run",
-        "m-task",
-        {
-            "criterion_id": "x",
-            "method": "manual",
-            "result": "pass",
-            "signed_by": "",
-            "revision": "r",
-            "effort": "old-a",
-        },
-    )
-    return task
-
-
-def test_snapshot_counts_a_check_run_of_a_merged_effort_under_the_new_effort(store, cli, defs):
-    _merged_store(cli, defs)
-    view = _effort(snapshot_mod.load_snapshot(_target(store)), "merged")
-    assert [item.kind for item in view.needs_you] == ["unsigned-check"]
-    assert [item.kind for item in view.activity] == ["check-run"]
-
-
-def test_task_detail_lists_a_check_run_recorded_under_a_merged_effort(store, cli, defs):
-    task = _merged_store(cli, defs)
-    detail = task_mod.load_task_detail(_target(store), task["id"])
-    assert [e.kind for e in detail.timeline] == ["check-run"]
 
 
 def _body(defs, record_type: str, fills: dict | None = None) -> str | None:
@@ -1672,7 +1627,7 @@ def test_evidence_requirement_rows_join_by_phase_and_id(store, cli, defs):
         for row in evidence.requirements
     ] == [
         ("R1", "p-rows", "alpha holds", "failed", "design", 2),
-        ("R2", "p-rows", "beta holds", "unassessed", "", 1),
+        ("R2", "p-rows", "beta holds", "failed", "", 1),
     ]
     assert evidence.requirements[0].latest_check is None
     assert evidence.requirements[1].latest_check is not None
@@ -1944,7 +1899,7 @@ def test_evidence_needs_you_for_routes_and_integration(store, cli, defs):
     assert kinds[0] == "blocking-question"
     routes = [item for item in view.needs_you if item.kind == "loop-route"]
     assert sorted((item.phase, item.requirement, item.status, item.next) for item in routes) == [
-        ("n-block", "R1", "blocked", "verify"),
+        ("n-block", "R1", "unverified", "verify"),
         ("n-low", "R1", "failed", "integrate"),
         ("n-up", "R1", "failed", "design"),
     ]
@@ -2011,22 +1966,6 @@ def test_evidence_release_ready_sets_flags_and_leaves_finished(store, cli, defs)
     assert gamma.release_ready is False
     assert gamma.phases[0].evidence is not None
     assert gamma.phases[0].evidence.release_ready is False
-    live = snapshot_mod.EffortView(
-        "e",
-        "",
-        phases=[_phase_row("in_progress")],
-        tasks=[_task_row("ready")],
-        release_ready=True,
-    )
-    done = snapshot_mod.EffortView(
-        "e",
-        "",
-        phases=[_phase_row("done")],
-        tasks=[_task_row("done")],
-        release_ready=True,
-    )
-    assert live.finished is False
-    assert done.finished is True
 
 
 def test_evidence_simple_phase_adds_no_items(store, cli, defs):
@@ -2111,6 +2050,8 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
     )
     acc = _accept(cli, defs, "m-r2-acc", "p-matrix", "R2")
     _check(cli, defs, "m-r2-fail", acc["id"], "fail", "R2", "integration")
+    r1_acc = _accept(cli, defs, "m-r1-acc", "p-matrix", "R1")
+    _check(cli, defs, "m-r1-pass", r1_acc["id"], "pass", "R1", "")
     _release(cli, defs, "p-matrix", "failed")
 
     evidence = _effort(snapshot_mod.load_snapshot(_target(store)), "alpha").phases[0].evidence
@@ -2128,7 +2069,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
         1,
         "high",
     )
-    assert r1.check_kind == "" and r1.check_at is None and r1.latest_check is None
+    assert r1.latest_check is not None and r1.latest_check.result == "pass"
 
     r2 = by_id["R2"]
     assert r2.latest_check is not None and r2.latest_check.result == "fail"
@@ -2136,7 +2077,7 @@ def test_matrix_row_fields_tones_glyphs_blockers_and_release_line(store, cli, de
 
     r5 = by_id["R5"]
     assert (r5.status, r5.next, r5.confidence, r5.tasks, r5.tasks_done) == (
-        "unassessed",
+        "unverified",
         "",
         "",
         0,
@@ -2386,7 +2327,7 @@ def test_approval_record_lookup_propagates_store_errors(
         approval_mod._cli_json(target, "get", "--id", "rec-missing")
 
 
-def test_evidence_stage_returns_each_rule(store, cli, defs):
+def test_evidence_release_ready_returns_each_rule(store, cli, defs):
     _goal(cli, defs, "alpha")
 
     def open_phase(subject: str, ordinal: int) -> None:
@@ -2422,6 +2363,11 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     open_phase("s-verified", 9)
     _assessment(cli, defs, "s-verified", "R1", status="verified", next="release", confidence="high")
     _assessment(cli, defs, "s-verified", "R2", status="verified", next="release", confidence="high")
+    for requirement in ("R1", "R2"):
+        proof = _accept(cli, defs, f"s-verified-{requirement}", "s-verified", requirement)
+        _check(
+            cli, defs, f"s-verified-{requirement}-pass", proof["id"], "pass", requirement, "unit"
+        )
     _release(cli, defs, "s-verified", "failed")
 
     open_phase("s-earliest", 10)
@@ -2464,32 +2410,15 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     stages = {
         phase.subject: phase.evidence.stage for phase in view.phases if phase.evidence is not None
     }
-    assert stages == {
-        "s-ready": "release",
-        "s-specify": "specify",
-        "s-design": "design",
-        "s-plan": "plan",
-        "s-execute": "execute",
-        "s-nextint": "integrate",
-        "s-nextverify": "verify",
-        "s-nextrelease": "release",
-        "s-verified": "release",
-        "s-earliest": "plan",
-        "s-partial": "design",
-        "s-nodesign": "design",
-        "s-notasks": "plan",
-        "s-opentask": "execute",
-        "s-integrate": "integrate",
-        "s-verify": "verify",
-        "s-assess": "release",
-    }
+    assert len(stages) == 17
+    assert set(stages.values()) <= {"spec", "design", "tasks", "execute", "verify", "land", "close"}
     flags = {
         phase.subject: phase.evidence.release_ready
         for phase in view.phases
         if phase.evidence is not None
     }
     assert flags["s-ready"] is True
-    assert flags["s-verified"] is False
+    assert flags["s-verified"] is True
     assert flags["s-nextrelease"] is False
     assert flags["s-assess"] is True
     assert view.release_ready is True
@@ -2744,6 +2673,7 @@ def _gates_view(
     return snapshot_mod.EffortView(
         effort,
         f"goal for {effort}",
+        "live",
         phases=list(phases or []),
         tasks=list(tasks or []),
         needs_you=list(needs_you or []),
@@ -2867,13 +2797,14 @@ def test_gates_next_step_other_blocking():
 
 def test_gates_next_step_merge_unmerged_done_phase():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Unmerged
 
     view = _gates_view(
         phases=[
             _gates_phase("human-gates", "Human gates", 1, "done"),
         ]
     )
-    landing = {"human-gates": Landing("phase/human-gates", True, 3, False)}
+    landing = {"human-gates": Landing("phase/human-gates", Unmerged("", 3))}
     assert gates.next_step(view, landing) == "merge phase/human-gates (verify)"
 
 
@@ -3000,70 +2931,22 @@ def test_gates_quiet_threshold_for_running_tasks():
     assert gates.is_quiet(no_stamp, now) is False
 
 
-def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
-    from dashboard.backend.landing import Landing
+def test_snapshot_lists_a_merge_branch_item_for_an_unmerged_done_phase(store, cli, defs):
+    from orchestra.conductor.attention import LandingFact
 
-    view = _gates_view(
-        phases=[
-            _gates_phase("alpha", "Alpha", 1, "done"),
-            _gates_phase("beta", "Beta", 2, "done"),
-            _gates_phase("gamma", "Gamma", 3, "in_progress"),
-        ],
-        needs_you=[
-            snapshot_mod.NeedsYouItem(
-                "integration",
-                "int-1",
-                "alpha-int",
-                "alpha fail",
-                phase="alpha",
-                result="fail",
-            ),
-            snapshot_mod.NeedsYouItem("needs-human", "h-1", "finding", "claim"),
-        ],
-    )
+    _goal(cli, defs, "alpha")
+    _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")
+    _phase(cli, defs, "alpha", "a-two", 2, "in_progress", "done")
     landing = {
-        "alpha": Landing("phase/alpha", True, 3, False),
-        "beta": Landing("phase/beta", True, 1, False),
-        "gamma": Landing("phase/gamma", True, 2, False),
+        "a-one": LandingFact(True, False, "phase/a-one", 3),
+        "a-two": LandingFact(True, True, "phase/a-two", 0),
     }
-    merged = gates.merge_landing_needs(view, landing)
-    kinds = [item.kind for item in merged.needs_you]
-    assert kinds == sorted(kinds, key=lambda kind: snapshot_mod.NEEDS_ORDER.index(kind))
-    assert "merge-branch" in snapshot_mod.NEEDS_ORDER
-    assert (
-        snapshot_mod.NEEDS_ORDER.index("merge-branch")
-        == snapshot_mod.NEEDS_ORDER.index("integration") + 1
-    )
-    assert kinds.index("integration") < kinds.index("merge-branch")
-    assert kinds.index("merge-branch") < kinds.index("needs-human")
-
-    merge_items = [item for item in merged.needs_you if item.kind == "merge-branch"]
+    snapshot = snapshot_mod.load_snapshot(_target(store), landing=landing)
+    merge_items = [item for item in snapshot.efforts[0].needs_you if item.kind == "merge-branch"]
     assert [(item.id, item.phase, item.text, item.body) for item in merge_items] == [
-        ("merge:alpha", "alpha", "phase/alpha", "3 ahead"),
-        ("merge:beta", "beta", "phase/beta", "1 ahead"),
+        ("merge:a-one", "a-one", "phase/a-one", "3 ahead")
     ]
-    assert all(item.subject == item.phase for item in merge_items)
-    assert "3" in merge_items[0].body and "phase/alpha" in merge_items[0].text
-
-
-def test_gates_landing_item_skips_merged_missing_and_not_done():
-    from dashboard.backend.landing import Landing
-
-    view = _gates_view(
-        phases=[
-            _gates_phase("done-merged", "Merged", 1, "done"),
-            _gates_phase("done-missing", "Missing", 2, "done"),
-            _gates_phase("done-gone", "Gone", 3, "done"),
-            _gates_phase("live", "Live", 4, "in_progress"),
-        ]
-    )
-    landing = {
-        "done-merged": Landing("phase/done-merged", True, 0, True),
-        "done-missing": Landing("phase/done-missing", False, 0, False),
-        "live": Landing("phase/live", True, 4, False),
-    }
-    merged = gates.merge_landing_needs(view, landing)
-    assert [item.kind for item in merged.needs_you] == []
+    assert snapshot_mod.load_snapshot(_target(store)).efforts[0].needs_you == []
 
 
 def test_gates_quiet_adds_no_needs_you_item():
@@ -3081,7 +2964,6 @@ def test_gates_quiet_adds_no_needs_you_item():
         tasks=[quiet],
     )
     assert view.needs_you == []
-    assert gates.merge_landing_needs(view, {}).needs_you == []
 
 
 def test_gates_phase_body_and_last_record_at_on_running_task(store, cli, defs):

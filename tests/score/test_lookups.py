@@ -9,12 +9,15 @@ from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
+    PreparedRecordsError,
     acceptances_of,
     closing_work_item,
     closing_work_items,
     current_phase,
     dependencies,
     live_work_items,
+    prepare_records,
+    records_of_type,
 )
 
 
@@ -348,3 +351,12 @@ def test_r8_closing_work_items_is_empty_without_a_closing_item(project: Project)
     _item(project, "two")
 
     assert closing_work_items("feature", _read(project, "score:work-item")) == []
+
+
+def test_prepared_read_accepts_the_same_ids_and_rejects_another_sequence(project: Project) -> None:
+    _phase(project, "feature")
+    records = project.records()
+    with prepare_records(records):
+        assert records_of_type(list(records), "score:phase")
+        with pytest.raises(PreparedRecordsError):
+            records_of_type(records[:1], "score:phase")

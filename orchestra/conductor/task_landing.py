@@ -7,7 +7,7 @@ from pathlib import Path
 
 from orchestra.canon.project import Project
 from orchestra.conductor import land_task, task_close
-from orchestra.conductor.requirements import requirement_status
+from orchestra.conductor.requirements import requirement_status, verified_requirements
 
 
 @dataclass(frozen=True)
@@ -19,5 +19,5 @@ class TaskLanding:
 def land_and_close(project: Project, repo: Path, task: str, evidence_path: Path) -> TaskLanding:
     landed = land_task.land(project, repo, task, evidence_path)
     statuses = requirement_status(project.records(), landed.phase, head=landed.revision)
-    verified = frozenset(r for r, s in statuses.items() if s.status == "verified")
-    return TaskLanding(landed, task_close.close(project, landed, verified))
+    closure = task_close.close(project, landed, verified_requirements(statuses))
+    return TaskLanding(landed, closure)

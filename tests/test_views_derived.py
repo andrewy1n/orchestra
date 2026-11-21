@@ -36,7 +36,16 @@ def _spec(phase: str, *requirements: str) -> Record:
 
 def _acceptance(subject: str, phase: str, requirement: str) -> Record:
     return _record(
-        "score:acceptance", subject, {"phase": phase, "requirement": requirement}, "active"
+        "score:acceptance",
+        subject,
+        {
+            "phase": phase,
+            "effort": "e",
+            "requirement": requirement,
+            "method": "check",
+            "verify_command": "true",
+        },
+        "active",
     )
 
 
@@ -44,7 +53,12 @@ def _check_run(acceptance: Record, result: str) -> Record:
     return _record(
         "tuner:check-run",
         acceptance["subject"],
-        {"criterion_id": acceptance["id"], "result": result, "revision": "abc"},
+        {
+            "criterion_id": acceptance["id"],
+            "result": result,
+            "revision": "abc",
+            "signed_by": "",
+        },
     )
 
 
@@ -98,14 +112,6 @@ def test_views_show_derived_verified_status():
     out = _status(records)
     assert "- **R1**: verified" in out
     assert "- **R2**: failed" in out
-    assert "- not ready" in out
-
-
-def test_views_show_release_ready_when_every_requirement_verified():
-    a1 = _acceptance("a1", "p", "R1")
-    records = [_spec("p", "R1"), a1, _check_run(a1, "pass"), _work_item("t1", "p", "done")]
-    out = _status(records)
-    assert "### Release\n- ready" in out
 
 
 def test_views_written_non_verified_assessment_wins_over_derivation():
@@ -136,7 +142,6 @@ def test_verification_view_shows_derived_status():
     out = render_view(VERIFICATION, records)
     assert "- **R1**: verified" in out
     assert "- **R2**: failed" in out
-    assert "### Release\n- not ready" in out
 
 
 def test_views_show_written_assessment_status_name():
@@ -170,12 +175,10 @@ def test_views_show_written_assessment_status_name():
 
 
 def test_views_derivation_scoped_to_effort():
-    a1 = _record(
-        "score:acceptance", "a1", {"phase": "p", "requirement": "R1", "effort": "e1"}, "active"
-    )
-    a2 = _record(
-        "score:acceptance", "a2", {"phase": "p", "requirement": "R1", "effort": "e2"}, "active"
-    )
+    a1 = _acceptance("a1", "p", "R1")
+    a1["payload"]["effort"] = "e1"
+    a2 = _acceptance("a2", "p", "R1")
+    a2["payload"]["effort"] = "e2"
     spec1 = _record(
         "score:specification",
         "p-spec-1",

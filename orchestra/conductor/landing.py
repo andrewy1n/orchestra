@@ -11,11 +11,10 @@ from typing import Literal
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.fields import optional_text, required_int, required_text
-from orchestra.canon.query import latest
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.revision import revision_matches
-from orchestra.score.lookups import corrected_ids
+from orchestra.score.lookups import corrected_ids, latest_record
 from orchestra.score.phase import Phase
 
 LANDING = "conductor:landing"
@@ -94,7 +93,7 @@ def read_proof_packet(record: Record) -> ProofPacket:
 
 def latest_landing(records: Sequence[Record], phase: str) -> Landing | None:
     """Return the newest landing for a phase, or None."""
-    record = latest(
+    record = latest_record(
         [
             record
             for record in records
@@ -288,7 +287,7 @@ def _latest_packet_record(
     records: Sequence[Record], slug: str, effort: str | None, head: str | None
 ) -> Record | None:
     corrected = corrected_ids(records)
-    return latest(
+    return latest_record(
         [
             record
             for record in records

@@ -33,11 +33,26 @@ def _light_records(result: str) -> list[Record]:
         "## Requirements\n\nR1: One.\nR2: Two.\n",
         "in_progress",
     )
-    acceptance = _record("score:acceptance", "a", {"phase": "p", "requirements": ["R1", "R2"]})
+    acceptance = _record(
+        "score:acceptance",
+        "a",
+        {
+            "phase": "p",
+            "effort": "e",
+            "requirements": ["R1", "R2"],
+            "method": "check",
+            "verify_command": "true",
+        },
+    )
     run = _record(
         "tuner:check-run",
         "a",
-        {"criterion_id": acceptance["id"], "result": result, "revision": "abc"},
+        {
+            "criterion_id": acceptance["id"],
+            "result": result,
+            "revision": "abc",
+            "signed_by": "",
+        },
         state="recorded",
     )
     return [phase, acceptance, run]

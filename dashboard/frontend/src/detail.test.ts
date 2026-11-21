@@ -444,4 +444,21 @@ describe("evidence tab", () => {
 		expect(board.rows[0]?.tone).toBe("ok");
 		expect(board.rows[1]?.text).toBe("The installer covers the host matrix.");
 	});
+
+	it("shows the current stage with its reason", () => {
+		const board = evidenceBoard({
+			detail: {
+				evidence: {
+					stage: "verify",
+					stage_reason: "reviewer",
+					weight: "light",
+					requirements: [],
+				},
+			},
+		});
+		expect(board.facts[0]).toEqual({
+			label: "stage",
+			value: "verify · reviewer",
+		});
+	});
 });

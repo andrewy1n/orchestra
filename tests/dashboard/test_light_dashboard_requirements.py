@@ -37,13 +37,25 @@ def _evidence(phase_record: Record, results: list[str]) -> PhaseEvidence | None:
     acceptance = _record(
         "score:acceptance",
         "a",
-        {"phase": "p", "effort": "e", "requirements": ["R1", "R2"]},
+        {
+            "phase": "p",
+            "effort": "e",
+            "requirements": ["R1", "R2"],
+            "method": "check",
+            "verify_command": "true",
+        },
     )
     checks = [
         _record(
             "tuner:check-run",
             "a",
-            {"criterion_id": acceptance["id"], "result": result, "effort": "e"},
+            {
+                "criterion_id": acceptance["id"],
+                "result": result,
+                "revision": "abc",
+                "effort": "e",
+                "signed_by": "",
+            },
             state="recorded",
         )
         for result in results
@@ -65,11 +77,11 @@ def test_light_phase_requirements_come_from_the_phase_body() -> None:
     assert {row.status for row in rows.values()} == {"verified"}
 
 
-def test_light_phase_failing_multi_requirement_check_verifies_no_listed_id() -> None:
+def test_light_phase_failing_multi_requirement_check_fails_each_listed_id() -> None:
     phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
     evidence = _evidence(phase, ["fail"])
     assert evidence is not None
-    assert {row.status for row in evidence.requirements} == {"unassessed"}
+    assert {row.status for row in evidence.requirements} == {"failed"}
 
 
 def test_full_phase_without_a_specification_has_no_evidence() -> None:
@@ -127,6 +139,19 @@ def test_requirement_detail_reads_a_light_phase_body(tmp_path: Path) -> None:
     detail = load_requirement_detail(project, "e", "p", "R2")
     assert detail.text == "Second behavior."
     assert detail.status == "verified"
+
+
+def test_one_task_listing_a_requirement_twice_is_traced_once() -> None:
+    phase = _record("score:phase", "p", _phase_payload("light"), _BODY, "in_progress")
+    task = _record(
+        "score:work-item",
+        "t",
+        {"phase": "p", "effort": "e", "requirements": ["R1", "R1"]},
+        state="planned",
+    )
+    evidence = phase_evidence("p", "e", [], [], [], [task], [], [], [], [], [], [phase])
+    assert evidence is not None
+    assert next(row.tasks for row in evidence.requirements if row.id == "R1") == 1
 
 
 def test_light_phase_ignores_an_old_active_specification() -> None:

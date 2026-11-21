@@ -409,7 +409,7 @@ def cmd_correct(args: CanonArgs) -> int:
 
 def cmd_get(args: CanonArgs) -> int:
     project = _command_project(args)
-    record = project.get(_required(args.id), args.type)
+    record = project.get_with_write_order(_required(args.id), args.type)
     if args.body_only:
         print(record.get("body") or "")
     elif args.field:

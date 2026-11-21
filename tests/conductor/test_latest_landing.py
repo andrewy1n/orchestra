@@ -4,7 +4,7 @@ from orchestra.canon.types import Record
 from orchestra.conductor.landing import latest_landing
 
 
-def _landing(phase: str, result: str, recorded_at: str) -> Record:
+def _landing(phase: str, result: str, recorded_at: str, write_order: int = 0) -> Record:
     return {
         "id": f"rec-{phase}-{result}",
         "record_type": "conductor:landing",
@@ -21,6 +21,7 @@ def _landing(phase: str, result: str, recorded_at: str) -> Record:
         "revision": "sha256:x",
         "recorded_at": recorded_at,
         "body": "",
+        "derived": {"write_order": write_order},
     }
 
 
@@ -38,10 +39,12 @@ def test_latest_landing_picks_the_newest_record_of_the_phase() -> None:
     assert found.record == newer
 
 
-def test_latest_landing_breaks_a_timestamp_tie_by_record_id() -> None:
-    fail = _landing("p1", "fail", "2026-11-08T10:00:00+00:00")
-    success = _landing("p1", "success", "2026-11-08T10:00:00+00:00")
+def test_latest_landing_breaks_a_timestamp_tie_by_write_order() -> None:
+    success = _landing("p1", "success", "2026-11-08T10:00:00+00:00", write_order=1)
+    fail = _landing("p1", "fail", "2026-11-08T10:00:00+00:00", write_order=2)
+    assert fail["id"] < success["id"]
 
-    found = latest_landing([success, fail], "p1")
-    assert found is not None
-    assert found.record == success
+    for records in ([success, fail], [fail, success]):
+        found = latest_landing(records, "p1")
+        assert found is not None
+        assert found.record == fail

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.score.effort import Effort, current_effort, current_efforts
 
 LEVELS = ("gated", "auto-plan", "auto-phases")
 
@@ -73,43 +75,35 @@ def _text(record: Record, key: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _goal(project: Project, effort: str) -> Record:
-    found = [
-        r
-        for r in project.list("score:effort")
-        if r["subject"] == effort and r["lifecycle_state"] != "superseded"
-    ]
-    if not found:
+def _effort(project: Project, effort: str) -> Effort:
+    found = current_effort(project.records(), effort)
+    if found is None:
         raise AutonomyError(f"unknown effort {effort!r}")
-    return max(found, key=lambda r: r["recorded_at"])
+    return found
 
 
 def set_autonomy(project: Project, effort: str, level: str) -> Record:
     if level not in LEVELS:
         raise AutonomyError(f"autonomy must be one of {', '.join(LEVELS)}")
-    goal = _goal(project, effort)
-    return project.supersede(goal["id"], record_type="score:effort", payload={"autonomy": level})[
+    goal = _effort(project, effort)
+    return project.supersede(goal.id, record_type="score:effort", payload={"autonomy": level})[
         "record"
     ]
 
 
-def _known_efforts(project: Project) -> set[str]:
-    return {
-        r["subject"] for r in project.list("score:effort") if r["lifecycle_state"] != "superseded"
-    }
-
-
-def resolve_effort(record: Record, known: set[str]) -> str:
-    for field in ("effort", "applies_to"):
+def resolve_effort(record: Record, known: Collection[str]) -> str:
+    fields = (
+        ("effort", "applies_to") if record["record_type"] == "score:constraint" else ("effort",)
+    )
+    for field in fields:
         value = _text(record, field)
         if value in known:
             return value
-    suffixes = [e for e in known if record["subject"] == e or record["subject"].endswith("-" + e)]
-    return max(suffixes, key=len) if suffixes else ""
+    return ""
 
 
 def plan_migration(project: Project) -> tuple[list[Mapping], list[str]]:
-    known = _known_efforts(project)
+    known = current_efforts(project.records())
     mappings: list[Mapping] = []
     notes: list[str] = []
     for record in project.list("score:constraint"):
@@ -143,7 +137,7 @@ def strongest(mappings: list[Mapping]) -> dict[str, str]:
 def apply_migration(project: Project, mappings: list[Mapping]) -> dict[str, str]:
     levels = strongest(mappings)
     for effort, level in levels.items():
-        current = _text(_goal(project, effort), "autonomy") or "gated"
+        current = _effort(project, effort).autonomy or "gated"
         if LEVELS.index(level) > LEVELS.index(current):
             set_autonomy(project, effort, level)
     for mapping in mappings:

@@ -58,15 +58,12 @@ def test_r10_the_session_start_handoff_leaves_a_dormant_effort_out(tmp_path: Pat
     assert "Dormant: quiet" in context
 
 
-def test_r11_handoff_all_shows_a_dormant_effort_in_full(tmp_path: Path) -> None:
+def test_r11_handoff_lists_a_dormant_effort_in_full_with_its_label(tmp_path: Path) -> None:
     _, later = _world(tmp_path)
-    default = _run(tmp_path, later, "handoff")
-    assert "## quiet" not in default.stdout
-    assert "Dormant: quiet" in default.stdout
-    everything = _run(tmp_path, later, "handoff", "--all")
-    assert "## quiet" in everything.stdout
-    assert "quiet position" in everything.stdout
-    assert "Dormant:" not in everything.stdout
+    result = _run(tmp_path, later, "handoff")
+    assert "## quiet (dormant)" in result.stdout
+    assert "quiet position" in result.stdout
+    assert "Dormant:" not in result.stdout
 
 
 def test_r11_handoff_for_one_effort_shows_it_even_when_dormant(tmp_path: Path) -> None:

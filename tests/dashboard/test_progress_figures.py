@@ -15,23 +15,39 @@ from conftest import REPO_ROOT, SCHEMA_FILES, build_store, run_cli
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend import phase as phase_mod
 from dashboard.backend import snapshot as snapshot_mod
-from dashboard.backend.landing import Landing
 from dashboard.backend.phase import (
     IntegrationView,
     PhaseEvidence,
     PhaseRow,
     RequirementRow,
 )
-from dashboard.backend.progress import build_progress, derive_stages
+from dashboard.backend.progress import Stage, build_progress
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
+from orchestra.conductor.phase_progress import STAGES, PhaseProgress, StageState
+from orchestra.conductor.phase_progress import Stage as StageId
 
 PHASE = "p-one"
 EFFORT = "alpha"
-APPROVED = frozenset({"spec", "design", "plan"})
-MERGED = Landing(branch="phase/p-one", exists=True, ahead=0, merged=True)
-UNMERGED = Landing(branch="phase/p-one", exists=True, ahead=2, merged=False)
+
+
+def _assessed(current: StageId | None, reason: str = "") -> PhaseProgress:
+    position = len(STAGES) if current is None else STAGES.index(current)
+    return PhaseProgress(
+        tuple(
+            StageState(stage, "done" if i < position else "current" if i == position else "pending")
+            for i, stage in enumerate(STAGES)
+        ),
+        current,
+        reason,
+        (),
+    )
+
+
+FINISHED = _assessed(None)
+AWAITING_MERGE = _assessed("close", "awaiting-merge")
+NO_REVIEW = _assessed("verify", "reviewer")
 
 
 def _task(
@@ -75,6 +91,7 @@ def _phase(
     *requirement_statuses: str,
     body: str = "",
     state: str = "in_progress",
+    progress: PhaseProgress = FINISHED,
 ) -> PhaseRow:
     counted = [t for t in tasks if t.phase == PHASE and t.status != "withdrawn"]
     return PhaseRow(
@@ -86,6 +103,7 @@ def _phase(
         total=len(counted),
         evidence=_evidence(*requirement_statuses) if requirement_statuses else None,
         body=body,
+        progress=progress,
     )
 
 
@@ -99,18 +117,11 @@ def _progress(
     tasks: list[TaskRow],
     *requirement_statuses: str,
     needs: list[NeedsYouItem] | None = None,
-    landing: Landing | None = MERGED,
-    review: bool = True,
+    assessed: PhaseProgress = FINISHED,
     body: str = "",
-    approved=APPROVED,
 ):
     return build_progress(
-        _phase(tasks, *requirement_statuses, body=body),
-        tasks,
-        needs or [],
-        landing=landing,
-        approved=approved,
-        review_passed_at_head=review,
+        _phase(tasks, *requirement_statuses, body=body, progress=assessed), tasks, needs or []
     )
 
 
@@ -177,35 +188,37 @@ def test_r8_ignores_tasks_of_other_phases_and_withdrawn_tasks():
     assert (figures.done, figures.running, figures.remaining, figures.total) == (1, 0, 1, 2)
 
 
-def test_r8_result_holds_weight_and_stages_from_derive_stages():
+def test_r8_result_holds_weight_and_the_assessed_stages():
     tasks = [_task("a", "done"), _task("b", "running", 2)]
 
-    result = _progress(tasks, "verified", "unverified")
+    result = _progress(tasks, "verified", "unverified", assessed=_assessed("execute"))
 
-    expected = derive_stages(
-        weight="full",
-        phase_state="in_progress",
-        approved=APPROVED,
-        task_states=["done", "running"],
-        requirement_statuses=["verified", "unverified"],
-        review_passed_at_head=True,
-        branch_merged=True,
-    )
     assert result.weight == "full"
-    assert list(result.stages) == expected
+    assert (result.current, result.reason) == ("execute", "")
+    assert list(result.stages) == [
+        Stage(stage, "done" if stage in ("spec", "design", "tasks") else state)
+        for stage, state in zip(STAGES, ["done"] * 3 + ["current"] + ["pending"] * 3, strict=True)
+    ]
 
 
 def test_r8_weight_is_light_when_the_phase_evidence_is_light():
     tasks = [_task("a", "done")]
-    phase = _phase(tasks)
+    phase = _phase(tasks, progress=_assessed("verify", "reviewer"))
     light = PhaseRow(**{**phase.__dict__, "evidence": _evidence("verified", weight="light")})
 
-    result = build_progress(
-        light, tasks, [], landing=MERGED, approved=APPROVED, review_passed_at_head=True
-    )
+    result = build_progress(light, tasks, [])
 
     assert result.weight == "light"
     assert result.stages[0].id == "tasks"
+
+
+def test_r8_phase_without_assessed_progress_shows_unknown_stages():
+    phase = PhaseRow(**{**_phase([]).__dict__, "progress": None})
+
+    result = build_progress(phase, [], [])
+
+    assert {stage.state for stage in result.stages} == {"unknown"}
+    assert result.current == ""
 
 
 def test_r9_phase_with_no_tasks_reports_no_tasks_yet():
@@ -250,9 +263,7 @@ def test_r10_phase_with_empty_evidence_says_no_requirements():
     tasks = [_task("a")]
     phase = PhaseRow(**{**_phase(tasks).__dict__, "evidence": _evidence()})
 
-    result = build_progress(
-        phase, tasks, [], landing=MERGED, approved=APPROVED, review_passed_at_head=True
-    )
+    result = build_progress(phase, tasks, [])
 
     assert result.requirements.label == "no requirements"
 
@@ -330,7 +341,7 @@ def test_r12_nothing_blocking_says_nothing_blocks_close():
 
 
 def test_r12_one_blocker_is_listed_alone():
-    result = _progress(_clean(), "verified", landing=UNMERGED)
+    result = _progress(_clean(), "verified", assessed=AWAITING_MERGE)
 
     assert len(result.blockers.shown) == 1
     assert result.blockers.more == 0
@@ -403,36 +414,46 @@ def test_r12_unproven_requirements_block_close():
     assert "requirement" in blockers.shown[0].lower()
 
 
-def test_r12_missing_passing_review_blocks_close():
-    blockers = _progress(_clean(), "verified", review=False).blockers
+def test_r12_a_missing_review_blocks_close_with_the_verify_reason():
+    blockers = _progress(_clean(), "verified", assessed=NO_REVIEW).blockers
 
-    assert len(blockers.shown) == 1
-    assert "review" in blockers.shown[0].lower()
-
-
-def test_r12_unmerged_branch_blocks_close():
-    blockers = _progress(_clean(), "verified", landing=UNMERGED).blockers
-
-    assert len(blockers.shown) == 1
-    assert "branch" in blockers.shown[0].lower()
+    assert blockers.shown == ("verify: reviewer",)
 
 
-def test_r12_a_phase_without_a_landing_has_no_branch_blocker():
-    blockers = _progress(_clean(), "verified", landing=None).blockers
+def test_r12_an_unmerged_branch_blocks_close_with_the_close_reason():
+    blockers = _progress(_clean(), "verified", assessed=AWAITING_MERGE).blockers
+
+    assert blockers.shown == ("close: awaiting-merge",)
+
+
+def test_r12_a_phase_ready_to_close_has_no_stage_blocker():
+    blockers = _progress(
+        _clean(), "verified", assessed=_assessed("close", "ready-to-close")
+    ).blockers
 
     assert blockers.shown == ()
+
+
+def test_r12_a_blocked_phase_names_what_blocks_it():
+    blocked = PhaseProgress(
+        _assessed("execute").stages, "execute", "human gate: sign-off", ("sign-off",)
+    )
+
+    blockers = _progress(_clean(), "verified", assessed=blocked).blockers
+
+    assert blockers.shown == ("human gate: sign-off",)
 
 
 def test_r12_every_kind_of_blocker_together_lists_two_and_counts_the_rest():
     tasks = [_task("a"), _task("b", "waiting", 2)]
     needs = [_need("q1", "Pick a theme")]
 
-    blockers = _progress(tasks, "failed", needs=needs, landing=UNMERGED, review=False).blockers
+    blockers = _progress(tasks, "failed", needs=needs, assessed=AWAITING_MERGE).blockers
 
     assert blockers.shown[0] == "Pick a theme"
     assert len(blockers.shown) == 2
-    assert blockers.more == 3
-    assert "+3 more" in blockers.text
+    assert blockers.more == 2
+    assert "+2 more" in blockers.text
 
 
 @pytest.fixture()
@@ -563,14 +584,7 @@ def test_r17_task_counts_equal_the_phase_page(store, cli, defs):
     row = view.phases[0]
     page = phase_mod.load_phase_detail(target, EFFORT, PHASE)
 
-    figures = build_progress(
-        row,
-        view.tasks,
-        view.needs_you,
-        landing=None,
-        approved=APPROVED,
-        review_passed_at_head=False,
-    ).tasks
+    figures = build_progress(row, view.tasks, view.needs_you).tasks
 
     page_tasks = [t for t in page.tasks if t.status != "withdrawn"]
     assert figures.done == sum(1 for t in page_tasks if t.status == "done")
@@ -588,14 +602,7 @@ def test_r17_requirement_counts_equal_the_phase_evidence_rows(store, cli, defs):
     view = next(v for v in snapshot_mod.load_snapshot(target).efforts if v.effort == EFFORT)
     page = phase_mod.load_phase_detail(target, EFFORT, PHASE)
 
-    figures = build_progress(
-        view.phases[0],
-        view.tasks,
-        view.needs_you,
-        landing=None,
-        approved=APPROVED,
-        review_passed_at_head=False,
-    ).requirements
+    figures = build_progress(view.phases[0], view.tasks, view.needs_you).requirements
 
     assert page.evidence is not None
     rows = page.evidence.requirements

@@ -8,6 +8,8 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.conductor import gate, wave
+from orchestra.conductor.phase_progress import _gates
+from orchestra.score.phase import read_phase
 from orchestra.score.workflow_blockers import phase_blockers
 
 EFFORT = "blocker-effort"
@@ -168,6 +170,33 @@ def test_phase_owned_finding_blocks_only_its_phase(tmp_path: Path) -> None:
     assert "finding-needs-human:phase-question" in one
     assert "finding-needs-human:phase-question" not in two
     assert [item.record["subject"] for item in phase_blockers(project.records(), "two")] == []
+
+
+def test_r9_blocking_question_stays_ahead_of_a_later_finding(tmp_path: Path) -> None:
+    project, _store = _repo(tmp_path)
+    _phase(project, "one", 1)
+    create(
+        project,
+        "score:continuity-question",
+        EFFORT,
+        {"owner": "user", "blocking": True, "phase": "one", "scope": "all"},
+    )
+    _finding(project, "later-finding", phase="one")
+    records = project.records()
+
+    assert [item.record["subject"] for item in phase_blockers(records, "one")] == [
+        EFFORT,
+        "later-finding",
+    ]
+    phase = read_phase(
+        next(
+            record
+            for record in records
+            if record["record_type"] == "score:phase" and record["subject"] == "one"
+        )
+    )
+    text = "human gate: " + ", ".join(item.subject for item in _gates(records, phase))
+    assert text == "human gate: blocker-effort, later-finding"
 
 
 def test_unscoped_finding_blocks_entire_effort(tmp_path: Path) -> None:

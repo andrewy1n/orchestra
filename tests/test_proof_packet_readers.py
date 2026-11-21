@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -9,14 +8,12 @@ import pytest
 from canon_support import create, make_project, seed_effort
 from conftest import REPO_ROOT, git, make_git_repo
 
-from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
 from orchestra.metrics.phases import build_phase_rows
 
 sys.path.insert(0, str(REPO_ROOT))
-from dashboard.backend.gates import landing_branch
-from dashboard.backend.landing import phase_landing
+from dashboard.backend.landing import landing_branch, phase_landing
 from dashboard.backend.phase import load_phase_detail
 
 EFFORT = "alpha"
@@ -78,17 +75,6 @@ def _correct_into_other_phase(project: Project, packet_id: str) -> None:
     project.correct(packet_id, payload=_packet_payload(phase="p2"))
 
 
-def _handoff_names_packet(project: Project, effort: str) -> bool:
-    previous = Path.cwd()
-    os.chdir(project.project_root)
-    try:
-        text = views.render_view(views.VIEWS["handoff"], views.load_records(project), effort=effort)
-    finally:
-        os.chdir(previous)
-    step = next(line for line in text.splitlines() if "orchestra gate" in line)
-    return "verify the proof packet covers the phase head" in step
-
-
 def _metrics_find_packet(project: Project, effort: str) -> bool:
     phase = project.resolve("score:phase", PHASE)
     project.update(phase["id"], transition="done")
@@ -100,7 +86,7 @@ def _dashboard_finds_packet(project: Project, effort: str) -> bool:
     return load_phase_detail(project, effort, PHASE).proof is not None
 
 
-READERS = [_handoff_names_packet, _metrics_find_packet, _dashboard_finds_packet]
+READERS = [_metrics_find_packet, _dashboard_finds_packet]
 Reader = Callable[[Project, str], bool]
 
 

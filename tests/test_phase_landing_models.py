@@ -17,7 +17,9 @@ HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 SAME_TIME = "2026-11-08T10:00:00+00:00"
 
 
-def _record(record_type: str, record_id: str, payload: JsonObject, recorded_at: str) -> Record:
+def _record(
+    record_type: str, record_id: str, payload: JsonObject, recorded_at: str, write_order: int = 0
+) -> Record:
     return {
         "id": record_id,
         "record_type": record_type,
@@ -28,10 +30,13 @@ def _record(record_type: str, record_id: str, payload: JsonObject, recorded_at: 
         "revision": "sha256:x",
         "recorded_at": recorded_at,
         "body": "",
+        "derived": {"write_order": write_order},
     }
 
 
-def _landing(record_id: str, recorded_at: str = SAME_TIME, **overrides: JsonValue) -> Record:
+def _landing(
+    record_id: str, recorded_at: str = SAME_TIME, write_order: int = 0, **overrides: JsonValue
+) -> Record:
     payload: JsonObject = {
         "phase": "p1",
         "number": 7,
@@ -40,7 +45,7 @@ def _landing(record_id: str, recorded_at: str = SAME_TIME, **overrides: JsonValu
         "result": "success",
     }
     payload.update(overrides)
-    return _record("conductor:landing", record_id, payload, recorded_at)
+    return _record("conductor:landing", record_id, payload, recorded_at, write_order)
 
 
 def _packet(record_id: str, recorded_at: str = SAME_TIME, **overrides: JsonValue) -> Record:
@@ -137,9 +142,9 @@ def test_r6_proof_packet_keeps_the_stored_record_unchanged() -> None:
     assert found.record is record
 
 
-def test_r6_landing_proof_state_uses_the_id_tiebreak() -> None:
-    failed = _landing("rec-a", result="success")
-    newest = _landing("rec-b", result="fail")
+def test_r6_landing_proof_state_uses_the_write_order_tiebreak() -> None:
+    failed = _landing("rec-b", write_order=1, result="success")
+    newest = _landing("rec-a", write_order=2, result="fail")
 
     assert landing_proof_state([failed, newest, _packet("rec-p")], _phase()) == "failed"
 

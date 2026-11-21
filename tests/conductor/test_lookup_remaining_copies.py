@@ -54,9 +54,11 @@ def _item(
     return record
 
 
-def test_newest_record_breaks_equal_stamps_by_id_in_both_orders() -> None:
-    first = _record("a-1", "tuner:check-run", "x", {})
-    second = _record("b-2", "tuner:check-run", "x", {})
+def test_newest_record_breaks_equal_stamps_by_write_order_in_both_orders() -> None:
+    first = _record("b-2", "tuner:check-run", "x", {})
+    second = _record("a-1", "tuner:check-run", "x", {})
+    first["derived"] = {"write_order": 1}
+    second["derived"] = {"write_order": 2}
     assert newest_record([first, second]) == second
     assert newest_record([second, first]) == second
 
