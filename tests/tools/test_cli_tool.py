@@ -10,7 +10,7 @@ from typing import ClassVar, Literal, overload
 import pytest
 
 from orchestra.tools.cli_tool import CliTool, run_subprocess
-from orchestra.tools.errors import ToolError
+from orchestra.tools.errors import ToolError, ToolTimeoutError
 
 
 class FakeRun:
@@ -175,9 +175,9 @@ def test_os_error_raises_tool_error() -> None:
     assert info.value.returncode is None
 
 
-def test_timeout_raises_tool_error() -> None:
+def test_timeout_raises_tool_timeout_error() -> None:
     expired = subprocess.TimeoutExpired(["faketool"], 1.0)
-    with pytest.raises(ToolError) as info:
+    with pytest.raises(ToolTimeoutError) as info:
         make(FakeRun(raises=expired)).text("a")
     assert info.value.returncode is None
 

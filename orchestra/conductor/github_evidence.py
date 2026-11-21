@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from subprocess import TimeoutExpired
 
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.conductor.github_pr import GitHubGh
@@ -14,7 +13,7 @@ from orchestra.conductor.merge_evidence import (
     EvidenceSnapshot,
     RequiredCheck,
 )
-from orchestra.tools import ToolError
+from orchestra.tools import ToolError, ToolTimeoutError
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -210,9 +209,7 @@ class GitHubActionsAdapter:
         try:
             return self._read(request)
         except ToolError as error:
-            if isinstance(error.__cause__, TimeoutExpired) or _TRANSIENT_LOOKUP.search(
-                error.stderr
-            ):
+            if isinstance(error, ToolTimeoutError) or _TRANSIENT_LOOKUP.search(error.stderr):
                 return EvidenceSnapshot(
                     "", unresolved=f"GitHub CI lookup failed: {error.stderr.strip() or error}"
                 )

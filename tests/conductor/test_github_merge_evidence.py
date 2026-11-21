@@ -1,5 +1,4 @@
 from pathlib import Path
-from subprocess import TimeoutExpired
 
 import pytest
 
@@ -7,7 +6,7 @@ from orchestra.canon.types import JsonValue
 from orchestra.conductor.github_evidence import GitHubActionsAdapter
 from orchestra.conductor.github_pr import GitHubGh
 from orchestra.conductor.merge_evidence import EvidenceRequest
-from orchestra.tools import ToolError
+from orchestra.tools import ToolError, ToolTimeoutError
 
 HEAD = "a" * 40
 NEXT = "b" * 40
@@ -21,7 +20,7 @@ def _read(
     conclusion: str | None = None,
     include_run: bool = True,
     changed_head: bool = False,
-    lookup_error: str | TimeoutExpired = "",
+    lookup_error: str | ToolTimeoutError = "",
     app: int = 42,
     merge_commit: bool = False,
     rules_changed: bool = False,
@@ -64,8 +63,8 @@ def _read(
                 }
             }
         if args[-1].endswith("/rules/branches/main"):
-            if isinstance(lookup_error, TimeoutExpired):
-                raise ToolError("gh timed out after 30s", args, None, "") from lookup_error
+            if isinstance(lookup_error, ToolTimeoutError):
+                raise lookup_error
             if lookup_error:
                 raise ToolError("gh failed", args, 1, lookup_error)
             return rule_sets.pop(0)
@@ -154,7 +153,11 @@ def test_temporary_lookup_failure_leaves_ci_unresolved(
 def test_lookup_timeout_leaves_ci_unresolved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert _read(tmp_path, monkeypatch, lookup_error=TimeoutExpired("gh", 30)) == (
+    assert _read(
+        tmp_path,
+        monkeypatch,
+        lookup_error=ToolTimeoutError("gh timed out after 30s", ("gh",), None, ""),
+    ) == (
         "",
         "",
         "GitHub CI lookup failed: gh timed out after 30s",

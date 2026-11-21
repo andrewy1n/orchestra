@@ -8,7 +8,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import IO, ClassVar, Literal, Protocol, TypeAlias, overload
 
-from orchestra.tools.errors import ToolError, ToolNotFoundError, ToolVersionError
+from orchestra.tools.errors import ToolError, ToolNotFoundError, ToolTimeoutError, ToolVersionError
 from orchestra.tools.version import Version
 from orchestra.tools.version import parse_version as _parse_version
 
@@ -75,7 +75,7 @@ class ProcessHandle:
         try:
             return self._process.wait(timeout=timeout)
         except subprocess.TimeoutExpired as error:
-            raise ToolError(
+            raise ToolTimeoutError(
                 f"process timed out after {timeout}s", [str(self._process.args)], None, ""
             ) from error
 
@@ -235,7 +235,7 @@ class CliTool:
         except OSError as error:
             raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
-            raise ToolError(
+            raise ToolTimeoutError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
             ) from error
         if result.returncode != 0:
@@ -265,7 +265,7 @@ class CliTool:
         except OSError as error:
             raise ToolNotFoundError(f"cannot run {argv[0]}: {error}", argv, None, "") from error
         except subprocess.TimeoutExpired as error:
-            raise ToolError(
+            raise ToolTimeoutError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
             ) from error
         if result.returncode != 0:
