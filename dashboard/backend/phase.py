@@ -21,7 +21,6 @@ from dashboard.backend.task import (
     CheckRun,
     RelatedRecord,
     TaskRow,
-    belongs,
     check_from,
     configured_small_wave_budget,
     latest_checks,
@@ -30,11 +29,6 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.head_evidence import (
-    SUITE_EVIDENCE_KIND,
-    EvidenceIndex,
-    suite_subject,
-)
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
@@ -44,7 +38,15 @@ from orchestra.conductor.requirements import (
     all_verified,
     requirement_status,
 )
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases, record_order
+from orchestra.conductor.signoff import awaiting_signoff
+from orchestra.conductor.suite_label import suite_labels
+from orchestra.score.elapsed import TimedTask, phase_elapsed
+from orchestra.score.lookups import (
+    current_phases,
+    live_work_items,
+    record_order,
+)
+from orchestra.score.milestone import milestone_facts, milestone_state
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
@@ -243,122 +245,6 @@ def sitting_phrase(body: str) -> str:
     return ""
 
 
-# Suite check-run convention (shared with suite-engine):
-# subject `<phase>-suite`, evidence_kind `integration`, revision = phase head SHA.
-# Legacy `<phase>-tier2` is read for display only when no suite check-run exists.
-# In-flight: result `blocked` and body contains a running marker (no final pass/fail yet).
-LEGACY_TIER2_SUBJECT_SUFFIX = "-tier2"
-SUITE_RUNNING_MARKER = "suite-running"
-LEGACY_TIER2_RUNNING_MARKER = "tier2-running"
-
-
-def _short_revision(revision: str) -> str:
-    rev = (revision or "").strip()
-    if not rev:
-        return "?"
-    return rev[:7]
-
-
-def _suite_runs_by_name(
-    checks: list[Record],
-) -> tuple[dict[str, list[Record]], dict[str, list[Record]]]:
-    primary = {
-        name: [run for run in runs if run.get("lifecycle_state") not in INACTIVE_STATES]
-        for name, runs in EvidenceIndex(checks).suite_runs_by_name().items()
-    }
-    legacy: dict[str, list[Record]] = {}
-    for run in checks:
-        if run.get("lifecycle_state") in INACTIVE_STATES:
-            continue
-        subject = run.get("subject") or ""
-        if not subject.endswith(LEGACY_TIER2_SUBJECT_SUFFIX):
-            continue
-        if (record_payload(run).get("evidence_kind") or "") != SUITE_EVIDENCE_KIND:
-            continue
-        legacy.setdefault(subject, []).append(run)
-    return primary, legacy
-
-
-def _suite_label_text(record: Record) -> str:
-    payload = record_payload(record)
-    result = payload.get("result") or ""
-    body = record.get("body") or ""
-    if result == "blocked" and (
-        SUITE_RUNNING_MARKER in body or LEGACY_TIER2_RUNNING_MARKER in body
-    ):
-        return "suite running"
-    short = _short_revision(str(payload.get("revision") or ""))
-    if result == "pass":
-        return f"suite ok@{short}"
-    if result == "fail":
-        return f"suite fail@{short}"
-    return ""
-
-
-def _indexed_suite_label(
-    phase: str, grouped: tuple[dict[str, list[Record]], dict[str, list[Record]]]
-) -> str:
-    primary, legacy = grouped
-    record = newest_record(primary.get(suite_subject(phase), []))
-    if record is None:
-        record = newest_record(legacy.get(f"{phase}{LEGACY_TIER2_SUBJECT_SUFFIX}", []))
-    if record is None:
-        return ""
-    return _suite_label_text(record)
-
-
-def suite_status_label(phase: str, checks: list[Record]) -> str:
-    """Compact suite chrome for a phase header: suite running / suite ok@SHA / suite fail@SHA."""
-    return _indexed_suite_label(phase, _suite_runs_by_name(checks))
-
-
-def phase_elapsed(tasks: list[TaskRow]) -> tuple[int | None, int]:
-    """Wave-rule minutes for already-counted tasks, plus how many lack an estimate.
-
-    An inline wave sums its estimates. Any other wave contributes its longest.
-    A task with no wave is its own group. Blank estimates are skipped, and zero counts.
-    """
-    unset = sum(task.estimate_minutes is None for task in tasks)
-    groups: dict[int | str, list[TaskRow]] = {}
-    for task in tasks:
-        key = task.wave if task.wave is not None else task.id
-        groups.setdefault(key, []).append(task)
-
-    def order(key: int | str) -> tuple[int, int | str]:
-        return (0, key) if isinstance(key, int) else (1, key)
-
-    figures: list[int] = []
-    for key in sorted(groups, key=order):
-        members = groups[key]
-        values = [task.estimate_minutes for task in members if task.estimate_minutes is not None]
-        if not values:
-            continue
-        if all(task.executor == "inline" for task in members):
-            figures.append(sum(values))
-        else:
-            figures.append(max(values))
-    if not figures:
-        return (None, unset)
-    return (sum(figures), unset)
-
-
-def _awaits_signoff(
-    task: Record,
-    work_items: list[Record],
-    acceptances: list[Record],
-    latest: dict[str, CheckRun],
-) -> bool:
-    mine = [
-        record
-        for record in acceptances
-        if record["lifecycle_state"] not in INACTIVE_STATES and belongs(record, task, work_items)
-    ]
-    runs = [latest.get(record["id"]) for record in mine]
-    if not mine or any(run is None or run.result != "pass" for run in runs):
-        return False
-    return any(run is not None and run.method == "manual" and not run.signed_by for run in runs)
-
-
 def phase_rows(
     records: list[Record],
     tasks: list[Record],
@@ -368,29 +254,22 @@ def phase_rows(
     *,
     small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
 ) -> list[PhaseRow]:
-    latest = latest_checks(checks or [])
     evidence_by_phase = evidence_by_phase or {}
-    counted = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
-    counted_by_phase: dict[str, list[Record]] = {}
-    for task in counted:
-        phase_name = record_payload(task).get("phase")
-        if isinstance(phase_name, str):
-            counted_by_phase.setdefault(phase_name, []).append(task)
-    suite_runs = _suite_runs_by_name(checks or [])
+    suite_runs = suite_labels(checks or [])
     rows: list[PhaseRow] = []
     for phase in current_phase_models(records):
         record = phase.record
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
             continue
-        members = counted_by_phase.get(phase.subject, [])
-        open_tasks = [task for task in members if task["lifecycle_state"] != "done"]
-        awaiting = (
-            record["lifecycle_state"] != "done"
-            and bool(open_tasks)
-            and all(_awaits_signoff(task, tasks, acceptances or [], latest) for task in open_tasks)
+        members = live_work_items(phase.subject, tasks)
+        awaiting = awaiting_signoff(
+            record["lifecycle_state"], members, tasks, acceptances or [], checks or []
         )
-        elapsed_minutes, unset_estimates = phase_elapsed(
-            task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
+        elapsed = phase_elapsed(
+            [
+                TimedTask(row.id, row.wave, row.estimate_minutes, row.executor)
+                for row in task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
+            ]
         )
         progress = phase_counts(members, phase.subject)
         body = phase.body
@@ -407,23 +286,15 @@ def phase_rows(
                 evidence=evidence_by_phase.get(phase.subject),
                 sitting=sitting_phrase(body),
                 body=body,
-                elapsed_minutes=elapsed_minutes,
-                unset_estimates=unset_estimates,
-                suite=_indexed_suite_label(phase.subject, suite_runs),
+                elapsed_minutes=elapsed.minutes,
+                unset_estimates=elapsed.unset_estimates,
+                suite=suite_runs.label(phase.subject),
                 milestone=phase.milestone or "",
                 in_progress=progress.in_progress,
             )
         )
     rows.sort(key=lambda row: (row.ordinal, row.subject))
     return rows
-
-
-def _milestone_state(members: list[PhaseRow]) -> str:
-    if any(phase.state == "in_progress" for phase in members):
-        return "in_progress"
-    if members and all(phase.state == "done" for phase in members):
-        return "done"
-    return "planned"
 
 
 def milestone_rows(records: list[Record], phases: list[PhaseRow]) -> list[MilestoneRow]:
@@ -435,17 +306,17 @@ def milestone_rows(records: list[Record], phases: list[PhaseRow]) -> list[Milest
     for record in records:
         if record["lifecycle_state"] not in LIVE_PHASE_STATES:
             continue
-        payload = record_payload(record)
-        members = by_slug.get(record["subject"], [])
+        facts = milestone_facts(record)
+        members = by_slug.get(facts.subject, [])
         rows.append(
             MilestoneRow(
-                subject=record["subject"],
-                title=payload.get("title") or record["subject"],
-                ordinal=payload.get("ordinal", 0),
-                state=_milestone_state(members),
+                subject=facts.subject,
+                title=facts.title,
+                ordinal=facts.ordinal,
+                state=milestone_state([phase.state for phase in members]),
                 done=sum(phase.state == "done" for phase in members),
                 total=len(members),
-                id=record["id"],
+                id=facts.id,
             )
         )
     rows.sort(key=lambda row: (row.ordinal, row.subject))

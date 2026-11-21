@@ -888,3 +888,275 @@ def test_every_get_route_has_a_case(served: tuple[TestClient, Seed, Path]) -> No
         and "GET" in (route.methods or set())
     }
     assert routes <= {path for path, _params in CASES.values()}
+
+
+def _transition(root: Path, record_type: str, subject: str, state: str) -> None:
+    record = next(
+        item
+        for item in json.loads(run_cli("list", "--type", record_type, root=root).stdout)["records"]
+        if item["subject"] == subject
+    )
+    result = run_cli(
+        "update",
+        "--type",
+        record_type,
+        "--id",
+        record["id"],
+        "--transition",
+        state,
+        "--expected-revision",
+        record["revision"],
+        root=root,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _seed_phase_rows(root: Path) -> None:
+    _create(root, "score:effort", "alpha", {"goal": "ship alpha", "kind": "deliver"})
+    _create(
+        root,
+        "score:milestone",
+        "m-one",
+        {"title": "Milestone one", "ordinal": 2, "effort": "alpha"},
+    )
+    _create(
+        root,
+        "score:milestone",
+        "m-two",
+        {"title": "Milestone two", "ordinal": 1, "effort": "alpha"},
+    )
+    _create(root, "score:milestone", "m-empty", {"title": "Empty", "ordinal": 3, "effort": "alpha"})
+    _create(
+        root, "score:milestone", "m-done", {"title": "Shipped", "ordinal": 4, "effort": "alpha"}
+    )
+    phases = (
+        ("p-live", 1, "m-one"),
+        ("p-done", 2, "m-done"),
+        ("p-plain", 3, None),
+        ("p-wait", 4, "m-two"),
+    )
+    for subject, ordinal, milestone in phases:
+        payload: dict[str, object] = {"title": subject, "ordinal": ordinal, "effort": "alpha"}
+        if milestone:
+            payload["milestone"] = milestone
+        _create(root, "score:phase", subject, payload)
+        _transition(root, "score:phase", subject, "in_progress")
+    tasks = (
+        ("live-a", "p-live", "inline", 10),
+        ("live-b", "p-live", "inline", 15),
+        ("live-c", "p-live", "inline", None),
+        ("wait-a", "p-wait", "subagent", 40),
+        ("plain-a", "p-plain", "subagent", 0),
+        ("plain-b", "p-plain", "subagent", 30),
+    )
+    for subject, phase, executor, estimate in tasks:
+        payload = {
+            "title": subject,
+            "phase": phase,
+            "kind": "deliver",
+            "assignee": "",
+            "effort": "alpha",
+            "executor": executor,
+        }
+        if estimate is not None:
+            payload["estimate_minutes"] = estimate
+        _create(root, "score:work-item", subject, payload)
+    _create(
+        root,
+        "score:work-item",
+        "done-a",
+        {
+            "title": "done-a",
+            "phase": "p-done",
+            "kind": "deliver",
+            "assignee": "",
+            "effort": "alpha",
+        },
+    )
+    for state in ("in_progress", "done"):
+        _transition(root, "score:work-item", "done-a", state)
+    _transition(root, "score:phase", "p-done", "done")
+    for subject, acceptance_phase in (("wait-a", "p-wait"), ("live-a", "p-live")):
+        _create(
+            root,
+            "score:acceptance",
+            f"{subject}-acc",
+            {
+                "criterion": "signed off by a person",
+                "method": "manual",
+                "phase": acceptance_phase,
+                "effort": "alpha",
+                "verify_command": "true",
+                "requirement": "R1",
+            },
+        )
+    acceptances = {
+        item["subject"]: item["id"]
+        for item in json.loads(run_cli("list", "--type", "score:acceptance", root=root).stdout)[
+            "records"
+        ]
+    }
+    _create(
+        root,
+        "tuner:check-run",
+        "wait-a-run",
+        {
+            "criterion_id": acceptances["wait-a-acc"],
+            "method": "manual",
+            "signed_by": "",
+            "result": "pass",
+            "effort": "alpha",
+            "revision": "abc",
+        },
+    )
+    _create(
+        root,
+        "tuner:check-run",
+        "p-live-suite",
+        {
+            "criterion_id": "suite",
+            "method": "check",
+            "signed_by": "",
+            "result": "pass",
+            "effort": "alpha",
+            "revision": "abcdef0123456789",
+            "evidence_kind": "integration",
+        },
+    )
+    _create(
+        root,
+        "tuner:check-run",
+        "p-plain-tier2",
+        {
+            "criterion_id": "suite",
+            "method": "check",
+            "signed_by": "",
+            "result": "fail",
+            "effort": "alpha",
+            "revision": "deadbeef0000",
+            "evidence_kind": "integration",
+        },
+    )
+    _create(
+        root,
+        "tuner:check-run",
+        "p-wait-suite",
+        {
+            "criterion_id": "suite",
+            "method": "check",
+            "signed_by": "",
+            "result": "blocked",
+            "effort": "alpha",
+            "revision": "1234567890ab",
+            "evidence_kind": "integration",
+        },
+        "suite-running in worktree",
+    )
+
+
+PHASE_ROW_FIELDS = (
+    "subject",
+    "title",
+    "ordinal",
+    "state",
+    "done",
+    "total",
+    "in_progress",
+    "awaiting_signoff",
+    "elapsed_minutes",
+    "unset_estimates",
+    "suite",
+    "milestone",
+    "milestone_title",
+)
+
+
+def _phase_row(
+    subject: str,
+    ordinal: int,
+    state: str,
+    done: int,
+    total: int,
+    awaiting_signoff: bool,
+    elapsed_minutes: int | None,
+    unset_estimates: int,
+    suite: str,
+    milestone: str,
+    milestone_title: str,
+) -> dict[str, object]:
+    return {
+        "subject": subject,
+        "title": subject,
+        "ordinal": ordinal,
+        "state": state,
+        "done": done,
+        "total": total,
+        "in_progress": [],
+        "awaiting_signoff": awaiting_signoff,
+        "elapsed_minutes": elapsed_minutes,
+        "unset_estimates": unset_estimates,
+        "suite": suite,
+        "milestone": milestone,
+        "milestone_title": milestone_title,
+    }
+
+
+PHASE_ROWS_EXPECTED = [
+    _phase_row("p-plain", 3, "in_progress", 0, 2, False, 30, 0, "suite fail@deadbee", "", ""),
+    _phase_row(
+        "p-wait", 4, "in_progress", 0, 1, True, 40, 0, "suite running", "m-two", "Milestone two"
+    ),
+    _phase_row(
+        "p-live", 1, "in_progress", 0, 3, False, 25, 1, "suite ok@abcdef0", "m-one", "Milestone one"
+    ),
+    _phase_row("p-done", 2, "done", 1, 1, False, None, 1, "", "m-done", "Shipped"),
+]
+
+MILESTONE_ROWS_EXPECTED = [
+    {
+        "subject": "m-two",
+        "title": "Milestone two",
+        "ordinal": 1,
+        "state": "in_progress",
+        "done": 0,
+        "total": 1,
+    },
+    {
+        "subject": "m-one",
+        "title": "Milestone one",
+        "ordinal": 2,
+        "state": "in_progress",
+        "done": 0,
+        "total": 1,
+    },
+    {
+        "subject": "m-empty",
+        "title": "Empty",
+        "ordinal": 3,
+        "state": "planned",
+        "done": 0,
+        "total": 0,
+    },
+    {"subject": "m-done", "title": "Shipped", "ordinal": 4, "state": "done", "done": 1, "total": 1},
+]
+
+
+def test_phase_rows_and_milestones_route_pins() -> None:
+    root = build_store()
+    try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setenv("ORCHESTRA_SIGNED_BY", "route-signer")
+            _seed_phase_rows(root)
+            client = TestClient(create_app(open_store(root)), raise_server_exceptions=False)
+            response = client.get("/api/snapshot")
+        assert response.status_code == 200, response.text
+        effort = next(item for item in response.json()["efforts"] if item["effort"] == "alpha")
+        phases = [{key: row[key] for key in PHASE_ROW_FIELDS} for row in effort["phases"]]
+        milestones = [
+            {key: row[key] for key in ("subject", "title", "ordinal", "state", "done", "total")}
+            for row in effort["milestones"]
+        ]
+        assert phases == PHASE_ROWS_EXPECTED
+        assert milestones == MILESTONE_ROWS_EXPECTED
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
