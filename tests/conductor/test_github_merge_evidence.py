@@ -20,7 +20,7 @@ def _read(
     conclusion: str | None = None,
     include_run: bool = True,
     changed_head: bool = False,
-    lookup_fails: bool = False,
+    lookup_error: str = "",
     app: int = 42,
     merge_commit: bool = False,
     rules_changed: bool = False,
@@ -63,8 +63,8 @@ def _read(
                 }
             }
         if args[-1].endswith("/rules/branches/main"):
-            if lookup_fails:
-                raise ToolError("gh failed", args, 1, "rules lookup denied")
+            if lookup_error:
+                raise ToolError("gh failed", args, 1, lookup_error)
             return rule_sets.pop(0)
         if "/check-runs?" in args[-1]:
             revision = NEXT if f"/{NEXT}/" in args[-1] else HEAD
@@ -121,11 +121,23 @@ def test_head_change_leaves_ci_unresolved(tmp_path: Path, monkeypatch: pytest.Mo
     assert "head changed" in _read(tmp_path, monkeypatch, changed_head=True)[2]
 
 
-def test_lookup_failure_propagates_to_the_command(
+def test_permission_failure_propagates_to_the_command(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with pytest.raises(ToolError, match="gh failed"):
-        _read(tmp_path, monkeypatch, lookup_fails=True)
+        _read(tmp_path, monkeypatch, lookup_error="gh: Resource not accessible (HTTP 403)")
+
+
+@pytest.mark.parametrize("status", [429, 502, 503])
+def test_temporary_lookup_failure_leaves_ci_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    message = f"gh: Service unavailable (HTTP {status})"
+    assert _read(tmp_path, monkeypatch, lookup_error=message) == (
+        "",
+        "",
+        f"GitHub CI lookup failed: {message}",
+    )
 
 
 def test_result_on_test_merge_commit_leaves_ci_unresolved(

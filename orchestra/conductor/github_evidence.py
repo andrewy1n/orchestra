@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from subprocess import TimeoutExpired
 
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.conductor.github_pr import GitHubGh
@@ -13,9 +14,11 @@ from orchestra.conductor.merge_evidence import (
     EvidenceSnapshot,
     RequiredCheck,
 )
+from orchestra.tools import ToolError
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")
+_TRANSIENT_HTTP = re.compile(r"\(HTTP (?:429|5[0-9]{2})\)")
 _PULL_REQUEST = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -201,6 +204,16 @@ class _GitHubEvidenceClient(GitHubGh):
 
 class GitHubActionsAdapter:
     def read(self, request: EvidenceRequest) -> EvidenceSnapshot:
+        try:
+            return self._read(request)
+        except ToolError as error:
+            if isinstance(error.__cause__, TimeoutExpired) or _TRANSIENT_HTTP.search(error.stderr):
+                return EvidenceSnapshot(
+                    "", unresolved=f"GitHub CI lookup failed: {error.stderr.strip() or error}"
+                )
+            raise
+
+    def _read(self, request: EvidenceRequest) -> EvidenceSnapshot:
         host, owner, repo, number = pull_request_coordinates(request.pull_request_url)
         repository = f"repos/{owner}/{repo}"
         client = _GitHubEvidenceClient(request.root)
