@@ -68,7 +68,7 @@ def open_pull_request(
     sleep: Callable[[float], None] | None = None,
     monotonic: Callable[[], float] | None = None,
 ) -> GitHubPRResult:
-    """Publish a committed branch and its proof packet; await CI in legacy projects."""
+    """Publish a committed branch and wait for CI if merge_evidence is unset."""
     project_root = Path(root)
     config = load_project_config(project_root)
     if config.merge_policy != "human":

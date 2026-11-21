@@ -13,7 +13,6 @@ from orchestra.conductor.merge_evidence import (
     EvidenceSnapshot,
     RequiredCheck,
 )
-from orchestra.tools import ToolError
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -202,47 +201,49 @@ class _GitHubEvidenceClient(GitHubGh):
 
 class GitHubActionsAdapter:
     def read(self, request: EvidenceRequest) -> EvidenceSnapshot:
-        head = ""
-        try:
-            host, owner, repo, number = pull_request_coordinates(request.pull_request_url)
-            repository = f"repos/{owner}/{repo}"
-            client = _GitHubEvidenceClient(request.root)
-            pull = client.pull(host, owner, repo, number)
-            head = pull.head
-            required = tuple(
-                dict.fromkeys((*pull.protected_checks, *client.rules(host, repository, pull.base)))
+        host, owner, repo, number = pull_request_coordinates(request.pull_request_url)
+        repository = f"repos/{owner}/{repo}"
+        client = _GitHubEvidenceClient(request.root)
+        pull = client.pull(host, owner, repo, number)
+        head = pull.head
+        required = tuple(
+            dict.fromkeys((*pull.protected_checks, *client.rules(host, repository, pull.base)))
+        )
+        observed = client.results(host, repository, head, required) if required else {}
+        at_merge = (
+            client.results(host, repository, pull.merge_commit, required)
+            if required and pull.merge_commit and pull.merge_commit != head
+            else {}
+        )
+        latest_rules = client.rules(host, repository, pull.base)
+        latest = client.pull(host, owner, repo, number)
+        if latest.head != head:
+            return EvidenceSnapshot(head, unresolved="pull request head changed during refresh")
+        if latest != pull:
+            return EvidenceSnapshot(
+                head, unresolved="pull request base or test merge commit changed during refresh"
             )
-            observed = client.results(host, repository, head, required)
-            at_merge = (
-                client.results(host, repository, pull.merge_commit, required)
-                if pull.merge_commit and pull.merge_commit != head
-                else {}
+        if set(required) != {*latest.protected_checks, *latest_rules}:
+            return EvidenceSnapshot(
+                head, unresolved="GitHub required checks changed during refresh"
             )
-            latest_rules = client.rules(host, repository, pull.base)
-            latest = client.pull(host, owner, repo, number)
-            if latest.head != head:
-                raise EvidenceError("pull request head changed during refresh")
-            if latest != pull:
-                raise EvidenceError("pull request base or test merge commit changed during refresh")
-            if set(required) != {*latest.protected_checks, *latest_rules}:
-                raise EvidenceError("GitHub required checks changed during refresh")
-            if at_merge:
-                return EvidenceSnapshot(
-                    head,
-                    required,
-                    tuple(
-                        at_merge.get(check)
-                        or observed.get(check)
-                        or CheckEvidence(check, "missing", head)
-                        for check in required
-                    ),
-                    "required checks report on GitHub's test merge commit",
-                )
-            results = tuple(
-                observed.get(check, CheckEvidence(check, "missing", head)) for check in required
+        if not required:
+            return EvidenceSnapshot(
+                head, unresolved=f"no required CI checks are configured for {pull.base}"
             )
-            return EvidenceSnapshot(head, required, results)
-        except ToolError as error:
-            return EvidenceSnapshot(head, unresolved=error.stderr.strip() or str(error))
-        except ValueError as error:
-            return EvidenceSnapshot(head, unresolved=str(error))
+        if at_merge:
+            return EvidenceSnapshot(
+                head,
+                required,
+                tuple(
+                    at_merge.get(check)
+                    or observed.get(check)
+                    or CheckEvidence(check, "missing", head)
+                    for check in required
+                ),
+                "required checks report on GitHub's test merge commit, which this adapter does not support",
+            )
+        results = tuple(
+            observed.get(check, CheckEvidence(check, "missing", head)) for check in required
+        )
+        return EvidenceSnapshot(head, required, results)

@@ -568,6 +568,11 @@ read CI evidence independently from the landing adapter. After
 `orchestra merge-evidence --phase <phase>`. Run it again after checks finish,
 after a rerun, or after the pull request head changes.
 
+The GitHub landing adapter waits for CI if you omit `[merge_evidence]`.
+With `[merge_evidence]` set, use `merge-evidence` to check CI after publication.
+The GitHub Actions evidence adapter requires configured checks on the PR head.
+Required results on GitHub's test merge commit leave the recommendation unresolved.
+
 The command records the observation in Canon and prints the recommendation,
 phase verification result, required checks, and run links. Exit status 0
 means the evidence is ready for human merge approval. Exit status 1 means

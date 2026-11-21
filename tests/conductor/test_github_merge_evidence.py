@@ -121,10 +121,11 @@ def test_head_change_leaves_ci_unresolved(tmp_path: Path, monkeypatch: pytest.Mo
     assert "head changed" in _read(tmp_path, monkeypatch, changed_head=True)[2]
 
 
-def test_lookup_failure_leaves_ci_unresolved(
+def test_lookup_failure_propagates_to_the_command(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert "rules lookup denied" in _read(tmp_path, monkeypatch, lookup_fails=True)[2]
+    with pytest.raises(ToolError, match="gh failed"):
+        _read(tmp_path, monkeypatch, lookup_fails=True)
 
 
 def test_result_on_test_merge_commit_leaves_ci_unresolved(
@@ -133,7 +134,7 @@ def test_result_on_test_merge_commit_leaves_ci_unresolved(
     assert _read(tmp_path, monkeypatch, conclusion="success", merge_commit=True) == (
         "pass",
         LINK,
-        "required checks report on GitHub's test merge commit",
+        "required checks report on GitHub's test merge commit, which this adapter does not support",
     )
 
 

@@ -476,7 +476,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     land = sub.add_parser(
         "land",
-        help="Run the phase gate and publish the configured pull request",
+        help="Run the phase gate and publish the pull request",
+        description=(
+            "Run the phase gate and publish the pull request. The GitHub landing adapter "
+            "waits for CI when no merge evidence adapter is configured."
+        ),
     )
     land.add_argument("--phase", required=True, help="Phase slug")
     land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
@@ -1239,7 +1243,7 @@ def _cmd_merge_evidence(args: argparse.Namespace) -> int:
     cwd = _cwd(args).resolve()
     try:
         location = resolve_location(args.store, cwd)
-        result = merge_evidence.refresh_recommendation(location.open(), args.phase, cwd)
+        result = merge_evidence.refresh_recommendation(location.open(), args.phase)
     except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
         print(f"orchestra merge-evidence: {exc}", file=sys.stderr)
         return 2

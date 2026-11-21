@@ -93,6 +93,7 @@ def project(tmp_path: Path) -> Project:
             "signed_by": "",
         },
     )
+    git.run("worktree", "add", "-q", "--detach", ".worktrees/p1", head)
     return project
 
 
@@ -196,3 +197,42 @@ def test_missing_required_result_leaves_mixed_evidence_unresolved(
     assert output["recommendation"] == "unresolved"
     assert any("required CI check failed" in reason for reason in output["blockers"])
     assert any("required CI result is missing" in reason for reason in output["blockers"])
+
+
+def test_no_required_checks_leaves_verified_phase_unresolved(
+    project: Project, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    head = Git(project.project_root).head()
+    monkeypatch.setattr(GitHubActionsAdapter, "read", lambda *_: EvidenceSnapshot(head))
+
+    _invoke(project, 1)
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["phase_verification"] == "pass"
+    assert output["recommendation"] == "unresolved"
+    assert output["blockers"] == ["no required CI checks are configured"]
+
+
+def test_unknown_adapter_exits_without_recording_an_observation(
+    project: Project, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = project.project_root / ".worktrees/p1/orchestra.toml"
+    config.write_text(config.read_text().replace('"github-actions"', '"unknown-ci"'))
+
+    _invoke(project, 2)
+
+    captured = capsys.readouterr()
+    assert "unknown-ci" in captured.err
+    assert not captured.out
+    assert not project.list("conductor:ci-observation")
+
+
+def test_missing_phase_worktree_exits_without_recording_an_observation(
+    project: Project, capsys: pytest.CaptureFixture[str]
+) -> None:
+    Git(project.project_root).run("worktree", "remove", ".worktrees/p1")
+
+    _invoke(project, 2)
+
+    assert "phase worktree" in capsys.readouterr().err
+    assert not project.list("conductor:ci-observation")

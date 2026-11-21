@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
-from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, validate_plugin_config
+from orchestra.canon.extensions import resolve_plugin, validate_plugin_config
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
@@ -119,8 +119,10 @@ def _phase_evidence(
 
 
 def _ci_evidence(snapshot: EvidenceSnapshot) -> tuple[bool, bool, list[str]]:
-    unresolved = bool(snapshot.unresolved)
     blockers = [snapshot.unresolved] if snapshot.unresolved else []
+    if not snapshot.required_checks and not blockers:
+        blockers.append("no required CI checks are configured")
+    unresolved = bool(blockers)
     failed = False
     results = {evidence.check: evidence for evidence in snapshot.results}
     for check in snapshot.required_checks:
@@ -141,7 +143,7 @@ def _ci_evidence(snapshot: EvidenceSnapshot) -> tuple[bool, bool, list[str]]:
     return failed, unresolved, blockers
 
 
-def refresh_recommendation(project: Project, phase_slug: str, cwd: Path) -> JsonObject:
+def refresh_recommendation(project: Project, phase_slug: str) -> JsonObject:
     records = project.records()
     phase = current_phase_model(phase_slug, records)
     if phase is None:
@@ -152,15 +154,12 @@ def refresh_recommendation(project: Project, phase_slug: str, cwd: Path) -> Json
 
     work = phase_place(phase, project.project_root).worktree
     if not work.is_dir():
-        work = cwd
+        raise EvidenceError(f"phase worktree {work} is missing")
     config = load_project_config(work)
     provider = config.merge_evidence_adapter
     if provider is None:
         raise EvidenceError("merge_evidence.adapter must be configured")
-    try:
-        snapshot = collect_evidence(work, landing.url, config)
-    except (EvidenceError, PluginCatalogError, ToolError) as error:
-        snapshot = EvidenceSnapshot("", unresolved=str(error))
+    snapshot = collect_evidence(work, landing.url, config)
 
     phase_status, phase_blockers, packet = _phase_evidence(
         project, records, phase, work, snapshot.head
