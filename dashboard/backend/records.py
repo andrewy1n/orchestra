@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping
+from collections.abc import Mapping
 from datetime import datetime, timezone
 
 from dashboard.backend import store
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
-from orchestra.canon.types import DerivedValues, JsonValue, Record
-from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.canon.types import DerivedValues, Record
+from orchestra.score.effort import record_effort
 from orchestra.score.lookups import latest_record
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
@@ -57,29 +57,6 @@ def recorded_at(record: Record) -> datetime:
     return datetime.fromisoformat(stamp) if stamp else datetime.min.replace(tzinfo=timezone.utc)
 
 
-def items_from_value(value: JsonValue) -> list[str]:
-    if not value:
-        return []
-    if not isinstance(value, (str, list, dict)):
-        raise TypeError(f"'{type(value).__name__}' object is not iterable")
-    return [str(item).strip() for item in value if str(item).strip()]
-
-
-def section(body: str, heading: str) -> str:
-    collected: list[str] = []
-    collecting = False
-    target = heading.strip().lower()
-    for line in (body or "").splitlines():
-        if line.startswith("## "):
-            if collecting:
-                break
-            collecting = line[3:].strip().lower() == target
-            continue
-        if collecting:
-            collected.append(line)
-    return "\n".join(collected).strip()
-
-
 def live_records(records: list[Record]) -> list[Record]:
     return [record for record in records if record.get("lifecycle_state") not in INACTIVE_STATES]
 
@@ -88,9 +65,8 @@ def newest_record(records: list[Record]) -> Record | None:
     return latest_record(records)
 
 
-def records_by_effort(records: list[Record], key: str = "effort") -> dict[Hashable, list[Record]]:
-    grouped: dict[Hashable, list[Record]] = {}
+def records_by_effort(records: list[Record]) -> dict[str | None, list[Record]]:
+    grouped: dict[str | None, list[Record]] = {}
     for record in records:
-        effort = record["subject"] if key == "subject" else record_payload(record).get(key)
-        grouped.setdefault(effort, []).append(record)
+        grouped.setdefault(record_effort(record), []).append(record)
     return grouped

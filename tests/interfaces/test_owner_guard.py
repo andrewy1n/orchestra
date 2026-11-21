@@ -223,3 +223,63 @@ def test_views_render_allowlist_only_names_current_raw_readers() -> None:
     found = raw_payload_readers(VIEWS_RENDER, tuple(VIEWS_RENDER_ALLOWLIST))
     stale = sorted(name for name in VIEWS_RENDER_ALLOWLIST if not found.get(name))
     assert stale == []
+
+
+DASHBOARD_BACKEND = REPO_ROOT / "dashboard" / "backend"
+
+DASHBOARD_TASK_DECIDERS: dict[str, tuple[str, ...]] = {
+    "task.py": (
+        "check_from",
+        "latest_checks",
+        "configured_small_wave_budget",
+        "_assigned_at",
+        "_task_assignments",
+        "_last_record_at",
+        "belongs",
+        "task_rows",
+    ),
+    "journal.py": (
+        "_phase_for_task",
+        "_belongs_to_effort",
+        "_assignment_task",
+        "load_journal",
+    ),
+    "records.py": ("records_by_effort",),
+}
+
+DASHBOARD_TASK_MERGED: dict[str, tuple[str, ...]] = {
+    "records.py": ("section", "items_from_value"),
+}
+
+DASHBOARD_TASK_ALLOWLIST: dict[tuple[str, str], str] = {}
+
+_DASHBOARD_TASK_DECIDER_IDS = sorted(
+    (module, name) for module, names in DASHBOARD_TASK_DECIDERS.items() for name in names
+)
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    _DASHBOARD_TASK_DECIDER_IDS,
+    ids=[f"dashboard_task-{module}-{name}" for module, name in _DASHBOARD_TASK_DECIDER_IDS],
+)
+def test_dashboard_task_decider_does_not_read_raw_payload(module: str, name: str) -> None:
+    found = raw_payload_readers(DASHBOARD_BACKEND / module, (name,))
+    assert name in found
+    if (module, name) in DASHBOARD_TASK_ALLOWLIST:
+        return
+    assert found[name] == []
+
+
+@pytest.mark.parametrize("module", sorted(DASHBOARD_TASK_MERGED))
+def test_dashboard_task_merged_helpers_are_gone(module: str) -> None:
+    assert raw_payload_readers(DASHBOARD_BACKEND / module, DASHBOARD_TASK_MERGED[module]) == {}
+
+
+def test_dashboard_task_allowlist_only_names_current_raw_readers() -> None:
+    stale = [
+        key
+        for key in sorted(DASHBOARD_TASK_ALLOWLIST)
+        if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
+    ]
+    assert stale == []

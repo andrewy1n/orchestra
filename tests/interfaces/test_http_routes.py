@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -77,6 +78,12 @@ def _ids(root: Path) -> Seed:
             labels[record["id"]] = label
             labels[record["revision"]] = f"rev:{label}"
     return labels
+
+
+def _wait_for_next_second() -> None:
+    start = int(time.time())
+    while int(time.time()) == start:
+        time.sleep(0.05)
 
 
 def _seed(root: Path) -> None:
@@ -162,6 +169,7 @@ def _seed(root: Path) -> None:
             "invalidated_when": "decision recorded",
         },
     )
+    _wait_for_next_second()
     _create(
         root,
         "score:continuity-question",
@@ -454,18 +462,6 @@ EXPECTED: dict[str, object] = json.loads(
    "open": [
     {
      "assignee": "",
-     "id": "<tuner:finding:human-finding>",
-     "open": true,
-     "phase": null,
-     "record_type": "tuner:finding",
-     "recorded_at": "<timestamp>",
-     "subject": "human-finding",
-     "task_id": "",
-     "text": "a human must decide \u00b7 needs human",
-     "write_root": ""
-    },
-    {
-     "assignee": "",
      "id": "<score:continuity-question:alpha:port-choice>",
      "open": true,
      "phase": null,
@@ -474,6 +470,18 @@ EXPECTED: dict[str, object] = json.loads(
      "subject": "alpha",
      "task_id": "",
      "text": "port-choice \u00b7 open",
+     "write_root": ""
+    },
+    {
+     "assignee": "",
+     "id": "<tuner:finding:human-finding>",
+     "open": true,
+     "phase": null,
+     "record_type": "tuner:finding",
+     "recorded_at": "<timestamp>",
+     "subject": "human-finding",
+     "task_id": "",
+     "text": "a human must decide \u00b7 needs human",
      "write_root": ""
     }
    ],

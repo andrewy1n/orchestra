@@ -46,6 +46,11 @@ def _body(record: Record) -> str:
     return body
 
 
+def phase_title(record: Record) -> str:
+    title = record_payload(record).get("title")
+    return title if isinstance(title, str) and title else record["subject"]
+
+
 def read_phase(record: Record) -> Phase:
     payload = record_payload(record)
     return Phase(

@@ -62,6 +62,10 @@ def _is_open_question(record: Record) -> bool:
     return record["record_type"] == QUESTION_TYPE and record["lifecycle_state"] == "open"
 
 
+def is_open_question(record: Record) -> bool:
+    return _is_open_question(record)
+
+
 def _is_blocking_question(record: Record) -> bool:
     return _is_open_question(record) and record["payload"].get("blocking") is True
 
