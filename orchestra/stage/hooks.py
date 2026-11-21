@@ -143,7 +143,7 @@ def _assemble_start(
                 ]
             )
         if dormant:
-            parts.extend(["", f"Dormant: {', '.join(dormant)}. Run `orchestra handoff --all`."])
+            parts.extend(["", f"Dormant: {', '.join(dormant)}. Run `orchestra handoff`."])
         parts.extend(["", "Other views: `orchestra view plan|status|verification`."])
         return "\n".join(parts).strip() + "\n"
 
@@ -201,7 +201,9 @@ def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
         sweep = _close_sweep(project, root)
         records = views.load_records(project)
         _save_baseline(project, root, data)
-        dormant = views.dormant_efforts(records)
+        dormant = sorted(
+            name for name, status in views.effort_statuses(records).items() if status == "dormant"
+        )
         ctx = _assemble_start(
             _constraint_lines(records, dormant),
             views.hook_handoff_sections(records, dormant, open_phase_progress(project, records)),

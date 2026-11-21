@@ -27,6 +27,7 @@ from orchestra.conductor.landing import (
 )
 from orchestra.conductor.requirements import UNVERIFIED, is_verified, requirement_status
 from orchestra.score.analyze import analyze_phase
+from orchestra.score.effort import current_effort
 from orchestra.score.lookups import (
     closing_work_item,
     current_phase,
@@ -329,19 +330,10 @@ def review_readiness(records: Sequence[Record], phase: Phase, step: Step) -> Rea
         and readiness.review is not None
         and readiness.review["payload"].get("authority") == "task-plan-policy"
     ):
-        effort = next(
-            (
-                record
-                for record in records
-                if record["record_type"] == "score:effort"
-                and record["subject"] == phase.effort
-                and record["lifecycle_state"] != "superseded"
-            ),
-            None,
-        )
+        effort = current_effort(records, phase.effort)
         if effort is None:
             return Readiness(False, f"required effort {phase.effort!r} could not be read")
-        if effort["payload"].get("autonomy") not in ("auto-plan", "auto-phases"):
+        if effort.autonomy not in ("auto-plan", "auto-phases"):
             return Readiness(False, "task-plan policy does not permit this review")
     return Readiness(True)
 

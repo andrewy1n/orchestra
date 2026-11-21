@@ -118,7 +118,7 @@ def _effort(
             )
             for i in range(ideas)
         ],
-        dormant=dormant,
+        status="dormant" if dormant else "live",
     )
 
 

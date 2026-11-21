@@ -39,7 +39,7 @@ def _handoff(store) -> str:
 
 
 def _effort_section(handoff: str) -> str:
-    start = handoff.index(f"## {EFFORT}\n")
+    start = handoff.index(f"## {EFFORT} (")
     end = handoff.find("\n## ", start + 1)
     return handoff[start:] if end == -1 else handoff[start:end]
 

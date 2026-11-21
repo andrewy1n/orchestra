@@ -19,7 +19,7 @@ SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
 TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
 SCALARS = ("string", "integer", "number", "boolean")
-MIGRATION_KEYS = {"from", "to", "rename_type", "rename_field", "map_enum"}
+MIGRATION_KEYS = {"from", "to", "rename_type", "rename_field", "map_enum", "drop_field"}
 DEPENDS_ON = "depends_on"
 
 
@@ -150,6 +150,16 @@ def check_migrations(migrations: JsonValue, where: str) -> list[JsonObject]:
             for k, v in enum_maps.items()
         ):
             raise SchemaError(f"{label}: map_enum maps '<type>.<field>' to {{old: new}}")
+        drops = step.get("drop_field", {})
+        drop_fields = get_object({"drops": drops}, "drops")
+        if drop_fields is None or not all(
+            isinstance(k, str)  # pyright: ignore[reportUnnecessaryIsInstance]  # Direct callers may supply non-JSON mapping keys.
+            and QUALIFIED.match(k)
+            and (names := get_list({"names": v}, "names")) is not None
+            and all(isinstance(name, str) for name in names)
+            for k, v in drop_fields.items()
+        ):
+            raise SchemaError(f"{label}: drop_field maps a type to [field, ...]")
     return migration_list  # pyright: ignore[reportReturnType]  # Each migration was validated above.
 
 

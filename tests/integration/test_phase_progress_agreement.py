@@ -125,7 +125,7 @@ def _run(capsys: pytest.CaptureFixture[str], *argv: str) -> str:
 
 
 def _handoff(capsys: pytest.CaptureFixture[str]) -> Seen:
-    found = HANDOFF_LINE.search(_run(capsys, "handoff", "--all"))
+    found = HANDOFF_LINE.search(_run(capsys, "handoff"))
     if found is None:
         return Seen(None, "")
     return Seen(found["stage"], found["reason"] or "")

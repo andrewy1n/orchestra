@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from typing import Literal
 
 from orchestra.canon import record_payload
@@ -18,20 +17,17 @@ from orchestra.conductor.requirements import (
     all_verified,
     requirement_status,
 )
+from orchestra.score.effort import current_effort
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, latest_record, live_work_items
 
 WORK_ITEM = "score:work-item"
-EFFORT = "score:effort"
-PHASE = "score:phase"
 ACCEPTANCE = "score:acceptance"
 SPECIFICATION = "score:specification"
 CHECK_RUN = "tuner:check-run"
 ASSESSMENT = "conductor:assessment"
 ASSIGNMENT = "conductor:assignment"
-QUESTION = "score:continuity-question"
 
 
-DORMANT_AFTER = timedelta(days=7)
 Autonomy = Literal["gated", "auto-plan", "auto-phases"]
 
 
@@ -91,80 +87,7 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
     return TaskAssignment(assignee=assignee, write_root=write_root)
 
 
-def _goal(records: list[Record], effort: str) -> Record | None:
-    return latest_record(
-        [
-            r
-            for r in records
-            if r["record_type"] == EFFORT
-            and r["subject"] == effort
-            and r["lifecycle_state"] != "superseded"
-        ]
-    )
-
-
 def effort_autonomy(records: list[Record], effort: str) -> Autonomy:
-    goal = _goal(records, effort)
-    level = _text(goal, "autonomy") if goal is not None else None
-    if level == "auto-plan":
-        return "auto-plan"
-    if level == "auto-phases":
-        return "auto-phases"
-    return "gated"
-
-
-def _parse_time(value: str) -> datetime:
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
-
-
-def _touch(stamps: dict[str, datetime], effort: str, record: Record) -> None:
-    stamp = _parse_time(record["recorded_at"])
-    current = stamps.get(effort)
-    if current is None or stamp > current:
-        stamps[effort] = stamp
-
-
-def efforts_dormant(records: list[Record], now: datetime) -> dict[str, bool]:
-    goals: dict[str, Record] = {}
-    live: set[str] = set()
-    blocking: set[str] = set()
-    touched: dict[str, datetime] = {}
-    for record in records:
-        record_type = record["record_type"]
-        if record_type == EFFORT and record["lifecycle_state"] != "superseded":
-            subject = record["subject"]
-            current = goals.get(subject)
-            if current is None or (
-                record.get("recorded_at") or "",
-                record["id"],
-            ) > (current.get("recorded_at") or "", current["id"]):
-                goals[subject] = record
-        elif (
-            record_type == PHASE
-            and record["lifecycle_state"] in ("planned", "in_progress")
-            and (effort_name := _text(record, "effort")) is not None
-        ):
-            live.add(effort_name)
-        elif (
-            record_type == QUESTION
-            and record["lifecycle_state"] == "open"
-            and record_payload(record).get("blocking") is True
-        ):
-            blocking.add(record["subject"])
-        effort_name = _text(record, "effort")
-        if effort_name is not None:
-            _touch(touched, effort_name, record)
-        if record_type in (EFFORT, QUESTION):
-            _touch(touched, record["subject"], record)
-    dormant: dict[str, bool] = {}
-    for effort, goal in goals.items():
-        if _text(goal, "status") == "closed" or effort in live or effort in blocking:
-            dormant[effort] = False
-            continue
-        stamp = touched.get(effort)
-        dormant[effort] = stamp is not None and now - stamp >= DORMANT_AFTER
-    return dormant
-
-
-def effort_dormant(records: list[Record], effort: str, now: datetime) -> bool:
-    return efforts_dormant(records, now).get(effort, False)
+    current = current_effort(records, effort)
+    level = current.autonomy if current is not None else None
+    return level or "gated"

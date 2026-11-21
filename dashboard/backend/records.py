@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 from dashboard.backend import store
 from dashboard.backend.store import ModelError
-from orchestra.canon import record_payload as json_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, JsonValue, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -47,31 +46,6 @@ def list_records(
         if record_type in SOFT_TYPES:
             return []
         raise
-
-
-def merge_aliases(goals: list[Record]) -> dict[str, str]:
-    return {
-        old: goal["subject"]
-        for goal in goals
-        for old in record_payload(goal).get("merged_from") or []
-    }
-
-
-def remap_records(records: list[Record], aliases: dict[str, str]) -> list[Record]:
-    rows: list[Record] = []
-    for record in records:
-        if record_payload(record).get("effort") in aliases:
-            moved: Record = {
-                **record,
-                "payload": {
-                    **json_payload(record),
-                    "effort": aliases[record_payload(record)["effort"]],  # pyright: ignore[reportTypedDictNotRequiredAccess]  # Alias membership establishes the field.
-                },
-            }
-            rows.append(moved)
-        else:
-            rows.append(record)
-    return rows
 
 
 def derived_values(record: Record) -> DerivedValues:

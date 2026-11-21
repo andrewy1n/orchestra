@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from dashboard.backend.records import list_records, live_records, recorded_at, section
-from dashboard.backend.snapshot import PLACEMENT_TYPE
+from dashboard.backend.records import list_records, live_records, recorded_at
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
-from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.composer.records import (
+    AREA,
+    IDEA,
+    PLACEMENT,
+    current_placements,
+    home_area,
+    read_area,
+    read_idea,
+)
 
-AREA_TYPE = "composer:area"
-IDEA_TYPE = "composer:idea"
 SHOWN_STATUSES = ("open", "promoted")
 
 
@@ -34,62 +38,38 @@ class AreaView:
     ideas: list[AreaIdea] = field(default_factory=list)
 
 
-def _home_area(idea: Record, placed: dict[str, str]) -> str:
-    payload = record_payload(idea)
-    if payload.get("status") == "promoted":
-        home = placed.get(payload.get("effort") or "")
-        if home:
-            return home
-    return payload.get("area") or ""
-
-
-def _idea_text(idea: Record) -> str:
-    for line in (idea.get("body") or "").splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            return stripped
-    return idea.get("subject") or ""
-
-
 def load_areas(target: Project) -> list[AreaView]:
-    areas = live_records(list_records(target, AREA_TYPE))
+    areas = [read_area(record) for record in live_records(list_records(target, AREA))]
     if not areas:
         return []
-    ideas = [
-        idea
-        for idea in live_records(list_records(target, IDEA_TYPE))
-        if record_payload(idea).get("status") in SHOWN_STATUSES
-    ]
-    ideas.sort(
-        key=lambda idea: (
-            record_payload(idea)["status"] != "open",  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The shown-status filter establishes this field.
-            recorded_at(idea),
-            idea["subject"],
-        )
+    ideas = sorted(
+        (
+            (recorded_at(record), idea)
+            for record in live_records(list_records(target, IDEA))
+            if (idea := read_idea(record)).status in SHOWN_STATUSES
+        ),
+        key=lambda entry: (entry[1].status != "open", entry[0], entry[1].subject),
     )
-    placed = {
-        record["subject"]: record_payload(record).get("area") or ""
-        for record in live_records(list_records(target, PLACEMENT_TYPE))
-    }
+    placed = current_placements(live_records(list_records(target, PLACEMENT)))
     views: list[AreaView] = []
-    for area in sorted(areas, key=lambda record: record["subject"]):
+    for area in sorted(areas, key=lambda area: area.subject):
         listed = [
             AreaIdea(
-                subject=idea["subject"],
-                text=_idea_text(idea),
-                status=record_payload(idea)["status"],  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The shown-status filter establishes this field.
-                area=record_payload(idea).get("area") or "",
-                effort=record_payload(idea).get("effort") or "",
-                phase=record_payload(idea).get("phase") or "",
+                subject=idea.subject,
+                text=idea.text,
+                status=idea.status,
+                area=idea.area,
+                effort=idea.effort,
+                phase=idea.phase,
             )
-            for idea in ideas
-            if _home_area(idea, placed) == area["subject"]
+            for _, idea in ideas
+            if home_area(idea, placed) == area.subject
         ]
         views.append(
             AreaView(
-                subject=area["subject"],
-                title=record_payload(area).get("title") or area["subject"],
-                scope=section(area.get("body") or "", "Scope"),
+                subject=area.subject,
+                title=area.title,
+                scope=area.scope,
                 open_count=sum(idea.status == "open" for idea in listed),
                 ideas=listed,
             )

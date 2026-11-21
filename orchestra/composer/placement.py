@@ -6,6 +6,8 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
+from orchestra.composer.records import current_area
+from orchestra.score.effort import current_effort
 
 PLACEMENT = "composer:placement"
 
@@ -14,16 +16,12 @@ class PlacementError(Exception):
     pass
 
 
-def _require(project: Project, record_type: str, subject: str) -> None:
-    try:
-        project.resolve(record_type, subject)
-    except StoreError as exc:
-        raise PlacementError(f"{record_type} {subject!r} does not exist") from exc
-
-
 def place(project: Project, effort: str, area: str) -> Record:
-    _require(project, "score:effort", effort)
-    _require(project, "composer:area", area)
+    records = project.records()
+    if current_effort(records, effort) is None:
+        raise PlacementError(f"score:effort {effort!r} does not exist")
+    if current_area(records, area) is None:
+        raise PlacementError(f"composer:area {area!r} does not exist")
     payload: JsonObject = {"area": area}
     try:
         try:

@@ -11,9 +11,7 @@ from dashboard.backend.records import (
     INACTIVE_STATES,
     derived_values,
     list_records,
-    merge_aliases,
     recorded_at,
-    remap_records,
     section,
 )
 from dashboard.backend.store import ModelError
@@ -530,18 +528,16 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
     """Load one task's records with four CLI calls.
 
     `get` yields the subject, effort, body, and outbound depends_on; one `list --subject --full`
-    yields every record for the slug; one work-item `list` for the effort names linked tasks; one goal `list` maps merged efforts.
+    yields every record for the slug; one work-item `list` for the effort names linked tasks.
     """
     item = store.get_record(target, work_item_id, "score:work-item")
     if "subject" not in item:
         raise ModelError(f"get score:work-item {work_item_id} returned unreadable output")
-    aliases = merge_aliases(list_records(target, "score:effort"))
-    item = remap_records([item], aliases)[0]
     slug, payload = item["subject"], record_payload(item)
     effort = payload.get("effort", "")
-    records = remap_records(store.list_records(target, subject=slug), aliases)
+    records = store.list_records(target, subject=slug)
     efforts = store.list_records(target, "score:work-item", payload={"effort": effort})
-    effort_assignments = remap_records(list_records(target, "conductor:assignment"), aliases)
+    effort_assignments = list_records(target, "conductor:assignment")
     rows = {
         row.id: row
         for row in task_rows(

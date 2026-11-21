@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+
+from orchestra.canon import record_payload
+from orchestra.canon.errors import RecordShapeError
+from orchestra.canon.fields import optional_blank_text, required_text
+from orchestra.canon.types import Record
+from orchestra.score.lookups import latest_record
+
+IDEA = "composer:idea"
+AREA = "composer:area"
+PLACEMENT = "composer:placement"
+
+_DEAD_STATES = ("superseded", "retracted")
+
+
+@dataclass(frozen=True)
+class Idea:
+    subject: str
+    status: str
+    area: str
+    effort: str
+    phase: str
+    source: str
+    text: str
+    record: Record
+
+
+@dataclass(frozen=True)
+class Area:
+    subject: str
+    title: str
+    scope: str
+
+
+@dataclass(frozen=True)
+class Placement:
+    effort: str
+    area: str
+
+
+@dataclass(frozen=True)
+class ComposerScanFinding:
+    record_id: str
+    record_type: str
+    field: str
+    message: str
+
+
+def _idea_text(record: Record) -> str:
+    for line in (record.get("body") or "").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            return stripped
+    return record["subject"]
+
+
+def _scope(body: str) -> str:
+    lines: list[str] = []
+    inside = False
+    for line in body.splitlines():
+        if line.startswith("## "):
+            if inside:
+                break
+            inside = line[3:].strip().lower() == "scope"
+        elif inside:
+            lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def read_idea(record: Record) -> Idea:
+    payload = record_payload(record)
+    return Idea(
+        subject=record["subject"],
+        status=required_text(record, payload, "status"),
+        area=optional_blank_text(record, payload, "area") or "",
+        effort=optional_blank_text(record, payload, "effort") or "",
+        phase=optional_blank_text(record, payload, "phase") or "",
+        source=optional_blank_text(record, payload, "source") or "",
+        text=_idea_text(record),
+        record=record,
+    )
+
+
+def read_area(record: Record) -> Area:
+    payload = record_payload(record)
+    return Area(
+        subject=record["subject"],
+        title=optional_blank_text(record, payload, "title") or record["subject"],
+        scope=_scope(record.get("body") or ""),
+    )
+
+
+def read_placement(record: Record) -> Placement:
+    payload = record_payload(record)
+    return Placement(effort=record["subject"], area=required_text(record, payload, "area"))
+
+
+def _live(records: Sequence[Record], record_type: str) -> list[Record]:
+    return [
+        record
+        for record in records
+        if record["record_type"] == record_type and record["lifecycle_state"] not in _DEAD_STATES
+    ]
+
+
+def current_area(records: Sequence[Record], subject: str) -> Area | None:
+    record = latest_record(r for r in _live(records, AREA) if r["subject"] == subject)
+    return read_area(record) if record is not None else None
+
+
+def current_placements(records: Sequence[Record]) -> dict[str, str]:
+    by_effort: dict[str, list[Record]] = {}
+    for record in _live(records, PLACEMENT):
+        by_effort.setdefault(record["subject"], []).append(record)
+    placements: dict[str, str] = {}
+    for efforts in by_effort.values():
+        latest = latest_record(efforts)
+        if latest is not None:
+            placement = read_placement(latest)
+            placements[placement.effort] = placement.area
+    return placements
+
+
+def home_area(idea: Idea, placements: Mapping[str, str]) -> str:
+    if idea.status == "promoted":
+        placed = placements.get(idea.effort)
+        if placed:
+            return placed
+    return idea.area
+
+
+def scan_composer_records(records: Sequence[Record]) -> list[ComposerScanFinding]:
+    readers = {IDEA: read_idea, AREA: read_area, PLACEMENT: read_placement}
+    findings: list[ComposerScanFinding] = []
+    for record in records:
+        reader = readers.get(record["record_type"])
+        if reader is None or record["lifecycle_state"] in _DEAD_STATES:
+            continue
+        try:
+            reader(record)
+        except RecordShapeError as error:
+            findings.append(
+                ComposerScanFinding(
+                    error.record_id, record["record_type"], error.field, error.message
+                )
+            )
+    return findings
