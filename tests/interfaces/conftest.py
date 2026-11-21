@@ -9,6 +9,8 @@ from interfaces_support import build_world
 
 from orchestra.canon.project import Project
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 @pytest.fixture(scope="module", autouse=True)
 def isolated_home(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:

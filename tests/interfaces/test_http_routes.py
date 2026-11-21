@@ -9,10 +9,10 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("fastapi")
-from conftest import build_store, run_cli
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from helpers import generic_body, schema_defs
+from interfaces_support import build_store, run_cli
 
 from dashboard.backend.server.app import create_app
 from orchestra.canon.project import open_store

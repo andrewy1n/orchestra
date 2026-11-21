@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
 import json
 import os
@@ -11,11 +12,26 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 from canon_support import create, make_project, seed_effort
 
 from orchestra.canon.cli import main as canon_main
 from orchestra.cli import main as orchestra_main
+
+
+def _load_root_conftest() -> ModuleType:
+    path = Path(__file__).resolve().parents[1] / "conftest.py"
+    spec = importlib.util.spec_from_file_location("root_conftest", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_ROOT = _load_root_conftest()
+build_store: Callable[..., Path] = _ROOT.build_store
+run_cli: Callable[..., subprocess.CompletedProcess[str]] = _ROOT.run_cli
 
 EFFORT = "alpha"
 PHASE = "p1"
