@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Collection
 from dataclasses import dataclass
+from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
@@ -12,6 +13,8 @@ from orchestra.canon.types import Record
 from orchestra.score.effort import Effort, current_effort, current_efforts
 
 LEVELS = ("gated", "auto-plan", "auto-phases")
+
+Autonomy = Literal["gated", "auto-plan", "auto-phases"]
 
 
 class AutonomyError(RuntimeError):
@@ -152,3 +155,9 @@ def apply_migration(project: Project, mappings: list[Mapping]) -> dict[str, str]
             },
         )
     return levels
+
+
+def effort_autonomy(records: list[Record], effort: str) -> Autonomy:
+    current = current_effort(records, effort)
+    level = current.autonomy if current is not None else None
+    return level or "gated"

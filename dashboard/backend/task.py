@@ -18,9 +18,9 @@ from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
+from orchestra.conductor.assignment import task_assignment
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.derive import task_assignment
 from orchestra.score.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     ExecutorTask,

@@ -194,3 +194,7 @@ def verified_requirements(statuses: dict[str, RequirementStatus]) -> frozenset[s
 
 def all_verified(statuses: dict[str, RequirementStatus]) -> bool:
     return bool(statuses) and all(is_verified(status.status) for status in statuses.values())
+
+
+def release_ready(records: list[Record], phase: str, head: str | None = None) -> bool:
+    return all_verified(requirement_status(records, phase, head))

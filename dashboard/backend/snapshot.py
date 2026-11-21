@@ -47,7 +47,7 @@ from orchestra.composer.records import IDEA, current_placements, read_idea
 from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.derive import phase_progress
+from orchestra.conductor.phase_progress import phase_counts
 from orchestra.score.effort import current_efforts
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 
@@ -791,7 +791,7 @@ def load_work_snapshot(
             if current.record["lifecycle_state"] != "in_progress":
                 continue
             phase = current.subject
-            counts = phase_progress(tasks, phase)
+            counts = phase_counts(tasks, phase)
             evidence = None
             if (effort, phase) in structured:
                 evidence = phase_evidence(
