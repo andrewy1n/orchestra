@@ -38,9 +38,13 @@ from orchestra.conductor.head_evidence import (
 )
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.conductor.phase_progress import PhaseProgress
-from orchestra.conductor.requirements import UNVERIFIED, all_verified
-from orchestra.derive import RequirementStatus, phase_progress, requirement_status
+from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
+from orchestra.conductor.requirements import (
+    UNVERIFIED,
+    RequirementStatus,
+    all_verified,
+    requirement_status,
+)
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases, record_order
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
@@ -389,7 +393,7 @@ def phase_rows(
         elapsed_minutes, unset_estimates = phase_elapsed(
             task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
         )
-        progress = phase_progress(members, phase.subject)
+        progress = phase_counts(members, phase.subject)
         body = phase.body
         rows.append(
             PhaseRow(

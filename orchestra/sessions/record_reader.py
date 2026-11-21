@@ -8,8 +8,10 @@ from datetime import datetime, timezone
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.derive import WORK_ITEM, task_assignment
+from orchestra.conductor.assignment import task_assignment
 from orchestra.sessions.session_types import RecordMetadata
+
+WORK_ITEM = "score:work-item"
 
 DEFAULT_TYPES = (
     "score:acceptance",

@@ -14,17 +14,13 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.assignment import task_assignment
 from orchestra.conductor.attention import AttentionItem, LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus
 from orchestra.conductor.effort_status import effort_statuses as _effort_statuses
 from orchestra.conductor.landing import place_of_body
-from orchestra.conductor.phase_progress import PhaseProgress
-from orchestra.conductor.requirements import RequirementIndex
-from orchestra.derive import (
-    phase_progress,
-    requirement_status,
-    task_assignment,
-)
+from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
+from orchestra.conductor.requirements import RequirementIndex, requirement_status
 from orchestra.score.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     ExecutorTask,
@@ -460,7 +456,7 @@ def _phase_derived_lines(
     stage: PhaseProgress | None = None,
 ) -> list[str]:
     records = _effort_pool(records, effort)
-    progress = phase_progress(records, phase)
+    progress = phase_counts(records, phase)
     statuses = requirement_status(records, phase, index=requirement_index)
     stage_text = _stage_text(stage)
     if progress.total == 0 and not statuses and not stage_text:
@@ -575,9 +571,7 @@ def group_records(
             picked = [r for r in gates.get(role.gate, []) if r["record_type"] == role.record_type]
         for record in picked:
             if role.name == "pending-phase-close":
-                progress = phase_progress(
-                    _effort_pool(scoped, effort_of(record)), record["subject"]
-                )
+                progress = phase_counts(_effort_pool(scoped, effort_of(record)), record["subject"])
                 if not progress.total or progress.done != progress.total:
                     continue
             key = _group_key(record, view, role)

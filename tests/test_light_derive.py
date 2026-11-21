@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.derive import release_ready, requirement_status
+from orchestra.conductor.requirements import release_ready, requirement_status
 
 _CLOCK = itertools.count()
 

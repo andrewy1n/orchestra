@@ -9,11 +9,11 @@ from canon_support import make_project
 
 from dashboard.backend import phase as phase_mod
 from dashboard.backend.snapshot import load_snapshot
-from orchestra import derive
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.derive import RequirementStatus
+from orchestra.conductor import requirements
+from orchestra.conductor.requirements import RequirementStatus
 
 
 def _create(
@@ -114,7 +114,7 @@ def test_evidence_derivation_scans_only_the_requested_phase(
     project: Project, monkeypatch: pytest.MonkeyPatch, reader: str
 ) -> None:
     seen: list[tuple[str, list[Record]]] = []
-    original = derive.requirement_status
+    original = requirements.requirement_status
 
     def observe(
         records: list[Record], phase: str, head: str | None = None
@@ -123,7 +123,7 @@ def test_evidence_derivation_scans_only_the_requested_phase(
         return original(records, phase, head)
 
     monkeypatch.setattr(phase_mod, "requirement_status", observe)
-    monkeypatch.setattr(derive, "requirement_status", observe)
+    monkeypatch.setattr(requirements, "requirement_status", observe)
     if reader == "snapshot":
         load_snapshot(project)
     else:
@@ -146,7 +146,7 @@ def test_evidence_derives_requirement_status_once_per_phase(
     project: Project, monkeypatch: pytest.MonkeyPatch, reader: str
 ) -> None:
     calls: Counter[str] = Counter()
-    original = derive.requirement_status
+    original = requirements.requirement_status
 
     def observe(
         records: list[Record], phase: str, head: str | None = None
@@ -155,7 +155,7 @@ def test_evidence_derives_requirement_status_once_per_phase(
         return original(records, phase, head)
 
     monkeypatch.setattr(phase_mod, "requirement_status", observe)
-    monkeypatch.setattr(derive, "requirement_status", observe)
+    monkeypatch.setattr(requirements, "requirement_status", observe)
     if reader == "snapshot":
         load_snapshot(project)
         assert calls == {"finished": 1, "current": 1}
