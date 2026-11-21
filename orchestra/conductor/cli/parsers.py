@@ -7,7 +7,9 @@ from typing import Protocol
 
 
 class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+    def add_parser(
+        self, name: str, *, help: str, description: str | None = None
+    ) -> argparse.ArgumentParser: ...
 
 
 def _add_suite_job_arguments(
@@ -47,6 +49,7 @@ def _add_suite_job_arguments(
 
 def add_parsers(sub: SubparserGroup) -> None:
     _add_wave_task_parsers(sub)
+    _add_land_close_parsers(sub)
     review_brief = sub.add_parser(
         "review-brief",
         help=(
@@ -272,3 +275,79 @@ def _add_wave_task_parsers(sub: SubparserGroup) -> None:
     task_land.add_argument("--json", action="store_true", help="Print one JSON object")
     task_land.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     task_land.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _add_land_close_parsers(sub: SubparserGroup) -> None:
+    close_batch = sub.add_parser(
+        "close-batch",
+        help="Build NDJSON apply batch that closes a work-item",
+    )
+    close_batch.add_argument(
+        "--input",
+        default="-",
+        help="close-request JSON path, or '-' for stdin (default)",
+    )
+    close_batch.add_argument(
+        "--out",
+        default="-",
+        help="NDJSON output path, or '-' for stdout (default)",
+    )
+    close_batch.add_argument(
+        "--cwd",
+        default=None,
+        help="git cwd for red-first ancestry checks (default: process cwd)",
+    )
+    close_batch.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help="Store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
+    )
+
+    land = sub.add_parser(
+        "land",
+        help="Run the phase gate, then open the configured pull request and wait for CI",
+    )
+    land.add_argument("--phase", required=True, help="Phase slug")
+    land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
+    land.add_argument("--base", default="main", help="Pull request base branch")
+    land.add_argument("--remote", default="origin", help="Git remote to publish")
+    land.add_argument(
+        "--poll-interval", type=float, default=10, help="CI polling interval in seconds"
+    )
+    land.add_argument("--timeout", type=float, default=1800, help="Maximum CI wait in seconds")
+    land.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+    close = sub.add_parser(
+        "close",
+        help=(
+            "After the pull request merges, remove the phase worktrees and branches "
+            "and close the phase"
+        ),
+        description=(
+            "After the pull request merges, close removes the worktrees and branches of the "
+            "phase and closes the phase. Run it from the main checkout."
+        ),
+    )
+    close.add_argument("--phase", default=None, help="Phase slug")
+    close.add_argument(
+        "--all", action="store_true", help="Close every landed phase that still has work to close"
+    )
+    close.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    close.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )

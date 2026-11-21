@@ -27,9 +27,16 @@ CONDUCTOR_WAVE_TASK = [
     ("task", "land", "--evidence", "x", "t"),
 ]
 
+CONDUCTOR_LAND_CLOSE = [
+    ("land", "--phase", "p1"),
+    ("close", "--phase", "p1"),
+    ("close-batch", "--input", "close-request.json"),
+]
+
 GROUPS = {
     "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
+    "conductor_land_close": CONDUCTOR_LAND_CLOSE,
 }
 
 CASES = [
@@ -44,6 +51,7 @@ def test_no_store_is_store_not_ready_with_searched_paths(
     argv: tuple[str, ...], bare_dir: Path
 ) -> None:
     (bare_dir / "orchestra.toml").write_text(MINIMAL_CONFIG, encoding="utf-8")
+    (bare_dir / "close-request.json").write_text("{}", encoding="utf-8")
     result = invoke("orchestra", list(argv), bare_dir)
     text = result.out + result.err
     assert result.code == REFUSAL_CODE, text

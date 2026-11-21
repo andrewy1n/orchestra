@@ -317,6 +317,13 @@ CONDUCTOR_LAND_CLOSE = [
         "close-batch",
         err="close-request is not valid JSON",
     ),
+    orchestra(
+        "close_batch_invalid_request_no_store",
+        "bare",
+        1,
+        "close-batch",
+        err="close-request is not valid JSON",
+    ),
 ]
 
 CONDUCTOR_WORKFLOW = [

@@ -43,6 +43,42 @@ class CloseResult:
     actions: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class CloseReport:
+    results: tuple[CloseResult, ...]
+    errors: tuple[str, ...]
+    all_phases: bool
+
+    @classmethod
+    def from_outcomes(
+        cls, outcomes: tuple[CloseResult | str, ...], *, all_phases: bool
+    ) -> CloseReport:
+        return cls(
+            results=tuple(item for item in outcomes if not isinstance(item, str)),
+            errors=tuple(item for item in outcomes if isinstance(item, str)),
+            all_phases=all_phases,
+        )
+
+    @property
+    def refused(self) -> bool:
+        return any(item.refusals for item in self.results)
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors and not self.refused
+
+    @property
+    def diagnostics(self) -> tuple[str, ...]:
+        refusals = tuple(line for item in self.results for line in item.refusals)
+        return refusals + self.errors
+
+    @property
+    def exit_code(self) -> int:
+        if self.errors:
+            return 2
+        return 1 if self.refused else 0
+
+
 def close_phase(
     project: Project,
     repo: Path,
