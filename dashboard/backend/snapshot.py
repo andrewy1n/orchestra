@@ -31,10 +31,8 @@ from dashboard.backend.records import (
     INACTIVE_STATES,
     list_records,
     live_records,
-    merge_aliases,
     recorded_at,
     records_by_effort,
-    remap_records,
 )
 from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import change_token
@@ -45,6 +43,7 @@ from dashboard.backend.task import (
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.composer.records import IDEA, read_idea
 from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -228,33 +227,25 @@ def _task_for(subject: str, tasks: list[Record]) -> str:
     return owner["id"] if owner else ""
 
 
-def _backlog_text(record: Record) -> str:
-    for line in (record.get("body") or "").splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            return stripped
-    return record.get("subject") or ""
-
-
 def _backlog_items(records: list[Record]) -> list[BacklogItem]:
     items: list[BacklogItem] = []
     for record in records:
         if record.get("lifecycle_state") in INACTIVE_STATES:
             continue
-        payload = record_payload(record)
-        if payload.get("status") != "open":
+        idea = read_idea(record)
+        if idea.status != "open":
             continue
         items.append(
             BacklogItem(
                 id=record["id"],
-                subject=record["subject"],
-                effort=payload.get("effort") or "",
-                text=_backlog_text(record),
-                status=payload.get("status") or "open",
-                source=payload.get("source") or "",
-                phase=payload.get("phase") or "",
+                subject=idea.subject,
+                effort=idea.effort,
+                text=idea.text,
+                status=idea.status,
+                source=idea.source,
+                phase=idea.phase,
                 body=record.get("body") or "",
-                record_type=record.get("record_type") or "composer:idea",
+                record_type=record.get("record_type") or IDEA,
                 updated_at=recorded_at(record),
             )
         )
@@ -572,10 +563,6 @@ def _load_snapshot(
     progress = load_phase_progress(target, token)
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
     small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
-    aliases = merge_aliases(listed["score:effort"])
-    listed = {
-        record_type: remap_records(records, aliases) for record_type, records in listed.items()
-    }
     goals = [
         r
         for r in listed["score:effort"]
@@ -587,7 +574,7 @@ def _load_snapshot(
     tasks = records_by_effort(all_tasks)
     checks_all = listed["tuner:check-run"]
     checks = records_by_effort(checks_all)
-    acceptances_all = remap_records(list_records(target, "score:acceptance"), aliases)
+    acceptances_all = list_records(target, "score:acceptance")
     acceptances = records_by_effort(acceptances_all)
     efforts_by_work_item: dict[str, tuple[str, str]] = {}
     for task in all_tasks:
@@ -600,7 +587,7 @@ def _load_snapshot(
     integrations = listed["conductor:integration-report"]
     releases = listed["conductor:release"]
     backlog_by_effort = records_by_effort(listed.get("composer:idea") or [])
-    decisions = remap_records(list_records(target, "score:decision"), aliases) if designs else []
+    decisions = list_records(target, "score:decision") if designs else []
     structured = _structured_phases(specs) | _light_phases(listed["score:phase"])
     specs_by_effort = records_by_effort(specs)
     designs_by_effort = records_by_effort(designs)
@@ -764,10 +751,6 @@ def load_work_snapshot(
         if type_records is not None:
             type_records.append(record)
     small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
-    aliases = merge_aliases(listed["score:effort"])
-    listed = {
-        record_type: remap_records(records, aliases) for record_type, records in listed.items()
-    }
     grouped = {record_type: records_by_effort(rows) for record_type, rows in listed.items()}
     structured = _structured_phases(listed["score:specification"]) | _light_phases(
         listed["score:phase"]

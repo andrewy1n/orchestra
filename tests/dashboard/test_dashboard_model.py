@@ -1034,7 +1034,7 @@ def test_detail_ignores_a_task_whose_slug_shares_a_prefix(detail_store):
     assert all(a.criterion != "foreign" for a in detail.acceptances)
 
 
-def test_detail_uses_five_cli_calls(detail_store, monkeypatch):
+def test_detail_uses_four_cli_calls(detail_store, monkeypatch):
     calls = []
     real_get, real_list = backend_store.get_record, backend_store.list_records
 
@@ -1049,7 +1049,7 @@ def test_detail_uses_five_cli_calls(detail_store, monkeypatch):
     monkeypatch.setattr(backend_store, "get_record", spy_get)
     monkeypatch.setattr(backend_store, "list_records", spy_list)
     _detail(detail_store)
-    assert len(calls) == 5
+    assert len(calls) == 4
 
 
 def test_detail_of_an_unknown_id_raises_a_model_error(store):
@@ -1323,47 +1323,6 @@ def test_running_since_is_none_unless_the_task_is_in_progress(store, cli, defs):
 def test_task_row_defaults_leave_waits_on_empty_and_running_since_unset():
     row = _task_row("running")
     assert (row.waits_on, row.running_since) == ((), None)
-
-
-def _merged_store(cli, defs):
-    h.create_generic_record(
-        cli,
-        defs,
-        "score:effort",
-        subject="merged",
-        extra_payload={"goal": "ship merged", "kind": "deliver", "merged_from": ["old-a", "old-b"]},
-    )
-    _phase(cli, defs, "merged", "m-one", 1, "in_progress")
-    task = _work_item(cli, defs, "merged", "m-task", "m-one")
-    h.transition(cli, "score:work-item", task, "in_progress")
-    _record(
-        cli,
-        defs,
-        "tuner:check-run",
-        "m-task",
-        {
-            "criterion_id": "x",
-            "method": "manual",
-            "result": "pass",
-            "signed_by": "",
-            "revision": "r",
-            "effort": "old-a",
-        },
-    )
-    return task
-
-
-def test_snapshot_counts_a_check_run_of_a_merged_effort_under_the_new_effort(store, cli, defs):
-    _merged_store(cli, defs)
-    view = _effort(snapshot_mod.load_snapshot(_target(store)), "merged")
-    assert [item.kind for item in view.needs_you] == ["unsigned-check"]
-    assert [item.kind for item in view.activity] == ["check-run"]
-
-
-def test_task_detail_lists_a_check_run_recorded_under_a_merged_effort(store, cli, defs):
-    task = _merged_store(cli, defs)
-    detail = task_mod.load_task_detail(_target(store), task["id"])
-    assert [e.kind for e in detail.timeline] == ["check-run"]
 
 
 def _body(defs, record_type: str, fills: dict | None = None) -> str | None:

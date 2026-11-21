@@ -7,8 +7,7 @@ from dataclasses import dataclass
 from dashboard.backend.snapshot import BacklogItem
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue
-
-BACKLOG_TYPE = "composer:idea"
+from orchestra.composer.records import IDEA as BACKLOG_TYPE
 
 
 class BacklogError(Exception):

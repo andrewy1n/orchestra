@@ -156,7 +156,6 @@ def _assignment_task(
 
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
-    aliases = records.merge_aliases(records.list_records(target, "score:effort"))
     goals = [
         record
         for record in records.list_records(target, "score:effort")
@@ -165,29 +164,23 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
-    tasks = records.remap_records(
-        _soft_list(target, "score:work-item", payload={"effort": effort}),
-        aliases,
-    )
+    tasks = _soft_list(target, "score:work-item", payload={"effort": effort})
     if not tasks:
         tasks = [
             record
-            for record in records.remap_records(_soft_list(target, "score:work-item"), aliases)
+            for record in _soft_list(target, "score:work-item")
             if record_payload(record).get("effort") == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
-    phases = records.remap_records(
-        _soft_list(target, "score:phase", payload={"effort": effort}),
-        aliases,
-    )
+    phases = _soft_list(target, "score:phase", payload={"effort": effort})
     phase_titles = {
         record["subject"]: record_payload(record).get("title") or record["subject"]
         for record in phases
     }
 
-    assignments_listed = records.remap_records(_soft_list(target, "conductor:assignment"), aliases)
+    assignments_listed = _soft_list(target, "conductor:assignment")
     assignments: dict[str, Record] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
@@ -195,7 +188,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
 
     listed: dict[str, list[Record]] = {}
     for record_type in JOURNAL_TYPES:
-        raw = records.remap_records(_soft_list(target, record_type), aliases)
+        raw = _soft_list(target, record_type)
         by_subject = record_type == "score:continuity-question"
         listed[record_type] = [
             record
