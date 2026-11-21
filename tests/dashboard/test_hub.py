@@ -112,7 +112,7 @@ def _effort(
         phases=phases or [],
         needs_you=needs or [],
         backlog=ideas or [],
-        dormant=dormant,
+        status="dormant" if dormant else "live",
     )
 
 
