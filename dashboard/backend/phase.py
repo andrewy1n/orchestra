@@ -10,11 +10,9 @@ from dashboard.backend.records import (
     INACTIVE_STATES,
     list_records,
     live_records,
-    merge_aliases,
     newest_record,
     recorded_at,
     records_by_effort,
-    remap_records,
     section,
 )
 from dashboard.backend.stages import load_phase_progress
@@ -780,33 +778,24 @@ def load_decision_log(
     history: bool,
 ) -> DecisionLog:
     """Phase- or effort-scoped decisions, with optional superseded chains (R7)."""
-    aliases = merge_aliases(list_records(target, "score:effort"))
     effort_phases = sorted(
         (
             phase
-            for phase in current_phase_models(
-                remap_records(list_records(target, "score:phase"), aliases)
-            )
+            for phase in current_phase_models(list_records(target, "score:phase"))
             if phase.effort == effort
         ),
         key=lambda phase: (phase.ordinal, phase.subject),
     )
     titles = {phase.subject: phase.title or phase.subject for phase in effort_phases}
 
-    listed = remap_records(
-        list_records(target, "score:decision", payload={"effort": effort}),
-        aliases,
-    )
+    listed = list_records(target, "score:decision", payload={"effort": effort})
     by_id = {record["id"]: record for record in listed}
     if history:
-        for record in remap_records(
-            list_records(
-                target,
-                "score:decision",
-                state="superseded",
-                payload={"effort": effort},
-            ),
-            aliases,
+        for record in list_records(
+            target,
+            "score:decision",
+            state="superseded",
+            payload={"effort": effort},
         ):
             by_id.setdefault(record["id"], record)
 
@@ -836,10 +825,9 @@ def load_decision_log(
 
 def load_phase_detail(target: Project, effort: str, phase_subject: str) -> PhaseDetail:
     """Load one phase with its body, decisions, constraints, and tasks."""
-    aliases = merge_aliases(list_records(target, "score:effort"))
 
     def by_effort(record_type: str) -> dict[Hashable, list[Record]]:
-        return records_by_effort(remap_records(list_records(target, record_type), aliases))
+        return records_by_effort(list_records(target, record_type))
 
     snapshot_phases = by_effort("score:phase").get(effort, [])
     phase = current_phase_model(phase_subject, snapshot_phases)
@@ -863,14 +851,8 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         ),
         None,
     )
-    phase_specs = remap_records(
-        list_records(target, "score:specification", payload={"phase": phase_subject}),
-        aliases,
-    )
-    phase_designs = remap_records(
-        list_records(target, "score:design", payload={"phase": phase_subject}),
-        aliases,
-    )
+    phase_specs = list_records(target, "score:specification", payload={"phase": phase_subject})
+    phase_designs = list_records(target, "score:design", payload={"phase": phase_subject})
     spec = newest_record(_for_phase(phase_specs, phase_subject, effort))
     design = newest_record(_for_phase(phase_designs, phase_subject, effort))
     evidence = phase_evidence(
@@ -915,9 +897,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             milestone_title = record_payload(milestone_record).get("title") or milestone_slug
         else:
             milestone_title = milestone_slug
-    packet = proof_packet(
-        remap_records(list_records(target, "conductor:proof-packet"), aliases), phase
-    )
+    packet = proof_packet(list_records(target, "conductor:proof-packet"), phase)
     proof = None
     if packet is not None:
         proof_body = packet.record.get("body") or ""
@@ -944,7 +924,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             t
             for t in task_rows(
                 tasks,
-                remap_records(list_records(target, "conductor:assignment"), aliases),
+                list_records(target, "conductor:assignment"),
                 phases=[record],
                 small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
             )
@@ -964,10 +944,9 @@ def load_requirement_detail(
     target: Project, effort: str, phase: str, requirement: str
 ) -> RequirementDetail:
     """Load one requirement, including superseded assessments oldest first."""
-    aliases = merge_aliases(list_records(target, "score:effort"))
 
     def listed(record_type: str, state: str | None = None) -> list[Record]:
-        return remap_records(list_records(target, record_type, state=state), aliases)
+        return list_records(target, record_type, state=state)
 
     specs = listed("score:specification")
     by_id = {record["id"]: record for record in listed("conductor:assessment")}

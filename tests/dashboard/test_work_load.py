@@ -131,17 +131,6 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Project:
         "alpha",
         {"owner": "user", "blocking": True, "scope": "plan"},
     )
-    _create(
-        project, "score:effort", "legacy", {"goal": "Old", "kind": "deliver", "status": "closed"}
-    )
-    _create(
-        project,
-        "score:effort",
-        "renamed",
-        {"goal": "New", "kind": "deliver", "merged_from": ["legacy"]},
-    )
-    _phase(project, "legacy", "legacy-phase")
-    _create(project, "composer:idea", "legacy-idea", {"effort": "legacy", "status": "open"})
     _create(project, "composer:idea", "promoted-idea", {"effort": "alpha", "status": "promoted"})
     _create(
         project, "score:effort", "closed", {"goal": "Closed", "kind": "deliver", "status": "closed"}
@@ -161,13 +150,12 @@ def test_work_data_matches_the_full_snapshot_hub(project: Project) -> None:
         assert effort.needs_you == source.needs_you
         assert effort.backlog == source.backlog
     assert actual == expected
-    assert {item.subject for item in actual.active_phases} == {"active", "legacy-phase"}
+    assert {item.subject for item in actual.active_phases} == {"active"}
     assert {item.effort for item in actual.open_ideas} == {
         "alpha",
-        "pending",
         "empty",
+        "pending",
         "withdrawn",
-        "renamed",
     }
 
 
@@ -198,9 +186,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
         *,
         small_wave_budget_minutes: int = 15,
     ) -> list[TaskRow]:
-        assert all(
-            record["payload"].get("phase") in ("active", "legacy-phase") for record in records
-        )
+        assert all(record["payload"].get("phase") in ("active",) for record in records)
         return original_tasks(
             records,
             assignments,
@@ -226,7 +212,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
         phase_records: list[Record] | None = None,
         progress: PhaseProgress | None = None,
     ) -> PhaseEvidence | None:
-        assert phase in ("active", "legacy-phase")
+        assert phase in ("active",)
         phases.append(phase)
         return original_evidence(
             phase,
@@ -254,7 +240,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
     response = TestClient(create_app(project)).get("/api/hub")
     assert response.status_code == 200, response.text
     assert reads == 1
-    assert sorted(phases) == ["active", "legacy-phase"]
+    assert sorted(phases) == ["active"]
 
 
 @pytest.mark.parametrize("method", ["records", "derived"])

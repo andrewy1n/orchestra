@@ -66,7 +66,7 @@ def _handoff(store) -> str:
     return views.render_view(views.VIEWS["handoff"], views.load_records(open_store(store)))
 
 
-def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
+def test_closed_effort_stays_listed_as_closed(store, cli, resolved_contract):
     defs = h.record_defs_by_id(resolved_contract)
     _effort(cli, defs, "open-effort")
     goal, position = _effort(cli, defs, "done-effort")
@@ -74,7 +74,8 @@ def test_closed_effort_leaves_the_handoff(store, cli, resolved_contract):
     _close(cli, "score:position", position)
 
     handoff = _handoff(store)
-    assert "done-effort" not in handoff
+    assert "## done-effort (closed)" in handoff
+    assert "goal of done-effort" not in handoff and "position of done-effort" not in handoff
     assert "goal of open-effort" in handoff and "position of open-effort" in handoff
     assert _render(cli, "validate")
 

@@ -72,7 +72,7 @@ as `{phase}-review` or `{phase}-suite`.
 
 List fields are JSON arrays: `requirements`, `decisions`, `test_ids`,
 `oracle_hashes`, `failing_node_ids`, `claim_ids`, `old_hashes`,
-`new_hashes`, `merged_from`, `depends_on`.
+`new_hashes`, `depends_on`.
 
 ## First run in a work repo
 

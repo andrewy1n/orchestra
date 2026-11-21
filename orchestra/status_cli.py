@@ -23,16 +23,21 @@ def add_parser(sub: SubparserGroup) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
-    from dashboard.backend.gates import apply_landing_needs, landings_for_snapshot
+    from dashboard.backend.gates import landing_facts
     from dashboard.backend.snapshot import load_snapshot
-    from dashboard.backend.store import ModelError
+    from dashboard.backend.store import ModelError, change_token
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError, open_store
 
     try:
         target = open_store(Path(args.directory) if args.directory else Path.cwd())
-        snapshot = load_snapshot(target)
-        merged = apply_landing_needs(snapshot, landings_for_snapshot(target.project_root, snapshot))
+        token = change_token(target)
+        facts = {
+            phase: fact
+            for view in load_snapshot(target, token=token).efforts
+            for phase, fact in landing_facts(view, target.project_root).items()
+        }
+        merged = load_snapshot(target, token=token, landing=facts)
     except (StoreBindingError, StoreError, ModelError, OSError) as exc:
         print(f"orchestra status: {exc}", file=sys.stderr)
         return 1

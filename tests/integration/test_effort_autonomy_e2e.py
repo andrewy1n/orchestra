@@ -87,8 +87,8 @@ def test_session_start_handoff_lists_a_dormant_effort_on_one_line(world: World) 
     assert "Dormant: quiet-one" in context
 
 
-def test_handoff_all_shows_the_dormant_effort_in_full(world: World) -> None:
+def test_handoff_shows_the_dormant_effort_in_full(world: World) -> None:
     later = (datetime.now(timezone.utc) + timedelta(days=10)).isoformat()
-    result = world.run("orchestra", "handoff", "--all", extra_env={"ORCHESTRA_NOW": later})
+    result = world.run("orchestra", "handoff", extra_env={"ORCHESTRA_NOW": later})
     assert result.returncode == 0, result.stdout + result.stderr
     assert "quiet-one position" in result.stdout

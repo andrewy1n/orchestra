@@ -18,6 +18,7 @@ _Migration = TypedDict(
         "rename_type": dict[object, JsonValue],
         "rename_field": dict[object, dict[str, JsonValue]],
         "map_enum": dict[str, dict[str, JsonValue]],
+        "drop_field": dict[str, list[str]],
     },
 )
 
@@ -70,6 +71,8 @@ def transform(record: Record, steps: list[JsonObject], target_module: JsonObject
         for old, new in fields.items():
             if old in payload:
                 payload[new] = payload.pop(old)  # pyright: ignore[reportArgumentType]  # Rename targets retain legacy JSON key behavior.
+        for name in (step.get("drop_field") or {}).get(str(previous_type)) or []:
+            payload.pop(name, None)
         map_enum = step.get("map_enum") or {}
         for key, mapping in map_enum.items():
             record_type, field = key.rsplit(".", 1)

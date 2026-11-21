@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
 from dashboard.backend.landing import Landing, phase_landing
 from dashboard.backend.phase import PhaseRow
-from dashboard.backend.snapshot import NEEDS_ORDER, EffortView, NeedsYouItem, Snapshot
+from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from dashboard.backend.task import TaskRow
+from orchestra.conductor.attention import LandingFact
 
 PLAN_REVIEW_PREFIX = "plan-review:"
 
@@ -200,33 +200,6 @@ def is_quiet(task: TaskRow, now: datetime) -> bool:
     return (now - last) > limit
 
 
-def merge_landing_needs(
-    view: EffortView,
-    landing: Mapping[str, Landing | _LandingState],
-) -> EffortView:
-    """Append merge-branch Needs you items for unmerged done phases (R6); re-sort by NEEDS_ORDER."""
-    extras: list[NeedsYouItem] = []
-    for phase in sorted(view.phases, key=lambda row: row.ordinal):
-        if phase.state != "done":
-            continue
-        state = landing.get(phase.subject)
-        if state is None or not state.exists or state.merged:
-            continue
-        extras.append(
-            NeedsYouItem(
-                kind="merge-branch",
-                id=f"merge:{phase.subject}",
-                subject=phase.subject,
-                text=state.branch,
-                body=f"{state.ahead} ahead",
-                phase=phase.subject,
-            )
-        )
-    items = [item for item in view.needs_you if item.kind != "merge-branch"] + extras
-    items.sort(key=lambda entry: NEEDS_ORDER.index(entry.kind))
-    return replace(view, needs_you=items)
-
-
 def landing_for_view(root: Path, view: EffortView) -> dict[str, Landing]:
     """Compute phase_landing for each phase (same path the app and status use)."""
     landing: dict[str, Landing] = {}
@@ -237,17 +210,8 @@ def landing_for_view(root: Path, view: EffortView) -> dict[str, Landing]:
     return landing
 
 
-def landings_for_snapshot(root: Path, snapshot: Snapshot) -> dict[str, dict[str, Landing]]:
-    """Per-effort landing maps for a full snapshot."""
-    return {view.effort: landing_for_view(root, view) for view in snapshot.efforts}
-
-
-def apply_landing_needs(
-    snapshot: Snapshot,
-    landings: dict[str, dict[str, Landing]],
-) -> Snapshot:
-    """Return a snapshot whose Needs you lists include Merge branch items (shared with status)."""
-    efforts = [
-        merge_landing_needs(view, landings.get(view.effort, {})) for view in snapshot.efforts
-    ]
-    return Snapshot(efforts, snapshot.token, snapshot.generated_at)
+def landing_facts(view: EffortView, root: Path) -> dict[str, LandingFact]:
+    return {
+        phase: LandingFact(state.exists, state.merged, state.branch, state.ahead)
+        for phase, state in landing_for_view(root, view).items()
+    }
