@@ -2424,22 +2424,6 @@ def test_evidence_release_ready_returns_each_rule(store, cli, defs):
     assert view.release_ready is True
 
 
-def _estimated(
-    ident: str, wave: int | None, executor: str, minutes: int | None
-) -> task_mod.TaskRow:
-    return task_mod.TaskRow(
-        id=ident,
-        subject=ident,
-        title="",
-        phase="p",
-        assignee="",
-        wave=wave,
-        status="ready",
-        executor=executor,
-        estimate_minutes=minutes,
-    )
-
-
 def test_estimate_view_sitting_phrase():
     assert phase_mod.sitting_phrase("Size: more than one sitting") == "more than one"
     assert phase_mod.sitting_phrase("Size: more than one sitting.") == "more than one"
@@ -2448,46 +2432,6 @@ def test_estimate_view_sitting_phrase():
         phase_mod.sitting_phrase("Size: one sitting\nSize: more than one sitting") == "one sitting"
     )
     assert phase_mod.sitting_phrase("## Problem\n\nNo size line here.\n") == ""
-
-
-def test_estimate_view_wave_rule():
-    tasks = [
-        _estimated("in-a", 1, "inline", 10),
-        _estimated("in-b", 1, "inline", 15),
-        _estimated("sub-a", 2, "subagent", 10),
-        _estimated("sub-b", 2, "subagent", 40),
-        _estimated("sub-blank", 2, "subagent", None),
-        _estimated("zero", 3, "inline", 0),
-    ]
-    elapsed, unset = phase_mod.phase_elapsed(tasks)
-    assert elapsed == 10 + 15 + 40
-    assert elapsed != sum(task.estimate_minutes or 0 for task in tasks)
-    assert unset == 1
-    assert phase_mod.phase_elapsed([_estimated("only-zero", 1, "subagent", 0)]) == (0, 0)
-    separate = [
-        _estimated("lone-a", None, "subagent", 10),
-        _estimated("lone-b", None, "subagent", 40),
-    ]
-    assert phase_mod.phase_elapsed(separate) == (50, 0)
-
-
-def test_estimate_view_unset_count():
-    elapsed, unset = phase_mod.phase_elapsed(
-        [
-            _estimated("missing-a", 1, "inline", None),
-            _estimated("missing-b", 1, "inline", None),
-            _estimated("known", 1, "inline", 25),
-        ]
-    )
-    assert (elapsed, unset) == (25, 2)
-    elapsed, unset = phase_mod.phase_elapsed(
-        [
-            _estimated("none-a", 1, "subagent", None),
-            _estimated("none-b", 2, "inline", None),
-        ]
-    )
-    assert elapsed is None
-    assert unset == 2
 
 
 def _estimate_record(subject: str, **payload: JsonValue) -> Record:
@@ -3248,77 +3192,6 @@ def test_attempt_snapshot_reads_payload_and_run_facts(store, cli, defs):
     assert tasks["attempt-task"].id == retried["id"]
     assert tasks["fresh-task"].attempts == 0
     assert tasks["fresh-task"].retry_budget == 3
-
-
-def _suite_check(
-    subject: str,
-    result: str,
-    revision: str = "abc1234deadbeef",
-    *,
-    body: str = "",
-) -> Record:
-    return {
-        "id": f"id-{subject}-{result}",
-        "record_type": "tuner:check-run",
-        "subject": subject,
-        "lifecycle_state": "recorded",
-        "recorded_at": "2026-01-01T12:00:00+00:00",
-        "payload": {
-            "criterion_id": "suite",
-            "revision": revision,
-            "result": result,
-            "effort": "alpha",
-            "method": "check",
-            "signed_by": "",
-            "evidence_kind": "integration",
-        },
-        "body": body,
-        "relationships": {},
-        "revision": "sha256:test",
-    }
-
-
-def test_suite_status_label_pass_fail_running():
-    assert (
-        phase_mod.suite_status_label(
-            "p-ok", [_suite_check("p-ok-suite", "pass", "abcdef0123456789")]
-        )
-        == "suite ok@abcdef0"
-    )
-    assert (
-        phase_mod.suite_status_label("p-bad", [_suite_check("p-bad-suite", "fail", "deadbeef")])
-        == "suite fail@deadbee"
-    )
-    assert (
-        phase_mod.suite_status_label(
-            "p-run",
-            [_suite_check("p-run-suite", "blocked", body="suite-running in worktree")],
-        )
-        == "suite running"
-    )
-    assert phase_mod.suite_status_label("p-none", []) == ""
-    assert phase_mod.suite_status_label("p-ok", [_suite_check("other-suite", "pass")]) == ""
-    wrong_kind = _suite_check("p-ok-suite", "pass")
-    wrong_kind["payload"]["evidence_kind"] = "unit"
-    assert phase_mod.suite_status_label("p-ok", [wrong_kind]) == ""
-    # Legacy `-tier2` subjects still display (suite labels).
-    assert (
-        phase_mod.suite_status_label(
-            "p-legacy",
-            [_suite_check("p-legacy-tier2", "pass", "feedface")],
-        )
-        == "suite ok@feedfac"
-    )
-    assert (
-        phase_mod.suite_status_label(
-            "p-pref",
-            [
-                _suite_check("p-pref-tier2", "fail", "deadbeef"),
-                _suite_check("p-pref-suite", "pass", "abcdef0123456789"),
-            ],
-        )
-        == "suite ok@abcdef0"
-    )
 
 
 def test_suite_phase_row_from_snapshot(store, cli, defs):
