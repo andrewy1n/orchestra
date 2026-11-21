@@ -12,7 +12,7 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import gate
 from orchestra.conductor.landing import latest_landing, phase_place, proof_packet
 from orchestra.score.phase import Phase, current_phase_model
-from orchestra.tools import Git, ToolError
+from orchestra.tools import Git
 
 CheckState = Literal["pass", "fail", "pending", "missing"]
 
@@ -104,11 +104,8 @@ def _phase_evidence(
     packet = proof_packet(records, phase, head)
     if packet is None:
         return "blocked", [f"no phase proof packet for {head}"], None
-    try:
-        if Git(work).head() != head:
-            return "blocked", ["phase worktree HEAD differs from the pull request head"], packet.id
-    except ToolError as error:
-        return "unresolved", [f"cannot read the phase worktree head: {error}"], packet.id
+    if Git(work).head() != head:
+        return "blocked", ["phase worktree HEAD differs from the pull request head"], packet.id
     terms = gate.gate_terms(
         project.project_root, phase.subject, store_dir=project.store_path, head_worktree=work
     )

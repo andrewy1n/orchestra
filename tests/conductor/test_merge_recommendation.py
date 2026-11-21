@@ -16,7 +16,7 @@ from orchestra.conductor.merge_evidence import (
     EvidenceSnapshot,
     RequiredCheck,
 )
-from orchestra.tools import Git
+from orchestra.tools import Git, ToolError
 
 URL = "https://github.com/owner/repo/pull/7"
 RUN = f"{URL.split('/pull')[0]}/actions/runs/42"
@@ -235,4 +235,21 @@ def test_missing_phase_worktree_exits_without_recording_an_observation(
     _invoke(project, 2)
 
     assert "phase worktree" in capsys.readouterr().err
+    assert not project.list("conductor:ci-observation")
+
+
+def test_unreadable_worktree_head_exits_without_recording_an_observation(
+    project: Project, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    head = Git(project.project_root).head()
+    monkeypatch.setattr(GitHubActionsAdapter, "read", lambda *_: EvidenceSnapshot(head))
+
+    def read_head(_self: Git) -> str:
+        raise ToolError("cannot read worktree HEAD", ("git", "rev-parse", "HEAD"), 128, "")
+
+    monkeypatch.setattr(Git, "head", read_head)
+
+    _invoke(project, 2)
+
+    assert "cannot read worktree HEAD" in capsys.readouterr().err
     assert not project.list("conductor:ci-observation")
