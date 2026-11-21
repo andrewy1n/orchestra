@@ -42,7 +42,9 @@ def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
     return live_work_items(phase, records)
 
 
-def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
+def _phase_requirement_ids(
+    records: list[Record], phase: str, every_record: list[Record]
+) -> list[str]:
     specifications = [
         record
         for record in records
@@ -50,8 +52,8 @@ def _phase_requirement_ids(records: list[Record], phase: str) -> list[str]:
         and record["lifecycle_state"] == "active"
         and _text(record, "phase") == phase
     ]
-    if phase_weight(records, phase) == "light":
-        return [requirement for requirement, _ in phase_requirements(records, phase)]
+    if phase_weight(every_record, phase) == "light":
+        return [requirement for requirement, _ in phase_requirements(every_record, phase)]
     specification = latest_record(specifications)
     sources = [specification] if specification is not None else _phase_work_items(records, phase)
     requirements: list[str] = []
@@ -148,7 +150,7 @@ def requirement_status(
     if index is None:
         index = RequirementIndex(records)
     statuses: dict[str, RequirementStatus] = {}
-    for requirement in _phase_requirement_ids(index.sources.get(phase, []), phase):
+    for requirement in _phase_requirement_ids(index.sources.get(phase, []), phase, records):
         derived = _derive_requirement(index, phase, requirement, head)
         written = index.assessments.get((phase, requirement))
         written_status = _text(written, "status") if written is not None else None

@@ -4,6 +4,7 @@ import itertools
 
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.requirements import RequirementStatus, requirement_status
+from orchestra.score.lookups import prepare_records
 
 PHASE = "p"
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
@@ -101,6 +102,15 @@ def test_all_acceptances_must_pass_before_the_requirement_is_verified() -> None:
     assert _status(records).status == "unverified"
     records.append(_run(second, "pass"))
     assert _status(records).status == "verified"
+
+
+def test_status_inside_prepared_records_matches_the_unprepared_status() -> None:
+    first = _acceptance("a-one")
+    records = [_spec("R1"), first, _run(first, "pass")]
+    expected = requirement_status(records, PHASE)
+    with prepare_records(records):
+        assert requirement_status(records, PHASE) == expected
+    assert expected["R1"].status == "verified"
 
 
 def test_all_acceptances_failing_latest_run_fails_the_requirement() -> None:
