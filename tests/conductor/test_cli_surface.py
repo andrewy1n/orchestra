@@ -22,6 +22,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from orchestra import cli
 from orchestra.canon.errors import StoreError
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import suite
 
 # Every runtime call a skill makes must be one of these named commands.
@@ -126,7 +127,11 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
             calls.append(record_type)
             return [row for row in records if row.get("record_type") == record_type]
 
-    monkeypatch.setattr("orchestra.store.open_store", lambda directory, store=None: _Project())
+    class _Location:
+        def open(self):
+            return _Project()
+
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     monkeypatch.setattr(
         "orchestra.conductor.reviewer.git_phase_diff", lambda *a, **k: "+reviewed line"
     )
@@ -165,7 +170,7 @@ def test_review_brief_reads_only_stored_record_kinds(tmp_path, monkeypatch, caps
         def open(self):
             return _Project()
 
-    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     code, out, err = run(
         [
             "review-brief",
@@ -198,7 +203,7 @@ def test_review_brief_refuses_partial_records_on_read_failure(tmp_path, monkeypa
         def open(self):
             return _Project()
 
-    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
 
     code, out, err = run(
         [

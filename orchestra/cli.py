@@ -9,38 +9,20 @@ from dataclasses import asdict
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
-from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
-from orchestra.canon.project_config import (
-    CONFIG_PATH,
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    ProjectConfigError,
-    load_project_config,
-)
-from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import (
-    autonomy,
-    close,
-    gate,
-    land,
-    land_task,
-    reviewer,
-    suite,
-    task_redispatch,
-    wave,
-)
+from orchestra.canon.types import JsonObject
+from orchestra.conductor import autonomy, close, land, land_task, task_redispatch, wave
+from orchestra.conductor import cli as conductor_cli
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError, github_client
 from orchestra.conductor.task_landing import land_and_close
-from orchestra.score.analyze import analyze_phase
-from orchestra.score.lookups import current_phase
 from orchestra.score.work_item import WorkItemShapeError
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.stage import cli as stage_cli
-from orchestra.store import StoreLocation, resolve_location
+from orchestra.store import resolve_location
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
@@ -235,48 +217,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default="-",
         help="report JSONL path, or '-' for stdin (default)",
     )
-
-    review_brief = sub.add_parser(
-        "review-brief",
-        help=(
-            "Build the phase-end reviewer brief from allowed store records "
-            "and git diff <base>..<phase-head>"
-        ),
-    )
-    review_brief.add_argument(
-        "--cwd",
-        default=None,
-        help="Worktree the diff comes from (default: process cwd)",
-    )
-    review_brief.add_argument(
-        "--base",
-        default="main",
-        help="Diff base revision (default: main)",
-    )
-    review_brief.add_argument(
-        "--phase-head",
-        default="HEAD",
-        help="Phase head revision (default: HEAD)",
-    )
-    review_brief.add_argument(
-        "--phase",
-        default=None,
-        help="Include records for this phase only",
-    )
-    review_brief.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-    review_brief.add_argument(
-        "--out",
-        default="-",
-        help="Brief path, or '-' for stdout (default)",
-    )
+    conductor_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
 
     effort = sub.add_parser("effort", help="Effort settings")
     effort_sub = effort.add_subparsers(dest="action", required=True)
@@ -350,130 +291,6 @@ def _build_parser() -> argparse.ArgumentParser:
     task_land.add_argument("--json", action="store_true", help="Print one JSON object")
     task_land.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     task_land.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-
-    analyze = sub.add_parser(
-        "analyze",
-        help="Check a phase's specification, design, work-items, and acceptances for consistency",
-    )
-    analyze.add_argument("phase", help="Phase slug")
-    analyze.add_argument(
-        "--stage",
-        choices=("spec", "design", "plan", "close"),
-        default="plan",
-        help="Checks to run (default: plan)",
-    )
-    analyze.add_argument("--json", action="store_true", help="Print one JSON object")
-    analyze.add_argument(
-        "--cwd",
-        default=None,
-        help="Directory the store is resolved from (default: process cwd)",
-    )
-    analyze.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-
-    gate_parser = sub.add_parser(
-        "gate",
-        help="Check the phase gate; exit 1 and name each missing term when it does not hold",
-    )
-    gate_parser.add_argument("phase", help="Phase slug")
-    gate_parser.add_argument("--json", action="store_true", help="Print one JSON object")
-    gate_parser.add_argument(
-        "--cwd",
-        default=None,
-        help="Phase worktree whose HEAD the gate checks (default: the Landing worktree)",
-    )
-    gate_parser.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd, else cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-
-    suite_parser = sub.add_parser(
-        "suite",
-        help="Phase suite: policy, start, poll, collect, cancel, record",
-    )
-    suite_sub = suite_parser.add_subparsers(dest="action", required=True)
-
-    suite_policy = suite_sub.add_parser(
-        "policy",
-        help="Print the configured orchestra.toml suite policy as JSON",
-    )
-    suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
-
-    suite_start = suite_sub.add_parser(
-        "start",
-        help="Start the configured suite in a detached worker process",
-    )
-    _add_suite_job_arguments(suite_start)
-    suite_start.add_argument(
-        "--command",
-        dest="suite_command",
-        default=None,
-        help="Override the configured suite command",
-    )
-    suite_start.add_argument(
-        "--timeout",
-        type=float,
-        default=None,
-        help="Stop the suite command after this many seconds",
-    )
-    suite_poll = suite_sub.add_parser(
-        "poll",
-        help="Return the suite result when the background job finished, else 'running'",
-    )
-    _add_suite_job_arguments(suite_poll, include_run_id=True)
-
-    suite_collect = suite_sub.add_parser(
-        "collect",
-        help="Collect the finished suite result (exit code, log, failing node ids)",
-    )
-    _add_suite_job_arguments(suite_collect, include_run_id=True)
-
-    suite_record = suite_sub.add_parser(
-        "record",
-        help="Collect a finished suite and write its tuner:check-run",
-    )
-    _add_suite_job_arguments(suite_record, include_run_id=True)
-    suite_record.add_argument(
-        "--effort",
-        required=True,
-        help="Effort/focus the check-run belongs to",
-    )
-    suite_cancel = suite_sub.add_parser(
-        "cancel",
-        help="Request cancellation of one selected suite run",
-    )
-    _add_suite_job_arguments(suite_cancel)
-    suite_cancel.add_argument(
-        "--run-id",
-        required=True,
-        help="Immutable run id returned by suite start",
-    )
-    suite_record.add_argument(
-        "--criterion-id",
-        default=None,
-        help="Criterion id (default: <phase>-suite)",
-    )
-    suite_record.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
 
     land = sub.add_parser(
         "land",
@@ -587,41 +404,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _add_suite_job_arguments(
-    parser: argparse.ArgumentParser,
-    *,
-    include_run_id: bool = False,
-) -> None:
-    """Arguments shared by suite job commands."""
-    parser.add_argument("--phase", required=True, help="Phase slug")
-    parser.add_argument(
-        "--cwd",
-        default=None,
-        help="Phase worktree (default: process cwd)",
-    )
-    parser.add_argument(
-        "--phase-head",
-        default=None,
-        help="Phase head revision (default: git HEAD in --cwd)",
-    )
-    parser.add_argument(
-        "--session",
-        default=None,
-        help="Suite job label (default: orchestra-suite-<phase>)",
-    )
-    if include_run_id:
-        parser.add_argument(
-            "--run-id",
-            default=None,
-            help="Select this immutable run instead of the current run",
-        )
-    parser.add_argument(
-        "--allow-dirty",
-        action="store_true",
-        help="Allow recording a pass on a dirty tree (revision=dirty + diff_sha256)",
-    )
-
-
 def _cwd(args: argparse.Namespace) -> Path:
     return Path(args.cwd).expanduser() if args.cwd else Path.cwd()
 
@@ -639,120 +421,6 @@ def _checkout_root(directory: Path) -> Path:
 
 def _print_json(payload: object) -> None:
     print(json.dumps(payload, indent=2))
-
-
-def _policy_document(policy: suite.SuitePolicy) -> dict[str, object]:
-    return {
-        "mode": policy.mode,
-        "command": policy.command,
-        "gate": policy.gate,
-        "source_path": policy.source_path,
-        "run_locally": policy.run_locally,
-        "blocks_merge": policy.blocks_merge,
-        "advisory": policy.advisory,
-        "deferred_landing_stop": policy.deferred_landing_stop,
-        "create_fix_tasks_on_fail": policy.create_fix_tasks_on_fail,
-    }
-
-
-def _suite_result_document(result: suite.SuiteResult) -> dict[str, object]:
-    return {
-        "state": result.result,
-        "result": result.result,
-        "revision": result.revision,
-        "exit_code": result.exit_code,
-        "duration_s": result.duration_s,
-        "output_sha256": result.output_sha256,
-        "failing_node_ids": result.failing_node_ids,
-        "diff_sha256": result.diff_sha256,
-        "refuse": result.refuse,
-        "refuse_message": result.refuse_message,
-        "skipped": result.skipped,
-        "skip_reason": result.skip_reason,
-        "run_id": result.run_id,
-        "reason": result.reason,
-    }
-
-
-def _suite_exit_code(result: suite.SuiteResult) -> int:
-    if result.skipped:
-        return suite.SKIPPED_EXIT_CODE
-    if result.refuse or result.result == "blocked":
-        return 2
-    if result.result == "fail":
-        return 1
-    return 0
-
-
-def _suite_job(args: argparse.Namespace) -> suite.SuiteStart:
-    return suite.load_suite_job(
-        worktree=_cwd(args),
-        phase_slug=args.phase,
-        session_name=args.session,
-        run_id=getattr(args, "run_id", None),
-    )
-
-
-def _load_review_records(
-    location: StoreLocation,
-) -> list[Record]:
-    """Read the reviewer-allowed kinds from the opened store."""
-    project = location.open()
-    records: list[Record] = []
-    failures: list[str] = []
-    for kind in sorted(reviewer.ALLOWED_KINDS):
-        record_type = f"score:{kind}"
-        try:
-            rows = project.list(record_type)
-        except StoreError as exc:
-            failures.append(f"{record_type}: {exc}")
-            continue
-        records.extend(row for row in rows if isinstance(row, dict))  # pyright: ignore[reportUnnecessaryIsInstance]
-    if failures:
-        raise RuntimeError("; ".join(failures))
-    return records
-
-
-def _suite_refusal(location: StoreLocation, work: Path, phase: str, phase_head: str) -> str:
-    policy = suite.load_suite_policy(work)
-    if not policy.run_locally:
-        return ""
-    resolved = Git(work).resolve(phase_head)
-    if resolved is None:
-        raise RuntimeError(f"cannot resolve {phase_head}")
-    check_runs = [row for row in location.open().list("tuner:check-run") if isinstance(row, dict)]  # pyright: ignore[reportUnnecessaryIsInstance]
-    return suite.suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=resolved)
-
-
-def _cmd_review_brief(args: argparse.Namespace) -> int:
-    work = _cwd(args)
-    try:
-        location = resolve_location(args.store, work)
-        if args.phase:
-            refusal = _suite_refusal(location, work, args.phase, args.phase_head)
-            if refusal:
-                print(f"orchestra review-brief: {refusal}", file=sys.stderr)
-                return 2
-        records = _load_review_records(location)
-        phase_diff = reviewer.git_phase_diff(work, base=args.base, phase_head=args.phase_head)
-        brief = reviewer.build_reviewer_brief(
-            records=records,
-            phase_diff=phase_diff,
-            base=args.base,
-            phase_head=args.phase_head,
-            phase=args.phase,
-        )
-    except (OSError, RuntimeError, StoreBindingError) as exc:
-        print(f"orchestra review-brief: {exc}", file=sys.stderr)
-        return 2
-    if args.out == "-":
-        print(brief, end="" if brief.endswith("\n") else "\n")
-        return 0
-    destination = Path(args.out).expanduser()
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(brief, encoding="utf-8")
-    print(destination)
-    return 0
 
 
 def _cmd_effort_autonomy(args: argparse.Namespace) -> int:
@@ -985,196 +653,6 @@ def _cmd_task_redispatch(args: argparse.Namespace) -> int:
     else:
         print(f"redispatched {record['subject']} (attempt {payload.get('attempts')})")
     return 0
-
-
-def _cmd_analyze(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = location.open()
-        records = project.records()
-        records = attach_derived_all(records, project.derived(records))
-        budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
-        if args.stage in ("plan", "close"):
-            config_path = location.root / CONFIG_PATH
-            if config_path.exists() or config_path.is_symlink():
-                budget = load_project_config(location.root).small_wave_budget_minutes
-    except (OSError, RuntimeError, StoreBindingError, StoreError, ProjectConfigError) as exc:
-        print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-    if current_phase(args.phase, records) is None:
-        print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
-        return 2
-    report = analyze_phase(records, args.phase, args.stage, budget)
-    if args.json:
-        _print_json(
-            {
-                "phase": report.phase,
-                "stage": report.stage,
-                "skipped": False,
-                "findings": [f.to_dict() for f in report.findings],
-            }
-        )
-    else:
-        for f in report.findings:
-            print(f"{f.severity} {f.code} {f.subject}: {f.message}")
-        errors = sum(f.severity == "error" for f in report.findings)
-        warnings = len(report.findings) - errors
-        print(f"{args.phase} ({args.stage}): {errors} errors, {warnings} warnings")
-    return 0 if report.ok else 1
-
-
-def _cmd_gate(args: argparse.Namespace) -> int:
-    head_worktree = _cwd(args).resolve() if args.cwd else None
-    try:
-        location = resolve_location(args.store, head_worktree or Path.cwd())
-        terms = gate.gate_terms(
-            location.root, args.phase, store_dir=location.store, head_worktree=head_worktree
-        )
-    except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-    missing = gate.missing_terms(terms)
-    if args.json:
-        _print_json(
-            {
-                "phase": args.phase,
-                "holds": not missing,
-                "missing": [term.name for term in missing],
-            }
-        )
-    elif missing:
-        for line in gate.format_missing(missing):
-            print(f"{args.phase}: {line}")
-    else:
-        print(f"{args.phase}: gate holds")
-    return 1 if missing else 0
-
-
-def _cmd_suite_policy(args: argparse.Namespace) -> int:
-    try:
-        policy = suite.load_suite_policy(_cwd(args))
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite policy: {exc}", file=sys.stderr)
-        return 2
-    _print_json(_policy_document(policy))
-    return 0
-
-
-def _cmd_suite_start(args: argparse.Namespace) -> int:
-    try:
-        outcome = suite.start_suite_background(
-            worktree=_cwd(args),
-            phase_slug=args.phase,
-            phase_head=args.phase_head,
-            session_name=args.session,
-            suite_command=args.suite_command,
-            allow_dirty=args.allow_dirty,
-            timeout=args.timeout,
-        )
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite start: {exc}", file=sys.stderr)
-        return 2
-    if isinstance(outcome, suite.SuiteResult):
-        _print_json(_suite_result_document(outcome))
-        return _suite_exit_code(outcome)
-    _print_json(
-        {
-            "state": "skipped" if outcome.skipped else "started",
-            "session_name": outcome.session_name,
-            "worktree": str(outcome.worktree),
-            "phase": outcome.phase_slug,
-            "phase_head": outcome.phase_head,
-            "log_path": str(outcome.log_path),
-            "exit_path": str(outcome.exit_path),
-            "run_id": outcome.run_id,
-            "skip_reason": outcome.skip_reason,
-            "policy": _policy_document(outcome.policy) if outcome.policy else None,
-        }
-    )
-    return suite.SKIPPED_EXIT_CODE if outcome.skipped else 0
-
-
-def _cmd_suite_poll(args: argparse.Namespace) -> int:
-    try:
-        job = _suite_job(args)
-        result = suite.poll_suite(job, allow_dirty=args.allow_dirty)
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite poll: {exc}", file=sys.stderr)
-        return 2
-    if result is None:
-        _print_json(
-            {
-                "state": "running",
-                "session_name": job.session_name,
-                "phase": job.phase_slug,
-                "phase_head": job.phase_head,
-                "log_path": str(job.log_path),
-                "exit_path": str(job.exit_path),
-                "run_id": job.run_id,
-            }
-        )
-        return 3
-    _print_json(_suite_result_document(result))
-    return _suite_exit_code(result)
-
-
-def _cmd_suite_collect(args: argparse.Namespace) -> int:
-    try:
-        result = suite.collect_suite(_suite_job(args), allow_dirty=args.allow_dirty)
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite collect: {exc}", file=sys.stderr)
-        return 2
-    _print_json(_suite_result_document(result))
-    return _suite_exit_code(result)
-
-
-def _cmd_suite_record(args: argparse.Namespace) -> int:
-    work = _cwd(args)
-    try:
-        job = _suite_job(args)
-        result = suite.poll_suite(job, allow_dirty=args.allow_dirty)
-        if result is None:
-            print(
-                "orchestra suite record: suite is still running; poll it until it finishes",
-                file=sys.stderr,
-            )
-            return 3
-        if result.skipped:
-            print(result.skip_reason, file=sys.stderr)
-            return suite.SKIPPED_EXIT_CODE
-        location = resolve_location(args.store, work)
-        record = suite.record_suite_check_run(
-            store_root=location.root,
-            store_dir=location.store,
-            phase_slug=args.phase,
-            effort=args.effort,
-            suite=result,
-            criterion_id=args.criterion_id,
-        )
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite record: {exc}", file=sys.stderr)
-        return 2
-    _print_json({"ok": True, "op": "suite-record", "record": record})
-    return 0
-
-
-def _cmd_suite_cancel(args: argparse.Namespace) -> int:
-    try:
-        job = _suite_job(args)
-        state = suite.cancel_suite_run(job)
-    except (OSError, RuntimeError, StoreBindingError, ValueError) as exc:
-        print(f"orchestra suite cancel: {exc}", file=sys.stderr)
-        return 2
-    _print_json(
-        {
-            "ok": True,
-            "op": "suite-cancel",
-            "state": state,
-            "session_name": job.session_name,
-            "run_id": job.run_id,
-        }
-    )
-    return 0 if state in ("requested", "cancelled", "completed", "skipped") else 2
 
 
 def _cmd_land(args: argparse.Namespace) -> int:
@@ -1549,8 +1027,8 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             print(f"orchestra sessions: {exc}", file=sys.stderr)
             return 2
-    if args.command == "review-brief":
-        return _cmd_review_brief(args)
+    if args.command in conductor_cli.COMMANDS:
+        return conductor_cli.run(args)
     if args.command == "wave":
         if args.action == "start":
             return _cmd_wave_start(args)
@@ -1563,24 +1041,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "redispatch":
             return _cmd_task_redispatch(args)
         return _cmd_task_land(args)
-    if args.command == "analyze":
-        return _cmd_analyze(args)
-    if args.command == "gate":
-        return _cmd_gate(args)
     if args.command == "workflow":
         return workflow_cli.run(args)
-    if args.command == "suite":
-        if args.action == "policy":
-            return _cmd_suite_policy(args)
-        if args.action == "start":
-            return _cmd_suite_start(args)
-        if args.action == "poll":
-            return _cmd_suite_poll(args)
-        if args.action == "collect":
-            return _cmd_suite_collect(args)
-        if args.action == "cancel":
-            return _cmd_suite_cancel(args)
-        return _cmd_suite_record(args)
     if args.command == "land":
         return _cmd_land(args)
     if args.command == "close":

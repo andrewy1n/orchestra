@@ -1,0 +1,213 @@
+"""Argument parsers for the conductor verbs."""
+
+from __future__ import annotations
+
+import argparse
+from typing import Protocol
+
+
+class SubparserGroup(Protocol):
+    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+
+
+def _add_suite_job_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    include_run_id: bool = False,
+) -> None:
+    """Arguments shared by suite job commands."""
+    parser.add_argument("--phase", required=True, help="Phase slug")
+    parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Phase worktree (default: process cwd)",
+    )
+    parser.add_argument(
+        "--phase-head",
+        default=None,
+        help="Phase head revision (default: git HEAD in --cwd)",
+    )
+    parser.add_argument(
+        "--session",
+        default=None,
+        help="Suite job label (default: orchestra-suite-<phase>)",
+    )
+    if include_run_id:
+        parser.add_argument(
+            "--run-id",
+            default=None,
+            help="Select this immutable run instead of the current run",
+        )
+    parser.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="Allow recording a pass on a dirty tree (revision=dirty + diff_sha256)",
+    )
+
+
+def add_parsers(sub: SubparserGroup) -> None:
+    review_brief = sub.add_parser(
+        "review-brief",
+        help=(
+            "Build the phase-end reviewer brief from allowed store records "
+            "and git diff <base>..<phase-head>"
+        ),
+    )
+    review_brief.add_argument(
+        "--cwd",
+        default=None,
+        help="Worktree the diff comes from (default: process cwd)",
+    )
+    review_brief.add_argument(
+        "--base",
+        default="main",
+        help="Diff base revision (default: main)",
+    )
+    review_brief.add_argument(
+        "--phase-head",
+        default="HEAD",
+        help="Phase head revision (default: HEAD)",
+    )
+    review_brief.add_argument(
+        "--phase",
+        default=None,
+        help="Include records for this phase only",
+    )
+    review_brief.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+    review_brief.add_argument(
+        "--out",
+        default="-",
+        help="Brief path, or '-' for stdout (default)",
+    )
+
+    analyze = sub.add_parser(
+        "analyze",
+        help="Check a phase's specification, design, work-items, and acceptances for consistency",
+    )
+    analyze.add_argument("phase", help="Phase slug")
+    analyze.add_argument(
+        "--stage",
+        choices=("spec", "design", "plan", "close"),
+        default="plan",
+        help="Checks to run (default: plan)",
+    )
+    analyze.add_argument("--json", action="store_true", help="Print one JSON object")
+    analyze.add_argument(
+        "--cwd",
+        default=None,
+        help="Directory the store is resolved from (default: process cwd)",
+    )
+    analyze.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+    gate_parser = sub.add_parser(
+        "gate",
+        help="Check the phase gate; exit 1 and name each missing term when it does not hold",
+    )
+    gate_parser.add_argument("phase", help="Phase slug")
+    gate_parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    gate_parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Phase worktree whose HEAD the gate checks (default: the Landing worktree)",
+    )
+    gate_parser.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd, else cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+    suite_parser = sub.add_parser(
+        "suite",
+        help="Phase suite: policy, start, poll, collect, cancel, record",
+    )
+    suite_sub = suite_parser.add_subparsers(dest="action", required=True)
+
+    suite_policy = suite_sub.add_parser(
+        "policy",
+        help="Print the configured orchestra.toml suite policy as JSON",
+    )
+    suite_policy.add_argument("--cwd", default=None, help="Worktree (default: cwd)")
+
+    suite_start = suite_sub.add_parser(
+        "start",
+        help="Start the configured suite in a detached worker process",
+    )
+    _add_suite_job_arguments(suite_start)
+    suite_start.add_argument(
+        "--command",
+        dest="suite_command",
+        default=None,
+        help="Override the configured suite command",
+    )
+    suite_start.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Stop the suite command after this many seconds",
+    )
+    suite_poll = suite_sub.add_parser(
+        "poll",
+        help="Return the suite result when the background job finished, else 'running'",
+    )
+    _add_suite_job_arguments(suite_poll, include_run_id=True)
+
+    suite_collect = suite_sub.add_parser(
+        "collect",
+        help="Collect the finished suite result (exit code, log, failing node ids)",
+    )
+    _add_suite_job_arguments(suite_collect, include_run_id=True)
+
+    suite_record = suite_sub.add_parser(
+        "record",
+        help="Collect a finished suite and write its tuner:check-run",
+    )
+    _add_suite_job_arguments(suite_record, include_run_id=True)
+    suite_record.add_argument(
+        "--effort",
+        required=True,
+        help="Effort/focus the check-run belongs to",
+    )
+    suite_cancel = suite_sub.add_parser(
+        "cancel",
+        help="Request cancellation of one selected suite run",
+    )
+    _add_suite_job_arguments(suite_cancel)
+    suite_cancel.add_argument(
+        "--run-id",
+        required=True,
+        help="Immutable run id returned by suite start",
+    )
+    suite_record.add_argument(
+        "--criterion-id",
+        default=None,
+        help="Criterion id (default: <phase>-suite)",
+    )
+    suite_record.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )

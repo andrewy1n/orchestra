@@ -927,3 +927,13 @@ def orphan_recovery_hint(job: SuiteStart) -> str:
     worker_log = job.run_dir / "worker.log" if job.run_dir else job.log_path
     result = job.result_path if job.result_path else job.exit_path
     return f"Orphaned suite run {job.run_id}: inspect `{worker_log}` and `{result}`."
+
+
+def result_exit_code(result: SuiteResult) -> int:
+    if result.skipped:
+        return SKIPPED_EXIT_CODE
+    if result.refuse or result.result == "blocked":
+        return 2
+    if result.result == "fail":
+        return 1
+    return 0

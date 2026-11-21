@@ -177,7 +177,7 @@ def test_installed_example_plugins_run_through_public_interfaces(tmp_path: Path)
         [
             sys.executable,
             "-c",
-            "from orchestra import cli; cli.gate.gate_terms = lambda *args, **kwargs: []; "
+            "from orchestra import cli; from orchestra.conductor import gate; gate.gate_terms = lambda *args, **kwargs: []; "
             "raise SystemExit(cli.main(['land', '--phase', 'plugin-test', '--cwd', "
             f"{str(repo)!r}, '--timeout', '1']))",
         ],

@@ -181,6 +181,22 @@ CONDUCTOR_SUITE_GATE = [
         "{root}/review.md",
         out="{root}/review.md",
     ),
+    orchestra(
+        "review_brief_no_store",
+        "bare",
+        2,
+        "review-brief",
+        "--phase",
+        "p1",
+        err=NO_STORE,
+        files=(
+            (
+                "orchestra.toml",
+                '[verify.stages]\ntask = ["unit"]\nphase = ["unit"]\nmilestone = ["unit"]\n\n'
+                '[verify.unit]\nrunner = ["true", "{tests}", "{report}"]\n',
+            ),
+        ),
+    ),
 ]
 
 CONDUCTOR_WAVE_TASK = [
