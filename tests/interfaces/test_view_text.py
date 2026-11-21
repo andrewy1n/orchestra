@@ -22,7 +22,7 @@ PROGRESS = (
 HANDOFF = f"""# Project Handoff
 
 {BANNER}
-## alpha
+## alpha (live)
 
 ### Goal
 - **alpha**: Goal of alpha; deliver {ID}
@@ -105,7 +105,6 @@ ROADMAP = f"""# Project Roadmap
 CASES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("handoff", ("handoff",), HANDOFF),
     ("handoff_effort", ("handoff", "--effort", "alpha"), HANDOFF),
-    ("handoff_all", ("handoff", "--all"), HANDOFF),
     ("view_plan", ("view", "plan"), PLAN),
     ("view_plan_effort", ("view", "plan", "--effort", "alpha"), PLAN),
     ("view_status", ("view", "status"), STATUS),
