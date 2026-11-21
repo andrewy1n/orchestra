@@ -11,6 +11,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.score.effort import current_efforts
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 from orchestra.score.workflow_blockers import is_open_finding
 
@@ -157,10 +158,9 @@ def _assignment_task(
 def load_journal(target: Project, effort: str) -> list[JournalItem]:
     """List the five journal types for an effort; missing types become empty (R9)."""
     goals = [
-        record
-        for record in records.list_records(target, "score:effort")
-        if record.get("lifecycle_state") == "active"
-        and record_payload(record).get("status") != "closed"
+        effort.record
+        for effort in current_efforts(records.list_records(target, "score:effort")).values()
+        if effort.status != "closed"
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
