@@ -41,8 +41,9 @@ from orchestra.conductor.head_evidence import (
 from orchestra.conductor.landing import proof_packet
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.conductor.requirements import UNVERIFIED, all_verified
 from orchestra.derive import RequirementStatus, phase_progress, requirement_status
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases, record_order
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import acceptance_requirement_ids, requirements_in_body
 
@@ -172,7 +173,7 @@ def _for_phase(records: list[Record], phase: str, effort: str) -> list[Record]:
 
 def latest_assessment_map(records: list[Record]) -> dict[tuple[str, str], Record]:
     grouped: dict[tuple[str, str], Record] = {}
-    for record in sorted(live_records(records), key=recorded_at):
+    for record in sorted(live_records(records), key=record_order):
         payload = record_payload(record)
         grouped[(payload.get("phase", ""), payload.get("requirement", ""))] = record
     return grouped
@@ -539,19 +540,12 @@ class RequirementDetail:
 def _requirement_view(
     written: Record | None, derived: RequirementStatus | None
 ) -> tuple[str, str, str]:
-    payload = record_payload(written) if written is not None else None
-    written_status = payload.get("status", "") if payload is not None else ""
-    superseded = (
-        derived is not None and derived.status == "verified" and derived.assessment_id is None
-    )
-    if payload is not None and written_status != "verified" and not superseded:
-        return written_status, payload.get("next", ""), payload.get("confidence", "")
-    confidence = payload.get("confidence", "") if payload is not None else ""
-    if derived is not None and derived.status == "verified":
-        return "verified", "", confidence
-    if payload is not None:
-        return written_status, "", confidence
-    return "unassessed", "", ""
+    status = derived.status if derived is not None else UNVERIFIED
+    if written is None:
+        return status, "", ""
+    payload = record_payload(written)
+    nxt = payload.get("next", "") if derived is not None and derived.assessment_id else ""
+    return status, nxt, payload.get("confidence", "")
 
 
 def _derivation_pool(
@@ -571,19 +565,13 @@ def _derivation_pool(
 def _release_ready(
     phase: str,
     effort: str,
-    assessments: list[Record],
     releases: list[Record],
-    derived_ready: bool,
+    derived: dict[str, RequirementStatus],
 ) -> bool:
     latest_release = newest_record(_for_phase(releases, phase, effort))
     if latest_release and record_payload(latest_release).get("state") == "ready":
         return True
-    unproven = any(
-        record_payload(record).get("status") != "verified"
-        for (record_phase, _), record in latest_assessment_map(assessments).items()
-        if record_phase == phase
-    )
-    return derived_ready and not unproven
+    return all_verified(derived)
 
 
 def phase_evidence(
@@ -644,7 +632,6 @@ def phase_evidence(
     tasks_by_requirement = _tasks_by_requirement(tasks, phase)
     pool = _derivation_pool([spec], acceptances, checks, assessments)
     derived = requirement_status(pool, phase)
-    ready = bool(derived) and all(row.status == "verified" for row in derived.values())
     rows: list[RequirementRow] = []
     for requirement in spec_ids:
         status, nxt, confidence = _requirement_view(
@@ -683,7 +670,7 @@ def phase_evidence(
             section(report.get("body") or "", "Conflicts"),
         )
     weight = record_payload(spec).get("weight", "")
-    release_ready = _release_ready(phase, effort, assessments, releases, ready)
+    release_ready = _release_ready(phase, effort, releases, derived)
     latest_release = newest_record(_for_phase(releases, phase, effort))
     release_state = record_payload(latest_release).get("state", "") if latest_release else ""
     return PhaseEvidence(
@@ -1026,8 +1013,6 @@ def load_requirement_detail(
         active,
     )
     status, nxt, _ = _requirement_view(latest, requirement_status(pool, phase).get(requirement))
-    if latest is not None and status == record_payload(latest).get("status", ""):
-        nxt = record_payload(latest).get("next", "")
     assignments = listed("conductor:assignment")
     return RequirementDetail(
         phase,

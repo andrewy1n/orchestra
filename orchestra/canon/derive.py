@@ -202,8 +202,15 @@ def attach_derived(record: Record, derived_map: dict[str, DerivedValues]) -> Rec
     if values is None:
         return record
     out: Record = {**record}
-    derived_copy: DerivedValues = {**values}
+    derived_copy: DerivedValues = {**record.get("derived", {}), **values}
     out["derived"] = derived_copy
+    return out
+
+
+def with_write_order(record: Record, write_order: int) -> Record:
+    out: Record = {**record}
+    derived: DerivedValues = {**record.get("derived", {}), "write_order": write_order}
+    out["derived"] = derived
     return out
 
 

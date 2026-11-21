@@ -19,8 +19,10 @@ from orchestra.score.lookups import (
     cached_object,
     check_run_criteria,
     direct_corrected_ids,
+    record_order,
     same_prepared_source,
 )
+from orchestra.tuner.records import CheckRun, read_check_run
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"
@@ -82,6 +84,14 @@ class EvidenceIndex:
         self.check_runs = shared.check_runs
         self._amended_commands = shared.amended_commands
         self._by_criterion = shared.by_criterion
+        self._typed: dict[str, CheckRun] = {}
+
+    def check_run(self, record: Record) -> CheckRun:
+        typed = self._typed.get(record["id"])
+        if typed is None:
+            write_order = record.get("derived", {}).get("write_order", 0)
+            typed = self._typed[record["id"]] = read_check_run(record, write_order)
+        return typed
 
     def acceptance_runs(self, acceptance: Record) -> list[Record]:
         groups = [self._by_criterion.get(name, []) for name in check_run_criteria(acceptance)]
@@ -136,7 +146,7 @@ def _names(record: Record, subject: str) -> bool:
 def latest(runs: Sequence[Record]) -> Record | None:
     if not runs:
         return None
-    return max(runs, key=lambda run: (run.get("recorded_at", ""), run["id"]))
+    return max(runs, key=record_order)
 
 
 def _at_head(runs: Sequence[Record], head: str | None) -> list[Record]:

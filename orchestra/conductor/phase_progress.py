@@ -12,7 +12,6 @@ from orchestra.conductor import suite
 from orchestra.conductor.gate import format_missing, gate_terms_for, missing_terms
 from orchestra.conductor.head_evidence import (
     EvidenceIndex,
-    acceptance_latest,
     latest,
     latest_review,
     review_at_head,
@@ -26,12 +25,14 @@ from orchestra.conductor.landing import (
     phase_place,
     proof_packet,
 )
+from orchestra.conductor.requirements import UNVERIFIED, is_verified, requirement_status
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import (
     closing_work_item,
     current_phase,
     current_phases,
     live_work_items,
+    record_order,
 )
 from orchestra.score.lookups import dependencies as item_dependencies
 from orchestra.score.phase import Phase, read_phase
@@ -165,12 +166,12 @@ def verification_readiness(
     acceptances: Sequence[AcceptanceHold], integration: IntegrationState
 ) -> Readiness:
     if not acceptances:
-        return Readiness(False, "phase has no active acceptances")
+        return Readiness(False, "phase has no requirements")
     for acceptance in acceptances:
         if not acceptance.has_run:
-            return Readiness(False, f"acceptance {acceptance.subject!r} has no check-run")
+            return Readiness(False, f"requirement {acceptance.subject} is {UNVERIFIED}")
         if not acceptance.holds:
-            return Readiness(False, f"acceptance {acceptance.subject!r} check-run is not pass")
+            return Readiness(False, f"requirement {acceptance.subject} is failed")
     if integration == "missing":
         return Readiness(False, "phase integration report is missing")
     if integration == "failing":
@@ -354,7 +355,7 @@ def task_facts(records: Sequence[Record], phase: str) -> tuple[TaskFact, ...]:
         own = [
             report for report in reports if report["payload"].get("work_item") == item["subject"]
         ]
-        report = max(own, key=lambda row: (row["recorded_at"], row["id"])) if own else None
+        report = max(own, key=record_order) if own else None
         verdict = (
             ExecutionVerdict(_text(report, "result"), _text(report, "verdict"))
             if report is not None
@@ -364,13 +365,13 @@ def task_facts(records: Sequence[Record], phase: str) -> tuple[TaskFact, ...]:
     return tuple(facts)
 
 
-def acceptance_holds(records: Sequence[Record], phase: str) -> tuple[AcceptanceHold, ...]:
-    index = EvidenceIndex(list(records))
-    holds: list[AcceptanceHold] = []
-    for acceptance in _active_acceptances(records, phase):
-        answer = acceptance_latest(index, acceptance, None)
-        holds.append(AcceptanceHold(acceptance["subject"], answer.run is not None, answer.holds))
-    return tuple(holds)
+def acceptance_holds(
+    records: Sequence[Record], phase: str, head: str | None = None
+) -> tuple[AcceptanceHold, ...]:
+    return tuple(
+        AcceptanceHold(requirement, status.status != UNVERIFIED, is_verified(status.status))
+        for requirement, status in requirement_status(list(records), phase, head).items()
+    )
 
 
 def requires_integration_report(records: Sequence[Record], phase: str) -> bool:
@@ -405,10 +406,15 @@ def integration_state(records: Sequence[Record], phase: Phase) -> IntegrationSta
     ]
     if not reports:
         return "missing"
-    newest = max(reports, key=lambda row: (row["recorded_at"], row["id"]))
+    newest = max(reports, key=record_order)
     if newest["payload"].get("result") != "pass" or not _text(newest, "revision"):
         return "failing"
     return "passing"
+
+
+def _review_head(records: Sequence[Record], phase: Phase) -> str | None:
+    review = latest_review(EvidenceIndex(list(records)), phase.subject, phase.effort)
+    return (_text(review, "revision") if review is not None else "") or None
 
 
 def verify_facts(
@@ -445,7 +451,7 @@ def verify_step(
     git: Callable[[Path], Git] = Git,
 ) -> VerifyStep | None:
     return open_verify_step(
-        acceptance_holds(records, phase.subject),
+        acceptance_holds(records, phase.subject, _review_head(records, phase)),
         integration_state(records, phase),
         verify_facts(project, records, phase, git),
     )
@@ -507,7 +513,7 @@ def phase_facts(
         tasks_review=tasks_review,
         plan=plan,
         tasks=tasks,
-        acceptances=acceptance_holds(records, phase.subject),
+        acceptances=acceptance_holds(records, phase.subject, _review_head(records, phase)),
         integration=integration_state(records, phase),
         verify=verify_facts(project, records, phase, git) if reached_verify else None,
         landing=landing,

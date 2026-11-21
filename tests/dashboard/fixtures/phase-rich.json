@@ -81,7 +81,7 @@
             "latest_check": null,
             "next": "",
             "phase": "p-work",
-            "status": "unassessed",
+            "status": "unverified",
             "tasks": 1,
             "tasks_done": 0,
             "text": ""

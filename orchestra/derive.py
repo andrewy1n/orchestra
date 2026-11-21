@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from orchestra.canon import record_payload
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.conductor.requirements import (
     RequirementState as RequirementState,
@@ -16,9 +15,10 @@ from orchestra.conductor.requirements import (
     RequirementStatus as RequirementStatus,
 )
 from orchestra.conductor.requirements import (
+    all_verified,
     requirement_status,
 )
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, live_work_items
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, latest_record, live_work_items
 
 WORK_ITEM = "score:work-item"
 EFFORT = "score:effort"
@@ -55,8 +55,7 @@ def _text(record: Record, key: str) -> str | None:
 
 
 def release_ready(records: list[Record], phase: str, head: str | None = None) -> bool:
-    statuses = requirement_status(records, phase, head)
-    return bool(statuses) and all(s.status == "verified" for s in statuses.values())
+    return all_verified(requirement_status(records, phase, head))
 
 
 def phase_progress(records: list[Record], phase: str) -> PhaseProgress:
@@ -77,7 +76,7 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
     write_root = _text(work_item, "write_root")
     if assignee is None or write_root is None:
         names = {work_item["id"], work_item["subject"]}
-        written = latest(
+        written = latest_record(
             [
                 r
                 for r in records
@@ -93,7 +92,7 @@ def task_assignment(work_item: Record, records: list[Record]) -> TaskAssignment 
 
 
 def _goal(records: list[Record], effort: str) -> Record | None:
-    return latest(
+    return latest_record(
         [
             r
             for r in records

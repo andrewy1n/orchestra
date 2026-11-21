@@ -28,6 +28,7 @@ from dashboard.backend.snapshot import (
 from dashboard.backend.stages import refs_fingerprint
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
+from orchestra.conductor.requirements import is_verified
 
 CachedResponse = (
     schemas.AreasResponse
@@ -48,7 +49,7 @@ def phase_summary(phase: PhaseRow) -> schemas.PhaseSummary:
     release_ready = False
     if evidence is not None:
         requirements = len(evidence.requirements)
-        verified = sum(row.status == "verified" for row in evidence.requirements)
+        verified = sum(is_verified(row.status) for row in evidence.requirements)
         stage = evidence.stage
         release_ready = evidence.release_ready
     return schemas.PhaseSummary(

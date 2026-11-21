@@ -16,7 +16,7 @@ from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.model_types import PlanningPayload, planning_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, latest_record, record_order
 from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
 from orchestra.tools import Git, ToolError
 
@@ -630,7 +630,7 @@ def _oracle_amendments(project: Project, acceptance: Record) -> list[Record]:
 
 
 def _phase_record(project: Project, slug: str) -> Record:
-    record = current_phase(slug, project.list("score:phase"))
+    record = current_phase(slug, project.records())
     if record is None:
         raise LookupError(f"phase {slug!r} not found")
     return record
@@ -770,16 +770,19 @@ class Closure:
     question_id: str = ""
 
 
-def _earlier_red_id(project: Project, criterion: str, green: Record) -> str:
+def _earlier_red_id(project: Project, criterion: str, green_id: str) -> str:
+    runs = [r for r in project.records() if r["record_type"] == "tuner:check-run"]
+    green = next(r for r in runs if r["id"] == green_id)
     earlier = [
         r
-        for r in project.list("tuner:check-run")
+        for r in runs
         if record_payload(r).get("criterion_id") == criterion
         and record_payload(r).get("result") == "fail"
         and r["id"] != green["id"]
-        and r["recorded_at"] <= green["recorded_at"]
+        and record_order(r) < record_order(green)
     ]
-    return max(earlier, key=lambda r: r["recorded_at"])["id"] if earlier else ""
+    newest = latest_record(earlier)
+    return newest["id"] if newest is not None else ""
 
 
 def _text(value: JsonValue) -> str:
@@ -816,7 +819,7 @@ def _criterion_request(project: Project, check: land_task.CheckResult) -> Criter
         return request
     request["check_run_id"] = check.check_run_id
     provided.append("check_run_id")
-    red = _earlier_red_id(project, check.acceptance_id, green)
+    red = _earlier_red_id(project, check.acceptance_id, check.check_run_id)
     if method == "tdd" and red:
         request["red_check_run_id"] = red
         request["revision"] = _text(green_payload.get("revision"))

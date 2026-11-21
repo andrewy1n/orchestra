@@ -9,9 +9,9 @@ from dashboard.backend import store
 from dashboard.backend.store import ModelError
 from orchestra.canon import record_payload as json_payload
 from orchestra.canon.project import Project
-from orchestra.canon.query import latest
 from orchestra.canon.types import DerivedValues, JsonValue, Record
 from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.score.lookups import latest_record
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 SOFT_TYPES = frozenset(
@@ -111,7 +111,7 @@ def live_records(records: list[Record]) -> list[Record]:
 
 
 def newest_record(records: list[Record]) -> Record | None:
-    return latest(records)
+    return latest_record(records)
 
 
 def records_by_effort(records: list[Record], key: str = "effort") -> dict[Hashable, list[Record]]:

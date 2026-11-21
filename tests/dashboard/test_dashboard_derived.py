@@ -199,7 +199,7 @@ def test_phase_shows_derived_verified_status(store, cli, defs):
     detail = phase_mod.load_phase_detail(open_store(store), EFFORT, PHASE)
     assert detail.evidence is not None
     statuses = {row.id: row.status for row in detail.evidence.requirements}
-    assert statuses == {"R1": "verified", "R2": "unassessed"}
+    assert statuses == {"R1": "verified", "R2": "unverified"}
     requirement = phase_mod.load_requirement_detail(open_store(store), EFFORT, PHASE, "R1")
     assert requirement.status == "verified"
 
@@ -257,7 +257,7 @@ def test_stale_non_verified_assessment_yields_to_newer_passes(store, cli, defs):
     _assess(cli, defs, "blocked")
     detail = phase_mod.load_phase_detail(open_store(store), EFFORT, PHASE)
     assert detail.evidence is not None
-    assert [r.status for r in detail.evidence.requirements] == ["blocked"]
+    assert [r.status for r in detail.evidence.requirements] == ["unverified"]
     time.sleep(1.1)
     _add_run(cli, defs, acceptance, "R1", "pass", "run-R1-again")
     detail = phase_mod.load_phase_detail(open_store(store), EFFORT, PHASE)

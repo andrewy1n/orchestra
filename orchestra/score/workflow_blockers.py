@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 from orchestra.score.lookups import (
     cached_records,
@@ -11,6 +10,7 @@ from orchestra.score.lookups import (
     corrected_ids,
     current_phases,
     dependencies,
+    latest_record,
     live_work_items,
     records_of_type,
 )
@@ -84,7 +84,7 @@ def is_signed(run: Record) -> bool:
 
 def _latest_among(acceptance: Record, runs: list[Record]) -> Record | None:
     names = check_run_criteria(acceptance)
-    return latest(run for run in runs if _payload_text(run, "criterion_id") in names)
+    return latest_record(run for run in runs if _payload_text(run, "criterion_id") in names)
 
 
 def latest_manual_check(acceptance: Record, records: list[Record]) -> Record | None:
@@ -101,14 +101,16 @@ def unsigned_manual_checks(records: list[Record]) -> list[Record]:
         names = check_run_criteria(acceptance)
         owned = [run for run in runs if _payload_text(run, "criterion_id") in names]
         claimed.update(run["id"] for run in owned)
-        deciding = latest(owned)
+        deciding = latest_record(owned)
         if deciding is not None:
             latest_runs.append(deciding)
     unowned: dict[str, list[Record]] = {}
     for run in runs:
         if run["id"] not in claimed:
             unowned.setdefault(_payload_text(run, "criterion_id") or run["id"], []).append(run)
-    latest_runs.extend(run for group in unowned.values() if (run := latest(group)) is not None)
+    latest_runs.extend(
+        run for group in unowned.values() if (run := latest_record(group)) is not None
+    )
     unsigned: list[Record] = []
     for run in latest_runs:
         if not is_signed(run) and run not in unsigned:

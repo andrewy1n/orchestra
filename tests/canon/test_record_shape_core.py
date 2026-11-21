@@ -16,6 +16,11 @@ def ready(cli, project):
     return cli
 
 
+def _fetched(ready, record_id: str) -> dict:
+    record = ready.ok("get", "--id", record_id)
+    return {k: v for k, v in record.items() if k != "derived"}
+
+
 def _full_list(ready, record_type: str) -> dict[str, dict]:
     listed = ready.ok("list", "--type", record_type, "--full")
     return {
@@ -34,7 +39,7 @@ def test_r13_get_and_list_return_a_superseded_record_unchanged(ready):
     assert stored["body"] == PLAN_BODY
     assert stored["payload"] == {"goal": "g"}
 
-    fetched = ready.ok("get", "--id", first["id"])
+    fetched = _fetched(ready, first["id"])
     assert fetched == stored
     assert _full_list(ready, "plan")[first["id"]] == stored
     assert ready("get", "--id", first["id"], "--body-only").out == PLAN_BODY + "\n"
@@ -48,7 +53,7 @@ def test_r13_get_and_list_return_a_superseding_record_unchanged(ready):
         "record"
     ]
 
-    assert ready.ok("get", "--id", successor["id"]) == successor
+    assert _fetched(ready, successor["id"]) == successor
     assert _full_list(ready, "plan")[successor["id"]] == successor
 
 
@@ -59,9 +64,9 @@ def test_r13_get_and_list_return_a_corrected_record_unchanged(ready, project):
     )["record"]
     corrected = ready.ok("correct", "--id", log["id"], "--set", 'message="n"')["record"]
 
-    assert ready.ok("get", "--id", log["id"]) == log
+    assert _fetched(ready, log["id"]) == log
     assert _full_list(ready, "log")[log["id"]] == log
-    assert ready.ok("get", "--id", corrected["id"]) == corrected
+    assert _fetched(ready, corrected["id"]) == corrected
     assert _full_list(ready, "log")[corrected["id"]] == corrected
 
 
@@ -73,7 +78,9 @@ def test_r13_get_output_is_the_stored_record_bytes(ready, project):
     stored = project.get(first["id"])
     result = ready("get", "--id", first["id"])
     assert result.code == 0
-    assert result.out == json.dumps(stored, indent=2) + "\n"
+    derived = json.loads(result.out)["derived"]
+    assert list(derived) == ["write_order"]
+    assert result.out == json.dumps({**stored, "derived": derived}, indent=2) + "\n"
 
 
 def test_record_shape_error_names_record_field_and_message():

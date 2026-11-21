@@ -28,7 +28,12 @@ from orchestra.score.executor import (
     ExecutorTask,
     task_executor,
 )
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, dependencies, owning_work_item
+from orchestra.score.lookups import (
+    LIVE_WORK_ITEM_STATES,
+    dependencies,
+    owning_work_item,
+    record_order,
+)
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2
@@ -417,7 +422,7 @@ def _refers_to(record: Record, key: str, names: set[str]) -> bool:
 
 def latest_checks(checks: list[Record]) -> dict[str, CheckRun]:
     latest: dict[str, CheckRun] = {}
-    for record in sorted(checks, key=recorded_at):
+    for record in sorted(checks, key=record_order):
         if record["lifecycle_state"] in INACTIVE_STATES:
             continue
         payload = record_payload(record)

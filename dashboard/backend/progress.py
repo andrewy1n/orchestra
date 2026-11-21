@@ -9,6 +9,7 @@ from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow, run_fact_int
 from orchestra.conductor.phase_progress import STAGES, unavailable_progress, visible_stages
+from orchestra.conductor.requirements import is_verified
 
 BLOCKER_LIMIT = 2
 DEFAULT_FIX_TASK_LIMIT = 3
@@ -105,7 +106,7 @@ def build_progress(
 
     evidence = phase.evidence
     statuses = [row.status for row in evidence.requirements] if evidence else []
-    proven = sum(1 for status in statuses if status == "verified")
+    proven = sum(1 for status in statuses if is_verified(status))
     requirements = RequirementProgress(
         proven,
         len(statuses),

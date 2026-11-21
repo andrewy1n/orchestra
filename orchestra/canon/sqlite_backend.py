@@ -349,11 +349,29 @@ class SqliteBackend:
     def iter_records(
         self, record_type: str | None = None, *, errors: list[str] | None = None
     ) -> Iterator[Record]:
+        for record, _ in self._iter_rows(record_type, errors):
+            yield record
+
+    def iter_ordered_records(self, record_type: str | None = None) -> Iterator[tuple[Record, int]]:
+        yield from self._iter_rows(record_type, None)
+
+    def write_order(self, record_id: str) -> int:
+        with self._reader() as connection:
+            row = connection.execute(
+                "SELECT MIN(rowid) FROM ops WHERE record_id=?", (record_id,)
+            ).fetchone()
+        return row[0] or 0
+
+    def _iter_rows(
+        self, record_type: str | None, errors: list[str] | None
+    ) -> Iterator[tuple[Record, int]]:
         with self._reader() as connection:
             rows = connection.execute(
-                "SELECT record_json FROM records"
-                + (" WHERE record_type=?" if record_type is not None else "")
-                + " ORDER BY record_type, record_id",
+                "SELECT records.record_json, COALESCE(first_op.position, 0) FROM records "
+                "LEFT JOIN (SELECT record_id, MIN(rowid) AS position FROM ops GROUP BY record_id) "
+                "AS first_op ON first_op.record_id = records.record_id"
+                + (" WHERE records.record_type=?" if record_type is not None else "")
+                + " ORDER BY records.record_type, records.record_id",
                 (record_type,) if record_type is not None else (),
             ).fetchall()
         for row in rows:
@@ -366,7 +384,7 @@ class SqliteBackend:
                     raise StoreError(str(exc)) from exc
                 errors.append(str(exc))
                 continue
-            yield record
+            yield record, row[1]
 
     def list_records(
         self, record_type: str | None = None, lifecycle_state: str | None = None

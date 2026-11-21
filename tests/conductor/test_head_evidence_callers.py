@@ -51,7 +51,16 @@ def _spec(*requirements: str) -> Record:
 
 def _acceptance(subject: str, requirement: str = "R1") -> Record:
     return _record(
-        "score:acceptance", subject, {"phase": PHASE, "requirement": requirement}, "active"
+        "score:acceptance",
+        subject,
+        {
+            "phase": PHASE,
+            "effort": "e",
+            "requirement": requirement,
+            "method": "check",
+            "verify_command": "true",
+        },
+        "active",
     )
 
 
@@ -70,6 +79,7 @@ def _run(
             "criterion_id": acceptance["id"] if criterion is None else criterion,
             "result": result,
             "revision": revision,
+            "signed_by": "",
             **extra,
         },
         **{k: v for k, v in extra.items() if k in ("record_id", "recorded_at")},
@@ -168,23 +178,35 @@ def test_acceptance_subject_check_run_counts_in_status_and_wave(tmp_path: Path) 
     assert wave.end(project, repo, wave_world.PHASE).merged == ("a",)
 
 
-def test_timestamp_tie_resolves_by_record_id_in_status() -> None:
+def test_timestamp_tie_resolves_by_write_order_in_status() -> None:
     acceptance = _acceptance("a1")
     stamp = "2026-11-01T00:00:00Z"
     passing = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "pass", "revision": HEAD},
-        record_id="<run-b>",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": HEAD,
+            "signed_by": "",
+        },
+        record_id="<run-a>",
         recorded_at=stamp,
     )
     failing = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "fail", "revision": HEAD},
-        record_id="<run-a>",
+        {
+            "criterion_id": acceptance["id"],
+            "result": "fail",
+            "revision": HEAD,
+            "signed_by": "",
+        },
+        record_id="<run-b>",
         recorded_at=stamp,
     )
+    passing["derived"] = {"write_order": 2}
+    failing["derived"] = {"write_order": 1}
     assert _status([_spec("R1"), acceptance, passing, failing]) == "verified"
     assert _status([_spec("R1"), acceptance, failing, passing]) == "verified"
 
@@ -237,23 +259,26 @@ def _ready(records: Sequence[Record]) -> tuple[bool, str]:
 
 def test_workflow_readiness_holds_with_a_passing_run_at_any_revision() -> None:
     acceptance = _acceptance("a1")
-    assert _ready([_phase(), acceptance, _run(acceptance, "pass", "f" * 40)]) == (True, "")
+    assert _ready([_phase(), _spec("R1"), acceptance, _run(acceptance, "pass", "f" * 40)]) == (
+        True,
+        "",
+    )
 
 
 def test_workflow_readiness_requires_a_run_for_each_acceptance() -> None:
     first, second = _acceptance("a1"), _acceptance("a2")
-    ready, reason = _ready([_phase(), first, second, _run(first, "pass")])
+    ready, reason = _ready([_phase(), _spec("R1"), first, second, _run(first, "pass")])
     assert not ready
-    assert "a2" in reason
+    assert "R1" in reason
 
 
 def test_workflow_readiness_fails_when_latest_run_is_not_pass() -> None:
     acceptance = _acceptance("a1")
     ready, reason = _ready(
-        [_phase(), acceptance, _run(acceptance, "pass"), _run(acceptance, "fail")]
+        [_phase(), _spec("R1"), acceptance, _run(acceptance, "pass"), _run(acceptance, "fail")]
     )
     assert not ready
-    assert "a1" in reason
+    assert "R1" in reason
 
 
 def test_workflow_readiness_ignores_corrected_runs() -> None:
@@ -262,10 +287,15 @@ def test_workflow_readiness_ignores_corrected_runs() -> None:
     correction = _record(
         "tuner:check-run",
         "a1",
-        {"criterion_id": acceptance["id"], "result": "pass", "revision": HEAD},
+        {
+            "criterion_id": acceptance["id"],
+            "result": "pass",
+            "revision": HEAD,
+            "signed_by": "",
+        },
         corrects=failing["id"],
     )
-    assert _ready([_phase(), acceptance, failing, correction]) == (True, "")
+    assert _ready([_phase(), _spec("R1"), acceptance, failing, correction]) == (True, "")
 
 
 def _suite_run(revision: str, result: str, **payload: str) -> Record:

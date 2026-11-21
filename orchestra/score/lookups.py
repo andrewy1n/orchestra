@@ -6,10 +6,21 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from orchestra.canon import record_payload
-from orchestra.canon.query import latest
 from orchestra.canon.types import Record
 
 LIVE_WORK_ITEM_STATES = ("planned", "in_progress", "done")
+
+
+def record_order(record: Record) -> tuple[str, int, str]:
+    return (
+        record.get("recorded_at") or "",
+        record.get("derived", {}).get("write_order", 0),
+        record["id"],
+    )
+
+
+def latest_record(records: Iterable[Record]) -> Record | None:
+    return max(records, key=record_order, default=None)
 
 
 class PreparedRecordsError(ValueError):
@@ -121,7 +132,7 @@ def phase_versions(slug: str, records: Sequence[Record]) -> list[Record]:
 
 def current_version(record_type: str, subject: str, records: Sequence[Record]) -> Record | None:
     corrected = corrected_ids(records)
-    return latest(
+    return latest_record(
         record
         for record in records
         if record["record_type"] == record_type
@@ -194,7 +205,7 @@ def closing_work_items(slug: str, records: Sequence[Record]) -> list[Record]:
 
 
 def closing_work_item(slug: str, records: Sequence[Record]) -> Record | None:
-    return latest(closing_work_items(slug, records))
+    return latest_record(closing_work_items(slug, records))
 
 
 def _matches(subject: str, item: Record) -> bool:

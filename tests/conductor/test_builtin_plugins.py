@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
+from orchestra.canon.extensions import resolve_plugin
 from orchestra.canon.project_config import PluginName, StageName
+from orchestra.conductor.review_technique import ReviewTechnique
 from orchestra.tuner import plugins
 
 
@@ -168,3 +170,10 @@ def test_exact_argv_reaches_process_without_shell_joining(tmp_path: Path) -> Non
 
 def test_builtins_use_installed_entry_points() -> None:
     assert plugins.registered_plugin_ids() == ("review", "unit")
+
+
+def test_builtin_plugins_load_through_their_entry_points() -> None:
+    unit = resolve_plugin("tuner.verify", "unit").load()
+    review = resolve_plugin("tuner.verify", "review").load()
+    assert unit is plugins.UnitPlugin
+    assert review is ReviewTechnique

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from orchestra.canon.types import JsonValue, Record
-from orchestra.score.lookups import current_phase, records_of_type
+from orchestra.score.lookups import current_phase, record_order, records_of_type
 
 Step = Literal["spec", "design", "tasks", "execute", "verify", "land"]
 Authority = Literal["user-approval", "explicit-delegation", "task-plan-policy"]
@@ -100,12 +100,8 @@ def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Re
             and record["payload"].get("input_fingerprint") == fingerprint
         ]
         if current:
-            return max(current, key=lambda record: (record["recorded_at"], record["id"]))
-    return (
-        max(candidates, key=lambda record: (record["recorded_at"], record["id"]))
-        if candidates
-        else None
-    )
+            return max(current, key=record_order)
+    return max(candidates, key=record_order) if candidates else None
 
 
 def _active_artifact(records: Sequence[Record], phase: str, record_type: str) -> Record | None:
@@ -114,11 +110,7 @@ def _active_artifact(records: Sequence[Record], phase: str, record_type: str) ->
         for record in records_of_type(records, record_type)
         if record["payload"].get("phase") == phase and record["lifecycle_state"] == "active"
     ]
-    return (
-        max(candidates, key=lambda record: (record["recorded_at"], record["id"]))
-        if candidates
-        else None
-    )
+    return max(candidates, key=record_order) if candidates else None
 
 
 def _artifact_for_step(records: Sequence[Record], phase: str, step: Step) -> Record | None:
