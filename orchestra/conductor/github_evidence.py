@@ -18,8 +18,9 @@ from orchestra.tools import ToolError
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")
-_TRANSIENT_HTTP = re.compile(
-    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit[^\n]*\(HTTP 403\)", re.IGNORECASE
+_TRANSIENT_LOOKUP = re.compile(
+    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit exceeded|exceeded a secondary rate limit",
+    re.IGNORECASE,
 )
 _PULL_REQUEST = """
 query($owner: String!, $name: String!, $number: Int!) {
@@ -209,7 +210,9 @@ class GitHubActionsAdapter:
         try:
             return self._read(request)
         except ToolError as error:
-            if isinstance(error.__cause__, TimeoutExpired) or _TRANSIENT_HTTP.search(error.stderr):
+            if isinstance(error.__cause__, TimeoutExpired) or _TRANSIENT_LOOKUP.search(
+                error.stderr
+            ):
                 return EvidenceSnapshot(
                     "", unresolved=f"GitHub CI lookup failed: {error.stderr.strip() or error}"
                 )

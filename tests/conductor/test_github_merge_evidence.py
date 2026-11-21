@@ -161,6 +161,23 @@ def test_lookup_timeout_leaves_ci_unresolved(
     )
 
 
+def test_graphql_rate_limit_without_http_status_leaves_ci_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    message = "gh: API rate limit exceeded"
+
+    def api(_self: GitHubGh, *args: str) -> JsonValue:
+        assert "graphql" in args
+        raise ToolError("gh failed", args, 1, message)
+
+    monkeypatch.setattr(GitHubGh, "_json", api)
+    snapshot = GitHubActionsAdapter().read(
+        EvidenceRequest(tmp_path, "https://github.com/owner/repo/pull/2", {})
+    )
+
+    assert snapshot.unresolved == f"GitHub CI lookup failed: {message}"
+
+
 def test_result_on_test_merge_commit_leaves_ci_unresolved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
