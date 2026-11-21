@@ -43,7 +43,7 @@ from dashboard.backend.task import (
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.composer.records import IDEA, read_idea
+from orchestra.composer.records import IDEA, current_placements, read_idea
 from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
 from orchestra.conductor.model_types import planning_payload as record_payload
@@ -613,10 +613,7 @@ def _load_snapshot(
         and record_payload(record).get("status") != "closed"
         and record_payload(record).get("scope") == "effort"
     }
-    areas = {
-        record["subject"]: record_payload(record).get("area") or ""
-        for record in live_records(listed[PLACEMENT_TYPE])
-    }
+    areas = current_placements(live_records(listed[PLACEMENT_TYPE]))
     every_record = store.catalog_records(target)
     status_by_effort = effort_statuses(every_record, now)
     work_stamps = _work_item_stamps(

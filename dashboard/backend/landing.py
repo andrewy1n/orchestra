@@ -62,7 +62,9 @@ def rev_parse_token(root: Path, *refs: str) -> str | None:
 
 
 def phase_landing(root: Path, body: str, subject: str) -> Landing | None:
-    branch = landing_branch(body, subject, root)
-    if branch is None:
+    place = place_of_body(subject, body, root)
+    if place is None:
         return None
-    return Landing(branch, branch_state(root, branch, timeout=_TIMEOUT))
+    return Landing(
+        place.branch, branch_state(place.repo, place.branch, place.base, timeout=_TIMEOUT)
+    )

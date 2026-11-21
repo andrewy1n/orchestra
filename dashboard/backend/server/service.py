@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import TypeVar
 
 from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, store
+from dashboard.backend.gates import landing_facts
 from dashboard.backend.phase import (
     PhaseRow,
     load_decision_log,
@@ -139,6 +140,13 @@ class Cache:
                     return self.snapshot
                 generation = self.generation
             snapshot = load_snapshot(self.target, token=token)
+            facts = {
+                phase: fact
+                for view in snapshot.efforts
+                for phase, fact in landing_facts(view, self.target.project_root).items()
+            }
+            if facts:
+                snapshot = load_snapshot(self.target, token=token, landing=facts)
             with self.lock:
                 if self.generation == generation and self.token == token:
                     self.snapshot = snapshot
