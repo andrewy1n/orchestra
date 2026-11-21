@@ -1,4 +1,5 @@
 from pathlib import Path
+from subprocess import TimeoutExpired
 
 import pytest
 
@@ -20,7 +21,7 @@ def _read(
     conclusion: str | None = None,
     include_run: bool = True,
     changed_head: bool = False,
-    lookup_error: str = "",
+    lookup_error: str | TimeoutExpired = "",
     app: int = 42,
     merge_commit: bool = False,
     rules_changed: bool = False,
@@ -63,6 +64,8 @@ def _read(
                 }
             }
         if args[-1].endswith("/rules/branches/main"):
+            if isinstance(lookup_error, TimeoutExpired):
+                raise ToolError("gh timed out after 30s", args, None, "") from lookup_error
             if lookup_error:
                 raise ToolError("gh failed", args, 1, lookup_error)
             return rule_sets.pop(0)
@@ -128,15 +131,33 @@ def test_permission_failure_propagates_to_the_command(
         _read(tmp_path, monkeypatch, lookup_error="gh: Resource not accessible (HTTP 403)")
 
 
-@pytest.mark.parametrize("status", [429, 502, 503])
+@pytest.mark.parametrize(
+    "message",
+    [
+        "gh: API rate limit exceeded (HTTP 403)",
+        "gh: You have exceeded a secondary rate limit (HTTP 403)",
+        "gh: Too many requests (HTTP 429)",
+        "gh: Bad gateway (HTTP 502)",
+        "gh: Service unavailable (HTTP 503)",
+    ],
+)
 def test_temporary_lookup_failure_leaves_ci_unresolved(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: int
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, message: str
 ) -> None:
-    message = f"gh: Service unavailable (HTTP {status})"
     assert _read(tmp_path, monkeypatch, lookup_error=message) == (
         "",
         "",
         f"GitHub CI lookup failed: {message}",
+    )
+
+
+def test_lookup_timeout_leaves_ci_unresolved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert _read(tmp_path, monkeypatch, lookup_error=TimeoutExpired("gh", 30)) == (
+        "",
+        "",
+        "GitHub CI lookup failed: gh timed out after 30s",
     )
 
 

@@ -18,7 +18,9 @@ from orchestra.tools import ToolError
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")
-_TRANSIENT_HTTP = re.compile(r"\(HTTP (?:429|5[0-9]{2})\)")
+_TRANSIENT_HTTP = re.compile(
+    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit[^\n]*\(HTTP 403\)", re.IGNORECASE
+)
 _PULL_REQUEST = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
