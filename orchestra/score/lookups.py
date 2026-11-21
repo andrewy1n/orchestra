@@ -228,6 +228,11 @@ def acceptances_of(
     return owned
 
 
+def direct_corrected_ids(records: Iterable[Record]) -> set[str]:
+    """Corrected ids named by ``records``, ignoring a prepared cache."""
+    return _corrected_ids(records)
+
+
 def _corrected_ids(records: Iterable[Record]) -> set[str]:
     return {
         target

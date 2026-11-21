@@ -18,6 +18,7 @@ from orchestra.conductor.revision import revision_matches
 from orchestra.score.lookups import (
     cached_object,
     check_run_criteria,
+    direct_corrected_ids,
     same_prepared_source,
 )
 
@@ -44,11 +45,7 @@ class _EvidenceParts:
 
 
 def _evidence_parts(records: Sequence[Record]) -> _EvidenceParts:
-    corrected = {
-        target
-        for record in records
-        for target in (record.get("relationships") or {}).get("corrects") or []
-    }
+    corrected = direct_corrected_ids(records)
     check_runs: list[Record] = []
     by_criterion: dict[str, list[tuple[int, Record]]] = {}
     amended: set[str] = set()

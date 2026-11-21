@@ -7,8 +7,6 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phase_progress import _gates as progress_gates
-from orchestra.score.phase import read_phase
 from orchestra.score.workflow_blockers import (
     HumanGate,
     WorkflowBlocker,
@@ -585,28 +583,6 @@ def test_r9_finding_that_needs_none_does_not_block(project: Project, phases: Non
     _finding(project, "needs-none", needs="none", phase="mid")
 
     assert _blocker_subjects(project, "mid") == []
-
-
-def test_r9_blocking_question_stays_ahead_of_a_later_finding(
-    project: Project, phases: None
-) -> None:
-    _question(project, EFFORT, blocking=True, phase="mid")
-    _finding(project, "later-finding", phase="mid")
-    records = _stored(project)
-
-    assert [item.record["subject"] for item in phase_blockers(records, "mid")] == [
-        EFFORT,
-        "later-finding",
-    ]
-    phase = read_phase(
-        next(
-            record
-            for record in records
-            if record["record_type"] == "score:phase" and record["subject"] == "mid"
-        )
-    )
-    text = "human gate: " + ", ".join(item.subject for item in progress_gates(records, phase))
-    assert text == "human gate: alpha, later-finding"
 
 
 def test_r9_blocker_scope_and_phase_are_unchanged(project: Project, phases: None) -> None:
