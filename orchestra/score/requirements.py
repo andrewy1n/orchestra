@@ -30,6 +30,15 @@ def acceptance_requirement_ids(record: Record) -> list[str]:
     return [single] if isinstance(single, str) and single else []
 
 
+def requirement_lines(text: str) -> dict[str, str]:
+    lines: dict[str, str] = {}
+    for line in text.splitlines():
+        match = _REQUIREMENT_LINE.match(line.strip())
+        if match:
+            lines[match.group(1)] = line.strip()
+    return lines
+
+
 def requirements_in_body(body: str) -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
     inside = False

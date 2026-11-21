@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -23,11 +22,16 @@ from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
 from orchestra.conductor.requirements import RequirementIndex, requirement_status
 from orchestra.score.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    ExecutorTask,
     task_executor,
 )
 from orchestra.score.lookups import current_phases
-from orchestra.score.requirements import phase_requirements
+from orchestra.score.requirements import phase_requirements, requirement_lines
+from orchestra.score.work_item_facts import (
+    decision_choice,
+    executor_task,
+    record_scope,
+    work_item_facts,
+)
 from orchestra.score.workflow_blockers import human_gates
 from orchestra.tools import Merged, Unmerged, branch_state
 
@@ -369,39 +373,24 @@ def _group_sort_key(
     return key
 
 
-def _executor_task(record: Record) -> ExecutorTask:
-    payload = record_payload(record)
-    estimate = payload.get("estimate_minutes")
-    size = payload.get("size")
-    executor = payload.get("executor")
-    assignee = payload.get("assignee")
-    return ExecutorTask(
-        subject=record["subject"],
-        size=size if isinstance(size, str) and size else None,
-        estimate_minutes=estimate if type(estimate) is int else None,
-        executor=executor if isinstance(executor, str) else None,
-        assignee=assignee if isinstance(assignee, str) else None,
-    )
-
-
 def _executor_bits(
     record: Record,
     records: list[Record],
     small_wave_budget_minutes: int,
 ) -> list[str]:
-    phase = record_payload(record).get("phase")
+    phase = record_scope(record).phase
     wave = _derived_value(record, "wave")
     members = [
         candidate
         for candidate in records
         if candidate["record_type"] == WORK_ITEM_TYPE
         and candidate.get("lifecycle_state") == "planned"
-        and record_payload(candidate).get("phase") == phase
+        and record_scope(candidate).phase == phase
         and effort_of(candidate) == effort_of(record)
         and _derived_value(candidate, "wave") == wave
         and (wave is not None or candidate["id"] == record["id"])
     ]
-    task = _executor_task(record)
+    task = executor_task(record)
     assignment = task_assignment(record, records)
     if (
         record.get("lifecycle_state") in ("in_progress", "done")
@@ -411,7 +400,7 @@ def _executor_bits(
         task = replace(task, assignee=assignment.assignee)
     mode = task_executor(
         task,
-        [_executor_task(candidate) for candidate in members] or [task],
+        [executor_task(candidate) for candidate in members] or [task],
         small_wave_budget_minutes=small_wave_budget_minutes,
     )
     planned = (
@@ -765,11 +754,11 @@ _BRIEF_TITLES = {
 }
 
 
-def _brief_in_scope(role: Role, subject: str, effort: JsonValue, record: Record) -> bool:
+def _brief_in_scope(role: Role, subject: str, effort: str | None, record: Record) -> bool:
     if role.name == "work":
         return record.get("subject") == subject
     if role.name in _BRIEF_EFFORT_SCOPED:
-        return record_payload(record).get("effort") == effort
+        return record_scope(record).effort == effort
     return subject_related(subject, record.get("subject") or "")
 
 
@@ -792,85 +781,56 @@ def _brief_block(record: Record, role: Role) -> str:
     return "\n".join(lines)
 
 
-_REQUIREMENT_ID_LINE = re.compile(r"^(R\d+):\s*(.*)$")
-
-
-def _body_sections(record: Record) -> dict[str, str]:
-    return body_sections(record.get("body") or "")
-
-
-def _requirement_lines(text: str) -> dict[str, str]:
-    lines: dict[str, str] = {}
-    for line in text.splitlines():
-        match = _REQUIREMENT_ID_LINE.match(line.strip())
-        if match:
-            lines[match.group(1)] = line.strip()
-    return lines
-
-
-def _string_list(value: JsonValue) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, str)]
-
-
-def _phase_record(records: list[Record], record_type: str, phase: JsonValue) -> Record | None:
+def _phase_record(records: list[Record], record_type: str, phase: str | None) -> Record | None:
     return next(
         (
             r
             for r in records
             if r["record_type"] == record_type
             and r.get("lifecycle_state") == "active"
-            and record_payload(r).get("phase") == phase
+            and record_scope(r).phase == phase
         ),
         None,
     )
 
 
 def _brief_acceptance_in_scope(work_item: Record, record: Record) -> bool:
-    own = record_payload(work_item)
-    payload = record_payload(record)
-    return payload.get("effort") == own.get("effort") and payload.get("phase") == own.get("phase")
+    return record_scope(record) == record_scope(work_item)
 
 
 def _orientation(work_item: Record, records: list[Record]) -> str:
-    payload = record_payload(work_item)
-    sections = _body_sections(work_item)
+    facts = work_item_facts(work_item)
+    sections = body_sections(work_item.get("body") or "")
     lines = ["## Orientation", ""]
-    for name in ("assignee", "write_root"):
-        value = payload.get(name)
-        if not _empty(value):
+    for name, value in (("assignee", facts.assignee), ("write_root", facts.write_root)):
+        if value is not None:
             lines.append(f"**{name}**: {_display(value)}")
     if len(lines) > 2:
         lines.append("")
     for name in ("Description", "Approach"):
         if sections.get(name):
             lines += [f"### Work item {name}", "", sections[name], ""]
-    phase = payload.get("phase")
-    spec_lines = {
-        rid: f"{rid}: {text}"
-        for rid, text in phase_requirements(records, phase if isinstance(phase, str) else "")
-    }
-    description_lines = _requirement_lines(sections.get("Description", ""))
+    phase = facts.scope.phase
+    spec_lines = {rid: f"{rid}: {text}" for rid, text in phase_requirements(records, phase or "")}
+    description_lines = requirement_lines(sections.get("Description", ""))
     requirements = [
-        spec_lines.get(rid) or description_lines.get(rid) or rid
-        for rid in _string_list(payload.get("requirements"))
+        spec_lines.get(rid) or description_lines.get(rid) or rid for rid in facts.requirements
     ]
     if requirements:
         lines += ["### Requirements", "", *(f"- {text}" for text in requirements), ""]
     design = _phase_record(records, "score:design", phase)
     if design:
-        design_sections = _body_sections(design)
+        design_sections = body_sections(design.get("body") or "")
         for name in ("Invariants", "Assumptions"):
             if design_sections.get(name):
                 lines += [f"### Design {name}", "", design_sections[name], ""]
     decisions: list[str] = []
-    for name in _string_list(payload.get("decisions")):
+    for name in facts.decisions:
         decision = next(
             (r for r in records if r["record_type"] == "score:decision" and r["subject"] == name),
             None,
         )
-        choice = record_payload(decision).get("choice") if decision else None
+        choice = decision_choice(decision) if decision else None
         decisions.append(f"- {name}: {_display(choice)}" if not _empty(choice) else f"- {name}")
     if decisions:
         lines += ["### Decisions", "", *decisions, ""]
@@ -893,7 +853,7 @@ def render_brief(subject: str, records: list[Record]) -> str:
     )
     if work_item is None:
         raise ViewError(f"no work item found for subject {subject!r}")
-    effort = record_payload(work_item).get("effort", "")
+    effort = record_scope(work_item).effort
     sections: list[str] = [_orientation(work_item, records)]
     for role in BRIEF_ROLES:
         selected = sorted(
