@@ -20,7 +20,17 @@ CONDUCTOR_SUITE_GATE = [
     ("review-brief", "--phase", "p1"),
 ]
 
-GROUPS = {"conductor_suite_gate": CONDUCTOR_SUITE_GATE}
+CONDUCTOR_WAVE_TASK = [
+    ("wave", "start", "p1"),
+    ("wave", "end", "p1"),
+    ("wave", "resolve", "p1", "a"),
+    ("task", "land", "--evidence", "x", "t"),
+]
+
+GROUPS = {
+    "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
+    "conductor_wave_task": CONDUCTOR_WAVE_TASK,
+}
 
 CASES = [
     pytest.param(argv, id=f"{group}-{'_'.join(argv).replace('-', '_')}")

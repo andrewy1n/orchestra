@@ -9,16 +9,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views, workflow_cli
-from orchestra.canon.errors import StaleWriteError, StoreError
+from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.types import JsonObject
-from orchestra.conductor import autonomy, close, land, land_task, task_redispatch, wave
+from orchestra.conductor import autonomy, close, land
 from orchestra.conductor import cli as conductor_cli
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
-from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.github_pr import GitHubPRError, github_client
-from orchestra.conductor.task_landing import land_and_close
-from orchestra.score.work_item import WorkItemShapeError
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
 from orchestra.stage import cli as stage_cli
@@ -234,64 +231,6 @@ def _build_parser() -> argparse.ArgumentParser:
     autonomy.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     autonomy.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
-    wave = sub.add_parser("wave", help="Start and end the waves of a phase")
-    wave_sub = wave.add_subparsers(dest="action", required=True)
-    wave_start = wave_sub.add_parser(
-        "start",
-        help="Cut task branches and worktrees for the next ready wave and mark it in progress",
-    )
-    wave_start.add_argument("phase", help="Phase slug")
-    wave_start.add_argument("--json", action="store_true", help="Print one JSON object")
-    wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
-    wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-
-    wave_end = wave_sub.add_parser(
-        "end", help="Merge each passing task branch into the phase branch in task-slug order"
-    )
-    wave_end.add_argument("phase", help="Phase slug")
-    wave_end.add_argument("--json", action="store_true", help="Print one JSON object")
-    wave_end.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
-    wave_end.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-
-    wave_resolve = wave_sub.add_parser(
-        "resolve",
-        help="Finish a conflicted task merge once both tasks' work is kept",
-    )
-    wave_resolve.add_argument("phase", help="Phase slug")
-    wave_resolve.add_argument("task", help="Task slug whose merge conflicted")
-    wave_resolve.add_argument("--json", action="store_true", help="Print one JSON object")
-    wave_resolve.add_argument(
-        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
-    )
-    wave_resolve.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-
-    task = sub.add_parser("task", help="Manage one task")
-    task_sub = task.add_subparsers(dest="action", required=True)
-    task_redispatch_parser = task_sub.add_parser(
-        "redispatch", help="Start a new measured dispatch for an in-progress task"
-    )
-    task_redispatch_parser.add_argument("task", help="Work-item subject")
-    task_redispatch_parser.add_argument(
-        "--expected-revision", required=True, help="Exact current work-item revision"
-    )
-    task_redispatch_parser.add_argument("--json", action="store_true", help="Print one JSON object")
-    task_redispatch_parser.add_argument(
-        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
-    )
-    task_redispatch_parser.add_argument(
-        "--store", default=None, metavar="DIR", help="Store repo root"
-    )
-
-    task_land = task_sub.add_parser(
-        "land", help="Commit a task worktree, record its evidence, run its checks, close it"
-    )
-    task_land.add_argument("task", nargs="?", help="Work-item subject")
-    task_land.add_argument("--evidence", default=None, help="Evidence JSON file")
-    task_land.add_argument("--schema", action="store_true", help="Print the evidence JSON schema")
-    task_land.add_argument("--json", action="store_true", help="Print one JSON object")
-    task_land.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
-    task_land.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-
     land = sub.add_parser(
         "land",
         help="Run the phase gate, then open the configured pull request and wait for CI",
@@ -460,198 +399,6 @@ def _cmd_effort_autonomy(args: argparse.Namespace) -> int:
         _print_json({"effort": args.effort, "autonomy": args.level, "record": record["id"]})
     else:
         print(f"{args.effort}: autonomy {args.level}")
-    return 0
-
-
-def _cmd_wave_start(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        repo = Git(_cwd(args)).primary_checkout()
-        result = wave.start(project, repo, args.phase, Git(_cwd(args)).root())
-        records = project.records()
-        briefs = {t.task: views.render_brief(t.task, records) for t in result.tasks}
-    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave start: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        if result.runner is not None:
-            _print_json(
-                {
-                    "phase": result.phase,
-                    "wave": result.wave,
-                    "execution_mode": result.execution_mode,
-                    "task": result.runner.task,
-                    "state": result.runner.state,
-                    "execution_report": result.runner.report_id,
-                    "checks": list(result.runner.checks),
-                    "refusal_reasons": list(result.runner.refusal_reasons),
-                }
-            )
-            return result.runner.code
-        _print_json(
-            {
-                "phase": result.phase,
-                "wave": result.wave,
-                "execution_mode": result.execution_mode,
-                "tasks": [
-                    {
-                        "task": t.task,
-                        "executor": t.executor,
-                        "write_root": t.write_root,
-                        "branch": t.branch,
-                        "brief": briefs[t.task],
-                    }
-                    for t in result.tasks
-                ],
-            }
-        )
-        return 0
-    if result.runner is not None:
-        print(f"## {result.runner.task} ({result.runner.state})")
-        for check in result.runner.checks:
-            print(f"{check['subject']}: exit {check['exit_code']} {check['message']}")
-        for reason in result.runner.refusal_reasons:
-            print(reason)
-        return result.runner.code
-    for t in result.tasks:
-        print(f"## {t.task} ({t.executor}) {t.write_root}\n")
-        print(briefs[t.task])
-    return 0
-
-
-def _cmd_wave_end(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        result = wave.end(project, Git(_cwd(args)).primary_checkout(), args.phase)
-    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave end: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        _print_json(
-            {
-                "phase": result.phase,
-                "merged": list(result.merged),
-                "skipped": [{"task": t, "reason": why} for t, why in result.skipped],
-                "conflict": result.conflict,
-                "question": result.question_id,
-            }
-        )
-    else:
-        for task_slug in result.merged:
-            print(f"merged task/{result.phase}/{task_slug}")
-        for task_slug, why in result.skipped:
-            print(f"skipped {task_slug}: {why}")
-        if result.conflict:
-            print(f"conflict merging {result.conflict}; question {result.question_id}")
-    return 1 if result.conflict else 0
-
-
-def _cmd_wave_resolve(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        result = wave.resolve(project, Git(_cwd(args)).primary_checkout(), args.phase, args.task)
-    except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave resolve: {args.phase}: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        _print_json(
-            {
-                "phase": result.phase,
-                "task": result.task,
-                "ready": result.ready,
-                "refusals": list(result.refusals),
-                "commit": result.commit,
-            }
-        )
-    elif result.ready:
-        print(f"resolved {result.task}: merge commit {result.commit}")
-    for reason in result.refusals:
-        print(f"orchestra wave resolve: {args.phase}: {reason}", file=sys.stderr)
-    return 0 if result.ready else 1
-
-
-def _cmd_task_land(args: argparse.Namespace) -> int:
-    if args.schema:
-        _print_json(EVIDENCE_SCHEMA)
-        return 0
-    if not args.task or not args.evidence:
-        print("orchestra task land: a task and --evidence are required", file=sys.stderr)
-        return 2
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        repo = Git(_cwd(args)).primary_checkout()
-        landing = land_and_close(project, repo, args.task, Path(args.evidence))
-    except (
-        EvidenceError,
-        land_task.LandError,
-        wave.WaveError,
-        OSError,
-        RuntimeError,
-        StoreBindingError,
-        StoreError,
-        WorkItemShapeError,
-    ) as exc:
-        print(f"orchestra task land: {args.task}: {exc}", file=sys.stderr)
-        return 2
-    landed, closure = landing.landed, landing.closure
-    if args.json:
-        _print_json(
-            {
-                "task": landed.task,
-                "commit": landed.commit,
-                "revision": landed.revision,
-                "execution_report": landed.report_id,
-                "check_runs": [c.check_run_id for c in landed.checks],
-                "state": closure.state,
-                "reasons": list(closure.reasons),
-                "question": closure.question_id,
-            }
-        )
-    else:
-        print(
-            f"{landed.task}: {closure.state} (report {landed.report_id}, "
-            f"revision {landed.revision})"
-        )
-        for reason in closure.reasons:
-            print(f"  {reason}", file=sys.stderr)
-    return closure.code
-
-
-def _cmd_task_redispatch(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        record = task_redispatch.redispatch(
-            project, args.task, expected_revision=args.expected_revision
-        )
-    except (
-        StaleWriteError,
-        task_redispatch.RedispatchError,
-        OSError,
-        RuntimeError,
-        StoreBindingError,
-        StoreError,
-    ) as exc:
-        print(f"orchestra task redispatch: {args.task}: {exc}", file=sys.stderr)
-        return 2
-    payload = record["payload"]
-    result: dict[str, object] = {
-        "task": record["subject"],
-        "revision": record["revision"],
-        "attempts": payload.get("attempts"),
-        "dispatch_id": payload.get("dispatch_id"),
-        "dispatch_started_at": payload.get("dispatch_started_at"),
-        "assignee": payload.get("assignee"),
-        "write_root": payload.get("write_root"),
-    }
-    if args.json:
-        _print_json(result)
-    else:
-        print(f"redispatched {record['subject']} (attempt {payload.get('attempts')})")
     return 0
 
 
@@ -1028,19 +775,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"orchestra sessions: {exc}", file=sys.stderr)
             return 2
     if args.command in conductor_cli.COMMANDS:
-        return conductor_cli.run(args)
-    if args.command == "wave":
-        if args.action == "start":
-            return _cmd_wave_start(args)
-        if args.action == "resolve":
-            return _cmd_wave_resolve(args)
-        return _cmd_wave_end(args)
+        return conductor_cli.run(args, render_brief=views.render_brief)
     if args.command == "effort":
         return _cmd_effort_autonomy(args)
-    if args.command == "task":
-        if args.action == "redispatch":
-            return _cmd_task_redispatch(args)
-        return _cmd_task_land(args)
     if args.command == "workflow":
         return workflow_cli.run(args)
     if args.command == "land":

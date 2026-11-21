@@ -46,6 +46,7 @@ def _add_suite_job_arguments(
 
 
 def add_parsers(sub: SubparserGroup) -> None:
+    _add_wave_task_parsers(sub)
     review_brief = sub.add_parser(
         "review-brief",
         help=(
@@ -211,3 +212,63 @@ def add_parsers(sub: SubparserGroup) -> None:
             "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
         ),
     )
+
+
+def _add_wave_task_parsers(sub: SubparserGroup) -> None:
+    wave = sub.add_parser("wave", help="Start and end the waves of a phase")
+    wave_sub = wave.add_subparsers(dest="action", required=True)
+    wave_start = wave_sub.add_parser(
+        "start",
+        help="Cut task branches and worktrees for the next ready wave and mark it in progress",
+    )
+    wave_start.add_argument("phase", help="Phase slug")
+    wave_start.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+    wave_end = wave_sub.add_parser(
+        "end", help="Merge each passing task branch into the phase branch in task-slug order"
+    )
+    wave_end.add_argument("phase", help="Phase slug")
+    wave_end.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_end.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    wave_end.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+    wave_resolve = wave_sub.add_parser(
+        "resolve",
+        help="Finish a conflicted task merge once both tasks' work is kept",
+    )
+    wave_resolve.add_argument("phase", help="Phase slug")
+    wave_resolve.add_argument("task", help="Task slug whose merge conflicted")
+    wave_resolve.add_argument("--json", action="store_true", help="Print one JSON object")
+    wave_resolve.add_argument(
+        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
+    )
+    wave_resolve.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+    task = sub.add_parser("task", help="Manage one task")
+    task_sub = task.add_subparsers(dest="action", required=True)
+    task_redispatch_parser = task_sub.add_parser(
+        "redispatch", help="Start a new measured dispatch for an in-progress task"
+    )
+    task_redispatch_parser.add_argument("task", help="Work-item subject")
+    task_redispatch_parser.add_argument(
+        "--expected-revision", required=True, help="Exact current work-item revision"
+    )
+    task_redispatch_parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    task_redispatch_parser.add_argument(
+        "--cwd", default=None, help="Directory inside the repo (default: cwd)"
+    )
+    task_redispatch_parser.add_argument(
+        "--store", default=None, metavar="DIR", help="Store repo root"
+    )
+
+    task_land = task_sub.add_parser(
+        "land", help="Commit a task worktree, record its evidence, run its checks, close it"
+    )
+    task_land.add_argument("task", nargs="?", help="Work-item subject")
+    task_land.add_argument("--evidence", default=None, help="Evidence JSON file")
+    task_land.add_argument("--schema", action="store_true", help="Print the evidence JSON schema")
+    task_land.add_argument("--json", action="store_true", help="Print one JSON object")
+    task_land.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    task_land.add_argument("--store", default=None, metavar="DIR", help="Store repo root")

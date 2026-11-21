@@ -14,6 +14,7 @@ from orchestra import cli
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import wave
+from orchestra.conductor.cli import wave_commands
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA
 from orchestra.conductor.land_task import LandedTask
 from orchestra.conductor.task_close import Closure
@@ -274,7 +275,7 @@ def test_r13_handler_delegates_to_land_and_close_and_renders_its_result(
         calls.append((task, checkout, evidence_path))
         return landing
 
-    monkeypatch.setattr(cli, "land_and_close", fake)
+    monkeypatch.setattr(wave_commands, "land_and_close", fake)
     code = cli.main(["task", "land", "a", "--evidence", str(evidence), "--cwd", str(repo)])
     assert code == 0
     assert calls == [("a", repo, evidence)]

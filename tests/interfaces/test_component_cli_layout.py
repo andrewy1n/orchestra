@@ -36,7 +36,20 @@ CONDUCTOR_SUITE_GATE = Group(
     ),
 )
 
-GROUPS = [CONDUCTOR_SUITE_GATE]
+CONDUCTOR_WAVE_TASK = Group(
+    "conductor_wave_task",
+    "orchestra.conductor.cli",
+    ("wave", "task"),
+    (
+        "_cmd_wave_start",
+        "_cmd_wave_end",
+        "_cmd_wave_resolve",
+        "_cmd_task_land",
+        "_cmd_task_redispatch",
+    ),
+)
+
+GROUPS = [CONDUCTOR_SUITE_GATE, CONDUCTOR_WAVE_TASK]
 
 
 def _registered_verbs(component_cli: str) -> set[str]:
