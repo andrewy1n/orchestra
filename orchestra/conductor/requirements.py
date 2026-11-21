@@ -7,7 +7,12 @@ from orchestra.canon import record_payload
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.acceptance import Acceptance, read_acceptance
-from orchestra.score.lookups import current_phases, latest_record, live_work_items, record_order
+from orchestra.score.lookups import (
+    LIVE_WORK_ITEM_STATES,
+    current_phases,
+    latest_record,
+    record_order,
+)
 from orchestra.score.requirements import (
     requirements_in_body,
 )
@@ -38,7 +43,13 @@ def _text(record: Record, key: str) -> str | None:
 
 
 def _phase_work_items(records: list[Record], phase: str) -> list[Record]:
-    return live_work_items(phase, records)
+    return [
+        record
+        for record in records
+        if record["record_type"] == _WORK_ITEM
+        and record["lifecycle_state"] in LIVE_WORK_ITEM_STATES
+        and _text(record, "phase") == phase
+    ]
 
 
 def _phase_requirement_ids(records: list[Record], phase: str, current: Record | None) -> list[str]:

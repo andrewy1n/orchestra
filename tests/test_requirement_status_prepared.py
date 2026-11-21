@@ -56,3 +56,33 @@ def test_status_inside_prepared_records_matches_the_unprepared_status() -> None:
     with prepare_records(records):
         assert requirement_status(records, PHASE) == expected
     assert expected["R1"].status == "verified"
+
+
+def _without_specification() -> list[Record]:
+    records = [record for record in _records() if record["record_type"] != "score:specification"]
+    item = _record(
+        4,
+        "score:work-item",
+        "w-one",
+        {"phase": PHASE, "effort": "e", "requirements": ["R1"]},
+        "planned",
+    )
+    return [*records, item]
+
+
+def test_work_item_requirements_inside_prepared_records_match_the_unprepared_status() -> None:
+    records = _without_specification()
+    expected = requirement_status(records, PHASE)
+    with prepare_records(records):
+        assert requirement_status(records, PHASE) == expected
+    assert list(expected) == ["R1"]
+
+
+def test_light_phase_requirements_inside_prepared_records_match_the_unprepared_status() -> None:
+    records = _records()
+    records[0]["payload"] = {"effort": "e", "weight": "light"}
+    records[0]["body"] = "## Requirements\n\nR1: the one requirement\n"
+    expected = requirement_status(records, PHASE)
+    with prepare_records(records):
+        assert requirement_status(records, PHASE) == expected
+    assert list(expected) == ["R1"]
