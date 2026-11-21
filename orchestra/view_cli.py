@@ -1,4 +1,4 @@
-"""CLI wiring for the view and session-hook commands."""
+"""CLI wiring for the view commands."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Protocol
 
-COMMANDS = frozenset({"handoff", "view", "brief", "hook-start", "hook-stop"})
+COMMANDS = frozenset({"handoff", "view", "brief"})
 
 
 class SubparserGroup(Protocol):
@@ -22,21 +22,9 @@ def add_parsers(sub: SubparserGroup) -> None:
     view.add_argument("--effort", default=None, help="Limit to one effort slug")
     brief = sub.add_parser("brief", help="Print one work-item's brief")
     brief.add_argument("subject", help="Work-item subject")
-    for name, text in (
-        ("hook-start", "SessionStart hook: inject the handoff"),
-        ("hook-stop", "Stop hook: block on validation errors new this session"),
-    ):
-        hook = sub.add_parser(name, help=text)
-        mode = hook.add_mutually_exclusive_group()
-        mode.add_argument("--claude", action="store_true", help="Claude Code output")
-        mode.add_argument("--cursor", action="store_true", help="Plain output (default)")
 
 
 def run(args: argparse.Namespace) -> int:
-    if args.command in ("hook-start", "hook-stop"):
-        from orchestra.stage import hooks
-
-        return hooks.run(args.command, hooks.CLAUDE if args.claude else hooks.CURSOR)
     from orchestra import views
     from orchestra.canon.errors import StoreError
     from orchestra.canon.project import StoreBindingError, open_store

@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from datetime import timedelta
@@ -14,12 +13,14 @@ from typing import TextIO, TypeGuard
 
 from orchestra import views
 from orchestra.canon.backend import open_backend
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.conductor import close
 from orchestra.conductor.github_pr import github_client
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.phase_progress import open_phase_progress
+from orchestra.stage.handoff import hook_constraints, hook_handoff_sections
 from orchestra.tools.git import Git
 
 PROTOCOL = (
@@ -64,10 +65,10 @@ def _root_from_hook(data: JsonObject, fmt: str) -> Path:
     return start.resolve()
 
 
-def _open_project(root: Path) -> Project | None:
+def _open_project(root: Path, access: Access) -> Project | None:
     try:
-        return open_store(root)
-    except StoreBindingError:
+        return Workspace.resolve(root, access=access).open()
+    except StoreNotReady:
         return None
 
 
@@ -110,7 +111,7 @@ def _load_baseline(root: Path, data: JsonObject) -> set[str] | None:
 
 
 def _constraint_lines(records: list[Record], dormant: list[str]) -> list[str]:
-    items, total = views.hook_constraints(records, MAX_HOOK_CONSTRAINTS, dormant)
+    items, total = hook_constraints(records, MAX_HOOK_CONSTRAINTS, dormant)
     if not items:
         return []
     lines = ["", "Active constraints:"]
@@ -190,27 +191,37 @@ def _close_sweep(project: Project, root: Path) -> list[str]:
     return lines
 
 
+def _upkeep(project: Project, root: Path) -> list[str]:
+    backend = open_backend(project.store_path)
+    if backend.backup_due(timedelta(hours=24)):
+        backend.backup()
+    return _close_sweep(project, root)
+
+
+def _start_context(project: Project, root: Path, data: JsonObject, sweep: list[str]) -> str:
+    records = views.load_records(project)
+    _save_baseline(project, root, data)
+    dormant = sorted(
+        name for name, status in views.effort_statuses(records).items() if status == "dormant"
+    )
+    ctx = _assemble_start(
+        _constraint_lines(records, dormant),
+        hook_handoff_sections(records, dormant, open_phase_progress(project, records)),
+        dormant,
+    )
+    if sweep:
+        ctx += "\n" + "\n".join(sweep) + "\n"
+    return ctx
+
+
 def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
     root = _root_from_hook(data, fmt)
     try:
-        project = _open_project(root)
+        project = _open_project(root, Access.WRITE)
         if project is None:
             return None
-        if open_backend(project.store_path).backup_due(timedelta(hours=24)):
-            subprocess.run(["canon", "backup"], cwd=root, check=True)
-        sweep = _close_sweep(project, root)
-        records = views.load_records(project)
-        _save_baseline(project, root, data)
-        dormant = sorted(
-            name for name, status in views.effort_statuses(records).items() if status == "dormant"
-        )
-        ctx = _assemble_start(
-            _constraint_lines(records, dormant),
-            views.hook_handoff_sections(records, dormant, open_phase_progress(project, records)),
-            dormant,
-        )
-        if sweep:
-            ctx += "\n" + "\n".join(sweep) + "\n"
+        sweep = _upkeep(project, root)
+        ctx = _start_context(project, root, data, sweep)
     except Exception as exc:
         ctx = f"orchestra session-start failed: {exc}\n"
     return _wrap_start(fmt, ctx)
@@ -232,7 +243,7 @@ def cmd_stop(fmt: str, data: JsonObject) -> JsonObject | None:
             return {}
     root = _root_from_hook(data, fmt)
     try:
-        project = _open_project(root)
+        project = _open_project(root, Access.READ)
     except Exception as exc:
         return _block(fmt, f"Session-end store check failed:\n\n{exc}")
     if project is None:

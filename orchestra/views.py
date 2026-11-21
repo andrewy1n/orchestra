@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -558,7 +558,7 @@ def _record_line(record: Record, role: Role, extra_bits: list[str], link: bool =
     return f"- {record['subject']} _(id: {ref})_"
 
 
-def _group_records(
+def group_records(
     view: View, records: list[Record], effort: str | None
 ) -> dict[str, dict[str, list[Record]]]:
     scoped = [r for r in records if _in_effort(r, effort)]
@@ -586,7 +586,7 @@ def _group_records(
     return groups
 
 
-def _group_lines(
+def group_lines(
     view: View,
     name: str,
     group: dict[str, list[Record]],
@@ -681,7 +681,7 @@ def render_view(
         else None
     )
     tally = [r for r in records if r["record_type"] == view.tally_type] if view.tally_type else []
-    groups = _group_records(view, records, effort)
+    groups = group_records(view, records, effort)
     labels: Mapping[str, EffortStatus] = {}
     if view.effort_status:
         labels = statuses if statuses is not None else effort_statuses(records)
@@ -698,7 +698,7 @@ def render_view(
     if not groups:
         lines += ["_No matching records._", ""]
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
-        lines += _group_lines(
+        lines += group_lines(
             view,
             name,
             groups[name],
@@ -937,11 +937,11 @@ def load_records(project: Project) -> list[Record]:
     return attach_derived_all(project.records(), project.derived())
 
 
-def _open_efforts(records: list[Record]) -> set[str]:
+def open_efforts(records: list[Record]) -> set[str]:
     return {name for name, status in effort_statuses(records).items() if status != "closed"}
 
 
-def _position_recorded_at(records: list[Record]) -> dict[str, str]:
+def position_recorded_at(records: list[Record]) -> dict[str, str]:
     stamps: dict[str, str] = {}
     for r in records:
         if r["record_type"] != POSITION.record_type or not POSITION.select(r):
@@ -953,49 +953,5 @@ def _position_recorded_at(records: list[Record]) -> dict[str, str]:
     return stamps
 
 
-def _group_subjects(group: dict[str, list[Record]]) -> list[str]:
+def group_subjects(group: dict[str, list[Record]]) -> list[str]:
     return sorted({str(r.get("subject", "")) for items in group.values() for r in items})
-
-
-def hook_handoff_sections(
-    records: list[Record],
-    dormant: Collection[str] = (),
-    progress: Mapping[str, PhaseProgress] | None = None,
-) -> list[tuple[str, str]]:
-    live = _open_efforts(records) - set(dormant)
-    groups = {
-        name: group
-        for name, group in _group_records(HOOK_VIEW, records, None).items()
-        if name not in dormant
-    }
-    stamps = _position_recorded_at(records)
-    stamped = sorted(n for n in groups if n in live and n in stamps)
-    stamped.sort(key=stamps.__getitem__, reverse=True)
-    unstamped = sorted(n for n in groups if n in live and n not in stamps)
-    rest = sorted(n for n in groups if n not in live)
-    sections: list[tuple[str, str]] = []
-    for name in (*stamped, *unstamped, *rest):
-        lines = _group_lines(
-            HOOK_VIEW, name, groups[name], [], records, link=False, progress=progress
-        )
-        label = name or ", ".join(_group_subjects(groups[name]))
-        sections.append((label, "\n".join(lines).rstrip()))
-    return sections
-
-
-def hook_constraints(
-    records: list[Record], limit: int, dormant: Collection[str] = ()
-) -> tuple[list[Record], int]:
-    live = _open_efforts(records) - set(dormant)
-    role = next(r for r in BRIEF_ROLES if r.name == "constraint")
-    matches = sorted(
-        (
-            r
-            for r in records
-            if r["record_type"] == role.record_type
-            and role.select(r)
-            and record_payload(r).get("effort") in live
-        ),
-        key=lambda r: r.get("subject") or "",
-    )
-    return matches[:limit], len(matches)

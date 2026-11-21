@@ -39,6 +39,7 @@ from orchestra.score.lookups import current_phase
 from orchestra.score.work_item import WorkItemShapeError
 from orchestra.sessions import aggregate as aggregate_sessions
 from orchestra.sessions import report as report_sessions
+from orchestra.stage import cli as stage_cli
 from orchestra.store import StoreLocation, resolve_location
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
@@ -57,6 +58,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
+    stage_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     metrics_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
@@ -1612,6 +1614,8 @@ def main(argv: list[str] | None = None) -> int:
         return metrics_cli.run(args)
     if args.command == "plugins":
         return plugin_cli.run(args)
+    if args.command in stage_cli.COMMANDS:
+        return stage_cli.run(args)
     if args.command in view_cli.COMMANDS:
         return view_cli.run(args)
     parser.error(f"unknown command {args.command!r}")

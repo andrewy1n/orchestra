@@ -10,7 +10,7 @@ from test_hooks import (
 )
 
 from orchestra.canon.types import Record
-from orchestra.views import hook_handoff_sections
+from orchestra.stage.handoff import hook_handoff_sections
 
 
 @pytest.fixture(autouse=True)

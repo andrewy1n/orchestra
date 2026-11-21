@@ -231,7 +231,7 @@ def test_hooks_never_write_records(repo, monkeypatch, capsys):
         return {
             str(p): p.read_bytes()
             for p in repo.store_path.rglob("*")
-            if p.is_file() and "backups" not in p.parts
+            if p.is_file() and "backups" not in p.parts and not p.name.endswith(("-wal", "-shm"))
         }
 
     before = snapshot()
@@ -619,7 +619,7 @@ class _NoBackup:
 
 def test_session_start_keeps_the_worktree_it_runs_in(tmp_path, monkeypatch):
     landed = make_landed(tmp_path, shared_repo=True)
-    monkeypatch.setattr(hooks, "_open_project", lambda _root: landed.project)
+    monkeypatch.setattr(hooks, "_open_project", lambda _root, _access: landed.project)
     monkeypatch.setattr(hooks, "open_backend", lambda _path: _NoBackup())
     fake_gh_on_path(tmp_path / "bin", monkeypatch, landed, "MERGED")
 

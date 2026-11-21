@@ -8,6 +8,7 @@ from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.phase_progress import open_phase_progress
+from orchestra.stage.handoff import hook_handoff_sections
 
 
 @pytest.fixture
@@ -100,7 +101,7 @@ def test_handoff_resumes_phase_close_after_the_last_task(project: Project) -> No
         {"phase": "p1", "effort": "alpha", "revision": "abc123", "base": "main", "kind": "demo"},
     )
     records = views.load_records(project)
-    sections = dict(views.hook_handoff_sections(records, (), open_phase_progress(project, records)))
+    sections = dict(hook_handoff_sections(records, (), open_phase_progress(project, records)))
     assert "stage: spec" in sections["alpha"]
     assert "Pending Phase Close" not in render(project, "handoff", effort="beta")
     project.update(phase["id"], transition="done")

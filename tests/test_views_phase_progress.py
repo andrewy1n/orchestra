@@ -23,6 +23,7 @@ from orchestra.conductor.phase_progress import (
     assess,
 )
 from orchestra.score.phase import Phase, read_phase
+from orchestra.stage.handoff import hook_handoff_sections
 from orchestra.tools import BranchState, Git, Unmerged
 
 READY = Readiness(True)
@@ -97,7 +98,7 @@ def test_hook_sections_carry_the_stage_and_reason(project: Project) -> None:
     phase = _start_phase(project)
     progress = assess(_verified_facts(phase, "landed", Unmerged("abc", 2)))
 
-    sections = dict(views.hook_handoff_sections(views.load_records(project), (), {"p1": progress}))
+    sections = dict(hook_handoff_sections(views.load_records(project), (), {"p1": progress}))
 
     assert "stage: close (awaiting-merge)" in sections["alpha"]
 
