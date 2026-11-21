@@ -24,7 +24,6 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import gate, phase_progress, wave
 from orchestra.conductor.requirements import RequirementState, requirement_status
 from orchestra.derive import release_ready
-from orchestra.score.phase import current_phase_model
 
 EFFORT = "ef"
 MIX = "mix"
@@ -453,8 +452,8 @@ def test_r1_agreement_workflow_readiness_matches_each_scenario(
     phase = f"s-{scenario.name}"
     records = world.project.records()
     ready, reason = _readiness(world, phase)
-    model = current_phase_model(phase, records)
-    assert model is not None
+    record = [r for r in records if r["record_type"] == "score:phase" and r["subject"] == phase][-1]
+    model = phase_progress.read_phase(record)
     stage = phase_progress.verify_step(world.project, records, model)
     if scenario.expected == "verified":
         assert (ready, reason) == (True, "")
