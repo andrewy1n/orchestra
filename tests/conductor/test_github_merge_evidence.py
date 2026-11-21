@@ -138,6 +138,8 @@ def test_permission_failure_propagates_to_the_command(
         "gh: Too many requests (HTTP 429)",
         "gh: Bad gateway (HTTP 502)",
         "gh: Service unavailable (HTTP 503)",
+        'Get "https://api.github.com/": read tcp: connection reset by peer',
+        'Get "https://api.github.com/": net/http: TLS handshake timeout',
     ],
 )
 def test_temporary_lookup_failure_leaves_ci_unresolved(

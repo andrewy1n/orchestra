@@ -18,7 +18,9 @@ from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coor
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _TRANSIENT_LOOKUP = re.compile(
-    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit (?:already )?exceeded|exceeded a secondary rate limit",
+    r"\(HTTP (?:429|5[0-9]{2})\)|rate limit (?:already )?exceeded|exceeded a secondary rate limit"
+    r"|connection reset by peer|network is unreachable|temporary failure in name resolution"
+    r"|TLS handshake timeout|i/o timeout|unexpected EOF",
     re.IGNORECASE,
 )
 _PULL_REQUEST = """

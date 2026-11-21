@@ -291,3 +291,19 @@ def test_started_process_can_stop_its_process_group(tmp_path: Path) -> None:
     process.terminate_group()
 
     assert process.wait(timeout=5) < 0
+
+
+def test_bytes_mode_timeout_raises_tool_timeout_error() -> None:
+    expired = subprocess.TimeoutExpired(["faketool"], 1.0)
+    with pytest.raises(ToolTimeoutError):
+        FakeTool(Path("/work"), run=FakeRun(raises=expired)).raw("a")
+
+
+def test_process_wait_timeout_raises_tool_timeout_error(tmp_path: Path) -> None:
+    tool = PythonTool(tmp_path)
+    process = tool.start_process([sys.executable, "-c", "import time; time.sleep(0.25)"])
+    try:
+        with pytest.raises(ToolTimeoutError):
+            process.wait(timeout=0)
+    finally:
+        process.wait(timeout=5)
