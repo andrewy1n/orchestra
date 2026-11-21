@@ -22,7 +22,6 @@ from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
-GATE_FAILED_EXIT = 5
 
 
 def _build_parser() -> argparse.ArgumentParser:
