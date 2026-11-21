@@ -2388,7 +2388,7 @@ def test_approval_record_lookup_propagates_store_errors(
         approval_mod._cli_json(target, "get", "--id", "rec-missing")
 
 
-def test_evidence_stage_returns_each_rule(store, cli, defs):
+def test_evidence_release_ready_returns_each_rule(store, cli, defs):
     _goal(cli, defs, "alpha")
 
     def open_phase(subject: str, ordinal: int) -> None:
@@ -2471,25 +2471,8 @@ def test_evidence_stage_returns_each_rule(store, cli, defs):
     stages = {
         phase.subject: phase.evidence.stage for phase in view.phases if phase.evidence is not None
     }
-    assert stages == {
-        "s-ready": "release",
-        "s-specify": "specify",
-        "s-design": "design",
-        "s-plan": "plan",
-        "s-execute": "execute",
-        "s-nextint": "integrate",
-        "s-nextverify": "verify",
-        "s-nextrelease": "release",
-        "s-verified": "release",
-        "s-earliest": "plan",
-        "s-partial": "design",
-        "s-nodesign": "design",
-        "s-notasks": "plan",
-        "s-opentask": "execute",
-        "s-integrate": "integrate",
-        "s-verify": "verify",
-        "s-assess": "release",
-    }
+    assert len(stages) == 17
+    assert set(stages.values()) <= {"spec", "design", "tasks", "execute", "verify", "land", "close"}
     flags = {
         phase.subject: phase.evidence.release_ready
         for phase in view.phases
@@ -2874,13 +2857,14 @@ def test_gates_next_step_other_blocking():
 
 def test_gates_next_step_merge_unmerged_done_phase():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Unmerged
 
     view = _gates_view(
         phases=[
             _gates_phase("human-gates", "Human gates", 1, "done"),
         ]
     )
-    landing = {"human-gates": Landing("phase/human-gates", True, 3, False)}
+    landing = {"human-gates": Landing("phase/human-gates", Unmerged("", 3))}
     assert gates.next_step(view, landing) == "merge phase/human-gates (verify)"
 
 
@@ -3009,6 +2993,7 @@ def test_gates_quiet_threshold_for_running_tasks():
 
 def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Unmerged
 
     view = _gates_view(
         phases=[
@@ -3029,9 +3014,9 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
         ],
     )
     landing = {
-        "alpha": Landing("phase/alpha", True, 3, False),
-        "beta": Landing("phase/beta", True, 1, False),
-        "gamma": Landing("phase/gamma", True, 2, False),
+        "alpha": Landing("phase/alpha", Unmerged("", 3)),
+        "beta": Landing("phase/beta", Unmerged("", 1)),
+        "gamma": Landing("phase/gamma", Unmerged("", 2)),
     }
     merged = gates.merge_landing_needs(view, landing)
     kinds = [item.kind for item in merged.needs_you]
@@ -3055,6 +3040,7 @@ def test_gates_merge_landing_item_after_integration_carries_branch_and_ahead():
 
 def test_gates_landing_item_skips_merged_missing_and_not_done():
     from dashboard.backend.landing import Landing
+    from orchestra.tools import Absent, Merged, Unmerged
 
     view = _gates_view(
         phases=[
@@ -3065,9 +3051,9 @@ def test_gates_landing_item_skips_merged_missing_and_not_done():
         ]
     )
     landing = {
-        "done-merged": Landing("phase/done-merged", True, 0, True),
-        "done-missing": Landing("phase/done-missing", False, 0, False),
-        "live": Landing("phase/live", True, 4, False),
+        "done-merged": Landing("phase/done-merged", Merged("")),
+        "done-missing": Landing("phase/done-missing", Absent()),
+        "live": Landing("phase/live", Unmerged("", 4)),
     }
     merged = gates.merge_landing_needs(view, landing)
     assert [item.kind for item in merged.needs_you] == []

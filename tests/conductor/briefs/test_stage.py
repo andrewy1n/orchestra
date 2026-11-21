@@ -3,12 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, seed
+from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, ready_for_verify
+from conductor_support import seed as seed_phase
 
 from orchestra.canon.project import open_store
 from orchestra.conductor.workflow import WorkflowRunError, step_stage
 
 ADAPTER_TABLE = '\n[land]\nadapter = "{adapter}"\n'
+
+
+def seed(store: Path, cli: Cli, *, review: bool = True, runner_check: bool = True) -> Phase:
+    phase = seed_phase(store, cli, review=review, runner_check=runner_check)
+    ready_for_verify(phase)
+    return phase
 
 
 def _stage(phase: Phase, step: str, phase_slug: str = PHASE) -> str | None:
@@ -74,7 +81,8 @@ def test_verify_stage_is_reviewer_when_the_latest_review_failed(store: Path, cli
 
 
 def test_verify_stage_is_gate_while_a_gate_term_is_missing(store: Path, cli: Cli) -> None:
-    phase = seed(store, cli, verification="in_progress")
+    phase = seed(store, cli)
+    phase.finding()
 
     assert _stage(phase, "verify") == "gate"
 

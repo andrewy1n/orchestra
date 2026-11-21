@@ -8,7 +8,7 @@ import test_wave_end as wave_world
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import wave, workflow
+from orchestra.conductor import phase_progress, wave
 from orchestra.conductor.suite import SuitePolicy, suite_ready_for_review
 from orchestra.derive import release_ready, requirement_status
 
@@ -251,7 +251,10 @@ def _phase(state: str = "done") -> Record:
 
 
 def _ready(records: Sequence[Record]) -> tuple[bool, str]:
-    return workflow._verification_ready(list(records), PHASE)
+    readiness = phase_progress.verification_readiness(
+        phase_progress.acceptance_holds(records, PHASE), "not-required"
+    )
+    return readiness.ready, readiness.reason
 
 
 def test_workflow_readiness_holds_with_a_passing_run_at_any_revision() -> None:

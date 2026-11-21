@@ -1320,6 +1320,10 @@
             "title": "Stage",
             "type": "string"
           },
+          "stage_reason": {
+            "title": "Stage Reason",
+            "type": "string"
+          },
           "weight": {
             "title": "Weight",
             "type": "string"
@@ -1334,7 +1338,8 @@
           "release_ready",
           "decisions",
           "non_goals",
-          "release_state"
+          "release_state",
+          "stage_reason"
         ],
         "title": "PhaseEvidence",
         "type": "object"
@@ -1495,6 +1500,14 @@
           "blockers": {
             "$ref": "#/components/schemas/BlockerSummary"
           },
+          "current": {
+            "title": "Current",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
           "repairs": {
             "anyOf": [
               {
@@ -1525,6 +1538,8 @@
         },
         "required": [
           "weight",
+          "current",
+          "reason",
           "stages",
           "tasks",
           "requirements",

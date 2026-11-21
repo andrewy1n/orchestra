@@ -31,7 +31,8 @@
           class="pc-stage"
           data-stage={stage.id}
           data-state={stage.state}
-          aria-current={stage.state === "current" ? "step" : undefined}
+          aria-current={stage.id === progress.current ? "step" : undefined}
+          title={stage.id === progress.current && progress.reason ? progress.reason : undefined}
         >{stage.id}</li>
       {/each}
     </ol>

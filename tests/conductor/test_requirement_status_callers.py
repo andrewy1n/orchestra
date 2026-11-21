@@ -10,7 +10,7 @@ from test_task_landing_operation import _make_closing_task, _tree
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import verification, workflow
+from orchestra.conductor import phase_progress, verification
 from orchestra.conductor.land_task import LandedTask
 from orchestra.conductor.requirements import requirement_status
 from orchestra.conductor.task_landing import land_and_close
@@ -138,25 +138,32 @@ def _pass_at(acceptance: Record, revision: str, signed_by: str = "") -> Record:
     )
 
 
+def _ready(records: list[Record], head: str | None = None) -> tuple[bool, str]:
+    readiness = phase_progress.verification_readiness(
+        phase_progress.acceptance_holds(records, "p", head), "not-required"
+    )
+    return readiness.ready, readiness.reason
+
+
 def test_workflow_readiness_stale_head_pass_is_not_ready() -> None:
     records, acceptance = _phase_records()
     records.append(_pass_at(acceptance, OLD_REVISION))
-    ready, reason = workflow._verification_ready(records, "p", HEAD)
+    ready, reason = _ready(records, HEAD)
     assert not ready
     assert "R1" in reason
-    assert workflow._verification_ready(records, "p") == (True, "")
+    assert _ready(records) == (True, "")
 
 
 def test_workflow_readiness_holds_with_a_pass_at_the_head() -> None:
     records, acceptance = _phase_records()
     records.append(_pass_at(acceptance, OLD_REVISION))
     records.append(_pass_at(acceptance, HEAD))
-    assert workflow._verification_ready(records, "p", HEAD) == (True, "")
+    assert _ready(records, HEAD) == (True, "")
 
 
 def test_workflow_readiness_unsigned_manual_pass_is_not_ready() -> None:
     records, acceptance = _phase_records("manual")
     records.append(_pass_at(acceptance, HEAD))
-    assert not workflow._verification_ready(records, "p")[0]
+    assert not _ready(records)[0]
     records.append(_pass_at(acceptance, HEAD, signed_by="alice"))
-    assert workflow._verification_ready(records, "p") == (True, "")
+    assert _ready(records) == (True, "")

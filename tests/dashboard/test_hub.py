@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-from test_review_stage import EFFORT, _project_with_phases, _review_run, _review_state
+from test_review_stage import EFFORT, _project_with_phases
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.hub import HubItem, HubView, build_hub
@@ -16,6 +16,8 @@ from dashboard.backend.server import service
 from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot
 from orchestra.canon import record as record_module
 from orchestra.canon.project import Project
+from orchestra.conductor.phase_progress import STAGES, PhaseProgress, StageState
+from orchestra.conductor.phase_progress import Stage as StageId
 
 NOW = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
 
@@ -37,13 +39,26 @@ def _evidence(phase: str, stage: str) -> PhaseEvidence:
     )
 
 
+def _progress(current: StageId) -> PhaseProgress:
+    position = STAGES.index(current)
+    return PhaseProgress(
+        tuple(
+            StageState(stage, "done" if i < position else "current" if i == position else "pending")
+            for i, stage in enumerate(STAGES)
+        ),
+        current,
+        "",
+        (),
+    )
+
+
 def _phase(
     subject: str,
     *,
     state: str = "in_progress",
     running: bool = False,
     age: timedelta = timedelta(hours=2),
-    stage: str = "execute",
+    stage: StageId = "execute",
 ) -> PhaseRow:
     return PhaseRow(
         subject=subject,
@@ -53,6 +68,7 @@ def _phase(
         done=0,
         total=1,
         evidence=_evidence(subject, stage),
+        progress=_progress(stage),
         in_progress=("task-a",) if running else (),
         updated_at=NOW - age,
     )
@@ -287,37 +303,6 @@ def _suite_label(project: Project, phase: str) -> str:
     snapshot = service.Reader(project).snapshot()
     effort = next(item for item in snapshot.efforts if item.effort == EFFORT)
     return next(row.suite for row in effort.phases if row.subject == phase)
-
-
-def test_head_evidence_review_latest_failure_at_head_overrides_earlier_pass(
-    tmp_path: Path, ticking_clock: None
-) -> None:
-    project, head = _project_with_phases(tmp_path, "p")
-    _review_run(project, "p", head)
-    _review_run(project, "p", head, result="fail")
-
-    assert _review_state(project, "p") != "done"
-
-
-def test_head_evidence_review_latest_pass_at_head_overrides_earlier_failure(
-    tmp_path: Path, ticking_clock: None
-) -> None:
-    project, head = _project_with_phases(tmp_path, "p")
-    _review_run(project, "p", head, result="fail")
-    _review_run(project, "p", head)
-
-    assert _review_state(project, "p") == "done"
-
-
-def test_head_evidence_review_ignores_other_phase_and_other_effort_at_same_head(
-    tmp_path: Path,
-) -> None:
-    project, head = _project_with_phases(tmp_path, "p", "q")
-    _review_run(project, "q", head)
-    _review_run(project, "p", head, effort="other")
-
-    assert _review_state(project, "p") != "done"
-    assert _review_state(project, "q") == "done"
 
 
 def test_head_evidence_suite_names_run_by_criterion_id(tmp_path: Path) -> None:

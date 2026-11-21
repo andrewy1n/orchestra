@@ -68,7 +68,6 @@ def test_render_derives_each_phase_requirement_status_once(
         if entry.code is requirement_status.__code__
     )
     assert "**R1**: verified" in text
-    assert "### Release\n- ready" in text
     assert calls == 1
 
 
@@ -96,7 +95,6 @@ def test_render_reads_a_new_snapshot_after_evidence_changes(fixture: Fixture) ->
     after = views.render_view(views.VIEWS["status"], views.load_records(project))
     assert "**R1**: verified" in before
     assert "**R1**: failed" in after
-    assert "### Release\n- not ready" in after
 
 
 def test_evidence_alias_lookup_preserves_input_order_and_duplicate_records(
@@ -235,20 +233,6 @@ def test_requirement_index_uses_current_phase_from_full_snapshot(
     assert list(
         requirement_status([*remaining, first, second, correction], "benchmark-phase-000")
     ) == ["R7"]
-
-
-def test_explicit_release_state_remains_authoritative(fixture: Fixture) -> None:
-    project = _project(fixture)
-    release = project.create(
-        record_type="conductor:release",
-        subject="release",
-        payload={"phase": "benchmark-phase-000", "effort": "benchmark-effort", "state": "deployed"},
-    )
-    records = views.load_records(project)
-    records = [r for r in records if r["id"] != release["id"]]
-    records.append({**release, "lifecycle_state": "current"})
-    text = views.render_view(views.VIEWS["status"], records)
-    assert "### Release\n- deployed" in text
 
 
 def test_fixture_writes_ignore_parent_store_selection(

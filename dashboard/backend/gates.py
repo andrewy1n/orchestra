@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
-from dashboard.backend.landing import Landing, landing_branch, phase_landing, rev_parse_token
+from dashboard.backend.landing import Landing, phase_landing
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NEEDS_ORDER, EffortView, NeedsYouItem, Snapshot
 from dashboard.backend.task import TaskRow
@@ -200,14 +200,6 @@ def is_quiet(task: TaskRow, now: datetime) -> bool:
     return (now - last) > limit
 
 
-def landing_summary(state: Landing) -> str:
-    """Selector suffix for a phase Landing (R5): branch/ahead/merged, or no branch yet."""
-    if not state.exists:
-        return "no branch yet"
-    status = "merged" if state.merged else "not merged"
-    return f"{state.branch} · {state.ahead} ahead · {status}"
-
-
 def merge_landing_needs(
     view: EffortView,
     landing: Mapping[str, Landing | _LandingState],
@@ -250,28 +242,6 @@ def landings_for_snapshot(root: Path, snapshot: Snapshot) -> dict[str, dict[str,
     return {view.effort: landing_for_view(root, view) for view in snapshot.efforts}
 
 
-def landing_refs_for_snapshot(root: Path, snapshot: Snapshot) -> list[str]:
-    """main plus distinct Landing branch names from phase bodies (no git)."""
-    refs: list[str] = ["main"]
-    seen = {"main"}
-    for view in snapshot.efforts:
-        for phase in view.phases:
-            branch = landing_branch(phase.body, phase.subject, root)
-            if branch is not None and branch not in seen:
-                seen.add(branch)
-                refs.append(branch)
-    return refs
-
-
-def landing_cache_token(root: Path, snapshot: Snapshot) -> str | None:
-    """Cache key from per-ref commit lookup of main and Landing branches."""
-    parts: list[str] = []
-    for ref in landing_refs_for_snapshot(root, snapshot):
-        sha = rev_parse_token(root, ref)
-        parts.append(sha.strip() if sha else f"missing:{ref}")
-    return "\n".join(parts) if parts else None
-
-
 def apply_landing_needs(
     snapshot: Snapshot,
     landings: dict[str, dict[str, Landing]],
@@ -281,16 +251,3 @@ def apply_landing_needs(
         merge_landing_needs(view, landings.get(view.effort, {})) for view in snapshot.efforts
     ]
     return Snapshot(efforts, snapshot.token, snapshot.generated_at)
-
-
-def needs_you_count(view: EffortView, landing: Mapping[str, Landing | _LandingState]) -> int:
-    """Needs you length after landing merge — same count the app and status segment use."""
-    return len(merge_landing_needs(view, landing).needs_you)
-
-
-def count_merged_needs(root: Path, snapshot: Snapshot) -> int:
-    """Total Needs you items after merge_landing_needs, across live efforts."""
-    total = 0
-    for view in snapshot.efforts:
-        total += needs_you_count(view, landing_for_view(root, view))
-    return total

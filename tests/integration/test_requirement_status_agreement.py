@@ -21,9 +21,10 @@ from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import gate, wave, workflow
+from orchestra.conductor import gate, phase_progress, wave
 from orchestra.conductor.requirements import RequirementState, requirement_status
 from orchestra.derive import release_ready
+from orchestra.score.phase import current_phase_model
 
 EFFORT = "ef"
 MIX = "mix"
@@ -366,7 +367,11 @@ def _closure_not_verified(world: World) -> set[str]:
 
 
 def _readiness(world: World, phase: str) -> tuple[bool, str]:
-    return workflow._verification_ready(world.project.records(), phase)  # pyright: ignore[reportPrivateUsage]
+    records = world.project.records()
+    readiness = phase_progress.verification_readiness(
+        phase_progress.acceptance_holds(records, phase), "not-required"
+    )
+    return readiness.ready, readiness.reason
 
 
 def _gate_holds(world: World, phase: str) -> bool:
@@ -448,7 +453,9 @@ def test_r1_agreement_workflow_readiness_matches_each_scenario(
     phase = f"s-{scenario.name}"
     records = world.project.records()
     ready, reason = _readiness(world, phase)
-    stage = workflow.step_stage(world.project, records, phase, "verify")
+    model = current_phase_model(phase, records)
+    assert model is not None
+    stage = phase_progress.verify_step(world.project, records, model)
     if scenario.expected == "verified":
         assert (ready, reason) == (True, "")
         assert stage != "analyze"

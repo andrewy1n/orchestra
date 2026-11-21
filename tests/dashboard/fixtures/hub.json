@@ -9,11 +9,13 @@
           "blockers": {
             "more": 1,
             "shown": [
-              "3 tasks not done",
-              "1 requirement not proven"
+              "human gate: alpha, human-finding",
+              "3 tasks not done"
             ],
-            "text": "3 tasks not done; 1 requirement not proven +1 more"
+            "text": "human gate: alpha, human-finding; 3 tasks not done +1 more"
           },
+          "current": "spec",
+          "reason": "human gate: alpha, human-finding",
           "repairs": {
             "label": "0 of 3 fix tasks used",
             "limit": 3,
@@ -27,26 +29,22 @@
           "stages": [
             {
               "id": "spec",
-              "state": "done"
+              "state": "blocked"
             },
             {
               "id": "design",
-              "state": "done"
-            },
-            {
-              "id": "tasks",
-              "state": "done"
-            },
-            {
-              "id": "execute",
-              "state": "current"
-            },
-            {
-              "id": "verify",
               "state": "pending"
             },
             {
-              "id": "review",
+              "id": "tasks",
+              "state": "pending"
+            },
+            {
+              "id": "execute",
+              "state": "pending"
+            },
+            {
+              "id": "verify",
               "state": "pending"
             },
             {
@@ -70,7 +68,7 @@
         },
         "reason": "Running now",
         "running": true,
-        "step": "execute",
+        "step": "spec",
         "subject": "p-work",
         "title": "title of p-work",
         "updated_at": "<timestamp>"
@@ -83,11 +81,13 @@
           "blockers": {
             "more": 0,
             "shown": [
-              "1 requirement not proven",
-              "No passing review"
+              "human gate: alpha, human-finding",
+              "1 requirement not proven"
             ],
-            "text": "1 requirement not proven; No passing review"
+            "text": "human gate: alpha, human-finding; 1 requirement not proven"
           },
+          "current": "spec",
+          "reason": "human gate: alpha, human-finding",
           "repairs": null,
           "requirements": {
             "label": "0 of 1 proven",
@@ -96,8 +96,16 @@
           },
           "stages": [
             {
+              "id": "spec",
+              "state": "blocked"
+            },
+            {
+              "id": "design",
+              "state": "pending"
+            },
+            {
               "id": "tasks",
-              "state": "current"
+              "state": "pending"
             },
             {
               "id": "execute",
@@ -105,10 +113,6 @@
             },
             {
               "id": "verify",
-              "state": "pending"
-            },
-            {
-              "id": "review",
               "state": "pending"
             },
             {
@@ -132,7 +136,7 @@
         },
         "reason": "Updated <elapsed>",
         "running": false,
-        "step": "design",
+        "step": "spec",
         "subject": "route-phase",
         "title": "title of route-phase",
         "updated_at": "<timestamp>"

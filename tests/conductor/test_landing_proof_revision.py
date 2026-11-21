@@ -10,6 +10,7 @@ from conductor_support import write_policy
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor import workflow_review
 from orchestra.conductor.workflow import (
     WorkflowRunError,
     preview_run,
@@ -47,7 +48,113 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Project:
         {"title": PHASE, "ordinal": 1, "effort": EFFORT, "weight": "light"},
         LANDING_BODY,
     )
+    _verified_through_execution(store)
+    _review(store, HEAD)
     return store
+
+
+def _verified_through_execution(project: Project) -> None:
+    create(
+        project,
+        "score:work-item",
+        "task-p1",
+        {
+            "title": "Task",
+            "phase": PHASE,
+            "kind": "deliver",
+            "assignee": "",
+            "effort": EFFORT,
+            "requirements": ["R1"],
+        },
+        "## Description\nImplement R1.",
+    )
+    create(
+        project,
+        "score:work-item",
+        "verify-p1",
+        {
+            "title": "Verify",
+            "phase": PHASE,
+            "kind": "deliver",
+            "assignee": "",
+            "effort": EFFORT,
+            "requirements": ["R1"],
+            "depends_on": ["task-p1"],
+        },
+        "## Description\nVerify R1.",
+    )
+    create(
+        project,
+        "score:acceptance",
+        "acceptance-p1",
+        {
+            "method": "check",
+            "phase": PHASE,
+            "effort": EFFORT,
+            "verify_command": "true",
+            "requirement": "R1",
+        },
+    )
+    for step in ("spec", "design", "tasks"):
+        workflow_review.record_step_review(
+            project,
+            phase=PHASE,
+            step=step,
+            artifact=project.resolve("score:phase", PHASE),
+            authority="user-approval",
+            basis="Approved in the test fixture.",
+        )
+    for subject in ("task-p1", "verify-p1"):
+        item = project.resolve("score:work-item", subject)
+        project.update(item["id"], record_type="score:work-item", transition="in_progress")
+        project.update(item["id"], record_type="score:work-item", transition="done")
+        create(
+            project,
+            "conductor:execution-report",
+            subject,
+            {
+                "work_item": subject,
+                "result": "pass",
+                "verdict": "pass",
+                "revision": HEAD,
+                "effort": EFFORT,
+            },
+        )
+    _acceptance_run(project, HEAD)
+
+
+def _acceptance_run(project: Project, revision: str) -> None:
+    create(
+        project,
+        "tuner:check-run",
+        "acceptance-p1",
+        {
+            "criterion_id": project.resolve("score:acceptance", "acceptance-p1")["id"],
+            "result": "pass",
+            "revision": revision,
+            "method": "check",
+            "runner": "orchestra",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
+
+
+def _review(project: Project, revision: str) -> None:
+    create(
+        project,
+        "tuner:check-run",
+        "p1-review",
+        {
+            "criterion_id": "p1-review",
+            "result": "pass",
+            "revision": revision,
+            "method": "review",
+            "evidence_kind": "review",
+            "signed_by": "",
+            "effort": EFFORT,
+        },
+    )
 
 
 class _Missing:
@@ -163,6 +270,8 @@ def test_r3_full_landing_head_matches_a_seven_character_packet_revision(
 def test_r3_full_landing_head_does_not_match_a_six_character_packet_revision(
     project: Project,
 ) -> None:
+    _acceptance_run(project, HEAD[:6])
+    _review(project, HEAD[:6])
     _packet(project, HEAD[:6])
     _landing(project, HEAD)
 
@@ -218,12 +327,12 @@ def test_r6_stage_is_land_when_a_newer_packet_differs_from_the_landing_head(
     assert _stage(project) == "land"
 
 
-def test_r6_stage_is_land_when_the_successful_landing_has_no_belonging_packet(
+def test_r6_stage_is_not_land_when_the_successful_landing_has_no_belonging_packet(
     project: Project,
 ) -> None:
     _landing(project, HEAD)
 
-    assert _stage(project) == "land"
+    assert _stage(project) is None
     assert _land_complete(project) is False
 
 

@@ -9,7 +9,7 @@ from test_wave_end import PHASE, _land, _world
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import gate, land_task, wave, workflow
+from orchestra.conductor import gate, land_task, phase_progress, wave
 
 EFFORT = "ef"
 RUNNER_PHASE = "runner-phase"
@@ -94,4 +94,4 @@ def test_r15_workflow_counts_an_earlier_closing_item_as_implementation(tmp_path:
         middle["id"], record_type="score:work-item", payload={"depends_on": ["base", "last"]}
     )
 
-    assert workflow._requires_integration_report(project.records(), PHASE)
+    assert phase_progress.requires_integration_report(project.records(), PHASE)

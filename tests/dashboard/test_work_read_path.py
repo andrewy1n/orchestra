@@ -10,6 +10,7 @@ from canon_support import make_project
 from fastapi.testclient import TestClient
 
 from dashboard.backend.hub import build_hub
+from dashboard.backend.progress import build_progress
 from dashboard.backend.server import service
 from dashboard.backend.server.app import create_app
 from dashboard.backend.snapshot import load_snapshot, load_work_snapshot
@@ -128,18 +129,23 @@ def test_reader_get_requests_do_not_initialize_sqlite(
     assert response.status_code == 200, response.text
 
 
-def test_work_card_input_reads_do_not_initialize_sqlite(
+def test_work_card_progress_reads_do_not_initialize_sqlite(
     project: Project, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    reader = service.Reader(project)
     snapshot = load_work_snapshot(project, NOW)
 
     def forbid(_backend: SqliteBackend) -> None:
         raise AssertionError("Progress card reads initialize SQLite")
 
     monkeypatch.setattr(SqliteBackend, "_initialize_database", forbid)
-    _landings, approvals, _reviews = reader._card_inputs(snapshot)
-    assert "p" in approvals
+    stage_ids = [
+        stage.id
+        for effort in snapshot.efforts
+        for phase in effort.phases
+        for stage in build_progress(phase, effort.tasks, effort.needs_you).stages
+    ]
+    assert stage_ids
+    assert "review" not in stage_ids
 
 
 def test_direct_compact_work_read_does_not_initialize_sqlite(
@@ -198,25 +204,22 @@ def test_work_reads_complete_while_a_writer_holds_a_transaction(
         assert pending.result(timeout=10) is not None
 
 
-def test_work_card_inputs_reuse_the_pinned_catalog(
+def test_work_card_progress_reuses_the_pinned_catalog(
     project: Project, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    reader = service.Reader(project)
-    snapshot = load_work_snapshot(project, NOW)
-    original = service.store.catalog_records
-    calls = 0
+    original = Project.records
+    reads = 0
 
-    def catalog(target: Project) -> list[Record]:
-        nonlocal calls
-        calls += 1
-        assert target.read_only
+    def records(target: Project) -> list[Record]:
+        nonlocal reads
+        reads += 1
         return original(target)
 
     def forbid(*_args: object) -> None:
         raise AssertionError("Progress cards repeat catalog discovery")
 
-    monkeypatch.setattr(service.store, "catalog_records", catalog)
-    monkeypatch.setattr(service.store, "change_token", forbid)
+    monkeypatch.setattr(Project, "records", records)
     monkeypatch.setattr(Project, "schemas", forbid)
-    reader._card_inputs(snapshot)
-    assert calls == 1
+    snapshot = load_work_snapshot(project, NOW)
+    assert any(effort.phases for effort in snapshot.efforts)
+    assert reads == 1

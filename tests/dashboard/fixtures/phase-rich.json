@@ -87,7 +87,8 @@
             "text": ""
           }
         ],
-        "stage": "execute",
+        "stage": "spec",
+        "stage_reason": "human gate: alpha, human-finding",
         "weight": "full"
       },
       "milestone": "m-first",

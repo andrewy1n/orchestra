@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from dashboard.backend.landing import Landing
 from dashboard.backend.progress import Progress, build_progress
 from dashboard.backend.snapshot import Snapshot
 
@@ -56,17 +54,7 @@ def _order(item: HubItem) -> tuple[bool, float, str, str]:
     return (not item.running, -stamp.timestamp(), item.effort, item.subject)
 
 
-def build_hub(
-    snapshot: Snapshot,
-    now: datetime,
-    *,
-    landings: Mapping[str, Landing] | None = None,
-    approvals: Mapping[str, Collection[str]] | None = None,
-    review_passed: Collection[str] | None = None,
-) -> HubView:
-    landings = landings or {}
-    approvals = approvals or {}
-    review_passed = review_passed or ()
+def build_hub(snapshot: Snapshot, now: datetime) -> HubView:
     phases: list[HubItem] = []
     needs: list[HubItem] = []
     ideas: list[HubItem] = []
@@ -77,6 +65,7 @@ def build_hub(
             if phase.state != "in_progress":
                 continue
             running = bool(phase.in_progress)
+            progress = build_progress(phase, effort.tasks, effort.needs_you)
             phases.append(
                 HubItem(
                     kind="phase",
@@ -89,15 +78,8 @@ def build_hub(
                     running=running,
                     updated_at=phase.updated_at,
                     href=f"#/phase/{effort.effort}/{phase.subject}",
-                    step=phase.evidence.stage if phase.evidence else "",
-                    progress=build_progress(
-                        phase,
-                        effort.tasks,
-                        effort.needs_you,
-                        landing=landings.get(phase.subject),
-                        approved=approvals.get(phase.subject, ()),
-                        review_passed_at_head=phase.subject in review_passed,
-                    ),
+                    step=progress.current,
+                    progress=progress,
                 )
             )
         for need in effort.needs_you:

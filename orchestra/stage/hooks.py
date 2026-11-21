@@ -19,6 +19,7 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close
 from orchestra.conductor.github_pr import github_client
 from orchestra.conductor.model_types import PlanningPayload
+from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.tools.git import Git
 
 PROTOCOL = (
@@ -203,7 +204,7 @@ def cmd_start(fmt: str, data: JsonObject) -> JsonObject | None:
         dormant = views.dormant_efforts(records)
         ctx = _assemble_start(
             _constraint_lines(records, dormant),
-            views.hook_handoff_sections(records, dormant),
+            views.hook_handoff_sections(records, dormant, open_phase_progress(project, records)),
             dormant,
         )
         if sweep:
