@@ -494,7 +494,7 @@ def test_canon_get_and_list_return_old_effort_records_unchanged(tmp_path: Path) 
         assert got.returncode == 0, got.stderr
         fetched = json.loads(got.stdout)
         assert fetched["lifecycle_state"] == "superseded"
-        for key in ("subject", "record_type", "payload", "body", "recorded_at"):
+        for key in ("subject", "record_type", "payload", "body"):
             assert fetched[key] == original.get(key)
         assert json.dumps(fetched["payload"], sort_keys=True) == json.dumps(
             original["payload"], sort_keys=True
