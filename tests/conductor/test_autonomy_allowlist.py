@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from canon_support import create, make_project
 
-from orchestra.conductor import autonomy
+from orchestra.score import autonomy
 
 CURLY = chr(0x2019)
 UNRECOGNISED = [

@@ -21,6 +21,11 @@ class StoreNotReady(Exception):
         self.searched = searched
 
 
+def not_ready_message(error: StoreNotReady, start: Path) -> str:
+    searched = ", ".join(str(path) for path in error.searched)
+    return f"store_not_ready: No artifact store for {start.resolve()}; searched: {searched}"
+
+
 @dataclass(frozen=True)
 class Workspace:
     root: Path

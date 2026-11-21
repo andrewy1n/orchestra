@@ -157,6 +157,20 @@ def apply_migration(project: Project, mappings: list[Mapping]) -> dict[str, str]
     return levels
 
 
+@dataclass(frozen=True)
+class MigrationReport:
+    mappings: list[Mapping]
+    notes: list[str]
+    applied: bool
+    levels: dict[str, str]
+
+
+def migrate(project: Project, *, apply: bool) -> MigrationReport:
+    mappings, notes = plan_migration(project)
+    levels = apply_migration(project, mappings) if apply else {}
+    return MigrationReport(mappings, notes, apply, levels)
+
+
 def effort_autonomy(records: list[Record], effort: str) -> Autonomy:
     current = current_effort(records, effort)
     level = current.autonomy if current is not None else None

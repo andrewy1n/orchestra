@@ -10,7 +10,7 @@ from canon_support import create, make_project
 from dashboard.backend.snapshot import load_snapshot
 from orchestra import views
 from orchestra.canon.types import Record
-from orchestra.conductor import autonomy
+from orchestra.score import autonomy
 
 _IDS = itertools.count()
 

@@ -64,7 +64,48 @@ CONDUCTOR_WORKFLOW = Group(
     ("_cmd_workflow",),
 )
 
-GROUPS = [CONDUCTOR_SUITE_GATE, CONDUCTOR_WAVE_TASK, CONDUCTOR_LAND_CLOSE, CONDUCTOR_WORKFLOW]
+LIGHT_COMPONENTS_COMPOSER = Group(
+    "light_components_composer",
+    "orchestra.composer.cli",
+    ("idea", "place"),
+    ("_cmd_idea", "_cmd_place"),
+)
+
+LIGHT_COMPONENTS_SCORE = Group(
+    "light_components_score",
+    "orchestra.score.cli",
+    ("effort",),
+    ("_cmd_effort_autonomy",),
+)
+
+LIGHT_COMPONENTS_METRICS = Group(
+    "light_components_metrics",
+    "orchestra.metrics.cli",
+    ("metrics",),
+    (),
+)
+
+LIGHT_COMPONENTS_SESSIONS = Group(
+    "light_components_sessions",
+    "orchestra.sessions.cli",
+    ("sessions",),
+    (),
+)
+
+LIGHT_COMPONENTS = [
+    LIGHT_COMPONENTS_COMPOSER,
+    LIGHT_COMPONENTS_SCORE,
+    LIGHT_COMPONENTS_METRICS,
+    LIGHT_COMPONENTS_SESSIONS,
+]
+
+GROUPS = [
+    CONDUCTOR_SUITE_GATE,
+    CONDUCTOR_WAVE_TASK,
+    CONDUCTOR_LAND_CLOSE,
+    CONDUCTOR_WORKFLOW,
+    *LIGHT_COMPONENTS,
+]
 
 
 def _registered_verbs(component_cli: str) -> set[str]:
@@ -98,3 +139,14 @@ def test_conductor_workflow_cli_module_is_gone_from_the_root_package() -> None:
 def test_conductor_workflow_is_a_conductor_command() -> None:
     conductor_cli = importlib.import_module("orchestra.conductor.cli")
     assert "workflow" in conductor_cli.COMMANDS
+
+
+@pytest.mark.parametrize("group", LIGHT_COMPONENTS, ids=[group.name for group in LIGHT_COMPONENTS])
+def test_light_components_cli_owns_its_commands_and_runs_them(group: Group) -> None:
+    module = importlib.import_module(group.component_cli)
+    assert set(group.verbs) == set(module.COMMANDS)
+    assert callable(module.run)
+
+
+def test_light_components_metrics_cli_module_is_gone_from_the_root_package() -> None:
+    assert importlib.util.find_spec("orchestra.metrics_cli") is None
