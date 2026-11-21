@@ -48,6 +48,7 @@ from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.derive import phase_progress
+from orchestra.score.effort import current_efforts
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 
 RECENT = timedelta(hours=24)
@@ -564,9 +565,9 @@ def _load_snapshot(
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
     small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
     goals = [
-        r
-        for r in listed["score:effort"]
-        if r["lifecycle_state"] == "active" and record_payload(r).get("status") != "closed"
+        effort.record
+        for effort in current_efforts(listed["score:effort"]).values()
+        if effort.status != "closed"
     ]
     phases = records_by_effort(listed["score:phase"])
     milestones = records_by_effort(listed.get("score:milestone") or [])
@@ -756,10 +757,9 @@ def load_work_snapshot(
         listed["score:phase"]
     )
     goals = [
-        record
-        for record in listed["score:effort"]
-        if record["lifecycle_state"] == "active"
-        and record_payload(record).get("status") != "closed"
+        effort.record
+        for effort in current_efforts(listed["score:effort"]).values()
+        if effort.status != "closed"
     ]
     status_by_effort = effort_statuses(every_record, now)
     work_stamps = _work_item_stamps(
