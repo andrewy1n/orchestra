@@ -5,9 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
+from typing import Protocol
 
+from orchestra.canon.extensions import PLUGIN_GROUPS, list_plugins
 from orchestra.canon.types import JsonObject
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.tuner import verify_plugins
 from orchestra.tuner.attestation import emit, verify
 from orchestra.tuner.audit import AuditError, AuditTrailError, run_audit
 from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
@@ -18,6 +23,67 @@ from orchestra.tuner.manifest import ManifestError
 from orchestra.tuner.observation import list_observations, maybe_record_verdict_observation
 from orchestra.tuner.oracle_red import is_assertion_level_red
 from orchestra.tuner.verdict import run_verdict
+
+COMMANDS = frozenset({"verify", "plugins"})
+PASSTHROUGH = "verify"
+
+
+class SubparserGroup(Protocol):
+    def add_parser(
+        self, name: str, *, help: str, add_help: bool = True
+    ) -> argparse.ArgumentParser: ...
+
+
+def _store_refusal(work: Path, access: Access, code: int) -> int | None:
+    try:
+        Workspace.resolve(work, access=access)
+    except StoreNotReady as exc:
+        print(not_ready_message(exc, work), file=sys.stderr)
+        return code
+    return None
+
+
+def add_parsers(sub: SubparserGroup) -> None:
+    verify = sub.add_parser(
+        "verify",
+        add_help=False,
+        help="Verdict, attestation, claims, audit, and evidence binding",
+    )
+    verify.add_argument("verify_args", nargs=argparse.REMAINDER)
+    plugins = sub.add_parser("plugins", help="List installed plugins")
+    listing = plugins.add_subparsers(dest="action", required=True).add_parser(
+        "list", help="List installed plugins by scope"
+    )
+    listing.add_argument("--scope", choices=tuple(PLUGIN_GROUPS), default=None)
+    listing.add_argument("--format", choices=("table", "json"), default="table")
+
+
+def _run_plugins(args: argparse.Namespace) -> int:
+    descriptors = sorted(list_plugins(args.scope), key=lambda item: (item.scope, item.plugin_id))
+    if args.format == "json":
+        print(json.dumps([asdict(item) for item in descriptors], sort_keys=True))
+        return 0
+    print("scope\tid\tapi\tdistribution\tversion\ttarget")
+    for descriptor in descriptors:
+        print(
+            "\t".join(
+                (
+                    descriptor.scope,
+                    descriptor.plugin_id,
+                    descriptor.api_version,
+                    descriptor.distribution,
+                    descriptor.version,
+                    descriptor.target,
+                )
+            )
+        )
+    return 0
+
+
+def run(args: argparse.Namespace, extra: list[str]) -> int:
+    if args.command == "plugins":
+        return _run_plugins(args)
+    return main([*args.verify_args, *extra])
 
 
 def _read_json(path: str | None) -> JsonObject:
@@ -281,6 +347,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is not None and argv[:1] == ["plugins"]:
+        return verify_plugins.main(argv[1:])
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "verdict":
@@ -309,6 +377,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result == "pass" else 1
     if args.command == "trail":
         work = Path(args.cwd) if args.cwd else Path.cwd()
+        refused = _store_refusal(work, Access.READ, 2)
+        if refused is not None:
+            return refused
         try:
             items = list_observations(work, claim=args.claim, technique=args.technique)
         except Exception as exc:
@@ -318,6 +389,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "bind":
         work = Path(args.cwd) if args.cwd else Path.cwd()
+        refused = _store_refusal(work, Access.WRITE, 1)
+        if refused is not None:
+            return refused
         try:
             record = bind_observation(
                 work,
@@ -333,6 +407,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "unbind":
         work = Path(args.cwd) if args.cwd else Path.cwd()
+        refused = _store_refusal(work, Access.WRITE, 1)
+        if refused is not None:
+            return refused
         try:
             body = unbind(work, args.id)
         except BindingError as exc:
@@ -342,6 +419,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "recheck":
         work = Path(args.cwd) if args.cwd else Path.cwd()
+        refused = _store_refusal(work, Access.WRITE, 1)
+        if refused is not None:
+            return refused
         try:
             payload = recheck(work, args.claim)
         except BindingError as exc:

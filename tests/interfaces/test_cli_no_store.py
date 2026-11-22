@@ -74,6 +74,22 @@ LIGHT_COMPONENTS = [
     (("metrics", "compare", "p1"), 1),
 ]
 
+TUNER_CANON_STAGE = [
+    (("check", "--acceptance", "nope"), 4),
+    (("store", "path"), 2),
+    (("store", "path", "--json"), 2),
+    (("store", "scan"), 2),
+    (("store", "recover-evidence"), 2),
+    (("store", "run", "--", "list", "--type", "score:effort"), 2),
+    (("verify", "trail"), 2),
+    (("verify", "recheck", "--claim", "X"), 1),
+    (
+        ("verify", "bind", "--observation", "o", "--claim", "X", "--base", "a", "--head", "b"),
+        1,
+    ),
+    (("verify", "unbind", "--id", "x"), 1),
+]
+
 GROUPS = {
     "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
@@ -81,14 +97,21 @@ GROUPS = {
     "conductor_workflow": CONDUCTOR_WORKFLOW,
 }
 
-CASES = [
-    pytest.param(argv, REFUSAL_CODE, id=f"{group}-{'_'.join(argv).replace('-', '_')}")
-    for group, commands in GROUPS.items()
-    for argv in commands
-] + [
-    pytest.param(argv, code, id=f"light_components-{'_'.join(argv).replace('-', '_')}")
-    for argv, code in LIGHT_COMPONENTS
-]
+CASES = (
+    [
+        pytest.param(argv, REFUSAL_CODE, id=f"{group}-{'_'.join(argv).replace('-', '_')}")
+        for group, commands in GROUPS.items()
+        for argv in commands
+    ]
+    + [
+        pytest.param(argv, code, id=f"light_components-{'_'.join(argv).replace('-', '_')}")
+        for argv, code in LIGHT_COMPONENTS
+    ]
+    + [
+        pytest.param(argv, code, id=f"tuner_canon_stage-{'_'.join(argv).replace('-', '_')}")
+        for argv, code in TUNER_CANON_STAGE
+    ]
+)
 
 
 @pytest.mark.parametrize(("argv", "code"), CASES)
@@ -125,3 +148,29 @@ def test_light_components_sessions_aggregate_needs_no_store(bare_dir: Path) -> N
     )
     assert result.code == 0, result.err
     assert "store_not_ready" not in result.out + result.err
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ("install", "--list"),
+        ("plugins", "list", "--format", "json"),
+        ("verify", "runner-template", "unit"),
+    ],
+    ids=lambda argv: "tuner_canon_stage-" + "_".join(argv).replace("-", "_"),
+)
+def test_tuner_canon_stage_store_free_verbs_need_no_store(
+    argv: tuple[str, ...], bare_dir: Path
+) -> None:
+    result = invoke("orchestra", list(argv), bare_dir)
+    assert result.code == 0, result.err
+    assert "store_not_ready" not in result.out + result.err
+
+
+def test_tuner_canon_stage_store_ensure_creates_the_store_instead_of_refusing(
+    bare_dir: Path,
+) -> None:
+    result = invoke("orchestra", ["store", "ensure"], bare_dir)
+    assert result.code == 0, result.err
+    assert "store_not_ready" not in result.out + result.err
+    assert (bare_dir / ".canon").is_dir()

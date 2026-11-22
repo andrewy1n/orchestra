@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib
 import importlib.util
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
@@ -99,12 +101,54 @@ LIGHT_COMPONENTS = [
     LIGHT_COMPONENTS_SESSIONS,
 ]
 
+TUNER_CANON_STAGE_TUNER = Group(
+    "tuner_canon_stage_tuner",
+    "orchestra.tuner.cli",
+    ("verify", "plugins"),
+    ("_cmd_plugins",),
+)
+
+TUNER_CANON_STAGE_CONDUCTOR = Group(
+    "tuner_canon_stage_conductor",
+    "orchestra.conductor.cli",
+    ("check",),
+    ("_cmd_check",),
+)
+
+TUNER_CANON_STAGE_CANON = Group(
+    "tuner_canon_stage_canon",
+    "orchestra.canon.cli",
+    ("store",),
+    (
+        "_cmd_store_path",
+        "_cmd_store_scan",
+        "_cmd_store_run",
+        "_cmd_store_ensure",
+        "_dispatch_store",
+    ),
+)
+
+TUNER_CANON_STAGE_STAGE = Group(
+    "tuner_canon_stage_stage",
+    "orchestra.stage.cli",
+    ("install", "hook-start", "hook-stop"),
+    ("_cmd_install",),
+)
+
+TUNER_CANON_STAGE = [
+    TUNER_CANON_STAGE_TUNER,
+    TUNER_CANON_STAGE_CONDUCTOR,
+    TUNER_CANON_STAGE_CANON,
+    TUNER_CANON_STAGE_STAGE,
+]
+
 GROUPS = [
     CONDUCTOR_SUITE_GATE,
     CONDUCTOR_WAVE_TASK,
     CONDUCTOR_LAND_CLOSE,
     CONDUCTOR_WORKFLOW,
     *LIGHT_COMPONENTS,
+    *TUNER_CANON_STAGE,
 ]
 
 
@@ -150,3 +194,37 @@ def test_light_components_cli_owns_its_commands_and_runs_them(group: Group) -> N
 
 def test_light_components_metrics_cli_module_is_gone_from_the_root_package() -> None:
     assert importlib.util.find_spec("orchestra.metrics_cli") is None
+
+
+EXCLUSIVE = [g for g in TUNER_CANON_STAGE if g is not TUNER_CANON_STAGE_CONDUCTOR]
+
+
+@pytest.mark.parametrize("group", EXCLUSIVE, ids=[group.name for group in EXCLUSIVE])
+def test_tuner_canon_stage_cli_owns_its_commands_and_runs_them(group: Group) -> None:
+    module = importlib.import_module(group.component_cli)
+    assert set(group.verbs) == set(module.COMMANDS)
+    assert callable(module.run)
+
+
+@pytest.mark.parametrize(
+    "module",
+    ["orchestra.store", "orchestra.plugin_cli", "orchestra.plugin_verify_cli"],
+)
+def test_tuner_canon_stage_module_is_gone_from_the_root_package(module: str) -> None:
+    assert importlib.util.find_spec(module) is None
+
+
+def test_tuner_canon_stage_root_cli_defines_no_cmd_handlers() -> None:
+    tree = ast.parse(Path(root_cli.__file__).read_text(encoding="utf-8"))
+    handlers = [
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name.startswith("_cmd_")
+    ]
+    assert handlers == []
+
+
+def test_tuner_canon_stage_conductor_cli_owns_check() -> None:
+    module = importlib.import_module("orchestra.conductor.cli")
+    assert "check" in module.COMMANDS

@@ -3,26 +3,18 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from dataclasses import asdict
-from pathlib import Path
 
-from orchestra import plugin_cli, status_cli, view_cli, views
-from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra import status_cli, view_cli, views
+from orchestra.canon import cli as canon_cli
 from orchestra.composer import cli as composer_cli
 from orchestra.conductor import cli as conductor_cli
-from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.metrics import cli as metrics_cli
 from orchestra.score import cli as score_cli
 from orchestra.sessions import cli as sessions_cli
 from orchestra.stage import cli as stage_cli
-from orchestra.store import resolve_location
-from orchestra.tools.errors import ToolError
-from orchestra.tools.git import Git
-
-STORE_SCHEMAS = ("score", "conductor", "tuner")
+from orchestra.stage import store_tools
+from orchestra.tuner import cli as tuner_cli
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -38,423 +30,37 @@ def _build_parser() -> argparse.ArgumentParser:
     stage_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     metrics_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-    plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
-    sub.add_parser(
-        "verify",
-        add_help=False,
-        help="Verdict, attestation, claims, audit, and evidence binding",
-    )
-
-    check = sub.add_parser(
-        "check",
-        help="Run an acceptance verify_command and write an tuner:check-run",
-    )
-    check.add_argument("--acceptance", required=True, help="Acceptance record id")
-    check.add_argument(
-        "--cwd",
-        default=None,
-        help="Directory for git revision and verify_command (default: process cwd)",
-    )
-    check.add_argument(
-        "--allow-dirty",
-        action="store_true",
-        help="Allow recording a pass on a dirty tree (revision=dirty + diff_sha256)",
-    )
-    check.add_argument(
-        "--execution-report",
-        default=None,
-        help="Optional execution-report id to link via informed_by",
-    )
-    check.add_argument(
-        "--timeout",
-        type=float,
-        default=DEFAULT_TIMEOUT_S,
-        help=f"verify_command timeout in seconds (default: {DEFAULT_TIMEOUT_S:g})",
-    )
-    check.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help=(
-            "Store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd). "
-            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
-        ),
-    )
-
-    install = sub.add_parser(
-        "install",
-        help="Install orchestra payload for one or more agent hosts",
-    )
-    install.add_argument(
-        "--only",
-        action="append",
-        metavar="HOST",
-        default=[],
-        help=("Install only this provider id; repeat for more (default: detected hosts)"),
-    )
-    install.add_argument(
-        "--all",
-        action="store_true",
-        help="Select every provider in the matrix",
-    )
-    scope = install.add_mutually_exclusive_group()
-    scope.add_argument(
-        "--scope",
-        choices=("project", "global"),
-        default=None,
-        help="Install into the project or the user directories",
-    )
-    scope.add_argument(
-        "--global",
-        dest="scope",
-        action="store_const",
-        const="global",
-        help="Alias for --scope global",
-    )
-    install.add_argument(
-        "--list",
-        "-l",
-        dest="list_only",
-        action="store_true",
-        help="Print the provider matrix with project/global detection",
-    )
-    install.add_argument(
-        "--copy",
-        action="store_true",
-        help="Copy payload instead of symlinking to this checkout",
-    )
-    install.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print the plan and write nothing",
-    )
-    install.add_argument(
-        "--uninstall",
-        action="store_true",
-        help="Remove exactly what the adapter registered",
-    )
-    interactive = install.add_mutually_exclusive_group()
-    interactive.add_argument(
-        "--interactive",
-        action="store_true",
-        help="Force the host wizard even when standard input is not a TTY",
-    )
-    interactive.add_argument(
-        "--non-interactive",
-        "--yes",
-        "-y",
-        dest="non_interactive",
-        action="store_true",
-        help="Never prompt; use --only/--all or detected hosts",
-    )
-    install.add_argument(
-        "--home",
-        default=None,
-        metavar="DIR",
-        help="Redirect the whole install under DIR (tests, throwaway homes)",
-    )
-
+    tuner_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     sessions_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     conductor_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-
     score_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-
-    store = sub.add_parser(
-        "store",
-        help="Open the bound store and read or write it through the library",
-    )
-    store_sub = store.add_subparsers(dest="action", required=True)
-    store_path = store_sub.add_parser(
-        "path",
-        help="Print the resolved store path for a directory",
-    )
-    store_path.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_path.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the resolved root, store, and binding as JSON",
-    )
-    store_scan = store_sub.add_parser(
-        "scan",
-        help="Report phase, landing and proof packet records the typed readers reject",
-    )
-    store_scan.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_scan.add_argument("--json", action="store_true", help="Print one JSON object per finding")
-    recover = store_sub.add_parser(
-        "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
-    )
-    recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
-    store_run = store_sub.add_parser(
-        "run",
-        help="Run a library read or write against the opened store",
-    )
-    store_run.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_run.add_argument(
-        "args",
-        nargs=argparse.REMAINDER,
-        help="library arguments, after '--'",
-    )
-    store_ensure = store_sub.add_parser(
-        "ensure",
-        help="Create the store with the score, conductor, and tuner schemas when absent",
-    )
-    store_ensure.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_ensure.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the created paths and store readiness as JSON",
-    )
-
+    canon_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     composer_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     return parser
 
 
-def _cwd(args: argparse.Namespace) -> Path:
-    return Path(args.cwd).expanduser() if args.cwd else Path.cwd()
-
-
-def _checkout_root(directory: Path) -> Path:
-    if not directory.is_dir():
-        return directory.resolve()
-    try:
-        return Git(directory).root()
-    except ToolError as error:
-        if error.returncode is None or type(error) is not ToolError:
-            raise
-        return directory.resolve()
-
-
-def _print_json(payload: object) -> None:
-    print(json.dumps(payload, indent=2))
-
-
-def _flag_values(argv: list[str]) -> dict[str, list[str]]:
-    values: dict[str, list[str]] = {}
-    index = 0
-    while index < len(argv):
-        item = argv[index]
-        if item.startswith("--") and index + 1 < len(argv) and not argv[index + 1].startswith("--"):
-            values.setdefault(item, []).append(argv[index + 1])
-            index += 2
-        else:
-            index += 1
-    return values
-
-
-def _dispatch_store(project: Project, argv: list[str]) -> tuple[object, int]:
-    verb = argv[0]
-    flags = _flag_values(argv[1:])
-    if verb == "list":
-        record_type = (flags.get("--type") or [None])[0]
-        if not record_type:
-            raise ValueError("list requires --type")
-        rows = project.list(record_type)
-        state = (flags.get("--state") or [None])[0]
-        if state:
-            rows = [row for row in rows if row.get("lifecycle_state") == state]
-        return {"records": rows, "count": len(rows)}, 0
-    if verb == "get":
-        record_id = (flags.get("--id") or [None])[0]
-        if not record_id:
-            raise ValueError("get requires --id")
-        record_type = (flags.get("--type") or [None])[0]
-        return project.get(record_id, record_type), 0
-    if verb == "create":
-        record_type = (flags.get("--type") or [None])[0]
-        subject = (flags.get("--subject") or [None])[0]
-        payload_text = (flags.get("--payload") or ["{}"])[0]
-        body = (flags.get("--body") or [None])[0]
-        if not record_type or not subject:
-            raise ValueError("create requires --type and --subject")
-        record = project.create(
-            record_type=record_type,
-            subject=subject,
-            payload=json.loads(payload_text),
-            body=body,
-        )
-        return {"ok": True, "op": "create", "record": record}, 0
-    if verb == "apply":
-        source = (flags.get("--file") or [None])[0]
-        raw = Path(source).read_text(encoding="utf-8") if source else sys.stdin.read()
-        operations = [json.loads(line) for line in raw.splitlines() if line.strip()]
-        return project.apply(operations), 0
-    raise ValueError(f"unsupported store operation {verb!r}")
-
-
-def _cmd_store_path(args: argparse.Namespace) -> int:
-    try:
-        project = open_store(_cwd(args))
-    except (OSError, StoreBindingError) as exc:
-        print(f"orchestra store path: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        _print_json(
-            {
-                "root": str(project.project_root),
-                "store": str(project.store_path),
-                "binding": project.binding.location,
-            }
-        )
-    else:
-        print(project.store_path)
-    return 0
-
-
-def _cmd_store_scan(args: argparse.Namespace) -> int:
-    from orchestra.composer.records import scan_composer_records
-    from orchestra.conductor.record_scan import ScanFinding, scan_phase_records
-    from orchestra.score.effort import scan_effort_records
-
-    try:
-        records = open_store(_cwd(args), read_only=True).records()
-        findings = scan_phase_records(records)
-        findings += [
-            ScanFinding(f.record_id, f.record_type, f.field, f.message)
-            for f in (*scan_effort_records(records), *scan_composer_records(records))
-        ]
-    except (OSError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra store scan: {exc}", file=sys.stderr)
-        return 2
-    for finding in findings:
-        if args.json:
-            print(json.dumps(asdict(finding)))
-        else:
-            print(f"{finding.record_id} {finding.record_type} {finding.field}: {finding.message}")
-    return 1 if findings else 0
-
-
-def _cmd_store_run(args: argparse.Namespace) -> int:
-    argv = list(args.args)
-    if argv and argv[0] == "--":
-        argv = argv[1:]
-    if not argv:
-        print("orchestra store run: needs library arguments", file=sys.stderr)
-        return 2
-    try:
-        project = open_store(_cwd(args))
-        payload, code = _dispatch_store(project, argv)
-    except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        print(f"orchestra store run: {exc}", file=sys.stderr)
-        return 2
-    text = payload if isinstance(payload, str) else json.dumps(payload)
-    print(text, end="" if text.endswith("\n") else "\n")
-    return code
-
-
-def _cmd_store_ensure(args: argparse.Namespace) -> int:
-    from orchestra.canon.backend import open_backend
-    from orchestra.canon.sync import init_store
-
-    root = _checkout_root(_cwd(args))
-    artifacts = root / ".canon"
-    try:
-        project = open_store(root)
-    except StoreBindingError:
-        project = None
-    except OSError as exc:
-        print(f"orchestra store ensure: {exc}", file=sys.stderr)
-        return 2
-    if project is None:
-        try:
-            init_store(open_backend(artifacts), list(STORE_SCHEMAS))
-            project = open_store(root)
-        except (OSError, StoreError, StoreBindingError) as exc:
-            print(f"orchestra store ensure: {exc}", file=sys.stderr)
-            return 2
-    payload = {
-        "root": str(root),
-        "artifacts": str(artifacts),
-        "store": str(project.store_path),
-        "store_ready": True,
-    }
-    if args.json:
-        _print_json(payload)
-    else:
-        print(payload["store"])
-    return 0
-
-
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if argv[:1] == ["verify"]:
-        if argv[1:2] == ["plugins"]:
-            from orchestra.plugin_verify_cli import main as plugins_main
-
-            return plugins_main(argv[2:])
-        from orchestra.tuner.cli import main as verify_main
-
-        return verify_main(argv[1:])
     parser = _build_parser()
-    args = parser.parse_args(argv)
-    if args.command == "check":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            location = resolve_location(args.store, Path.cwd())
-        except StoreBindingError as exc:
-            print(f"orchestra check: {exc}", file=sys.stderr)
-            return 4
-        outcome = run_check(
-            acceptance_id=args.acceptance,
-            cwd=work,
-            store_root=location.root,
-            store_dir=location.store,
-            allow_dirty=args.allow_dirty,
-            execution_report=args.execution_report,
-            timeout=args.timeout,
-        )
-        if outcome.record is not None:
-            print(
-                json.dumps(
-                    {
-                        "ok": True,
-                        "op": "check",
-                        "record": outcome.record,
-                        "reused": outcome.reused,
-                    },
-                    indent=2,
-                )
-            )
-        if outcome.message:
-            print(outcome.message, file=sys.stderr)
-        return outcome.exit_code
-    if args.command == "install":
-        from orchestra.stage.install import main as install_main  # noqa: I001  # pyright: ignore[reportUnknownVariableType]
-
-        return install_main(args)
+    args, extra = parser.parse_known_args(argv)
+    if extra and args.command != tuner_cli.PASSTHROUGH:
+        parser.error(f"unrecognized arguments: {' '.join(extra)}")
+    if args.command in tuner_cli.COMMANDS:
+        return tuner_cli.run(args, extra)
     if args.command in sessions_cli.COMMANDS:
         return sessions_cli.run(args)
     if args.command in conductor_cli.COMMANDS:
         return conductor_cli.run(args, render_brief=views.render_brief)
     if args.command in score_cli.COMMANDS:
         return score_cli.run(args)
-    if args.command == "store":
-        if args.action == "recover-evidence":
-            from orchestra.canon.validation import ValidationError
-            from orchestra.conductor.evidence_recovery import recover_evidence
-
-            try:
-                report = recover_evidence(open_store(_cwd(args)), apply=args.apply)
-            except (OSError, StoreBindingError, StoreError, ValidationError) as exc:
-                print(f"orchestra store recover-evidence: {exc}", file=sys.stderr)
-                return 2
-            _print_json(report)
-            return 1 if report["fresh_proof_required"] else 0
-        if args.action == "path":
-            return _cmd_store_path(args)
-        if args.action == "run":
-            return _cmd_store_run(args)
-        if args.action == "scan":
-            return _cmd_store_scan(args)
-        return _cmd_store_ensure(args)
+    if args.command in canon_cli.COMMANDS:
+        return canon_cli.run(args, scan=store_tools.scan, recover=store_tools.recover)
     if args.command in composer_cli.COMMANDS:
         return composer_cli.run(args)
     if args.command == "status":
         return status_cli.run(args)
     if args.command in metrics_cli.COMMANDS:
         return metrics_cli.run(args)
-    if args.command == "plugins":
-        return plugin_cli.run(args)
     if args.command in stage_cli.COMMANDS:
         return stage_cli.run(args)
     if args.command in view_cli.COMMANDS:

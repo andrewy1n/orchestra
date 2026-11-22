@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from orchestra.conductor.cli.check import run_check_command
 from orchestra.conductor.cli.close import run_close, run_close_batch
 from orchestra.conductor.cli.land import run_land
 from orchestra.conductor.cli.parsers import SubparserGroup, add_parsers
@@ -14,6 +15,7 @@ from orchestra.conductor.cli.workflow_commands import run_workflow
 
 COMMANDS = frozenset(
     {
+        "check",
         "suite",
         "gate",
         "analyze",
@@ -31,6 +33,8 @@ __all__ = ["COMMANDS", "SubparserGroup", "add_parsers", "run"]
 
 
 def run(args: argparse.Namespace, *, render_brief: BriefRenderer) -> int:
+    if args.command == "check":
+        return run_check_command(args)
     if args.command == "suite":
         return run_suite(args)
     if args.command == "gate":
