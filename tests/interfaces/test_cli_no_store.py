@@ -32,6 +32,7 @@ CONDUCTOR_WAVE_TASK = [
 CONDUCTOR_LAND_CLOSE = [
     ("land", "--phase", "p1"),
     ("close", "--phase", "p1"),
+    ("merge-evidence", "--phase", "p1"),
     ("close-batch", "--input", "close-request.json"),
 ]
 

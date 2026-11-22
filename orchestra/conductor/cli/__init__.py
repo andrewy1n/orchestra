@@ -7,6 +7,7 @@ import argparse
 from orchestra.conductor.cli.check import run_check_command
 from orchestra.conductor.cli.close import run_close, run_close_batch
 from orchestra.conductor.cli.land import run_land
+from orchestra.conductor.cli.merge_evidence import run_merge_evidence
 from orchestra.conductor.cli.parsers import SubparserGroup, add_parsers
 from orchestra.conductor.cli.phase_commands import run_analyze, run_gate, run_review_brief
 from orchestra.conductor.cli.suite_commands import run_suite
@@ -31,6 +32,7 @@ COMMANDS = frozenset(
         "close",
         "close-batch",
         "workflow",
+        "merge-evidence",
     }
 )
 
@@ -59,6 +61,8 @@ def run(args: argparse.Namespace) -> int:
         return run_task(args)
     if args.command == "land":
         return run_land(args)
+    if args.command == "merge-evidence":
+        return run_merge_evidence(args)
     if args.command == "close":
         return run_close(args)
     if args.command == "close-batch":

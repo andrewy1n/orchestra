@@ -311,7 +311,11 @@ def _add_land_close_parsers(sub: SubparserGroup) -> None:
 
     land = sub.add_parser(
         "land",
-        help="Run the phase gate, then open the configured pull request and wait for CI",
+        help="Run the phase gate and publish the pull request",
+        description=(
+            "Run the phase gate and publish the pull request. The GitHub landing adapter "
+            "waits for CI when no merge evidence adapter is configured."
+        ),
     )
     land.add_argument("--phase", required=True, help="Phase slug")
     land.add_argument("--cwd", default=None, help="Phase worktree (default: process cwd)")
@@ -330,6 +334,13 @@ def _add_land_close_parsers(sub: SubparserGroup) -> None:
             "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
         ),
     )
+
+    evidence = sub.add_parser(
+        "merge-evidence", help="Refresh the CI evidence and show the merge recommendation"
+    )
+    evidence.add_argument("--phase", required=True, help="Phase slug")
+    evidence.add_argument("--cwd", default=None, help="Working directory (default: process cwd)")
+    evidence.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
     close = sub.add_parser(
         "close",

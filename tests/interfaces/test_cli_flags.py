@@ -134,6 +134,7 @@ ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
     ),
     "suite cancel": ("--allow-dirty", "--cwd", "--phase", "--phase-head", "--run-id", "--session"),
     "land": ("--base", "--cwd", "--phase", "--poll-interval", "--remote", "--store", "--timeout"),
+    "merge-evidence": ("--cwd", "--phase", "--store"),
     "close": ("--all", "--cwd", "--phase", "--store"),
     "store": (),
     "store path": ("--cwd", "--json"),
@@ -231,7 +232,7 @@ HIDDEN_ORCHESTRA_PATHS = ("verify plugins",)
 GROUP_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("conductor_suite_gate", ("suite", "gate", "analyze", "review-brief")),
     ("conductor_wave_task", ("wave", "task")),
-    ("conductor_land_close", ("land", "close", "close-batch")),
+    ("conductor_land_close", ("land", "close", "close-batch", "merge-evidence")),
     ("conductor_workflow", ("workflow",)),
     ("views", ("handoff", "view", "brief", "status")),
     (

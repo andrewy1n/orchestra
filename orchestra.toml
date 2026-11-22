@@ -14,3 +14,6 @@ gate = "advisory"
 [land]
 adapter = "github-pr"
 merge = "human"
+
+[merge_evidence]
+adapter = "github-actions"
