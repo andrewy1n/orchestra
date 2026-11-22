@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/conductor/landing.py")
@@ -121,66 +122,52 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-
-
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
-
-
 def test_r22_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def test_r22_guard_fails_on_seeded_worktree_path(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_worktree.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_worktree.py",
         "from pathlib import Path\n\n\n"
         "def tree(repo: Path, phase: str) -> Path:\n"
         "    return repo / '.worktrees' / phase\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_worktree.py:5"]
+    assert violations(tmp_path) == ["orchestra/seeded_worktree.py:5"]
 
 
 def test_r22_guard_fails_on_seeded_branch_name(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_branch.py").write_text(
+    write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_branch.py",
         "def branch(phase: str, task: str) -> str:\n    return f'task/{phase}/{task}'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_branch.py:2"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_branch.py:2"]
 
 
 def test_r22_guard_fails_on_seeded_packet_lookup(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "scripts" / "seeded_packet.py").write_text(
+    write_source(
+        tmp_path / "scripts" / "seeded_packet.py",
         "def pick(records, slug):\n"
         "    return [\n"
         "        r for r in records\n"
         "        if r['record_type'] == 'conductor:proof-packet' and r['phase'] == slug\n"
         "    ]\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["scripts/seeded_packet.py:2"]
+    assert violations(tmp_path) == ["scripts/seeded_packet.py:2"]
 
 
 def test_r22_guard_allows_listing_packets_without_selecting(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_listing.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_listing.py",
         "def packets(records):\n"
         "    return [r for r in records if r['record_type'] == 'conductor:proof-packet']\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == []
+    assert violations(tmp_path) == []
 
 
 def test_r22_guard_ignores_owner_module(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+    write_source(tmp_path / OWNER, "def branch(phase, task):\n    return f'task/{phase}/{task}'\n")
+    assert violations(tmp_path) == []
 
 
 def test_r21_schema_modules_answers_open_question_one() -> None:

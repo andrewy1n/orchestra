@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 ROOTS = ("orchestra", "dashboard")
@@ -108,50 +109,42 @@ def test_no_module_outside_the_owners_derives_effort_state() -> None:
     assert derivations(REPO) == []
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-
-
 def test_merged_from_guard_fails_on_seeded_read(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_merge.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_merge.py",
         "def merged(payload: dict[str, object]) -> object:\n"
         "    return payload.get('merged_from')\n",
-        encoding="utf-8",
     )
     assert "orchestra/seeded_merge.py:2" in merged_from_reads(tmp_path)
 
 
 def test_derivation_guard_fails_on_seeded_closed_filter(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_effort.py").write_text(
+    write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_effort.py",
         "def open_efforts(rows: dict[str, list[dict[str, dict[str, str]]]]) -> list[object]:\n"
         "    return [r for r in rows['score:effort'] if r['payload'].get('status') != 'closed']\n",
-        encoding="utf-8",
     )
     assert "dashboard/backend/seeded_effort.py:2" in derivations(tmp_path)
 
 
 def test_derivation_guard_fails_on_seeded_effort_record_pick(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_pick.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_pick.py",
         "def efforts(records: list[dict[str, str]]) -> list[object]:\n"
         "    return [r for r in records if r['record_type'] == 'score:effort']\n",
-        encoding="utf-8",
     )
     assert "orchestra/seeded_pick.py:2" in derivations(tmp_path)
 
 
 def test_derivation_guard_fails_on_seeded_home_area(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_home.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_home.py",
         "def home(idea: object) -> bool:\n    return idea.status == 'promoted'\n",
-        encoding="utf-8",
     )
     assert "orchestra/seeded_home.py:2" in derivations(tmp_path)
 
 
 def test_derivation_guard_ignores_owner_modules(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    assert not any(Path(v.split(":")[0]) in OWNERS for v in derivations(tmp_path))
+    for owner in sorted(OWNERS):
+        write_source(tmp_path / owner, "def home(idea):\n    return idea.status == 'promoted'\n")
+    assert derivations(tmp_path) == []

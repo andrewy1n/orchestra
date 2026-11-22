@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
+from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 from pathlib import Path
 
 import helpers as h
@@ -19,6 +22,7 @@ from dashboard.backend import records
 from dashboard.backend import snapshot as snapshot_mod
 from dashboard.backend import store as backend_store
 from dashboard.backend import task as task_mod
+from orchestra.canon.cli import main as canon_main
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
@@ -76,6 +80,25 @@ def _target(store):
 
 def _effort(snapshot: snapshot_mod.Snapshot, name: str) -> snapshot_mod.EffortView:
     return next(view for view in snapshot.efforts if view.effort == name)
+
+
+@dataclass(frozen=True)
+class SeedCommandResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+@pytest.fixture()
+def cli(store: Path) -> Callable[..., SeedCommandResult]:
+    def run(*args: str) -> SeedCommandResult:
+        stdout = StringIO()
+        stderr = StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            status = canon_main(["--root", str(store), *args])
+        return SeedCommandResult(status, stdout.getvalue(), stderr.getvalue())
+
+    return run
 
 
 @pytest.fixture()

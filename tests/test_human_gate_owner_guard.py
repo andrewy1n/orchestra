@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/score/workflow_blockers.py")
@@ -73,60 +74,49 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-
-
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
-
-
 def test_r16_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def test_r16_guard_fails_on_seeded_finding_rule(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_finding.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_finding.py",
         "def blocks(record: dict[str, dict[str, str]]) -> bool:\n"
         "    return record['payload'].get('needs') == 'human'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_finding.py:2"]
+    assert violations(tmp_path) == ["orchestra/seeded_finding.py:2"]
 
 
 def test_r16_guard_fails_on_seeded_unsigned_rule(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_unsigned.py").write_text(
+    write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_unsigned.py",
         "def unsigned(run: dict[str, dict[str, str]]) -> bool:\n"
         "    return run['payload'].get('signed_by', '') == ''\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_unsigned.py:2"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_unsigned.py:2"]
 
 
 def test_r16_guard_fails_on_seeded_unsigned_truthiness(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "scripts" / "seeded_truthy.py").write_text(
+    write_source(
+        tmp_path / "scripts" / "seeded_truthy.py",
         "def unsigned(run: dict[str, dict[str, str]]) -> bool:\n"
         "    return not run['payload'].get('signed_by')\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["scripts/seeded_truthy.py:2"]
+    assert violations(tmp_path) == ["scripts/seeded_truthy.py:2"]
 
 
 def test_r16_guard_ignores_writes_that_set_needs_and_signed_by(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_write.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_write.py",
         "def payload(signer: str) -> dict[str, str]:\n"
         "    return {'needs': 'human', 'signed_by': signer}\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == []
+    assert violations(tmp_path) == []
 
 
 def test_r16_guard_ignores_owner_module(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+    write_source(
+        tmp_path / OWNER,
+        "def blocks(record):\n    return record['payload'].get('needs') == 'human'\n",
+    )
+    assert violations(tmp_path) == []

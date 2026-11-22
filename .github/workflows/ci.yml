@@ -143,7 +143,7 @@ jobs:
         working-directory: dashboard/frontend
       - run: npm run build
         working-directory: dashboard/frontend
-      - run: uv run pytest -q -p no:cacheprovider -n auto tests --ignore=tests/canon --ignore=tests/tuner
+      - run: uv run pytest -q -p no:cacheprovider -n auto --durations=0 --durations-min=1 tests --ignore=tests/canon --ignore=tests/tuner
 
   types:
     runs-on: ubuntu-24.04

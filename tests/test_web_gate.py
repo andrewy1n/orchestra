@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from test_ci_workflow import ROOT, WEB_DIR, job, run_lines
+from test_ci_workflow import ROOT, WEB_DIR
 
 UI = ROOT / WEB_DIR
 NPM = shutil.which("npm")
@@ -14,12 +14,12 @@ EXACT_VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 AGENTS = ROOT / "AGENTS.md"
 
 
-def _ui_copy(tmp_path: Path, link_modules: bool = True) -> Path:
+def _ui_copy(tmp_path: Path) -> Path:
     dest = tmp_path / "ui"
     shutil.copytree(UI, dest, ignore=shutil.ignore_patterns("node_modules", "dist"))
-    if link_modules and (UI / "node_modules").is_dir():
+    if (UI / "node_modules").is_dir():
         (dest / "node_modules").symlink_to(UI / "node_modules")
-    elif link_modules:
+    else:
         installed = _npm(dest, "ci", "--no-audit", "--no-fund")
         assert installed.returncode == 0, _output(installed)
     return dest
@@ -108,17 +108,3 @@ def test_vitest_test_script_limits_workers():
     match = re.search(r"--maxWorkers=(\d+)", script)
     assert match is not None, "npm test does not bound Vitest workers"
     assert int(match.group(1)) <= 4, "npm test allows more than four Vitest workers"
-
-
-@needs_npm
-def test_web_job_run_lines_pass(tmp_path):
-    assert job("web"), "ci.yml has no web job"
-    lines = run_lines("web")
-    assert lines, "web job has no run lines"
-    copy = _ui_copy(tmp_path, link_modules=False)
-    for line in lines:
-        # nosemgrep: orchestra.shell-true -- this contract test executes the checked-in CI shell programs.
-        result = subprocess.run(
-            line, shell=True, cwd=copy, capture_output=True, text=True, check=False
-        )
-        assert result.returncode == 0, f"{line}\n{_output(result)}"
