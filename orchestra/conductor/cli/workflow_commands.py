@@ -14,6 +14,7 @@ from orchestra.canon.workspace import Access, StoreNotReady
 from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.cli.workspace import command_dir, not_ready_message, resolve_workspace
+from orchestra.conductor.run_record import resolve_run
 from orchestra.conductor.workflow import (
     RunAction,
     RunPreview,
@@ -205,7 +206,7 @@ def _status_command(project: Project, args: argparse.Namespace, *, actions_only:
     with_brief = actions_only and not args.no_brief
     try:
         if actions_only:
-            run = project.resolve("score:run", args.run)
+            run = resolve_run(project, args.run)
             run_actions = next_actions(project, args.run)
             output: dict[str, object] = {
                 "run": run,

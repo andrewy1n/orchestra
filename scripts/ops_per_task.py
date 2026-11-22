@@ -13,8 +13,9 @@ import sys
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import StoreNotReady, Workspace
 from orchestra.conductor.wave import closing_task
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import current_phase
@@ -110,8 +111,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        project = open_store(Path.cwd())
-    except StoreBindingError as exc:
+        project = Workspace.resolve(Path.cwd()).open()
+    except StoreNotReady as exc:
         print(f"ops_per_task: {exc}", file=sys.stderr)
         return 2
     counts, tasks = count_operations(project, args.phase)

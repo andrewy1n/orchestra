@@ -423,10 +423,11 @@ def _normalize_dep(spec: str) -> str:
 
 
 def test_r1():
-    """R1: modules under orchestra/ open the store with canon.project.open_store."""
+    """R1: modules under orchestra/ open the store through the shared workspace rule."""
     offenders, callers = _store_access(ROOT / "orchestra")
     assert not offenders, "orchestra opens the store another way: " + "; ".join(offenders)
-    assert callers, "no orchestra module calls canon.project.open_store"
+    assert not callers, "orchestra modules call canon.project.open_store: " + "; ".join(callers)
+    assert _workspace_callers(ROOT / "orchestra"), "no orchestra module resolves the workspace"
 
 
 def test_r2():

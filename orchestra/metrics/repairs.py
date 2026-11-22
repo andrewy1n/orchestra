@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.project import open_store
+from orchestra.canon.workspace import Access, Workspace
 from orchestra.metrics.instants import parse_instant
 from orchestra.tools.git import Git
 
@@ -34,7 +34,7 @@ def build_repair_rows(directory: Path, *, since: str) -> list[RepairRow]:
     )
     start = parse_instant(since)
     links: dict[str, tuple[str | None, str | None]] = {}
-    for record in open_store(directory, read_only=True).records():
+    for record in Workspace.resolve(directory, access=Access.READ).open().records():
         if record["record_type"] != REPAIR_LINK:
             continue
         payload = record_payload(record)

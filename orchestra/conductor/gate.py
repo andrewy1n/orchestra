@@ -19,8 +19,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.conductor.landing import LandingPlace, phase_place
@@ -98,7 +98,7 @@ def gate_terms(
 
     Raises LookupError when the store has no such phase.
     """
-    records = open_store(store, store=store_dir).records()
+    records = Workspace(root=store, store=store_dir).open().records()
     phase = current_phase_model(phase_slug, records)
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")

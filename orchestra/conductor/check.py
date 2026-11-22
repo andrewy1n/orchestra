@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
+from orchestra.canon.workspace import StoreNotReady, Workspace
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.policy import (
     dirty_pass_decision,
@@ -180,8 +181,8 @@ def run_check(
 ) -> CheckOutcome:
     work = cwd.resolve()
     try:
-        project = open_store(store_root, store=store_dir)
-    except StoreBindingError as exc:
+        project = Workspace(root=store_root, store=store_dir).open()
+    except StoreNotReady as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
 
     try:

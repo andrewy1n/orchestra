@@ -234,10 +234,10 @@ def test_without_flag_output_is_unchanged_and_reader_is_not_called(
 ) -> None:
     build(tmp_path)
 
-    def boom(argv: str) -> None:
+    def boom(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("reader called")
 
-    monkeypatch.setattr(session_report, "open_store", boom)
+    monkeypatch.setattr(session_report.Workspace, "open", boom)
     session_report.main([str(tmp_path)])
     out = capsys.readouterr().out
     assert out == run(tmp_path).stdout
@@ -268,7 +268,14 @@ def test_records_read_failure_keeps_rows_and_returns_nonzero(
                 raise StoreError("store read failed")
             return []
 
-    monkeypatch.setattr(session_report, "open_store", lambda cwd: _Project(Path(cwd)))
+    class _Workspace:
+        def __init__(self, root: Path, access: object) -> None:
+            self.root = root
+
+        def open(self) -> _Project:
+            return _Project(self.root)
+
+    monkeypatch.setattr(session_report, "Workspace", _Workspace)
 
     result = session_report.main(["--records", str(transcripts)])
 
@@ -336,3 +343,20 @@ def test_store_override(tmp_path: Path, store: Path, monkeypatch: pytest.MonkeyP
             record_type="score:effort", subject=subject, payload={"goal": subject, "kind": "repair"}
         )
     assert _report_count(tmp_path / "logs", store) == {"score:effort": 2}
+
+
+def test_malformed_binding_is_a_failure_not_a_skip(
+    tmp_path: Path, store: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CANON_STORE", raising=False)
+    (store / ".canon" / "store-binding.json").write_text("{", encoding="utf-8")
+    transcripts = tmp_path / "logs"
+    write(
+        transcripts / "project" / "broken.jsonl",
+        [{"type": "user", "cwd": str(store), "sessionId": "broken"}],
+    )
+    result = session_report.main(["--records", str(transcripts)])
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "StoreBindingError" in captured.err

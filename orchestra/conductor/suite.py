@@ -23,10 +23,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
+from orchestra.canon.workspace import StoreNotReady, Workspace
 from orchestra.conductor.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
@@ -911,14 +911,14 @@ def record_suite_check_run(
             "\n## Failing node IDs\n\n" + "\n".join(f"- {n}" for n in suite.failing_node_ids)
         )
     try:
-        project = open_store(store_root, store=store_dir)
+        project = Workspace(root=store_root, store=store_dir).open()
         return project.create(
             record_type="tuner:check-run",
             subject=subject,
             payload=payload,
             body="\n".join(body_parts),
         )
-    except (StoreBindingError, StoreError, ValidationError) as exc:
+    except (StoreNotReady, StoreError, ValidationError) as exc:
         raise RuntimeError(str(exc)) from exc
 
 

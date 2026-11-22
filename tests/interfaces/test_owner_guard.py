@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import importlib.util
 import itertools
+import re
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -491,4 +493,128 @@ def test_dashboard_snapshot_allowlist_only_names_current_raw_readers() -> None:
         for key in sorted(DASHBOARD_SNAPSHOT_ALLOWLIST)
         if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
     ]
+    assert stale == []
+
+
+INTERFACE_GLOBS = (
+    "orchestra/cli.py",
+    "orchestra/*/cli*.py",
+    "orchestra/conductor/cli/*.py",
+    "orchestra/views/*.py",
+    "orchestra/stage/*.py",
+    "dashboard/backend/**/*.py",
+)
+RECORD_TYPE_LITERAL = re.compile(
+    r"^(score|conductor|tuner|composer|canon|stage|sessions|metrics):[a-z][a-z-]*$"
+)
+
+RAW_PAYLOAD_ALLOWLIST: dict[tuple[str, str], str] = {
+    (
+        "dashboard/backend/snapshot.py",
+        name,
+    ): "check-stamp code stays until check-ownership owns it"
+    for name in (
+        "_check_stamps",
+        "_max_check_stamp_by_phase",
+        "_phase_updated_at",
+        "_effort_matches",
+        "_work_item_stamps",
+    )
+}
+
+
+def interface_modules() -> list[Path]:
+    found: set[Path] = set()
+    for pattern in INTERFACE_GLOBS:
+        found.update(path for path in REPO_ROOT.glob(pattern) if path.is_file())
+    return sorted(found)
+
+
+def _raw_payload_hits(node: ast.AST) -> list[tuple[int, str]]:
+    hits: list[tuple[int, str]] = []
+    for inner in ast.walk(node):
+        if isinstance(inner, (ast.Call, ast.Subscript)) and _reads_raw_payload(inner):
+            hits.append((inner.lineno, "payload"))
+        elif (
+            isinstance(inner, ast.Constant)
+            and isinstance(inner.value, str)
+            and RECORD_TYPE_LITERAL.match(inner.value)
+        ):
+            hits.append((inner.lineno, inner.value))
+    return hits
+
+
+def raw_payload_offenders(path: Path) -> dict[tuple[str, str], list[tuple[int, str]]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    relative = path.relative_to(REPO_ROOT).as_posix()
+    found: dict[tuple[str, str], list[tuple[int, str]]] = {}
+
+    def add(scope: str, node: ast.AST) -> None:
+        hits = _raw_payload_hits(node)
+        if hits:
+            found.setdefault((relative, scope), []).extend(hits)
+
+    for stmt in tree.body:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            add(stmt.name, stmt)
+        elif isinstance(stmt, ast.ClassDef):
+            for member in stmt.body:
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    add(f"{stmt.name}.{member.name}", member)
+                else:
+                    add(f"{stmt.name}.<class>", member)
+        else:
+            add("<module>", stmt)
+    return found
+
+
+def all_raw_payload_offenders() -> dict[tuple[str, str], list[tuple[int, str]]]:
+    merged: dict[tuple[str, str], list[tuple[int, str]]] = {}
+    for path in interface_modules():
+        merged.update(raw_payload_offenders(path))
+    return merged
+
+
+def test_raw_payload_scan_covers_every_interface_group() -> None:
+    relative = {path.relative_to(REPO_ROOT).as_posix() for path in interface_modules()}
+    for expected in (
+        "orchestra/cli.py",
+        "orchestra/tuner/cli.py",
+        "orchestra/conductor/cli/check.py",
+        "orchestra/views/render.py",
+        "orchestra/stage/hooks.py",
+        "dashboard/backend/snapshot.py",
+        "dashboard/backend/server/service.py",
+    ):
+        assert expected in relative
+
+
+def test_raw_payload_scan_detects_payload_reads_and_type_literals(tmp_path: Path) -> None:
+    source = tmp_path / "sample.py"
+    source.write_text(
+        "def a(r):\n    return record_payload(r)\n"
+        "def b(r):\n    return r['payload']\n"
+        "def c(r):\n    return r.get('payload')\n"
+        "def d(r):\n    return r == 'score:work-item'\n"
+        "def e(r):\n    return r.get('subject')\n",
+        encoding="utf-8",
+    )
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(sys.modules[__name__], "REPO_ROOT", tmp_path)
+        found = raw_payload_offenders(source)
+    assert sorted(scope for _, scope in found) == ["a", "b", "c", "d"]
+
+
+def test_raw_payload_interfaces_read_no_payload_outside_allowlist() -> None:
+    offenders = {
+        key: hits
+        for key, hits in all_raw_payload_offenders().items()
+        if key not in RAW_PAYLOAD_ALLOWLIST
+    }
+    assert offenders == {}
+
+
+def test_raw_payload_allowlist_only_names_current_offenders() -> None:
+    current = all_raw_payload_offenders()
+    stale = sorted(key for key in RAW_PAYLOAD_ALLOWLIST if key not in current)
     assert stale == []

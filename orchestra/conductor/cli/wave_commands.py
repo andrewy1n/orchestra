@@ -19,6 +19,7 @@ from orchestra.conductor.cli.workspace import (
     resolve_workspace,
 )
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
+from orchestra.conductor.redispatch_facts import redispatch_facts
 from orchestra.conductor.task_landing import land_and_close
 from orchestra.score.work_item import WorkItemShapeError
 from orchestra.tools.git import Git
@@ -241,19 +242,19 @@ def _task_redispatch(args: argparse.Namespace) -> int:
     ) as exc:
         print(f"orchestra task redispatch: {args.task}: {exc}", file=sys.stderr)
         return 2
-    payload = record["payload"]
+    facts = redispatch_facts(record)
     if args.json:
         print_json(
             {
-                "task": record["subject"],
-                "revision": record["revision"],
-                "attempts": payload.get("attempts"),
-                "dispatch_id": payload.get("dispatch_id"),
-                "dispatch_started_at": payload.get("dispatch_started_at"),
-                "assignee": payload.get("assignee"),
-                "write_root": payload.get("write_root"),
+                "task": facts.task,
+                "revision": facts.revision,
+                "attempts": facts.attempts,
+                "dispatch_id": facts.dispatch_id,
+                "dispatch_started_at": facts.dispatch_started_at,
+                "assignee": facts.assignee,
+                "write_root": facts.write_root,
             }
         )
     else:
-        print(f"redispatched {record['subject']} (attempt {payload.get('attempts')})")
+        print(f"redispatched {facts.task} (attempt {facts.attempts})")
     return 0

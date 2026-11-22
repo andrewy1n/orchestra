@@ -30,14 +30,25 @@ from orchestra.canon.project import Project
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.assessment_facts import assessment_facts, latest_assessments
-from orchestra.conductor.landing import proof_packet
-from orchestra.conductor.model_types import planning_payload as record_payload
+from orchestra.conductor.assignment import ASSIGNMENT
+from orchestra.conductor.landing import PROOF_PACKET, proof_packet
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
 from orchestra.conductor.release_facts import integration_result, is_release_ready, release_state
 from orchestra.conductor.requirements import UNVERIFIED, RequirementStatus, requirement_status
 from orchestra.conductor.signoff import awaiting_signoff
 from orchestra.conductor.suite_label import suite_labels
+from orchestra.conductor.workspace_types import (
+    ASSESSMENT_TYPE,
+    INTEGRATION_REPORT_TYPE,
+    RELEASE_TYPE,
+)
 from orchestra.score.acceptance import read_acceptance
+from orchestra.score.detail_facts import (
+    ACCEPTANCE_TYPE,
+    DECISION_TYPE,
+    PHASE_TYPE,
+    WORK_ITEM_TYPE,
+)
 from orchestra.score.elapsed import TimedTask, phase_elapsed
 from orchestra.score.lookups import (
     current_phases,
@@ -46,6 +57,7 @@ from orchestra.score.lookups import (
 from orchestra.score.milestone import milestone_facts, milestone_state
 from orchestra.score.phase import Phase, current_phase_model, read_phase
 from orchestra.score.requirements import (
+    SPECIFICATION,
     acceptance_listed_requirements,
     acceptance_requirement_ids,
     phase_requirements,
@@ -62,6 +74,14 @@ from orchestra.score.work_item_facts import (
     tasks_by_requirement,
     work_item_facts,
 )
+from orchestra.score.workspace_facts import (
+    CONSTRAINT_TYPE,
+    DESIGN_TYPE,
+    MILESTONE_TYPE,
+    constraint_facts,
+    decision_facts,
+)
+from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
 from orchestra.tuner.record_facts import check_run_facts
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
@@ -123,7 +143,7 @@ def light_specification(phase: str, effort: str, phases: list[Record]) -> Record
     }
     return {
         "id": record["id"],
-        "record_type": "score:specification",
+        "record_type": SPECIFICATION,
         "subject": record["subject"],
         "payload": payload,
         "lifecycle_state": "active",
@@ -570,7 +590,7 @@ def _decision_entry(
     by_id: dict[str, Record],
     history: bool,
 ) -> DecisionEntry:
-    payload = record_payload(record)
+    facts = decision_facts(record)
     body = record.get("body") or ""
     superseded: tuple[DecisionEntry, ...] = ()
     if history:
@@ -582,9 +602,9 @@ def _decision_entry(
         superseded = tuple(kids)
     return DecisionEntry(
         subject=record["subject"],
-        phase=payload.get("phase", ""),
-        choice=payload.get("choice", ""),
-        alternatives=payload.get("alternatives", "") or "",
+        phase=facts.phase,
+        choice=facts.choice,
+        alternatives=facts.alternatives,
         rationale=body_section_ci(body, "Rationale"),
         counter=body_section_ci(body, "Counter-argument"),
         superseded=superseded,
@@ -601,19 +621,19 @@ def load_decision_log(
     effort_phases = sorted(
         (
             phase
-            for phase in current_phase_models(list_records(target, "score:phase"))
+            for phase in current_phase_models(list_records(target, PHASE_TYPE))
             if phase.effort == effort
         ),
         key=lambda phase: (phase.ordinal, phase.subject),
     )
     titles = {phase.subject: phase.title or phase.subject for phase in effort_phases}
 
-    listed = list_records(target, "score:decision", payload={"effort": effort})
+    listed = list_records(target, DECISION_TYPE, payload={"effort": effort})
     by_id = {record["id"]: record for record in listed}
     if history:
         for record in list_records(
             target,
-            "score:decision",
+            DECISION_TYPE,
             state="superseded",
             payload={"effort": effort},
         ):
@@ -623,14 +643,14 @@ def load_decision_log(
         record
         for record in by_id.values()
         if record.get("lifecycle_state") not in INACTIVE_STATES
-        and record_payload(record).get("effort") in (None, "", effort)
-        and (phase is None or record_payload(record).get("phase") == phase)
+        and _in_effort(record, effort)
+        and (phase is None or record_scope(record).phase == phase)
     ]
     active.sort(key=lambda record: (record["subject"], record["id"]))
 
     grouped: dict[str, list[DecisionEntry]] = {}
     for record in active:
-        phase_subject = record_payload(record).get("phase") or ""
+        phase_subject = decision_facts(record).phase
         title = titles.get(phase_subject, phase_subject)
         grouped.setdefault(title, []).append(_decision_entry(record, by_id, history))
 
@@ -649,15 +669,15 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
     def by_effort(record_type: str) -> dict[str | None, list[Record]]:
         return records_by_effort(list_records(target, record_type))
 
-    snapshot_phases = by_effort("score:phase").get(effort, [])
+    snapshot_phases = by_effort(PHASE_TYPE).get(effort, [])
     phase = current_phase_model(phase_subject, snapshot_phases)
     if phase is None:
         raise ModelError(f"phase {phase_subject} not found in {effort}")
     record = phase.record
-    tasks = records_by_effort(list_records(target, "score:work-item")).get(effort, [])
-    effort_acceptances = by_effort("score:acceptance").get(effort, [])
-    effort_checks = by_effort("tuner:check-run").get(effort, [])
-    decision_records = by_effort("score:decision").get(effort, [])
+    tasks = records_by_effort(list_records(target, WORK_ITEM_TYPE)).get(effort, [])
+    effort_acceptances = by_effort(ACCEPTANCE_TYPE).get(effort, [])
+    effort_checks = by_effort(CHECK_RUN_TYPE).get(effort, [])
+    decision_records = by_effort(DECISION_TYPE).get(effort, [])
     row = next(
         (
             p
@@ -671,8 +691,8 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         ),
         None,
     )
-    phase_specs = list_records(target, "score:specification", payload={"phase": phase_subject})
-    phase_designs = list_records(target, "score:design", payload={"phase": phase_subject})
+    phase_specs = list_records(target, SPECIFICATION, payload={"phase": phase_subject})
+    phase_designs = list_records(target, DESIGN_TYPE, payload={"phase": phase_subject})
     spec = newest_record(records_for_phase(phase_specs, phase_subject, effort))
     design = newest_record(records_for_phase(phase_designs, phase_subject, effort))
     evidence = phase_evidence(
@@ -684,22 +704,21 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         tasks,
         effort_acceptances,
         effort_checks,
-        by_effort("conductor:assessment").get(effort, []),
-        by_effort("conductor:integration-report").get(effort, []),
-        by_effort("conductor:release").get(effort, []),
+        by_effort(ASSESSMENT_TYPE).get(effort, []),
+        by_effort(INTEGRATION_REPORT_TYPE).get(effort, []),
+        by_effort(RELEASE_TYPE).get(effort, []),
         snapshot_phases,
         load_phase_progress(target, current_token(target)).get(phase_subject),
     )
     decisions = [
-        RelatedRecord("decision", r["id"], r["subject"], record_payload(r).get("choice", ""))
+        RelatedRecord("decision", r["id"], r["subject"], decision_facts(r).choice)
         for r in decision_records
-        if record_payload(r).get("phase") == phase_subject
-        and r["lifecycle_state"] not in INACTIVE_STATES
+        if decision_facts(r).phase == phase_subject and r["lifecycle_state"] not in INACTIVE_STATES
     ]
     constraints = [
-        RelatedRecord("constraint", r["id"], r["subject"], record_payload(r).get("statement", ""))
-        for r in by_effort("score:constraint").get(effort, [])
-        if record_payload(r).get("applies_to") == phase_subject
+        RelatedRecord("constraint", r["id"], r["subject"], constraint_facts(r).statement)
+        for r in by_effort(CONSTRAINT_TYPE).get(effort, [])
+        if constraint_facts(r).applies_to == phase_subject
         and r["lifecycle_state"] not in INACTIVE_STATES
     ]
     milestone_slug = phase.milestone or ""
@@ -708,16 +727,16 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         milestone_record = next(
             (
                 r
-                for r in by_effort("score:milestone").get(effort, [])
+                for r in by_effort(MILESTONE_TYPE).get(effort, [])
                 if r["subject"] == milestone_slug and r["lifecycle_state"] in LIVE_PHASE_STATES
             ),
             None,
         )
         if milestone_record is not None:
-            milestone_title = record_payload(milestone_record).get("title") or milestone_slug
+            milestone_title = milestone_facts(milestone_record).title
         else:
             milestone_title = milestone_slug
-    packet = proof_packet(list_records(target, "conductor:proof-packet"), phase)
+    packet = proof_packet(list_records(target, PROOF_PACKET), phase)
     proof = None
     if packet is not None:
         proof_body = packet.record.get("body") or ""
@@ -744,7 +763,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
             t
             for t in task_rows(
                 tasks,
-                list_records(target, "conductor:assignment"),
+                list_records(target, ASSIGNMENT),
                 phases=[record],
                 small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
             )
@@ -777,9 +796,9 @@ def load_requirement_detail(
     def listed(record_type: str, state: str | None = None) -> list[Record]:
         return list_records(target, record_type, state=state)
 
-    specs = listed("score:specification")
-    by_id = {record["id"]: record for record in listed("conductor:assessment")}
-    for record in listed("conductor:assessment", "superseded"):
+    specs = listed(SPECIFICATION)
+    by_id = {record["id"]: record for record in listed(ASSESSMENT_TYPE)}
+    for record in listed(ASSESSMENT_TYPE, "superseded"):
         by_id.setdefault(record["id"], record)
     history = [
         record
@@ -789,13 +808,13 @@ def load_requirement_detail(
     history = _oldest_first(history)
     active = [record for record in history if record.get("lifecycle_state") not in INACTIVE_STATES]
     latest = newest_record(active)
-    spec = light_specification(phase, effort, listed("score:phase")) or newest_record(
+    spec = light_specification(phase, effort, listed(PHASE_TYPE)) or newest_record(
         records_for_phase(specs, phase, effort)
     )
-    text = _texts_for(listed("score:phase"), spec, phase).get(requirement, "")
+    text = _texts_for(listed(PHASE_TYPE), spec, phase).get(requirement, "")
     traced = [
         task
-        for task in tasks_by_requirement(listed("score:work-item"), phase).get(requirement, [])
+        for task in tasks_by_requirement(listed(WORK_ITEM_TYPE), phase).get(requirement, [])
         if _in_effort(task, effort)
     ]
     traced.sort(key=lambda record: record["subject"])
@@ -806,27 +825,27 @@ def load_requirement_detail(
                 subjects.append(subject)
     acceptances = [
         record
-        for record in records_for_phase(listed("score:acceptance"), phase, effort)
+        for record in records_for_phase(listed(ACCEPTANCE_TYPE), phase, effort)
         if requirement in acceptance_requirement_ids(record)
     ]
     acceptances.sort(key=recorded_at)
-    check_records = listed("tuner:check-run")
+    check_records = listed(CHECK_RUN_TYPE)
     check_map = latest_checks(check_records)
     pool = _live_pool(
         [spec] if spec is not None else [],
-        records_for_phase(listed("score:acceptance"), phase, effort),
+        records_for_phase(listed(ACCEPTANCE_TYPE), phase, effort),
         check_records,
         active,
     )
     status, nxt, _ = _assessment_view(latest, requirement_status(pool, phase).get(requirement))
-    assignments = listed("conductor:assignment")
+    assignments = listed(ASSIGNMENT)
     return RequirementDetail(
         phase,
         requirement,
         text,
         status,
         nxt,
-        _choices(subjects, listed("score:decision")),
+        _choices(subjects, listed(DECISION_TYPE)),
         tuple(
             row
             for row in task_rows(

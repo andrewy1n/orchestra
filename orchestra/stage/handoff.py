@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Collection, Mapping
 
-from orchestra.canon import record_payload
 from orchestra.canon.types import Record
 from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.score.view_facts import (
+    ConstraintLine,
+    effort_constraint_lines,
+    effort_position_stamps,
+)
 from orchestra.views import render as views
 
 
@@ -19,7 +23,7 @@ def hook_handoff_sections(
         for name, group in views.group_records(views.HOOK_VIEW, records, None).items()
         if name not in dormant
     }
-    stamps = views.position_recorded_at(records)
+    stamps = effort_position_stamps(records)
     stamped = sorted(n for n in groups if n in live and n in stamps)
     stamped.sort(key=stamps.__getitem__, reverse=True)
     unstamped = sorted(n for n in groups if n in live and n not in stamps)
@@ -36,17 +40,7 @@ def hook_handoff_sections(
 
 def hook_constraints(
     records: list[Record], limit: int, dormant: Collection[str] = ()
-) -> tuple[list[Record], int]:
+) -> tuple[list[ConstraintLine], int]:
     live = views.open_efforts(records) - set(dormant)
-    role = next(r for r in views.BRIEF_ROLES if r.name == "constraint")
-    matches = sorted(
-        (
-            r
-            for r in records
-            if r["record_type"] == role.record_type
-            and role.select(r)
-            and record_payload(r).get("effort") in live
-        ),
-        key=lambda r: r.get("subject") or "",
-    )
+    matches = effort_constraint_lines(records, live)
     return matches[:limit], len(matches)

@@ -41,16 +41,44 @@ from dashboard.backend.task import (
 )
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.composer.records import IDEA, current_placements, open_ideas
+from orchestra.composer.records import IDEA, PLACEMENT, current_placements, open_ideas
 from orchestra.conductor.activity import activity_entries
+from orchestra.conductor.assignment import ASSIGNMENT
 from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
+from orchestra.conductor.landing import PROOF_PACKET
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.phase_progress import phase_counts
-from orchestra.score.effort import current_efforts
+from orchestra.conductor.task_detail import (
+    ASSIGNMENT_AMENDMENT_TYPE,
+    EXECUTION_REPORT_TYPE,
+)
+from orchestra.conductor.workspace_types import (
+    ASSESSMENT_TYPE,
+    INTEGRATION_REPORT_TYPE,
+    RELEASE_TYPE,
+)
+from orchestra.score.detail_facts import (
+    ACCEPTANCE_TYPE,
+    DECISION_TYPE,
+    PHASE_TYPE,
+    WORK_ITEM_TYPE,
+)
+from orchestra.score.effort import EFFORT, current_efforts
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
 from orchestra.score.phase import structured_phases
-from orchestra.score.work_item_facts import owning_task_id
+from orchestra.score.requirements import SPECIFICATION
+from orchestra.score.work_item_facts import owning_task_id, record_scope
+from orchestra.score.workspace_facts import (
+    CONTINUITY_QUESTION_TYPE,
+    DESIGN_TYPE,
+    MILESTONE_TYPE,
+    POSITION_TYPE,
+    effort_positions,
+    effort_summary,
+    work_item_efforts,
+)
+from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (
@@ -63,18 +91,17 @@ NEEDS_ORDER = (
     "open-question",
 )
 FULL_TYPES = (
-    "score:continuity-question",
-    "tuner:finding",
-    "tuner:check-run",
-    "score:work-item",
-    "score:phase",
-    "score:specification",
-    "conductor:assessment",
-    "conductor:integration-report",
-    "conductor:proof-packet",
-    "composer:idea",
+    CONTINUITY_QUESTION_TYPE,
+    FINDING_TYPE,
+    CHECK_RUN_TYPE,
+    WORK_ITEM_TYPE,
+    PHASE_TYPE,
+    SPECIFICATION,
+    ASSESSMENT_TYPE,
+    INTEGRATION_REPORT_TYPE,
+    PROOF_PACKET,
+    IDEA,
 )
-PLACEMENT_TYPE = "composer:placement"
 
 
 @dataclass(frozen=True)
@@ -105,7 +132,7 @@ class BacklogItem:
     source: str = ""
     phase: str = ""
     body: str = ""
-    record_type: str = "composer:idea"
+    record_type: str = IDEA
     updated_at: datetime | None = None
 
 
@@ -153,24 +180,24 @@ class Snapshot:
 
 
 _SNAPSHOT_TYPES = (
-    "score:effort",
-    "score:phase",
-    "score:milestone",
-    "score:work-item",
-    "score:continuity-question",
-    "tuner:finding",
-    "tuner:check-run",
-    "conductor:assignment",
-    "conductor:assignment-amendment",
-    "conductor:execution-report",
-    "score:specification",
-    "score:design",
-    "conductor:assessment",
-    "conductor:integration-report",
-    "conductor:release",
-    "score:position",
-    "composer:idea",
-    PLACEMENT_TYPE,
+    EFFORT,
+    PHASE_TYPE,
+    MILESTONE_TYPE,
+    WORK_ITEM_TYPE,
+    CONTINUITY_QUESTION_TYPE,
+    FINDING_TYPE,
+    CHECK_RUN_TYPE,
+    ASSIGNMENT,
+    ASSIGNMENT_AMENDMENT_TYPE,
+    EXECUTION_REPORT_TYPE,
+    SPECIFICATION,
+    DESIGN_TYPE,
+    ASSESSMENT_TYPE,
+    INTEGRATION_REPORT_TYPE,
+    RELEASE_TYPE,
+    POSITION_TYPE,
+    IDEA,
+    PLACEMENT,
 )
 
 
@@ -459,7 +486,7 @@ def with_landing(
     """Return the snapshot with each effort's Needs you list rebuilt from the landing facts."""
     with store.pinned_token(snapshot.token):
         every_record = store.catalog_records(target)
-        tasks = records_by_effort(list_records(target, "score:work-item"))
+        tasks = records_by_effort(list_records(target, WORK_ITEM_TYPE))
     return replace(
         snapshot,
         efforts=[
@@ -479,33 +506,29 @@ def _load_snapshot(
 ) -> Snapshot:
     progress = load_phase_progress(target, token)
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
-    small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
+    small_wave_budget_minutes = configured_small_wave_budget(target, listed[WORK_ITEM_TYPE])
     goals = [
         effort.record
-        for effort in current_efforts(listed["score:effort"]).values()
+        for effort in current_efforts(listed[EFFORT]).values()
         if effort.status != "closed"
     ]
-    phases = records_by_effort(listed["score:phase"])
-    milestones = records_by_effort(listed.get("score:milestone") or [])
-    all_tasks = listed["score:work-item"]
+    phases = records_by_effort(listed[PHASE_TYPE])
+    milestones = records_by_effort(listed.get(MILESTONE_TYPE) or [])
+    all_tasks = listed[WORK_ITEM_TYPE]
     tasks = records_by_effort(all_tasks)
-    checks_all = listed["tuner:check-run"]
+    checks_all = listed[CHECK_RUN_TYPE]
     checks = records_by_effort(checks_all)
-    acceptances_all = list_records(target, "score:acceptance")
+    acceptances_all = list_records(target, ACCEPTANCE_TYPE)
     acceptances = records_by_effort(acceptances_all)
-    efforts_by_work_item: dict[str, tuple[str, str]] = {}
-    for task in all_tasks:
-        entry = (record_payload(task).get("effort") or "", task["subject"])
-        efforts_by_work_item[task["id"]] = entry
-        efforts_by_work_item.setdefault(task["subject"], entry)
-    specs = listed["score:specification"]
-    designs = listed["score:design"]
-    assessments = listed["conductor:assessment"]
-    integrations = listed["conductor:integration-report"]
-    releases = listed["conductor:release"]
-    backlog_by_effort = records_by_effort(listed.get("composer:idea") or [])
-    decisions = list_records(target, "score:decision") if designs else []
-    structured = structured_phases(specs, listed["score:phase"])
+    efforts_by_work_item = work_item_efforts(all_tasks)
+    specs = listed[SPECIFICATION]
+    designs = listed[DESIGN_TYPE]
+    assessments = listed[ASSESSMENT_TYPE]
+    integrations = listed[INTEGRATION_REPORT_TYPE]
+    releases = listed[RELEASE_TYPE]
+    backlog_by_effort = records_by_effort(listed.get(IDEA) or [])
+    decisions = list_records(target, DECISION_TYPE) if designs else []
+    structured = structured_phases(specs, listed[PHASE_TYPE])
     specs_by_effort = records_by_effort(specs)
     designs_by_effort = records_by_effort(designs)
     assessments_by_effort = records_by_effort(assessments)
@@ -513,8 +536,8 @@ def _load_snapshot(
     releases_by_effort = records_by_effort(releases)
     decisions_by_effort = records_by_effort(decisions)
     activity = _activity(
-        listed["conductor:assignment"],
-        listed["conductor:execution-report"],
+        listed[ASSIGNMENT],
+        listed[EXECUTION_REPORT_TYPE],
         checks_all,
         efforts_by_work_item,
         now - RECENT,
@@ -523,19 +546,11 @@ def _load_snapshot(
         releases,
         structured,
     )
-    positions = {
-        record["subject"]: record_payload(record).get("position", "")
-        for record in listed["score:position"]
-        if record["lifecycle_state"] == "active"
-        and record_payload(record).get("status") != "closed"
-        and record_payload(record).get("scope") == "effort"
-    }
-    areas = current_placements(live_records(listed[PLACEMENT_TYPE]))
+    positions = effort_positions(listed[POSITION_TYPE])
+    areas = current_placements(live_records(listed[PLACEMENT]))
     every_record = store.catalog_records(target)
     status_by_effort = effort_statuses(every_record, now)
-    work_stamps = _work_item_stamps(
-        [*listed["conductor:assignment"], *listed["conductor:execution-report"]]
-    )
+    work_stamps = _work_item_stamps([*listed[ASSIGNMENT], *listed[EXECUTION_REPORT_TYPE]])
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
@@ -583,8 +598,8 @@ def _load_snapshot(
                     row,
                     phases.get(effort, []),
                     effort_tasks,
-                    listed["conductor:assignment"],
-                    listed["conductor:execution-report"],
+                    listed[ASSIGNMENT],
+                    listed[EXECUTION_REPORT_TYPE],
                     effort_checks,
                     check_stamps,
                     work_stamps,
@@ -594,7 +609,8 @@ def _load_snapshot(
         ]
         effort_milestones = build_milestone_rows(milestones.get(effort, []), phase_rows)
         phase_rows = attach_milestones(phase_rows, effort_milestones)
-        kind = record_payload(goal).get("kind") or ""
+        summary = effort_summary(goal)
+        kind = summary.kind
         journal_open = []
         if kind in ("repair", "evaluate"):
             open_items, _ = journal_ordered(load_journal(target, effort))
@@ -602,14 +618,14 @@ def _load_snapshot(
         efforts.append(
             EffortView(
                 effort=effort,
-                goal=record_payload(goal).get("goal", ""),
+                goal=summary.goal,
                 phases=phase_rows,
                 milestones=effort_milestones,
                 tasks=task_rows(
                     effort_tasks,
-                    listed["conductor:assignment"],
-                    listed["conductor:assignment-amendment"],
-                    listed["conductor:execution-report"],
+                    listed[ASSIGNMENT],
+                    listed[ASSIGNMENT_AMENDMENT_TYPE],
+                    listed[EXECUTION_REPORT_TYPE],
                     effort_checks,
                     phases.get(effort, []),
                     small_wave_budget_minutes=small_wave_budget_minutes,
@@ -632,21 +648,21 @@ def _load_snapshot(
 
 
 _WORK_TYPES = (
-    "score:effort",
-    "score:phase",
-    "score:work-item",
-    "score:acceptance",
-    "score:continuity-question",
-    "score:specification",
-    "score:design",
-    "tuner:finding",
-    "tuner:check-run",
-    "conductor:assignment",
-    "conductor:execution-report",
-    "conductor:assessment",
-    "conductor:integration-report",
-    "conductor:release",
-    "composer:idea",
+    EFFORT,
+    PHASE_TYPE,
+    WORK_ITEM_TYPE,
+    ACCEPTANCE_TYPE,
+    CONTINUITY_QUESTION_TYPE,
+    SPECIFICATION,
+    DESIGN_TYPE,
+    FINDING_TYPE,
+    CHECK_RUN_TYPE,
+    ASSIGNMENT,
+    EXECUTION_REPORT_TYPE,
+    ASSESSMENT_TYPE,
+    INTEGRATION_REPORT_TYPE,
+    RELEASE_TYPE,
+    IDEA,
 )
 
 
@@ -664,41 +680,37 @@ def load_work_snapshot(
         type_records = listed.get(record["record_type"])
         if type_records is not None:
             type_records.append(record)
-    small_wave_budget_minutes = configured_small_wave_budget(target, listed["score:work-item"])
+    small_wave_budget_minutes = configured_small_wave_budget(target, listed[WORK_ITEM_TYPE])
     grouped = {record_type: records_by_effort(rows) for record_type, rows in listed.items()}
-    structured = structured_phases(listed["score:specification"], listed["score:phase"])
+    structured = structured_phases(listed[SPECIFICATION], listed[PHASE_TYPE])
     goals = [
         effort.record
-        for effort in current_efforts(listed["score:effort"]).values()
+        for effort in current_efforts(listed[EFFORT]).values()
         if effort.status != "closed"
     ]
     status_by_effort = effort_statuses(every_record, now)
-    work_stamps = _work_item_stamps(
-        [*listed["conductor:assignment"], *listed["conductor:execution-report"]]
-    )
+    work_stamps = _work_item_stamps([*listed[ASSIGNMENT], *listed[EXECUTION_REPORT_TYPE]])
     efforts: list[EffortView] = []
     for goal in sorted(goals, key=lambda record: record["subject"]):
         effort = goal["subject"]
         phase_models = [
             phase
-            for phase in current_phase_models(grouped["score:phase"].get(effort, []))
+            for phase in current_phase_models(grouped[PHASE_TYPE].get(effort, []))
             if phase.record["lifecycle_state"] in LIVE_PHASE_STATES
         ]
         phases = [phase.record for phase in phase_models]
-        tasks = grouped["score:work-item"].get(effort, [])
+        tasks = grouped[WORK_ITEM_TYPE].get(effort, [])
         if status_by_effort[effort] in ("finished", "dormant"):
             continue
-        acceptances = grouped["score:acceptance"].get(effort, [])
-        checks = grouped["tuner:check-run"].get(effort, [])
-        assessments = grouped["conductor:assessment"].get(effort, [])
-        integrations = grouped["conductor:integration-report"].get(effort, [])
+        acceptances = grouped[ACCEPTANCE_TYPE].get(effort, [])
+        checks = grouped[CHECK_RUN_TYPE].get(effort, [])
+        assessments = grouped[ASSESSMENT_TYPE].get(effort, [])
+        integrations = grouped[INTEGRATION_REPORT_TYPE].get(effort, [])
         phase_acceptances, phase_checks = evidence_records_by_phase(acceptances, checks)
         active_subjects = {
             record["subject"] for record in phases if record["lifecycle_state"] == "in_progress"
         }
-        active_tasks = [
-            task for task in tasks if record_payload(task).get("phase") in active_subjects
-        ]
+        active_tasks = [task for task in tasks if record_scope(task).phase in active_subjects]
         check_stamps = _max_check_stamp_by_phase(tasks, checks)
         rows: list[PhaseRow] = []
         for current in phase_models:
@@ -711,15 +723,15 @@ def load_work_snapshot(
                 evidence = phase_evidence(
                     phase,
                     effort,
-                    grouped["score:specification"].get(effort, []),
-                    grouped["score:design"].get(effort, []),
+                    grouped[SPECIFICATION].get(effort, []),
+                    grouped[DESIGN_TYPE].get(effort, []),
                     [],
                     tasks,
                     phase_acceptances.get(phase, []),
                     phase_checks.get(phase, []),
                     assessments,
                     integrations,
-                    grouped["conductor:release"].get(effort, []),
+                    grouped[RELEASE_TYPE].get(effort, []),
                     phases,
                     progress.get(phase),
                 )
@@ -743,8 +755,8 @@ def load_work_snapshot(
                         row,
                         phases,
                         tasks,
-                        listed["conductor:assignment"],
-                        listed["conductor:execution-report"],
+                        listed[ASSIGNMENT],
+                        listed[EXECUTION_REPORT_TYPE],
                         checks,
                         check_stamps,
                         work_stamps,
@@ -755,7 +767,7 @@ def load_work_snapshot(
         efforts.append(
             EffortView(
                 effort=effort,
-                goal=record_payload(goal).get("goal", ""),
+                goal=effort_summary(goal).goal,
                 status=status_by_effort[effort],
                 phases=rows,
                 tasks=task_rows(
@@ -763,7 +775,7 @@ def load_work_snapshot(
                     small_wave_budget_minutes=small_wave_budget_minutes,
                 ),
                 needs_you=_needs_you(every_record, effort, tasks, {}),
-                backlog=_backlog_items(grouped["composer:idea"].get(effort, [])),
+                backlog=_backlog_items(grouped[IDEA].get(effort, [])),
             )
         )
     return Snapshot(efforts, token, now)

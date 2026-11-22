@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StoreError
+from orchestra.canon.payload_view import payload_field_equals
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 
@@ -147,5 +148,5 @@ def list_records(
     if subject:
         rows = [row for row in rows if (row.get("subject") or "").startswith(subject)]
     for field, expected in (payload or {}).items():
-        rows = [row for row in rows if (row.get("payload") or {}).get(field) == expected]
+        rows = [row for row in rows if payload_field_equals(row, field, expected)]
     return rows

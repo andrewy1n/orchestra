@@ -5,8 +5,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from orchestra.canon import record_payload
-from orchestra.canon.project import Project, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import Access, Workspace
 from orchestra.conductor.landing import LANDING, PROOF_PACKET, latest_landing, proof_packet
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
@@ -138,7 +139,7 @@ def _row(project: Project, records: list[Record], phase_model: Phase) -> PhaseRo
 
 
 def build_phase_rows(directory: Path, *, effort: str | None = None) -> list[PhaseRow]:
-    project = open_store(directory, read_only=True)
+    project = Workspace.resolve(directory, access=Access.READ).open()
     records = project.records()
     slugs = dict.fromkeys(r["subject"] for r in records if r["record_type"] == "score:phase")
     current = (current_phase_model(slug, records) for slug in slugs)

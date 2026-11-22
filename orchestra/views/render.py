@@ -8,32 +8,56 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from orchestra.canon import record_payload
+from orchestra.canon.field_values import field_value, integer_field, named_fields
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
+from orchestra.composer.idea_facts import (
+    AREA_TYPE,
+    IDEA_TYPE,
+    is_open_backlog_idea,
+    is_roadmap_idea,
+)
 from orchestra.conductor.assignment import task_assignment
 from orchestra.conductor.attention import AttentionItem, LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus
 from orchestra.conductor.effort_status import effort_statuses as _effort_statuses
-from orchestra.conductor.landing import place_of_body
+from orchestra.conductor.landing import PROOF_PACKET, place_of_body
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
 from orchestra.conductor.requirements import RequirementIndex, requirement_status
+from orchestra.conductor.task_detail import ASSIGNMENT_AMENDMENT_TYPE
+from orchestra.score.detail_facts import (
+    ACCEPTANCE_TYPE,
+    DECISION_TYPE,
+    PHASE_TYPE,
+    WORK_ITEM_TYPE,
+)
 from orchestra.score.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     task_executor,
 )
 from orchestra.score.lookups import current_phases
 from orchestra.score.requirements import phase_requirements, requirement_lines
+from orchestra.score.view_facts import (
+    CONSTRAINT_TYPE,
+    EFFORT_TYPE,
+    POSITION_TYPE,
+    effort_of,
+    in_effort,
+    is_closed,
+)
 from orchestra.score.work_item_facts import (
     decision_choice,
     executor_task,
     record_scope,
     work_item_facts,
 )
-from orchestra.score.workflow_blockers import human_gates
+from orchestra.score.workflow_blockers import QUESTION_TYPE, human_gates
+from orchestra.score.workspace_facts import DESIGN_TYPE
 from orchestra.tools import Merged, Unmerged, branch_state
+from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
+from orchestra.tuner.record_facts import check_run_facts
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -54,15 +78,7 @@ def _all(*predicates: Predicate) -> Predicate:
 
 
 def _not_closed(record: Record) -> bool:
-    return record_payload(record).get("status") != "closed"
-
-
-def _payload_is(name: str, value: JsonValue) -> Predicate:
-    return lambda r: record_payload(r).get(name) == value
-
-
-def _payload_truthy(name: str) -> Predicate:
-    return lambda r: bool(record_payload(r).get(name))
+    return not is_closed(record)
 
 
 def _any(record: Record) -> bool:
@@ -94,25 +110,24 @@ class View:
     effort_status: bool = False
     phase_derived_section: bool = False
     tally_type: str | None = None
-    tally_field: str = "result"
 
 
-GOAL = Role("goal", "score:effort", ("goal", "kind"), _all(_state("active"), _not_closed))
+GOAL = Role("goal", EFFORT_TYPE, ("goal", "kind"), _all(_state("active"), _not_closed))
 POSITION = Role(
     "position",
-    "score:position",
+    POSITION_TYPE,
     ("position", "scope"),
     _all(_state("active"), _not_closed),
 )
 ACCEPTANCE = Role(
     "acceptance",
-    "score:acceptance",
+    ACCEPTANCE_TYPE,
     ("requirement", "method", "effort", "verify_command"),
     _state("active"),
 )
 FINDING_OPEN = Role(
     "finding",
-    "tuner:finding",
+    FINDING_TYPE,
     ("claim", "basis", "invalidated_when", "needs"),
     _state("asserted"),
 )
@@ -120,19 +135,19 @@ FINDING_OPEN = Role(
 GATE_ROLES = (
     Role(
         "blocking-question",
-        "score:continuity-question",
+        QUESTION_TYPE,
         ("blocking", "scope"),
         gate="blocking-question",
     ),
     Role(
         "needs-human",
-        "tuner:finding",
+        FINDING_TYPE,
         ("claim", "needs"),
         gate="needs-human",
     ),
     Role(
         "unsigned-manual-check",
-        "tuner:check-run",
+        CHECK_RUN_TYPE,
         ("criterion_id", "result", "method", "signed_by"),
         gate="unsigned-check",
     ),
@@ -144,29 +159,25 @@ HANDOFF = View(
     (
         GOAL,
         POSITION,
-        Role("pending-phase-close", "score:phase", (), _state("in_progress")),
+        Role("pending-phase-close", PHASE_TYPE, (), _state("in_progress")),
         Role(
             "latest-proof",
-            "conductor:proof-packet",
+            PROOF_PACKET,
             ("phase", "effort", "revision", "kind"),
             _state("recorded"),
         ),
         Role(
             "in-progress",
-            "score:work-item",
+            WORK_ITEM_TYPE,
             ("title", "phase", "kind", "effort"),
             _state("in_progress"),
         ),
         *GATE_ROLES,
         Role(
             "backlog",
-            "composer:idea",
+            IDEA_TYPE,
             ("effort", "status"),
-            _all(
-                _state("active"),
-                _payload_is("status", "open"),
-                _payload_truthy("effort"),
-            ),
+            _all(_state("active"), is_open_backlog_idea),
         ),
     ),
     group_by="effort",
@@ -194,13 +205,13 @@ PLAN = View(
     (
         Role(
             "phase",
-            "score:phase",
+            PHASE_TYPE,
             ("title", "ordinal", "effort"),
             _state("planned", "in_progress"),
         ),
         Role(
             "work",
-            "score:work-item",
+            WORK_ITEM_TYPE,
             _WORK_FIELDS,
             _state("planned", "in_progress"),
         ),
@@ -219,12 +230,12 @@ VERIFICATION = View(
         ACCEPTANCE,
         Role(
             "check",
-            "tuner:check-run",
+            CHECK_RUN_TYPE,
             ("criterion_id", "revision", "result", "method", "signed_by"),
         ),
         Role(
             "observation",
-            "tuner:investigation-observation",
+            OBSERVATION_TYPE,
             ("what_was_observed", "effort"),
         ),
         FINDING_OPEN,
@@ -236,29 +247,26 @@ VERIFICATION = View(
 STATUS = View(
     "status",
     "Project Status",
-    (Role("work", "score:work-item", _WORK_FIELDS),),
+    (Role("work", WORK_ITEM_TYPE, _WORK_FIELDS),),
     group_by="phase",
     order_by="ordinal",
     show_lifecycle_state=True,
     show_derived=("ready", "wave"),
     show_assignment=True,
     show_phase_derived=True,
-    tally_type="tuner:check-run",
+    tally_type=CHECK_RUN_TYPE,
 )
 
 ROADMAP = View(
     "roadmap",
     "Project Roadmap",
     (
-        Role("area", "composer:area", ("title",), _state("active"), own_group=True),
+        Role("area", AREA_TYPE, ("title",), _state("active"), own_group=True),
         Role(
             "idea",
-            "composer:idea",
+            IDEA_TYPE,
             ("status", "effort", "source"),
-            _all(
-                _state("active"),
-                lambda r: record_payload(r).get("status") in ("open", "promoted"),
-            ),
+            _all(_state("active"), is_roadmap_idea),
         ),
     ),
     group_by="area",
@@ -266,9 +274,6 @@ ROADMAP = View(
 )
 
 VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
-
-EFFORT_TYPE = "score:effort"
-WORK_ITEM_TYPE = "score:work-item"
 
 
 def subject_related(parent: str, other: str) -> bool:
@@ -295,14 +300,6 @@ def _empty(value: JsonValue) -> bool:
     return value is None or value == "" or value == []
 
 
-def effort_of(record: Record) -> str | None:
-    if record.get("record_type") == EFFORT_TYPE:
-        return record.get("subject")
-    payload = record_payload(record)
-    value = payload.get("effort")
-    return value if isinstance(value, str) and value else None
-
-
 def _derived_value(record: Record, name: str) -> JsonValue:
     derived = record.get("derived")
     if derived is None:
@@ -327,26 +324,20 @@ def _derived_value(record: Record, name: str) -> JsonValue:
 
 
 def _in_effort(record: Record, effort: str | None) -> bool:
-    if effort is None:
-        return True
-    own = effort_of(record)
-    if own is not None:
-        return own == effort
-    return record_payload(record).get("scope") == effort
+    return in_effort(record, effort)
 
 
 def _group_key(record: Record, view: View, role: Role) -> str:
-    payload = record_payload(record)
     group_by = view.group_by
     if role.own_group:
         return str(record.get("subject", "default"))
     if group_by == "scope":
-        return str(payload.get("scope", "default"))
+        return str(field_value(record, "scope", "default"))
     if group_by == "subject":
         return str(record.get("subject", "default"))
-    if view.group_default is not None and _empty(payload.get(group_by)):
+    if view.group_default is not None and _empty(field_value(record, group_by)):
         return view.group_default
-    return str(payload.get(group_by, record.get("subject", "default")))
+    return str(field_value(record, group_by, record.get("subject", "default")))
 
 
 def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | None:
@@ -354,8 +345,8 @@ def _group_ordinal(name: str, order_field: str, records: list[Record]) -> int | 
         (r for r in records if r.get("subject") == name), key=lambda r: r.get("id", "")
     )
     for candidate in candidates:
-        value = record_payload(candidate).get(order_field)
-        if isinstance(value, int) and not isinstance(value, bool):
+        value = integer_field(candidate, order_field)
+        if value is not None:
             return value
     return None
 
@@ -505,8 +496,8 @@ def _status_bits(
         for candidate in tally:
             if not subject_related(subject, candidate.get("subject", "")):
                 continue
-            value = record_payload(candidate).get(view.tally_field)
-            if not isinstance(value, str) or not value:
+            value = check_run_facts(candidate).result
+            if not value:
                 continue
             if value.lower() in FAILING_RESULT_VALUES:
                 failed += 1
@@ -517,18 +508,14 @@ def _status_bits(
 
 
 def _record_line(record: Record, role: Role, extra_bits: list[str], link: bool = True) -> str:
-    payload = record_payload(record)
     bits: list[str] = []
-    for name in role.fields:
-        if name in SUPPRESSED_FIELDS:
-            continue
-        value = payload.get(name)
-        if _empty(value):
+    for name, value in named_fields(record, role.fields):
+        if name in SUPPRESSED_FIELDS or _empty(value):
             continue
         bits.append(_display(value))
     bits.extend(extra_bits)
     summary = "; ".join(bits)
-    owner = payload.get("owner") if "owner" in role.fields else None
+    owner = field_value(record, "owner") if "owner" in role.fields else None
     if not link:
         note = f" _(owner: {owner})_" if owner else ""
         if summary:
@@ -714,11 +701,11 @@ def _phase_section_lines(
 ) -> list[str]:
     phases = sorted(
         {
-            str(phase)
+            phase
             for group in groups.values()
             for items in group.values()
             for record in items
-            if (phase := record_payload(record).get("phase"))
+            if (phase := record_scope(record).phase)
         }
     )
     lines: list[str] = []
@@ -732,17 +719,17 @@ def _phase_section_lines(
 
 
 BRIEF_ROLES = (
-    Role("work", "score:work-item", _WORK_FIELDS, _state("planned", "in_progress")),
+    Role("work", WORK_ITEM_TYPE, _WORK_FIELDS, _state("planned", "in_progress")),
     ACCEPTANCE,
     FINDING_OPEN,
     Role(
         "constraint",
-        "score:constraint",
+        CONSTRAINT_TYPE,
         ("statement", "applies_to", "effort"),
         _state("active"),
     ),
     POSITION,
-    Role("amendment", "conductor:assignment-amendment", ("assignment", "effort")),
+    Role("amendment", ASSIGNMENT_AMENDMENT_TYPE, ("assignment", "effort")),
 )
 _BRIEF_EFFORT_SCOPED = frozenset({"constraint", "position"})
 _BRIEF_TITLES = {
@@ -764,11 +751,10 @@ def _brief_in_scope(role: Role, subject: str, effort: str | None, record: Record
 
 
 def _brief_block(record: Record, role: Role) -> str:
-    payload = record_payload(record)
     bits = [
-        f"**{name}**: {_display(payload[name])}"
-        for name in role.fields
-        if not _empty(payload.get(name))
+        f"**{name}**: {_display(value)}"
+        for name, value in named_fields(record, role.fields)
+        if not _empty(value)
     ]
     if record.get("lifecycle_state"):
         bits.append(f"state: {record['lifecycle_state']}")
@@ -819,7 +805,7 @@ def _orientation(work_item: Record, records: list[Record]) -> str:
     ]
     if requirements:
         lines += ["### Requirements", "", *(f"- {text}" for text in requirements), ""]
-    design = _phase_record(records, "score:design", phase)
+    design = _phase_record(records, DESIGN_TYPE, phase)
     if design:
         design_sections = body_sections(design.get("body") or "")
         for name in ("Invariants", "Assumptions"):
@@ -828,7 +814,7 @@ def _orientation(work_item: Record, records: list[Record]) -> str:
     decisions: list[str] = []
     for name in facts.decisions:
         decision = next(
-            (r for r in records if r["record_type"] == "score:decision" and r["subject"] == name),
+            (r for r in records if r["record_type"] == DECISION_TYPE and r["subject"] == name),
             None,
         )
         choice = decision_choice(decision) if decision else None
@@ -894,18 +880,6 @@ def load_records(project: Project) -> list[Record]:
 
 def open_efforts(records: list[Record]) -> set[str]:
     return {name for name, status in effort_statuses(records).items() if status != "closed"}
-
-
-def position_recorded_at(records: list[Record]) -> dict[str, str]:
-    stamps: dict[str, str] = {}
-    for r in records:
-        if r["record_type"] != POSITION.record_type or not POSITION.select(r):
-            continue
-        effort = effort_of(r)
-        stamp = r.get("recorded_at")
-        if effort and stamp and record_payload(r).get("scope") == "effort":
-            stamps[effort] = max(stamp, stamps.get(effort, ""))
-    return stamps
 
 
 def group_subjects(group: dict[str, list[Record]]) -> list[str]:

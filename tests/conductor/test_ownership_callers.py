@@ -76,7 +76,7 @@ def test_r15_gate_takes_the_latest_closing_item_as_verification(
     for record in records:
         if record["id"] == second["id"]:
             record["recorded_at"] = "2099-01-01T00:00:00Z"
-    monkeypatch.setattr(gate, "open_store", lambda *_a, **_k: _FixedStore(records))
+    monkeypatch.setattr(gate.Workspace, "open", lambda _self: _FixedStore(records))
 
     terms = {term.name: term for term in gate.gate_terms(tmp_path, PHASE)}
 

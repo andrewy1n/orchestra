@@ -17,7 +17,6 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.conductor import close
 from orchestra.conductor.github_pr import github_client
-from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.stage.handoff import hook_constraints, hook_handoff_sections
 from orchestra.tools.git import Git
@@ -116,11 +115,10 @@ def _constraint_lines(records: list[Record], dormant: list[str]) -> list[str]:
         return []
     lines = ["", "Active constraints:"]
     for item in items:
-        payload: PlanningPayload = item.get("payload") or {}  # pyright: ignore[reportAssignmentType]  # Constraint schemas validate these payload fields.
-        statement = (payload.get("statement") or "").strip()
+        statement = item.statement.strip()
         if len(statement) > MAX_CONSTRAINT_STATEMENT_CHARS:
             statement = statement[:MAX_CONSTRAINT_STATEMENT_CHARS].rstrip() + "…"
-        lines.append(f"- **{item.get('subject')}**: {statement}")
+        lines.append(f"- **{item.subject}**: {statement}")
     if total > len(items):
         lines.append(f"(+{total - len(items)} more not shown)")
     return lines

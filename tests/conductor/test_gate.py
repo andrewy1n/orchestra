@@ -29,6 +29,7 @@ from conftest import REPO_ROOT, git
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
 from orchestra.conductor import gate, landing
 
@@ -409,7 +410,7 @@ def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     earlier = phase.check_run("fail")
     later = phase.check_run("pass")
     stamp = "2026-11-01T00:00:00Z"
-    stored = {r["id"]: r for r in gate.open_store(store).records()}
+    stored = {r["id"]: r for r in Workspace(root=store).open().records()}
     others = [r for rid, r in stored.items() if rid not in {earlier["id"], later["id"]}]
     tied = [
         {**stored[earlier["id"]], "id": "rec-zzzz", "recorded_at": stamp},
@@ -417,10 +418,10 @@ def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     ]
     records = [*others, *tied]
 
-    def fixed_store(*_args: object, **_kwargs: object) -> _FixedStore:
+    def fixed_store(_workspace: Workspace) -> _FixedStore:
         return _FixedStore(records)
 
-    monkeypatch.setattr(gate, "open_store", fixed_store)
+    monkeypatch.setattr(gate.Workspace, "open", fixed_store)
     terms = {t.name: t for t in gate.gate_terms(store, PHASE)}
     assert terms[f"acceptance-passes:{PHASE}-ac"].holds
 

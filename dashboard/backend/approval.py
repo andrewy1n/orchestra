@@ -18,11 +18,13 @@ from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.model_types import PlanningPayload
-from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.revision import revision_matches
+from orchestra.score.detail_facts import ACCEPTANCE_TYPE, acceptance_facts
+from orchestra.score.workflow_blockers import CHECK_RUN_TYPE, FINDING_TYPE
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
+from orchestra.tuner.evidence_facts import finding_basis
+from orchestra.tuner.record_facts import check_run_facts, finding_facts
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 
@@ -106,9 +108,8 @@ def _short(sha: str, n: int = 7) -> str:
 
 
 def _finding_evidence(item: NeedsYouItem, record: Record | None) -> list[tuple[str, str]]:
-    payload: PlanningPayload = record_payload(record) if record else {}
-    claim = (payload.get("claim") or item.text or "").strip()
-    basis = (payload.get("basis") or "").strip()
+    claim = ((finding_facts(record).claim if record else "") or item.text or "").strip()
+    basis = (finding_basis(record) if record else "").strip()
     body = (record.get("body") if record else None) or item.body or ""
     evidence = _section(body, "Evidence")
     consequence = _section(body, "Consequence")
@@ -128,19 +129,19 @@ def _check_evidence(
     root: Path,
     record: Record | None,
 ) -> list[tuple[str, str]]:
-    payload: PlanningPayload = record_payload(record) if record else {}
     check_body = ((record.get("body") if record else None) or item.body or "").strip()
-    checked_rev = str(payload.get("revision") or "").strip()
+    check = check_run_facts(record) if record else None
+    checked_rev = (check.revision if check else "").strip()
     try:
         head = Git(root, timeout=2).head()
     except ToolError:
         head = ""
     acceptance_text = ""
-    criterion_id = str(payload.get("criterion_id") or "").strip()
+    criterion_id = (check.criterion_id if check else "").strip()
     if criterion_id:
-        acceptance = _cli_json(target, "get", "--id", criterion_id, "--type", "score:acceptance")
+        acceptance = _cli_json(target, "get", "--id", criterion_id, "--type", ACCEPTANCE_TYPE)
         if acceptance:
-            acceptance_text = str(record_payload(acceptance).get("criterion") or "").strip()
+            acceptance_text = acceptance_facts(acceptance).criterion.strip()
             if acceptance.get("body"):
                 acceptance_text = (
                     f"{acceptance_text}\n\n{(acceptance.get('body') or '').strip()}"
@@ -203,7 +204,7 @@ def evidence_panels(
     """Kind-specific evidence panels for the Needs-you detail screen."""
     if item.kind == "needs-human":
         record = _cli_json(
-            target, "get", "--id", item.id, "--type", item.record_type or "tuner:finding"
+            target, "get", "--id", item.id, "--type", item.record_type or FINDING_TYPE
         )
         return _finding_evidence(item, record)
     if item.kind == "unsigned-check":
@@ -213,7 +214,7 @@ def evidence_panels(
             "--id",
             item.id,
             "--type",
-            item.record_type or "tuner:check-run",
+            item.record_type or CHECK_RUN_TYPE,
         )
         return _check_evidence(target, item, root, record)
     if item.kind in ("blocking-question", "open-question"):

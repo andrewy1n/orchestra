@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import pins from "./testing/fixtures/http_pins.json";
 import { mountApp } from "./testing/mountApp";
 
 interface Recorded {
@@ -11,21 +10,7 @@ interface Recorded {
 	body: unknown;
 }
 
-const ROUTES_TEST = resolve(
-	process.cwd(),
-	"../../tests/interfaces/test_http_routes.py",
-);
-
-function recordedBodies(): Record<string, Recorded> {
-	const source = readFileSync(ROUTES_TEST, "utf8");
-	const match = source.match(
-		/EXPECTED: dict\[str, object\] = json\.loads\(\s*r"""([\s\S]*?)"""/,
-	);
-	if (!match) throw new Error("recorded HTTP bodies not found");
-	return JSON.parse(match[1]) as Record<string, Recorded>;
-}
-
-const RECORDED = recordedBodies();
+const RECORDED: Record<string, Recorded> = pins;
 
 const TASK_ID = "<score:work-item:t-one>";
 const RECORD_ID = "<tuner:finding:human-finding>";

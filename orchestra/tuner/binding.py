@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestra.canon.project import Project, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, OperationResult, Record
 from orchestra.tuner.manifest import ManifestError
-from orchestra.tuner.observation import store_usable
+from orchestra.tuner.observation import open_subject_store, store_usable
 from orchestra.tuner.verdict import run_verdict
 
 _BIND_TYPE = "tuner:evidence-binding"
@@ -20,7 +20,7 @@ class BindingError(Exception):
 
 def _project(root: Path) -> Project:
     try:
-        return open_store(root)
+        return open_subject_store(root)
     except BindingError:
         raise
     except Exception as exc:
