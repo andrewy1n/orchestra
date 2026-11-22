@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.assessment_facts import (
     AssessmentFacts,
     assessment_facts,
     latest_assessments,
 )
-
-from orchestra.canon.types import JsonObject, Record
 
 
 def _assessment(subject: str, payload: JsonObject, state: str = "active", n: int = 0) -> Record:

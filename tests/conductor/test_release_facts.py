@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from orchestra.conductor.release_facts import integration_result, is_release_ready, release_state
 
 from orchestra.canon.types import JsonObject, Record
+from orchestra.conductor.release_facts import integration_result, is_release_ready, release_state
 from orchestra.conductor.requirements import RequirementState, RequirementStatus
 
 
