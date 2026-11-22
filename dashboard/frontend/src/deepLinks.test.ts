@@ -13,12 +13,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
 import { appSource } from "./appSource";
 import { resolveRef } from "./links";
 import { renderMarkdown } from "./markdown";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -199,17 +200,9 @@ function stubFetch(snap: Snapshot, detailBodies: Record<string, unknown> = {}) {
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 describe("deep-links-wire", () => {
@@ -224,7 +217,7 @@ describe("deep-links-wire", () => {
 
 	it("R1: activating a task id reference opens the task overlay", async () => {
 		stubFetch(makeSnapshot([demo]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		window.location.hash = "#/task/t-wire";
 		window.dispatchEvent(new HashChangeEvent("hashchange"));
 		await vi.advanceTimersByTimeAsync(0);
@@ -242,7 +235,7 @@ describe("deep-links-wire", () => {
 		expect(resolved?.href).toBe("#/phase/dashboard/deep-links");
 
 		stubFetch(makeSnapshot([demo]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		window.location.hash = resolved!.href;
 		window.dispatchEvent(new HashChangeEvent("hashchange"));
 		await vi.advanceTimersByTimeAsync(0);
@@ -260,7 +253,7 @@ describe("deep-links-wire", () => {
 		expect(resolved?.href).toBe("#/requirement/dashboard/deep-links/R3");
 
 		stubFetch(makeSnapshot([demo]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		window.location.hash = resolved!.href;
 		window.dispatchEvent(new HashChangeEvent("hashchange"));
 		await vi.advanceTimersByTimeAsync(0);
@@ -270,7 +263,7 @@ describe("deep-links-wire", () => {
 
 	it("R5: a milestone subject reference expands that milestone group", async () => {
 		stubFetch(makeSnapshot([demo]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		// Collapse first by toggling if open, then navigate via milestone hash.
 		window.location.hash = "#/milestone/dashboard/web-calm";
 		window.dispatchEvent(new HashChangeEvent("hashchange"));

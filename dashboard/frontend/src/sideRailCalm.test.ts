@@ -14,13 +14,14 @@
  * R9: Esc or back returns to effort home.
  */
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JournalResponse } from "./api-types";
 import { appSource } from "./appSource";
 import { effortHref, journalHref } from "./detail";
 import { parseRoute } from "./router";
 import { filterJournal, orderedJournal } from "./side";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 let mounted: ReturnType<typeof mount> | undefined;
@@ -99,18 +100,10 @@ function stubFetch(
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		if (!window.location.hash) window.location.hash = effortHref(homeEffort);
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	if (!window.location.hash) window.location.hash = effortHref(homeEffort);
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 describe("side-rail-home calm rail", () => {
@@ -139,7 +132,7 @@ describe("side-rail-home calm rail", () => {
 		stubFetch(makeSnapshot([effort({ effort: "alpha", kind: "repair" })]), {
 			alpha: journal,
 		});
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 
@@ -173,7 +166,7 @@ describe("side-rail-home calm rail", () => {
 			],
 		});
 		stubFetch(makeSnapshot([alpha]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 
 		expect(document.querySelector("[data-side-needs]")).toBeTruthy();
 		expect(document.querySelector('[data-needs="q1"]')).toBeTruthy();
@@ -210,7 +203,7 @@ describe("side-rail-home calm rail", () => {
 			stubFetch(makeSnapshot([effort({ effort: name, kind })]), {
 				[name]: journal,
 			});
-			if (!(await tryMountApp())) return;
+			await mountDashboard();
 			await vi.advanceTimersByTimeAsync(0);
 			flushSync();
 
@@ -250,7 +243,7 @@ describe("side-rail-home calm rail", () => {
 					rest: [],
 				},
 			});
-			if (!(await tryMountApp())) return;
+			await mountDashboard();
 			await vi.advanceTimersByTimeAsync(0);
 			flushSync();
 
@@ -295,7 +288,7 @@ describe("side-rail-journal-screen", () => {
 			alpha: sampleJournal,
 		});
 		window.location.hash = journalHref("alpha");
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 
@@ -320,7 +313,7 @@ describe("side-rail-journal-screen", () => {
 			alpha: sampleJournal,
 		});
 		window.location.hash = journalHref("alpha");
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 
@@ -344,7 +337,7 @@ describe("side-rail-journal-screen", () => {
 			alpha: sampleJournal,
 		});
 		window.location.hash = journalHref("alpha");
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 
@@ -407,7 +400,7 @@ describe("side-rail-journal-screen", () => {
 		);
 
 		window.location.hash = journalHref("alpha");
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 
@@ -428,7 +421,7 @@ describe("side-rail-journal-screen", () => {
 			alpha: sampleJournal,
 		});
 		window.location.hash = journalHref("alpha");
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await vi.advanceTimersByTimeAsync(0);
 		flushSync();
 

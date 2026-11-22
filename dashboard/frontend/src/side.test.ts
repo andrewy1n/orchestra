@@ -7,11 +7,12 @@
  * R13: open backlog items for the selected effort.
  */
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JournalResponse, NeedsYouSummary } from "./api-types";
 import { appSource } from "./appSource";
 import { openBacklog, orderedJournal } from "./side";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 let mounted: ReturnType<typeof mount> | undefined;
@@ -87,17 +88,9 @@ function stubFetch(
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 describe("web-dashboard side", () => {
@@ -141,25 +134,24 @@ describe("web-dashboard side", () => {
 			beta: { open: [], rest: [] },
 		});
 		window.location.hash = "#/effort/alpha";
-		if (await tryMountApp()) {
-			const side = document.querySelector("[data-side-needs]");
-			expect(side).toBeTruthy();
-			expect(document.querySelector('[data-needs="q1"]')).toBeTruthy();
-			expect(document.querySelector('[data-needs="c1"]')).toBeTruthy();
-			expect(document.querySelector('[data-needs="nh1"]')).toBeNull();
+		await mountDashboard();
+		const side = document.querySelector("[data-side-needs]");
+		expect(side).toBeTruthy();
+		expect(document.querySelector('[data-needs="q1"]')).toBeTruthy();
+		expect(document.querySelector('[data-needs="c1"]')).toBeTruthy();
+		expect(document.querySelector('[data-needs="nh1"]')).toBeNull();
 
-			document
-				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
-				.click();
-			await vi.advanceTimersByTimeAsync(0);
-			window.dispatchEvent(new HashChangeEvent("hashchange"));
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
+		document
+			.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
+			.click();
+		await vi.advanceTimersByTimeAsync(0);
+		window.dispatchEvent(new HashChangeEvent("hashchange"));
+		flushSync();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
 
-			expect(document.querySelector('[data-needs="nh1"]')).toBeTruthy();
-			expect(document.querySelector('[data-needs="q1"]')).toBeNull();
-		}
+		expect(document.querySelector('[data-needs="nh1"]')).toBeTruthy();
+		expect(document.querySelector('[data-needs="q1"]')).toBeNull();
 	});
 
 	it("R12: orderedJournal returns open then rest; home side rail has no journal entry rows.", async () => {
@@ -213,11 +205,10 @@ describe("web-dashboard side", () => {
 
 		const alpha = effort({ effort: "alpha" });
 		stubFetch(makeSnapshot([alpha]), { alpha: journal });
-		if (await tryMountApp()) {
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
-			expect(document.querySelectorAll("[data-journal]").length).toBe(0);
-		}
+		await mountDashboard();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
+		expect(document.querySelectorAll("[data-journal]").length).toBe(0);
 	});
 
 	it("R13: The side column lists the selected effort's open backlog items.", async () => {
@@ -263,25 +254,24 @@ describe("web-dashboard side", () => {
 			beta: { open: [], rest: [] },
 		});
 		window.location.hash = "#/effort/alpha";
-		if (await tryMountApp()) {
-			expect(document.querySelector('[data-backlog="b1"]')).toBeTruthy();
-			expect(
-				document.querySelector('[data-backlog="b1"]')?.textContent,
-			).toContain("park-me");
-			expect(document.querySelector('[data-backlog="b2"]')).toBeNull();
-			expect(document.querySelector('[data-backlog="b3"]')).toBeNull();
+		await mountDashboard();
+		expect(document.querySelector('[data-backlog="b1"]')).toBeTruthy();
+		expect(
+			document.querySelector('[data-backlog="b1"]')?.textContent,
+		).toContain("park-me");
+		expect(document.querySelector('[data-backlog="b2"]')).toBeNull();
+		expect(document.querySelector('[data-backlog="b3"]')).toBeNull();
 
-			document
-				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
-				.click();
-			await vi.advanceTimersByTimeAsync(0);
-			window.dispatchEvent(new HashChangeEvent("hashchange"));
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
+		document
+			.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
+			.click();
+		await vi.advanceTimersByTimeAsync(0);
+		window.dispatchEvent(new HashChangeEvent("hashchange"));
+		flushSync();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
 
-			expect(document.querySelector('[data-backlog="b3"]')).toBeTruthy();
-			expect(document.querySelector('[data-backlog="b1"]')).toBeNull();
-		}
+		expect(document.querySelector('[data-backlog="b3"]')).toBeTruthy();
+		expect(document.querySelector('[data-backlog="b1"]')).toBeNull();
 	});
 });

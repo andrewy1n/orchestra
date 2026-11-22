@@ -3,10 +3,11 @@
  * Phase overlay chrome on every tab (phase-overview).
  */
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appSource } from "./appSource";
 import { buildPhaseChrome } from "./phaseChrome";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 let mounted: ReturnType<typeof mount> | undefined;
@@ -152,17 +153,9 @@ function stubFetch(snap: Snapshot, phaseByKey: Record<string, unknown> = {}) {
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 async function openPhase(tab = "overview") {
@@ -230,7 +223,7 @@ describe("phase overlay UI", () => {
 
 	it("R1 R2 R3 R4 R6: chrome renders on Overview", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("overview");
 		expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
 		expect(document.querySelector("[data-phase-chips]")?.textContent).toMatch(
@@ -250,7 +243,7 @@ describe("phase overlay UI", () => {
 
 	it("R1: chrome also renders on Spec (not Overview-only)", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("spec");
 		expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
 		expect(
@@ -265,7 +258,7 @@ describe("phase overlay UI", () => {
 
 	it("R5: activating a requirement chip opens the requirement overlay", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("spec");
 		const btn = document.querySelector('[data-phase-req="R1"]');
 		expect(btn).toBeTruthy();
@@ -283,7 +276,7 @@ describe("phase overlay UI", () => {
 	it("R7: tab bodies use section cards rather than bare dumps only", async () => {
 		expect(appSource).toMatch(/section-card|data-section-card/);
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("tasks");
 		expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
 		const body = document.querySelector("[data-task-board]");
@@ -294,7 +287,7 @@ describe("phase overlay UI", () => {
 
 	it("R9: tab-specific content remains under shared chrome", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("design");
 		expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
 		expect(
@@ -306,7 +299,7 @@ describe("phase overlay UI", () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]), {
 			"phase-overview": emptyPhasePayload,
 		});
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openPhase("overview");
 		expect(document.querySelector("[data-phase-chrome]")).toBeTruthy();
 		expect(document.querySelector("[data-phase-reqs-empty]")).toBeTruthy();

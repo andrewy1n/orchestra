@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -22,6 +22,7 @@ import {
 } from "./actions";
 import { appSource } from "./appSource";
 import { needsHref } from "./detail";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -139,17 +140,9 @@ function stubFetch(
 	return fetchMock;
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 async function openAndSettle(hash: string): Promise<void> {
@@ -255,47 +248,44 @@ describe("web-dashboard actions", () => {
 			{ "/api/needs?": needsPayload },
 		);
 
-		if (await tryMountApp()) {
-			await openAndSettle(needsHref("dashboard", "q1"));
-			expect(document.querySelector('[data-detail="needs"]')).toBeTruthy();
-			expect(
-				document.querySelector('[data-write-action="approve"]'),
-			).toBeTruthy();
-			expect(document.querySelector("[data-confirm]")).toBeNull();
-			expect(postCalls(fetchMock)).toEqual([]);
+		await mountDashboard();
+		await openAndSettle(needsHref("dashboard", "q1"));
+		expect(document.querySelector('[data-detail="needs"]')).toBeTruthy();
+		expect(
+			document.querySelector('[data-write-action="approve"]'),
+		).toBeTruthy();
+		expect(document.querySelector("[data-confirm]")).toBeNull();
+		expect(postCalls(fetchMock)).toEqual([]);
 
-			document
-				.querySelector<HTMLButtonElement>('[data-write-action="approve"]')!
-				.click();
-			flushSync();
+		document
+			.querySelector<HTMLButtonElement>('[data-write-action="approve"]')!
+			.click();
+		flushSync();
 
-			expect(document.querySelector("[data-confirm]")).toBeTruthy();
-			expect(document.querySelector("[data-confirm-submit]")).toBeTruthy();
-			expect(document.querySelector("[data-confirm-note]")).toBeTruthy();
-			expect(postCalls(fetchMock)).toEqual([]);
+		expect(document.querySelector("[data-confirm]")).toBeTruthy();
+		expect(document.querySelector("[data-confirm-submit]")).toBeTruthy();
+		expect(document.querySelector("[data-confirm-note]")).toBeTruthy();
+		expect(postCalls(fetchMock)).toEqual([]);
 
-			document
-				.querySelector<HTMLButtonElement>("[data-confirm-submit]")!
-				.click();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
+		document.querySelector<HTMLButtonElement>("[data-confirm-submit]")!.click();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
 
-			const posts = postCalls(fetchMock);
-			expect(posts.some((url) => url.includes("/api/needs"))).toBe(true);
-			const postCall = fetchMock.mock.calls.find((call) => {
-				const init = call[1] as RequestInit | undefined;
-				return (init?.method || "").toUpperCase() === "POST";
-			});
-			expect(postCall).toBeTruthy();
-			const body = JSON.parse(String((postCall![1] as RequestInit).body));
-			expect(body).toMatchObject({
-				id: "q1",
-				action: "approve",
-				revision: "sha256:abc",
-			});
-		}
+		const posts = postCalls(fetchMock);
+		expect(posts.some((url) => url.includes("/api/needs"))).toBe(true);
+		const postCall = fetchMock.mock.calls.find((call) => {
+			const init = call[1] as RequestInit | undefined;
+			return (init?.method || "").toUpperCase() === "POST";
+		});
+		expect(postCall).toBeTruthy();
+		const body = JSON.parse(String((postCall![1] as RequestInit).body));
+		expect(body).toMatchObject({
+			id: "q1",
+			action: "approve",
+			revision: "sha256:abc",
+		});
 	});
 
 	it("R27: When dismiss_item raises, the page shows that error.", async () => {
@@ -343,30 +333,27 @@ describe("web-dashboard actions", () => {
 			},
 		);
 
-		if (await tryMountApp()) {
-			await openAndSettle(needsHref("dashboard", "q1"));
-			document
-				.querySelector<HTMLButtonElement>('[data-write-action="approve"]')!
-				.click();
-			flushSync();
-			expect(document.querySelector("[data-confirm]")).toBeTruthy();
+		await mountDashboard();
+		await openAndSettle(needsHref("dashboard", "q1"));
+		document
+			.querySelector<HTMLButtonElement>('[data-write-action="approve"]')!
+			.click();
+		flushSync();
+		expect(document.querySelector("[data-confirm]")).toBeTruthy();
 
-			document
-				.querySelector<HTMLButtonElement>("[data-confirm-submit]")!
-				.click();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
-			await vi.advanceTimersByTimeAsync(0);
-			flushSync();
+		document.querySelector<HTMLButtonElement>("[data-confirm-submit]")!.click();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
+		await vi.advanceTimersByTimeAsync(0);
+		flushSync();
 
-			expect(
-				postCalls(fetchMock).some((url) => url.includes("/api/needs")),
-			).toBe(true);
-			const err = document.querySelector("[data-write-error]");
-			expect(err).toBeTruthy();
-			expect(err?.textContent).toContain(dismissMessage);
-			// Confirm stays so the operator can fix the note or cancel.
-			expect(document.querySelector("[data-confirm]")).toBeTruthy();
-		}
+		expect(postCalls(fetchMock).some((url) => url.includes("/api/needs"))).toBe(
+			true,
+		);
+		const err = document.querySelector("[data-write-error]");
+		expect(err).toBeTruthy();
+		expect(err?.textContent).toContain(dismissMessage);
+		// Confirm stays so the operator can fix the note or cancel.
+		expect(document.querySelector("[data-confirm]")).toBeTruthy();
 	});
 });

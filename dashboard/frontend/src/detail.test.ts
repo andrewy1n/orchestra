@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appSource } from "./appSource";
 import {
@@ -28,6 +28,7 @@ import {
 } from "./detail";
 import { evidenceBoard } from "./detailView";
 import { parseRoute } from "./router";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -117,17 +118,9 @@ function stubFetch(snap: Snapshot, details: DetailMap = {}) {
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 async function openAndSettle(hash: string): Promise<void> {
@@ -174,21 +167,18 @@ describe("web-dashboard detail", () => {
 			"/api/phase?": phasePayload,
 		});
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			const overlay = document.querySelector('[data-detail="phase"]');
-			expect(overlay).toBeTruthy();
-			for (const tab of phasePayload.tabs) {
-				expect(
-					document.querySelector(`[data-phase-tab="${tab}"]`),
-				).toBeTruthy();
-			}
-			const text = payloadText();
-			expect(text).toContain("Web dashboard");
-			expect(text).toContain("Phase body marker");
-			expect(text).toContain('"overview"');
-			expect(text).toContain('"tasks"');
+		await mountDashboard();
+		await openAndSettle(href);
+		const overlay = document.querySelector('[data-detail="phase"]');
+		expect(overlay).toBeTruthy();
+		for (const tab of phasePayload.tabs) {
+			expect(document.querySelector(`[data-phase-tab="${tab}"]`)).toBeTruthy();
 		}
+		const text = payloadText();
+		expect(text).toContain("Web dashboard");
+		expect(text).toContain("Phase body marker");
+		expect(text).toContain('"overview"');
+		expect(text).toContain('"tasks"');
 	});
 
 	it("R15: Opening a task shows the payload of GET /api/task.", async () => {
@@ -230,14 +220,13 @@ describe("web-dashboard detail", () => {
 			{ "/api/task?": taskPayload },
 		);
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			expect(document.querySelector('[data-detail="task"]')).toBeTruthy();
-			const text = payloadText();
-			expect(text).toContain("web-ui-detail");
-			expect(text).toContain("Task payload marker");
-			expect(text).toContain("Open detail overlays");
-		}
+		await mountDashboard();
+		await openAndSettle(href);
+		expect(document.querySelector('[data-detail="task"]')).toBeTruthy();
+		const text = payloadText();
+		expect(text).toContain("web-ui-detail");
+		expect(text).toContain("Task payload marker");
+		expect(text).toContain("Open detail overlays");
 	});
 
 	it("R16: Opening a requirement shows the payload of GET /api/requirement.", async () => {
@@ -263,15 +252,12 @@ describe("web-dashboard detail", () => {
 			"/api/requirement?": reqPayload,
 		});
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			expect(
-				document.querySelector('[data-detail="requirement"]'),
-			).toBeTruthy();
-			const text = payloadText();
-			expect(text).toContain("R14");
-			expect(text).toContain("Opening a phase shows the payload");
-		}
+		await mountDashboard();
+		await openAndSettle(href);
+		expect(document.querySelector('[data-detail="requirement"]')).toBeTruthy();
+		const text = payloadText();
+		expect(text).toContain("R14");
+		expect(text).toContain("Opening a phase shows the payload");
 	});
 
 	it("R17: Opening a record shows the payload of GET /api/record.", async () => {
@@ -298,14 +284,13 @@ describe("web-dashboard detail", () => {
 			"/api/record?": recordPayload,
 		});
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			expect(document.querySelector('[data-detail="record"]')).toBeTruthy();
-			const text = payloadText();
-			expect(text).toContain("tuner:finding");
-			expect(text).toContain("Record payload marker");
-			expect(text).toContain("open-finding");
-		}
+		await mountDashboard();
+		await openAndSettle(href);
+		expect(document.querySelector('[data-detail="record"]')).toBeTruthy();
+		const text = payloadText();
+		expect(text).toContain("tuner:finding");
+		expect(text).toContain("Record payload marker");
+		expect(text).toContain("open-finding");
 	});
 
 	it("R18: Opening a Needs you item shows the payload of GET /api/needs.", async () => {
@@ -349,15 +334,14 @@ describe("web-dashboard detail", () => {
 			{ "/api/needs?": needsPayload },
 		);
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			expect(document.querySelector('[data-detail="needs"]')).toBeTruthy();
-			const text = payloadText();
-			expect(text).toContain("blocking-question");
-			expect(text).toContain("which-backend");
-			expect(text).toContain("sha256:abc");
-			expect(text).toContain("confirm_choices");
-		}
+		await mountDashboard();
+		await openAndSettle(href);
+		expect(document.querySelector('[data-detail="needs"]')).toBeTruthy();
+		const text = payloadText();
+		expect(text).toContain("blocking-question");
+		expect(text).toContain("which-backend");
+		expect(text).toContain("sha256:abc");
+		expect(text).toContain("confirm_choices");
 	});
 
 	it("R19: Opening a backlog item shows the payload of GET /api/backlog.", async () => {
@@ -399,14 +383,13 @@ describe("web-dashboard detail", () => {
 			{ "/api/backlog?": backlogPayload },
 		);
 
-		if (await tryMountApp()) {
-			await openAndSettle(href);
-			expect(document.querySelector('[data-detail="backlog"]')).toBeTruthy();
-			const text = payloadText();
-			expect(text).toContain("park-me");
-			expect(text).toContain("parked work");
-			expect(text).toContain('"status": "open"');
-		}
+		await mountDashboard();
+		await openAndSettle(href);
+		expect(document.querySelector('[data-detail="backlog"]')).toBeTruthy();
+		const text = payloadText();
+		expect(text).toContain("park-me");
+		expect(text).toContain("parked work");
+		expect(text).toContain('"status": "open"');
 	});
 });
 
