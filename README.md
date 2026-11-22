@@ -602,8 +602,19 @@ run apart from the orchestra tests. CI runs the same three commands as
 parallel jobs. A local suite in `smoke` or `full` mode requires a non-empty command.
 A skipped local start returns status 4.
 
-These three commands are the **phase-level suite** configured in the root
-`orchestra.toml` under `[suite]`.
+The `test-orchestra` CI log reports total pytest time and lists test calls,
+fixture setups, and teardowns that take at least one second. To reproduce that
+report after building the dashboard frontend, run:
+
+```bash
+uv run pytest -q -p no:cacheprovider -n auto --durations=0 --durations-min=1 tests --ignore=tests/canon --ignore=tests/tuner
+```
+
+For a before-and-after comparison, use the same test selection, Python version,
+and worker count on the same machine.
+
+The three Python test groups above make up the **phase-level suite**
+configured in the root `orchestra.toml` under `[suite]`.
 Per-task `verify_command` values stay narrowly scoped (specific files
 and `-k` filters). Do not put this whole-suite command on a work-item
 acceptance. After closing verification and the phase-end reviewer

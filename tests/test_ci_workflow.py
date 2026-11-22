@@ -339,8 +339,10 @@ def test_r17_runs_remaining_tests():
     assert any(
         "pytest" in line
         and "-n auto" in line
+        and "--durations=0" in line.split()
+        and "--durations-min=1" in line.split()
         and "tests --ignore=tests/canon --ignore=tests/tuner" in line
-        for line in all_run_lines()
+        for line in run_lines("test-orchestra")
     )
 
 

@@ -99,6 +99,23 @@ Run the three pytest commands in the README Testing section only at phase
 end, or when you change shared code (config, store, CLI entry points).
 CI runs the full suite on every push.
 
+### Regression tests
+
+During planning, identify the failure the acceptance should catch. Reuse an
+existing test in the acceptance command when it covers that failure. Extend
+its cases when the owning API has a coverage gap.
+
+Cover distinct rule outcomes and edge cases through the owning production
+API. For example, test the full requirement-status decision matrix at its
+owner and verify that an unverified requirement blocks landing through the
+real landing path. Add more integration cases when the caller can fail in a
+distinct way. Use browser and installed-package tests for behavior that
+depends on those environments.
+
+For a repair, confirm the regression case fails on the bug and passes with
+the fix. In review, ask what could break while the existing tests still pass
+and why the proposed test needs its chosen entry point.
+
 ## TypeScript and Svelte
 
 The dashboard UI lives in `dashboard/frontend`. Run the commands below from that directory.
