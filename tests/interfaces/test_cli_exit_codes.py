@@ -775,7 +775,7 @@ TUNER_CANON_STAGE = [
         err="no active binding for X",
     ),
     orchestra(
-        "verify_recheck_no_store", "bare", 1, "verify", "recheck", "--claim", "X", err=NO_STORE
+        "verify_recheck_no_store", "bare", 2, "verify", "recheck", "--claim", "X", err=NO_STORE
     ),
     orchestra(
         "verify_unbind_unknown",

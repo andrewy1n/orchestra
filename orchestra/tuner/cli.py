@@ -1,4 +1,4 @@
-"""Subcommand dispatcher for `orchestra verify`."""
+"""Command list for `orchestra verify` and `orchestra plugins`."""
 
 from __future__ import annotations
 
@@ -7,11 +7,12 @@ import json
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Protocol
 
 from orchestra.canon.extensions import PLUGIN_GROUPS, list_plugins
 from orchestra.canon.types import JsonObject
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.canon.workspace import Access, open_for_command
+from orchestra.tools import command_kit
+from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tuner import verify_plugins
 from orchestra.tuner.attestation import emit, verify
 from orchestra.tuner.audit import AuditError, AuditTrailError, run_audit
@@ -24,41 +25,41 @@ from orchestra.tuner.observation import list_observations, maybe_record_verdict_
 from orchestra.tuner.oracle_red import is_assertion_level_red
 from orchestra.tuner.verdict import run_verdict
 
-COMMANDS = frozenset({"verify", "plugins"})
-PASSTHROUGH = "verify"
+__all__ = ["commands", "main"]
 
 
-class SubparserGroup(Protocol):
-    def add_parser(
-        self, name: str, *, help: str, add_help: bool = True
-    ) -> argparse.ArgumentParser: ...
+def _read_json(path: str | None) -> JsonObject:
+    if path is None or path == "-":
+        body: JsonObject = json.load(sys.stdin)
+        return body
+    body = json.loads(Path(path).read_text(encoding="utf-8"))
+    return body
 
 
-def _store_refusal(work: Path, access: Access, code: int) -> int | None:
-    try:
-        Workspace(root=work, access=access).open()
-    except StoreNotReady as exc:
-        print(not_ready_message(exc, work), file=sys.stderr)
-        return code
-    return None
+def _work(args: argparse.Namespace) -> Path:
+    return Path(args.cwd) if args.cwd else Path.cwd()
 
 
-def add_parsers(sub: SubparserGroup) -> None:
-    verify = sub.add_parser(
-        "verify",
-        add_help=False,
-        help="Verdict, attestation, claims, audit, and evidence binding",
+def _add_cwd(
+    parser: argparse.ArgumentParser, help: str = "Repository root (default: process cwd)"
+) -> None:
+    parser.add_argument("--cwd", default=None, help=help)
+
+
+def _add_require_trail(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--require-trail",
+        action="store_true",
+        help="Return an operational error if the observation trail cannot be saved",
     )
-    verify.add_argument("verify_args", nargs=argparse.REMAINDER)
-    plugins = sub.add_parser("plugins", help="List installed plugins")
-    listing = plugins.add_subparsers(dest="action", required=True).add_parser(
-        "list", help="List installed plugins by scope"
-    )
+
+
+def _configure_plugins_list(listing: argparse.ArgumentParser) -> None:
     listing.add_argument("--scope", choices=tuple(PLUGIN_GROUPS), default=None)
     listing.add_argument("--format", choices=("table", "json"), default="table")
 
 
-def _run_plugins(args: argparse.Namespace) -> int:
+def _plugins_list(args: argparse.Namespace) -> int:
     descriptors = sorted(list_plugins(args.scope), key=lambda item: (item.scope, item.plugin_id))
     if args.format == "json":
         print(json.dumps([asdict(item) for item in descriptors], sort_keys=True))
@@ -80,36 +81,8 @@ def _run_plugins(args: argparse.Namespace) -> int:
     return 0
 
 
-def run(args: argparse.Namespace, extra: list[str]) -> int:
-    if args.command == "plugins":
-        return _run_plugins(args)
-    return main([*args.verify_args, *extra])
-
-
-def _read_json(path: str | None) -> JsonObject:
-    if path is None or path == "-":
-        body: JsonObject = json.load(sys.stdin)
-        return body
-    body = json.loads(Path(path).read_text(encoding="utf-8"))
-    return body
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="orchestra verify",
-        description="Verdict, attestation, and witness lint.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    verdict = sub.add_parser(
-        "verdict",
-        help="Re-execute frozen oracle tests at two revisions",
-    )
-    verdict.add_argument(
-        "--cwd",
-        default=None,
-        help="Git repository (default: process cwd)",
-    )
+def _configure_verdict(verdict: argparse.ArgumentParser) -> None:
+    _add_cwd(verdict, "Git repository (default: process cwd)")
     verdict.add_argument("--at", required=True, help="Revision where oracle tests must pass")
     verdict.add_argument(
         "--base",
@@ -122,100 +95,112 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Also require git provenance: oracle lands first, oracle-only commit, distinct signers",
     )
     verdict.add_argument("claim_ids", nargs="+", metavar="CLAIM", help="Claim ids to judge")
+    _add_require_trail(verdict)
 
-    template = sub.add_parser(
-        "runner-template",
-        help="Print a shipped runner template argv as a JSON list",
+
+def _verdict(args: argparse.Namespace) -> int:
+    work = _work(args)
+    try:
+        payload = run_verdict(work, args.at, args.base, args.claim_ids, provenance=args.provenance)
+    except ManifestError as exc:
+        raise CommandError(str(exc), 2) from exc
+    command_kit.emit_json(payload, compact=True)
+    result = payload["result"]
+    if not isinstance(result, str):
+        raise TypeError("verdict result must be a string")
+    recorded = maybe_record_verdict_observation(
+        work, at=args.at, base=args.base, claim_ids=args.claim_ids, result=result
     )
+    if args.require_trail and not recorded:
+        raise CommandError("required observation trail could not be persisted", 2)
+    return 0 if result == "pass" else 1
+
+
+def _configure_runner_template(template: argparse.ArgumentParser) -> None:
     template.add_argument("kind", choices=sorted(TEMPLATES))
 
-    attest = sub.add_parser("attest", help="Emit or verify a signed verdict attestation")
-    attest_sub = attest.add_subparsers(dest="attest_command", required=True)
 
-    attest_emit = attest_sub.add_parser(
-        "emit",
-        help="Sign a verdict JSON body (stdin or --input)",
-    )
-    attest_emit.add_argument(
-        "--key",
-        required=True,
-        help="SSH private key path for signing",
-    )
-    attest_emit.add_argument(
-        "--input",
-        default=None,
-        help="Verdict JSON path (default: stdin)",
-    )
+def _runner_template(args: argparse.Namespace) -> int:
+    command_kit.emit_json(list(TEMPLATES[args.kind]), compact=True)
+    return 0
 
-    attest_verify = attest_sub.add_parser(
-        "verify",
-        help="Verify a signed attestation under an allowlist",
-    )
-    attest_verify.add_argument(
-        "--allowlist",
-        required=True,
-        help="allowed_signers file path",
-    )
-    attest_verify.add_argument(
-        "--commit",
-        required=True,
-        help="Expected commit SHA the attestation must bind",
-    )
-    attest_verify.add_argument(
-        "--manifest-hash",
-        required=True,
-        help="Expected manifest hash the attestation must bind",
-    )
-    attest_verify.add_argument(
-        "--input",
-        default=None,
-        help="Attestation JSON path (default: stdin)",
-    )
 
-    lint = sub.add_parser("lint", help="Report no-assert witnesses or new skips")
-    lint_sub = lint.add_subparsers(dest="lint_command", required=True)
+def _configure_attest_emit(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--key", required=True, help="SSH private key path for signing")
+    parser.add_argument("--input", default=None, help="Verdict JSON path (default: stdin)")
 
-    no_assert = lint_sub.add_parser(
-        "no-assert",
-        help="Report witness tests with no assert or pytest.raises",
+
+def _attest_emit(args: argparse.Namespace) -> int:
+    signed = emit(_read_json(args.input), key_path=args.key)
+    command_kit.emit_json(signed, compact=True)
+    return 0
+
+
+def _configure_attest_verify(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--allowlist", required=True, help="allowed_signers file path")
+    parser.add_argument(
+        "--commit", required=True, help="Expected commit SHA the attestation must bind"
     )
-    no_assert.add_argument(
-        "paths",
-        nargs="+",
-        metavar="PATH",
-        help="Witness test source files to scan",
+    parser.add_argument(
+        "--manifest-hash", required=True, help="Expected manifest hash the attestation must bind"
+    )
+    parser.add_argument("--input", default=None, help="Attestation JSON path (default: stdin)")
+
+
+def _attest_verify(args: argparse.Namespace) -> int:
+    attestation = _read_json(args.input)
+    allow = Path(args.allowlist).read_bytes()
+    ok, reason = verify(
+        attestation,
+        allow,
+        expected_commit=args.commit,
+        expected_manifest_hash=args.manifest_hash,
+    )
+    if not ok:
+        raise CommandError(reason, 1)
+    return 0
+
+
+def _configure_lint_no_assert(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "paths", nargs="+", metavar="PATH", help="Witness test source files to scan"
     )
 
-    new_skips = lint_sub.add_parser(
-        "new-skips",
-        help="Report claim witnesses skipped at head but not at base",
-    )
-    new_skips.add_argument(
-        "--cwd",
-        default=None,
-        help="Git repository (default: process cwd)",
-    )
-    new_skips.add_argument("--base", required=True, help="Base revision")
-    new_skips.add_argument("--head", required=True, help="Head revision")
-    new_skips.add_argument("claim_id", metavar="CLAIM", help="Claim id whose witnesses to compare")
 
-    lint_claims = lint_sub.add_parser(
-        "claims",
-        help="Report compound and trust-scoped claim text in the working-tree manifest",
-    )
-    lint_claims.add_argument(
-        "--cwd",
-        default=None,
-        help="Repository root (default: process cwd)",
-    )
+def _report(findings: list[str]) -> int:
+    for item in findings:
+        print(item)
+    return 1 if findings else 0
 
-    claim = sub.add_parser("claim", help="Author manifest claims")
-    claim_sub = claim.add_subparsers(dest="claim_command", required=True)
-    claim_add = claim_sub.add_parser("add", help="Append a claim to the manifest")
-    claim_add.add_argument("--cwd", default=None, help="Repository root (default: process cwd)")
-    claim_add.add_argument("--id", required=True, dest="claim_id", help="Claim id")
-    claim_add.add_argument("--text", required=True, help="Claim text")
-    claim_add.add_argument(
+
+def _lint_no_assert(args: argparse.Namespace) -> int:
+    return _report(find_no_assert([Path(p) for p in args.paths]))
+
+
+def _configure_lint_new_skips(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser, "Git repository (default: process cwd)")
+    parser.add_argument("--base", required=True, help="Base revision")
+    parser.add_argument("--head", required=True, help="Head revision")
+    parser.add_argument("claim_id", metavar="CLAIM", help="Claim id whose witnesses to compare")
+
+
+def _lint_new_skips(args: argparse.Namespace) -> int:
+    return _report(find_new_skips(_work(args), args.base, args.head, claim_id=args.claim_id))
+
+
+def _lint_claims(args: argparse.Namespace) -> int:
+    try:
+        findings = find_claim_findings(_work(args))
+    except (OSError, ValueError) as exc:
+        raise CommandError(str(exc), 2) from exc
+    return _report(findings)
+
+
+def _configure_claim_add(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--id", required=True, dest="claim_id", help="Claim id")
+    parser.add_argument("--text", required=True, help="Claim text")
+    parser.add_argument(
         "--test",
         action="append",
         default=[],
@@ -224,27 +209,33 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Oracle test node id (repeatable)",
     )
 
-    freeze_cmd = sub.add_parser(
-        "freeze",
-        help="Record oracle file hashes from the working tree into the manifest",
-    )
-    freeze_cmd.add_argument("--cwd", default=None, help="Repository root (default: process cwd)")
-    freeze_cmd.add_argument(
-        "claim_ids", nargs="*", metavar="CLAIM", help="Claim ids (default: all)"
-    )
 
-    audit = sub.add_parser(
-        "audit",
-        help="Advisory: label diff blocks and optionally plant mutants",
-    )
-    audit.add_argument(
-        "--cwd",
-        default=None,
-        help="Git repository (default: process cwd)",
-    )
-    audit.add_argument("--base", required=True, help="Base revision")
-    audit.add_argument("--head", required=True, help="Head revision")
-    audit.add_argument(
+def _claim_add(args: argparse.Namespace) -> int:
+    try:
+        add_claim(_work(args), args.claim_id, args.text, args.tests)
+    except AuthoringError as exc:
+        raise CommandError(str(exc), 2) from exc
+    return 0
+
+
+def _configure_freeze(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("claim_ids", nargs="*", metavar="CLAIM", help="Claim ids (default: all)")
+
+
+def _freeze(args: argparse.Namespace) -> int:
+    try:
+        freeze(_work(args), args.claim_ids)
+    except AuthoringError as exc:
+        raise CommandError(str(exc), 2) from exc
+    return 0
+
+
+def _configure_audit(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser, "Git repository (default: process cwd)")
+    parser.add_argument("--base", required=True, help="Base revision")
+    parser.add_argument("--head", required=True, help="Head revision")
+    parser.add_argument(
         "--test",
         action="append",
         default=[],
@@ -252,276 +243,278 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="NODE",
         help="Extra claim test node id (repeatable)",
     )
-    audit.add_argument(
-        "--mutants",
-        default=None,
-        help="JSON file of mutant proposals",
-    )
-    audit.add_argument(
+    parser.add_argument("--mutants", default=None, help="JSON file of mutant proposals")
+    parser.add_argument(
         "--max-mutants",
         type=int,
         default=20,
         help="Cap how many mutants from the file are considered (default: 20)",
     )
-    audit.add_argument(
+    parser.add_argument(
         "--probes",
         default=None,
         help="Probe declaration JSON (default: .tuner/probes.json at head)",
     )
+    _add_require_trail(parser)
 
-    for command in (verdict, audit):
-        command.add_argument(
-            "--require-trail",
-            action="store_true",
-            help="Return an operational error if the observation trail cannot be saved",
+
+def _audit(args: argparse.Namespace) -> int:
+    try:
+        payload = run_audit(
+            _work(args),
+            args.base,
+            args.head,
+            extra_tests=args.tests,
+            mutants_path=args.mutants,
+            max_mutants=args.max_mutants,
+            probes_path=args.probes,
+            require_trail=args.require_trail,
         )
+    except AuditTrailError as exc:
+        command_kit.emit_json(exc.report, compact=True)
+        raise CommandError(str(exc), 2) from exc
+    except (AuditError, ManifestError) as exc:
+        raise CommandError(str(exc), 2) from exc
+    command_kit.emit_json(payload, compact=True)
+    return 0
 
-    trail = sub.add_parser(
-        "trail",
-        help="List evidence-observations from the artifact store as JSON",
+
+def _configure_trail(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument(
+        "--claim", default=None, help="Only observations that reference this claim id"
     )
-    trail.add_argument(
-        "--cwd",
-        default=None,
-        help="Repository root (default: process cwd)",
-    )
-    trail.add_argument(
-        "--claim",
-        default=None,
-        help="Only observations that reference this claim id",
-    )
-    trail.add_argument(
-        "--technique",
-        default=None,
-        help="Only observations with this technique name",
+    parser.add_argument(
+        "--technique", default=None, help="Only observations with this technique name"
     )
 
-    bind = sub.add_parser(
-        "bind",
-        help="Attach an observation to a claim under pinned revisions",
-    )
-    bind.add_argument(
-        "--cwd",
-        default=None,
-        help="Repository root (default: process cwd)",
-    )
-    bind.add_argument("--observation", required=True, help="Observation record id")
-    bind.add_argument("--claim", required=True, help="Claim id the observation earns")
-    bind.add_argument("--base", required=True, help="Pinned base revision")
-    bind.add_argument("--head", required=True, help="Pinned head revision")
 
-    unbind_cmd = sub.add_parser(
-        "unbind",
-        help="Retire a binding so the observation no longer earns the claim",
-    )
-    unbind_cmd.add_argument(
-        "--cwd",
-        default=None,
-        help="Repository root (default: process cwd)",
-    )
-    unbind_cmd.add_argument("--id", required=True, help="Binding record id")
+def _trail(args: argparse.Namespace) -> int:
+    work = _work(args)
+    open_for_command(work, Access.READ, store=work)
+    try:
+        items = list_observations(work, claim=args.claim, technique=args.technique)
+    except Exception as exc:
+        raise CommandError(str(exc), 2) from exc
+    command_kit.emit_json(items, compact=True)
+    return 0
 
-    recheck_cmd = sub.add_parser(
-        "recheck",
-        help="Re-judge a claim under its active binding pins",
-    )
-    recheck_cmd.add_argument(
-        "--cwd",
-        default=None,
-        help="Repository root (default: process cwd)",
-    )
-    recheck_cmd.add_argument("--claim", required=True, help="Claim id to re-judge")
 
-    assertion_red = sub.add_parser(
-        "assertion-red",
-        help="Classify whether a check-run JSON is assertion-level red (exit 0/1)",
-    )
-    assertion_red.add_argument(
-        "path",
-        nargs="?",
-        default=None,
-        help="Check-run JSON path (default: stdin)",
+def _configure_bind(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--observation", required=True, help="Observation record id")
+    parser.add_argument("--claim", required=True, help="Claim id the observation earns")
+    parser.add_argument("--base", required=True, help="Pinned base revision")
+    parser.add_argument("--head", required=True, help="Pinned head revision")
+
+
+def _bind(args: argparse.Namespace) -> int:
+    work = _work(args)
+    open_for_command(work, Access.WRITE, store=work)
+    try:
+        record = bind_observation(
+            work,
+            observation_id=args.observation,
+            claim_id=args.claim,
+            base_rev=args.base,
+            head_rev=args.head,
+        )
+    except BindingError as exc:
+        raise CommandError(str(exc), 1) from exc
+    command_kit.emit_json(record, compact=True)
+    return 0
+
+
+def _configure_unbind(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--id", required=True, help="Binding record id")
+
+
+def _unbind(args: argparse.Namespace) -> int:
+    work = _work(args)
+    open_for_command(work, Access.WRITE, store=work)
+    try:
+        body = unbind(work, args.id)
+    except BindingError as exc:
+        raise CommandError(str(exc), 1) from exc
+    command_kit.emit_json(body, compact=True)
+    return 0
+
+
+def _configure_recheck(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--claim", required=True, help="Claim id to re-judge")
+
+
+def _recheck(args: argparse.Namespace) -> int:
+    work = _work(args)
+    open_for_command(work, Access.WRITE, store=work)
+    try:
+        payload = recheck(work, args.claim)
+    except BindingError as exc:
+        raise CommandError(str(exc), 1) from exc
+    except ManifestError as exc:
+        raise CommandError(str(exc), 2) from exc
+    command_kit.emit_json(payload, compact=True)
+    return 0 if payload.get("result") == "pass" else 1
+
+
+def _configure_assertion_red(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "path", nargs="?", default=None, help="Check-run JSON path (default: stdin)"
     )
 
-    return parser
+
+def _assertion_red(args: argparse.Namespace) -> int:
+    try:
+        record = _read_json(args.path)
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise CommandError(str(exc), 2) from exc
+    return 0 if is_assertion_level_red(record) else 1
+
+
+def _verify_children() -> tuple[Command, ...]:
+    return (
+        Command(
+            "verdict",
+            "Re-execute frozen oracle tests at two revisions",
+            configure=_configure_verdict,
+            handle=_verdict,
+        ),
+        Command(
+            "runner-template",
+            "Print a shipped runner template argv as a JSON list",
+            configure=_configure_runner_template,
+            handle=_runner_template,
+        ),
+        Command(
+            "attest",
+            "Emit or verify a signed verdict attestation",
+            children=(
+                Command(
+                    "emit",
+                    "Sign a verdict JSON body (stdin or --input)",
+                    configure=_configure_attest_emit,
+                    handle=_attest_emit,
+                ),
+                Command(
+                    "verify",
+                    "Verify a signed attestation under an allowlist",
+                    configure=_configure_attest_verify,
+                    handle=_attest_verify,
+                ),
+            ),
+        ),
+        Command(
+            "lint",
+            "Report no-assert witnesses or new skips",
+            children=(
+                Command(
+                    "no-assert",
+                    "Report witness tests with no assert or pytest.raises",
+                    configure=_configure_lint_no_assert,
+                    handle=_lint_no_assert,
+                ),
+                Command(
+                    "new-skips",
+                    "Report claim witnesses skipped at head but not at base",
+                    configure=_configure_lint_new_skips,
+                    handle=_lint_new_skips,
+                ),
+                Command(
+                    "claims",
+                    "Report compound and trust-scoped claim text in the working-tree manifest",
+                    configure=_add_cwd,
+                    handle=_lint_claims,
+                ),
+            ),
+        ),
+        Command(
+            "claim",
+            "Author manifest claims",
+            children=(
+                Command(
+                    "add",
+                    "Append a claim to the manifest",
+                    configure=_configure_claim_add,
+                    handle=_claim_add,
+                ),
+            ),
+        ),
+        Command(
+            "freeze",
+            "Record oracle file hashes from the working tree into the manifest",
+            configure=_configure_freeze,
+            handle=_freeze,
+        ),
+        Command(
+            "audit",
+            "Advisory: label diff blocks and optionally plant mutants",
+            configure=_configure_audit,
+            handle=_audit,
+        ),
+        Command(
+            "trail",
+            "List evidence-observations from the artifact store as JSON",
+            configure=_configure_trail,
+            handle=_trail,
+        ),
+        Command(
+            "bind",
+            "Attach an observation to a claim under pinned revisions",
+            configure=_configure_bind,
+            handle=_bind,
+        ),
+        Command(
+            "unbind",
+            "Retire a binding so the observation no longer earns the claim",
+            configure=_configure_unbind,
+            handle=_unbind,
+        ),
+        Command(
+            "recheck",
+            "Re-judge a claim under its active binding pins",
+            configure=_configure_recheck,
+            handle=_recheck,
+        ),
+        Command(
+            "assertion-red",
+            "Classify whether a check-run JSON is assertion-level red (exit 0/1)",
+            configure=_configure_assertion_red,
+            handle=_assertion_red,
+        ),
+        verify_plugins.command(),
+    )
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "verify",
+            "Verdict, attestation, claims, audit, and evidence binding",
+            passthrough=True,
+            children=_verify_children(),
+        ),
+        Command(
+            "plugins",
+            "List installed plugins",
+            children=(
+                Command(
+                    "list",
+                    "List installed plugins by scope",
+                    configure=_configure_plugins_list,
+                    handle=_plugins_list,
+                ),
+            ),
+        ),
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
-    if argv is not None and argv[:1] == ["plugins"]:
-        return verify_plugins.main(argv[1:])
-    parser = _build_parser()
+    parser = argparse.ArgumentParser(
+        prog="orchestra verify",
+        description="Verdict, attestation, and witness lint.",
+    )
+    command_kit.mount(parser.add_subparsers(required=True), _verify_children(), ("verify",))
     args = parser.parse_args(argv)
-    if args.command == "verdict":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            payload = run_verdict(
-                work, args.at, args.base, args.claim_ids, provenance=args.provenance
-            )
-        except ManifestError as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        print(json.dumps(payload, separators=(",", ":")))
-        result = payload["result"]
-        if not isinstance(result, str):
-            raise TypeError("verdict result must be a string")
-        recorded = maybe_record_verdict_observation(
-            work,
-            at=args.at,
-            base=args.base,
-            claim_ids=args.claim_ids,
-            result=result,
-        )
-        if args.require_trail and not recorded:
-            print("required observation trail could not be persisted", file=sys.stderr)
-            return 2
-        return 0 if result == "pass" else 1
-    if args.command == "trail":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        refused = _store_refusal(work, Access.READ, 2)
-        if refused is not None:
-            return refused
-        try:
-            items = list_observations(work, claim=args.claim, technique=args.technique)
-        except Exception as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        print(json.dumps(items, separators=(",", ":")))
-        return 0
-    if args.command == "bind":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        refused = _store_refusal(work, Access.WRITE, 1)
-        if refused is not None:
-            return refused
-        try:
-            record = bind_observation(
-                work,
-                observation_id=args.observation,
-                claim_id=args.claim,
-                base_rev=args.base,
-                head_rev=args.head,
-            )
-        except BindingError as exc:
-            print(exc, file=sys.stderr)
-            return 1
-        print(json.dumps(record, separators=(",", ":")))
-        return 0
-    if args.command == "unbind":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        refused = _store_refusal(work, Access.WRITE, 1)
-        if refused is not None:
-            return refused
-        try:
-            body = unbind(work, args.id)
-        except BindingError as exc:
-            print(exc, file=sys.stderr)
-            return 1
-        print(json.dumps(body, separators=(",", ":")))
-        return 0
-    if args.command == "recheck":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        refused = _store_refusal(work, Access.WRITE, 1)
-        if refused is not None:
-            return refused
-        try:
-            payload = recheck(work, args.claim)
-        except BindingError as exc:
-            print(exc, file=sys.stderr)
-            return 1
-        except ManifestError as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        print(json.dumps(payload, separators=(",", ":")))
-        return 0 if payload.get("result") == "pass" else 1
-    if args.command == "assertion-red":
-        try:
-            record = _read_json(args.path)
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        return 0 if is_assertion_level_red(record) else 1
-    if args.command == "claim":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            add_claim(work, args.claim_id, args.text, args.tests)
-        except AuthoringError as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        return 0
-    if args.command == "freeze":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            freeze(work, args.claim_ids)
-        except AuthoringError as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        return 0
-    if args.command == "runner-template":
-        print(json.dumps(list(TEMPLATES[args.kind]), separators=(",", ":")))
-        return 0
-    if args.command == "audit":
-        work = Path(args.cwd) if args.cwd else Path.cwd()
-        try:
-            payload = run_audit(
-                work,
-                args.base,
-                args.head,
-                extra_tests=args.tests,
-                mutants_path=args.mutants,
-                max_mutants=args.max_mutants,
-                probes_path=args.probes,
-                require_trail=args.require_trail,
-            )
-        except AuditTrailError as exc:
-            print(json.dumps(exc.report, separators=(",", ":")))
-            print(exc, file=sys.stderr)
-            return 2
-        except (AuditError, ManifestError) as exc:
-            print(exc, file=sys.stderr)
-            return 2
-        print(json.dumps(payload, separators=(",", ":")))
-        return 0
-    if args.command == "attest":
-        if args.attest_command == "emit":
-            body = _read_json(args.input)
-            signed = emit(body, key_path=args.key)
-            print(json.dumps(signed, separators=(",", ":")))
-            return 0
-        if args.attest_command == "verify":
-            attestation = _read_json(args.input)
-            allow = Path(args.allowlist).read_bytes()
-            ok, reason = verify(
-                attestation,
-                allow,
-                expected_commit=args.commit,
-                expected_manifest_hash=args.manifest_hash,
-            )
-            if not ok:
-                print(reason, file=sys.stderr)
-                return 1
-            return 0
-        parser.error(f"unknown attest command {args.attest_command!r}")
-    if args.command == "lint":
-        if args.lint_command == "no-assert":
-            findings = find_no_assert([Path(p) for p in args.paths])
-            for item in findings:
-                print(item)
-            return 1 if findings else 0
-        if args.lint_command == "new-skips":
-            work = Path(args.cwd) if args.cwd else Path.cwd()
-            findings = find_new_skips(work, args.base, args.head, claim_id=args.claim_id)
-            for item in findings:
-                print(item)
-            return 1 if findings else 0
-        if args.lint_command == "claims":
-            work = Path(args.cwd) if args.cwd else Path.cwd()
-            try:
-                findings = find_claim_findings(work)
-            except (OSError, ValueError) as exc:
-                print(exc, file=sys.stderr)
-                return 2
-            for item in findings:
-                print(item)
-            return 1 if findings else 0
-        parser.error(f"unknown lint command {args.lint_command!r}")
-    parser.error(f"unknown command {args.command!r}")
-    return 2
+    return command_kit.run(args)

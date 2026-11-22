@@ -43,7 +43,7 @@ def _build_parser() -> argparse.ArgumentParser:
     command_kit.mount(sub, stage_cli.commands())
     command_kit.mount(sub, views_status.commands())
     command_kit.mount(sub, metrics_cli.commands())
-    _mount(sub, tuner_cli, lambda: tuner_cli.add_parsers(sub))
+    command_kit.mount(sub, tuner_cli.commands())
     command_kit.mount(sub, sessions_cli.commands())
     command_kit.mount(sub, conductor_cli.commands(render_brief=views_cli.render_brief))
     command_kit.mount(sub, score_cli.commands())
@@ -57,15 +57,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args, extra = parser.parse_known_args(argv)
     bound = getattr(args, "handler", None) is not None
-    passthrough = (
-        getattr(args, "passthrough", False) if bound else args.command == tuner_cli.PASSTHROUGH
-    )
-    if extra and not passthrough:
+    if extra and not (bound and getattr(args, "passthrough", False)):
         parser.error(f"unrecognized arguments: {' '.join(extra)}")
     if bound:
         return command_kit.run(args, extra)
-    if args.command in tuner_cli.COMMANDS:
-        return tuner_cli.run(args, extra)
     if args.command in canon_cli.COMMANDS:
         return canon_cli.run(args)
     parser.error(f"unknown command {args.command!r}")

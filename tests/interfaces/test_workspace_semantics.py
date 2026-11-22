@@ -23,13 +23,13 @@ RAW_NO_STORE = "neither"
 
 TUNER_VERBS = [
     pytest.param(["verify", "trail"], 2, id="trail"),
-    pytest.param(["verify", "recheck", "--claim", "X"], 1, id="recheck"),
+    pytest.param(["verify", "recheck", "--claim", "X"], 2, id="recheck"),
     pytest.param(
         ["verify", "bind", "--observation", "o", "--claim", "X", "--base", "a", "--head", "b"],
-        1,
+        2,
         id="bind",
     ),
-    pytest.param(["verify", "unbind", "--id", "x"], 1, id="unbind"),
+    pytest.param(["verify", "unbind", "--id", "x"], 2, id="unbind"),
 ]
 
 

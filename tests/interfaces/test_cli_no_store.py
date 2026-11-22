@@ -85,12 +85,12 @@ TUNER_CANON_STAGE = [
     (("store", "recover-evidence"), 2),
     (("store", "run", "--", "list", "--type", "score:effort"), 2),
     (("verify", "trail"), 2),
-    (("verify", "recheck", "--claim", "X"), 1),
+    (("verify", "recheck", "--claim", "X"), 2),
     (
         ("verify", "bind", "--observation", "o", "--claim", "X", "--base", "a", "--head", "b"),
-        1,
+        2,
     ),
-    (("verify", "unbind", "--id", "x"), 1),
+    (("verify", "unbind", "--id", "x"), 2),
 ]
 
 VIEWS = [
