@@ -6,6 +6,7 @@ from pathlib import Path
 
 from canon_support import create, make_project
 
+from orchestra.canon.project import open_store
 from orchestra.conductor.check import parse_failing_node_ids, run_check
 
 SPACED = "tests/test_effort_brief.py::test_r3_sections[Success measure]"
@@ -73,7 +74,7 @@ def test_check_run_stores_the_whole_spaced_node_id(tmp_path: Path) -> None:
         },
     )
     outcome = run_check(
-        acceptance_id=acceptance["id"], cwd=tmp_path, store_root=tmp_path, allow_dirty=True
+        acceptance_id=acceptance["id"], cwd=tmp_path, project=open_store(tmp_path), allow_dirty=True
     )
     assert outcome.exit_code == 1
     assert outcome.record is not None

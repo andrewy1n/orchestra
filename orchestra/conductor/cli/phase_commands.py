@@ -58,9 +58,7 @@ def run_gate(args: argparse.Namespace) -> int:
     start = head_worktree or Path.cwd()
     try:
         workspace = resolve_workspace(args.store, start, Access.READ)
-        terms = gate.gate_terms(
-            workspace.root, args.phase, store_dir=workspace.store, head_worktree=head_worktree
-        )
+        terms = gate.gate_terms(workspace.open(), args.phase, head_worktree=head_worktree)
     except StoreNotReady as exc:
         print(f"orchestra gate: {args.phase}: {not_ready_message(exc, start)}", file=sys.stderr)
         return 2

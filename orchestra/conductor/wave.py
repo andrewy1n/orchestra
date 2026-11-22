@@ -588,8 +588,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
                 outcome = run_check(
                     acceptance_id=acceptance["id"],
                     cwd=trial,
-                    store_root=project.project_root,
-                    store_dir=project.store_path,
+                    project=project,
                 )
                 outcomes.append((acceptance["subject"], outcome.exit_code))
                 if outcome.exit_code != 0:

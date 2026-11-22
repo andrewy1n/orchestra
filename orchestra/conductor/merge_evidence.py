@@ -112,9 +112,7 @@ def _phase_evidence(
         return "blocked", [f"no phase proof packet for {head}"], None
     if Git(work).head() != head:
         return "blocked", ["phase worktree HEAD differs from the pull request head"], packet.id
-    terms = gate.gate_terms(
-        project.project_root, phase.subject, store_dir=project.store_path, head_worktree=work
-    )
+    terms = gate.gate_terms(project, phase.subject, head_worktree=work)
     missing = gate.format_missing(gate.missing_terms(terms))
     if Git(work).head() != head:
         return "unresolved", ["phase worktree head changed during refresh"], packet.id

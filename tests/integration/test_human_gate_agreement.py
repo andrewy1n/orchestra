@@ -10,7 +10,7 @@ from canon_support import make_project
 from dashboard.backend.server import service
 from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import gate
 from orchestra.views import render as views
@@ -87,7 +87,7 @@ def _run(project: Project, subject: str, criterion: str, signed_by: str) -> Reco
 
 
 def _gate_ids(project: Project, subject_ids: dict[str, str], kinds: tuple[str, ...]) -> set[str]:
-    terms = gate.gate_terms(project.project_root, PHASE)
+    terms = gate.gate_terms(open_store(project.project_root), PHASE)
     ids: set[str] = set()
     for kind in kinds:
         prefix = GATE_PREFIXES[kind]

@@ -13,7 +13,6 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
-from orchestra.canon.workspace import StoreNotReady, Workspace
 from orchestra.conductor.model_types import PlanningPayload
 from orchestra.conductor.policy import (
     dirty_pass_decision,
@@ -173,18 +172,12 @@ def run_check(
     *,
     acceptance_id: str,
     cwd: Path,
-    store_root: Path,
-    store_dir: Path | None = None,
+    project: Project,
     allow_dirty: bool = False,
     execution_report: str | None = None,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
     work = cwd.resolve()
-    try:
-        project = Workspace(root=store_root, store=store_dir).open()
-    except StoreNotReady as exc:
-        return CheckOutcome(exit_code=4, stdout="", message=str(exc))
-
     try:
         acceptance = project.get(acceptance_id, "score:acceptance")
     except StoreError as exc:

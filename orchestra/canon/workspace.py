@@ -6,7 +6,13 @@ from enum import Enum
 from pathlib import Path
 
 from orchestra.canon.errors import StoreNotInitializedError
-from orchestra.canon.project import Project, StoreBindingError, bound_store_path, open_store
+from orchestra.canon.project import (
+    NoArtifactStoreError,
+    Project,
+    StoreBindingError,
+    bound_store_path,
+    open_store,
+)
 
 
 class Access(Enum):
@@ -15,14 +21,20 @@ class Access(Enum):
 
 
 class StoreNotReady(Exception):
-    def __init__(self, searched: tuple[Path, ...] = ()) -> None:
+    def __init__(
+        self, searched: tuple[Path, ...] = (), cause: StoreBindingError | None = None
+    ) -> None:
         listed = ", ".join(str(path) for path in searched)
-        super().__init__(f"no store found; searched: {listed}")
+        detail = f"{cause}; " if cause is not None else ""
+        super().__init__(f"no store found; {detail}searched: {listed}")
         self.searched = searched
+        self.cause = cause
 
 
 def not_ready_message(error: StoreNotReady, start: Path) -> str:
     searched = ", ".join(str(path) for path in error.searched)
+    if error.cause is not None and not isinstance(error.cause, NoArtifactStoreError):
+        return f"store_not_ready: {error.cause}; searched: {searched}"
     return f"store_not_ready: No artifact store for {start.resolve()}; searched: {searched}"
 
 
@@ -47,8 +59,10 @@ class Workspace:
             searched.append(candidate)
             try:
                 found = open_store(candidate, read_only=True)
-            except (StoreBindingError, StoreNotInitializedError):
+            except (NoArtifactStoreError, StoreNotInitializedError):
                 continue
+            except StoreBindingError as exc:
+                raise StoreNotReady(tuple(searched), exc) from exc
             return cls(root=found.project_root, access=access)
         raise StoreNotReady(tuple(searched))
 
@@ -56,12 +70,16 @@ class Workspace:
     def _pinned(cls, root: Path, access: Access) -> Workspace:
         try:
             pinned = bound_store_path(root)
-        except (StoreBindingError, StoreNotInitializedError):
+        except (NoArtifactStoreError, StoreNotInitializedError):
             return cls(root=root, access=access)
+        except StoreBindingError as exc:
+            raise StoreNotReady((root,), exc) from exc
         return cls(root=root, store=pinned, access=access)
 
     def open(self) -> Project:
         try:
             return open_store(self.root, store=self.store, read_only=self.access is Access.READ)
-        except (StoreBindingError, StoreNotInitializedError) as exc:
+        except StoreBindingError as exc:
+            raise StoreNotReady((self.root,), exc) from exc
+        except StoreNotInitializedError as exc:
             raise StoreNotReady((self.root,)) from exc

@@ -10,7 +10,7 @@ import pytest
 from canon_support import REPO, create, make_project
 
 from orchestra.canon import record as canon_record
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.conductor import gate, land_task, wave
 from orchestra.conductor.acceptance_amendment import amend_acceptance
 from orchestra.conductor.check import run_check
@@ -143,7 +143,9 @@ def test_wave_end_and_gate_require_fresh_evidence_after_command_amendment(
 
     def check() -> int:
         return run_check(
-            acceptance_id=acceptance["id"], cwd=tree, store_root=repo, store_dir=project.store_path
+            acceptance_id=acceptance["id"],
+            cwd=tree,
+            project=open_store(repo, store=project.store_path),
         ).exit_code
 
     assert check() == 0
@@ -186,7 +188,9 @@ def test_wave_end_and_gate_require_fresh_evidence_after_command_amendment(
 
     def acceptance_terms() -> list[gate.Term]:
         return [
-            term for term in gate.gate_terms(repo, PHASE) if term.name.startswith("acceptance-")
+            term
+            for term in gate.gate_terms(open_store(repo), PHASE)
+            if term.name.startswith("acceptance-")
         ]
 
     assert wave.end(project, repo, PHASE).skipped == (("a", "checks did not pass"),)

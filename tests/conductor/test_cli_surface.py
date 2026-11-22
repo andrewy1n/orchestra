@@ -415,7 +415,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
             recorded.append({"root": str(repo), **kwargs})
             return {"id": "rec-suite", "subject": kwargs.get("subject")}
 
-    monkeypatch.setattr(suite.Workspace, "open", lambda self: _Project())
+    monkeypatch.setattr(Workspace, "open", lambda self: _Project())
     code, out, err = run(
         [
             "suite",

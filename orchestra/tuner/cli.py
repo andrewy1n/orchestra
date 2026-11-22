@@ -36,7 +36,7 @@ class SubparserGroup(Protocol):
 
 def _store_refusal(work: Path, access: Access, code: int) -> int | None:
     try:
-        Workspace.resolve(work, access=access)
+        Workspace(root=work, access=access).open()
     except StoreNotReady as exc:
         print(not_ready_message(exc, work), file=sys.stderr)
         return code

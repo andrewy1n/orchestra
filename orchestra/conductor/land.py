@@ -198,12 +198,10 @@ def land_phase(
     timeout_s: float,
 ) -> LandingResult:
     """Gate a phase, land it from `work`, and record the landing unless the result is skipped."""
-    missing = gate.missing_terms(
-        gate.gate_terms(workspace.root, phase, store_dir=workspace.store, head_worktree=work)
-    )
+    project = workspace.open()
+    missing = gate.missing_terms(gate.gate_terms(project, phase, head_worktree=work))
     if missing:
         raise LandGateError(phase, gate.format_missing(missing))
-    project = workspace.open()
     records = project.records()
     current = current_phase_model(phase, records)
     if current is None:

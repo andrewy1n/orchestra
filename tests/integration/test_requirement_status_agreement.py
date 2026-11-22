@@ -373,7 +373,7 @@ def _readiness(world: World, phase: str) -> tuple[bool, str]:
 
 
 def _gate_holds(world: World, phase: str) -> bool:
-    terms = gate.gate_terms(world.root, phase)
+    terms = gate.gate_terms(open_store(world.root), phase)
     return all(
         term.holds
         for term in terms

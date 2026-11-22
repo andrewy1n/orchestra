@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.canon.project import NoArtifactStoreError, Project, StoreBindingError
+from orchestra.canon.project import NoArtifactStoreError, Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.tuner.manifest import merge_base, resolve_commit
@@ -28,8 +28,8 @@ def open_subject_store(root: Path) -> Project:
     try:
         return Workspace(root=root, access=Access.WRITE).open()
     except StoreNotReady as exc:
-        if isinstance(exc.__cause__, StoreBindingError):
-            raise exc.__cause__ from None
+        if exc.cause is not None:
+            raise exc.cause from None
         raise
 
 
@@ -37,7 +37,7 @@ def store_usable(cwd: Path | str) -> bool:
     """True when the subject cwd has an openable artifact store."""
     try:
         open_subject_store(Path(cwd))
-    except NoArtifactStoreError:
+    except (NoArtifactStoreError, StoreNotReady):
         return False
     return True
 

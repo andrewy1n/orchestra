@@ -406,7 +406,7 @@ def _through_workflow(rig: Rig) -> None:
 
 
 def _through_gate(rig: Rig) -> None:
-    gate.gate_terms(rig.root, PHASE, store_dir=rig.project.store_path)
+    gate.gate_terms(rig.project, PHASE)
 
 
 def _through_close(rig: Rig) -> None:

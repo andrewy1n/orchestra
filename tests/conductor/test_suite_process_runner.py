@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+from canon_support import make_project
 from conftest import git, make_git_repo
 
 from orchestra.cli import _build_parser
@@ -299,7 +300,7 @@ def test_record_refuses_pass_after_revision_changes(
 
     with pytest.raises(RuntimeError, match="refusing passing check-run"):
         suite.record_suite_check_run(
-            store_root=worktree,
+            project=make_project(tmp_path / "store"),
             phase_slug="suite-test",
             effort="workflow-loop",
             suite=result,

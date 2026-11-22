@@ -96,9 +96,9 @@ def _read_all(
                 by_store[key] = read_project_records(project)
             stores_by_cwd[cwd] = key
         except StoreNotReady as exc:
-            if isinstance(exc.__cause__, NoArtifactStoreError):
+            if isinstance(exc.cause, NoArtifactStoreError):
                 continue
-            cause = exc.__cause__ or exc
+            cause = exc.cause or exc
             failures.append(f"{cwd}: {type(cause).__name__}: {cause}")
             failed_cwds.add(cwd)
             continue

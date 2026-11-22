@@ -1,27 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from canon_support import create, make_project
 from test_wave_end import PHASE, _land, _world
 
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import gate, land_task, phase_progress, wave
 
 EFFORT = "ef"
 RUNNER_PHASE = "runner-phase"
 ITEM = {"kind": "deliver", "assignee": "", "effort": EFFORT, "executor": "inline"}
-
-
-@dataclass
-class _FixedStore:
-    fixed: list[Record]
-
-    def records(self) -> list[Record]:
-        return self.fixed
 
 
 def _item(project: Project, slug: str, depends_on: list[str] | None = None) -> Record:
@@ -76,9 +67,9 @@ def test_r15_gate_takes_the_latest_closing_item_as_verification(
     for record in records:
         if record["id"] == second["id"]:
             record["recorded_at"] = "2099-01-01T00:00:00Z"
-    monkeypatch.setattr(gate.Workspace, "open", lambda _self: _FixedStore(records))
+    monkeypatch.setattr(Project, "records", lambda _self: records)
 
-    terms = {term.name: term for term in gate.gate_terms(tmp_path, PHASE)}
+    terms = {term.name: term for term in gate.gate_terms(open_store(tmp_path), PHASE)}
 
     assert terms["verification-task-done"].holds
 

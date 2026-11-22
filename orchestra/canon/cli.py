@@ -27,7 +27,7 @@ from orchestra.canon.merge import (
     parse_subject_renames,
 )
 from orchestra.canon.modules import discover
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import NoArtifactStoreError, Project, StoreBindingError, open_store
 from orchestra.canon.query import (
     QueryError,
     compile_grep,
@@ -64,6 +64,7 @@ EXIT_VALIDATION = 4
 
 
 class CanonArgs(argparse.Namespace):
+    root_given: bool = False
     body: str | None
     body_file: str | None
     body_only: bool
@@ -319,6 +320,8 @@ def _command_project(args: CanonArgs) -> Project:
     root = _required(args.root)
     if args.store:
         return open_store(root, store=args.store)
+    if args.root_given:
+        return Workspace(root=Path(root)).open()
     return Workspace.resolve(Path(root)).open()
 
 
@@ -701,11 +704,15 @@ def _module_summaries(modules: Mapping[str, JsonObject]) -> dict[str, object]:
     return summaries
 
 
+def _no_store_here(error: StoreNotReady) -> bool:
+    return error.cause is None or isinstance(error.cause, NoArtifactStoreError)
+
+
 def cmd_schemas_show(args: CanonArgs) -> int:
     try:
         schemas = _command_project(args).schemas()
-    except StoreNotReady:
-        if args.store or args.type:
+    except StoreNotReady as exc:
+        if args.store or args.type or not _no_store_here(exc):
             raise
         installed = {name: found.module for name, found in discover().items()}
         if args.namespace:
@@ -967,6 +974,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _dispatch(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv, namespace=CanonArgs())
+    args.root_given = bool(args.root)
     args.root = Path(args.root).resolve() if args.root else Path.cwd()
     if _refuses_write(args) and _is_read_only(args):
         _emit_json(

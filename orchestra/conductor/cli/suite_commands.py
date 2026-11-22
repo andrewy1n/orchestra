@@ -154,8 +154,7 @@ def _record(args: argparse.Namespace) -> int:
             return suite.SKIPPED_EXIT_CODE
         workspace = resolve_workspace(args.store, work, Access.WRITE)
         record = suite.record_suite_check_run(
-            store_root=workspace.root,
-            store_dir=workspace.store,
+            project=workspace.open(),
             phase_slug=args.phase,
             effort=args.effort,
             suite=result,

@@ -64,11 +64,15 @@ def run_check_command(args: argparse.Namespace) -> int:
     except StoreNotReady as exc:
         print(f"orchestra check: {not_ready_message(exc, Path.cwd())}", file=sys.stderr)
         return STORE_NOT_READY_EXIT
+    try:
+        project = workspace.open()
+    except StoreNotReady as exc:
+        print(f"orchestra check: {not_ready_message(exc, Path.cwd())}", file=sys.stderr)
+        return STORE_NOT_READY_EXIT
     outcome = run_check(
         acceptance_id=args.acceptance,
         cwd=work,
-        store_root=workspace.root,
-        store_dir=workspace.store,
+        project=project,
         allow_dirty=args.allow_dirty,
         execution_report=args.execution_report,
         timeout=args.timeout,

@@ -68,7 +68,7 @@ def _spy(monkeypatch: pytest.MonkeyPatch, module: ModuleType) -> Spy:
 
 
 def _through_gate(project: Project) -> None:
-    gate.gate_terms(project.project_root, PHASE, store_dir=project.store_path)
+    gate.gate_terms(project, PHASE)
 
 
 def _through_close(project: Project) -> None:
@@ -183,4 +183,4 @@ def test_r10_gate_names_the_phase_record_and_field_when_effort_is_not_a_string(
     _store_without_validation(project, phase, "effort", 7)
 
     with pytest.raises(RecordShapeError, match=rf"{phase['id']}.*effort"):
-        gate.gate_terms(project.project_root, PHASE, store_dir=project.store_path)
+        gate.gate_terms(project, PHASE)
