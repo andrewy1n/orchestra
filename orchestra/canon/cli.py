@@ -39,8 +39,6 @@ from orchestra.canon.query import (
 )
 from orchestra.canon.schema import SchemaError, TypeDef
 from orchestra.canon.store_commands import (
-    Recoverer,
-    Scanner,
     SubparserGroup,
     add_store_parser,
     run_store,
@@ -990,8 +988,8 @@ def add_parsers(sub: SubparserGroup) -> None:
     add_store_parser(sub)
 
 
-def run(args: argparse.Namespace, *, scan: Scanner, recover: Recoverer) -> int:
-    return run_store(args, scan=scan, recover=recover)
+def run(args: argparse.Namespace) -> int:
+    return run_store(args)
 
 
 def main(argv: list[str] | None = None) -> int:

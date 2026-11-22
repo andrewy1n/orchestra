@@ -12,10 +12,8 @@ from orchestra.metrics import cli as metrics_cli
 from orchestra.score import cli as score_cli
 from orchestra.sessions import cli as sessions_cli
 from orchestra.stage import cli as stage_cli
-from orchestra.stage import store_tools
 from orchestra.tuner import cli as tuner_cli
 from orchestra.views import cli as views_cli
-from orchestra.views import render as views_render
 from orchestra.views import status as views_status
 
 
@@ -52,11 +50,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in sessions_cli.COMMANDS:
         return sessions_cli.run(args)
     if args.command in conductor_cli.COMMANDS:
-        return conductor_cli.run(args, render_brief=views_render.render_brief)
+        return conductor_cli.run(args)
     if args.command in score_cli.COMMANDS:
         return score_cli.run(args)
     if args.command in canon_cli.COMMANDS:
-        return canon_cli.run(args, scan=store_tools.scan, recover=store_tools.recover)
+        return canon_cli.run(args)
     if args.command in composer_cli.COMMANDS:
         return composer_cli.run(args)
     if args.command == "status":

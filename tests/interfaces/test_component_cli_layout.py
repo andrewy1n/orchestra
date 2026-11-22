@@ -6,12 +6,19 @@ import argparse
 import ast
 import importlib
 import importlib.util
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from test_boundaries import COMPONENTS
 
 import orchestra.cli as root_cli
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 
 @dataclass(frozen=True)
@@ -271,3 +278,196 @@ def test_views_render_module_is_in_the_package() -> None:
 @pytest.mark.parametrize("attribute", ["view_cli", "status_cli"])
 def test_views_root_cli_does_not_import_the_old_modules(attribute: str) -> None:
     assert not hasattr(root_cli, attribute)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ROOT_CLI_SOURCE = Path(root_cli.__file__).read_text(encoding="utf-8")
+ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "main"}
+ROOT_OPTION_CALLS = {"add_argument", "add_argument_group", "add_mutually_exclusive_group"}
+ROOT_REGISTER_CALLS = {"add_parsers", "add_parser"}
+CLI_COMPONENTS = (
+    "conductor",
+    "composer",
+    "score",
+    "metrics",
+    "sessions",
+    "stage",
+    "tuner",
+    "canon",
+    "views",
+)
+COMPONENT_STATUS_MODULE = "orchestra.views.status"
+
+
+def _component_cli_modules(tree: ast.Module) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom) or node.level or not node.module:
+            continue
+        for alias in node.names:
+            module = f"{node.module}.{alias.name}"
+            local = alias.asname or alias.name
+            parts = module.split(".")
+            is_cli = len(parts) == 3 and parts[0] == "orchestra" and parts[2] == "cli"
+            if is_cli or module == COMPONENT_STATUS_MODULE:
+                aliases[local] = module
+    return aliases
+
+
+def root_composes_violations(source: str) -> list[str]:
+    tree = ast.parse(source)
+    aliases = _component_cli_modules(tree)
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            name = getattr(node, "name", "<lambda>")
+            if name not in ROOT_ALLOWED_FUNCTIONS:
+                found.append(f"function {name} at line {node.lineno}")
+        elif isinstance(node, ast.ClassDef):
+            found.append(f"class {node.name} at line {node.lineno}")
+        elif (
+            isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("orchestra")
+        ):
+            for alias in node.names:
+                module = f"{node.module}.{alias.name}"
+                if (alias.asname or alias.name) not in aliases or aliases[
+                    alias.asname or alias.name
+                ] != module:
+                    found.append(f"import {module} at line {node.lineno}")
+        elif isinstance(node, ast.Import):
+            found.extend(
+                f"import {alias.name} at line {node.lineno}"
+                for alias in node.names
+                if alias.name.startswith("orchestra")
+            )
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr in ROOT_OPTION_CALLS:
+                found.append(f"option definition {node.func.attr} at line {node.lineno}")
+    registered: set[str] = set()
+    dispatched: set[str] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+            continue
+        owner = node.func.value
+        if node.func.attr in ROOT_REGISTER_CALLS:
+            if isinstance(owner, ast.Name) and owner.id in aliases:
+                registered.add(owner.id)
+            else:
+                found.append(f"verb registered outside a component at line {node.lineno}")
+        elif node.func.attr == "run" and isinstance(owner, ast.Name) and owner.id in aliases:
+            dispatched.add(owner.id)
+    for alias in sorted(registered - dispatched):
+        found.append(f"verbs of {alias} are not dispatched through {alias}.run")
+    for alias in sorted(dispatched - registered):
+        found.append(f"{alias}.run is dispatched but {alias} registers no parsers")
+    return found
+
+
+def test_root_composes_real_root_cli_holds_only_composition_and_dispatch() -> None:
+    assert root_composes_violations(ROOT_CLI_SOURCE) == []
+
+
+def test_root_composes_checker_flags_a_seeded_handler() -> None:
+    seeded = ROOT_CLI_SOURCE + "\n\ndef _cmd_seeded(args):\n    return 0\n"
+    line = len(ROOT_CLI_SOURCE.splitlines()) + 3
+    assert f"function _cmd_seeded at line {line}" in root_composes_violations(seeded)
+
+
+def test_root_composes_checker_flags_a_seeded_store_import() -> None:
+    seeded = "from orchestra.canon.project import Project\n" + ROOT_CLI_SOURCE
+    assert any(
+        "orchestra.canon.project.Project" in line for line in root_composes_violations(seeded)
+    )
+
+
+def test_root_composes_checker_flags_a_seeded_option_definition() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "    return parser\n", "    parser.add_argument('--x')\n    return parser\n", 1
+    )
+    assert any(
+        "option definition add_argument" in line for line in root_composes_violations(seeded)
+    )
+
+
+def test_root_composes_checker_flags_a_seeded_root_owned_verb() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "    return parser\n", "    sub.add_parser('own', help='x')\n    return parser\n", 1
+    )
+    assert any(
+        "verb registered outside a component" in line for line in root_composes_violations(seeded)
+    )
+
+
+def test_root_composes_checker_flags_a_verb_that_skips_its_component_run() -> None:
+    seeded = ROOT_CLI_SOURCE.replace("return score_cli.run(args)", "return 0")
+    assert (
+        "verbs of score_cli are not dispatched through score_cli.run"
+        in root_composes_violations(seeded)
+    )
+
+
+def _own_registered_verbs(module_name: str) -> set[str]:
+    module = importlib.import_module(module_name)
+    parser = argparse.ArgumentParser(prog="orchestra")
+    sub = parser.add_subparsers(dest="command")
+    register = getattr(module, "add_parsers", None) or module.add_parser
+    register(sub)
+    return set(sub.choices)
+
+
+def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> None:
+    for component in CLI_COMPONENTS:
+        module = importlib.import_module(f"orchestra.{component}.cli")
+        assert callable(
+            getattr(module, "add_parsers", None) or getattr(module, "add_parser", None)
+        ), component
+        assert module.COMMANDS, component
+        assert callable(module.run), component
+
+
+def test_every_component_registers_exactly_its_own_commands() -> None:
+    for component in CLI_COMPONENTS:
+        module = importlib.import_module(f"orchestra.{component}.cli")
+        assert _own_registered_verbs(f"orchestra.{component}.cli") == set(module.COMMANDS), (
+            component
+        )
+
+
+def test_every_component_verb_is_registered_by_one_component_only() -> None:
+    owners: dict[str, list[str]] = {}
+    for component in CLI_COMPONENTS:
+        module = importlib.import_module(f"orchestra.{component}.cli")
+        for verb in module.COMMANDS:
+            owners.setdefault(verb, []).append(component)
+    owners.setdefault("status", []).append("views.status")
+    assert {verb: names for verb, names in owners.items() if len(names) > 1} == {}
+
+
+def test_every_component_command_union_covers_every_root_parser_verb() -> None:
+    parser = root_cli._build_parser()
+    actions = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)]
+    assert len(actions) == 1
+    built = set(actions[0].choices)
+    union = {"verify", "status"}
+    for component in CLI_COMPONENTS:
+        union |= set(importlib.import_module(f"orchestra.{component}.cli").COMMANDS)
+    assert built <= union
+    assert union <= built
+
+
+def test_every_component_package_directory_is_listed_in_pyproject_packages() -> None:
+    with (REPO_ROOT / "pyproject.toml").open("rb") as stream:
+        listed = set(tomllib.load(stream)["tool"]["setuptools"]["packages"])
+    on_disk = {
+        ".".join(path.parent.relative_to(REPO_ROOT).parts)
+        for path in (REPO_ROOT / "orchestra").rglob("__init__.py")
+    }
+    assert on_disk - listed == set()
+
+
+def test_every_component_in_the_boundary_list_that_owns_verbs_has_a_cli_module() -> None:
+    owns_no_verbs = {"tools"}
+    for component in COMPONENTS:
+        if component in owns_no_verbs:
+            continue
+        assert importlib.util.find_spec(f"orchestra.{component}.cli") is not None, component

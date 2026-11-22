@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 from typing import Protocol
 
+from orchestra.conductor.cli import install_brief_renderer
+from orchestra.views.render import render_brief
+
 COMMANDS = frozenset({"handoff", "view", "brief"})
 
 
@@ -15,6 +18,7 @@ class SubparserGroup(Protocol):
 
 
 def add_parsers(sub: SubparserGroup) -> None:
+    install_brief_renderer(render_brief)
     handoff = sub.add_parser("handoff", help="Print the handoff markdown")
     handoff.add_argument("--effort", default=None, help="Limit to one effort slug")
     view = sub.add_parser("view", help="Print a derived view as markdown")

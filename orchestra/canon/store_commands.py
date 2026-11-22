@@ -279,13 +279,26 @@ def run_store_ensure(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_store(args: argparse.Namespace, *, scan: Scanner, recover: Recoverer) -> int:
+_operations: list[tuple[Scanner, Recoverer]] = []
+
+
+def install_store_operations(scan: Scanner, recover: Recoverer) -> None:
+    _operations[:] = [(scan, recover)]
+
+
+def _installed_operations() -> tuple[Scanner, Recoverer]:
+    if not _operations:
+        raise RuntimeError("store scan and recover operations are not installed")
+    return _operations[0]
+
+
+def run_store(args: argparse.Namespace) -> int:
     if args.action == "recover-evidence":
-        return run_store_recover(args, recover)
+        return run_store_recover(args, _installed_operations()[1])
     if args.action == "path":
         return run_store_path(args)
     if args.action == "run":
         return run_store_run(args)
     if args.action == "scan":
-        return run_store_scan(args, scan)
+        return run_store_scan(args, _installed_operations()[0])
     return run_store_ensure(args)

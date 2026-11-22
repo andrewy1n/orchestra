@@ -10,7 +10,12 @@ from orchestra.conductor.cli.land import run_land
 from orchestra.conductor.cli.parsers import SubparserGroup, add_parsers
 from orchestra.conductor.cli.phase_commands import run_analyze, run_gate, run_review_brief
 from orchestra.conductor.cli.suite_commands import run_suite
-from orchestra.conductor.cli.wave_commands import BriefRenderer, run_task, run_wave
+from orchestra.conductor.cli.wave_commands import (
+    BriefRenderer,
+    install_brief_renderer,
+    run_task,
+    run_wave,
+)
 from orchestra.conductor.cli.workflow_commands import run_workflow
 
 COMMANDS = frozenset(
@@ -29,10 +34,17 @@ COMMANDS = frozenset(
     }
 )
 
-__all__ = ["COMMANDS", "SubparserGroup", "add_parsers", "run"]
+__all__ = [
+    "COMMANDS",
+    "BriefRenderer",
+    "SubparserGroup",
+    "add_parsers",
+    "install_brief_renderer",
+    "run",
+]
 
 
-def run(args: argparse.Namespace, *, render_brief: BriefRenderer) -> int:
+def run(args: argparse.Namespace) -> int:
     if args.command == "check":
         return run_check_command(args)
     if args.command == "suite":
@@ -42,7 +54,7 @@ def run(args: argparse.Namespace, *, render_brief: BriefRenderer) -> int:
     if args.command == "analyze":
         return run_analyze(args)
     if args.command == "wave":
-        return run_wave(args, render_brief)
+        return run_wave(args)
     if args.command == "task":
         return run_task(args)
     if args.command == "land":
