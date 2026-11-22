@@ -6,7 +6,15 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.tuner.record_facts import check_run_facts
 
 
-def _run(payload: JsonObject) -> Record:
+def _run(extra: JsonObject) -> Record:
+    payload: JsonObject = {
+        "criterion_id": "<acc>",
+        "revision": "abc",
+        "result": "pass",
+        "method": "check",
+        "signed_by": "",
+        **extra,
+    }
     return {
         "id": "<run>",
         "record_type": "tuner:check-run",

@@ -26,15 +26,16 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    scan, recover = stage_cli.store_operations()
     views_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     stage_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     views_status.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     metrics_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     tuner_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     sessions_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-    conductor_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
+    conductor_cli.add_parsers(sub, render_brief=views_cli.render_brief)  # pyright: ignore[reportUnknownMemberType]
     score_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-    canon_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
+    canon_cli.add_parsers(sub, scan=scan, recover=recover)  # pyright: ignore[reportUnknownMemberType]
     composer_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     return parser
 

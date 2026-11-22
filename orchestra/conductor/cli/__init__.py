@@ -13,7 +13,6 @@ from orchestra.conductor.cli.phase_commands import run_analyze, run_gate, run_re
 from orchestra.conductor.cli.suite_commands import run_suite
 from orchestra.conductor.cli.wave_commands import (
     BriefRenderer,
-    install_brief_renderer,
     run_task,
     run_wave,
 )
@@ -41,7 +40,6 @@ __all__ = [
     "BriefRenderer",
     "SubparserGroup",
     "add_parsers",
-    "install_brief_renderer",
     "run",
 ]
 

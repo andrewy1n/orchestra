@@ -22,10 +22,8 @@ def _record(record_type: str, payload: JsonObject, subject: str = "s") -> Record
     }
 
 
-def test_finding_basis_reads_text_and_defaults_to_empty() -> None:
+def test_finding_basis_reads_text() -> None:
     assert finding_basis(_record("tuner:finding", {"basis": "seen"})) == "seen"
-    assert finding_basis(_record("tuner:finding", {"basis": 4})) == ""
-    assert finding_basis(_record("tuner:finding", {})) == ""
 
 
 def test_finding_accept_operation_sets_needs_none_with_optional_note() -> None:

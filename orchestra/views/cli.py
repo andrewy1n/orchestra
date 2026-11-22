@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import Protocol
 
-from orchestra.conductor.cli import install_brief_renderer
 from orchestra.views.render import render_brief
 
 COMMANDS = frozenset({"handoff", "view", "brief"})
@@ -18,7 +17,6 @@ class SubparserGroup(Protocol):
 
 
 def add_parsers(sub: SubparserGroup) -> None:
-    install_brief_renderer(render_brief)
     handoff = sub.add_parser("handoff", help="Print the handoff markdown")
     handoff.add_argument("--effort", default=None, help="Limit to one effort slug")
     view = sub.add_parser("view", help="Print a derived view as markdown")
@@ -40,7 +38,7 @@ def run(args: argparse.Namespace) -> int:
         project = Workspace.resolve(start, access=Access.READ).open()
         records = views.load_records(project)
         if args.command == "brief":
-            text = views.render_brief(args.subject, records)
+            text = render_brief(args.subject, records)
         else:
             name = "handoff" if args.command == "handoff" else args.name
             is_handoff = args.command == "handoff"

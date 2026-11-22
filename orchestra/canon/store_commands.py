@@ -46,7 +46,7 @@ class SubparserGroup(Protocol):
     def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
 
 
-def add_store_parser(sub: SubparserGroup) -> None:
+def add_store_parser(sub: SubparserGroup, scan: Scanner, recover: Recoverer) -> None:
     store = sub.add_parser(
         "store",
         help="Open the bound store and read or write it through the library",
@@ -68,11 +68,13 @@ def add_store_parser(sub: SubparserGroup) -> None:
     )
     store_scan.add_argument("--cwd", default=None, help="Directory (default: cwd)")
     store_scan.add_argument("--json", action="store_true", help="Print one JSON object per finding")
-    recover = store_sub.add_parser(
+    store_scan.set_defaults(scan=scan)
+    store_recover = store_sub.add_parser(
         "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
     )
-    recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
+    store_recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
+    store_recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
+    store_recover.set_defaults(recover=recover)
     store_run = store_sub.add_parser(
         "run",
         help="Run a library read or write against the opened store",
@@ -279,26 +281,13 @@ def run_store_ensure(args: argparse.Namespace) -> int:
     return 0
 
 
-_operations: list[tuple[Scanner, Recoverer]] = []
-
-
-def install_store_operations(scan: Scanner, recover: Recoverer) -> None:
-    _operations[:] = [(scan, recover)]
-
-
-def _installed_operations() -> tuple[Scanner, Recoverer]:
-    if not _operations:
-        raise RuntimeError("store scan and recover operations are not installed")
-    return _operations[0]
-
-
 def run_store(args: argparse.Namespace) -> int:
     if args.action == "recover-evidence":
-        return run_store_recover(args, _installed_operations()[1])
+        return run_store_recover(args, args.recover)
     if args.action == "path":
         return run_store_path(args)
     if args.action == "run":
         return run_store_run(args)
     if args.action == "scan":
-        return run_store_scan(args, _installed_operations()[0])
+        return run_store_scan(args, args.scan)
     return run_store_ensure(args)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from orchestra.canon import record_payload
 from orchestra.canon.types import JsonValue, Record
+from orchestra.tuner.record_facts import required_text
 
 CHECK_RUN_TYPE = "tuner:check-run"
 FINDING_TYPE = "tuner:finding"
@@ -19,8 +19,7 @@ __all__ = [
 
 
 def finding_basis(record: Record) -> str:
-    basis = record_payload(record).get("basis")
-    return basis if isinstance(basis, str) else ""
+    return required_text(record, "basis")
 
 
 def finding_accept_operation(

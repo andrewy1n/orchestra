@@ -54,6 +54,7 @@ def _evidence(phase_record: Record, results: list[str]) -> PhaseEvidence | None:
                 "result": result,
                 "revision": "abc",
                 "effort": "e",
+                "method": "check",
                 "signed_by": "",
             },
             state="recorded",

@@ -24,29 +24,42 @@ class FindingFacts:
     needs: str
 
 
-def _text(payload: JsonObject, key: str) -> str:
+class RecordShapeError(ValueError):
+    def __init__(self, record_id: str, field: str) -> None:
+        super().__init__(f"record {record_id}: required field {field!r} is missing or not text")
+        self.record_id = record_id
+        self.field = field
+
+
+def _optional_text(payload: JsonObject, key: str) -> str:
     value = payload.get(key)
     return value if isinstance(value, str) else ""
+
+
+def required_text(record: Record, key: str) -> str:
+    value = record_payload(record).get(key)
+    if not isinstance(value, str):
+        raise RecordShapeError(record["id"], key)
+    return value
 
 
 def check_run_facts(record: Record) -> CheckRunFacts:
     payload = record_payload(record)
     return CheckRunFacts(
         id=record["id"],
-        criterion_id=_text(payload, "criterion_id"),
-        result=_text(payload, "result"),
-        method=_text(payload, "method"),
-        signed_by=_text(payload, "signed_by"),
-        revision=_text(payload, "revision"),
-        evidence_kind=_text(payload, "evidence_kind"),
-        requirement=_text(payload, "requirement"),
+        criterion_id=required_text(record, "criterion_id"),
+        result=required_text(record, "result"),
+        method=required_text(record, "method"),
+        signed_by=required_text(record, "signed_by"),
+        revision=required_text(record, "revision"),
+        evidence_kind=_optional_text(payload, "evidence_kind"),
+        requirement=_optional_text(payload, "requirement"),
     )
 
 
 def finding_facts(record: Record) -> FindingFacts:
-    payload = record_payload(record)
-    return FindingFacts(claim=_text(payload, "claim"), needs=_text(payload, "needs"))
+    return FindingFacts(claim=required_text(record, "claim"), needs=required_text(record, "needs"))
 
 
 def observation_text(record: Record) -> str:
-    return _text(record_payload(record), "what_was_observed")
+    return _optional_text(record_payload(record), "what_was_observed")

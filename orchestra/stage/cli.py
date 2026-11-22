@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from typing import Protocol
 
-from orchestra.canon.store_commands import install_store_operations
+from orchestra.canon.store_commands import Recoverer, Scanner
 from orchestra.stage import store_tools
 
 COMMANDS = frozenset({"hook-start", "hook-stop", "install"})
@@ -88,8 +88,11 @@ def _add_install_parser(sub: SubparserGroup) -> None:
     )
 
 
+def store_operations() -> tuple[Scanner, Recoverer]:
+    return store_tools.scan, store_tools.recover
+
+
 def add_parsers(sub: SubparserGroup) -> None:
-    install_store_operations(store_tools.scan, store_tools.recover)
     _add_install_parser(sub)
     for name, text in (
         ("hook-start", "SessionStart hook: inject the handoff"),

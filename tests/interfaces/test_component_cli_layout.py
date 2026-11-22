@@ -167,11 +167,19 @@ GROUPS = [
 ]
 
 
+def _injected(module_name: str) -> dict[str, object]:
+    if module_name == "orchestra.canon.cli":
+        return {"scan": lambda _records: [], "recover": lambda _project, _apply: None}
+    if module_name == "orchestra.conductor.cli":
+        return {"render_brief": lambda _subject, _records: ""}
+    return {}
+
+
 def _registered_verbs(component_cli: str) -> set[str]:
     module = importlib.import_module(component_cli)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    module.add_parsers(sub)
+    module.add_parsers(sub, **_injected(component_cli))
     return set(sub.choices)
 
 
@@ -411,7 +419,7 @@ def _own_registered_verbs(module_name: str) -> set[str]:
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
     register = getattr(module, "add_parsers", None) or module.add_parser
-    register(sub)
+    register(sub, **_injected(module_name))
     return set(sub.choices)
 
 

@@ -26,12 +26,6 @@ from orchestra.tools.git import Git
 
 BriefRenderer = Callable[[str, list[Record]], str]
 
-_renderers: list[BriefRenderer] = []
-
-
-def install_brief_renderer(render_brief: BriefRenderer) -> None:
-    _renderers[:] = [render_brief]
-
 
 def run_wave(args: argparse.Namespace) -> int:
     if args.action == "start":
@@ -48,9 +42,7 @@ def run_task(args: argparse.Namespace) -> int:
 
 
 def _wave_start(args: argparse.Namespace) -> int:
-    if not _renderers:
-        raise RuntimeError("brief renderer is not installed")
-    render_brief = _renderers[0]
+    render_brief: BriefRenderer = args.render_brief
     start = command_dir(args)
     try:
         workspace = resolve_workspace(args.store, start, Access.WRITE)

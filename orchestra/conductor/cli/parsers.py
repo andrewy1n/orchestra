@@ -6,6 +6,7 @@ import argparse
 from typing import Protocol
 
 from orchestra.conductor.cli.check import add_check_parser
+from orchestra.conductor.cli.wave_commands import BriefRenderer
 from orchestra.conductor.cli.workflow_commands import add_workflow_parser
 
 
@@ -50,10 +51,10 @@ def _add_suite_job_arguments(
     )
 
 
-def add_parsers(sub: SubparserGroup) -> None:
+def add_parsers(sub: SubparserGroup, *, render_brief: BriefRenderer) -> None:
     add_check_parser(sub)
     add_workflow_parser(sub)
-    _add_wave_task_parsers(sub)
+    _add_wave_task_parsers(sub, render_brief)
     _add_land_close_parsers(sub)
     review_brief = sub.add_parser(
         "review-brief",
@@ -222,7 +223,7 @@ def add_parsers(sub: SubparserGroup) -> None:
     )
 
 
-def _add_wave_task_parsers(sub: SubparserGroup) -> None:
+def _add_wave_task_parsers(sub: SubparserGroup, render_brief: BriefRenderer) -> None:
     wave = sub.add_parser("wave", help="Start and end the waves of a phase")
     wave_sub = wave.add_subparsers(dest="action", required=True)
     wave_start = wave_sub.add_parser(
@@ -233,6 +234,7 @@ def _add_wave_task_parsers(sub: SubparserGroup) -> None:
     wave_start.add_argument("--json", action="store_true", help="Print one JSON object")
     wave_start.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     wave_start.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+    wave_start.set_defaults(render_brief=render_brief)
 
     wave_end = wave_sub.add_parser(
         "end", help="Merge each passing task branch into the phase branch in task-slug order"

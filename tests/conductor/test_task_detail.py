@@ -23,6 +23,15 @@ def _record(record_type: str, payload: JsonObject, subject: str = "s") -> Record
     }
 
 
+_CHECK: JsonObject = {
+    "criterion_id": "<acc>",
+    "result": "pass",
+    "method": "check",
+    "revision": "r",
+    "signed_by": "",
+}
+
+
 def test_assignment_executor_reads_text_or_empty() -> None:
     assert assignment_executor(_record("conductor:assignment", {"executor": "inline"})) == "inline"
     assert assignment_executor(_record("conductor:assignment", {})) == ""
@@ -41,7 +50,7 @@ def test_report_facts_read_result_verdict_and_revision() -> None:
 
 def test_related_text_reads_the_field_each_type_exposes() -> None:
     cases: dict[str, tuple[JsonObject, str]] = {
-        "tuner:finding": ({"claim": "c"}, "c"),
+        "tuner:finding": ({"claim": "c", "basis": "b", "needs": "none"}, "c"),
         "score:decision": ({"choice": "x"}, "x"),
         "conductor:failed-attempt": ({"attempted_action": "a"}, "a"),
         "tuner:investigation-observation": ({"what_was_observed": "o"}, "o"),
@@ -61,7 +70,13 @@ def test_timeline_entries_summarize_each_kind() -> None:
         [_record("conductor:assignment", {"executor": "inline"}, "a")],
         [_record("conductor:assignment-amendment", {}, "m")],
         [_record("conductor:execution-report", {"verdict": "pass", "revision": "r"}, "r")],
-        [_record("tuner:check-run", {"result": "fail", "method": "tdd", "revision": "z"}, "c")],
+        [
+            _record(
+                "tuner:check-run",
+                {**_CHECK, "result": "fail", "method": "tdd", "revision": "z"},
+                "c",
+            )
+        ],
     )
     assert [(e.kind, e.summary, e.revision) for e in entries] == [
         ("assignment", "assigned to inline", ""),
@@ -71,6 +86,8 @@ def test_timeline_entries_summarize_each_kind() -> None:
     ]
 
 
-def test_timeline_entries_keep_unknown_check_results_and_trim_missing_method() -> None:
-    (entry,) = timeline_entries([], [], [], [_record("tuner:check-run", {"result": "weird"})])
+def test_timeline_entries_keep_unknown_check_results_and_trim_empty_method() -> None:
+    (entry,) = timeline_entries(
+        [], [], [], [_record("tuner:check-run", {**_CHECK, "result": "weird", "method": ""})]
+    )
     assert entry.summary == "check weird"

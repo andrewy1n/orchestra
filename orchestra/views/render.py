@@ -57,7 +57,7 @@ from orchestra.score.workflow_blockers import QUESTION_TYPE, human_gates
 from orchestra.score.workspace_facts import DESIGN_TYPE
 from orchestra.tools import Merged, Unmerged, branch_state
 from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.record_facts import RecordShapeError, check_run_facts
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})
@@ -496,7 +496,10 @@ def _status_bits(
         for candidate in tally:
             if not subject_related(subject, candidate.get("subject", "")):
                 continue
-            value = check_run_facts(candidate).result
+            try:
+                value = check_run_facts(candidate).result
+            except RecordShapeError as exc:
+                raise ViewError(str(exc)) from exc
             if not value:
                 continue
             if value.lower() in FAILING_RESULT_VALUES:

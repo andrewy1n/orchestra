@@ -15,6 +15,7 @@ from dashboard.backend import store
 from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
 from orchestra.canon.project import Project
+from orchestra.tuner.record_facts import RecordShapeError
 
 DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 MISSING_BUILD = (
@@ -36,6 +37,10 @@ def create_app(target: Project) -> FastAPI:
 
     @app.exception_handler(store.ModelError)
     async def _model_error(_request: Request, exc: store.ModelError) -> JSONResponse:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+
+    @app.exception_handler(RecordShapeError)
+    async def _record_shape_error(_request: Request, exc: RecordShapeError) -> JSONResponse:
         return JSONResponse({"error": str(exc)}, status_code=404)
 
     @app.exception_handler(WriteError)
