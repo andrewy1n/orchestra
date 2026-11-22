@@ -8,9 +8,9 @@ import pytest
 from canon_support import create, make_project
 
 from dashboard.backend.snapshot import load_snapshot
-from orchestra import views
 from orchestra.canon.types import Record
 from orchestra.score import autonomy
+from orchestra.views import render as views
 
 _IDS = itertools.count()
 

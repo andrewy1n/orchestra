@@ -134,7 +134,7 @@ def test_phase_progress_agrees(case: str) -> None:
     assert got_active == active
 
 
-VIEWS_RENDER = REPO_ROOT / "orchestra" / "views.py"
+VIEWS_RENDER = REPO_ROOT / "orchestra" / "views" / "render.py"
 
 VIEWS_RENDER_DECIDERS = (
     "_executor_bits",

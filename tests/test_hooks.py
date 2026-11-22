@@ -9,9 +9,10 @@ from canon_support import create, make_project, seed_effort
 from conductor_support import CLOSE_PHASE as PHASE
 from conductor_support import fake_gh_on_path, make_landed
 
-from orchestra import cli, views
+from orchestra import cli
 from orchestra.canon.project import Project
 from orchestra.stage import hooks
+from orchestra.views import render as views
 
 
 @pytest.fixture(autouse=True)

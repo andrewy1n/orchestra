@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Collection, Mapping
 
-from orchestra import views
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
 from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.views import render as views
 
 
 def hook_handoff_sections(

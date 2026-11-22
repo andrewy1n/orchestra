@@ -25,14 +25,15 @@ def add_parsers(sub: SubparserGroup) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
-    from orchestra import views
     from orchestra.canon.errors import StoreError
-    from orchestra.canon.project import StoreBindingError, open_store
     from orchestra.canon.project_config import ProjectConfigError
+    from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
     from orchestra.conductor.phase_progress import PhaseProgressError, open_phase_progress
+    from orchestra.views import render as views
 
+    start = Path.cwd()
     try:
-        project = open_store(Path.cwd())
+        project = Workspace.resolve(start, access=Access.READ).open()
         records = views.load_records(project)
         if args.command == "brief":
             text = views.render_brief(args.subject, records)
@@ -46,9 +47,12 @@ def run(args: argparse.Namespace) -> int:
                 statuses=views.effort_statuses(records) if is_handoff else None,
                 landing=views.landing_facts(records, project.project_root) if is_handoff else None,
                 progress=open_phase_progress(project, records),
+                root=project.project_root,
             )
+    except StoreNotReady as exc:
+        print(f"orchestra {args.command}: {not_ready_message(exc, start)}", file=sys.stderr)
+        return 1
     except (
-        StoreBindingError,
         StoreError,
         views.ViewError,
         ProjectConfigError,

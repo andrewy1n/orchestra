@@ -6,7 +6,7 @@ from pathlib import Path
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.sessions.record_reader import read_project_records
-from orchestra.views import STATUS, VERIFICATION, render_view
+from orchestra.views.render import STATUS, VERIFICATION, render_view
 
 _CLOCK = itertools.count()
 

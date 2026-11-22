@@ -8,12 +8,12 @@ import pytest
 from canon_support import make_project
 
 from dashboard.backend.server import service
-from orchestra import views
 from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import gate
+from orchestra.views import render as views
 
 EFFORT = "alpha"
 PHASE = "p1"

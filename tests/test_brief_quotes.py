@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from orchestra import views
 from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.views import render as views
 
 DESCRIPTION = "R1: Brief quotes the work item.\nR2: Second line of the description."
 APPROACH = "Extend the renderer.\n\n- keep sections\n- add orientation"

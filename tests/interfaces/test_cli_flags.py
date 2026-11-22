@@ -232,15 +232,12 @@ GROUP_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("conductor_wave_task", ("wave", "task")),
     ("conductor_land_close", ("land", "close", "close-batch")),
     ("conductor_workflow", ("workflow",)),
+    ("views", ("handoff", "view", "brief", "status")),
     (
         "light_components",
         (
-            "handoff",
-            "view",
-            "brief",
             "hook-start",
             "hook-stop",
-            "status",
             "metrics",
             "effort",
             "idea",

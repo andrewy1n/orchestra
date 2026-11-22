@@ -6,8 +6,8 @@ import json
 
 import helpers as h
 
-from orchestra import views
 from orchestra.canon.project import open_store
+from orchestra.views import render as views
 
 
 def _effort(cli, defs, effort: str) -> tuple[dict, dict]:

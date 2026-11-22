@@ -9,6 +9,7 @@ from interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
 REFUSAL_CODE = 2
+VIEWS_REFUSAL_CODE = 1
 MINIMAL_CONFIG = (
     '[verify.stages]\ntask = ["unit"]\nphase = ["unit"]\nmilestone = ["unit"]\n\n'
     '[verify.unit]\nrunner = ["true", "{tests}", "{report}"]\n'
@@ -90,6 +91,16 @@ TUNER_CANON_STAGE = [
     (("verify", "unbind", "--id", "x"), 1),
 ]
 
+VIEWS = [
+    ("handoff",),
+    ("view", "plan"),
+    ("view", "status"),
+    ("view", "verification"),
+    ("view", "roadmap"),
+    ("brief", "a"),
+    ("status",),
+]
+
 GROUPS = {
     "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
@@ -102,6 +113,10 @@ CASES = (
         pytest.param(argv, REFUSAL_CODE, id=f"{group}-{'_'.join(argv).replace('-', '_')}")
         for group, commands in GROUPS.items()
         for argv in commands
+    ]
+    + [
+        pytest.param(argv, VIEWS_REFUSAL_CODE, id=f"views-{'_'.join(argv).replace('-', '_')}")
+        for argv in VIEWS
     ]
     + [
         pytest.param(argv, code, id=f"light_components-{'_'.join(argv).replace('-', '_')}")

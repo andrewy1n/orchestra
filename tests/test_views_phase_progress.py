@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from canon_support import create, make_project, seed_effort
 
-from orchestra import cli, views
+from orchestra import cli
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import phase_progress
@@ -25,6 +25,7 @@ from orchestra.conductor.phase_progress import (
 from orchestra.score.phase import Phase, read_phase
 from orchestra.stage.handoff import hook_handoff_sections
 from orchestra.tools import BranchState, Git, Unmerged
+from orchestra.views import render as views
 
 READY = Readiness(True)
 

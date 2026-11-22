@@ -12,7 +12,6 @@ from canon_support import create, make_project
 from dashboard.backend import phase as dashboard_phase
 from dashboard.backend.phase import load_phase_detail
 from dashboard.backend.snapshot import load_snapshot
-from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.workspace import Workspace
@@ -33,6 +32,7 @@ from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
 from orchestra.score import workflow_selection
 from orchestra.score.phase import Phase, current_phase_model, read_phase
+from orchestra.views import render as views
 
 EFFORT = "ef"
 PHASE = "feature"

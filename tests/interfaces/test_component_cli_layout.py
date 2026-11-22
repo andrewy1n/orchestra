@@ -142,6 +142,13 @@ TUNER_CANON_STAGE = [
     TUNER_CANON_STAGE_STAGE,
 ]
 
+VIEWS = Group(
+    "views",
+    "orchestra.views.cli",
+    ("handoff", "view", "brief"),
+    (),
+)
+
 GROUPS = [
     CONDUCTOR_SUITE_GATE,
     CONDUCTOR_WAVE_TASK,
@@ -149,6 +156,7 @@ GROUPS = [
     CONDUCTOR_WORKFLOW,
     *LIGHT_COMPONENTS,
     *TUNER_CANON_STAGE,
+    VIEWS,
 ]
 
 
@@ -228,3 +236,38 @@ def test_tuner_canon_stage_root_cli_defines_no_cmd_handlers() -> None:
 def test_tuner_canon_stage_conductor_cli_owns_check() -> None:
     module = importlib.import_module("orchestra.conductor.cli")
     assert "check" in module.COMMANDS
+
+
+def test_views_cli_owns_its_commands_and_runs_them() -> None:
+    module = importlib.import_module(VIEWS.component_cli)
+    assert set(VIEWS.verbs) == set(module.COMMANDS)
+    assert callable(module.run)
+
+
+def test_views_status_registers_status_where_it_lives() -> None:
+    module = importlib.import_module("orchestra.views.status")
+    parser = argparse.ArgumentParser(prog="orchestra")
+    sub = parser.add_subparsers(dest="command")
+    module.add_parser(sub)
+    assert "status" in sub.choices
+    assert callable(module.run)
+
+
+def test_views_is_a_package_not_a_module_file() -> None:
+    spec = importlib.util.find_spec("orchestra.views")
+    assert spec is not None
+    assert spec.submodule_search_locations is not None
+
+
+@pytest.mark.parametrize("module", ["orchestra.view_cli", "orchestra.status_cli"])
+def test_views_root_cli_module_is_gone_from_the_root_package(module: str) -> None:
+    assert importlib.util.find_spec(module) is None
+
+
+def test_views_render_module_is_in_the_package() -> None:
+    assert importlib.util.find_spec("orchestra.views.render") is not None
+
+
+@pytest.mark.parametrize("attribute", ["view_cli", "status_cli"])
+def test_views_root_cli_does_not_import_the_old_modules(attribute: str) -> None:
+    assert not hasattr(root_cli, attribute)
