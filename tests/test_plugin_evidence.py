@@ -8,11 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from orchestra import plugin_verify_cli
 from orchestra.canon.extensions import PluginDescriptor, compute_execution_identity
 from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.cli import main as orchestra_main
-from orchestra.tuner import plugins
+from orchestra.tuner import plugins, verify_plugins
 from orchestra.tuner.manifest import runner_digest
 from orchestra.tuner.plugin_evidence import (
     NAMESPACE,
@@ -345,14 +344,12 @@ def test_signed_skip_does_not_pass_verification_cli(
         key_path=key_path,
     )
     monkeypatch.setattr(
-        plugin_verify_cli,
+        verify_plugins,
         "dispatch_signed_plugins",
         lambda _context, key_path: (skipped,),
     )
 
-    result = plugin_verify_cli.main(
-        ["--cwd", str(root), "--stage", "phase", "--key", str(key_path)]
-    )
+    result = verify_plugins.main(["--cwd", str(root), "--stage", "phase", "--key", str(key_path)])
 
     output = json.loads(capsys.readouterr().out)
     assert result == 1

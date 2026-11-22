@@ -242,11 +242,9 @@ GROUP_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
             "hook-stop",
             "status",
             "metrics",
-            "plugins",
             "effort",
             "idea",
             "place",
-            "store",
         ),
     ),
 )

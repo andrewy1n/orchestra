@@ -16,7 +16,7 @@ from conductor_support import _seed_acceptance, write_policy
 from conftest import REPO_ROOT, copy_store, git, make_git_repo, run_cli
 from test_analyze import SLUG, seed_phase
 
-from orchestra import store as store_module
+from orchestra.canon.workspace import StoreNotReady, Workspace
 
 PHASE = "resolve-phase"
 DIFF_LINE = "code-repo-only-line"
@@ -144,19 +144,22 @@ def _seed_suite_effort(store: Path, cli, resolved_contract) -> None:
     git(store, "commit", "-qm", "seed")
 
 
-def test_resolve_store_prefers_the_flag(tmp_path, monkeypatch):
+def test_resolve_prefers_the_flag(tmp_path, monkeypatch):
     monkeypatch.setenv("ORCHESTRA_STORE", str(tmp_path / "env"))
-    assert store_module.resolve_store(str(tmp_path / "flag"), tmp_path) == tmp_path / "flag"
+    resolved = Workspace.resolve(tmp_path, store=tmp_path / "flag")
+    assert resolved.root == tmp_path / "flag"
 
 
-def test_resolve_store_uses_env_when_flag_absent(tmp_path, monkeypatch):
+def test_resolve_uses_env_when_flag_absent(tmp_path, monkeypatch):
     monkeypatch.setenv("ORCHESTRA_STORE", str(tmp_path / "env"))
-    assert store_module.resolve_store(None, tmp_path) == tmp_path / "env"
+    assert Workspace.resolve(tmp_path).root == tmp_path / "env"
 
 
-def test_resolve_store_ignores_an_empty_env(tmp_path, monkeypatch):
+def test_resolve_ignores_an_empty_env(tmp_path, monkeypatch):
     monkeypatch.setenv("ORCHESTRA_STORE", "")
-    assert store_module.resolve_store(None, tmp_path) == tmp_path.resolve()
+    with pytest.raises(StoreNotReady) as refused:
+        Workspace.resolve(tmp_path)
+    assert refused.value.searched[0] == tmp_path.resolve()
 
 
 def test_review_brief_store_flag(store, cli, resolved_contract, code_repo, home):
