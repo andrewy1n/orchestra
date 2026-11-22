@@ -9,12 +9,22 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Protocol
 
+from orchestra.canon.errors import StoreError
+from orchestra.canon.project import StoreBindingError
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.metrics.compare import UnknownBoundaryError, compare_phases, render_text
+from orchestra.metrics.phases import build_phase_rows
+from orchestra.metrics.repairs import build_repair_rows
+from orchestra.tools.errors import ToolError
+
+COMMANDS = frozenset({"metrics"})
+
 
 class SubparserGroup(Protocol):
     def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
 
 
-def add_parser(sub: SubparserGroup) -> None:
+def add_parsers(sub: SubparserGroup) -> None:
     metrics = sub.add_parser("metrics", help="Measure done phases from the store")
     verbs = metrics.add_subparsers(dest="metrics_command", required=True)
     phases = verbs.add_parser("phases", help="Print one row for each done phase")
@@ -34,16 +44,18 @@ def _cell(value: object) -> str:
     return "-" if value is None else str(value)
 
 
-def _run_repairs(args: argparse.Namespace) -> int:
-    from orchestra.canon.errors import StoreError
-    from orchestra.canon.project import StoreBindingError
-    from orchestra.metrics.repairs import build_repair_rows
-    from orchestra.tools.errors import ToolError
+def _start(args: argparse.Namespace) -> Path:
+    return Path(args.directory) if args.directory else Path.cwd()
 
+
+def _run_repairs(args: argparse.Namespace) -> int:
+    start = _start(args)
     try:
-        rows = build_repair_rows(
-            Path(args.directory) if args.directory else Path.cwd(), since=args.since
-        )
+        root = Workspace.resolve(start, access=Access.READ).root
+        rows = build_repair_rows(root, since=args.since)
+    except StoreNotReady as exc:
+        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
+        return 1
     except (StoreBindingError, StoreError, ToolError, OSError) as exc:
         print(f"orchestra metrics: {exc}", file=sys.stderr)
         return 1
@@ -53,14 +65,13 @@ def _run_repairs(args: argparse.Namespace) -> int:
 
 
 def _run_compare(args: argparse.Namespace) -> int:
-    from orchestra.canon.errors import StoreError
-    from orchestra.canon.project import StoreBindingError
-    from orchestra.metrics.compare import UnknownBoundaryError, compare_phases, render_text
-
+    start = _start(args)
     try:
-        comparison = compare_phases(
-            Path(args.directory) if args.directory else Path.cwd(), args.boundary
-        )
+        root = Workspace.resolve(start, access=Access.READ).root
+        comparison = compare_phases(root, args.boundary)
+    except StoreNotReady as exc:
+        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
+        return 1
     except (StoreBindingError, StoreError, UnknownBoundaryError, OSError) as exc:
         print(f"orchestra metrics: {exc}", file=sys.stderr)
         return 1
@@ -68,19 +79,14 @@ def _run_compare(args: argparse.Namespace) -> int:
     return 0
 
 
-def run(args: argparse.Namespace) -> int:
-    if args.metrics_command == "repairs":
-        return _run_repairs(args)
-    if args.metrics_command == "compare":
-        return _run_compare(args)
-    from orchestra.canon.errors import StoreError
-    from orchestra.canon.project import StoreBindingError
-    from orchestra.metrics.phases import build_phase_rows
-
+def _run_phases(args: argparse.Namespace) -> int:
+    start = _start(args)
     try:
-        rows = build_phase_rows(
-            Path(args.directory) if args.directory else Path.cwd(), effort=args.effort
-        )
+        root = Workspace.resolve(start, access=Access.READ).root
+        rows = build_phase_rows(root, effort=args.effort)
+    except StoreNotReady as exc:
+        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
+        return 1
     except (StoreBindingError, StoreError, OSError) as exc:
         print(f"orchestra metrics: {exc}", file=sys.stderr)
         return 1
@@ -95,3 +101,11 @@ def run(args: argparse.Namespace) -> int:
         for column, reason in r.missing.items():
             print(f"  {column}: null ({reason})")
     return 0
+
+
+def run(args: argparse.Namespace) -> int:
+    if args.metrics_command == "repairs":
+        return _run_repairs(args)
+    if args.metrics_command == "compare":
+        return _run_compare(args)
+    return _run_phases(args)

@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace
+from orchestra.canon.workspace import Access, Workspace, not_ready_message
 
 
 def command_dir(args: argparse.Namespace) -> Path:
@@ -22,6 +22,4 @@ def resolve_workspace(store: str | None, start: Path, access: Access) -> Workspa
     return Workspace.resolve(start, store=pinned, access=access)
 
 
-def not_ready_message(error: StoreNotReady, start: Path) -> str:
-    searched = ", ".join(str(path) for path in error.searched)
-    return f"store_not_ready: No artifact store for {start.resolve()}; searched: {searched}"
+__all__ = ["command_dir", "not_ready_message", "print_json", "resolve_workspace"]

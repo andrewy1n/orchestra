@@ -8,14 +8,15 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from orchestra import metrics_cli, plugin_cli, status_cli, view_cli, views
+from orchestra import plugin_cli, status_cli, view_cli, views
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError, open_store
-from orchestra.conductor import autonomy
+from orchestra.composer import cli as composer_cli
 from orchestra.conductor import cli as conductor_cli
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
-from orchestra.sessions import aggregate as aggregate_sessions
-from orchestra.sessions import report as report_sessions
+from orchestra.metrics import cli as metrics_cli
+from orchestra.score import cli as score_cli
+from orchestra.sessions import cli as sessions_cli
 from orchestra.stage import cli as stage_cli
 from orchestra.store import resolve_location
 from orchestra.tools.errors import ToolError
@@ -36,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
     view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     stage_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
-    metrics_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    metrics_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     plugin_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     sub.add_parser(
         "verify",
@@ -153,52 +154,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Redirect the whole install under DIR (tests, throwaway homes)",
     )
 
-    sessions = sub.add_parser(
-        "sessions",
-        help="Summarize Claude Code session transcripts",
-    )
-    sessions_sub = sessions.add_subparsers(dest="action", required=True)
-    report = sessions_sub.add_parser(
-        "report",
-        help="Print one JSON summary per session transcript",
-    )
-    report.add_argument(
-        "root",
-        nargs="?",
-        default=None,
-        help="Transcript root (default: ~/.claude/projects)",
-    )
-    report.add_argument(
-        "--records",
-        action="store_true",
-        help="Attach matched record counts to each session",
-    )
-    aggregate = sessions_sub.add_parser(
-        "aggregate",
-        help="Print one aggregate document for a report JSONL file",
-    )
-    aggregate.add_argument(
-        "report",
-        nargs="?",
-        default="-",
-        help="report JSONL path, or '-' for stdin (default)",
-    )
+    sessions_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     conductor_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
 
-    effort = sub.add_parser("effort", help="Effort settings")
-    effort_sub = effort.add_subparsers(dest="action", required=True)
-    autonomy = effort_sub.add_parser(
-        "autonomy", help="Set an effort's autonomy level, or migrate autonomy constraints"
-    )
-    autonomy.add_argument("effort", nargs="?", help="Effort slug")
-    autonomy.add_argument("level", nargs="?", help="gated, auto-plan, or auto-phases")
-    autonomy.add_argument(
-        "--migrate", action="store_true", help="Map autonomy constraints to levels"
-    )
-    autonomy.add_argument("--apply", action="store_true", help="With --migrate, write the changes")
-    autonomy.add_argument("--json", action="store_true", help="Print one JSON object")
-    autonomy.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
-    autonomy.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+    score_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
 
     store = sub.add_parser(
         "store",
@@ -247,20 +206,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Print the created paths and store readiness as JSON",
     )
 
-    idea = sub.add_parser("idea", help="Capture an open composer idea from a title")
-    idea.add_argument("title", help="Idea title; subject is the slugified title")
-    idea.add_argument("--area", default=None, help="composer:area subject slug")
-    idea.add_argument("--effort", default=None, help="score:effort subject slug")
-    idea.add_argument("--source", default=None, help="Idea source text")
-    idea.add_argument(
-        "--body-file",
-        default=None,
-        help="Append this file's text to the idea body below the title",
-    )
-
-    place = sub.add_parser("place", help="Place an effort in a composer area")
-    place.add_argument("effort", help="score:effort subject slug")
-    place.add_argument("area", help="composer:area subject slug")
+    composer_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     return parser
 
 
@@ -281,46 +227,6 @@ def _checkout_root(directory: Path) -> Path:
 
 def _print_json(payload: object) -> None:
     print(json.dumps(payload, indent=2))
-
-
-def _cmd_effort_autonomy(args: argparse.Namespace) -> int:
-    try:
-        location = resolve_location(args.store, _cwd(args))
-        project = open_store(location.root, store=location.store)
-        if args.migrate:
-            mappings, notes = autonomy.plan_migration(project)
-            applied = autonomy.apply_migration(project, mappings) if args.apply else {}
-            rows = [
-                {"constraint": m.constraint, "effort": m.effort, "level": m.level} for m in mappings
-            ]
-            if args.json:
-                _print_json(
-                    {
-                        "mappings": rows,
-                        "notes": notes,
-                        "applied": bool(args.apply),
-                        "levels": applied,
-                    }
-                )
-            else:
-                for row in rows:
-                    print(f"{row['constraint']}: {row['effort']} -> {row['level']}")
-                for note in notes:
-                    print(note)
-                print("applied" if args.apply else "dry run; pass --apply to write")
-            return 0
-        if not args.effort or not args.level:
-            print("orchestra effort autonomy: an effort and a level are required", file=sys.stderr)
-            return 2
-        record = autonomy.set_autonomy(project, args.effort, args.level)
-    except (autonomy.AutonomyError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra effort autonomy: {exc}", file=sys.stderr)
-        return 2
-    if args.json:
-        _print_json({"effort": args.effort, "autonomy": args.level, "record": record["id"]})
-    else:
-        print(f"{args.effort}: autonomy {args.level}")
-    return 0
 
 
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
@@ -436,46 +342,6 @@ def _cmd_store_run(args: argparse.Namespace) -> int:
     return code
 
 
-def _cmd_idea(args: argparse.Namespace) -> int:
-    from orchestra.composer.idea import IdeaError, capture
-
-    extra_body = None
-    if args.body_file is not None:
-        try:
-            extra_body = Path(args.body_file).read_text(encoding="utf-8")
-        except OSError as exc:
-            print(f"orchestra idea: {exc}", file=sys.stderr)
-            return 1
-    try:
-        project = open_store(Path.cwd())
-        record = capture(
-            project,
-            args.title,
-            area=args.area,
-            effort=args.effort,
-            source=args.source,
-            body=extra_body,
-        )
-    except (IdeaError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra idea: {exc}", file=sys.stderr)
-        return 1
-    print(record["subject"])
-    return 0
-
-
-def _cmd_place(args: argparse.Namespace) -> int:
-    from orchestra.composer.placement import PlacementError, place
-
-    try:
-        project = open_store(Path.cwd())
-        record = place(project, args.effort, args.area)
-    except (PlacementError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra place: {exc}", file=sys.stderr)
-        return 1
-    print(record["subject"])
-    return 0
-
-
 def _cmd_store_ensure(args: argparse.Namespace) -> int:
     from orchestra.canon.backend import open_backend
     from orchestra.canon.sync import init_store
@@ -556,18 +422,12 @@ def main(argv: list[str] | None = None) -> int:
         from orchestra.stage.install import main as install_main  # noqa: I001  # pyright: ignore[reportUnknownVariableType]
 
         return install_main(args)
-    if args.command == "sessions":
-        try:
-            if args.action == "report":
-                return report_sessions(args.root, records=args.records)
-            return aggregate_sessions(args.report)
-        except OSError as exc:
-            print(f"orchestra sessions: {exc}", file=sys.stderr)
-            return 2
+    if args.command in sessions_cli.COMMANDS:
+        return sessions_cli.run(args)
     if args.command in conductor_cli.COMMANDS:
         return conductor_cli.run(args, render_brief=views.render_brief)
-    if args.command == "effort":
-        return _cmd_effort_autonomy(args)
+    if args.command in score_cli.COMMANDS:
+        return score_cli.run(args)
     if args.command == "store":
         if args.action == "recover-evidence":
             from orchestra.canon.validation import ValidationError
@@ -587,13 +447,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "scan":
             return _cmd_store_scan(args)
         return _cmd_store_ensure(args)
-    if args.command == "idea":
-        return _cmd_idea(args)
-    if args.command == "place":
-        return _cmd_place(args)
+    if args.command in composer_cli.COMMANDS:
+        return composer_cli.run(args)
     if args.command == "status":
         return status_cli.run(args)
-    if args.command == "metrics":
+    if args.command in metrics_cli.COMMANDS:
         return metrics_cli.run(args)
     if args.command == "plugins":
         return plugin_cli.run(args)

@@ -64,6 +64,16 @@ CONDUCTOR_WORKFLOW = [
     ),
 ]
 
+LIGHT_COMPONENTS = [
+    (("idea", "A thing"), 1),
+    (("place", "alpha", "beta"), 1),
+    (("effort", "autonomy", "alpha", "gated"), 2),
+    (("effort", "autonomy", "--migrate"), 2),
+    (("metrics", "phases"), 1),
+    (("metrics", "repairs", "--since", "2020-01-01"), 1),
+    (("metrics", "compare", "p1"), 1),
+]
+
 GROUPS = {
     "conductor_suite_gate": CONDUCTOR_SUITE_GATE,
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
@@ -72,21 +82,24 @@ GROUPS = {
 }
 
 CASES = [
-    pytest.param(argv, id=f"{group}-{'_'.join(argv).replace('-', '_')}")
+    pytest.param(argv, REFUSAL_CODE, id=f"{group}-{'_'.join(argv).replace('-', '_')}")
     for group, commands in GROUPS.items()
     for argv in commands
+] + [
+    pytest.param(argv, code, id=f"light_components-{'_'.join(argv).replace('-', '_')}")
+    for argv, code in LIGHT_COMPONENTS
 ]
 
 
-@pytest.mark.parametrize("argv", CASES)
+@pytest.mark.parametrize(("argv", "code"), CASES)
 def test_no_store_is_store_not_ready_with_searched_paths(
-    argv: tuple[str, ...], bare_dir: Path
+    argv: tuple[str, ...], code: int, bare_dir: Path
 ) -> None:
     (bare_dir / "orchestra.toml").write_text(MINIMAL_CONFIG, encoding="utf-8")
     (bare_dir / "close-request.json").write_text("{}", encoding="utf-8")
     result = invoke("orchestra", list(argv), bare_dir)
     text = result.out + result.err
-    assert result.code == REFUSAL_CODE, text
+    assert result.code == code, text
     assert NO_STORE in text
     assert "store_not_ready" in text
     assert "searched" in text
@@ -95,5 +108,20 @@ def test_no_store_is_store_not_ready_with_searched_paths(
 
 def test_conductor_workflow_brief_skill_needs_no_store(bare_dir: Path) -> None:
     result = invoke("orchestra", ["workflow", "brief", "--skill", "init"], bare_dir)
+    assert result.code == 0, result.err
+    assert "store_not_ready" not in result.out + result.err
+
+
+def test_light_components_sessions_report_needs_no_store(bare_dir: Path) -> None:
+    result = invoke("orchestra", ["sessions", "report", str(bare_dir / "none")], bare_dir)
+    assert result.code == 0, result.err
+    assert "store_not_ready" not in result.out + result.err
+
+
+def test_light_components_sessions_aggregate_needs_no_store(bare_dir: Path) -> None:
+    (bare_dir / "report.jsonl").write_text("", encoding="utf-8")
+    result = invoke(
+        "orchestra", ["sessions", "aggregate", str(bare_dir / "report.jsonl")], bare_dir
+    )
     assert result.code == 0, result.err
     assert "store_not_ready" not in result.out + result.err
