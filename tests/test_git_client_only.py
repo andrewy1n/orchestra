@@ -72,7 +72,9 @@ def test_wave_and_close_use_primary_checkout() -> None:
     assert offenders == []
     assert not {"repo_root", "worktree_root"} & _defined_functions(wave)
     assert "primary_checkout" not in _defined_functions(close)
-    assert "primary_checkout" in _called_attributes(ROOT / "orchestra" / "cli.py")
+    assert "primary_checkout" in _called_attributes(
+        ROOT / "orchestra" / "conductor" / "cli" / "wave_commands.py"
+    )
     assert "primary_checkout" in _called_attributes(ROOT / "orchestra" / "stage" / "hooks.py")
 
 
