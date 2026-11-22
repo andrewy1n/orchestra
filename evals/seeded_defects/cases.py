@@ -34,7 +34,7 @@ class Case:
 def _strings(value: object) -> frozenset[str]:
     if not isinstance(value, list):
         return frozenset()
-    return frozenset(str(item) for item in value)  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+    return frozenset(str(item) for item in value)
 
 
 def _load_case(folder: Path, source_repo: Path, errors: list[str]) -> Case | None:
@@ -48,7 +48,7 @@ def _load_case(folder: Path, source_repo: Path, errors: list[str]) -> Case | Non
     if not isinstance(raw, dict):
         errors.append(f"{case_id}: case.json is not an object")
         return None
-    meta: dict[str, object] = raw  # pyright: ignore[reportUnknownVariableType]
+    meta: dict[str, object] = raw
     phase = meta.get("phase")
     revision = meta.get("revision")
     kind = meta.get("kind")

@@ -140,7 +140,7 @@ def _recovery_bucket(tmp_path: Path) -> str:
     return next(
         name
         for name in ("historical", "fresh_proof_required", "recoverable")
-        if acceptance["id"] in report[name]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+        if acceptance["id"] in report[name]
     )
 
 

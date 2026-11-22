@@ -8,7 +8,7 @@ from typing import TypeAlias
 from evals.seeded_defects.campaign import run_campaign
 from orchestra.tools import RunFn
 
-SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"  # pyright: ignore[reportPrivateUsage]
+SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 DEFAULT_CASES = Path(__file__).parent / "cases"
 
 

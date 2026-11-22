@@ -23,5 +23,5 @@ def test_missing_executable_raises_tool_not_found(tmp_path: Path) -> None:
         raise FileNotFoundError("git")
 
     with pytest.raises(ToolNotFoundError) as info:
-        Git(tmp_path, run=missing).run("status")  # pyright: ignore[reportArgumentType]
+        Git(tmp_path, run=missing).run("status")
     assert isinstance(info.value, ToolError)

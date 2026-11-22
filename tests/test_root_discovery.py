@@ -50,7 +50,7 @@ def test_cli_checkout_root_raises_when_git_is_missing(
     _patch(monkeypatch, store_commands, _missing)
 
     with pytest.raises(ToolError):
-        store_commands._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        store_commands._checkout_root(tmp_path)
 
 
 def test_cli_checkout_root_raises_when_git_is_too_old(
@@ -59,11 +59,11 @@ def test_cli_checkout_root_raises_when_git_is_too_old(
     _patch(monkeypatch, store_commands, _old_git)
 
     with pytest.raises(ToolError):
-        store_commands._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        store_commands._checkout_root(tmp_path)
 
 
 def test_cli_checkout_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
-    assert store_commands._checkout_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert store_commands._checkout_root(tmp_path) == tmp_path.resolve()
 
 
 def test_project_root_raises_when_git_is_missing(
@@ -72,20 +72,20 @@ def test_project_root_raises_when_git_is_missing(
     _patch(monkeypatch, project, _missing)
 
     with pytest.raises(ToolError):
-        project._project_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        project._project_root(tmp_path)
 
 
 def test_project_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
-    assert project._project_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert project._project_root(tmp_path) == tmp_path.resolve()
 
 
 def test_cli_checkout_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:
     missing = tmp_path / "nowhere"
 
-    assert store_commands._checkout_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert store_commands._checkout_root(missing) == missing.resolve()
 
 
 def test_project_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:
     missing = tmp_path / "nowhere"
 
-    assert project._project_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert project._project_root(missing) == missing.resolve()

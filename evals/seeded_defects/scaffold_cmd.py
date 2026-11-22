@@ -19,7 +19,7 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonValue, Record
 from orchestra.tools import Git, RunFn
 
-SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"  # pyright: ignore[reportPrivateUsage]
+SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 COMMAND_TIMEOUT_SECONDS = 600
 RECORD_TYPES = ("work-item", "acceptance", "specification")
 DEAD_STATES = frozenset({"superseded", "withdrawn"})

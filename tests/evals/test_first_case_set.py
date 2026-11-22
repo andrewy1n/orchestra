@@ -17,7 +17,7 @@ def _load() -> list[dict[str, object]]:
     for path in _case_files():
         data: object = json.loads(path.read_text())
         assert isinstance(data, dict)
-        loaded.append({str(key): value for key, value in data.items()})  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+        loaded.append({str(key): value for key, value in data.items()})
     return loaded
 
 

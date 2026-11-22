@@ -9,7 +9,7 @@ from pathlib import Path
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
+    import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 TUNER_ROOT = "orchestra/tuner"

@@ -8,7 +8,7 @@ from test_boundaries import PACKAGE, REPO_ROOT, boundary_violations
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib  # pyright: ignore[reportMissingImports]
+    import tomli as tomllib
 
 
 def test_tools_imports_no_component(tmp_path: Path) -> None:

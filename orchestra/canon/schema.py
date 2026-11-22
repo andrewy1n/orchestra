@@ -193,7 +193,7 @@ def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
         if purpose is None or not purpose.strip():
             raise SchemaError(f"{where}: purpose is required")
         lifecycle_value = type_spec.get("lifecycle")
-        if lifecycle_value not in LIFECYCLES:  # pyright: ignore[reportArgumentType]  # Preserve TypeError for unhashable malformed lifecycle values.
+        if lifecycle_value not in LIFECYCLES:
             raise SchemaError(f"{where}: lifecycle must be one of {sorted(LIFECYCLES)}")
         lifecycle_name = get_string(type_spec, "lifecycle")
         if lifecycle_name is None:

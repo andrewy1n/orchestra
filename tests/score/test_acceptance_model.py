@@ -78,7 +78,7 @@ def test_r13_acceptance_malformed_by_wrong_typed_field_names_record_and_field(
     payload = {**ACCEPTANCE, field: value}
 
     with pytest.raises(RecordShapeError) as caught:
-        read_acceptance(_record(payload))  # pyright: ignore[reportArgumentType]
+        read_acceptance(_record(payload))
 
     _assert_names(caught, field)
 
