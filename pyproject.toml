@@ -70,6 +70,8 @@ dev = [
     "wheel",
     "basedpyright==1.40.2",
     "tomli>=2",
+    # 2.15 is the newest import-linter that still runs on Python 3.10.
+    "import-linter==2.15",
 ]
 
 [project.entry-points."canon.schemas"]
@@ -118,3 +120,106 @@ include = ["orchestra", "dashboard", "installer", "tests", "scripts", "evals"]
 strict = ["orchestra", "dashboard", "installer"]
 reportIgnoreCommentWithoutRule = "error"
 reportExplicitAny = "error"
+
+# Intended package direction, high to low. Tools is the base. Score and tuner
+# are the same height and independent. Composer, conductor, and derive are the
+# next height and independent of each other, so derive must not import
+# conductor. Read models sit above that. Stage sits above the read models and
+# below the CLI entry modules, so the CLI may call stage and stage may call
+# views, but stage may not call the CLI.
+[tool.importlinter]
+root_packages = ["orchestra", "dashboard", "installer"]
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Orchestra package layers"
+type = "layers"
+containers = ["orchestra"]
+exhaustive = true
+unmatched_ignore_imports_alerting = "error"
+layers = [
+    "cli : metrics_cli : plugin_cli : plugin_verify_cli : status_cli : view_cli : workflow_cli",
+    "stage",
+    "views : store : sessions : metrics",
+    "conductor | composer | derive",
+    "score | tuner",
+    "canon",
+    "tools",
+]
+ignore_imports = [
+    # derive.py:12,15,18. Requirement status still lives in conductor.
+    "orchestra.derive -> orchestra.conductor.requirements",
+]
+
+[[tool.importlinter.contracts]]
+name = "Score and tuner are independent"
+type = "independence"
+modules = ["orchestra.score", "orchestra.tuner"]
+
+[[tool.importlinter.contracts]]
+name = "Composer does not import tuner"
+type = "forbidden"
+source_modules = ["orchestra.composer"]
+forbidden_modules = ["orchestra.tuner"]
+allow_indirect_imports = false
+as_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Only the status CLI imports the dashboard"
+type = "forbidden"
+source_modules = ["orchestra"]
+forbidden_modules = ["dashboard"]
+allow_indirect_imports = false
+as_packages = true
+unmatched_ignore_imports_alerting = "error"
+ignore_imports = [
+    # status_cli.py:26-28. The terminal status view reuses the dashboard read model.
+    "orchestra.status_cli -> dashboard.backend.gates",
+    "orchestra.status_cli -> dashboard.backend.snapshot",
+    "orchestra.status_cli -> dashboard.backend.store",
+]
+
+[[tool.importlinter.contracts]]
+name = "Dashboard does not reach into conductor evidence internals"
+type = "forbidden"
+source_modules = ["dashboard"]
+forbidden_modules = [
+    "orchestra.conductor.head_evidence",
+    "orchestra.conductor.revision",
+]
+# Direct imports only. snapshot -> derive -> requirements -> head_evidence and
+# phase -> landing -> revision are transitive uses of other contracts' edges.
+allow_indirect_imports = true
+as_packages = true
+unmatched_ignore_imports_alerting = "error"
+ignore_imports = [
+    # phase.py:37. Suite evidence at the phase head.
+    "dashboard.backend.phase -> orchestra.conductor.head_evidence",
+    # server/service.py:32. Review evidence for the open phase.
+    "dashboard.backend.server.service -> orchestra.conductor.head_evidence",
+    # approval.py:23. Confirm-modal revision check.
+    "dashboard.backend.approval -> orchestra.conductor.revision",
+]
+
+[[tool.importlinter.contracts]]
+name = "Only the stage install bridge imports installer"
+type = "forbidden"
+source_modules = ["orchestra", "dashboard"]
+forbidden_modules = ["installer"]
+allow_indirect_imports = false
+as_packages = true
+unmatched_ignore_imports_alerting = "error"
+ignore_imports = [
+    # stage/install.py:16-17. Lazy bridge to the checkout-side installer.
+    # Any other importer of installer fails this contract.
+    "orchestra.stage.install -> installer.model",
+    "orchestra.stage.install -> installer.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "Installer does not import orchestra or the dashboard"
+type = "forbidden"
+source_modules = ["installer"]
+forbidden_modules = ["orchestra", "dashboard"]
+allow_indirect_imports = false
+as_packages = true
