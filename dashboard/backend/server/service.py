@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import TypeVar
@@ -25,6 +26,7 @@ from dashboard.backend.snapshot import (
     Snapshot,
     load_snapshot,
     load_work_snapshot,
+    with_landing,
 )
 from dashboard.backend.stages import refs_fingerprint
 from dashboard.backend.task import load_task_detail
@@ -119,9 +121,8 @@ class Cache:
         self.details: dict[tuple[str, ...], CachedResponse] = {}
 
     def sync_refs(self) -> None:
-        token = self.token_only()
-        with store.pinned_token(token):
-            records = store.catalog_records(self.target)
+        self.token_only()
+        records = store.catalog_records(self.target)
         refs = refs_fingerprint(self.target, records)
         with self.lock:
             if refs != self.refs:
@@ -146,7 +147,7 @@ class Cache:
                 for phase, fact in landing_facts(view, self.target.project_root).items()
             }
             if facts:
-                snapshot = load_snapshot(self.target, token=token, landing=facts)
+                snapshot = with_landing(self.target, snapshot, facts)
             with self.lock:
                 if self.generation == generation and self.token == token:
                     self.snapshot = snapshot
@@ -166,9 +167,19 @@ class Cache:
                     self.work_snapshot = snapshot
             return snapshot
 
+    @contextlib.contextmanager
+    def request(self) -> Generator[None, None, None]:
+        """Pin one change token and one catalog for every read made inside the block."""
+        if store.pinned_catalog() is not None:
+            yield
+            return
+        token = self.token_only()
+        with store.pinned(store.load_catalog(self.target, token)):
+            yield
+
     def token_only(self) -> str:
         with self.lock:
-            token = store.change_token(self.target)
+            token = store.current_token(self.target)
             if token != self.token:
                 self.generation += 1
                 self.snapshot = None
@@ -229,23 +240,26 @@ class Reader:
         return schemas.TokenResponse(token=self.cache.token_only())
 
     def snapshot(self) -> schemas.SnapshotResponse:
-        return self.cache.snapshot_payload()
+        with self.cache.request():
+            return self.cache.snapshot_payload()
 
     def areas(self) -> schemas.AreasResponse:
-        return self.cache.remember(
-            ("areas",),
-            lambda: schemas.AreasResponse(
-                [
-                    schemas.AreaView.model_validate(view)
-                    for view in areas.load_areas(self.read_target)
-                ]
-            ),
-            schemas.AreasResponse,
-        )
+        with self.cache.request():
+            return self.cache.remember(
+                ("areas",),
+                lambda: schemas.AreasResponse(
+                    [
+                        schemas.AreaView.model_validate(view)
+                        for view in areas.load_areas(self.read_target)
+                    ]
+                ),
+                schemas.AreasResponse,
+            )
 
     def hub(self) -> schemas.HubResponse:
         now = datetime.now(timezone.utc)
-        snapshot = self.cache.work_current(now)
+        with self.cache.request():
+            snapshot = self.cache.work_current(now)
         view = hub.build_hub(snapshot, now)
         return schemas.HubResponse.model_validate(view)
 
@@ -259,19 +273,21 @@ class Reader:
                 decisions=schemas.DecisionLog.model_validate(log),
             )
 
-        self.cache.sync_refs()
-        return self.cache.remember(("phase", effort, phase), load, schemas.PhaseResponse)
+        with self.cache.request():
+            self.cache.sync_refs()
+            return self.cache.remember(("phase", effort, phase), load, schemas.PhaseResponse)
 
     def task(self, task_id: str) -> schemas.TaskResponse:
-        return self.cache.remember(
-            ("task", task_id),
-            lambda: schemas.TaskResponse(
-                detail=schemas.TaskDetail.model_validate(
-                    load_task_detail(self.read_target, task_id)
-                )
-            ),
-            schemas.TaskResponse,
-        )
+        with self.cache.request():
+            return self.cache.remember(
+                ("task", task_id),
+                lambda: schemas.TaskResponse(
+                    detail=schemas.TaskDetail.model_validate(
+                        load_task_detail(self.read_target, task_id)
+                    )
+                ),
+                schemas.TaskResponse,
+            )
 
     def journal(self, effort: str) -> schemas.JournalResponse:
         def load() -> schemas.JournalResponse:
@@ -281,39 +297,44 @@ class Reader:
                 rest=[schemas.JournalItem.model_validate(item) for item in rest],
             )
 
-        return self.cache.remember(("journal", effort), load, schemas.JournalResponse)
+        with self.cache.request():
+            return self.cache.remember(("journal", effort), load, schemas.JournalResponse)
 
     def record(self, record_id: str) -> schemas.RecordResponse:
-        return self.cache.remember(
-            ("record", record_id),
-            lambda: schemas.RecordResponse(
-                record=schemas.StoredRecord.model_validate(
-                    journal.load_record(self.read_target, record_id)
-                )
-            ),
-            schemas.RecordResponse,
-        )
+        with self.cache.request():
+            return self.cache.remember(
+                ("record", record_id),
+                lambda: schemas.RecordResponse(
+                    record=schemas.StoredRecord.model_validate(
+                        journal.load_record(self.read_target, record_id)
+                    )
+                ),
+                schemas.RecordResponse,
+            )
 
     def requirement(self, effort: str, phase: str, requirement: str) -> schemas.RequirementResponse:
-        return self.cache.remember(
-            ("requirement", effort, phase, requirement),
-            lambda: schemas.RequirementResponse(
-                detail=schemas.RequirementDetail.model_validate(
-                    load_requirement_detail(self.read_target, effort, phase, requirement)
-                )
-            ),
-            schemas.RequirementResponse,
-        )
+        with self.cache.request():
+            return self.cache.remember(
+                ("requirement", effort, phase, requirement),
+                lambda: schemas.RequirementResponse(
+                    detail=schemas.RequirementDetail.model_validate(
+                        load_requirement_detail(self.read_target, effort, phase, requirement)
+                    )
+                ),
+                schemas.RequirementResponse,
+            )
 
     def needs(self, effort: str, item_id: str) -> schemas.NeedsResponse:
-        view = self.cache.effort(effort)
+        with self.cache.request():
+            view = self.cache.effort(effort)
         for item in view.needs_you:
             if item.id == item_id:
                 return schemas.NeedsResponse(item=needs_payload(item))
         raise store.ModelError(f"needs-you item {item_id} not found")
 
     def backlog(self, effort: str, item_id: str) -> schemas.BacklogResponse:
-        view = self.cache.effort(effort)
+        with self.cache.request():
+            view = self.cache.effort(effort)
         for item in view.backlog:
             if item.id == item_id:
                 return schemas.BacklogResponse(item=schemas.BacklogItem.model_validate(item))

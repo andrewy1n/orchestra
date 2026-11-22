@@ -177,8 +177,10 @@ _SNAPSHOT_TYPES = (
 def _list_all(
     target: Project, record_types: tuple[str, ...], token: str
 ) -> dict[str, list[Record]]:
+    view = store.pinned_catalog()
+
     def load(record_type: str) -> list[Record]:
-        with store.pinned_token(token):
+        with store.pinned(view) if view is not None else store.pinned_token(token):
             return list_records(target, record_type)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -449,6 +451,27 @@ def load_snapshot(
     token = token or change_token(target)
     with store.pinned_token(token):
         return _load_snapshot(target, now or datetime.now(timezone.utc), token, landing or {})
+
+
+def with_landing(
+    target: Project, snapshot: Snapshot, landing: Mapping[str, LandingFact]
+) -> Snapshot:
+    """Return the snapshot with each effort's Needs you list rebuilt from the landing facts."""
+    with store.pinned_token(snapshot.token):
+        every_record = store.catalog_records(target)
+        tasks = records_by_effort(list_records(target, "score:work-item"))
+    return replace(
+        snapshot,
+        efforts=[
+            replace(
+                view,
+                needs_you=_needs_you(
+                    every_record, view.effort, tasks.get(view.effort, []), landing
+                ),
+            )
+            for view in snapshot.efforts
+        ],
+    )
 
 
 def _load_snapshot(

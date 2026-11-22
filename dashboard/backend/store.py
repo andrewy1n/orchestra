@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import threading
 from collections.abc import Generator, Mapping
+from dataclasses import dataclass
 
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.errors import StoreError
@@ -16,8 +17,16 @@ class ModelError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class Catalog:
+    key: str
+    token: str
+    records: list[Record]
+    by_type: dict[str, list[Record]]
+
+
 _catalog_lock = threading.Lock()
-_catalog_cache: dict[str, tuple[str, list[Record], dict[str, list[Record]]]] = {}
+_catalog_cache: dict[str, Catalog] = {}
 _pin = threading.local()
 
 
@@ -26,52 +35,76 @@ def change_token(target: Project) -> str:
     return target.change_token()
 
 
+def current_token(target: Project) -> str:
+    """Return the pinned token, or read the store's change token when none is pinned."""
+    pinned: str | None = getattr(_pin, "token", None)
+    return pinned or change_token(target)
+
+
+def pinned_catalog() -> Catalog | None:
+    return getattr(_pin, "catalog", None)
+
+
 @contextlib.contextmanager
 def pinned_token(token: str) -> Generator[None, None, None]:
-    previous = getattr(_pin, "token", None)
+    previous_token: str | None = getattr(_pin, "token", None)
+    previous_catalog = pinned_catalog()
     _pin.token = token
+    if previous_catalog is not None and previous_catalog.token != token:
+        _pin.catalog = None
     try:
         yield
     finally:
-        _pin.token = previous
+        _pin.token = previous_token
+        _pin.catalog = previous_catalog
 
 
-def _load_catalog(
-    target: Project, *, required: bool = False
-) -> tuple[list[Record], dict[str, list[Record]]]:
+@contextlib.contextmanager
+def pinned(catalog: Catalog) -> Generator[None, None, None]:
+    previous_token: str | None = getattr(_pin, "token", None)
+    previous_catalog = pinned_catalog()
+    _pin.token = catalog.token
+    _pin.catalog = catalog
+    try:
+        yield
+    finally:
+        _pin.token = previous_token
+        _pin.catalog = previous_catalog
+
+
+def load_catalog(target: Project, token: str) -> Catalog:
+    """Read the store's catalog at this token. Raises ModelError on a failed read."""
     key = str(target.store_path)
     with _catalog_lock:
-        token = getattr(_pin, "token", None) or change_token(target)
         cached = _catalog_cache.get(key)
-        if cached and cached[0] == token:
-            return cached[1], cached[2]
+        if cached and cached.token == token:
+            return cached
         try:
             records = target.records()
             rows = attach_derived_all(records, target.derived(records))
-        except StoreError as exc:
-            if required:
-                raise ModelError(f"catalog read failed: {exc}") from exc
-            return [], {}
+        except (StoreError, OSError, ValueError) as exc:
+            raise ModelError(f"catalog read failed: {exc}") from exc
         by_type: dict[str, list[Record]] = {}
         for row in rows:
             by_type.setdefault(row["record_type"], []).append(row)
-        _catalog_cache[key] = (token, rows, by_type)
-        return rows, by_type
+        catalog = Catalog(key, token, rows, by_type)
+        _catalog_cache[key] = catalog
+        return catalog
 
 
-def _catalog(target: Project, *, required: bool = False) -> list[Record]:
-    return _load_catalog(target, required=required)[0]
+def _catalog_view(target: Project) -> Catalog:
+    view = pinned_catalog()
+    if view is not None and view.key == str(target.store_path):
+        return view
+    return load_catalog(target, current_token(target))
 
 
-def _catalog_types(target: Project) -> dict[str, list[Record]]:
-    return _load_catalog(target)[1]
+def _catalog(target: Project) -> list[Record]:
+    return _catalog_view(target).records
 
 
 def catalog_records(target: Project) -> list[Record]:
-    try:
-        return _catalog(target, required=True)
-    except (OSError, ValueError) as exc:
-        raise ModelError(f"catalog read failed: {exc}") from exc
+    return _catalog(target)
 
 
 def declared_record_types(target: Project) -> frozenset[str] | None:
@@ -107,13 +140,8 @@ def list_records(
     payload: Mapping[str, str] | None = None,
 ) -> list[Record]:
     """Return catalog records, filtered by type, lifecycle state, subject prefix, and payload fields."""
-    try:
-        rows = (
-            list(_catalog_types(target).get(record_type, ())) if record_type else _catalog(target)
-        )
-    except (OSError, ValueError) as exc:
-        label = f"list --type {record_type}" if record_type else f"list --subject {subject}"
-        raise ModelError(f"{label} failed: {exc}") from exc
+    catalog = _catalog_view(target)
+    rows = list(catalog.by_type.get(record_type, ())) if record_type else catalog.records
     if state:
         rows = [row for row in rows if row.get("lifecycle_state") == state]
     if subject:

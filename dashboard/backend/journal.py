@@ -58,15 +58,6 @@ class JournalItem:
     write_root: str = ""
 
 
-def _soft_list(
-    target: Project, record_type: str, *, payload: dict[str, str] | None = None
-) -> list[Record]:
-    try:
-        return records.list_records(target, record_type, payload=payload)
-    except store.ModelError:
-        return []
-
-
 def _phase_for_task(subject: str, tasks: list[Record]) -> tuple[str | None, str]:
     live = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
     task = owning_work_item(subject, live)
@@ -169,20 +160,20 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
     ]
     sole_goal = len(goals) == 1 and (not goals or goals[0]["subject"] == effort)
 
-    tasks = _soft_list(target, "score:work-item", payload={"effort": effort})
+    tasks = records.list_records(target, "score:work-item", payload={"effort": effort})
     if not tasks:
         tasks = [
             record
-            for record in _soft_list(target, "score:work-item")
+            for record in records.list_records(target, "score:work-item")
             if record_effort(record) == effort
         ]
     tasks_by_id = {task["id"]: task for task in tasks}
     tasks_by_subject = {task["subject"]: task for task in tasks}
 
-    phases = _soft_list(target, "score:phase", payload={"effort": effort})
+    phases = records.list_records(target, "score:phase", payload={"effort": effort})
     phase_titles = {record["subject"]: phase_title(record) for record in phases}
 
-    assignments_listed = _soft_list(target, "conductor:assignment")
+    assignments_listed = records.list_records(target, "conductor:assignment")
     assignments: dict[str, Record] = {}
     for record in assignments_listed:
         assignments[record["id"]] = record
@@ -190,7 +181,7 @@ def load_journal(target: Project, effort: str) -> list[JournalItem]:
 
     listed: dict[str, list[Record]] = {}
     for record_type in JOURNAL_TYPES:
-        raw = _soft_list(target, record_type)
+        raw = records.list_records(target, record_type)
         by_subject = record_type == "score:continuity-question"
         listed[record_type] = [
             record

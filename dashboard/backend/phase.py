@@ -14,7 +14,7 @@ from dashboard.backend.records import (
     records_by_effort,
 )
 from dashboard.backend.stages import load_phase_progress
-from dashboard.backend.store import ModelError, change_token
+from dashboard.backend.store import ModelError, current_token
 from dashboard.backend.task import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     AcceptanceRow,
@@ -688,7 +688,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
         by_effort("conductor:integration-report").get(effort, []),
         by_effort("conductor:release").get(effort, []),
         snapshot_phases,
-        load_phase_progress(target, change_token(target)).get(phase_subject),
+        load_phase_progress(target, current_token(target)).get(phase_subject),
     )
     decisions = [
         RelatedRecord("decision", r["id"], r["subject"], record_payload(r).get("choice", ""))

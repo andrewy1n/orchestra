@@ -6,27 +6,12 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 
 from dashboard.backend import store
-from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.score.effort import record_effort
 from orchestra.score.lookups import latest_record
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
-SOFT_TYPES = frozenset(
-    {
-        "score:specification",
-        "score:design",
-        "conductor:assessment",
-        "conductor:integration-report",
-        "conductor:proof-packet",
-        "conductor:release",
-        "score:position",
-        "composer:idea",
-        "score:milestone",
-        "composer:area",
-    }
-)
 INACTIVE_STATES = ("superseded", "retracted")
 
 
@@ -40,12 +25,7 @@ def list_records(
     declared = store.declared_record_types(target)
     if declared is not None and record_type not in declared:
         return []
-    try:
-        return store.list_records(target, record_type, state=state, payload=payload)
-    except ModelError:
-        if record_type in SOFT_TYPES:
-            return []
-        raise
+    return store.list_records(target, record_type, state=state, payload=payload)
 
 
 def derived_values(record: Record) -> DerivedValues:
