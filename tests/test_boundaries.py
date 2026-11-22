@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Pytest installs tomli on Python 3.10.
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = REPO_ROOT / "orchestra"
-COMPONENTS = ("tools", "canon", "score", "composer", "conductor", "tuner", "stage")
+COMPONENTS = ("tools", "canon", "score", "composer", "conductor", "tuner", "views", "stage")
 ALLOWED = {
     "tools": {"tools"},
     "canon": {"tools", "canon"},
@@ -15,7 +21,18 @@ ALLOWED = {
     "composer": {"tools", "canon", "score", "composer"},
     "tuner": {"tools", "canon", "tuner"},
     "conductor": {"tools", "canon", "score", "tuner", "conductor"},
-    "stage": {"tools", "canon", "score", "composer", "tuner", "conductor", "stage", "top"},
+    "views": {"tools", "canon", "score", "composer", "tuner", "conductor", "views"},
+    "stage": {
+        "tools",
+        "canon",
+        "score",
+        "composer",
+        "tuner",
+        "conductor",
+        "views",
+        "stage",
+        "top",
+    },
 }
 TOP_MODULES_STAGE_MAY_NOT_IMPORT = {"orchestra.cli"}
 
@@ -87,3 +104,25 @@ def test_every_component_may_import_tools(tmp_path: Path):
             "from orchestra.tools import cli_tool\n", encoding="utf-8"
         )
     assert boundary_violations(tmp_path / "orchestra") == []
+
+
+def test_stage_may_import_views(tmp_path: Path):
+    stage = tmp_path / "orchestra" / "stage"
+    stage.mkdir(parents=True)
+    (stage / "uses_views.py").write_text("from orchestra.views import render\n", encoding="utf-8")
+    assert boundary_violations(tmp_path / "orchestra") == []
+
+
+def test_views_may_not_import_stage(tmp_path: Path):
+    views = tmp_path / "orchestra" / "views"
+    views.mkdir(parents=True)
+    (views / "leak.py").write_text("from orchestra.stage import hooks\n", encoding="utf-8")
+    assert boundary_violations(tmp_path / "orchestra") == [
+        "orchestra/views/leak.py:1: views imports orchestra.stage"
+    ]
+
+
+def test_pyproject_packages_include_views():
+    with (REPO_ROOT / "pyproject.toml").open("rb") as stream:
+        packages = tomllib.load(stream)["tool"]["setuptools"]["packages"]
+    assert "orchestra.views" in packages

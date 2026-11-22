@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from canon_support import create, seed_effort
 
-from orchestra import views
+from orchestra.views import render as views
 
 
 @pytest.fixture

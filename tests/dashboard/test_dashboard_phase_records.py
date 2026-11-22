@@ -11,7 +11,7 @@ from dashboard.backend.snapshot import PhaseRow, load_snapshot
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.metrics.phases import build_phase_rows
-from orchestra.views import VIEWS, render_view
+from orchestra.views.render import VIEWS, render_view
 
 EFFORT = "workflow"
 PHASE = "feature"

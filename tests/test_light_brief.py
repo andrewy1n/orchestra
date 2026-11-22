@@ -8,7 +8,7 @@ from pathlib import Path
 from canon_support import REPO, create, make_project
 from test_brief_quotes import _orientation, _record, _work_item
 
-from orchestra import views
+from orchestra.views import render as views
 
 LIGHT_BODY = "## Requirements\n\nR1: Light wording of the first requirement.\nR2: Second.\n"
 

@@ -4,10 +4,10 @@ from pathlib import Path
 
 from canon_support import create, make_project, seed_effort
 
-from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.stage.handoff import hook_handoff_sections
+from orchestra.views import render as views
 
 EFFORT = "alpha"
 STAMPS = {

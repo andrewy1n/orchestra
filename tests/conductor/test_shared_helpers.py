@@ -366,7 +366,7 @@ def test_r11_attestation_signature(tmp_path: Path) -> None:
 
 def test_r15_views_omits_getter() -> None:
     """R15: orchestra.views does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "orchestra" / "views.py") == []
+    assert _record_payload_getters(ROOT / "orchestra" / "views" / "render.py") == []
 
 
 def test_r16_close_batch_omits_getter() -> None:
@@ -394,7 +394,7 @@ def test_r20_views_calls_payload() -> None:
     """R20: orchestra.views calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "orchestra" / "views.py", getters[0].__name__)
+    assert _calls_named(ROOT / "orchestra" / "views" / "render.py", getters[0].__name__)
 
 
 def test_r21_close_batch_calls_payload() -> None:

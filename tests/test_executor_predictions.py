@@ -7,9 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from canon_support import create, make_project, seed_effort
 
-from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import ProjectConfigError
+from orchestra.views import render as views
 
 
 def _task(project: Project, subject: str, **extra: object):

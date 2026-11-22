@@ -38,6 +38,7 @@ packages = [
     "orchestra.tuner",
     "orchestra.tuner.schemas",
     "orchestra.stage",
+    "orchestra.views",
     "orchestra.sessions",
     "dashboard",
     "dashboard.backend",

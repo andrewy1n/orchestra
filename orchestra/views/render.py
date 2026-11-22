@@ -654,10 +654,11 @@ def render_view(
     statuses: Mapping[str, EffortStatus] | None = None,
     landing: Mapping[str, LandingFact] | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
+    root: Path | None = None,
 ) -> str:
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
     if view.name == "plan":
-        budget = load_project_config(Path.cwd()).small_wave_budget_minutes
+        budget = load_project_config(root or Path.cwd()).small_wave_budget_minutes
     requirement_index = (
         RequirementIndex(_effort_pool(records, effort))
         if view.show_phase_derived or view.phase_derived_section

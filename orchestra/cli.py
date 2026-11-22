@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from orchestra import status_cli, view_cli, views
 from orchestra.canon import cli as canon_cli
 from orchestra.composer import cli as composer_cli
 from orchestra.conductor import cli as conductor_cli
@@ -15,6 +14,9 @@ from orchestra.sessions import cli as sessions_cli
 from orchestra.stage import cli as stage_cli
 from orchestra.stage import store_tools
 from orchestra.tuner import cli as tuner_cli
+from orchestra.views import cli as views_cli
+from orchestra.views import render as views_render
+from orchestra.views import status as views_status
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -26,9 +28,9 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    view_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
+    views_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     stage_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
-    status_cli.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
+    views_status.add_parser(sub)  # pyright: ignore[reportUnknownMemberType]
     metrics_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     tuner_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
     sessions_cli.add_parsers(sub)  # pyright: ignore[reportUnknownMemberType]
@@ -50,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in sessions_cli.COMMANDS:
         return sessions_cli.run(args)
     if args.command in conductor_cli.COMMANDS:
-        return conductor_cli.run(args, render_brief=views.render_brief)
+        return conductor_cli.run(args, render_brief=views_render.render_brief)
     if args.command in score_cli.COMMANDS:
         return score_cli.run(args)
     if args.command in canon_cli.COMMANDS:
@@ -58,13 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in composer_cli.COMMANDS:
         return composer_cli.run(args)
     if args.command == "status":
-        return status_cli.run(args)
+        return views_status.run(args)
     if args.command in metrics_cli.COMMANDS:
         return metrics_cli.run(args)
     if args.command in stage_cli.COMMANDS:
         return stage_cli.run(args)
-    if args.command in view_cli.COMMANDS:
-        return view_cli.run(args)
+    if args.command in views_cli.COMMANDS:
+        return views_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
     return 2
 

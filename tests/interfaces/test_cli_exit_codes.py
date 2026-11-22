@@ -10,6 +10,7 @@ import pytest
 from interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
+STORE_NOT_READY = "store_not_ready"
 NO_CONFIG = "required project config is missing"
 ARGS_REQUIRED = "the following arguments are required"
 EVIDENCE = json.dumps(
@@ -475,9 +476,9 @@ CONDUCTOR_WORKFLOW = [
     ),
 ]
 
-LIGHT_COMPONENTS = [
+VIEWS = [
     orchestra("handoff_success", "shared", 0, "handoff", out="# Project Handoff\n"),
-    orchestra("handoff_no_store", "bare", 1, "handoff", err=NO_STORE),
+    orchestra("handoff_no_store", "bare", 1, "handoff", err=STORE_NOT_READY),
     orchestra("view_plan_success", "shared", 0, "view", "plan", out="# Project Plan\n"),
     orchestra("view_status_success", "shared", 0, "view", "status", out="# Project Status\n"),
     orchestra(
@@ -489,7 +490,7 @@ LIGHT_COMPONENTS = [
         out="# Project Verification\n",
     ),
     orchestra("view_roadmap_success", "shared", 0, "view", "roadmap", out="# Project Roadmap\n"),
-    orchestra("view_no_store", "bare", 1, "view", "plan", err=NO_STORE),
+    orchestra("view_no_store", "bare", 1, "view", "plan", err=STORE_NOT_READY),
     orchestra("view_unknown_name", "shared", 2, "view", "nope", err="invalid choice"),
     orchestra("brief_success", "shared", 0, "brief", "a", out="# Brief: a\n"),
     orchestra(
@@ -500,12 +501,15 @@ LIGHT_COMPONENTS = [
         "nope",
         err="no work item found for subject 'nope'",
     ),
-    orchestra("brief_no_store", "bare", 1, "brief", "a", err=NO_STORE),
+    orchestra("brief_no_store", "bare", 1, "brief", "a", err=STORE_NOT_READY),
     orchestra(
         "status_success", "shared", 0, "status", out="alpha: running 0, ready 1, needs-you 0\n"
     ),
     orchestra("status_count_success", "shared", 0, "status", "--count", out="0\n"),
-    orchestra("status_no_store", "bare", 1, "status", err=NO_STORE),
+    orchestra("status_no_store", "bare", 1, "status", err=STORE_NOT_READY),
+]
+
+LIGHT_COMPONENTS = [
     orchestra(
         "hook_start_cursor_success", "shared", 0, "hook-start", "--cursor", stdin="{}", out=()
     ),
@@ -1037,6 +1041,7 @@ GROUPS: dict[str, list[Case]] = {
     "conductor_wave_task": CONDUCTOR_WAVE_TASK,
     "conductor_land_close": CONDUCTOR_LAND_CLOSE,
     "conductor_workflow": CONDUCTOR_WORKFLOW,
+    "views": VIEWS,
     "light_components": LIGHT_COMPONENTS,
     "tuner_canon_stage": TUNER_CANON_STAGE,
 }
