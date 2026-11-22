@@ -5,7 +5,6 @@ from pathlib import Path
 from canon_support import create, make_project
 
 from dashboard.backend.journal import _phase_for_task  # pyright: ignore[reportPrivateUsage]
-from dashboard.backend.snapshot import _task_for  # pyright: ignore[reportPrivateUsage]
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.cli.workflow_commands import (
@@ -15,6 +14,7 @@ from orchestra.conductor.phase_progress import phase_counts as phase_progress
 from orchestra.conductor.workflow import RunPreview
 from orchestra.metrics.ops import tasks_of
 from orchestra.metrics.phases import build_phase_rows
+from orchestra.score.work_item_facts import owning_task_id
 
 
 def _project(tmp_path: Path) -> Project:
@@ -75,9 +75,9 @@ def test_r16_acceptance_owner_is_the_live_longest_subject_item(tmp_path: Path) -
     new = project.supersede(old["id"], payload={"title": "again"})["record"]
     old = _stored(project, old["id"])
 
-    assert _task_for("foo-bar-1", [old, new, foo]) == new["id"]
-    assert _task_for("foo-1", [old, new, foo]) == foo["id"]
-    assert _task_for("other-1", [old, new, foo]) == ""
+    assert owning_task_id("foo-bar-1", [old, new, foo]) == new["id"]
+    assert owning_task_id("foo-1", [old, new, foo]) == foo["id"]
+    assert owning_task_id("other-1", [old, new, foo]) == ""
 
 
 def test_r16_journal_phase_for_task_uses_longest_live_subject(tmp_path: Path) -> None:

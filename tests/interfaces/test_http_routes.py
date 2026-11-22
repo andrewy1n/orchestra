@@ -1692,3 +1692,43 @@ def test_requirement_phase_evidence_route_pins() -> None:
         assert got == PHASE_EVIDENCE_EXPECTED
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+def _seed_backlog_items(root: Path) -> None:
+    _create(root, "score:effort", "alpha", {"goal": "ship alpha", "kind": "deliver"})
+    _create(root, "score:effort", "beta", {"goal": "ship beta", "kind": "deliver"})
+    _create(root, "composer:area", "billing", {"title": "Billing"}, "## Scope\n\nInvoices.")
+    _create(root, "composer:placement", "alpha", {"area": "billing"})
+    for subject, effort, status in (
+        ("zeta-idea", "alpha", "open"),
+        ("alpha-idea", "alpha", "open"),
+        ("promoted-idea", "alpha", "promoted"),
+        ("dismissed-idea", "alpha", "dismissed"),
+        ("other-idea", "beta", "open"),
+    ):
+        _create(
+            root,
+            "composer:idea",
+            subject,
+            {"effort": effort, "status": status, "source": "chat", "phase": ""},
+            f"Text of {subject}.\n",
+        )
+
+
+def test_snapshot_backlog_and_area_route_pins() -> None:
+    root = build_store()
+    try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setenv("ORCHESTRA_SIGNED_BY", "route-signer")
+            _seed_backlog_items(root)
+            client = TestClient(create_app(open_store(root)), raise_server_exceptions=False)
+            snapshot = client.get("/api/snapshot")
+        assert snapshot.status_code == 200, snapshot.text
+        effort = next(item for item in snapshot.json()["efforts"] if item["effort"] == "alpha")
+        assert effort["area"] == "billing"
+        assert [(item["subject"], item["text"], item["status"]) for item in effort["backlog"]] == [
+            ("alpha-idea", "Text of alpha-idea.", "open"),
+            ("zeta-idea", "Text of zeta-idea.", "open"),
+        ]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)

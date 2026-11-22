@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonValue, Record
 from orchestra.score.executor import ExecutorTask
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 
 
 @dataclass(frozen=True)
@@ -116,3 +117,9 @@ def tasks_by_requirement(tasks: Sequence[Record], phase: str) -> dict[str, list[
         for requirement in dict.fromkeys(facts.requirements):
             grouped.setdefault(requirement, []).append(task)
     return grouped
+
+
+def owning_task_id(subject: str, tasks: Sequence[Record]) -> str:
+    live = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
+    owner = owning_work_item(subject, live)
+    return owner["id"] if owner else ""

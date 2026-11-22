@@ -8,7 +8,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.fields import optional_text, required_int, required_text
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.lookups import current_phase
+from orchestra.score.lookups import current_phase, current_phases
 
 
 @dataclass(frozen=True)
@@ -70,3 +70,19 @@ def read_phase(record: Record) -> Phase:
 def current_phase_model(slug: str, records: Sequence[Record]) -> Phase | None:
     record = current_phase(slug, records)
     return read_phase(record) if record is not None else None
+
+
+def structured_phases(specs: Sequence[Record], phases: Sequence[Record]) -> set[tuple[str, str]]:
+    found: set[tuple[str, str]] = set()
+    for record in specs:
+        if record["lifecycle_state"] in ("superseded", "retracted"):
+            continue
+        payload = record_payload(record)
+        effort, phase = payload.get("effort"), payload.get("phase")
+        if isinstance(effort, str) and effort and isinstance(phase, str) and phase:
+            found.add((effort, phase))
+    for current in current_phases(phases).values():
+        model = read_phase(current)
+        if model.weight == "light":
+            found.add((model.effort, model.subject))
+    return found

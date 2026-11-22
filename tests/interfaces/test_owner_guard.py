@@ -417,3 +417,78 @@ def test_dashboard_phase_evidence_allowlist_only_names_current_raw_readers() -> 
         if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
     ]
     assert stale == []
+
+
+DASHBOARD_SNAPSHOT_DECIDERS: dict[str, tuple[str, ...]] = {
+    "snapshot.py": (
+        "_needs_you",
+        "_backlog_items",
+        "_activity",
+        "_check_stamps",
+        "_max_check_stamp_by_phase",
+        "_phase_updated_at",
+        "_owns_against_live",
+        "_prefixed_owner",
+        "_effort_matches",
+        "_work_item_stamps",
+    ),
+}
+
+DASHBOARD_SNAPSHOT_MERGED: dict[str, tuple[str, ...]] = {
+    "snapshot.py": (
+        "_structured_phases",
+        "_light_phases",
+        "_assessment_summary",
+        "_live",
+        "_task_for",
+    ),
+}
+
+DASHBOARD_SNAPSHOT_ALLOWLIST: dict[tuple[str, str], str] = {
+    ("snapshot.py", "_check_stamps"): "check-ownership owns them",
+    ("snapshot.py", "_max_check_stamp_by_phase"): "check-ownership owns them",
+    ("snapshot.py", "_phase_updated_at"): "check-ownership owns them",
+    ("snapshot.py", "_effort_matches"): "check-ownership owns them",
+    ("snapshot.py", "_work_item_stamps"): "check-ownership owns them",
+}
+
+_DASHBOARD_SNAPSHOT_DECIDER_IDS = sorted(
+    (module, name) for module, names in DASHBOARD_SNAPSHOT_DECIDERS.items() for name in names
+)
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    _DASHBOARD_SNAPSHOT_DECIDER_IDS,
+    ids=[f"dashboard_snapshot-{module}-{name}" for module, name in _DASHBOARD_SNAPSHOT_DECIDER_IDS],
+)
+def test_dashboard_snapshot_decider_exists(module: str, name: str) -> None:
+    assert name in raw_payload_readers(DASHBOARD_BACKEND / module, (name,))
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    _DASHBOARD_SNAPSHOT_DECIDER_IDS,
+    ids=[f"dashboard_snapshot-{module}-{name}" for module, name in _DASHBOARD_SNAPSHOT_DECIDER_IDS],
+)
+def test_dashboard_snapshot_decider_does_not_read_raw_payload(module: str, name: str) -> None:
+    found = raw_payload_readers(DASHBOARD_BACKEND / module, (name,))
+    assert name in found
+    if (module, name) in DASHBOARD_SNAPSHOT_ALLOWLIST:
+        return
+    assert found[name] == []
+
+
+@pytest.mark.parametrize("module", sorted(DASHBOARD_SNAPSHOT_MERGED))
+def test_dashboard_snapshot_merged_helpers_are_gone(module: str) -> None:
+    found = raw_payload_readers(DASHBOARD_BACKEND / module, DASHBOARD_SNAPSHOT_MERGED[module])
+    assert found == {}
+
+
+def test_dashboard_snapshot_allowlist_only_names_current_raw_readers() -> None:
+    stale = [
+        key
+        for key in sorted(DASHBOARD_SNAPSHOT_ALLOWLIST)
+        if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
+    ]
+    assert stale == []

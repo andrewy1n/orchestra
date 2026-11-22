@@ -3,7 +3,9 @@ from __future__ import annotations
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.assessment_facts import (
     AssessmentFacts,
+    AssessmentSummary,
     assessment_facts,
+    assessment_summary,
     latest_assessments,
 )
 
@@ -79,3 +81,54 @@ def test_latest_assessments_breaks_a_timestamp_tie_by_write_order() -> None:
     first["derived"] = {"write_order": 1}
     second["derived"] = {"write_order": 2}
     assert latest_assessments([second, first], "p")["R1"]["subject"] == "second"
+
+
+def _summary_record(
+    subject: str, payload: JsonObject, n: int, supersedes: list[str] | None = None
+) -> Record:
+    record = _assessment(subject, payload, n=n)
+    if supersedes:
+        record["relationships"] = {"supersedes": supersedes}
+    return record
+
+
+def test_assessment_summary_joins_requirement_status_and_next() -> None:
+    record = _summary_record("a", {"requirement": "R1", "status": "verified", "next": "release"}, 1)
+    assert assessment_summary(record, {}) == AssessmentSummary("R1 verified release", False)
+
+
+def test_assessment_summary_marks_failed_and_blocked_as_failed() -> None:
+    for status in ("failed", "blocked"):
+        record = _summary_record("a", {"requirement": "R1", "status": status, "next": "x"}, 1)
+        assert assessment_summary(record, {}).failed is True
+    record = _summary_record("a", {"requirement": "R1", "status": "insufficient"}, 1)
+    assert assessment_summary(record, {}).failed is False
+
+
+def test_assessment_summary_marks_upstream_next_steps() -> None:
+    for step in ("specify", "design", "plan"):
+        record = _summary_record("a", {"requirement": "R1", "status": "x", "next": step}, 1)
+        assert assessment_summary(record, {}).text == f"R1 x {step} upstream"
+    record = _summary_record("a", {"requirement": "R1", "status": "x", "next": "execute"}, 1)
+    assert assessment_summary(record, {}).text == "R1 x execute"
+
+
+def test_assessment_summary_reports_a_level_change_from_the_superseded_record() -> None:
+    old = _summary_record("old", {"requirement": "R1", "level": "design"}, 1)
+    new = _summary_record(
+        "new",
+        {"requirement": "R1", "status": "x", "next": "plan", "level": "code"},
+        2,
+        supersedes=[old["id"]],
+    )
+    summary = assessment_summary(new, {old["id"]: old, new["id"]: new})
+    assert summary.text == "R1 x plan upstream level design to code"
+
+
+def test_assessment_summary_omits_the_level_when_it_is_unchanged_or_unlinked() -> None:
+    old = _summary_record("old", {"requirement": "R1", "level": "design"}, 1)
+    same = _summary_record(
+        "new", {"requirement": "R1", "level": "design"}, 2, supersedes=[old["id"]]
+    )
+    assert assessment_summary(same, {old["id"]: old}).text == "R1  "
+    assert assessment_summary(same, {}).text == "R1  "
