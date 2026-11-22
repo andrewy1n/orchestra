@@ -467,6 +467,7 @@ WEB_COMMANDS = ("npm ci", "npm run lint", "npm run check", "npm test", "npm run 
 
 def _web_steps():
     spec = job("web")
+    assert spec.get("continue-on-error", False) is False, "web job can ignore command failures"
     default_dir = spec.get("defaults", {}).get("run", {}).get("working-directory")
     pairs = []
     for step in spec.get("steps", []):
@@ -480,6 +481,9 @@ def _web_steps():
             if line.startswith("cd ") and line[3:].strip().rstrip("/") == WEB_DIR:
                 workdir = WEB_DIR
                 continue
+            if line in WEB_COMMANDS:
+                assert "if" not in step, f"{line} can be skipped"
+                assert step.get("continue-on-error", False) is False, f"{line} can fail silently"
             pairs.append((line, workdir))
     return pairs
 
