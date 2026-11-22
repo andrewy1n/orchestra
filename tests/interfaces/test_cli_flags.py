@@ -249,7 +249,8 @@ GROUP_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 _SUBCOMMANDS = re.compile(r"^  \{([^}\s]+)\}\n    (\S+)", re.MULTILINE)
-_OPTIONS = re.compile(r"^  (-[^\s,]+(?:, -[^\s,]+)*)", re.MULTILINE)
+_OPTION_LINE = re.compile(r"^  (-.*)$", re.MULTILINE)
+_OPTION_NAME = re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*")
 
 
 def group_of(tool: str, path: str) -> str:
@@ -271,7 +272,11 @@ def help_text(tool: str, path: str) -> str:
 
 
 def accepted_flags(text: str) -> tuple[str, ...]:
-    names = {name for group in _OPTIONS.findall(text) for name in group.split(", ")}
+    names = {
+        name
+        for line in _OPTION_LINE.findall(text)
+        for name in _OPTION_NAME.findall(re.split(r"\s{2,}", line)[0])
+    }
     return tuple(sorted(names - {"-h", "--help"}))
 
 
