@@ -13,6 +13,9 @@ acme-checks = "acme_orchestra.verify:Technique"
 [project.entry-points."orchestra.conductor.land"]
 acme-land = "acme_orchestra.land:Adapter"
 
+[project.entry-points."orchestra.conductor.merge_evidence"]
+acme-ci = "acme_orchestra.ci:EvidenceAdapter"
+
 [project.entry-points."orchestra.composer.ideas"]
 acme-ideas = "acme_orchestra.ideas:Source"
 
@@ -22,6 +25,7 @@ v1 = "acme_orchestra.verify:Technique"
 [project.entry-points."orchestra.plugin_config"]
 "acme-checks__<base64url-schema>" = "acme_orchestra.verify:Technique"
 "acme-land__<base64url-schema>" = "acme_orchestra.land:Adapter"
+"acme-ci__<base64url-schema>" = "acme_orchestra.ci:EvidenceAdapter"
 "acme-ideas__<base64url-schema>" = "acme_orchestra.ideas:Source"
 ```
 
@@ -69,7 +73,7 @@ orchestra plugins list
 orchestra plugins list --scope tuner.verify --format json
 ```
 
-`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, or `conductor.land`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `1`.
+`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, `conductor.land`, or `conductor.merge_evidence`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `1`.
 
 ## Idea-source plugins
 
@@ -152,6 +156,12 @@ runner = ["acme-check", "--strict"]
 
 The example distribution registers `example-checks` and provides a replay implementation. Use its id to try the installed package.
 
+Verification techniques return `pass`, `fail`, `error`, or `skip` with JSON object output. Declare every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, and the plugin registration and distribution metadata into signed evidence.
+
+To support claim replay, add `replay(request)` and return an outcome for each requested test id. Outcomes are `passed`, `assertion_failed`, `errored`, or `not_run`. Set `[verify.replay] technique = "acme-checks"` only when the technique supports replay.
+
+Orchestra validates output before signing and keeps the signing keys. The declared identity excludes installed source and dependency hashes.
+
 ## Wrapping a CLI
 
 A plugin that runs an external program imports from `orchestra.tools`. Do not call `subprocess` directly.
@@ -227,14 +237,6 @@ repository = "acme/orchestra"
 
 The built-in GitHub adapter uses the authenticated `gh` CLI. `orchestra close` and the session start close sweep also need this adapter: they read the pull request state through `gh`. It needs no token variable. It needs `gh` 2.50.0 or newer. When you set `repository`, the adapter passes it as `-R owner/repo`. Otherwise `gh` reads the git remote.
 
-Every plugin returns one of `pass`, `fail`, `error`, or `skip`, with JSON object output. The plugin declares every setting that affects execution in `execution_definition`. Orchestra binds that definition, the committed parameters, entry point target, distribution metadata, scope, id, and API version into signed evidence.
-
-Claim replay is optional. To support it, add `replay(request)` and return one outcome for each requested test id. Outcomes are `passed`, `assertion_failed`, `errored`, or `not_run`. Configure `[verify.replay] technique = "acme-checks"` only when the technique supports replay.
-
-Orchestra validates output before signing. Plugins do not receive signing keys. The declared identity does not hash installed source files or dependencies.
-
-## Landing plugins
-
 Register a class that implements `LandAdapter.run(request)` and returns `LandingResult`:
 
 ```python
@@ -267,3 +269,25 @@ region = "west"
 The example `example-land` adapter returns `skipped`. It checks the dispatch contract without opening a pull request.
 
 Orchestra passes the proof packet, base branch, remote, polling limits, and config in `LandRequest`. It also passes `title` and `description`: the phase title with its slug, and the phase Problem, Approach and Exit criteria as `problem`, `approach` and `exit_criteria`. Both default to empty. The built-in GitHub adapter uses them as the PR title and as a description that says what the PR is for, followed by the proof packet. A result uses `success`, `fail`, `blocked`, or `skipped`. Orchestra keeps the human merge decision.
+
+## Merge evidence plugins
+
+Register a class in `orchestra.conductor.merge_evidence` that implements
+`EvidenceAdapter.read(request: EvidenceRequest) -> EvidenceSnapshot`.
+`EvidenceRequest` provides the phase worktree, pull request URL, and adapter
+configuration. Return the PR head, required checks, and each result's
+state, checked revision, and run link when available. Use
+`EvidenceSnapshot.unresolved` when the provider cannot establish the head or
+required checks. See the [adapter types](../orchestra/conductor/merge_evidence.py).
+
+```toml
+[merge_evidence]
+adapter = "acme-ci"
+
+[merge_evidence.config]
+repository = "acme/orchestra"
+```
+
+After publishing the PR, run `orchestra merge-evidence --phase <phase>`.
+Orchestra combines current-head check results with phase verification and
+records a recommendation for human merge approval. See [Merge evidence](../README.md#merge-evidence).

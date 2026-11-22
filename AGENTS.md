@@ -1,135 +1,50 @@
 # AGENTS.md
 
-orchestra is one product: product planning through verified code, run
-by agents. The move to one repo is planned in
-`docs/plans/monorepo-plan.md`.
+Orchestra runs product planning through verified code. See the [component map](README.md#components)
+and [import boundaries](tests/test_boundaries.py) before moving code across packages.
 
-## Layout
+Update the relevant `AGENTS.md` in the same change when an instruction becomes inaccurate.
+Keep each rule at the narrowest scope where it applies, and link to its source when it already lives elsewhere.
 
-| Path | Contents |
-|---|---|
-| `orchestra/` | CLI, views, sessions, store access |
-| `orchestra/canon/` | Record store and the `canon` CLI |
-| `orchestra/tools/` | `CliTool`, the base for CLI wrappers, and the `Git` client |
-| `orchestra/tuner/` | Evidence layer behind `orchestra verify` |
-| `orchestra/score/` | Work planning: the `score` schema module |
-| `orchestra/conductor/` | Dispatch: check, close-batch, suite, reviewer, and the `conductor` schema module |
-| `orchestra/stage/` | Session hooks and the install bridge |
-| `skills/`, `agents/`, `hosts/`, `installer/` | Host integration |
-| `dashboard/` | web dashboard |
-| `design/` | Specs |
-| `docs/` | Plans, guides and history |
+## Canon
 
-## Live protocol
+- Write records through `canon`. Only the parent session writes the store.
+  Subagents return evidence and do not call `canon`.
+- Run `canon validate` before finishing and before pushing. Fix every error.
+- Worktrees share `~/.canon/<repo-name>/canon.db`. Run `canon` from any worktree.
+  Never commit database changes. Commit relevant changes to versioned metadata
+  under `.canon/` with the code they affect. Run `canon backup` before database maintenance.
+- Tests use temporary stores. Keep test writes away from the real store.
 
-This repo's memory is `.canon/`. Write records with the `canon` CLI.
-Never edit a record file by hand. Run `canon validate` before you finish,
-and fix every error.
+## Code
 
-Only the parent session writes the store. Subagents return evidence in
-their response. They do not call `canon`.
-
-## Rules
-
-- Tests build temporary stores. Never write to a real `.canon/` store in
-  a test.
-- Call external programs through `CliTool` from `orchestra.tools`. Do not
-  import `subprocess` in new code; the allowlist in
-  `tests/test_subprocess_rule.py` lists the existing exceptions and shrinks
-  as callers migrate.
-- Do not add comments that explain a change. Comment only a fact the
-  code cannot show.
-- Use Conventional Commits. Keep the subject short and imperative.
-- The Python type gate is basedpyright. Annotate all new code, including
-  every Python function and method parameter and return value. Do not use
-  explicit `Any` or `typing.cast`; use a specific type or narrow the value
-  instead. Each ignore comment must name the checker rule and give a factual
-  reason the diagnostic does not apply, using
-  `# pyright: ignore[ruleName]`. Do not use or suggest mypy.
-- basedpyright includes `orchestra`, `dashboard`, `installer`, `tests`, and
-  `scripts`. It checks `orchestra`, `dashboard`, and `installer` in strict
-  mode. `tests` and `scripts` use standard mode. `reportExplicitAny` is
-  `error` on every included path.
-- Before closing a task, run `uv run basedpyright`, `ruff check` with
-  `uvx ruff@0.13.1 check .`, and `ruff format --check` with
-  `uvx ruff@0.13.1 format --check .`. Use `uvx ruff@0.13.1 format .` to
-  apply formatting when needed.
-- After `ruff --fix`, a bulk replace, or a rename script, review
-  `git diff --stat` and the removed lines. Grep for the old name inside
-  strings, f-strings, module paths and entry points. Run the affected
-  tests before you go on.
-
-## Design
-
+- Call external programs through `CliTool` from `orchestra.tools`. See
+  [the subprocess allowlist](tests/test_subprocess_rule.py) for existing exceptions.
+- Comment only facts the code cannot show.
+- Annotate all new code, including Python function and method parameters and return values.
+  Avoid explicit `Any` and `typing.cast`. Narrow values instead.
+  Each ignore comment must name the checker rule and give a factual reason in
+  `# pyright: ignore[ruleName]`. See [basedpyright configuration](pyproject.toml).
 - Use a fallback only when the product contract defines a substitute. Report
-  required read failures as failures, not as empty or successful results.
-- Exercise the owning production API in regression tests. Use temporary stores
-  and mock only boundaries outside the behavior under test.
-
-## Git
-
-- `main` is protected. Never push to it. Push a branch and open a PR.
-- A PR merges only when all CI checks pass. Admins follow the same rule.
-- Merge with `gh pr merge --squash`. `main` requires linear history.
-- Canon records live in the shared SQLite database at
-  `~/.canon/<repo-name>/canon.db`. Do not stage or commit database changes.
-- Commit changes to versioned store metadata such as `.canon/config.json`,
-  `.canon/store-binding.json`, and `.canon/schemas/` with the code they affect.
-- Run `canon validate` before you push.
-- Run `canon` from any worktree in this repository. The global binding points
-  each worktree to the same database.
-- Run `canon backup` to create a retained database backup before maintenance.
-- Ask the user before you merge, unless an active constraint says otherwise.
+  required read failures as failures.
+- Exercise the owning production API in regression tests. Mock only boundaries
+  outside the behavior under test.
 
 ## Testing
 
-While you edit, run the affected test files with `uv run pytest <files>`.
-Add `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those
-trees.
+- Run affected tests with `uv run pytest <files>`. Add
+  `--confcutdir=tests/canon` or `--confcutdir=tests/tuner` for those trees.
+- Before you close a task, run `uv run basedpyright`, Ruff check
+  (`uvx ruff@0.13.1 check .`), and Ruff format check (`uvx ruff@0.13.1 format --check .`).
+  Apply formatting with `uvx ruff@0.13.1 format .`.
+- After an automated fix, bulk replace, or rename, review `git diff --stat` and
+  removed lines. Search the affected code and entry points for retired names and run affected tests.
+- See [Testing](README.md#testing) for the phase suite and brief and reviewer checks.
+  See [frontend instructions](dashboard/frontend/AGENTS.md) for dashboard UI work.
 
-When a task changes the brief sections under
-`orchestra/conductor/briefs/sections/` or the reviewer generator
-(`python -m installer.agents --write`), include `tests/test_skill_portability.py`,
-`tests/conductor/briefs`, and `tests/installer` in that task's `verify_command`.
-Include the contract tests for the behavior the task changes. Run these
-tests in the task worktree before phase review.
+## Git
 
-Before you close a task, run the test files for the code you changed.
-Run the three pytest commands in the README Testing section only at phase
-end, or when you change shared code (config, store, CLI entry points).
-CI runs the full suite on every push.
-
-### Regression tests
-
-During planning, identify the failure the acceptance should catch. Reuse an
-existing test in the acceptance command when it covers that failure. Extend
-its cases when the owning API has a coverage gap.
-
-Cover distinct rule outcomes and edge cases through the owning production
-API. For example, test the full requirement-status decision matrix at its
-owner and verify that an unverified requirement blocks landing through the
-real landing path. Add more integration cases when the caller can fail in a
-distinct way. Use browser and installed-package tests for behavior that
-depends on those environments.
-
-For a repair, confirm the regression case fails on the bug and passes with
-the fix. In review, ask what could break while the existing tests still pass
-and why the proposed test needs its chosen entry point.
-
-## TypeScript and Svelte
-
-The dashboard UI lives in `dashboard/frontend`. Run the commands below from that directory.
-
-- Use strict types. Do not use `any` or `@ts-ignore` without a one-line reason.
-- Follow the comment rule in Rules.
-- Put one component in each `.svelte` file.
-- Put tests beside the source as `*.test.ts`.
-- Do not format by hand. Let the formatter do it.
-- Before you close a task, run `npm run lint`, `npm run check`, and `npm test`.
-
-## Cursor Cloud specific instructions
-
-- From the repo root, `UV_PYTHON=3.10 uv sync --locked --group dev` matches CI (Python 3.10). Then run `npm ci` in `dashboard/frontend` (Node 22). `uv` and `node` are on `/usr/local/bin`.
-- Boot starts the dashboard API at http://127.0.0.1:8765 (`dashboard/bin/web --port 8765`) and the Vite dev server at http://127.0.0.1:5173. Both bind loopback. Vite proxies `/api` to the API. The API ignores `--host` and always binds 127.0.0.1.
-- `uv run canon` and `uv run orchestra` are the checkout commands. Store metadata is `.canon/`; the SQLite file is `~/.canon/<repo-name>/canon.db`.
-- `npm run e2e` in `dashboard/frontend` needs `npx playwright install --with-deps chromium` first. That browser install is not part of the default setup.
+- Use short, imperative Conventional Commit subjects.
+- Push a branch and open a PR. Never push to protected `main`.
+- Wait for all CI checks to pass and obtain human approval before a squash merge
+  with `gh pr merge --squash` to keep `main` linear. This applies to admins too.

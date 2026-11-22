@@ -58,12 +58,14 @@ def test_the_next_phase_waits_for_close() -> None:
     assert "Plan the next phase only after close" in _guide_close_section()
 
 
-def test_land_ends_when_ci_passes_and_awaits_the_merge() -> None:
+def test_land_checks_readiness_after_publication_and_keeps_the_merge_human() -> None:
     flat = re.sub(r"\s+", " ", PHASE_END)
+    guide = re.sub(r"\s+", " ", GUIDE)
 
-    assert "Land ends when `orchestra land` exits 0" in flat
-    assert "waits for the human merge" in flat
-    assert "awaiting merge" in re.sub(r"\s+", " ", GUIDE)
+    assert "Exit 0 means the landing adapter succeeded" in flat
+    assert "Check merge readiness under the adapter's CI policy" in flat
+    assert "Without `[merge_evidence]`, `orchestra land` waits for CI" in guide
+    assert "ready for human merge approval" in guide
 
 
 def test_close_defers_the_adapter_steps_to_the_adapter_brief() -> None:

@@ -1,13 +1,11 @@
-"""init writes a brief for deliver efforts only, spec reads it, and the score docs list the type."""
+"""init writes a Score brief for deliver efforts only, and spec reads it."""
 
 from __future__ import annotations
 
 import re
 
-from conftest import REPO_ROOT
-from helpers import skill_text
+from helpers import schema_defs, skill_text
 
-SCORE_AGENTS = REPO_ROOT / "orchestra" / "score" / "AGENTS.md"
 CREATE_BRIEF = re.compile(r"canon create --type score:brief\b")
 HEADINGS = ("## Problem", "## Users", "## Success measure", "## Non-goals")
 NEGATION = re.compile(r"(?i)\b(?:no|not|never|skip|only|without|omit|does not|do not)\b")
@@ -61,8 +59,5 @@ def test_r12_settle_phase_context_step_lists_the_brief_for_the_focus_effort():
     )
 
 
-def test_r13_score_agents_lists_brief_among_the_types():
-    text = _flat(SCORE_AGENTS.read_text())
-    listed = re.search(r"\(([^)]*\beffort\b[^)]*)\)", text)
-    assert listed
-    assert re.search(r"\bbrief\b", listed.group(1))
+def test_score_schema_defines_brief() -> None:
+    assert "score:brief" in schema_defs()

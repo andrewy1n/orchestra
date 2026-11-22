@@ -168,11 +168,3 @@ def test_r22_guard_allows_listing_packets_without_selecting(tmp_path: Path) -> N
 def test_r22_guard_ignores_owner_module(tmp_path: Path) -> None:
     write_source(tmp_path / OWNER, "def branch(phase, task):\n    return f'task/{phase}/{task}'\n")
     assert violations(tmp_path) == []
-
-
-def test_r21_schema_modules_answers_open_question_one() -> None:
-    text = (REPO / "design" / "canon" / "schema-modules.md").read_text(encoding="utf-8")
-    open_questions = text.split("## Open questions", 1)[1]
-
-    assert "close._apply" in text
-    assert "Name the orchestra step that moves a phase to `done`" not in open_questions

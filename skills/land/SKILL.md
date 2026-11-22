@@ -13,8 +13,10 @@ Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> 
 
 - Commit the phase branch from the phase worktree.
 - Run `orchestra land --phase <phase-slug>` without asking.
+- With `[merge_evidence]` configured, check the published PR with
+  `orchestra merge-evidence --phase <phase-slug>`.
 - Repair a failed CI check through the CI repair loop.
-- Stop when `orchestra land` exits 0. The phase now awaits the human merge.
+- Report the PR and its readiness for a human merge.
 
 ## Steps
 
@@ -27,9 +29,11 @@ Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> 
    the verify skill describes. Run `orchestra gate` until it exits 0.
 4. Commit the phase worktree. Run
    `orchestra land --phase <phase-slug> --cwd <phase-worktree>`.
-5. On exit 1 with the `github-pr` adapter, run the CI repair loop. On any
-   other non-zero exit, stop and ask.
-6. Report the PR and the landing result.
+5. Follow the generated brief for the adapter. For GitHub PRs, use
+   `orchestra merge-evidence` after publication when configured. Otherwise
+   `orchestra land` waits for CI. Repair confirmed failures through the CI
+   repair loop. Refresh pending evidence when the checks finish.
+6. Report the PR, landing result, and any remaining merge blockers.
 
 ## Do not
 

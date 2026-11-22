@@ -4,7 +4,7 @@ import pytest
 
 from orchestra.conductor.briefs.render import BriefContext, render_brief
 
-REPAIR_LOOP_MARKER = "Repeat from step 1 until land exits 0."
+REPAIR_LOOP_MARKER = "### CI repair loop"
 
 
 def _land_brief(adapter: str) -> str:

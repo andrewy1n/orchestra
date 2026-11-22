@@ -36,7 +36,7 @@ phase worktree. Then run `orchestra land --phase {phase}`. Land
 runs `orchestra gate` first and runs the land adapter only when the
 gate holds. The Landing section names branch, worktree, base and repo
 only. `orchestra.toml` `[land]` and `[suite]` configure the adapter and
-the suite. Merge stays human. On a non-zero exit, stop and ask.
+the suite. Merge stays human. Follow the land brief for CI and failed landings.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 

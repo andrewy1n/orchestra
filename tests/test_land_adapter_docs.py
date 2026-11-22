@@ -36,6 +36,7 @@ def test_github_pr_guide_holds_the_ci_repair_loop() -> None:
     assert "\n### CI repair loop\n" in text
     assert "`gh run view <run-id> --log-failed`" in text
     assert "`retry_max_fix_tasks`" in text
+    assert "`orchestra merge-evidence --phase <phase-slug>`" in text
 
 
 def test_github_pr_guide_holds_the_close_step() -> None:

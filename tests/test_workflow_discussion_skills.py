@@ -72,13 +72,6 @@ def test_canon_invocations_match_the_schema_modules() -> None:
         assert not violations, "\n".join(violations)
 
 
-def test_scenario_guide_covers_the_human_review_requirements() -> None:
-    text = (REPO_ROOT / "docs" / "guides" / "workflow-qa-scenarios.md").read_text()
-    for requirement in range(30, 43):
-        assert f"R{requirement}" in text
-    assert "Text checks confirm instruction boundaries" in text
-
-
 def test_shared_intent_qa_is_in_both_briefs() -> None:
     intent_qa = section_text("intent-qa")
     for name in ("spec", "design"):

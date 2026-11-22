@@ -10,15 +10,17 @@ other projects.
 
 | Package | Namespace | Role |
 |---|---|---|
-| `orchestra` | — | CLI, views, sessions, store access |
+| `orchestra` | — | CLI entry point, views, sessions, and metrics |
 | `orchestra.canon` | — | Record store and the `canon` CLI |
+| `orchestra.composer` | `composer` | Product areas, ideas, and placements |
 | `orchestra.score` | `score` | Work planning record types |
 | `orchestra.conductor` | `conductor` | Dispatch: check, close-batch, suite, reviewer |
 | `orchestra.tuner` | `tuner` | Evidence: verdict, claims, audit, binding (`orchestra verify`) |
 | `orchestra.stage` | — | Session hooks and the install bridge |
+| `orchestra.tools` | — | `CliTool` and Git client |
 
-Each schema module registers in the `canon.schemas` entry point group.
-canon validates every store against snapshots of these modules.
+The [registered schema modules](pyproject.toml) define record types and lifecycles.
+Canon validates each store against the snapshots in its `.canon/schemas/`.
 
 The plan is a derived view over records. Only the **focused effort**
 is written; for delivery-shaped work, only the **current phase** is
@@ -54,7 +56,7 @@ outcome; focus stays the effort. Other live goals stay live; a
 finished effort closes with `status: closed`. A merged effort lists
 the old slugs in `merged_from`. Each running phase keeps its own
 position, so chats on different phases of one effort do not collide.
-Handoff groups by `effort`. See [skills/kinds-and-focus.md](skills/kinds-and-focus.md).
+Handoff groups by `effort`. See [Kinds and focus](orchestra/conductor/briefs/sections/kinds-and-focus.md).
 
 ## Install
 
@@ -580,6 +582,12 @@ the evidence is blocked or unresolved. Exit status 2 means the command failed.
 
 ## Testing
 
+Run affected tests in the task worktree. For changes to
+`orchestra/conductor/briefs/sections/` or the reviewer generator
+(`python -m installer.agents --write`), run the behavior's contract tests and
+include `tests/test_skill_portability.py`, `tests/conductor/briefs`, and
+`tests/installer` in the task's `verify_command`. Run them before phase review.
+
 Run the pinned Ruff lint and formatting checks locally:
 
 ```bash
@@ -597,9 +605,10 @@ uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner
 uv run pytest -q -p no:cacheprovider -n auto --durations=0 --durations-min=1 tests --ignore=tests/canon --ignore=tests/tuner
 ```
 
-Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
-run apart from the orchestra tests. CI runs the same three commands as
-parallel jobs. A local suite in `smoke` or `full` mode requires a non-empty command.
+Run the full suite at phase end or when changing shared config, store code, or
+CLI entry points. Each tree has its own `conftest.py`. CI runs the three
+groups as parallel jobs on PRs, pushes to `main` and `phase/**`, and manually
+triggered runs. A local suite in `smoke` or `full` mode requires a non-empty command.
 A skipped local start returns status 4.
 
 The `test-orchestra` CI log reports total pytest time and lists test calls,
@@ -637,24 +646,32 @@ record, or cancel a specific run. Add `--timeout <seconds>` to stop a run after
 the deadline. The `--session` option remains a suite job label. Legacy
 `.suite/<label>.log` and `.suite/<label>.exit` files do not prove completion.
 
-The test conftest sets `CANON_SCHEMA_PATH` to the three in-repo module
-files, so test stores load `score`, `conductor` and `tuner` without an
-install.
+Use temporary stores for tests. To exercise a Tuner technique against this
+checkout without recording evidence, point `CANON_STORE` at an empty temporary
+directory. [Skill contract tests](tests/test_skill_contract_consistency.py)
+check documented Canon invocations against the registered schema modules.
 
-Every test drives `canon`'s public CLI against a fresh, disposable,
-git-backed store created with `canon init --schemas score,conductor,tuner` —
-nothing here touches a real store. The schema modules under
-`orchestra/score/schemas/`, `orchestra/conductor/schemas/` and
-`orchestra/tuner/schemas/` are the type reference. `test_skill_contract_consistency.py`
-extracts every `canon` invocation documented under `skills/` and asserts
-the schema modules actually permit it — a red result there names a skill
-instructing an operation (a record type, field, or transition) the
-schemas do not allow.
+### Regression tests
+
+During planning, identify the failure the acceptance should catch. Reuse an
+existing test in the acceptance command when it covers that failure. Extend
+its cases when the owning API has a coverage gap.
+
+Cover distinct rule outcomes and edge cases through the owning production
+API. For example, test the full requirement-status decision matrix at its
+owner and verify that an unverified requirement blocks landing through the
+real landing path. Add integration cases when the caller can fail in a
+distinct way. Use browser and installed-package tests for behavior that
+depends on those environments.
+
+For a repair, confirm the regression case fails on the bug and passes with
+the fix. In review, ask what could break while the existing tests still pass
+and why the proposed test needs its chosen entry point.
 
 ### Type check
 
-Run `uv run basedpyright` to type-check `orchestra`, `dashboard` and
-`installer`. CI runs the same command in the `types` job.
+Run `uv run basedpyright` to check the paths and rules in
+[`pyproject.toml`](pyproject.toml). CI runs the same command in the `types` job.
 
 ### Semgrep
 

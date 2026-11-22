@@ -15,6 +15,7 @@ def test_plugin_author_guide_covers_each_scope_and_compiles_python_examples() ->
         "orchestra.composer.ideas",
         "orchestra.tuner.verify",
         "orchestra.conductor.land",
+        "orchestra.conductor.merge_evidence",
         "IdeaSourceRequest",
         "IdeaSourceItem",
         "list_ideas",
@@ -22,9 +23,11 @@ def test_plugin_author_guide_covers_each_scope_and_compiles_python_examples() ->
         "TechniqueResult",
         "LandAdapter",
         "LandingResult",
+        "EvidenceSnapshot",
         "orchestra plugins list",
         "[verify.stages]",
         "[land.config]",
+        "[merge_evidence.config]",
     ):
         assert required_text in content
     for entry_point in (
