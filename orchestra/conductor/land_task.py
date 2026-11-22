@@ -157,8 +157,7 @@ def land(project: Project, repo: Path, task: str, evidence_path: Path) -> Landed
         outcome = run_check(
             acceptance_id=acceptance["id"],
             cwd=tree,
-            store_root=project.project_root,
-            store_dir=project.store_path,
+            project=project,
             execution_report=report["id"],
         )
         checks.append(

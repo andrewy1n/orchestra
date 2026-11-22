@@ -26,7 +26,8 @@ from orchestra.canon.merge import (
     parse_namespace_map,
     parse_subject_renames,
 )
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.modules import discover
+from orchestra.canon.project import NoArtifactStoreError, Project, StoreBindingError, open_store
 from orchestra.canon.query import (
     QueryError,
     compile_grep,
@@ -37,6 +38,13 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError, TypeDef
+from orchestra.canon.store_commands import (
+    Recoverer,
+    Scanner,
+    SubparserGroup,
+    add_store_parser,
+    run_store,
+)
 from orchestra.canon.sync import add_namespace, init_store, sync_store
 from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.types import (
@@ -48,6 +56,7 @@ from orchestra.canon.types import (
     get_string,
 )
 from orchestra.canon.validation import ValidationError
+from orchestra.canon.workspace import StoreNotReady, Workspace
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -57,6 +66,7 @@ EXIT_VALIDATION = 4
 
 
 class CanonArgs(argparse.Namespace):
+    root_given: bool = False
     body: str | None
     body_file: str | None
     body_only: bool
@@ -277,6 +287,8 @@ def _error_response(exc: Exception) -> tuple[JsonObject, int]:
         )
     if isinstance(exc, SchemaError):
         return {"error": "schema", "message": message}, EXIT_VALIDATION
+    if isinstance(exc, StoreNotReady):
+        return {"error": "store_not_ready", "message": message}, EXIT_ERROR
     if isinstance(exc, (StoreNotInitializedError, PartialStoreError, StoreBindingError)):
         return {"error": "store_not_ready", "message": message}, EXIT_ERROR
     if isinstance(exc, StoreLockError):
@@ -310,7 +322,9 @@ def _command_project(args: CanonArgs) -> Project:
     root = _required(args.root)
     if args.store:
         return open_store(root, store=args.store)
-    return open_store(root)
+    if args.root_given:
+        return Workspace(root=Path(root)).open()
+    return Workspace.resolve(Path(root)).open()
 
 
 class _MissingTarget(StoreError):
@@ -672,18 +686,9 @@ def _type_summary(type_def: TypeDef) -> object:
     }
 
 
-def cmd_schemas_show(args: CanonArgs) -> int:
-    schemas = _command_project(args).schemas()
-    if args.type:
-        _emit_json(_type_summary(schemas.get(schemas.resolve_type(args.type))))
-        return EXIT_OK
-    if args.namespace:
-        if args.namespace not in schemas.modules:
-            raise SchemaError(f"namespace {args.namespace!r} is not in this store")
-        _emit_json(schemas.modules[args.namespace])
-        return EXIT_OK
+def _module_summaries(modules: Mapping[str, JsonObject]) -> dict[str, object]:
     summaries: dict[str, object] = {}
-    for namespace, module in schemas.modules.items():
+    for namespace, module in modules.items():
         version = module["version"]
         module_types = get_object(module, "types")
         if module_types is None:
@@ -698,7 +703,36 @@ def cmd_schemas_show(args: CanonArgs) -> int:
                 "lifecycle": spec["lifecycle"],
             }
         summaries[namespace] = {"version": version, "types": type_summaries}
-    _emit_json({"schemas": summaries})
+    return summaries
+
+
+def _no_store_here(error: StoreNotReady) -> bool:
+    return error.cause is None or isinstance(error.cause, NoArtifactStoreError)
+
+
+def cmd_schemas_show(args: CanonArgs) -> int:
+    try:
+        schemas = _command_project(args).schemas()
+    except StoreNotReady as exc:
+        if args.store or args.type or not _no_store_here(exc):
+            raise
+        installed = {name: found.module for name, found in discover().items()}
+        if args.namespace:
+            if args.namespace not in installed:
+                raise SchemaError(f"namespace {args.namespace!r} is not installed") from None
+            _emit_json(installed[args.namespace])
+        else:
+            _emit_json({"schemas": _module_summaries(installed)})
+        return EXIT_OK
+    if args.type:
+        _emit_json(_type_summary(schemas.get(schemas.resolve_type(args.type))))
+        return EXIT_OK
+    if args.namespace:
+        if args.namespace not in schemas.modules:
+            raise SchemaError(f"namespace {args.namespace!r} is not in this store")
+        _emit_json(schemas.modules[args.namespace])
+        return EXIT_OK
+    _emit_json({"schemas": _module_summaries(schemas.modules)})
     return EXIT_OK
 
 
@@ -942,6 +976,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _dispatch(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv, namespace=CanonArgs())
+    args.root_given = bool(args.root)
     args.root = Path(args.root).resolve() if args.root else Path.cwd()
     if _refuses_write(args) and _is_read_only(args):
         _emit_json(
@@ -956,6 +991,17 @@ def _dispatch(argv: list[str] | None = None) -> int:
     return args.func(args)
 
 
+COMMANDS = frozenset({"store"})
+
+
+def add_parsers(sub: SubparserGroup, *, scan: Scanner, recover: Recoverer) -> None:
+    add_store_parser(sub, scan, recover)
+
+
+def run(args: argparse.Namespace) -> int:
+    return run_store(args)
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point (console script, ``python -m orchestra.canon``)."""
     try:
@@ -966,7 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
     except _BodyArgError as exc:
         _emit_json({"error": "invalid_body", "message": str(exc)})
         return EXIT_ERROR
-    except (StoreError, ValidationError, StoreBindingError) as exc:
+    except (StoreError, ValidationError, StoreBindingError, StoreNotReady) as exc:
         payload, code = _error_response(exc)
         _emit_json(payload)
         return code

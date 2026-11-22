@@ -22,8 +22,7 @@ from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import gate, phase_progress, wave
-from orchestra.conductor.requirements import RequirementState, requirement_status
-from orchestra.derive import release_ready
+from orchestra.conductor.requirements import RequirementState, release_ready, requirement_status
 
 EFFORT = "ef"
 MIX = "mix"
@@ -374,7 +373,7 @@ def _readiness(world: World, phase: str) -> tuple[bool, str]:
 
 
 def _gate_holds(world: World, phase: str) -> bool:
-    terms = gate.gate_terms(world.root, phase)
+    terms = gate.gate_terms(open_store(world.root), phase)
     return all(
         term.holds
         for term in terms

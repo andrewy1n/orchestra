@@ -21,7 +21,7 @@ import { createServer as createNetServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import {
 	createServer as createViteServer,
 	loadConfigFromFile,
@@ -31,6 +31,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { API_TARGET } from "./api";
 import { appSource } from "./appSource";
+import { mountApp } from "./testing/mountApp";
 import { applyTheme, DEFAULT_THEME, type Theme, toggle } from "./theme";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -66,16 +67,9 @@ afterEach(() => {
  * `dashboard/frontend`). Returns false when the harness ran vitest from the repo
  * root, where the ui Vite config is not loaded.
  */
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 /** A free loopback port. */
@@ -179,11 +173,10 @@ describe("web-dashboard scaffold", () => {
 
 		// The component renders the shell with the theme control.
 		expect(appSource).toContain('data-act="theme"');
-		if (await tryMountApp()) {
-			expect(document.documentElement.classList.contains("dark")).toBe(false);
-			expect(document.documentElement.dataset.theme).toBe("light");
-			expect(document.querySelector("[data-act='theme']")).toBeTruthy();
-		}
+		await mountDashboard();
+		expect(document.documentElement.classList.contains("dark")).toBe(false);
+		expect(document.documentElement.dataset.theme).toBe("light");
+		expect(document.querySelector("[data-act='theme']")).toBeTruthy();
 	});
 
 	it("R36: a theme control switches the document between dark and light", async () => {
@@ -211,22 +204,21 @@ describe("web-dashboard scaffold", () => {
 		expect(root.style.colorScheme).toBe("light");
 
 		// When the Svelte plugin is available, click the real control too.
-		if (await tryMountApp()) {
-			const control =
-				document.querySelector<HTMLButtonElement>("[data-act='theme']");
-			expect(control, "the theme control must render").toBeTruthy();
-			expect(control?.getAttribute("role")).toBe("switch");
-			expect(document.documentElement.classList.contains("dark")).toBe(false);
+		await mountDashboard();
+		const control =
+			document.querySelector<HTMLButtonElement>("[data-act='theme']");
+		expect(control, "the theme control must render").toBeTruthy();
+		expect(control?.getAttribute("role")).toBe("switch");
+		expect(document.documentElement.classList.contains("dark")).toBe(false);
 
-			control!.click();
-			flushSync();
-			expect(document.documentElement.classList.contains("dark")).toBe(true);
-			expect(document.documentElement.dataset.theme).toBe("dark");
+		control!.click();
+		flushSync();
+		expect(document.documentElement.classList.contains("dark")).toBe(true);
+		expect(document.documentElement.dataset.theme).toBe("dark");
 
-			control!.click();
-			flushSync();
-			expect(document.documentElement.classList.contains("dark")).toBe(false);
-			expect(document.documentElement.dataset.theme).toBe("light");
-		}
+		control!.click();
+		flushSync();
+		expect(document.documentElement.classList.contains("dark")).toBe(false);
+		expect(document.documentElement.dataset.theme).toBe("light");
 	});
 });

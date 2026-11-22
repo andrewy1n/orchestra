@@ -11,6 +11,7 @@ from canon_support import create, make_project
 from test_task_land import EVIDENCE, PHASE, _evidence_file, _git, _land_cli, _world
 from test_wave_end import _world as _end_world
 
+from orchestra.canon.project import open_store
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.check import run_check
 from orchestra.tools.git import Git
@@ -40,7 +41,9 @@ def test_frozen_tdd_without_freeze_metadata_does_not_close_after_red(
     project, repo, tree = _world(tmp_path, verify_command="false")
     _set_acceptance(project, method="tdd", oracle_policy="frozen")
     acceptance = project.resolve("score:acceptance", "a")
-    assert run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo).exit_code != 0
+    assert (
+        run_check(acceptance_id=acceptance["id"], cwd=tree, project=open_store(repo)).exit_code != 0
+    )
     time.sleep(1.1)
     _set_acceptance(project, verify_command="true")
     result = _land_cli(repo, _evidence_file(tmp_path))
@@ -60,7 +63,7 @@ def test_tdd_acceptance_with_a_drifted_oracle_hash_does_not_close_the_task(tmp_p
         oracle_hashes=["oracle.py:sha256:" + "0" * 64],
     )
     acceptance = project.resolve("score:acceptance", "a")
-    run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo, allow_dirty=True)
+    run_check(acceptance_id=acceptance["id"], cwd=tree, project=open_store(repo), allow_dirty=True)
     _set_acceptance(project, verify_command="true")
     result = _land_cli(repo, _evidence_file(tmp_path))
     assert result.returncode == 1
@@ -109,7 +112,7 @@ def test_check_runner_receives_the_selected_store(
 
     monkeypatch.setattr(land_task, "run_check", spy)
     land_task.land(project, repo, "a", _evidence_file(tmp_path))
-    assert seen["store_dir"] == project.store_path
+    assert seen["project"] is project
 
 
 def test_staged_canon_changes_refuse_the_task_commit(tmp_path: Path) -> None:
@@ -224,7 +227,7 @@ def test_oracle_backed_tdd_with_a_red_run_and_a_frozen_oracle_closes_the_task(
         oracle_hashes=[f"test_oracle.py:sha256:{digest}"],
     )
     acceptance = project.resolve("score:acceptance", "a")
-    red = run_check(acceptance_id=acceptance["id"], cwd=tree, store_root=repo)
+    red = run_check(acceptance_id=acceptance["id"], cwd=tree, project=open_store(repo))
     assert red.exit_code != 0
     time.sleep(1.1)
     (tree / "impl.txt").write_text("done\n")

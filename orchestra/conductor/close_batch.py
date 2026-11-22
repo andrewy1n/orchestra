@@ -43,8 +43,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TypedDict, TypeGuard
 
-from orchestra.canon.project import Project, StoreBindingError
+from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.task_close import (
     RUNNER_METHODS,
@@ -319,7 +320,7 @@ def _write(path: str, text: str) -> None:
         fh.write(text)
 
 
-def main(argv: list[str] | None, *, open_project: Callable[[str | None], Project]) -> int:
+def main(argv: list[str] | None, *, workspace: Callable[[], Workspace]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input", default="-", help="close-request JSON path, or '-' for stdin (default)"
@@ -332,12 +333,6 @@ def main(argv: list[str] | None, *, open_project: Callable[[str | None], Project
         default=None,
         help="git cwd for red-first ancestry checks (default: process cwd)",
     )
-    parser.add_argument(
-        "--store",
-        default=None,
-        metavar="DIR",
-        help="store repo root (default: $ORCHESTRA_STORE, then resolve from the process cwd)",
-    )
     args = parser.parse_args(argv)
 
     try:
@@ -346,11 +341,7 @@ def main(argv: list[str] | None, *, open_project: Callable[[str | None], Project
         print(f"close-request is not valid JSON: {exc}", file=sys.stderr)
         return 1
 
-    try:
-        project = open_project(args.store)
-    except StoreBindingError as exc:
-        print(f"close refused: {exc}", file=sys.stderr)
-        return 2
+    project = workspace().open()
 
     try:
         ops = build_batch(request, project, cwd=args.cwd)

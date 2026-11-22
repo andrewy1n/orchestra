@@ -10,6 +10,7 @@ from conftest import git, make_git_repo
 
 from orchestra import cli
 from orchestra.canon.types import Record
+from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
 from orchestra.conductor import suite
 
@@ -64,7 +65,7 @@ def run_brief(
         def open(self) -> _Project:
             return _Project()
 
-    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     code = cli.main(
         [
             "review-brief",

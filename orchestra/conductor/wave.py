@@ -62,6 +62,10 @@ class WaveStart:
     execution_mode: str = "agent"
     runner: RunnerOutcome | None = None
 
+    @property
+    def exit_code(self) -> int:
+        return self.runner.code if self.runner is not None else 0
+
 
 @dataclass(frozen=True)
 class RunnerOutcome:
@@ -417,6 +421,10 @@ class WaveEnd:
     conflict: str
     question_id: str
 
+    @property
+    def exit_code(self) -> int:
+        return 1 if self.conflict else 0
+
 
 def task_acceptances(records: list[Record], task: str, phase: str) -> list[Record]:
     item = next((i for i in live_work_items(phase, records) if i["subject"] == task), None)
@@ -484,6 +492,10 @@ class WaveResolve:
     @property
     def ready(self) -> bool:
         return not self.refusals
+
+    @property
+    def exit_code(self) -> int:
+        return 0 if self.ready else 1
 
 
 _CONFLICT_MARKER = re.compile(r"^(<<<<<<<|>>>>>>>)( |$)")
@@ -576,8 +588,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
                 outcome = run_check(
                     acceptance_id=acceptance["id"],
                     cwd=trial,
-                    store_root=project.project_root,
-                    store_dir=project.store_path,
+                    project=project,
                 )
                 outcomes.append((acceptance["subject"], outcome.exit_code))
                 if outcome.exit_code != 0:

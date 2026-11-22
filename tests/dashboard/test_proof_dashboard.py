@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dashboard.backend import phase as phase_mod
-from dashboard.backend import records
 from dashboard.backend import snapshot as snapshot_mod
 
 
@@ -56,6 +55,5 @@ def test_tabs_omit_proof_when_missing():
     assert "proof" not in phase_mod.tabs_for(detail)
 
 
-def test_soft_and_full_types_include_proof_packet():
+def test_full_types_include_proof_packet():
     assert "conductor:proof-packet" in snapshot_mod.FULL_TYPES
-    assert "conductor:proof-packet" in records.SOFT_TYPES

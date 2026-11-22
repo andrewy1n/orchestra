@@ -7,8 +7,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.canon.project import NoArtifactStoreError, Project, open_store
+from orchestra.canon.project import NoArtifactStoreError, Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.tuner.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
@@ -22,18 +23,28 @@ def _is_value_sequence(value: object) -> TypeGuard[Sequence[object]]:
     return isinstance(value, (list, tuple))
 
 
+def open_subject_store(root: Path) -> Project:
+    """Open the store of `root` itself, raising the store's own binding error."""
+    try:
+        return Workspace(root=root, access=Access.WRITE).open()
+    except StoreNotReady as exc:
+        if exc.cause is not None:
+            raise exc.cause from None
+        raise
+
+
 def store_usable(cwd: Path | str) -> bool:
     """True when the subject cwd has an openable artifact store."""
     try:
-        open_store(Path(cwd))
-    except NoArtifactStoreError:
+        open_subject_store(Path(cwd))
+    except (NoArtifactStoreError, StoreNotReady):
         return False
     return True
 
 
 def _project(root: Path) -> Project:
     try:
-        return open_store(root)
+        return open_subject_store(root)
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
 

@@ -91,8 +91,7 @@ def run_closing_checks(project: Project, landed: land_task.LandedTask) -> Verifi
         outcome = run_check(
             acceptance_id=acceptance["id"],
             cwd=tree,
-            store_root=project.project_root,
-            store_dir=project.store_path,
+            project=project,
             execution_report=landed.report_id,
         )
         checks.append(

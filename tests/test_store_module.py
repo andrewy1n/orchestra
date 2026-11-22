@@ -1,4 +1,4 @@
-"""orchestra.store opens the store through canon.project.open_store."""
+"""Workspace.resolve finds and opens the bound store."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from conftest import make_git_repo, write_config
 
-from orchestra import store
-from orchestra.canon.project import StoreBindingError, open_store
+from orchestra.canon.project import open_store
+from orchestra.canon.workspace import StoreNotReady, Workspace
 
 
 def _meta(store: Path) -> Path:
@@ -25,27 +25,20 @@ def home(tmp_path, monkeypatch):
     return home
 
 
-def test_get_record_reads_the_bound_store(home):
+def test_resolve_finds_the_bound_store_root(home):
     repo = make_git_repo()
     _meta(repo / ".canon")
     _meta(home / ".canon" / repo.name)
     (repo / ".canon" / "store-binding.json").write_text(json.dumps({"store": "local"}))
     project = open_store(repo)
     assert project.store_path.resolve() == (repo / ".canon").resolve()
-    assert store.find_store_root(repo).resolve() == repo.resolve()
+    assert Workspace.resolve(repo).root.resolve() == repo.resolve()
 
 
-def test_open_store_raises_when_binding_points_at_missing_store(home):
+def test_resolve_raises_when_binding_points_at_missing_store(home):
     repo = make_git_repo()
     _meta(home / ".canon" / repo.name)
     (repo / ".canon").mkdir(parents=True, exist_ok=True)
     (repo / ".canon" / "store-binding.json").write_text(json.dumps({"store": "local"}))
-    with pytest.raises(StoreBindingError):
-        open_store(repo)
-    with pytest.raises(StoreBindingError):
-        store.get_record(repo, "rec-missing")
-
-
-def test_aa_py_does_not_mention_dashboard():
-    source = (Path(__file__).resolve().parents[1] / "orchestra" / "store.py").read_text()
-    assert "dashboard" not in source
+    with pytest.raises(StoreNotReady):
+        Workspace.resolve(repo)

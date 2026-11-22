@@ -3,10 +3,12 @@ from __future__ import annotations
 import itertools
 from pathlib import Path
 
+import pytest
+
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.sessions.record_reader import read_project_records
-from orchestra.views import STATUS, VERIFICATION, render_view
+from orchestra.views.render import STATUS, VERIFICATION, ViewError, render_view
 
 _CLOCK = itertools.count()
 
@@ -57,6 +59,7 @@ def _check_run(acceptance: Record, result: str) -> Record:
             "criterion_id": acceptance["id"],
             "result": result,
             "revision": "abc",
+            "method": "check",
             "signed_by": "",
         },
     )
@@ -264,3 +267,12 @@ def test_session_reader_still_reads_written_assignment(store: Path):
     )
     rows = [r for r in read_project_records(project) if r["record_type"] == "score:work-item"]
     assert rows[0].get("assignee") == "legacy-exec"
+
+
+def test_status_view_reports_a_check_run_missing_a_required_field():
+    a1 = _acceptance("a1", "p", "R1")
+    bad = _check_run(a1, "pass")
+    del bad["payload"]["method"]
+    item = _work_item("a1", "p", "planned", effort="e")
+    with pytest.raises(ViewError, match="method"):
+        render_view(STATUS, [item, a1, bad])

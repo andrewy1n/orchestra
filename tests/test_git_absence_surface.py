@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SURFACE = (
-    ROOT / "orchestra" / "cli.py",
+    ROOT / "orchestra" / "canon" / "store_commands.py",
     ROOT / "dashboard" / "frontend" / "e2e" / "serve.py",
     *sorted((ROOT / "dashboard" / "backend").rglob("*.py")),
 )
@@ -38,4 +38,4 @@ def test_surface_runs_git_through_git_client() -> None:
         for path in SURFACE
         if any(isinstance(node, ast.Name) and node.id == "Git" for node in ast.walk(_tree(path)))
     }
-    assert {"cli.py", "serve.py", "landing.py", "approval.py"} <= uses_git
+    assert {"store_commands.py", "serve.py", "landing.py", "approval.py"} <= uses_git

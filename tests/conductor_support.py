@@ -347,12 +347,12 @@ class Phase:
         write_policy(self.store, mode="smoke", command="true", gate=gate_mode)
 
     def term(self, name: str) -> gate.Term:
-        terms = {t.name: t for t in gate.gate_terms(self.store, PHASE)}
+        terms = {t.name: t for t in gate.gate_terms(open_store(self.store), PHASE)}
         assert name in terms, sorted(terms)
         return terms[name]
 
     def missing(self) -> list[str]:
-        return [t.name for t in gate.missing_terms(gate.gate_terms(self.store, PHASE))]
+        return [t.name for t in gate.missing_terms(gate.gate_terms(open_store(self.store), PHASE))]
 
 
 def write_policy(
@@ -541,7 +541,9 @@ def setup_acceptance(
 
 def run_acceptance(project: Project, acceptance: Record) -> Record:
     outcome = run_check(
-        acceptance_id=acceptance["id"], cwd=project.project_root, store_root=project.project_root
+        acceptance_id=acceptance["id"],
+        cwd=project.project_root,
+        project=open_store(project.project_root),
     )
     assert outcome.record is not None, outcome.message
     return outcome.record

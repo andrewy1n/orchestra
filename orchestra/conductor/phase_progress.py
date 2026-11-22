@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -29,6 +29,7 @@ from orchestra.conductor.requirements import UNVERIFIED, is_verified, requiremen
 from orchestra.score.analyze import analyze_phase
 from orchestra.score.effort import current_effort
 from orchestra.score.lookups import (
+    LIVE_WORK_ITEM_STATES,
     closing_work_item,
     current_phase,
     current_phases,
@@ -138,11 +139,34 @@ class PhaseFacts:
 
 
 @dataclass(frozen=True)
+class PhaseCounts:
+    counts: dict[str, int] = field(default_factory=dict[str, int])
+    planned: int = 0
+    done: int = 0
+    total: int = 0
+    in_progress: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class PhaseProgress:
     stages: tuple[StageState, ...]
     current: Stage | None
     reason: str
     blocked_by: tuple[str, ...]
+
+
+def phase_counts(records: Sequence[Record], phase: str) -> PhaseCounts:
+    items = live_work_items(phase, records)
+    counts = {state: 0 for state in LIVE_WORK_ITEM_STATES}
+    for item in items:
+        counts[item["lifecycle_state"]] += 1
+    return PhaseCounts(
+        counts=counts,
+        planned=counts["planned"],
+        done=counts["done"],
+        total=len(items),
+        in_progress=tuple(i["subject"] for i in items if i["lifecycle_state"] == "in_progress"),
+    )
 
 
 def execution_readiness(tasks: Sequence[TaskFact]) -> Readiness:

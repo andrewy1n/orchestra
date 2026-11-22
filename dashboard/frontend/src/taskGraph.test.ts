@@ -7,10 +7,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appSource } from "./appSource";
 import { buildWaveGraph, statusSignal, toFlow } from "./taskGraph";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -171,17 +172,9 @@ function stubFetch(snap: Snapshot, payload = phasePayload(threeTasks)) {
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 async function openOverview() {
@@ -327,7 +320,7 @@ describe("task graph UI", () => {
 
 	it("R1 R2 R3: shows graph with lanes, status, edges for ≥3 tasks", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openOverview();
 		expect(document.querySelector("[data-task-graph]")).toBeTruthy();
 		expect(document.querySelector('[data-graph-lane="1"]')).toBeTruthy();
@@ -360,7 +353,7 @@ describe("task graph UI", () => {
 
 	it("R4: activating a node opens the task overlay", async () => {
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openOverview();
 		const node = document.querySelector('[data-graph-node="t-b"]');
 		expect(node).toBeTruthy();
@@ -377,7 +370,7 @@ describe("task graph UI", () => {
 		expect(appSource).toMatch(/data-phase-tab="tasks"|Tasks/);
 		expect(appSource).not.toMatch(/data-phase-waves/);
 		stubFetch(makeSnapshot([effort({ effort: "dashboard" })]));
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openOverview();
 		expect(document.querySelector("[data-phase-tabs]")).toBeTruthy();
 		expect(document.querySelector('[data-phase-tab="tasks"]')).toBeTruthy();
@@ -389,7 +382,7 @@ describe("task graph UI", () => {
 			makeSnapshot([effort({ effort: "dashboard" })]),
 			phasePayload(threeTasks.slice(0, 2) as typeof threeTasks),
 		);
-		if (!(await tryMountApp())) return;
+		await mountDashboard();
 		await openOverview();
 		expect(document.querySelector("[data-task-graph]")).toBeNull();
 	});

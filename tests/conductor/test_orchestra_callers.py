@@ -155,6 +155,27 @@ def _other_store_open(tree: ast.AST) -> list[tuple[int, str]]:
     return found
 
 
+def _calls_workspace_resolve(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "resolve"
+            and _dotted(node.func.value).split(".")[-1] == "Workspace"
+        ):
+            return True
+    return False
+
+
+def _workspace_callers(directory: Path) -> list[str]:
+    return [
+        path.relative_to(ROOT).as_posix()
+        for path in _python_files(directory)
+        if CANON_ROOT not in path.parents
+        and _calls_workspace_resolve(ast.parse(path.read_text(encoding="utf-8")))
+    ]
+
+
 def _store_access(directory: Path) -> tuple[list[str], list[str]]:
     offenders: list[str] = []
     callers: list[str] = []
@@ -402,17 +423,20 @@ def _normalize_dep(spec: str) -> str:
 
 
 def test_r1():
-    """R1: modules under orchestra/ open the store with canon.project.open_store."""
+    """R1: modules under orchestra/ open the store through the shared workspace rule."""
     offenders, callers = _store_access(ROOT / "orchestra")
     assert not offenders, "orchestra opens the store another way: " + "; ".join(offenders)
-    assert callers, "no orchestra module calls canon.project.open_store"
+    assert not callers, "orchestra modules call canon.project.open_store: " + "; ".join(callers)
+    assert _workspace_callers(ROOT / "orchestra"), "no orchestra module resolves the workspace"
 
 
 def test_r2():
-    """R2: modules under dashboard/ open the store with canon.project.open_store."""
+    """R2: modules under dashboard/ open the store through the shared workspace rule."""
     offenders, callers = _store_access(ROOT / "dashboard")
     assert not offenders, "dashboard opens the store another way: " + "; ".join(offenders)
-    assert callers, "no dashboard module calls canon.project.open_store"
+    assert callers or _workspace_callers(ROOT / "dashboard"), (
+        "no dashboard module resolves the workspace"
+    )
 
 
 def test_r3():

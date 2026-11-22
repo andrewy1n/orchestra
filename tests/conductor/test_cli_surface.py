@@ -22,6 +22,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from orchestra import cli
 from orchestra.canon.errors import StoreError
+from orchestra.canon.project import open_store
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import suite
 
 # Every runtime call a skill makes must be one of these named commands.
@@ -126,7 +128,11 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
             calls.append(record_type)
             return [row for row in records if row.get("record_type") == record_type]
 
-    monkeypatch.setattr("orchestra.store.open_store", lambda directory, store=None: _Project())
+    class _Location:
+        def open(self):
+            return _Project()
+
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     monkeypatch.setattr(
         "orchestra.conductor.reviewer.git_phase_diff", lambda *a, **k: "+reviewed line"
     )
@@ -165,7 +171,7 @@ def test_review_brief_reads_only_stored_record_kinds(tmp_path, monkeypatch, caps
         def open(self):
             return _Project()
 
-    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     code, out, err = run(
         [
             "review-brief",
@@ -198,7 +204,7 @@ def test_review_brief_refuses_partial_records_on_read_failure(tmp_path, monkeypa
         def open(self):
             return _Project()
 
-    monkeypatch.setattr(cli, "resolve_location", lambda *_args: _Location())
+    monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
 
     code, out, err = run(
         [
@@ -409,7 +415,7 @@ def test_suite_record_smoke(tmp_path, monkeypatch, capsys):
             recorded.append({"root": str(repo), **kwargs})
             return {"id": "rec-suite", "subject": kwargs.get("subject")}
 
-    monkeypatch.setattr(suite, "open_store", lambda directory, store=None: _Project())
+    monkeypatch.setattr(Workspace, "open", lambda self: _Project())
     code, out, err = run(
         [
             "suite",
@@ -445,6 +451,7 @@ def _store_repo(tmp_path: Path) -> Path:
     assert make_design(repo).is_file()
     git(repo, "add", ".canon")
     git(repo, "commit", "-qm", "store")
+    open_store(repo)
     return repo
 
 
@@ -453,8 +460,6 @@ def test_store_path_smoke(tmp_path, capsys):
     code, out, err = run(["store", "path", "--cwd", str(repo), "--json"], capsys)
     assert code == 0, err
     target = json.loads(out)
-    from orchestra.canon.project import open_store
-
     project = open_store(repo)
     assert target["store"] == str(project.store_path)
     assert target["binding"] == project.binding.location
@@ -464,23 +469,16 @@ def test_store_path_smoke(tmp_path, capsys):
     assert out.strip() == str(repo / ".canon")
 
 
-def test_store_run_smoke(tmp_path, monkeypatch, capsys):
-    repo = _store_repo(tmp_path)
-    calls: list[str] = []
-
-    class _Project:
-        def list(self, record_type: str):
-            calls.append(record_type)
-            return []
-
-    monkeypatch.setattr(cli, "open_store", lambda directory: _Project())
+def test_store_run_smoke(capsys):
+    repo = make_git_repo()
+    code, _, err = run(["store", "ensure", "--cwd", str(repo)], capsys)
+    assert code == 0, err
     code, out, err = run(
         ["store", "run", "--cwd", str(repo), "--", "list", "--type", "score:work-item"],
         capsys,
     )
     assert code == 0, err
     assert json.loads(out) == {"records": [], "count": 0}
-    assert calls == ["score:work-item"]
 
 
 def test_store_ensure_creates_a_canon_store_once(tmp_path, capsys):

@@ -10,7 +10,18 @@ from dashboard.backend.snapshot import NeedsYouItem
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue
-from orchestra.score.workflow_blockers import CLEARS
+from orchestra.score.continuity import question_answer_operation
+from orchestra.score.workflow_blockers import (
+    CHECK_RUN_TYPE,
+    CLEARS,
+    FINDING_TYPE,
+    QUESTION_TYPE,
+)
+from orchestra.tuner.evidence_facts import (
+    check_sign_operation,
+    finding_accept_operation,
+    plan_rejection_operation,
+)
 
 HUMAN_DISMISSIBLE = frozenset(CLEARS)
 
@@ -97,73 +108,26 @@ def _resolve_action(item: NeedsYouItem, action: str | None) -> str:
 
 
 def _question_approve(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
-    operation: dict[str, JsonValue] = {
-        "op": "update",
-        "type": item.record_type or "score:continuity-question",
-        "id": item.id,
-        "transition": "answered",
-        "expected_revision": _displayed_revision(item),
-    }
-    if note:
-        operation["payload"] = {"answer": note}
-    return operation
+    return question_answer_operation(
+        item.record_type or QUESTION_TYPE, item.id, _displayed_revision(item), note
+    )
 
 
 def _question_reject(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
     """Leave the continuity-question open; create a needs:human routing finding."""
-    scope = item.text or item.subject
-    rationale = (note or "").strip() or "Rejected from dashboard Needs-you"
-    claim = f"Plan rejected for {scope}; route to spec or tasks"
-    payload: dict[str, JsonValue] = {
-        "claim": claim,
-        "basis": rationale,
-        "needs": "human",
-        "effort": item.subject,
-        "invalidated_when": "approach re-settled or tasks re-run",
-    }
-    body = (
-        "## Evidence\n\n"
-        f"Plan review rejected from the dashboard for {scope}.\n\n"
-        "## Consequence\n\n"
-        "Continuity-question remains open; engage should route to spec or tasks.\n\n"
-        "## Follow-up\n\n"
-        f"{rationale}"
-    )
-    subject = "plan-rejected:" + "-".join(scope.split())
-    subject = subject[:120]
-    return {
-        "op": "create",
-        "type": "tuner:finding",
-        "subject": subject,
-        "payload": payload,
-        "body": body,
-    }
+    return plan_rejection_operation(item.text or item.subject, note, item.subject)
 
 
 def _finding_accept(item: NeedsYouItem, note: str | None) -> dict[str, JsonValue]:
-    payload: dict[str, JsonValue] = {"needs": "none"}
-    if note:
-        payload["resolution_note"] = note
-    return {
-        "op": "update",
-        "type": item.record_type or "tuner:finding",
-        "id": item.id,
-        "expected_revision": _displayed_revision(item),
-        "payload": payload,
-    }
+    return finding_accept_operation(
+        item.record_type or FINDING_TYPE, item.id, _displayed_revision(item), note
+    )
 
 
 def _check_sign(item: NeedsYouItem, signer: str, note: str | None) -> dict[str, JsonValue]:
-    payload: dict[str, JsonValue] = {"signed_by": signer}
-    if note:
-        payload["signed_note"] = note
-    return {
-        "op": "correct",
-        "type": item.record_type or "tuner:check-run",
-        "id": item.id,
-        "expected_revision": _displayed_revision(item),
-        "payload": payload,
-    }
+    return check_sign_operation(
+        item.record_type or CHECK_RUN_TYPE, item.id, _displayed_revision(item), signer, note
+    )
 
 
 def _current_revision(target: Project, item: NeedsYouItem) -> str:

@@ -8,7 +8,7 @@ from canon_support import create, make_project
 from phase_record_support import supersede_all, supersede_late
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import close, gate, land_task, task_close, wave, workflow
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
@@ -161,7 +161,7 @@ def test_r13_gate_all_superseded_phase_not_found(tmp_path: Path) -> None:
     project = _retired_project(tmp_path)
 
     with pytest.raises(LookupError, match="phase 'ph' not found"):
-        gate.gate_terms(project.project_root, PHASE)
+        gate.gate_terms(open_store(project.project_root), PHASE)
 
 
 def test_r13_workflow_review_all_superseded_phase_not_found(tmp_path: Path) -> None:

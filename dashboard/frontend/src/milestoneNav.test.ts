@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MilestoneRow, TaskRow } from "./api-types";
 import { appSource } from "./appSource";
@@ -25,6 +25,7 @@ import {
 	groupPhasesByMilestone,
 	initialExpandedMilestones,
 } from "./milestones";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, PhaseRow, Snapshot } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -151,20 +152,10 @@ function stubFetch(snap: Snapshot, details: Record<string, unknown> = {}) {
 	);
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		if (!window.location.hash) window.location.hash = effortHref(homeEffort);
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	if (!window.location.hash) window.location.hash = effortHref(homeEffort);
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 function click(selector: string) {
@@ -293,12 +284,11 @@ describe("milestone-nav Phases block", () => {
 		]);
 
 		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			expect(document.querySelector("[data-phases-block]")).toBeTruthy();
-			expect(document.querySelector('[data-milestone="cutover"]')).toBeTruthy();
-			expect(document.querySelector('[data-milestone="harden"]')).toBeTruthy();
-			expect(document.querySelector('[data-phase="p-hard"]')).toBeTruthy();
-		}
+		await mountDashboard();
+		expect(document.querySelector("[data-phases-block]")).toBeTruthy();
+		expect(document.querySelector('[data-milestone="cutover"]')).toBeTruthy();
+		expect(document.querySelector('[data-milestone="harden"]')).toBeTruthy();
+		expect(document.querySelector('[data-phase="p-hard"]')).toBeTruthy();
 	});
 
 	it("R2: Each milestone group header shows the milestone title (else subject), its state, and its done/total counts from the snapshot milestone row.", async () => {
@@ -326,16 +316,15 @@ describe("milestone-nav Phases block", () => {
 		expect(groupPhasesByMilestone(untitled)[0]!.title).toBe("ms-only");
 
 		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			const harden = document.querySelector('[data-milestone="harden"]');
-			expect(harden?.textContent).toContain("Harden");
-			expect(harden?.textContent).toMatch(/in progress/);
-			expect(harden?.textContent).toContain("0/2");
-			const cutover = document.querySelector('[data-milestone="cutover"]');
-			expect(cutover?.textContent).toContain("Cutover");
-			expect(cutover?.textContent).toMatch(/done/);
-			expect(cutover?.textContent).toContain("1/1");
-		}
+		await mountDashboard();
+		const harden = document.querySelector('[data-milestone="harden"]');
+		expect(harden?.textContent).toContain("Harden");
+		expect(harden?.textContent).toMatch(/in progress/);
+		expect(harden?.textContent).toContain("0/2");
+		const cutover = document.querySelector('[data-milestone="cutover"]');
+		expect(cutover?.textContent).toContain("Cutover");
+		expect(cutover?.textContent).toMatch(/done/);
+		expect(cutover?.textContent).toContain("1/1");
 	});
 
 	it("R4: When an effort has no milestones, the phases list flat as rows.", async () => {
@@ -344,12 +333,11 @@ describe("milestone-nav Phases block", () => {
 		expect(flatEffort.milestones?.length ?? 0).toBe(0);
 
 		stubFetch(makeSnapshot([flatEffort]));
-		if (await tryMountApp()) {
-			expect(document.querySelector("[data-phases-block]")).toBeNull();
-			expect(document.querySelector('[data-phase="a"]')).toBeTruthy();
-			expect(document.querySelector('[data-phase="b"]')).toBeTruthy();
-			expect(document.querySelector('[data-phase="all"]')).toBeNull();
-		}
+		await mountDashboard();
+		expect(document.querySelector("[data-phases-block]")).toBeNull();
+		expect(document.querySelector('[data-phase="a"]')).toBeTruthy();
+		expect(document.querySelector('[data-phase="b"]')).toBeTruthy();
+		expect(document.querySelector('[data-phase="all"]')).toBeNull();
 	});
 
 	it("R9: A phase row links to the phase page.", async () => {
@@ -357,10 +345,9 @@ describe("milestone-nav Phases block", () => {
 		expect(phaseHref("dashboard", "p-hard")).toBe("#/phase/dashboard/p-hard");
 
 		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			const row = document.querySelector<HTMLElement>('[data-phase="p-hard"]');
-			expect(row?.getAttribute("href")).toBe(phaseHref("dashboard", "p-hard"));
-		}
+		await mountDashboard();
+		const row = document.querySelector<HTMLElement>('[data-phase="p-hard"]');
+		expect(row?.getAttribute("href")).toBe(phaseHref("dashboard", "p-hard"));
 	});
 
 	it("R10: Phase rows show title when present, otherwise subject, plus a done/total cue for that phase.", async () => {
@@ -385,14 +372,13 @@ describe("milestone-nav Phases block", () => {
 		expect(expanded.has("harden")).toBe(true);
 
 		stubFetch(makeSnapshot([milestoneEffort]));
-		if (await tryMountApp()) {
-			click('[data-milestone-toggle="cutover"]');
-			const cutRow = document.querySelector('[data-phase="p-cut"]');
-			expect(cutRow?.textContent).toContain("Cut phase");
-			expect(cutRow?.textContent).toContain("1/1");
-			const hard2 = document.querySelector('[data-phase="p-hard-2"]');
-			expect(hard2?.textContent).toContain("p-hard-2");
-			expect(hard2?.textContent).toContain("1/3");
-		}
+		await mountDashboard();
+		click('[data-milestone-toggle="cutover"]');
+		const cutRow = document.querySelector('[data-phase="p-cut"]');
+		expect(cutRow?.textContent).toContain("Cut phase");
+		expect(cutRow?.textContent).toContain("1/1");
+		const hard2 = document.querySelector('[data-phase="p-hard-2"]');
+		expect(hard2?.textContent).toContain("p-hard-2");
+		expect(hard2?.textContent).toContain("1/3");
 	});
 });

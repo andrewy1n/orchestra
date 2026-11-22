@@ -2,7 +2,7 @@ from pathlib import Path
 
 from canon_support import make_project, seed_effort
 
-from orchestra import views
+from orchestra.views import render as views
 
 
 def test_derived_view_record_reference_has_id_without_file_link(tmp_path: Path) -> None:

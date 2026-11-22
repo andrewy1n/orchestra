@@ -1,0 +1,581 @@
+{
+	"areas": {
+		"body": [
+			{
+				"ideas": [
+					{
+						"area": "billing",
+						"effort": "alpha",
+						"phase": "p-one",
+						"status": "open",
+						"subject": "park-me",
+						"text": "Park this idea."
+					}
+				],
+				"open_count": 1,
+				"scope": "Invoices.",
+				"subject": "billing",
+				"title": "Billing"
+			}
+		],
+		"status": 200
+	},
+	"backlog": {
+		"body": {
+			"item": {
+				"body": "Park this idea.\n",
+				"effort": "alpha",
+				"id": "<composer:idea:park-me>",
+				"phase": "p-one",
+				"record_type": "composer:idea",
+				"source": "chat",
+				"status": "open",
+				"subject": "park-me",
+				"text": "Park this idea."
+			}
+		},
+		"status": 200
+	},
+	"error-backlog-unknown": {
+		"body": {
+			"error": "backlog item rec-missing not found"
+		},
+		"status": 404
+	},
+	"error-needs-unknown": {
+		"body": {
+			"error": "needs-you item rec-missing not found"
+		},
+		"status": 404
+	},
+	"error-phase-missing-param": {
+		"body": {
+			"detail": [
+				{
+					"input": null,
+					"loc": ["query", "phase"],
+					"msg": "Field required",
+					"type": "missing"
+				}
+			]
+		},
+		"status": 422
+	},
+	"error-phase-unknown": {
+		"body": {
+			"error": "phase no-such-phase not found in alpha"
+		},
+		"status": 404
+	},
+	"error-record-unknown": {
+		"body": {
+			"error": "get --id rec-missing failed: unsafe record id 'rec-missing'"
+		},
+		"status": 404
+	},
+	"error-task-unknown": {
+		"body": {
+			"error": "get --type score:work-item failed: unsafe record id 'rec-missing'"
+		},
+		"status": 404
+	},
+	"hub": {
+		"body": {
+			"active_phases": [
+				{
+					"effort": "alpha",
+					"href": "#/phase/alpha/p-one",
+					"kind": "phase",
+					"progress": {
+						"blockers": {
+							"more": 0,
+							"shown": ["human gate: human-finding", "1 task not done"],
+							"text": "human gate: human-finding; 1 task not done"
+						},
+						"current": "spec",
+						"reason": "human gate: human-finding",
+						"repairs": null,
+						"requirements": {
+							"label": "1 of 1 proven",
+							"proven": 1,
+							"total": 1
+						},
+						"stages": [
+							{
+								"id": "spec",
+								"state": "blocked"
+							},
+							{
+								"id": "design",
+								"state": "pending"
+							},
+							{
+								"id": "tasks",
+								"state": "pending"
+							},
+							{
+								"id": "execute",
+								"state": "pending"
+							},
+							{
+								"id": "verify",
+								"state": "pending"
+							},
+							{
+								"id": "land",
+								"state": "pending"
+							},
+							{
+								"id": "close",
+								"state": "pending"
+							}
+						],
+						"tasks": {
+							"done": 0,
+							"label": "0 of 1 done · wave 1",
+							"remaining": 1,
+							"running": 0,
+							"total": 1,
+							"wave": 1
+						},
+						"weight": "full"
+					},
+					"reason": "Updated just now",
+					"running": false,
+					"step": "spec",
+					"subject": "p-one",
+					"title": "first phase",
+					"updated_at": "<timestamp>"
+				}
+			],
+			"generated_at": "<timestamp>",
+			"needs_you": [],
+			"open_ideas": [
+				{
+					"effort": "alpha",
+					"href": "#/backlog/alpha/<composer:idea:park-me>",
+					"kind": "idea",
+					"progress": null,
+					"reason": "Idea · parked just now",
+					"running": false,
+					"step": "",
+					"subject": "<composer:idea:park-me>",
+					"title": "Park this idea.",
+					"updated_at": "<timestamp>"
+				}
+			],
+			"work_next": [
+				{
+					"effort": "alpha",
+					"href": "#/backlog/alpha/<composer:idea:park-me>",
+					"kind": "idea",
+					"progress": null,
+					"reason": "Idea · parked just now",
+					"running": false,
+					"step": "",
+					"subject": "<composer:idea:park-me>",
+					"title": "Park this idea.",
+					"updated_at": "<timestamp>"
+				}
+			]
+		},
+		"status": 200
+	},
+	"journal": {
+		"body": {
+			"open": [
+				{
+					"assignee": "",
+					"id": "<score:continuity-question:alpha:port-choice>",
+					"open": true,
+					"phase": null,
+					"record_type": "score:continuity-question",
+					"recorded_at": "<timestamp>",
+					"subject": "alpha",
+					"task_id": "",
+					"text": "port-choice · open",
+					"write_root": ""
+				},
+				{
+					"assignee": "",
+					"id": "<tuner:finding:human-finding>",
+					"open": true,
+					"phase": null,
+					"record_type": "tuner:finding",
+					"recorded_at": "<timestamp>",
+					"subject": "human-finding",
+					"task_id": "",
+					"text": "a human must decide · needs human",
+					"write_root": ""
+				}
+			],
+			"rest": []
+		},
+		"status": 200
+	},
+	"journal-unknown-effort": {
+		"body": {
+			"open": [],
+			"rest": []
+		},
+		"status": 200
+	},
+	"needs": {
+		"body": {
+			"item": {
+				"approval": {
+					"confirm_choices": [
+						{
+							"action": "accept",
+							"label": "Accept risk",
+							"note_required": true
+						}
+					]
+				},
+				"body": "## Evidence\n\nplaceholder text for Evidence.\n\n## Consequence\n\nplaceholder text for Consequence.\n\n## Follow-up\n\nplaceholder text for Follow-up.\n",
+				"id": "<tuner:finding:human-finding>",
+				"kind": "needs-human",
+				"next": "",
+				"phase": "",
+				"record_type": "tuner:finding",
+				"requirement": "",
+				"result": "",
+				"revision": "<rev:tuner:finding:human-finding>",
+				"status": "",
+				"subject": "human-finding",
+				"task_id": "",
+				"text": "a human must decide"
+			}
+		},
+		"status": 200
+	},
+	"phase": {
+		"body": {
+			"decisions": {
+				"groups": []
+			},
+			"detail": {
+				"awaiting_signoff": true,
+				"body": "## Problem\n\nplaceholder text for Problem.\n\n## Approach\n\nplaceholder text for Approach.\n\n## Exit criteria\n\nplaceholder text for Exit criteria.\n",
+				"constraints": [],
+				"decisions": [],
+				"design_body": "",
+				"effort": "alpha",
+				"evidence": {
+					"decisions": [],
+					"integration": null,
+					"non_goals": "placeholder text.",
+					"phase": "p-one",
+					"release_ready": true,
+					"release_state": "",
+					"requirements": [
+						{
+							"check_at": null,
+							"check_kind": "",
+							"confidence": "",
+							"id": "R1",
+							"latest_check": null,
+							"next": "",
+							"phase": "p-one",
+							"status": "verified",
+							"tasks": 1,
+							"tasks_done": 0,
+							"text": ""
+						}
+					],
+					"stage": "spec",
+					"stage_reason": "human gate: human-finding",
+					"weight": "full"
+				},
+				"milestone": "",
+				"milestone_title": "",
+				"proof": null,
+				"spec_body": "## Requirements\n\n- R1: the route keeps its body.\n\n## Acceptance criteria\n\nplaceholder text.\n\n## Constraints\n\nplaceholder text.\n\n## Non-goals\n\nplaceholder text.\n\n## Invariants\n\nplaceholder text.\n\n## Assumptions\n\nplaceholder text.\n",
+				"state": "in_progress",
+				"structured": true,
+				"subject": "p-one",
+				"tasks": [
+					{
+						"assignee": "",
+						"attempts": 0,
+						"depends_on": [],
+						"estimate_minutes": null,
+						"executor": "subagent",
+						"id": "<score:work-item:t-one>",
+						"last_record_at": null,
+						"phase": "p-one",
+						"retry_budget": 2,
+						"running_since": null,
+						"size": "",
+						"status": "ready",
+						"subject": "t-one",
+						"title": "first task",
+						"waits_on": [],
+						"wave": 1,
+						"write_root": ""
+					}
+				],
+				"title": "first phase"
+			},
+			"tabs": ["overview", "spec", "design", "decisions", "evidence", "tasks"]
+		},
+		"status": 200
+	},
+	"record": {
+		"body": {
+			"record": {
+				"body": "## Evidence\n\nplaceholder text for Evidence.\n\n## Consequence\n\nplaceholder text for Consequence.\n\n## Follow-up\n\nplaceholder text for Follow-up.\n",
+				"derived": {
+					"write_order": 8
+				},
+				"id": "<tuner:finding:human-finding>",
+				"lifecycle_state": "asserted",
+				"payload": {
+					"basis": "observed",
+					"claim": "a human must decide",
+					"effort": "alpha",
+					"invalidated_when": "decision recorded",
+					"needs": "human"
+				},
+				"record_type": "tuner:finding",
+				"recorded_at": "<timestamp>",
+				"relationships": {},
+				"revision": "<rev:tuner:finding:human-finding>",
+				"subject": "human-finding"
+			}
+		},
+		"status": 200
+	},
+	"requirement": {
+		"body": {
+			"detail": {
+				"acceptances": [
+					{
+						"check": {
+							"evidence_kind": "",
+							"id": "<tuner:check-run:unsigned-check>",
+							"method": "manual",
+							"recorded_at": "<timestamp>",
+							"result": "pass",
+							"revision": "abc",
+							"signed_by": ""
+						},
+						"criterion": "the route keeps its body",
+						"id": "<score:acceptance:t-one-acc>",
+						"method": "check",
+						"subject": "t-one-acc",
+						"verify_command": "uv run pytest -q"
+					}
+				],
+				"assessments": [],
+				"decisions": [],
+				"id": "R1",
+				"next": "",
+				"phase": "p-one",
+				"status": "verified",
+				"tasks": [
+					{
+						"assignee": "",
+						"attempts": 0,
+						"depends_on": [],
+						"estimate_minutes": null,
+						"executor": "subagent",
+						"id": "<score:work-item:t-one>",
+						"last_record_at": null,
+						"phase": "p-one",
+						"retry_budget": 2,
+						"running_since": null,
+						"size": "",
+						"status": "ready",
+						"subject": "t-one",
+						"title": "first task",
+						"waits_on": [],
+						"wave": 1,
+						"write_root": ""
+					}
+				],
+				"text": ""
+			}
+		},
+		"status": 200
+	},
+	"requirement-unknown-phase": {
+		"body": {
+			"detail": {
+				"acceptances": [],
+				"assessments": [],
+				"decisions": [],
+				"id": "R1",
+				"next": "",
+				"phase": "no-such-phase",
+				"status": "unverified",
+				"tasks": [],
+				"text": ""
+			}
+		},
+		"status": 200
+	},
+	"snapshot": {
+		"body": {
+			"efforts": [
+				{
+					"area": "",
+					"backlog": [
+						{
+							"id": "<composer:idea:park-me>",
+							"phase": "p-one",
+							"source": "chat",
+							"status": "open",
+							"subject": "park-me",
+							"text": "Park this idea."
+						}
+					],
+					"dormant": false,
+					"effort": "alpha",
+					"finished": false,
+					"goal": "ship alpha",
+					"kind": "deliver",
+					"milestones": [],
+					"needs_you": [
+						{
+							"id": "<tuner:finding:human-finding>",
+							"kind": "needs-human",
+							"next": "",
+							"phase": "",
+							"record_type": "tuner:finding",
+							"requirement": "",
+							"result": "",
+							"revision": "<rev:tuner:finding:human-finding>",
+							"status": "",
+							"subject": "human-finding",
+							"task_id": "",
+							"text": "a human must decide"
+						},
+						{
+							"id": "<tuner:check-run:unsigned-check>",
+							"kind": "unsigned-check",
+							"next": "",
+							"phase": "",
+							"record_type": "tuner:check-run",
+							"requirement": "",
+							"result": "",
+							"revision": "<rev:tuner:check-run:unsigned-check>",
+							"status": "",
+							"subject": "t-one-acc",
+							"task_id": "<score:work-item:t-one>",
+							"text": "the route keeps its body pass"
+						},
+						{
+							"id": "<score:continuity-question:alpha:port-choice>",
+							"kind": "open-question",
+							"next": "",
+							"phase": "",
+							"record_type": "score:continuity-question",
+							"requirement": "",
+							"result": "",
+							"revision": "<rev:score:continuity-question:alpha:port-choice>",
+							"status": "",
+							"subject": "alpha",
+							"task_id": "",
+							"text": "port-choice"
+						}
+					],
+					"phases": [
+						{
+							"awaiting_signoff": true,
+							"done": 0,
+							"elapsed_minutes": null,
+							"id": "<score:phase:p-one>",
+							"in_progress": [],
+							"milestone": "",
+							"milestone_title": "",
+							"ordinal": 1,
+							"release_ready": true,
+							"requirements": 1,
+							"sitting": "",
+							"stage": "spec",
+							"state": "in_progress",
+							"subject": "p-one",
+							"suite": "",
+							"title": "first phase",
+							"total": 1,
+							"unset_estimates": 1,
+							"verified": 1
+						}
+					],
+					"position": "",
+					"release_ready": true,
+					"tasks": [
+						{
+							"assignee": "",
+							"attempts": 0,
+							"depends_on": [],
+							"estimate_minutes": null,
+							"executor": "subagent",
+							"id": "<score:work-item:t-one>",
+							"last_record_at": null,
+							"phase": "p-one",
+							"retry_budget": 2,
+							"running_since": null,
+							"size": "",
+							"status": "ready",
+							"subject": "t-one",
+							"title": "first task",
+							"waits_on": [],
+							"wave": 1,
+							"write_root": ""
+						}
+					]
+				}
+			],
+			"generated_at": "<timestamp>",
+			"store": "<store>/.canon",
+			"token": "<token>"
+		},
+		"status": 200
+	},
+	"task": {
+		"body": {
+			"detail": {
+				"acceptances": [
+					{
+						"check": null,
+						"criterion": "the route keeps its body",
+						"id": "<score:acceptance:t-one-acc>",
+						"method": "check",
+						"subject": "t-one-acc",
+						"verify_command": "uv run pytest -q"
+					}
+				],
+				"agent_work": [],
+				"assignee": "",
+				"blocks": [],
+				"body": "## Description\n\nplaceholder text for Description.\n",
+				"decisions": [],
+				"depends_on": [],
+				"effort": "alpha",
+				"estimate_minutes": null,
+				"executor": "subagent",
+				"id": "<score:work-item:t-one>",
+				"phase": "p-one",
+				"related": [],
+				"requirements": ["R1"],
+				"running_since": null,
+				"size": "",
+				"status": "ready",
+				"subject": "t-one",
+				"timeline": [],
+				"title": "first task",
+				"wave": 1,
+				"write_root": ""
+			}
+		},
+		"status": 200
+	},
+	"token": {
+		"body": {
+			"token": "<token>"
+		},
+		"status": 200
+	}
+}

@@ -7,7 +7,6 @@ import os
 import subprocess
 import sys
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -27,8 +26,9 @@ from conductor_support import (
 )
 from conftest import REPO_ROOT, git
 
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
 from orchestra.conductor import gate, landing
 
@@ -203,7 +203,7 @@ def test_gate_terms_revision_policy_matrix(
     phase.set_suite_policy("required")
     phase.suite_run(revision=checked)
 
-    terms = {term.name: term for term in gate.gate_terms(phase.store, PHASE)}
+    terms = {term.name: term for term in gate.gate_terms(open_store(phase.store), PHASE)}
 
     assert terms[f"acceptance-runner-at-head:{PHASE}-ac"].holds is expected
     assert terms["suite-at-head"].holds is expected
@@ -334,7 +334,7 @@ def test_head_that_does_not_descend_from_review_refuses(store: Path, cli: Cli) -
 
 
 def test_no_worktree_adds_no_descent_term(phase: Phase) -> None:
-    names = [t.name for t in gate.gate_terms(phase.store, PHASE)]
+    names = [t.name for t in gate.gate_terms(open_store(phase.store), PHASE)]
     assert "head-descends-from-review" not in names
 
 
@@ -394,14 +394,6 @@ def test_gate_head_evidence_suite_check_run_needs_integration_kind(phase: Phase)
     assert phase.missing() == ["suite-at-head"]
 
 
-@dataclass
-class _FixedStore:
-    fixed: list[Record]
-
-    def records(self) -> list[Record]:
-        return self.fixed
-
-
 def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     store: Path, cli: Cli, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -409,7 +401,7 @@ def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     earlier = phase.check_run("fail")
     later = phase.check_run("pass")
     stamp = "2026-11-01T00:00:00Z"
-    stored = {r["id"]: r for r in gate.open_store(store).records()}
+    stored = {r["id"]: r for r in Workspace(root=store).open().records()}
     others = [r for rid, r in stored.items() if rid not in {earlier["id"], later["id"]}]
     tied = [
         {**stored[earlier["id"]], "id": "rec-zzzz", "recorded_at": stamp},
@@ -417,11 +409,8 @@ def test_gate_head_evidence_timestamp_tie_takes_the_later_written_record(
     ]
     records = [*others, *tied]
 
-    def fixed_store(*_args: object, **_kwargs: object) -> _FixedStore:
-        return _FixedStore(records)
-
-    monkeypatch.setattr(gate, "open_store", fixed_store)
-    terms = {t.name: t for t in gate.gate_terms(store, PHASE)}
+    monkeypatch.setattr(Project, "records", lambda _self: records)
+    terms = {t.name: t for t in gate.gate_terms(open_store(store), PHASE)}
     assert terms[f"acceptance-passes:{PHASE}-ac"].holds
 
 
@@ -662,7 +651,7 @@ def _r10_gate_store(root: Path) -> Project:
 
 
 def _r10_snapshot(root: Path) -> list[dict[str, object]]:
-    terms = gate.gate_terms(root, R10_PHASE)
+    terms = gate.gate_terms(open_store(root), R10_PHASE)
     families = [term.name.partition(":")[0] for term in terms]
     ordered = sorted(
         zip(terms, families, strict=True),
@@ -672,7 +661,7 @@ def _r10_snapshot(root: Path) -> list[dict[str, object]]:
 
 
 def _r10_manual_term(root: Path, acceptance: Record) -> gate.Term:
-    terms = {term.name: term for term in gate.gate_terms(root, R10_PHASE)}
+    terms = {term.name: term for term in gate.gate_terms(open_store(root), R10_PHASE)}
     return terms[f"manual-check-signed:{acceptance['subject']}"]
 
 

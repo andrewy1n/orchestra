@@ -11,7 +11,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TypeGuard
 
-from orchestra.canon.project import NoArtifactStoreError, StoreBindingError, open_store
+from orchestra.canon.project import NoArtifactStoreError
+from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.sessions.record_join import join
 from orchestra.sessions.record_reader import read_project_records
 from orchestra.sessions.session_fields import session_fields
@@ -89,15 +90,16 @@ def _read_all(
     cwds = {cwd for row in rows if isinstance((cwd := row.get("cwd")), str) and cwd}
     for cwd in sorted(cwds):
         try:
-            project = open_store(cwd)
+            project = Workspace(root=Path(cwd), access=Access.WRITE).open()
             key = str(project.store_path)
             if key not in by_store:
                 by_store[key] = read_project_records(project)
             stores_by_cwd[cwd] = key
-        except NoArtifactStoreError:
-            continue
-        except StoreBindingError as exc:
-            failures.append(f"{cwd}: {type(exc).__name__}: {exc}")
+        except StoreNotReady as exc:
+            if isinstance(exc.cause, NoArtifactStoreError):
+                continue
+            cause = exc.cause or exc
+            failures.append(f"{cwd}: {type(cause).__name__}: {cause}")
             failed_cwds.add(cwd)
             continue
         except Exception as exc:

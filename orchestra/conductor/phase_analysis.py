@@ -1,0 +1,29 @@
+"""Run the phase consistency analysis against one store."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from orchestra.canon.derive import attach_derived_all
+from orchestra.canon.project import Project
+from orchestra.canon.project_config import (
+    CONFIG_PATH,
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    load_project_config,
+)
+from orchestra.score.analyze import Report, analyze_phase
+from orchestra.score.lookups import current_phase
+
+
+def analyze_in_store(project: Project, root: Path, phase: str, stage: str) -> Report | None:
+    """Return the report for `phase`, or None when the store has no such phase."""
+    records = project.records()
+    records = attach_derived_all(records, project.derived(records))
+    budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    if stage in ("plan", "close"):
+        config_path = root / CONFIG_PATH
+        if config_path.exists() or config_path.is_symlink():
+            budget = load_project_config(root).small_wave_budget_minutes
+    if current_phase(phase, records) is None:
+        return None
+    return analyze_phase(records, phase, stage, budget)

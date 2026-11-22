@@ -15,7 +15,7 @@
  * the App source wiring. When the Svelte plugin is loaded they also mount.
  */
 
-import { type Component, flushSync, mount, unmount } from "svelte";
+import { type Component, flushSync, type mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appSource } from "./appSource";
 import {
@@ -25,6 +25,7 @@ import {
 	visibleEfforts,
 } from "./efforts";
 import { startTokenPoller } from "./poll";
+import { mountApp } from "./testing/mountApp";
 import type { DeepPartial, EffortView, Snapshot } from "./types";
 import { TOKEN_POLL_MS } from "./types";
 
@@ -69,17 +70,9 @@ function makeSnapshot(efforts: EffortView[], token = "tok-1"): Snapshot {
 	return { token, efforts, generated_at: "2026-01-01T00:00:00Z" } as Snapshot;
 }
 
-async function tryMountApp(): Promise<boolean> {
-	try {
-		const module = await import("./App.svelte");
-		mounted = mount(module.default as Component, { target: document.body });
-		await vi.advanceTimersByTimeAsync(0);
-		flushSync();
-		return true;
-	} catch {
-		mounted = undefined;
-		return false;
-	}
+async function mountDashboard(): Promise<void> {
+	const module = await import("./App.svelte");
+	mounted = (await mountApp(module.default as Component)).instance;
 }
 
 describe("web-dashboard main", () => {
@@ -175,14 +168,13 @@ describe("web-dashboard main", () => {
 			}),
 		);
 		window.location.hash = "#/effort/dashboard";
-		if (await tryMountApp()) {
-			const dash = document.querySelector('[data-rail-item="dashboard"]');
-			expect(dash?.textContent).toContain("dashboard");
-			expect(dash?.textContent).toContain("deliver");
-			expect(dash?.textContent).toMatch(/2 needs you/);
-			const repair = document.querySelector('[data-rail-item="flaky-suite"]');
-			expect(repair?.textContent).toContain("repair");
-		}
+		await mountDashboard();
+		const dash = document.querySelector('[data-rail-item="dashboard"]');
+		expect(dash?.textContent).toContain("dashboard");
+		expect(dash?.textContent).toContain("deliver");
+		expect(dash?.textContent).toMatch(/2 needs you/);
+		const repair = document.querySelector('[data-rail-item="flaky-suite"]');
+		expect(repair?.textContent).toContain("repair");
 	});
 
 	it("R7: A finished effort with no Needs you items is hidden until the user asks to show finished efforts.", async () => {
@@ -234,23 +226,22 @@ describe("web-dashboard main", () => {
 			}),
 		);
 		window.location.hash = "#/effort/alpha";
-		if (await tryMountApp()) {
-			expect(document.querySelector("[data-effort-title]")?.textContent).toBe(
-				"alpha",
-			);
-			expect(document.querySelector("[data-goal]")?.textContent).toBe(
-				"Alpha goal text",
-			);
-			document
-				.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
-				.click();
-			await vi.advanceTimersByTimeAsync(0);
-			window.dispatchEvent(new HashChangeEvent("hashchange"));
-			flushSync();
-			expect(document.querySelector("[data-goal]")?.textContent).toBe(
-				"Beta goal text",
-			);
-		}
+		await mountDashboard();
+		expect(document.querySelector("[data-effort-title]")?.textContent).toBe(
+			"alpha",
+		);
+		expect(document.querySelector("[data-goal]")?.textContent).toBe(
+			"Alpha goal text",
+		);
+		document
+			.querySelector<HTMLAnchorElement>('[data-rail-item="beta"]')!
+			.click();
+		await vi.advanceTimersByTimeAsync(0);
+		window.dispatchEvent(new HashChangeEvent("hashchange"));
+		flushSync();
+		expect(document.querySelector("[data-goal]")?.textContent).toBe(
+			"Beta goal text",
+		);
 	});
 
 	it("R9: Selecting one phase limits the task rows to that phase.", async () => {

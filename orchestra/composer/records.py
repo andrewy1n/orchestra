@@ -124,6 +124,16 @@ def current_placements(records: Sequence[Record]) -> dict[str, str]:
     return placements
 
 
+def open_ideas(records: Sequence[Record]) -> list[Idea]:
+    ideas = [
+        read_idea(record) for record in records if record.get("lifecycle_state") not in _DEAD_STATES
+    ]
+    return sorted(
+        (idea for idea in ideas if idea.status == "open"),
+        key=lambda idea: (idea.subject, idea.record["id"]),
+    )
+
+
 def home_area(idea: Idea, placements: Mapping[str, str]) -> str:
     if idea.status == "promoted":
         placed = placements.get(idea.effort)

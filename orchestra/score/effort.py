@@ -58,6 +58,11 @@ def read_effort(record: Record) -> Effort:
     )
 
 
+def record_effort(record: Record) -> str | None:
+    effort = record_payload(record).get("effort")
+    return effort if isinstance(effort, str) else None
+
+
 def _live_efforts(records: Sequence[Record]) -> list[Record]:
     return [
         record

@@ -314,16 +314,30 @@ def test_journal_scope_phase_plus_effort_only_open_questions(store, cli, defs):
 
 def test_journal_missing_types_do_not_error(store, cli, defs, monkeypatch):
     _goal(cli, defs, "alpha", kind="repair")
-    real = records.list_records
+    real = backend_store.declared_record_types
+    undeclared = set(journal.JOURNAL_TYPES) | {"score:work-item", "score:phase"}
 
-    def missing(target, record_type, **kwargs):
-        if record_type in journal.JOURNAL_TYPES:
-            raise backend_store.ModelError(f"unknown type {record_type}")
-        return real(target, record_type, **kwargs)
+    def declared(target):
+        found = real(target)
+        return None if found is None else found - undeclared
 
-    monkeypatch.setattr(records, "list_records", missing)
+    monkeypatch.setattr(backend_store, "declared_record_types", declared)
     items = journal.load_journal(_target(store), "alpha")
     assert items == []
+
+
+def test_journal_failed_read_raises_model_error(store, cli, defs, monkeypatch):
+    _goal(cli, defs, "alpha", kind="repair")
+    real = records.list_records
+
+    def failing(target, record_type, **kwargs):
+        if record_type in journal.JOURNAL_TYPES:
+            raise backend_store.ModelError(f"read failed {record_type}")
+        return real(target, record_type, **kwargs)
+
+    monkeypatch.setattr(records, "list_records", failing)
+    with pytest.raises(backend_store.ModelError):
+        journal.load_journal(_target(store), "alpha")
 
 
 def test_journal_load_drops_orphan_effort_when_several_goals(store, cli, defs):

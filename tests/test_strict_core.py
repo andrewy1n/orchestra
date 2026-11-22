@@ -18,7 +18,7 @@ STRICT_ROOTS = (
     "orchestra/conductor",
     "orchestra/stage",
     "orchestra/cli.py",
-    "orchestra/views.py",
+    "orchestra/views",
 )
 
 

@@ -12,9 +12,9 @@ from canon_support import create, make_project
 from dashboard.backend import phase as dashboard_phase
 from dashboard.backend.phase import load_phase_detail
 from dashboard.backend.snapshot import load_snapshot
-from orchestra import views
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.workspace import Workspace
 from orchestra.conductor import close, gate, land, phase_progress, wave, workflow
 from orchestra.conductor import landing as landing_module
 from orchestra.conductor.github_pr import GitHubCheck
@@ -32,6 +32,7 @@ from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
 from orchestra.score import workflow_selection
 from orchestra.score.phase import Phase, current_phase_model, read_phase
+from orchestra.views import render as views
 
 EFFORT = "ef"
 PHASE = "feature"
@@ -405,7 +406,7 @@ def _through_workflow(rig: Rig) -> None:
 
 
 def _through_gate(rig: Rig) -> None:
-    gate.gate_terms(rig.root, PHASE, store_dir=rig.project.store_path)
+    gate.gate_terms(rig.project, PHASE)
 
 
 def _through_close(rig: Rig) -> None:
@@ -448,9 +449,7 @@ def _through_land(rig: Rig) -> None:
     with rig.monkeypatch.context() as patch:
         patch.setattr(gate, "gate_terms", no_terms)
         land.land_phase(
-            rig.root,
-            None,
-            lambda: rig.project,
+            Workspace(rig.root),
             PHASE,
             rig.root,
             client,

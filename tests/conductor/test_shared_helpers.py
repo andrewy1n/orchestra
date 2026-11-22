@@ -246,6 +246,24 @@ def _calls_named(path: Path, name: str) -> bool:
     return False
 
 
+def _reads_payload_directly(path: Path) -> bool:
+    for node in ast.walk(_parse(path)):
+        if (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.slice, ast.Constant)
+            and node.slice.value == "payload"
+        ):
+            return True
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "get"
+            and any(isinstance(arg, ast.Constant) and arg.value == "payload" for arg in node.args)
+        ):
+            return True
+    return False
+
+
 def _fails_git(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "missing-git-dir"))
     return tmp_path
@@ -366,7 +384,7 @@ def test_r11_attestation_signature(tmp_path: Path) -> None:
 
 def test_r15_views_omits_getter() -> None:
     """R15: orchestra.views does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "orchestra" / "views.py") == []
+    assert _record_payload_getters(ROOT / "orchestra" / "views" / "render.py") == []
 
 
 def test_r16_close_batch_omits_getter() -> None:
@@ -390,11 +408,9 @@ def test_r19_canon_record_payload() -> None:
     assert len(getters) == 1
 
 
-def test_r20_views_calls_payload() -> None:
-    """R20: orchestra.views calls that function."""
-    getters = _canon_record_payload_getters()
-    assert len(getters) == 1
-    assert _calls_named(ROOT / "orchestra" / "views.py", getters[0].__name__)
+def test_r20_views_reads_payload_only_through_owners() -> None:
+    """R20: orchestra.views reads payloads only through the owners."""
+    assert not _reads_payload_directly(ROOT / "orchestra" / "views" / "render.py")
 
 
 def test_r21_close_batch_calls_payload() -> None:
@@ -404,15 +420,11 @@ def test_r21_close_batch_calls_payload() -> None:
     assert _calls_named(ROOT / "orchestra" / "conductor" / "close_batch.py", getters[0].__name__)
 
 
-def test_r22_model_calls_payload() -> None:
-    """R22: dashboard.model calls that function."""
-    getters = _canon_record_payload_getters()
-    assert len(getters) == 1
-    assert _calls_named(ROOT / "dashboard" / "backend" / "records.py", getters[0].__name__)
+def test_r22_model_reads_payload_only_through_owners() -> None:
+    """R22: dashboard.model reads payloads only through the owners."""
+    assert not _reads_payload_directly(ROOT / "dashboard" / "backend" / "journal.py")
 
 
-def test_r23_approval_calls_payload() -> None:
-    """R23: dashboard.approval calls that function."""
-    getters = _canon_record_payload_getters()
-    assert len(getters) == 1
-    assert _calls_named(ROOT / "dashboard" / "backend" / "approval.py", getters[0].__name__)
+def test_r23_approval_reads_payload_only_through_owners() -> None:
+    """R23: dashboard.approval reads payloads only through the owners."""
+    assert not _reads_payload_directly(ROOT / "dashboard" / "backend" / "approval.py")

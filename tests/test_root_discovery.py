@@ -8,7 +8,7 @@ from typing import NoReturn
 import pytest
 
 import orchestra.canon.project as project
-import orchestra.cli as cli
+import orchestra.canon.store_commands as store_commands
 from orchestra.tools import Git, ToolError
 
 
@@ -47,23 +47,23 @@ def _patch(monkeypatch: pytest.MonkeyPatch, module: object, run: Callable[..., o
 def test_cli_checkout_root_raises_when_git_is_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _patch(monkeypatch, cli, _missing)
+    _patch(monkeypatch, store_commands, _missing)
 
     with pytest.raises(ToolError):
-        cli._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        store_commands._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
 
 
 def test_cli_checkout_root_raises_when_git_is_too_old(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _patch(monkeypatch, cli, _old_git)
+    _patch(monkeypatch, store_commands, _old_git)
 
     with pytest.raises(ToolError):
-        cli._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
+        store_commands._checkout_root(tmp_path)  # pyright: ignore[reportPrivateUsage]
 
 
 def test_cli_checkout_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
-    assert cli._checkout_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert store_commands._checkout_root(tmp_path) == tmp_path.resolve()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_project_root_raises_when_git_is_missing(
@@ -82,7 +82,7 @@ def test_project_root_falls_back_outside_a_repository(tmp_path: Path) -> None:
 def test_cli_checkout_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:
     missing = tmp_path / "nowhere"
 
-    assert cli._checkout_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
+    assert store_commands._checkout_root(missing) == missing.resolve()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_project_root_falls_back_for_a_missing_directory(tmp_path: Path) -> None:

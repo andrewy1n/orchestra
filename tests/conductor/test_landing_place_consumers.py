@@ -7,7 +7,7 @@ from pathlib import Path
 from canon_support import create, make_project
 from conductor_support import FakeStates
 
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
 from orchestra.conductor import close, gate, wave
 
@@ -139,7 +139,7 @@ def _review(world: World, revision: str) -> None:
 
 
 def _descent(world: World) -> gate.Term | None:
-    terms = gate.gate_terms(world.repo, PHASE)
+    terms = gate.gate_terms(open_store(world.repo), PHASE)
     return next((t for t in terms if t.name == "head-descends-from-review"), None)
 
 
@@ -180,10 +180,12 @@ def test_r13_gate_without_a_landing_section_looks_in_the_default_worktree(tmp_pa
         {"title": "Ph", "ordinal": 1, "effort": EFFORT},
         PHASE_BODY,
     )
-    assert [t for t in gate.gate_terms(repo, PHASE) if t.name == "head-descends-from-review"] == []
+    assert [
+        t for t in gate.gate_terms(open_store(repo), PHASE) if t.name == "head-descends-from-review"
+    ] == []
     _git(repo, "worktree", "add", "-q", "-b", f"phase/{PHASE}", str(repo / ".worktrees" / PHASE))
 
-    names = [t.name for t in gate.gate_terms(repo, PHASE)]
+    names = [t.name for t in gate.gate_terms(open_store(repo), PHASE)]
 
     assert "head-descends-from-review" in names
 

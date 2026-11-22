@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from canon_support import create, make_project
 
-from orchestra.canon.project import Project
+from orchestra.canon.project import Project, open_store
 from orchestra.conductor import gate, wave
 from orchestra.conductor.phase_progress import _gates
 from orchestra.score.phase import read_phase
@@ -118,7 +118,8 @@ def test_task_question_holds_its_dependency_chain_and_phase_close(tmp_path: Path
 
     assert [task.task for task in wave.start(project, repo, "one").tasks] == ["independent"]
     assert any(
-        not term.holds and term.detail == "task:hold" for term in gate.gate_terms(repo, "one")
+        not term.holds and term.detail == "task:hold"
+        for term in gate.gate_terms(open_store(repo), "one")
     )
 
     project.update(question["id"], transition="answered")
@@ -164,8 +165,8 @@ def test_phase_owned_finding_blocks_only_its_phase(tmp_path: Path) -> None:
     _phase(project, "two", 2)
     _finding(project, "phase-question", phase="one")
 
-    one = {term.name for term in gate.gate_terms(store, "one") if not term.holds}
-    two = {term.name for term in gate.gate_terms(store, "two") if not term.holds}
+    one = {term.name for term in gate.gate_terms(open_store(store), "one") if not term.holds}
+    two = {term.name for term in gate.gate_terms(open_store(store), "two") if not term.holds}
 
     assert "finding-needs-human:phase-question" in one
     assert "finding-needs-human:phase-question" not in two
@@ -207,7 +208,7 @@ def test_unscoped_finding_blocks_entire_effort(tmp_path: Path) -> None:
 
     for phase in ("one", "two"):
         assert "finding-needs-human:effort-question" in {
-            term.name for term in gate.gate_terms(store, phase) if not term.holds
+            term.name for term in gate.gate_terms(open_store(store), phase) if not term.holds
         }
         assert [item.record["subject"] for item in phase_blockers(project.records(), phase)] == [
             "effort-question"

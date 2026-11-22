@@ -19,7 +19,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.canon.project import open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import head_evidence, suite
 from orchestra.conductor.head_evidence import EvidenceIndex
@@ -88,17 +88,17 @@ def _acceptance_terms(acceptance: Record, index: EvidenceIndex, head: str) -> li
 
 
 def gate_terms(
-    store: Path,
+    project: Project,
     phase_slug: str,
     *,
-    store_dir: Path | None = None,
     head_worktree: Path | None = None,
 ) -> list[Term]:
     """Every phase gate term for the phase, held or not.
 
     Raises LookupError when the store has no such phase.
     """
-    records = open_store(store, store=store_dir).records()
+    store = project.project_root
+    records = project.records()
     phase = current_phase_model(phase_slug, records)
     if phase is None:
         raise LookupError(f"phase {phase_slug!r} not found")

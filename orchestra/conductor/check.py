@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
-from orchestra.canon.project import Project, StoreBindingError, open_store
+from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.model_types import PlanningPayload
@@ -172,18 +172,12 @@ def run_check(
     *,
     acceptance_id: str,
     cwd: Path,
-    store_root: Path,
-    store_dir: Path | None = None,
+    project: Project,
     allow_dirty: bool = False,
     execution_report: str | None = None,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
     work = cwd.resolve()
-    try:
-        project = open_store(store_root, store=store_dir)
-    except StoreBindingError as exc:
-        return CheckOutcome(exit_code=4, stdout="", message=str(exc))
-
     try:
         acceptance = project.get(acceptance_id, "score:acceptance")
     except StoreError as exc:
