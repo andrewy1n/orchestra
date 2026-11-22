@@ -9,11 +9,13 @@ import importlib.util
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from test_boundaries import COMPONENTS
 
 import orchestra.cli as root_cli
+from orchestra.tools import command_kit
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -175,11 +177,20 @@ def _injected(module_name: str) -> dict[str, object]:
     return {}
 
 
+def _declared_verbs(module: ModuleType) -> set[str]:
+    if hasattr(module, "commands"):
+        return {command.name for command in module.commands()}
+    return set(module.COMMANDS)
+
+
 def _registered_verbs(component_cli: str) -> set[str]:
     module = importlib.import_module(component_cli)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    module.add_parsers(sub, **_injected(component_cli))
+    if hasattr(module, "commands"):
+        command_kit.mount(sub, module.commands())
+    else:
+        module.add_parsers(sub, **_injected(component_cli))
     return set(sub.choices)
 
 
@@ -211,8 +222,7 @@ def test_conductor_workflow_is_a_conductor_command() -> None:
 @pytest.mark.parametrize("group", LIGHT_COMPONENTS, ids=[group.name for group in LIGHT_COMPONENTS])
 def test_light_components_cli_owns_its_commands_and_runs_them(group: Group) -> None:
     module = importlib.import_module(group.component_cli)
-    assert set(group.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(group.verbs) == _declared_verbs(module)
 
 
 def test_light_components_metrics_cli_module_is_gone_from_the_root_package() -> None:
@@ -225,8 +235,8 @@ EXCLUSIVE = [g for g in TUNER_CANON_STAGE if g is not TUNER_CANON_STAGE_CONDUCTO
 @pytest.mark.parametrize("group", EXCLUSIVE, ids=[group.name for group in EXCLUSIVE])
 def test_tuner_canon_stage_cli_owns_its_commands_and_runs_them(group: Group) -> None:
     module = importlib.import_module(group.component_cli)
-    assert set(group.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(group.verbs) == _declared_verbs(module)
+    assert hasattr(module, "commands") or callable(module.run)
 
 
 @pytest.mark.parametrize(
@@ -255,17 +265,15 @@ def test_tuner_canon_stage_conductor_cli_owns_check() -> None:
 
 def test_views_cli_owns_its_commands_and_runs_them() -> None:
     module = importlib.import_module(VIEWS.component_cli)
-    assert set(VIEWS.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(VIEWS.verbs) == _declared_verbs(module)
 
 
 def test_views_status_registers_status_where_it_lives() -> None:
     module = importlib.import_module("orchestra.views.status")
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    module.add_parser(sub)
+    command_kit.mount(sub, module.commands())
     assert "status" in sub.choices
-    assert callable(module.run)
 
 
 def test_views_is_a_package_not_a_module_file() -> None:
@@ -293,7 +301,7 @@ ROOT_CLI_SOURCE = Path(root_cli.__file__).read_text(encoding="utf-8")
 ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "_mount", "main", "<lambda>"}
 ROOT_ALLOWED_KIT_IMPORTS = {"orchestra.tools.command_kit", "orchestra.tools.command_kit.Command"}
 ROOT_OPTION_CALLS = {"add_argument", "add_argument_group", "add_mutually_exclusive_group"}
-ROOT_REGISTER_CALLS = {"add_parsers", "add_parser"}
+ROOT_REGISTER_CALLS = {"add_parsers", "add_parser", "commands"}
 CLI_COMPONENTS = (
     "conductor",
     "composer",
@@ -356,6 +364,7 @@ def root_composes_violations(source: str) -> list[str]:
                 found.append(f"option definition {node.func.attr} at line {node.lineno}")
     registered: set[str] = set()
     dispatched: set[str] = set()
+    kit_mounted: set[str] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
@@ -363,11 +372,13 @@ def root_composes_violations(source: str) -> list[str]:
         if node.func.attr in ROOT_REGISTER_CALLS:
             if isinstance(owner, ast.Name) and owner.id in aliases:
                 registered.add(owner.id)
+                if node.func.attr == "commands":
+                    kit_mounted.add(owner.id)
             else:
                 found.append(f"verb registered outside a component at line {node.lineno}")
         elif node.func.attr == "run" and isinstance(owner, ast.Name) and owner.id in aliases:
             dispatched.add(owner.id)
-    for alias in sorted(registered - dispatched):
+    for alias in sorted(registered - dispatched - kit_mounted):
         found.append(f"verbs of {alias} are not dispatched through {alias}.run")
     for alias in sorted(dispatched - registered):
         found.append(f"{alias}.run is dispatched but {alias} registers no parsers")
@@ -410,9 +421,9 @@ def test_root_composes_checker_flags_a_seeded_root_owned_verb() -> None:
 
 
 def test_root_composes_checker_flags_a_verb_that_skips_its_component_run() -> None:
-    seeded = ROOT_CLI_SOURCE.replace("return score_cli.run(args)", "return 0")
+    seeded = ROOT_CLI_SOURCE.replace("return canon_cli.run(args)", "return 0")
     assert (
-        "verbs of score_cli are not dispatched through score_cli.run"
+        "verbs of canon_cli are not dispatched through canon_cli.run"
         in root_composes_violations(seeded)
     )
 
@@ -421,17 +432,20 @@ def _own_registered_verbs(module_name: str) -> set[str]:
     module = importlib.import_module(module_name)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    register = getattr(module, "add_parsers", None) or module.add_parser
-    register(sub, **_injected(module_name))
+    if hasattr(module, "commands"):
+        command_kit.mount(sub, module.commands())
+    else:
+        module.add_parsers(sub, **_injected(module_name))
     return set(sub.choices)
 
 
 def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> None:
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        assert callable(
-            getattr(module, "add_parsers", None) or getattr(module, "add_parser", None)
-        ), component
+        if hasattr(module, "commands"):
+            assert module.commands(), component
+            continue
+        assert callable(getattr(module, "add_parsers", None)), component
         assert module.COMMANDS, component
         assert callable(module.run), component
 
@@ -439,7 +453,7 @@ def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> N
 def test_every_component_registers_exactly_its_own_commands() -> None:
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        assert _own_registered_verbs(f"orchestra.{component}.cli") == set(module.COMMANDS), (
+        assert _own_registered_verbs(f"orchestra.{component}.cli") == _declared_verbs(module), (
             component
         )
 
@@ -448,7 +462,7 @@ def test_every_component_verb_is_registered_by_one_component_only() -> None:
     owners: dict[str, list[str]] = {}
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        for verb in module.COMMANDS:
+        for verb in _declared_verbs(module):
             owners.setdefault(verb, []).append(component)
     owners.setdefault("status", []).append("views.status")
     assert {verb: names for verb, names in owners.items() if len(names) > 1} == {}
@@ -461,7 +475,7 @@ def test_every_component_command_union_covers_every_root_parser_verb() -> None:
     built = set(actions[0].choices)
     union = {"verify", "status"}
     for component in CLI_COMPONENTS:
-        union |= set(importlib.import_module(f"orchestra.{component}.cli").COMMANDS)
+        union |= _declared_verbs(importlib.import_module(f"orchestra.{component}.cli"))
     assert built <= union
     assert union <= built
 

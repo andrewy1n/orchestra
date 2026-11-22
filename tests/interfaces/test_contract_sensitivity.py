@@ -26,7 +26,7 @@ _PATCH = pytest.MonkeyPatch()
 def _exit_code(mode: str) -> None:
     import orchestra.score.cli as score_cli
 
-    real = score_cli.run
+    real = score_cli._autonomy
 
     def run(args: object) -> int:
         code = real(args)
@@ -34,7 +34,7 @@ def _exit_code(mode: str) -> None:
             return 1
         return code
 
-    _PATCH.setattr(score_cli, "run", run)
+    _PATCH.setattr(score_cli, "_autonomy", run)
 
 
 def _hook_output(mode: str) -> None:

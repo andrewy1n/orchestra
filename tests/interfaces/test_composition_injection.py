@@ -16,6 +16,7 @@ import pytest
 
 from interfaces.test_component_cli_layout import ROOT_CLI_SOURCE, root_composes_violations
 from orchestra.canon import cli as canon_cli
+from orchestra.tools import command_kit
 from orchestra.views import cli as views_cli
 
 conductor_cli = importlib.import_module("orchestra.conductor.cli")
@@ -88,11 +89,11 @@ def _conductor_adder(sub: SubparserGroup) -> None:
 
 
 def _stage_adder(sub: SubparserGroup) -> None:
-    stage_cli.add_parsers(sub)
+    command_kit.mount(sub, stage_cli.commands())
 
 
 def _views_adder(sub: SubparserGroup) -> None:
-    views_cli.add_parsers(sub)
+    command_kit.mount(sub, views_cli.commands())
 
 
 Adder = Callable[[SubparserGroup], None]

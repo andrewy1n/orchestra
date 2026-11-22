@@ -3,39 +3,27 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from typing import Protocol
 
 from orchestra.sessions import aggregate, report
-
-COMMANDS = frozenset({"sessions"})
-
-
-class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+from orchestra.tools.command_kit import Command, CommandError
 
 
-def add_parsers(sub: SubparserGroup) -> None:
-    sessions = sub.add_parser("sessions", help="Summarize Claude Code session transcripts")
-    sessions_sub = sessions.add_subparsers(dest="action", required=True)
-    report_parser = sessions_sub.add_parser(
-        "report", help="Print one JSON summary per session transcript"
-    )
-    report_parser.add_argument(
+def _configure_report(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
         "root",
         nargs="?",
         default=None,
         help="Transcript root (default: ~/.claude/projects)",
     )
-    report_parser.add_argument(
+    parser.add_argument(
         "--records",
         action="store_true",
         help="Attach matched record counts to each session",
     )
-    aggregate_parser = sessions_sub.add_parser(
-        "aggregate", help="Print one aggregate document for a report JSONL file"
-    )
-    aggregate_parser.add_argument(
+
+
+def _configure_aggregate(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
         "report",
         nargs="?",
         default="-",
@@ -43,11 +31,38 @@ def add_parsers(sub: SubparserGroup) -> None:
     )
 
 
-def run(args: argparse.Namespace) -> int:
+def _report(args: argparse.Namespace) -> int:
     try:
-        if args.action == "report":
-            return report(args.root, records=args.records)
+        return report(args.root, records=args.records)
+    except OSError as exc:
+        raise CommandError(str(exc)) from exc
+
+
+def _aggregate(args: argparse.Namespace) -> int:
+    try:
         return aggregate(args.report)
     except OSError as exc:
-        print(f"orchestra sessions: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(str(exc)) from exc
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "sessions",
+            "Summarize Claude Code session transcripts",
+            children=(
+                Command(
+                    "report",
+                    "Print one JSON summary per session transcript",
+                    configure=_configure_report,
+                    handle=_report,
+                ),
+                Command(
+                    "aggregate",
+                    "Print one aggregate document for a report JSONL file",
+                    configure=_configure_aggregate,
+                    handle=_aggregate,
+                ),
+            ),
+        )
+    ]

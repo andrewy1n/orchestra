@@ -479,7 +479,7 @@ CONDUCTOR_WORKFLOW = [
 
 VIEWS = [
     orchestra("handoff_success", "shared", 0, "handoff", out="# Project Handoff\n"),
-    orchestra("handoff_no_store", "bare", 1, "handoff", err=STORE_NOT_READY),
+    orchestra("handoff_no_store", "bare", 2, "handoff", err=STORE_NOT_READY),
     orchestra("view_plan_success", "shared", 0, "view", "plan", out="# Project Plan\n"),
     orchestra("view_status_success", "shared", 0, "view", "status", out="# Project Status\n"),
     orchestra(
@@ -491,7 +491,7 @@ VIEWS = [
         out="# Project Verification\n",
     ),
     orchestra("view_roadmap_success", "shared", 0, "view", "roadmap", out="# Project Roadmap\n"),
-    orchestra("view_no_store", "bare", 1, "view", "plan", err=STORE_NOT_READY),
+    orchestra("view_no_store", "bare", 2, "view", "plan", err=STORE_NOT_READY),
     orchestra("view_unknown_name", "shared", 2, "view", "nope", err="invalid choice"),
     orchestra("brief_success", "shared", 0, "brief", "a", out="# Brief: a\n"),
     orchestra(
@@ -502,12 +502,12 @@ VIEWS = [
         "nope",
         err="no work item found for subject 'nope'",
     ),
-    orchestra("brief_no_store", "bare", 1, "brief", "a", err=STORE_NOT_READY),
+    orchestra("brief_no_store", "bare", 2, "brief", "a", err=STORE_NOT_READY),
     orchestra(
         "status_success", "shared", 0, "status", out="alpha: running 0, ready 1, needs-you 0\n"
     ),
     orchestra("status_count_success", "shared", 0, "status", "--count", out="0\n"),
-    orchestra("status_no_store", "bare", 1, "status", err=STORE_NOT_READY),
+    orchestra("status_no_store", "bare", 2, "status", err=STORE_NOT_READY),
 ]
 
 LIGHT_COMPONENTS = [
@@ -546,7 +546,7 @@ LIGHT_COMPONENTS = [
         err="invalid choice",
     ),
     orchestra("metrics_phases_success", "shared", 0, "metrics", "phases", "--json", out="[]\n"),
-    orchestra("metrics_phases_no_store", "bare", 1, "metrics", "phases", err=NO_STORE),
+    orchestra("metrics_phases_no_store", "bare", 2, "metrics", "phases", err=NO_STORE),
     orchestra(
         "metrics_compare_unknown_boundary",
         "shared",
@@ -632,7 +632,7 @@ LIGHT_COMPONENTS = [
         "nope",
         err="no composer:area record with subject 'nope'",
     ),
-    orchestra("idea_no_store", "bare", 1, "idea", "A thing", err=NO_STORE),
+    orchestra("idea_no_store", "bare", 2, "idea", "A thing", err=NO_STORE),
     orchestra(
         "place_unknown_area",
         "shared",
@@ -642,8 +642,8 @@ LIGHT_COMPONENTS = [
         "nope",
         err="composer:area 'nope' does not exist",
     ),
-    orchestra("place_no_store", "bare", 1, "place", "alpha", "nope", err=NO_STORE),
-    orchestra("metrics_compare_no_store", "bare", 1, "metrics", "compare", "p1", err=NO_STORE),
+    orchestra("place_no_store", "bare", 2, "place", "alpha", "nope", err=NO_STORE),
+    orchestra("metrics_compare_no_store", "bare", 2, "metrics", "compare", "p1", err=NO_STORE),
     orchestra(
         "idea_missing_body_file",
         "fresh",

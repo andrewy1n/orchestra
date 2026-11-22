@@ -58,10 +58,15 @@ def test_views_module_resolves_through_workspace_with_read_access(relative: str)
         node
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and node.func.attr == "resolve"
-        and isinstance(node.func.value, ast.Name)
-        and node.func.value.id == "Workspace"
+        and (
+            (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "resolve"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "Workspace"
+            )
+            or (isinstance(node.func, ast.Name) and node.func.id == "open_for_command")
+        )
     ]
     assert resolves
     reads = [
@@ -123,7 +128,7 @@ def test_views_bare_nested_dir_is_store_not_ready_with_every_searched_parent(
     nested.mkdir(parents=True)
     result = invoke("orchestra", list(argv), nested)
     text = result.out + result.err
-    assert result.code == 1, text
+    assert result.code == 2, text
     assert "store_not_ready" in text
     assert NO_STORE in text
     assert "searched" in text

@@ -10,7 +10,7 @@ from interfaces.interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
 REFUSAL_CODE = 2
-VIEWS_REFUSAL_CODE = 1
+VIEWS_REFUSAL_CODE = 2
 MINIMAL_CONFIG = (
     '[verify.stages]\ntask = ["unit"]\nphase = ["unit"]\nmilestone = ["unit"]\n\n'
     '[verify.unit]\nrunner = ["true", "{tests}", "{report}"]\n'
@@ -68,13 +68,13 @@ CONDUCTOR_WORKFLOW = [
 ]
 
 LIGHT_COMPONENTS = [
-    (("idea", "A thing"), 1),
-    (("place", "alpha", "beta"), 1),
+    (("idea", "A thing"), 2),
+    (("place", "alpha", "beta"), 2),
     (("effort", "autonomy", "alpha", "gated"), 2),
     (("effort", "autonomy", "--migrate"), 2),
-    (("metrics", "phases"), 1),
-    (("metrics", "repairs", "--since", "2020-01-01"), 1),
-    (("metrics", "compare", "p1"), 1),
+    (("metrics", "phases"), 2),
+    (("metrics", "repairs", "--since", "2020-01-01"), 2),
+    (("metrics", "compare", "p1"), 2),
 ]
 
 TUNER_CANON_STAGE = [

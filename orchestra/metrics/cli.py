@@ -3,38 +3,31 @@
 from __future__ import annotations
 
 import argparse
-import json
-import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Protocol
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.canon.workspace import Access, open_for_command
 from orchestra.metrics.compare import UnknownBoundaryError, compare_phases, render_text
 from orchestra.metrics.phases import build_phase_rows
 from orchestra.metrics.repairs import build_repair_rows
+from orchestra.tools.command_kit import Command, CommandError, emit_json
 from orchestra.tools.errors import ToolError
 
-COMMANDS = frozenset({"metrics"})
 
-
-class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
-
-
-def add_parsers(sub: SubparserGroup) -> None:
-    metrics = sub.add_parser("metrics", help="Measure done phases from the store")
-    verbs = metrics.add_subparsers(dest="metrics_command", required=True)
-    phases = verbs.add_parser("phases", help="Print one row for each done phase")
+def _configure_phases(phases: argparse.ArgumentParser) -> None:
     phases.add_argument("--effort", default=None, help="Only phases of this effort")
     phases.add_argument("--json", action="store_true", help="Print the rows as JSON")
     phases.add_argument("directory", nargs="?", default=None, help="Project directory")
-    repairs = verbs.add_parser("repairs", help="List fix commits on main with their repair links")
+
+
+def _configure_repairs(repairs: argparse.ArgumentParser) -> None:
     repairs.add_argument("--since", required=True, help="Only commits on or after this date")
     repairs.add_argument("directory", nargs="?", default=None, help="Project directory")
-    compare = verbs.add_parser("compare", help="Compare done phases before and after a phase")
+
+
+def _configure_compare(compare: argparse.ArgumentParser) -> None:
     compare.add_argument("boundary", help="Phase whose landing time splits the done phases")
     compare.add_argument("--json", action="store_true", help="Print the comparison as JSON")
     compare.add_argument("directory", nargs="?", default=None, help="Project directory")
@@ -44,54 +37,43 @@ def _cell(value: object) -> str:
     return "-" if value is None else str(value)
 
 
-def _start(args: argparse.Namespace) -> Path:
-    return Path(args.directory) if args.directory else Path.cwd()
+def _root(args: argparse.Namespace) -> Path:
+    start = Path(args.directory) if args.directory else Path.cwd()
+    return open_for_command(start, Access.READ).project_root
 
 
-def _run_repairs(args: argparse.Namespace) -> int:
-    start = _start(args)
+def _repairs(args: argparse.Namespace) -> int:
+    root = _root(args)
     try:
-        root = Workspace.resolve(start, access=Access.READ).root
         rows = build_repair_rows(root, since=args.since)
-    except StoreNotReady as exc:
-        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 1
     except (StoreBindingError, StoreError, ToolError, OSError) as exc:
-        print(f"orchestra metrics: {exc}", file=sys.stderr)
-        return 1
+        raise CommandError(str(exc), 1) from exc
     for r in rows:
         print(f"{r.sha}\t{r.subject}\t{_cell(r.cause)}\t{_cell(r.phase)}")
     return 1 if any(r.cause is None for r in rows) else 0
 
 
-def _run_compare(args: argparse.Namespace) -> int:
-    start = _start(args)
+def _compare(args: argparse.Namespace) -> int:
+    root = _root(args)
     try:
-        root = Workspace.resolve(start, access=Access.READ).root
         comparison = compare_phases(root, args.boundary)
-    except StoreNotReady as exc:
-        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 1
     except (StoreBindingError, StoreError, UnknownBoundaryError, OSError) as exc:
-        print(f"orchestra metrics: {exc}", file=sys.stderr)
-        return 1
-    print(json.dumps(comparison, indent=2) if args.json else render_text(comparison))
+        raise CommandError(str(exc), 1) from exc
+    if args.json:
+        emit_json(comparison)
+    else:
+        print(render_text(comparison))
     return 0
 
 
-def _run_phases(args: argparse.Namespace) -> int:
-    start = _start(args)
+def _phases(args: argparse.Namespace) -> int:
+    root = _root(args)
     try:
-        root = Workspace.resolve(start, access=Access.READ).root
         rows = build_phase_rows(root, effort=args.effort)
-    except StoreNotReady as exc:
-        print(f"orchestra metrics: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 1
     except (StoreBindingError, StoreError, OSError) as exc:
-        print(f"orchestra metrics: {exc}", file=sys.stderr)
-        return 1
+        raise CommandError(str(exc), 1) from exc
     if args.json:
-        print(json.dumps([asdict(r) for r in rows], indent=2))
+        emit_json([asdict(r) for r in rows])
         return 0
     for r in rows:
         print(
@@ -103,9 +85,30 @@ def _run_phases(args: argparse.Namespace) -> int:
     return 0
 
 
-def run(args: argparse.Namespace) -> int:
-    if args.metrics_command == "repairs":
-        return _run_repairs(args)
-    if args.metrics_command == "compare":
-        return _run_compare(args)
-    return _run_phases(args)
+def commands() -> list[Command]:
+    return [
+        Command(
+            "metrics",
+            "Measure done phases from the store",
+            children=(
+                Command(
+                    "phases",
+                    "Print one row for each done phase",
+                    configure=_configure_phases,
+                    handle=_phases,
+                ),
+                Command(
+                    "repairs",
+                    "List fix commits on main with their repair links",
+                    configure=_configure_repairs,
+                    handle=_repairs,
+                ),
+                Command(
+                    "compare",
+                    "Compare done phases before and after a phase",
+                    configure=_configure_compare,
+                    handle=_compare,
+                ),
+            ),
+        )
+    ]

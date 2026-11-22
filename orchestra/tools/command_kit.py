@@ -39,7 +39,7 @@ def mount(sub: SubparserGroup, commands: Sequence[Command], parents: tuple[str, 
             handler=command.handle, passthrough=command.passthrough, command_path=path
         )
         if command.children:
-            mount(parser.add_subparsers(metavar="<command>", required=True), command.children, path)
+            mount(parser.add_subparsers(required=True), command.children, path)
 
 
 def _prefix(args: argparse.Namespace) -> str:

@@ -39,20 +39,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     scan, recover = stage_cli.store_operations()
-    _mount(sub, views_cli, lambda: views_cli.add_parsers(sub))
-    _mount(sub, stage_cli, lambda: stage_cli.add_parsers(sub))
-    views_status.add_parser(sub)
-    _mount(sub, metrics_cli, lambda: metrics_cli.add_parsers(sub))
+    command_kit.mount(sub, views_cli.commands())
+    command_kit.mount(sub, stage_cli.commands())
+    command_kit.mount(sub, views_status.commands())
+    command_kit.mount(sub, metrics_cli.commands())
     _mount(sub, tuner_cli, lambda: tuner_cli.add_parsers(sub))
-    _mount(sub, sessions_cli, lambda: sessions_cli.add_parsers(sub))
+    command_kit.mount(sub, sessions_cli.commands())
     _mount(
         sub,
         conductor_cli,
         lambda: conductor_cli.add_parsers(sub, render_brief=views_cli.render_brief),
     )
-    _mount(sub, score_cli, lambda: score_cli.add_parsers(sub))
+    command_kit.mount(sub, score_cli.commands())
     _mount(sub, canon_cli, lambda: canon_cli.add_parsers(sub, scan=scan, recover=recover))
-    _mount(sub, composer_cli, lambda: composer_cli.add_parsers(sub))
+    command_kit.mount(sub, composer_cli.commands())
     return parser
 
 
@@ -70,24 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         return command_kit.run(args, extra)
     if args.command in tuner_cli.COMMANDS:
         return tuner_cli.run(args, extra)
-    if args.command in sessions_cli.COMMANDS:
-        return sessions_cli.run(args)
     if args.command in conductor_cli.COMMANDS:
         return conductor_cli.run(args)
-    if args.command in score_cli.COMMANDS:
-        return score_cli.run(args)
     if args.command in canon_cli.COMMANDS:
         return canon_cli.run(args)
-    if args.command in composer_cli.COMMANDS:
-        return composer_cli.run(args)
-    if args.command == "status":
-        return views_status.run(args)
-    if args.command in metrics_cli.COMMANDS:
-        return metrics_cli.run(args)
-    if args.command in stage_cli.COMMANDS:
-        return stage_cli.run(args)
-    if args.command in views_cli.COMMANDS:
-        return views_cli.run(args)
     parser.error(f"unknown command {args.command!r}")
     return 2
 
