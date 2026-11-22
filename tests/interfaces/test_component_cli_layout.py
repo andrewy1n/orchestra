@@ -177,9 +177,13 @@ def _injected(module_name: str) -> dict[str, object]:
     return {}
 
 
+def _commands(module: ModuleType) -> list[command_kit.Command]:
+    return module.commands(**_injected(module.__name__))
+
+
 def _declared_verbs(module: ModuleType) -> set[str]:
     if hasattr(module, "commands"):
-        return {command.name for command in module.commands()}
+        return {command.name for command in _commands(module)}
     return set(module.COMMANDS)
 
 
@@ -188,7 +192,7 @@ def _registered_verbs(component_cli: str) -> set[str]:
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
     if hasattr(module, "commands"):
-        command_kit.mount(sub, module.commands())
+        command_kit.mount(sub, _commands(module))
     else:
         module.add_parsers(sub, **_injected(component_cli))
     return set(sub.choices)
@@ -216,7 +220,7 @@ def test_conductor_workflow_cli_module_is_gone_from_the_root_package() -> None:
 
 def test_conductor_workflow_is_a_conductor_command() -> None:
     conductor_cli = importlib.import_module("orchestra.conductor.cli")
-    assert "workflow" in conductor_cli.COMMANDS
+    assert "workflow" in _declared_verbs(conductor_cli)
 
 
 @pytest.mark.parametrize("group", LIGHT_COMPONENTS, ids=[group.name for group in LIGHT_COMPONENTS])
@@ -260,7 +264,7 @@ def test_tuner_canon_stage_root_cli_defines_no_cmd_handlers() -> None:
 
 def test_tuner_canon_stage_conductor_cli_owns_check() -> None:
     module = importlib.import_module("orchestra.conductor.cli")
-    assert "check" in module.COMMANDS
+    assert "check" in _declared_verbs(module)
 
 
 def test_views_cli_owns_its_commands_and_runs_them() -> None:
@@ -433,7 +437,7 @@ def _own_registered_verbs(module_name: str) -> set[str]:
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
     if hasattr(module, "commands"):
-        command_kit.mount(sub, module.commands())
+        command_kit.mount(sub, _commands(module))
     else:
         module.add_parsers(sub, **_injected(module_name))
     return set(sub.choices)
@@ -443,7 +447,7 @@ def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> N
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
         if hasattr(module, "commands"):
-            assert module.commands(), component
+            assert _commands(module), component
             continue
         assert callable(getattr(module, "add_parsers", None)), component
         assert module.COMMANDS, component

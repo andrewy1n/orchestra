@@ -45,11 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
     command_kit.mount(sub, metrics_cli.commands())
     _mount(sub, tuner_cli, lambda: tuner_cli.add_parsers(sub))
     command_kit.mount(sub, sessions_cli.commands())
-    _mount(
-        sub,
-        conductor_cli,
-        lambda: conductor_cli.add_parsers(sub, render_brief=views_cli.render_brief),
-    )
+    command_kit.mount(sub, conductor_cli.commands(render_brief=views_cli.render_brief))
     command_kit.mount(sub, score_cli.commands())
     _mount(sub, canon_cli, lambda: canon_cli.add_parsers(sub, scan=scan, recover=recover))
     command_kit.mount(sub, composer_cli.commands())
@@ -70,8 +66,6 @@ def main(argv: list[str] | None = None) -> int:
         return command_kit.run(args, extra)
     if args.command in tuner_cli.COMMANDS:
         return tuner_cli.run(args, extra)
-    if args.command in conductor_cli.COMMANDS:
-        return conductor_cli.run(args)
     if args.command in canon_cli.COMMANDS:
         return canon_cli.run(args)
     parser.error(f"unknown command {args.command!r}")

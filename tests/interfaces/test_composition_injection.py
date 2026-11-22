@@ -85,7 +85,7 @@ def _canon_adder(sub: SubparserGroup) -> None:
 
 
 def _conductor_adder(sub: SubparserGroup) -> None:
-    conductor_cli.add_parsers(sub, render_brief=views_cli.render_brief)
+    command_kit.mount(sub, conductor_cli.commands(render_brief=views_cli.render_brief))
 
 
 def _stage_adder(sub: SubparserGroup) -> None:
@@ -136,7 +136,7 @@ def _needed(order: str, verb: str) -> bool:
 CASES = [
     (["store", "scan"], canon_cli.run, "store"),
     (["store", "recover-evidence"], canon_cli.run, "store"),
-    (["wave", "start", PHASE], conductor_cli.run, "wave"),
+    (["wave", "start", PHASE], command_kit.run, "wave"),
 ]
 
 
@@ -182,7 +182,7 @@ def test_wave_start_runs_in_any_parser_build_order(order: str, fresh_world: Path
     if not _needed(order, "wave"):
         pytest.skip("component not built in this order")
     args = _parse(ORDERS[order], ["wave", "start", PHASE])
-    code, out, err = _run(conductor_cli.run, args, fresh_world)
+    code, out, err = _run(command_kit.run, args, fresh_world)
     assert code == 0, err
     assert PHASE in out
 
@@ -195,18 +195,18 @@ def test_parser_built_twice_in_one_process_still_runs_every_verb(
     scan = _parse(both, ["store", "scan"])
     again = _parse(ORDERS["reversed"], ["wave", "start", PHASE])
     assert _run(canon_cli.run, scan, shared_world)[0] == 0
-    assert _run(conductor_cli.run, again, fresh_world)[0] == 0
+    assert _run(command_kit.run, again, fresh_world)[0] == 0
 
 
 FRESH_SCRIPT = """
 import sys
 from orchestra import cli
 from orchestra.canon import cli as canon_cli
-from orchestra.conductor import cli as conductor_cli
+from orchestra.tools import command_kit
 
 parser = cli._build_parser()
 args = parser.parse_args(sys.argv[1:])
-run = canon_cli.run if args.command == "store" else conductor_cli.run
+run = canon_cli.run if args.command == "store" else command_kit.run
 sys.exit(run(args))
 """
 

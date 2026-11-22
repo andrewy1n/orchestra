@@ -191,3 +191,15 @@ def test_tuner_canon_stage_store_ensure_creates_the_store_instead_of_refusing(
     assert result.code == 0, result.err
     assert "store_not_ready" not in result.out + result.err
     assert (bare_dir / ".canon").is_dir()
+
+
+def test_check_without_store_exits_4(bare_dir: Path) -> None:
+    from orchestra.conductor import cli as conductor_cli
+
+    commands = getattr(conductor_cli, "commands", None)
+    assert commands is not None
+    assert "check" in [command.name for command in commands(render_brief=lambda *_: "")]
+    result = invoke("orchestra", ["check", "--acceptance", "x"], bare_dir)
+    assert result.code == 4, result.err
+    assert result.err.startswith("orchestra check:")
+    assert "store_not_ready:" in result.err

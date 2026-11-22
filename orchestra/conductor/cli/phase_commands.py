@@ -3,40 +3,100 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.project_config import ProjectConfigError
-from orchestra.canon.workspace import Access, StoreNotReady
+from orchestra.canon.workspace import Access
 from orchestra.conductor import gate
-from orchestra.conductor.cli.workspace import (
-    command_dir,
-    not_ready_message,
-    print_json,
-    resolve_workspace,
-)
+from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.phase_analysis import analyze_in_store
 from orchestra.conductor.review_brief import build_review_brief
+from orchestra.tools.command_kit import Command, CommandError, emit_json
+
+_STORE_HELP = (
+    "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd). "
+    "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+)
 
 
-def run_analyze(args: argparse.Namespace) -> int:
-    start = command_dir(args)
+def _configure_review_brief(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Worktree the diff comes from (default: process cwd)",
+    )
+    parser.add_argument(
+        "--base",
+        default="main",
+        help="Diff base revision (default: main)",
+    )
+    parser.add_argument(
+        "--phase-head",
+        default="HEAD",
+        help="Phase head revision (default: HEAD)",
+    )
+    parser.add_argument(
+        "--phase",
+        default=None,
+        help="Include records for this phase only",
+    )
+    parser.add_argument("--store", default=None, metavar="DIR", help=_STORE_HELP)
+    parser.add_argument(
+        "--out",
+        default="-",
+        help="Brief path, or '-' for stdout (default)",
+    )
+
+
+def _configure_analyze(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("phase", help="Phase slug")
+    parser.add_argument(
+        "--stage",
+        choices=("spec", "design", "plan", "close"),
+        default="plan",
+        help="Checks to run (default: plan)",
+    )
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Directory the store is resolved from (default: process cwd)",
+    )
+    parser.add_argument("--store", default=None, metavar="DIR", help=_STORE_HELP)
+
+
+def _configure_gate(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("phase", help="Phase slug")
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument(
+        "--cwd",
+        default=None,
+        help="Phase worktree whose HEAD the gate checks (default: the Landing worktree)",
+    )
+    parser.add_argument(
+        "--store",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Store repo root (default: $ORCHESTRA_STORE, then resolve from --cwd, else cwd). "
+            "An explicit --store or $ORCHESTRA_STORE beats $CANON_STORE"
+        ),
+    )
+
+
+def _analyze(args: argparse.Namespace) -> int:
+    start = work_dir(args)
+    project = open_project(args, start, Access.READ)
     try:
-        workspace = resolve_workspace(args.store, start, Access.READ)
-        report = analyze_in_store(workspace.open(), workspace.root, args.phase, args.stage)
-    except StoreNotReady as exc:
-        print(f"orchestra analyze: {args.phase}: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 2
+        report = analyze_in_store(project, project.project_root, args.phase, args.stage)
     except (OSError, RuntimeError, StoreBindingError, StoreError, ProjectConfigError) as exc:
-        print(f"orchestra analyze: {args.phase}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.phase}: {exc}") from exc
     if report is None:
-        print(f"orchestra analyze: phase {args.phase!r} not found", file=sys.stderr)
-        return 2
+        raise CommandError(f"phase {args.phase!r} not found")
     if args.json:
-        print_json(
+        emit_json(
             {
                 "phase": report.phase,
                 "stage": report.stage,
@@ -53,21 +113,17 @@ def run_analyze(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
-def run_gate(args: argparse.Namespace) -> int:
-    head_worktree = command_dir(args).resolve() if args.cwd else None
+def _gate(args: argparse.Namespace) -> int:
+    head_worktree = work_dir(args).resolve() if args.cwd else None
     start = head_worktree or Path.cwd()
+    project = open_project(args, start, Access.READ)
     try:
-        workspace = resolve_workspace(args.store, start, Access.READ)
-        terms = gate.gate_terms(workspace.open(), args.phase, head_worktree=head_worktree)
-    except StoreNotReady as exc:
-        print(f"orchestra gate: {args.phase}: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 2
+        terms = gate.gate_terms(project, args.phase, head_worktree=head_worktree)
     except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        print(f"orchestra gate: {args.phase}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.phase}: {exc}") from exc
     missing = gate.missing_terms(terms)
     if args.json:
-        print_json(
+        emit_json(
             {
                 "phase": args.phase,
                 "holds": not missing,
@@ -82,26 +138,21 @@ def run_gate(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
-def run_review_brief(args: argparse.Namespace) -> int:
-    work = command_dir(args)
+def _review_brief(args: argparse.Namespace) -> int:
+    work = work_dir(args)
+    project = open_project(args, work, Access.READ)
     try:
-        workspace = resolve_workspace(args.store, work, Access.READ)
         brief = build_review_brief(
-            workspace.open(),
+            project,
             work,
             base=args.base,
             phase_head=args.phase_head,
             phase=args.phase,
         )
-    except StoreNotReady as exc:
-        print(f"orchestra review-brief: {not_ready_message(exc, work)}", file=sys.stderr)
-        return 2
     except (OSError, RuntimeError, StoreBindingError) as exc:
-        print(f"orchestra review-brief: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(str(exc)) from exc
     if brief.refusal:
-        print(f"orchestra review-brief: {brief.refusal}", file=sys.stderr)
-        return 2
+        raise CommandError(brief.refusal)
     if args.out == "-":
         print(brief.text, end="" if brief.text.endswith("\n") else "\n")
         return 0
@@ -110,3 +161,27 @@ def run_review_brief(args: argparse.Namespace) -> int:
     destination.write_text(brief.text, encoding="utf-8")
     print(destination)
     return 0
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "review-brief",
+            "Build the phase-end reviewer brief from allowed store records "
+            "and git diff <base>..<phase-head>",
+            configure=_configure_review_brief,
+            handle=_review_brief,
+        ),
+        Command(
+            "analyze",
+            "Check a phase's specification, design, work-items, and acceptances for consistency",
+            configure=_configure_analyze,
+            handle=_analyze,
+        ),
+        Command(
+            "gate",
+            "Check the phase gate; exit 1 and name each missing term when it does not hold",
+            configure=_configure_gate,
+            handle=_gate,
+        ),
+    ]

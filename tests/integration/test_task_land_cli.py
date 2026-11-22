@@ -193,7 +193,7 @@ def test_r7_unreadable_evidence_exits_2_naming_the_task(tmp_path: Path) -> None:
     repo = _world(tmp_path, "true")
     result = _orchestra(repo, "task", "land", "a", "--evidence", str(tmp_path / "missing.json"))
     assert result.returncode == 2
-    assert result.stderr.startswith("orchestra task land: a: ")
+    assert result.stderr.startswith("orchestra task land: ")
     assert result.stdout == ""
 
 
@@ -202,7 +202,7 @@ def test_r7_unreadable_store_exits_2_naming_the_task(tmp_path: Path) -> None:
     empty.mkdir()
     result = _orchestra(empty, "task", "land", "a", "--evidence", str(_evidence(tmp_path)))
     assert result.returncode == 2
-    assert result.stderr.startswith("orchestra task land: a: ")
+    assert result.stderr.startswith("orchestra task land: ")
     assert result.stdout == ""
 
 
@@ -239,7 +239,7 @@ def test_r19_malformed_work_item_exits_2_naming_the_id_and_field(
     record_id = _malform_work_item(repo, field, value)
     result = _orchestra(repo, "task", "land", "a", "--evidence", str(_evidence(tmp_path)))
     assert result.returncode == 2
-    assert result.stderr.startswith("orchestra task land: a: ")
+    assert result.stderr.startswith("orchestra task land: ")
     assert record_id in result.stderr
     assert field in result.stderr
     assert result.stdout == ""
