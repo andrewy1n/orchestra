@@ -30,6 +30,12 @@ def acceptance_requirement_ids(record: Record) -> list[str]:
     return [single] if isinstance(single, str) and single else []
 
 
+def acceptance_listed_requirements(record: Record) -> list[str] | None:
+    if "requirements" not in record_payload(record):
+        return None
+    return acceptance_requirement_ids(record)
+
+
 def requirement_lines(text: str) -> dict[str, str]:
     lines: dict[str, str] = {}
     for line in text.splitlines():
@@ -42,9 +48,12 @@ def requirement_lines(text: str) -> dict[str, str]:
 def requirements_in_body(body: str) -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
     inside = False
+    done = False
     for line in body.splitlines():
         if line.startswith("## "):
-            inside = line[3:].strip() == "Requirements"
+            if inside:
+                done = True
+            inside = not done and line[3:].strip().casefold() == "requirements"
         elif inside:
             match = _REQUIREMENT_LINE.match(line.strip())
             if match:

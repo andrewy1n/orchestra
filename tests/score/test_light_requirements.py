@@ -4,9 +4,11 @@ import itertools
 
 from orchestra.canon.types import JsonObject, Record
 from orchestra.score.requirements import (
+    acceptance_listed_requirements,
     acceptance_requirement_ids,
     phase_requirements,
     phase_weight,
+    requirements_in_body,
 )
 
 _CLOCK = itertools.count()
@@ -70,3 +72,17 @@ def test_acceptance_requirement_ids_prefers_the_list() -> None:
     assert acceptance_requirement_ids(both) == ["R1", "R2"]
     assert acceptance_requirement_ids(one) == ["R3"]
     assert acceptance_requirement_ids(none) == []
+
+
+def test_acceptance_listed_requirements_is_none_without_the_list_field() -> None:
+    single = _record("score:acceptance", "a", {"requirement": "R1"})
+    listed = _record("score:acceptance", "b", {"requirements": ["R1", "R2"]})
+    empty = _record("score:acceptance", "c", {"requirements": [], "requirement": "R3"})
+    assert acceptance_listed_requirements(single) is None
+    assert acceptance_listed_requirements(listed) == ["R1", "R2"]
+    assert acceptance_listed_requirements(empty) == ["R3"]
+
+
+def test_requirements_in_body_reads_the_first_requirements_section_in_any_case() -> None:
+    body = "## REQUIREMENTS\n\nR1: first.\n\n## Other\n\nR9: no.\n\n## Requirements\n\nR1: later.\n"
+    assert requirements_in_body(body) == [("R1", "first.")]

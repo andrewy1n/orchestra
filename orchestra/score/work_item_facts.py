@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from orchestra.canon import record_payload
@@ -102,3 +103,16 @@ def work_item_status(record: Record) -> str | None:
 
 def decision_choice(record: Record) -> JsonValue | None:
     return record_payload(record).get("choice")
+
+
+def tasks_by_requirement(tasks: Sequence[Record], phase: str) -> dict[str, list[Record]]:
+    grouped: dict[str, list[Record]] = {}
+    for task in tasks:
+        if task["lifecycle_state"] == "superseded":
+            continue
+        facts = work_item_facts(task)
+        if facts.scope.phase != phase:
+            continue
+        for requirement in dict.fromkeys(facts.requirements):
+            grouped.setdefault(requirement, []).append(task)
+    return grouped

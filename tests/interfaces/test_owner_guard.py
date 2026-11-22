@@ -350,3 +350,70 @@ def test_dashboard_phase_rows_allowlist_only_names_current_raw_readers() -> None
         if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
     ]
     assert stale == []
+
+
+DASHBOARD_PHASE_EVIDENCE_DECIDERS: dict[str, tuple[str, ...]] = {
+    "phase.py": ("phase_evidence", "light_specification", "evidence_records_by_phase"),
+}
+
+DASHBOARD_PHASE_EVIDENCE_MERGED: dict[str, tuple[str, ...]] = {
+    "phase.py": (
+        "_requirement_texts",
+        "_requirement_view",
+        "_derivation_pool",
+        "_release_ready",
+        "latest_assessment_map",
+        "_tasks_by_requirement",
+        "_traced_records",
+        "_for_phase",
+    ),
+}
+
+DASHBOARD_PHASE_EVIDENCE_ALLOWLIST: dict[tuple[str, str], str] = {}
+
+_DASHBOARD_PHASE_EVIDENCE_DECIDER_IDS = sorted(
+    (module, name) for module, names in DASHBOARD_PHASE_EVIDENCE_DECIDERS.items() for name in names
+)
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    _DASHBOARD_PHASE_EVIDENCE_DECIDER_IDS,
+    ids=[
+        f"dashboard_phase_evidence-{module}-{name}"
+        for module, name in _DASHBOARD_PHASE_EVIDENCE_DECIDER_IDS
+    ],
+)
+def test_dashboard_phase_evidence_decider_exists(module: str, name: str) -> None:
+    assert name in raw_payload_readers(DASHBOARD_BACKEND / module, (name,))
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    _DASHBOARD_PHASE_EVIDENCE_DECIDER_IDS,
+    ids=[
+        f"dashboard_phase_evidence-{module}-{name}"
+        for module, name in _DASHBOARD_PHASE_EVIDENCE_DECIDER_IDS
+    ],
+)
+def test_dashboard_phase_evidence_decider_does_not_read_raw_payload(module: str, name: str) -> None:
+    found = raw_payload_readers(DASHBOARD_BACKEND / module, (name,))
+    assert name in found
+    if (module, name) in DASHBOARD_PHASE_EVIDENCE_ALLOWLIST:
+        return
+    assert found[name] == []
+
+
+@pytest.mark.parametrize("module", sorted(DASHBOARD_PHASE_EVIDENCE_MERGED))
+def test_dashboard_phase_evidence_merged_helpers_are_gone(module: str) -> None:
+    found = raw_payload_readers(DASHBOARD_BACKEND / module, DASHBOARD_PHASE_EVIDENCE_MERGED[module])
+    assert found == {}
+
+
+def test_dashboard_phase_evidence_allowlist_only_names_current_raw_readers() -> None:
+    stale = [
+        key
+        for key in sorted(DASHBOARD_PHASE_EVIDENCE_ALLOWLIST)
+        if not raw_payload_readers(DASHBOARD_BACKEND / key[0], (key[1],)).get(key[1])
+    ]
+    assert stale == []

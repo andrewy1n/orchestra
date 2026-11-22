@@ -15,6 +15,7 @@ class CheckRunFacts:
     signed_by: str
     revision: str
     evidence_kind: str
+    requirement: str = ""
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ def check_run_facts(record: Record) -> CheckRunFacts:
         signed_by=_text(payload, "signed_by"),
         revision=_text(payload, "revision"),
         evidence_kind=_text(payload, "evidence_kind"),
+        requirement=_text(payload, "requirement"),
     )
 
 

@@ -1160,3 +1160,535 @@ def test_phase_rows_and_milestones_route_pins() -> None:
         assert milestones == MILESTONE_ROWS_EXPECTED
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+def _spec_body(texts: dict[str, str]) -> str:
+    lines = "\n".join(f"{rid}: {text}" for rid, text in texts.items())
+    sections = "\n\n".join(
+        f"## {name}\n\n{'keep display only.' if name == 'Non-goals' else 'placeholder text.'}"
+        for name in ("Acceptance criteria", "Constraints", "Non-goals", "Invariants", "Assumptions")
+    )
+    return f"## Requirements\n\n{lines}\n\n{sections}\n"
+
+
+LIGHT_PHASE_BODY = (
+    "## Problem\n\np.\n\n## Approach\n\na.\n\n## Exit criteria\n\ne.\n\n"
+    "## Requirements\n\nR1: light one.\nR2: light two.\n"
+)
+
+
+def _acceptance_ids(root: Path) -> dict[str, str]:
+    listed = json.loads(run_cli("list", "--type", "score:acceptance", root=root).stdout)["records"]
+    return {item["subject"]: item["id"] for item in listed}
+
+
+def _evidence_acceptance(root: Path, subject: str, phase: str, payload: dict[str, object]) -> None:
+    _create(
+        root,
+        "score:acceptance",
+        subject,
+        {
+            "criterion": f"{subject} holds",
+            "method": "check",
+            "phase": phase,
+            "effort": "alpha",
+            "verify_command": "true",
+            **payload,
+        },
+    )
+
+
+def _evidence_check(
+    root: Path, subject: str, criterion: str, result: str, extra: dict[str, object] | None = None
+) -> None:
+    _create(
+        root,
+        "tuner:check-run",
+        subject,
+        {
+            "criterion_id": criterion,
+            "method": "check",
+            "signed_by": "",
+            "result": result,
+            "effort": "alpha",
+            "revision": "abc",
+            **(extra or {}),
+        },
+    )
+
+
+def _evidence_assessment(root: Path, subject: str, requirement: str, status: str, nxt: str) -> None:
+    _create(
+        root,
+        "conductor:assessment",
+        subject,
+        {
+            "phase": "ev-full",
+            "effort": "alpha",
+            "requirement": requirement,
+            "status": status,
+            "next": nxt,
+            "confidence": "low" if status == "failed" else "high",
+            "level": "design",
+        },
+    )
+
+
+def _seed_phase_evidence(root: Path) -> None:
+    _create(root, "score:effort", "alpha", {"goal": "ship alpha", "kind": "deliver"})
+    phases: tuple[tuple[str, int, dict[str, object], str], ...] = (
+        ("ev-full", 1, {}, ""),
+        ("ev-light", 2, {"weight": "light"}, LIGHT_PHASE_BODY),
+        ("ev-other", 3, {}, ""),
+    )
+    for subject, ordinal, payload, body in phases:
+        _create(
+            root,
+            "score:phase",
+            subject,
+            {"title": subject, "ordinal": ordinal, "effort": "alpha", **payload},
+            body,
+        )
+        _transition(root, "score:phase", subject, "in_progress")
+    _create(
+        root,
+        "score:specification",
+        "ev-full-spec",
+        {
+            "weight": "full",
+            "phase": "ev-full",
+            "effort": "alpha",
+            "requirements": ["R1", "R2", "R3"],
+        },
+        _spec_body({"R1": "first text.", "R2": "second text.", "R3": "third text."}),
+    )
+    for subject, choice in (("d-one", "use owners"), ("d-two", "keep routes")):
+        _create(
+            root,
+            "score:decision",
+            subject,
+            {"choice": choice, "alternatives": "none", "phase": "ev-full", "effort": "alpha"},
+        )
+    _create(
+        root,
+        "score:design",
+        "ev-full-design",
+        {"phase": "ev-full", "effort": "alpha", "decisions": ["d-one", "d-two"]},
+    )
+    for subject, phase, requirements, done in (
+        ("t-a", "ev-full", ["R1", "R1", "R2"], True),
+        ("t-b", "ev-full", ["R1"], False),
+        ("t-c", "ev-other", ["R1"], False),
+        ("t-d", "ev-light", ["R1"], True),
+    ):
+        payload: dict[str, object] = {
+            "title": subject,
+            "phase": phase,
+            "kind": "deliver",
+            "assignee": "",
+            "effort": "alpha",
+            "requirements": requirements,
+        }
+        if subject == "t-a":
+            payload["decisions"] = ["d-two", "d-one"]
+        _create(root, "score:work-item", subject, payload)
+        if done:
+            _transition(root, "score:work-item", subject, "in_progress")
+            _transition(root, "score:work-item", subject, "done")
+    _evidence_acceptance(root, "a-r1", "ev-full", {"requirement": "R1"})
+    _evidence_acceptance(root, "a-r2", "ev-full", {"requirements": ["R2", "R3"]})
+    _evidence_acceptance(root, "a-light", "ev-light", {"requirement": "R1"})
+    _evidence_acceptance(root, "a-other", "ev-other", {"requirement": "R1"})
+    ids = _acceptance_ids(root)
+    _evidence_check(
+        root, "run-r1", ids["a-r1"], "pass", {"requirement": "R1", "evidence_kind": "unit"}
+    )
+    _evidence_check(root, "run-r2", ids["a-r2"], "pass")
+    _evidence_check(root, "run-light", ids["a-light"], "pass")
+    _evidence_check(root, "run-other", ids["a-other"], "fail")
+    _wait_for_next_second()
+    _evidence_assessment(root, "as-r3-first", "R3", "insufficient", "plan")
+    _wait_for_next_second()
+    _evidence_assessment(root, "as-r3-second", "R3", "failed", "execute")
+    _evidence_assessment(root, "as-r2", "R2", "verified", "release")
+    _create(
+        root,
+        "conductor:integration-report",
+        "ev-full-report",
+        {"phase": "ev-full", "effort": "alpha", "result": "fail", "revision": "abc"},
+        "## Interfaces\n\nx\n\n## Assumptions\n\nx\n\n## Invariants\n\nx\n\n"
+        "## Conflicts\n\nroute vs owner.\n",
+    )
+    for phase, state in (("ev-full", "ready"), ("ev-full", "merged"), ("ev-light", "ready")):
+        _wait_for_next_second()
+        _create(
+            root,
+            "conductor:release",
+            f"{phase}-{state}",
+            {"state": state, "phase": phase, "effort": "alpha"},
+        )
+
+
+def _check_view(check: dict[str, object] | None) -> dict[str, object] | None:
+    if check is None:
+        return None
+    return {key: check[key] for key in ("method", "result", "evidence_kind", "signed_by")}
+
+
+def _evidence_pin(root: Path, phase: str) -> dict[str, object]:
+    client = TestClient(create_app(open_store(root)), raise_server_exceptions=False)
+    response = client.get("/api/phase", params={"effort": "alpha", "phase": phase})
+    assert response.status_code == 200, response.text
+    detail = response.json()["detail"]
+    evidence = detail["evidence"]
+    if evidence is None:
+        return {"structured": detail["structured"], "evidence": None}
+    return {
+        "structured": detail["structured"],
+        "weight": evidence["weight"],
+        "release_ready": evidence["release_ready"],
+        "release_state": evidence["release_state"],
+        "integration": evidence["integration"],
+        "decisions": evidence["decisions"],
+        "non_goals": evidence["non_goals"],
+        "requirements": [
+            {
+                **{
+                    key: row[key]
+                    for key in (
+                        "id",
+                        "text",
+                        "status",
+                        "next",
+                        "tasks",
+                        "tasks_done",
+                        "confidence",
+                        "check_kind",
+                    )
+                },
+                "latest_check": _check_view(row["latest_check"]),
+                "has_check_at": row["check_at"] is not None,
+            }
+            for row in evidence["requirements"]
+        ],
+    }
+
+
+def _requirement_pin(root: Path, phase: str, requirement: str) -> dict[str, object]:
+    client = TestClient(create_app(open_store(root)), raise_server_exceptions=False)
+    response = client.get(
+        "/api/requirement", params={"effort": "alpha", "phase": phase, "id": requirement}
+    )
+    assert response.status_code == 200, response.text
+    detail = response.json()["detail"]
+    return {
+        "text": detail["text"],
+        "status": detail["status"],
+        "next": detail["next"],
+        "decisions": detail["decisions"],
+        "tasks": [[row["subject"], row["status"]] for row in detail["tasks"]],
+        "acceptances": [
+            [row["subject"], _check_view(row["check"])] for row in detail["acceptances"]
+        ],
+        "assessments": [
+            [row["status"], row["level"], row["next"], row["confidence"]]
+            for row in detail["assessments"]
+        ],
+    }
+
+
+PHASE_EVIDENCE_EXPECTED: dict[str, object] = json.loads(
+    r"""{
+ "full": {
+  "decisions": [
+   {
+    "choice": "use owners",
+    "subject": "d-one"
+   },
+   {
+    "choice": "keep routes",
+    "subject": "d-two"
+   }
+  ],
+  "integration": {
+   "conflicts": "route vs owner.",
+   "result": "fail"
+  },
+  "non_goals": "keep display only.",
+  "release_ready": false,
+  "release_state": "merged",
+  "requirements": [
+   {
+    "check_kind": "unit",
+    "confidence": "",
+    "has_check_at": true,
+    "id": "R1",
+    "latest_check": {
+     "evidence_kind": "unit",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    },
+    "next": "",
+    "status": "verified",
+    "tasks": 2,
+    "tasks_done": 1,
+    "text": "first text."
+   },
+   {
+    "check_kind": "",
+    "confidence": "high",
+    "has_check_at": true,
+    "id": "R2",
+    "latest_check": {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    },
+    "next": "",
+    "status": "verified",
+    "tasks": 1,
+    "tasks_done": 1,
+    "text": "second text."
+   },
+   {
+    "check_kind": "",
+    "confidence": "low",
+    "has_check_at": true,
+    "id": "R3",
+    "latest_check": {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    },
+    "next": "execute",
+    "status": "failed",
+    "tasks": 0,
+    "tasks_done": 0,
+    "text": "third text."
+   }
+  ],
+  "structured": true,
+  "weight": "full"
+ },
+ "full-r1": {
+  "acceptances": [
+   [
+    "a-r1",
+    {
+     "evidence_kind": "unit",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    }
+   ]
+  ],
+  "assessments": [],
+  "decisions": [
+   {
+    "choice": "keep routes",
+    "subject": "d-two"
+   },
+   {
+    "choice": "use owners",
+    "subject": "d-one"
+   }
+  ],
+  "next": "",
+  "status": "verified",
+  "tasks": [
+   [
+    "t-b",
+    "ready"
+   ],
+   [
+    "t-a",
+    "done"
+   ]
+  ],
+  "text": "first text."
+ },
+ "full-r2": {
+  "acceptances": [
+   [
+    "a-r2",
+    {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    }
+   ]
+  ],
+  "assessments": [
+   [
+    "verified",
+    "design",
+    "release",
+    "high"
+   ]
+  ],
+  "decisions": [
+   {
+    "choice": "keep routes",
+    "subject": "d-two"
+   },
+   {
+    "choice": "use owners",
+    "subject": "d-one"
+   }
+  ],
+  "next": "",
+  "status": "verified",
+  "tasks": [
+   [
+    "t-a",
+    "done"
+   ]
+  ],
+  "text": "second text."
+ },
+ "full-r3": {
+  "acceptances": [
+   [
+    "a-r2",
+    {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    }
+   ]
+  ],
+  "assessments": [
+   [
+    "insufficient",
+    "design",
+    "plan",
+    "high"
+   ],
+   [
+    "failed",
+    "design",
+    "execute",
+    "low"
+   ]
+  ],
+  "decisions": [],
+  "next": "execute",
+  "status": "failed",
+  "tasks": [],
+  "text": "third text."
+ },
+ "light": {
+  "decisions": [],
+  "integration": null,
+  "non_goals": "",
+  "release_ready": true,
+  "release_state": "ready",
+  "requirements": [
+   {
+    "check_kind": "",
+    "confidence": "",
+    "has_check_at": false,
+    "id": "R1",
+    "latest_check": null,
+    "next": "",
+    "status": "verified",
+    "tasks": 1,
+    "tasks_done": 1,
+    "text": "light one."
+   },
+   {
+    "check_kind": "",
+    "confidence": "",
+    "has_check_at": false,
+    "id": "R2",
+    "latest_check": null,
+    "next": "",
+    "status": "unverified",
+    "tasks": 0,
+    "tasks_done": 0,
+    "text": "light two."
+   }
+  ],
+  "structured": false,
+  "weight": "light"
+ },
+ "light-r1": {
+  "acceptances": [
+   [
+    "a-light",
+    {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "pass",
+     "signed_by": ""
+    }
+   ]
+  ],
+  "assessments": [],
+  "decisions": [],
+  "next": "",
+  "status": "verified",
+  "tasks": [
+   [
+    "t-d",
+    "done"
+   ]
+  ],
+  "text": "light one."
+ },
+ "other": {
+  "evidence": null,
+  "structured": false
+ },
+ "other-r1": {
+  "acceptances": [
+   [
+    "a-other",
+    {
+     "evidence_kind": "",
+     "method": "check",
+     "result": "fail",
+     "signed_by": ""
+    }
+   ]
+  ],
+  "assessments": [],
+  "decisions": [],
+  "next": "",
+  "status": "unverified",
+  "tasks": [
+   [
+    "t-c",
+    "ready"
+   ]
+  ],
+  "text": ""
+ }
+}"""
+)
+
+
+def test_requirement_phase_evidence_route_pins() -> None:
+    root = build_store()
+    try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setenv("ORCHESTRA_SIGNED_BY", "route-signer")
+            _seed_phase_evidence(root)
+            got = {
+                "full": _evidence_pin(root, "ev-full"),
+                "light": _evidence_pin(root, "ev-light"),
+                "other": _evidence_pin(root, "ev-other"),
+                "full-r1": _requirement_pin(root, "ev-full", "R1"),
+                "full-r2": _requirement_pin(root, "ev-full", "R2"),
+                "full-r3": _requirement_pin(root, "ev-full", "R3"),
+                "light-r1": _requirement_pin(root, "ev-light", "R1"),
+                "other-r1": _requirement_pin(root, "ev-other", "R1"),
+            }
+        assert got == PHASE_EVIDENCE_EXPECTED
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
