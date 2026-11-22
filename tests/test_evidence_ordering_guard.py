@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 ROOTS = ("orchestra/conductor", "orchestra/score", "dashboard/backend")
@@ -74,24 +75,13 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-
-
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
-
-
 def test_evidence_ordering_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def _seed(tmp_path: Path, relative: str, source: str) -> list[str]:
-    _copy(tmp_path)
-    (tmp_path / relative).write_text(source, encoding="utf-8")
-    return _new(tmp_path)
+    write_source(tmp_path / relative, source)
+    return violations(tmp_path)
 
 
 def test_evidence_ordering_guard_fails_on_canon_query_latest_import(tmp_path: Path) -> None:

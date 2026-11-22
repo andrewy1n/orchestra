@@ -27,6 +27,12 @@ from orchestra.conductor.briefs.render import (
 
 _COUNTER = itertools.count()
 
+
+def write_source(path: Path, source: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(source, encoding="utf-8")
+
+
 # The CLI has no clock option, so shift datetime.now inside a CLI subprocess to write a past recorded_at.
 _PAST_CLOCK = """
 import datetime as _dt, runpy, sys

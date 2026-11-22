@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/score/lookups.py")
@@ -106,57 +107,48 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
-
-
 def test_r18_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def test_r18_guard_fails_on_seeded_second_phase_lookup(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
     seeded = tmp_path / "orchestra" / "seeded_phase_lookup.py"
-    seeded.write_text(
+    write_source(
+        seeded,
         "def phase_of(records, slug):\n"
         "    return [\n"
         "        r for r in records\n"
         "        if r['record_type'] == 'score:phase' and r['subject'] == slug\n"
         "    ]\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_phase_lookup.py:2"]
+    assert violations(tmp_path) == ["orchestra/seeded_phase_lookup.py:2"]
 
 
 def test_r18_guard_fails_on_seeded_resolve_call(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
     seeded = tmp_path / "dashboard" / "backend" / "seeded_resolve.py"
-    seeded.write_text(
+    write_source(
+        seeded,
         "def phase_of(index, slug):\n    return index.resolve_subject('score:phase', slug)\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_resolve.py:2"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_resolve.py:2"]
 
 
 def test_r18_guard_ignores_owner_module(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-    assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+    write_source(
+        tmp_path / OWNER,
+        "def phase_of(index, slug):\n    return index.resolve_subject('score:phase', slug)\n",
+    )
+    assert violations(tmp_path) == []
 
 
 def test_r18_guard_fails_on_seeded_script_phase_selection(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
     seeded = tmp_path / "scripts" / "seeded_phase_pick.py"
-    seeded.write_text(
+    write_source(
+        seeded,
         "def pick(records, phase):\n"
         "    return next(\n"
         "        (r for r in records if r['record_type'] == 'score:phase' and r['subject'] == phase),\n"
         "        None,\n"
         "    )\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["scripts/seeded_phase_pick.py:3"]
+    assert violations(tmp_path) == ["scripts/seeded_phase_pick.py:3"]

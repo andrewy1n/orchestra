@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
+
+from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/conductor/phase_progress.py")
@@ -94,84 +95,66 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(
-            REPO / base,
-            tmp_path / base,
-            ignore=shutil.ignore_patterns("__pycache__", "node_modules"),
-        )
-
-
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
-
-
 def test_r18_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def test_r18_guard_fails_on_seeded_stage_function(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_stage.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_stage.py",
         "def derive_stages(weight: str) -> list[str]:\n    return [weight]\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_stage.py:1"]
+    assert violations(tmp_path) == ["orchestra/seeded_stage.py:1"]
 
 
 def test_r18_guard_fails_on_seeded_stage_list(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_list.py").write_text(
+    write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_list.py",
         "FULL = ('spec', 'design', 'tasks', 'execute', 'verify', 'land', 'close')\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_list.py:1"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_list.py:1"]
 
 
 def test_r18_guard_fails_on_seeded_stage_from_facts(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_facts.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_facts.py",
         "from orchestra.conductor.phase_progress import verify_step\n\n\n"
         "def _verify_stage(project, records, phase):\n"
         "    return verify_step(project, records, phase)\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_facts.py:5"]
+    assert violations(tmp_path) == ["orchestra/seeded_facts.py:5"]
 
 
 def test_r18_guard_fails_on_seeded_current_stage_rewrite(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_relabel.py").write_text(
+    write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_relabel.py",
         "from dataclasses import replace\n\n\n"
         "def surface(progress):\n"
         "    return replace(progress, current='tasks')\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_relabel.py:5"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_relabel.py:5"]
 
 
 def test_r18_guard_fails_on_seeded_current_stage_assignment(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_assign.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_assign.py",
         "def surface(progress):\n    progress.current = 'tasks'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_assign.py:2"]
+    assert violations(tmp_path) == ["orchestra/seeded_assign.py:2"]
 
 
 def test_r18_guard_allows_reading_the_assessed_stage(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_reader.py").write_text(
+    write_source(
+        tmp_path / "orchestra" / "seeded_reader.py",
         "from orchestra.conductor.phase_progress import assess\n\n\n"
         "def current(facts):\n"
         "    return assess(facts).current\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == []
+    assert violations(tmp_path) == []
 
 
 def test_r18_guard_ignores_owner_module(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+    write_source(
+        tmp_path / OWNER, "def derive_stages(weight: str) -> list[str]:\n    return [weight]\n"
+    )
+    assert violations(tmp_path) == []

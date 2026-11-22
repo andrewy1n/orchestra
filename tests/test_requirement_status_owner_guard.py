@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from helpers import write_source
+
 REPO = Path(__file__).resolve().parent.parent
 OWNER = Path("orchestra/conductor/requirements.py")
 ROOTS = ("orchestra", "dashboard")
@@ -47,17 +49,12 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _write_source(path: Path, source: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(source, encoding="utf-8")
-
-
 def test_r18_guard_passes_on_tree() -> None:
     assert violations(REPO) == []
 
 
 def test_r18_guard_fails_on_seeded_status_literal(tmp_path: Path) -> None:
-    _write_source(
+    write_source(
         tmp_path / "orchestra" / "seeded_status.py",
         "def done(status: str) -> bool:\n    return status == 'verified'\n",
     )
@@ -65,7 +62,7 @@ def test_r18_guard_fails_on_seeded_status_literal(tmp_path: Path) -> None:
 
 
 def test_r18_guard_fails_on_seeded_status_literal_in_dashboard(tmp_path: Path) -> None:
-    _write_source(
+    write_source(
         tmp_path / "dashboard" / "backend" / "seeded_default.py",
         "def default() -> str:\n    return 'unverified'\n",
     )
@@ -73,7 +70,7 @@ def test_r18_guard_fails_on_seeded_status_literal_in_dashboard(tmp_path: Path) -
 
 
 def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
-    _write_source(
+    write_source(
         tmp_path / "orchestra" / "seeded_build.py",
         "from orchestra.conductor.requirements import RequirementStatus\n"
         "\n"
@@ -85,7 +82,7 @@ def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
 
 
 def test_r18_guard_fails_on_seeded_requirement_acceptance_linkage(tmp_path: Path) -> None:
-    _write_source(
+    write_source(
         tmp_path / "orchestra" / "conductor" / "seeded_link.py",
         "from orchestra.score.requirements import acceptance_requirement_ids\n"
         "\n"
@@ -97,12 +94,12 @@ def test_r18_guard_fails_on_seeded_requirement_acceptance_linkage(tmp_path: Path
 
 
 def test_r18_guard_ignores_owner_module(tmp_path: Path) -> None:
-    _write_source(tmp_path / OWNER, "STATUS = 'verified'\n")
+    write_source(tmp_path / OWNER, "STATUS = 'verified'\n")
     assert violations(tmp_path) == []
 
 
 def test_r18_guard_ignores_unrelated_strings(tmp_path: Path) -> None:
-    _write_source(
+    write_source(
         tmp_path / "orchestra" / "seeded_text.py",
         "REASON = 'requirements not verified: R1'\n",
     )
