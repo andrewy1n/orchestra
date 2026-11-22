@@ -16,7 +16,7 @@ def project(tmp_path):
     project = make_project(tmp_path / "repo")
     seed_effort(project, "alpha")
     project.project_root.joinpath("orchestra.toml").write_text(
-        (Path(__file__).resolve().parents[2] / "orchestra.toml").read_text(encoding="utf-8"),
+        (Path(__file__).resolve().parents[1] / "orchestra.toml").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     return project
