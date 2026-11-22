@@ -594,7 +594,7 @@ Run the full suite as three pytest processes:
 ```bash
 uv run pytest -q -n auto --confcutdir=tests/canon tests/canon
 uv run pytest -q -n auto --confcutdir=tests/tuner tests/tuner
-uv run pytest -q -n auto tests --ignore=tests/canon --ignore=tests/tuner
+uv run pytest -q -p no:cacheprovider -n auto --durations=0 --durations-min=1 tests --ignore=tests/canon --ignore=tests/tuner
 ```
 
 Each tree has its own `conftest.py`, so `tests/canon` and `tests/tuner`
@@ -603,12 +603,8 @@ parallel jobs. A local suite in `smoke` or `full` mode requires a non-empty comm
 A skipped local start returns status 4.
 
 The `test-orchestra` CI log reports total pytest time and lists test calls,
-fixture setups, and teardowns that take at least one second. To reproduce that
-report after building the dashboard frontend, run:
-
-```bash
-uv run pytest -q -p no:cacheprovider -n auto --durations=0 --durations-min=1 tests --ignore=tests/canon --ignore=tests/tuner
-```
+fixture setups, and teardowns that take at least one second. Run the third
+command after building the dashboard frontend to reproduce that report.
 
 For a before-and-after comparison, use the same test selection, Python version,
 and worker count on the same machine.
