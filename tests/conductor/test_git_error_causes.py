@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from test_wave_end import _land, _world  # pyright: ignore[reportPrivateUsage]
+from test_wave_end import _land, _world
 
 import orchestra.tuner.manifest as manifest
 from orchestra.canon.git_backend import GitContextError, assert_git_context
@@ -14,7 +14,7 @@ from orchestra.canon.project_config import CONFIG_PATH
 from orchestra.conductor import wave
 from orchestra.tools import Git
 from orchestra.tuner.manifest import ManifestError, resolve_commit
-from orchestra.tuner.plugin_evidence import _config_digest  # pyright: ignore[reportPrivateUsage]
+from orchestra.tuner.plugin_evidence import _config_digest
 
 
 def _timing_out(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:

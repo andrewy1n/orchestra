@@ -123,7 +123,7 @@ def build_in_store(
         raise type(exc)(_swap(str(exc), names, False)) from exc
     restored = _swap_json(ops, names, False)
     assert isinstance(restored, list)
-    return [JsonObject(op) for op in restored]  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+    return [JsonObject(op) for op in restored]
 
 
 def commit_claim_manifest(repo: Path, claim_ids: tuple[str, ...]) -> None:

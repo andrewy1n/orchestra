@@ -120,3 +120,4 @@ include = ["orchestra", "dashboard", "installer", "tests", "scripts", "evals"]
 strict = ["orchestra", "dashboard", "installer"]
 reportIgnoreCommentWithoutRule = "error"
 reportExplicitAny = "error"
+reportUnnecessaryTypeIgnoreComment = "error"

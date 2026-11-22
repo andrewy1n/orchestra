@@ -193,13 +193,13 @@ def record_errors(
     if unknown:
         return [f"{label}: unknown envelope keys {unknown}"]
     record_type = record["record_type"]
-    if record_type not in schemas.types:  # pyright: ignore[reportArgumentType]  # Preserve native errors for malformed unhashable record types.
+    if record_type not in schemas.types:
         return [f"{label}: unknown record type {record_type!r}"]
-    type_def = schemas.types[record_type]  # pyright: ignore[reportArgumentType]  # The membership check above establishes the schema key.
+    type_def = schemas.types[record_type]
     errors: list[str] = []
     if not isinstance(record["subject"], str) or not SUBJECT.match(record["subject"]):
         errors.append(f"{label}: subject must be a non-empty slug")
-    if record["lifecycle_state"] not in type_def.lifecycle.states:  # pyright: ignore[reportArgumentType]  # Preserve native membership errors for malformed JSON values.
+    if record["lifecycle_state"] not in type_def.lifecycle.states:
         errors.append(f"{label}: invalid lifecycle state {record['lifecycle_state']!r}")
     errors.extend(payload_errors(schemas, index, type_def, record))
     errors.extend(relationship_errors(type_def, index, record))

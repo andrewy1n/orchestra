@@ -332,7 +332,7 @@ def parse_reviewer_output(text: str) -> ParsedReviewerOutput:
             for name in (*BASIS_FIELDS, "escape"):
                 match = re.search(rf"(?im)^\s*{name}:\s*(.+)$", rest)
                 if match:
-                    finding[name] = match.group(1).strip()  # pyright: ignore[reportGeneralTypeIssues]
+                    finding[name] = match.group(1).strip()
             findings.append(finding)
 
     integration: IntegrationFields = {

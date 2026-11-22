@@ -52,7 +52,7 @@ class CaseInfo:
 
 def _read(path: Path) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
     raw: Any = json.loads(path.read_text())  # pyright: ignore[reportExplicitAny]
-    return raw if isinstance(raw, dict) else {}  # pyright: ignore[reportUnknownVariableType]
+    return raw if isinstance(raw, dict) else {}
 
 
 def _read_cases(cases_dir: Path) -> list[CaseInfo]:
@@ -113,7 +113,7 @@ def compute_report(campaign_dir: Path, cases_dir: Path) -> Report:
         )
 
     kinds = _ordered({c.kind for c in defects}, KINDS)
-    types = _ordered({c.defect_type for c in defects if c.defect_type}, DEFECT_TYPES)  # pyright: ignore[reportArgumentType]
+    types = _ordered({c.defect_type for c in defects if c.defect_type}, DEFECT_TYPES)
     by_kind = {k: [c for c in defects if c.kind == k] for k in kinds}
     by_type = {t: [c for c in defects if c.defect_type == t] for t in types}
 

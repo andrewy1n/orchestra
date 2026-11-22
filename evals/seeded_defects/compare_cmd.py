@@ -10,7 +10,7 @@ from typing import Any, TypeAlias
 from evals.seeded_defects.report import Report, compute_report
 from orchestra.tools import RunFn
 
-SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"  # pyright: ignore[reportPrivateUsage]
+SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 DEFAULT_CASES = Path(__file__).parent / "cases"
 CaseResult: TypeAlias = "tuple[bool | None, int, int, int]"
 

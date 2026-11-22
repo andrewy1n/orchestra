@@ -13,7 +13,7 @@ from evals.seeded_defects.cases import Case, CaseSetError, load_case_set
 from evals.seeded_defects.trees import build_case_tree
 from orchestra.tools import RunFn
 
-SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"  # pyright: ignore[reportPrivateUsage]
+SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 COMMAND_TIMEOUT_SECONDS = 600
 
 

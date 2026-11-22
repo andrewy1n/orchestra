@@ -134,9 +134,9 @@ def _load_toml(text: str) -> object:
     if sys.version_info >= (3, 11):
         import tomllib
     else:
-        import tomli as tomllib  # pyright: ignore[reportMissingImports]  # Conditional dependency for Python <3.11.
+        import tomli as tomllib
 
-    return tomllib.loads(text)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]  # TOML parser tables are runtime-validated by _table and _string_list.
+    return tomllib.loads(text)
 
 
 def _is_string_mapping(value: object) -> TypeGuard[Mapping[str, object]]:

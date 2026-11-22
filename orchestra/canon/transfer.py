@@ -24,7 +24,7 @@ def export_ops(backend: Backend, out: TextIO) -> int:
         record_type: str | None = None
         for op in ops:
             record = op.get("record")
-            if isinstance(record, dict):  # pyright: ignore[reportUnnecessaryIsInstance]  # Legacy stores may contain truthy non-object record values.
+            if isinstance(record, dict):
                 record_type = record["record_type"]
                 break
         if record_type is None:

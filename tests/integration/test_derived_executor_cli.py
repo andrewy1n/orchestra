@@ -89,7 +89,7 @@ def _item(
         project,
         "score:work-item",
         slug,
-        payload,  # pyright: ignore[reportArgumentType]  # The test payload contains JSON values.
+        payload,
         f"## Description\n\nDo {slug}.\n\n## Approach\n\nTest {slug}.",
     )
 

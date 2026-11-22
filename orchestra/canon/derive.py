@@ -143,9 +143,7 @@ def compute_inverse(records: list[Record]) -> dict[str, dict[str, list[str]]]:
         source_id = record.get("id")
         for rel_type, targets in (record.get("relationships") or {}).items():
             for target_id in targets or []:
-                inverse.setdefault(target_id, {}).setdefault(rel_type, []).append(
-                    source_id  # pyright: ignore[reportArgumentType] # Preserve missing-id behavior for malformed records.
-                )
+                inverse.setdefault(target_id, {}).setdefault(rel_type, []).append(source_id)
     for by_type in inverse.values():
         for sources in by_type.values():
             sources.sort()
@@ -196,9 +194,7 @@ def compute_derived(records: list[Record], schemas: SchemaSet) -> dict[str, Deri
 def attach_derived(record: Record, derived_map: dict[str, DerivedValues]) -> Record:
     """A copy of `record` with a top-level `derived` mapping, or `record`
     itself, unmodified, when it has no derived values."""
-    values = derived_map.get(
-        record.get("id")  # pyright: ignore[reportArgumentType] # Preserve missing-id lookup behavior for malformed records.
-    )
+    values = derived_map.get(record.get("id"))
     if values is None:
         return record
     out: Record = {**record}

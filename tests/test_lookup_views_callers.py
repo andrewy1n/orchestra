@@ -4,11 +4,11 @@ from pathlib import Path
 
 from canon_support import create, make_project
 
-from dashboard.backend.journal import _phase_for_task  # pyright: ignore[reportPrivateUsage]
+from dashboard.backend.journal import _phase_for_task
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.cli.workflow_commands import (
-    _preview_json,  # pyright: ignore[reportPrivateUsage]
+    _preview_json,
 )
 from orchestra.conductor.phase_progress import phase_counts as phase_progress
 from orchestra.conductor.workflow import RunPreview

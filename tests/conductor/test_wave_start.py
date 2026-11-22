@@ -61,7 +61,7 @@ def _item(project: Project, slug: str, executor: str = "inline", **extra: object
         project,
         "score:work-item",
         slug,
-        payload,  # pyright: ignore[reportArgumentType]  # The test payload holds JSON values only.
+        payload,
         f"## Description\n\nDo {slug}.\n\n## Approach\n\nJust {slug}.",
     )
 
