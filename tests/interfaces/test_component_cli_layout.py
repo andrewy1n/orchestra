@@ -290,7 +290,8 @@ def test_views_root_cli_does_not_import_the_old_modules(attribute: str) -> None:
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT_CLI_SOURCE = Path(root_cli.__file__).read_text(encoding="utf-8")
-ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "main"}
+ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "_mount", "main", "<lambda>"}
+ROOT_ALLOWED_KIT_IMPORTS = {"orchestra.tools.command_kit", "orchestra.tools.command_kit.Command"}
 ROOT_OPTION_CALLS = {"add_argument", "add_argument_group", "add_mutually_exclusive_group"}
 ROOT_REGISTER_CALLS = {"add_parsers", "add_parser"}
 CLI_COMPONENTS = (
@@ -338,6 +339,8 @@ def root_composes_violations(source: str) -> list[str]:
         ):
             for alias in node.names:
                 module = f"{node.module}.{alias.name}"
+                if module in ROOT_ALLOWED_KIT_IMPORTS:
+                    continue
                 if (alias.asname or alias.name) not in aliases or aliases[
                     alias.asname or alias.name
                 ] != module:

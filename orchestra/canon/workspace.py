@@ -13,6 +13,7 @@ from orchestra.canon.project import (
     bound_store_path,
     open_store,
 )
+from orchestra.tools.command_kit import CommandError
 
 
 class Access(Enum):
@@ -83,3 +84,12 @@ class Workspace:
             raise StoreNotReady((self.root,), exc) from exc
         except StoreNotInitializedError as exc:
             raise StoreNotReady((self.root,)) from exc
+
+
+def open_for_command(
+    start: Path, access: Access, *, store: Path | None = None, refused_exit: int = 2
+) -> Project:
+    try:
+        return Workspace.resolve(start, store, access).open()
+    except StoreNotReady as error:
+        raise CommandError(not_ready_message(error, start), refused_exit) from error
