@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -48,14 +47,9 @@ def violations(root: Path) -> list[str]:
     return found
 
 
-def _copy(tmp_path: Path) -> None:
-    for base in ROOTS:
-        shutil.copytree(REPO / base, tmp_path / base, ignore=shutil.ignore_patterns("__pycache__"))
-
-
-def _new(tmp_path: Path) -> list[str]:
-    baseline = set(violations(REPO))
-    return [v for v in violations(tmp_path) if v not in baseline]
+def _write_source(path: Path, source: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(source, encoding="utf-8")
 
 
 def test_r18_guard_passes_on_tree() -> None:
@@ -63,58 +57,53 @@ def test_r18_guard_passes_on_tree() -> None:
 
 
 def test_r18_guard_fails_on_seeded_status_literal(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_status.py").write_text(
+    _write_source(
+        tmp_path / "orchestra" / "seeded_status.py",
         "def done(status: str) -> bool:\n    return status == 'verified'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_status.py:2"]
+    assert violations(tmp_path) == ["orchestra/seeded_status.py:2"]
 
 
 def test_r18_guard_fails_on_seeded_status_literal_in_dashboard(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "dashboard" / "backend" / "seeded_default.py").write_text(
+    _write_source(
+        tmp_path / "dashboard" / "backend" / "seeded_default.py",
         "def default() -> str:\n    return 'unverified'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["dashboard/backend/seeded_default.py:2"]
+    assert violations(tmp_path) == ["dashboard/backend/seeded_default.py:2"]
 
 
 def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_build.py").write_text(
+    _write_source(
+        tmp_path / "orchestra" / "seeded_build.py",
         "from orchestra.conductor.requirements import RequirementStatus\n"
         "\n"
         "\n"
         "def build(state: str) -> object:\n"
         "    return RequirementStatus('R1', state)\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/seeded_build.py:5"]
+    assert violations(tmp_path) == ["orchestra/seeded_build.py:5"]
 
 
 def test_r18_guard_fails_on_seeded_requirement_acceptance_linkage(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "conductor" / "seeded_link.py").write_text(
+    _write_source(
+        tmp_path / "orchestra" / "conductor" / "seeded_link.py",
         "from orchestra.score.requirements import acceptance_requirement_ids\n"
         "\n"
         "\n"
         "def linked(acceptance: dict[str, str], requirement: str) -> bool:\n"
         "    return requirement in acceptance_requirement_ids(acceptance)\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == ["orchestra/conductor/seeded_link.py:5"]
+    assert violations(tmp_path) == ["orchestra/conductor/seeded_link.py:5"]
 
 
 def test_r18_guard_ignores_owner_module(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    assert not any(v.startswith(str(OWNER)) for v in violations(tmp_path))
+    _write_source(tmp_path / OWNER, "STATUS = 'verified'\n")
+    assert violations(tmp_path) == []
 
 
 def test_r18_guard_ignores_unrelated_strings(tmp_path: Path) -> None:
-    _copy(tmp_path)
-    (tmp_path / "orchestra" / "seeded_text.py").write_text(
+    _write_source(
+        tmp_path / "orchestra" / "seeded_text.py",
         "REASON = 'requirements not verified: R1'\n",
-        encoding="utf-8",
     )
-    assert _new(tmp_path) == []
+    assert violations(tmp_path) == []
