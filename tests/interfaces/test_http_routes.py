@@ -13,9 +13,9 @@ pytest.importorskip("fastapi")
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from helpers import generic_body, schema_defs
-from interfaces_support import build_store, run_cli
 
 from dashboard.backend.server.app import create_app
+from interfaces.interfaces_support import build_store, run_cli
 from orchestra.canon.project import open_store
 
 RECORD_ID = re.compile(r"rec-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")

@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from interfaces_support import invoke
+
+from interfaces.interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
 REFUSAL_CODE = 2

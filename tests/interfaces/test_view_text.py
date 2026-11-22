@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 
 import pytest
-from interfaces_support import build_world, invoke, seed_view_records
+
+from interfaces.interfaces_support import build_world, invoke, seed_view_records
 
 BANNER = "> Derived view — not authoritative. Edit underlying records, not this file.\n"
 ID = "_(id: rec-<id>)_"

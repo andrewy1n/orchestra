@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from hook_support import FORMATS, hook_input, run_hook
 
+from interfaces.hook_support import FORMATS, hook_input, run_hook
 from orchestra.canon.project import Project
 from orchestra.canon.workspace import Access, Workspace
 

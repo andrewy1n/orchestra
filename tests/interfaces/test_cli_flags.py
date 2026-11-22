@@ -7,7 +7,8 @@ import io
 import re
 
 import pytest
-from interfaces_support import ENTRY_POINTS
+
+from interfaces.interfaces_support import ENTRY_POINTS
 
 ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
     "": (),

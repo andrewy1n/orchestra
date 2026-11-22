@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from interfaces_support import invoke
+
+from interfaces.interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
 STORE_NOT_READY = "store_not_ready"

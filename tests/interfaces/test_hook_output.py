@@ -2,8 +2,8 @@ import io
 from pathlib import Path
 
 import pytest
-from hook_support import FORMATS, REFERENCE_ERROR, hook_input, run_hook, set_store_errors
 
+from interfaces.hook_support import FORMATS, REFERENCE_ERROR, hook_input, run_hook, set_store_errors
 from orchestra import cli
 from orchestra.canon.project import Project
 from orchestra.stage import hooks

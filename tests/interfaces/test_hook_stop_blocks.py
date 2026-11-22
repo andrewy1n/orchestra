@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from hook_support import (
+
+from interfaces.hook_support import (
     FORMATS,
     NEW_ERROR,
     REFERENCE_ERROR,
@@ -9,7 +10,6 @@ from hook_support import (
     run_hook,
     set_store_errors,
 )
-
 from orchestra.canon.project import Project
 
 

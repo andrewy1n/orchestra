@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 from canon_support import make_project, seed_effort
-from interfaces_support import build_world
 
+from interfaces.interfaces_support import build_world
 from orchestra.canon.project import Project
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

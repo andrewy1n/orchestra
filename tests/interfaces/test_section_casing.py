@@ -10,9 +10,9 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 from helpers import generic_body, schema_defs
-from interfaces_support import build_store, run_cli
 
 from dashboard.backend.server.app import create_app
+from interfaces.interfaces_support import build_store, run_cli
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.sections import body_section, body_section_ci
 

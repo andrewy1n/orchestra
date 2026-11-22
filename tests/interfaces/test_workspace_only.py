@@ -6,7 +6,8 @@ import ast
 from pathlib import Path
 
 import pytest
-from interfaces_support import invoke
+
+from interfaces.interfaces_support import invoke
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VIEWS_MODULES = ("orchestra/views/cli.py", "orchestra/views/status.py")
