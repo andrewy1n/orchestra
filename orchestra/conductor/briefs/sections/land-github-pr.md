@@ -19,9 +19,16 @@ With `[merge_evidence]` configured, exit 0 from `orchestra land` means
 publication succeeded. Run `orchestra merge-evidence --phase {phase}`
 to record a recommendation for the PR head. Exit 0 means the evidence is
 ready for human merge approval. On exit 1, read the check results and
-phase blockers. Refresh the evidence after pending checks finish, a rerun
-completes, or the PR head changes. Send confirmed CI failures through the
-repair loop. On exit 2, address the reported command error.
+phase blockers.
+
+- Send confirmed required check failures on the PR head through the repair loop.
+- If the remaining blockers are required checks still running on that head,
+  refresh the evidence after those checks finish.
+- If the evidence has any other blocker, stop and ask. Report the blocker,
+  for example missing required-check configuration or results from GitHub's
+  test merge commit.
+
+On exit 2, stop and ask with the reported command error.
 
 Without `[merge_evidence]`, `orchestra land` waits for CI. Exit 0
 means CI passed. Merge stays human in both modes.

@@ -41,6 +41,7 @@ Keep each rule at the narrowest scope where it applies, and link to its source w
   removed lines. Search the affected code and entry points for retired names and run affected tests.
 - See [Testing](README.md#testing) for the phase suite and brief and reviewer checks.
   See [frontend instructions](dashboard/frontend/AGENTS.md) for dashboard UI work.
+- See [Cursor Cloud setup](dashboard/frontend/README.md#cursor-cloud) for cloud development.
 
 ## Git
 

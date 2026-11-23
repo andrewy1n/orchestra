@@ -37,6 +37,7 @@ runs `orchestra gate` first and runs the land adapter only when the
 gate holds. The Landing section names branch, worktree, base and repo
 only. `orchestra.toml` `[land]` and `[suite]` configure the adapter and
 the suite. Merge stays human. Follow the land brief for CI and failed landings.
+Stop and ask when the brief gives no recovery path for a reported failure.
 Incidental work has no Landing section. A phase body that omits
 Landing is not ready for plan review.
 

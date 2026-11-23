@@ -46,5 +46,8 @@ conflicts.
 Exit 0 means the landing adapter succeeded. Check merge readiness
 under the adapter's CI policy before handing off for human merge.
 When `[land] adapter` is `github-pr`, use the CI repair loop in the
-repair-ci stage. For other adapters, follow their guide for non-zero exits
-or ask the user when the guide is missing.
+repair-ci stage if `orchestra land` exits 1 with a failed check. On any other
+non-zero exit, stop and ask.
+
+For other adapters, follow their guide for non-zero exits or ask the user
+when the guide is missing.

@@ -23,7 +23,7 @@ def test_shared_phase_end_names_the_adapter_repair_loop() -> None:
     flat = " ".join(PHASE_END.split())
 
     assert (
-        "When `[land] adapter` is `github-pr`, use the CI repair loop in the repair-ci stage."
+        "When `[land] adapter` is `github-pr`, use the CI repair loop in the repair-ci stage"
         in flat
     )
     assert "`[land] adapter` is `github-pr`" in flat

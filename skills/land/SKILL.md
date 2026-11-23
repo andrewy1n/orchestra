@@ -32,7 +32,8 @@ Requires `canon` and `orchestra` on PATH. Run `orchestra workflow brief <phase> 
 5. Follow the generated brief for the adapter. For GitHub PRs, use
    `orchestra merge-evidence` after publication when configured. Otherwise
    `orchestra land` waits for CI. Repair confirmed failures through the CI
-   repair loop. Refresh pending evidence when the checks finish.
+   repair loop. Refresh pending evidence when the checks finish. Stop and
+   ask when the brief gives no recovery path for a reported failure.
 6. Report the PR, landing result, and any remaining merge blockers.
 
 ## Do not

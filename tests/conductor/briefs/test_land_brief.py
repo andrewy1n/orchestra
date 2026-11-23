@@ -23,6 +23,22 @@ def test_github_pr_adapter_brief_contains_repair_loop() -> None:
     assert REPAIR_LOOP_MARKER in _land_brief("github-pr")
 
 
+def test_github_pr_adapter_brief_stops_on_other_land_errors() -> None:
+    text = " ".join(_land_brief("github-pr").split())
+
+    assert (
+        "repair-ci stage if `orchestra land` exits 1 with a failed check. "
+        "On any other non-zero exit, stop and ask."
+    ) in text
+
+
+def test_github_pr_adapter_brief_distinguishes_pending_checks_from_other_blockers() -> None:
+    text = " ".join(_land_brief("github-pr").split())
+
+    assert "required checks still running on that head, refresh the evidence" in text
+    assert "If the evidence has any other blocker, stop and ask" in text
+
+
 @pytest.mark.parametrize("adapter", ["", "other"])
 def test_non_github_adapter_brief_omits_repair_loop(adapter: str) -> None:
     text = _land_brief(adapter)
