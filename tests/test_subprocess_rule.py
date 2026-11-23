@@ -123,7 +123,7 @@ def test_real_tree_matches_allowlist() -> None:
 def test_git_modules_not_allowlisted() -> None:
     migrated = {
         "orchestra/canon/git_backend.py",
-        "orchestra/conductor/gate.py",
+        "orchestra/conductor/phases/progress/gate.py",
         "orchestra/conductor/tasks/close/close_batch.py",
         "orchestra/tuner/plugins/manifest.py",
         "orchestra/tuner/evidence/provenance.py",

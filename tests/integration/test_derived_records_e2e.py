@@ -19,7 +19,7 @@ from dashboard.backend.snapshot import EffortView
 from dashboard.backend.store import list_records
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import phase_counts as phase_progress
+from orchestra.conductor.phases.progress.phase_progress import phase_counts as phase_progress
 from orchestra.conductor.verification.requirements import release_ready, requirement_status
 
 PHASE = "dr-phase"

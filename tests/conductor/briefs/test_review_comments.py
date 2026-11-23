@@ -8,10 +8,10 @@ from conductor_support import EFFORT, HEAD, PHASE, PHASE_BODY, Cli, Phase, ready
 
 from orchestra.canon.project import open_store
 from orchestra.cli import main
-from orchestra.conductor import phase_progress
 from orchestra.conductor.briefs import render
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.phases.workflow.workflow import step_stage
 from orchestra.conductor.verification.suite import suite
-from orchestra.conductor.workflow import step_stage
 
 SECTIONS = Path(render.__file__).parent / "sections"
 VERIFY_SENTENCE = "Parent session writes records."

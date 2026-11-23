@@ -9,9 +9,9 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.project_config import ProjectConfigError
 from orchestra.canon.workspace import Access
-from orchestra.conductor import gate
 from orchestra.conductor.cli.options import open_project, work_dir
-from orchestra.conductor.phase_analysis import analyze_in_store
+from orchestra.conductor.phases.progress import gate
+from orchestra.conductor.phases.progress.phase_analysis import analyze_in_store
 from orchestra.conductor.verification.review.review_brief import build_review_brief
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 

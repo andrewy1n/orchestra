@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.assessment_facts import assessment_summary
+from orchestra.conductor.phases.progress.assessment_facts import assessment_summary
 
 _CHECK_OUTCOME = {"pass": "passed", "fail": "failed"}
 

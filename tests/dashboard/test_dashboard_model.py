@@ -2899,7 +2899,7 @@ def test_gates_quiet_threshold_for_running_tasks():
 
 
 def test_snapshot_lists_a_merge_branch_item_for_an_unmerged_done_phase(store, cli, defs):
-    from orchestra.conductor.attention import LandingFact
+    from orchestra.conductor.phases.progress.attention import LandingFact
 
     _goal(cli, defs, "alpha")
     _phase(cli, defs, "alpha", "a-one", 1, "in_progress", "done")

@@ -7,7 +7,7 @@ from dashboard_progress_support import assessed, phase_row
 
 sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.progress import build_progress
-from orchestra.conductor.phase_progress import visible_stages
+from orchestra.conductor.phases.progress.phase_progress import visible_stages
 
 FULL_IDS = ["spec", "design", "tasks", "execute", "verify", "land", "close"]
 

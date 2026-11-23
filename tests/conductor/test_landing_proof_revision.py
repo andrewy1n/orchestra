@@ -10,8 +10,8 @@ from conductor_support import write_policy
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor import workflow_review
-from orchestra.conductor.workflow import (
+from orchestra.conductor.phases.workflow import workflow_review
+from orchestra.conductor.phases.workflow.workflow import (
     WorkflowRunError,
     preview_run,
     run_status,

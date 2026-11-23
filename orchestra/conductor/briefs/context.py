@@ -4,7 +4,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.briefs.render import BriefContext
-from orchestra.conductor.workflow import step_stage
+from orchestra.conductor.phases.workflow.workflow import step_stage
 from orchestra.score.planning.phase import current_phase_model
 
 

@@ -7,7 +7,7 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress.phase_progress import (
     STAGES,
     AcceptanceHold,
     ExecutionVerdict,

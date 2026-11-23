@@ -7,7 +7,7 @@ import pytest
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.workflow_review import record_step_review
+from orchestra.conductor.phases.workflow.workflow_review import record_step_review
 from orchestra.score.planning.analyze import analyze_phase
 from orchestra.score.workflow.workflow_reviews import (
     Authority,

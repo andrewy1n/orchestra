@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow, run_fact_int
-from orchestra.conductor.phase_progress import STAGES, unavailable_progress, visible_stages
+from orchestra.conductor.phases.progress.phase_progress import (
+    STAGES,
+    unavailable_progress,
+    visible_stages,
+)
 from orchestra.conductor.verification.requirements import is_verified
 
 BLOCKER_LIMIT = 2

@@ -6,7 +6,7 @@ import pytest
 from conductor_support import CLOSE_PHASE as PHASE
 from conductor_support import Landed, _git, fake_gh_on_path, make_landed
 
-from orchestra.conductor import close
+from orchestra.conductor.phases.progress import close
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.signoff import awaiting_signoff
+from orchestra.conductor.phases.workflow.signoff import awaiting_signoff
 
 _N = [0]
 

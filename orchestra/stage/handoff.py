@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Collection, Mapping
 
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.conductor.phases.progress.phase_progress import PhaseProgress
 from orchestra.score.facts.view_facts import (
     ConstraintLine,
     effort_constraint_lines,

@@ -21,7 +21,7 @@ from orchestra.canon import record as record_mod
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phase_progress import PhaseProgress
+from orchestra.conductor.phases.progress.phase_progress import PhaseProgress
 
 NOW = datetime(2026, 11, 11, 12, tzinfo=timezone.utc)
 

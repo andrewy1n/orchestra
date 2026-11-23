@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import create_autospec
 
 from orchestra.canon.project import Project
-from orchestra.conductor.run_record import resolve_run
+from orchestra.conductor.phases.workflow.run_record import resolve_run
 
 
 def test_resolve_run_resolves_the_run_record_type() -> None:

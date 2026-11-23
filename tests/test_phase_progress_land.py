@@ -4,7 +4,7 @@ import pytest
 
 from orchestra.canon.types import Record
 from orchestra.conductor.landing.landing import LandingProofState
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,
     PhaseFacts,

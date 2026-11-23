@@ -6,7 +6,7 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/conductor/phase_progress.py")
+OWNER = Path("orchestra/conductor/phases/progress/phase_progress.py")
 ROOTS = ("orchestra", "dashboard")
 STAGE_NAMES = {"spec", "design", "tasks", "execute", "verify", "land", "close"}
 DERIVER_DEFS = {
@@ -118,7 +118,7 @@ def test_r18_guard_fails_on_seeded_stage_list(tmp_path: Path) -> None:
 def test_r18_guard_fails_on_seeded_stage_from_facts(tmp_path: Path) -> None:
     write_source(
         tmp_path / "orchestra" / "seeded_facts.py",
-        "from orchestra.conductor.phase_progress import verify_step\n\n\n"
+        "from orchestra.conductor.phases.progress.phase_progress import verify_step\n\n\n"
         "def _verify_stage(project, records, phase):\n"
         "    return verify_step(project, records, phase)\n",
     )
@@ -146,7 +146,7 @@ def test_r18_guard_fails_on_seeded_current_stage_assignment(tmp_path: Path) -> N
 def test_r18_guard_allows_reading_the_assessed_stage(tmp_path: Path) -> None:
     write_source(
         tmp_path / "orchestra" / "seeded_reader.py",
-        "from orchestra.conductor.phase_progress import assess\n\n\n"
+        "from orchestra.conductor.phases.progress.phase_progress import assess\n\n\n"
         "def current(facts):\n"
         "    return assess(facts).current\n",
     )

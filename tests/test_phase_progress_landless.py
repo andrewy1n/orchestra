@@ -17,8 +17,8 @@ from test_workflow_phase_progress import (
 )
 
 from orchestra.canon.types import Record
-from orchestra.conductor import phase_progress
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.phases.progress.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,
     PhaseFacts,
@@ -27,7 +27,7 @@ from orchestra.conductor.phase_progress import (
     VerifyFacts,
     assess,
 )
-from orchestra.conductor.workflow import step_stage
+from orchestra.conductor.phases.workflow.workflow import step_stage
 from orchestra.score.planning.phase import current_phase_model, read_phase
 from orchestra.tools import Unmerged
 

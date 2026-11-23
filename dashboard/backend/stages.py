@@ -10,7 +10,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.landing.landing import phase_place
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress.phase_progress import (
     STAGES,
     PhaseProgress,
     StageState,

@@ -16,7 +16,7 @@ EXEMPT: dict[Path, str] = {
         "orchestra/conductor/verification/verification.py"
     ): "decides signed evidence for closing verification",
     Path(
-        "orchestra/conductor/signoff.py"
+        "orchestra/conductor/phases/workflow/signoff.py"
     ): "derives the card stage; stage derivation stays separate",
 }
 

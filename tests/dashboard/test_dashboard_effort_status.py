@@ -8,7 +8,7 @@ from canon_support import create, make_project
 from dashboard.backend import store
 from dashboard.backend.hub import build_hub
 from dashboard.backend.snapshot import load_snapshot, load_work_snapshot
-from orchestra.conductor.effort_status import effort_statuses
+from orchestra.conductor.phases.progress.effort_status import effort_statuses
 
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne"
 

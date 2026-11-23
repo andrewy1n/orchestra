@@ -25,8 +25,8 @@ from dashboard.backend.progress import Stage, build_progress
 from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
-from orchestra.conductor.phase_progress import STAGES, PhaseProgress, StageState
-from orchestra.conductor.phase_progress import Stage as StageId
+from orchestra.conductor.phases.progress.phase_progress import STAGES, PhaseProgress, StageState
+from orchestra.conductor.phases.progress.phase_progress import Stage as StageId
 
 PHASE = "p-one"
 EFFORT = "alpha"

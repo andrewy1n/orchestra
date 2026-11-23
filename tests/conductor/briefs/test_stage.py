@@ -7,7 +7,7 @@ from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, ready_for_verify
 from conductor_support import seed as seed_phase
 
 from orchestra.canon.project import open_store
-from orchestra.conductor.workflow import WorkflowRunError, step_stage
+from orchestra.conductor.phases.workflow.workflow import WorkflowRunError, step_stage
 
 ADAPTER_TABLE = '\n[land]\nadapter = "{adapter}"\n'
 

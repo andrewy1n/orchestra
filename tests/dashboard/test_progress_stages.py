@@ -19,7 +19,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend import stages
 from dashboard.backend.progress import build_progress
 from dashboard.backend.server import service
-from orchestra.conductor.phase_progress import StageState, visible_stages
+from orchestra.conductor.phases.progress.phase_progress import StageState, visible_stages
 
 FULL_IDS = ["spec", "design", "tasks", "execute", "verify", "land", "close"]
 LIGHT_IDS = FULL_IDS[2:]

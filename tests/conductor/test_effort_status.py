@@ -4,7 +4,7 @@ import itertools
 from datetime import datetime, timedelta, timezone
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.effort_status import effort_statuses
+from orchestra.conductor.phases.progress.effort_status import effort_statuses
 
 NOW = datetime(2026, 11, 20, 12, 0, tzinfo=timezone.utc)
 _IDS = itertools.count()

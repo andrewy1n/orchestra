@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phase_progress import phase_counts as phase_progress
+from orchestra.conductor.phases.progress.phase_progress import phase_counts as phase_progress
 from orchestra.conductor.tasks.assignment import task_assignment
 from orchestra.conductor.verification.requirements import release_ready, requirement_status
 

@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from dashboard.backend.server.app import create_app
 from orchestra import cli as orchestra_cli
 from orchestra.canon.project import open_store
-from orchestra.conductor.workflow import step_stage
+from orchestra.conductor.phases.workflow.workflow import step_stage
 
 OTHER_HEAD = "b" * 40
 GITHUB_PR = "github-pr"

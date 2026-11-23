@@ -9,7 +9,7 @@ from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, seed
 
 from orchestra.canon.project import open_store
 from orchestra.cli import main
-from orchestra.conductor import workflow_review
+from orchestra.conductor.phases.workflow import workflow_review
 
 STEPS = ("spec", "design", "tasks", "execute", "verify", "land")
 ReviewedStep = Literal["spec", "design", "tasks"]

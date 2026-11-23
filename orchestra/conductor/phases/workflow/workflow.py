@@ -8,9 +8,13 @@ from orchestra.canon.errors import RecordShapeError, StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
-from orchestra.conductor import phase_progress
 from orchestra.conductor.landing.landing import LandingProofError
-from orchestra.conductor.phase_progress import PhaseProgress, PhaseProgressError, assess
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.phases.progress.phase_progress import (
+    PhaseProgress,
+    PhaseProgressError,
+    assess,
+)
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.phase import Phase, current_phase_model
 from orchestra.score.workflow.workflow_blockers import (

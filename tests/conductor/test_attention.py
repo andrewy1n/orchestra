@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.attention import LandingFact, attention_items
+from orchestra.conductor.phases.progress.attention import LandingFact, attention_items
 
 EFFORT = "e"
 OTHER = "other"

@@ -15,8 +15,8 @@ import orchestra.conductor.landing.github_pr as github_pr
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Workspace
-from orchestra.conductor import close
 from orchestra.conductor.landing import land
+from orchestra.conductor.phases.progress import close
 from orchestra.tools import Version
 from orchestra.tools.github import GitHubGh
 from orchestra.tools.testing import ScriptedRun, scripted

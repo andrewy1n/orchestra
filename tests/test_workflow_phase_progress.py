@@ -6,8 +6,14 @@ from canon_support import create, make_project
 from conductor_support import write_policy
 
 from orchestra.canon.project import Project
-from orchestra.conductor import phase_progress, workflow_review
-from orchestra.conductor.workflow import RunAction, next_actions, preview_run, start_run
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.phases.workflow import workflow_review
+from orchestra.conductor.phases.workflow.workflow import (
+    RunAction,
+    next_actions,
+    preview_run,
+    start_run,
+)
 from orchestra.score.planning.phase import current_phase_model
 from orchestra.score.workflow.workflow_reviews import Step
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.signoff import awaiting_signoff
+from orchestra.conductor.phases.workflow.signoff import awaiting_signoff
 from orchestra.conductor.tasks.task_detail import related_text, timeline_entries
 from orchestra.conductor.verification.suite.suite_label import suite_labels, suite_status_label
 from orchestra.tuner.evidence.record_facts import RecordShapeError
