@@ -9,7 +9,7 @@ import orchestra.canon.extensions as extensions
 
 def _entry_point(name: str, target: str, distribution: str) -> SimpleNamespace:
     metadata_entries = (
-        SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
         SimpleNamespace(name=name, value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
     )
     return SimpleNamespace(
@@ -107,12 +107,12 @@ def test_plugin_selection_rejects_unregistered_module_names_and_paths(
 def test_resolve_rejects_unsupported_api_version(monkeypatch: pytest.MonkeyPatch) -> None:
     plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
     plugin.dist.entry_points = (
-        SimpleNamespace(name="v2", value="plugin:Plugin", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="v1", value="plugin:Plugin", group=extensions.PLUGIN_API_GROUP),
         SimpleNamespace(name="plugin", value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
     )
     _install_entries(monkeypatch, {"orchestra.tuner.verify": (plugin,)})
 
-    with pytest.raises(extensions.PluginCatalogError, match="unsupported API version '2'"):
+    with pytest.raises(extensions.PluginCatalogError, match="unsupported API version '1'"):
         extensions.resolve_plugin("tuner.verify", "plugin")
 
 
@@ -132,7 +132,7 @@ def test_plugin_config_shape_checks_required_fields_and_types(
 ) -> None:
     plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
     plugin.dist.entry_points = (
-        SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
         SimpleNamespace(
             name="plugin",
             value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',

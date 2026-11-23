@@ -20,7 +20,7 @@ acme-ci = "acme_orchestra.ci:EvidenceAdapter"
 acme-ideas = "acme_orchestra.ideas:Source"
 
 [project.entry-points."orchestra.plugin_api"]
-v1 = "acme_orchestra.verify:Technique"
+v2 = "acme_orchestra.verify:Technique"
 
 [project.entry-points."orchestra.plugin_config"]
 "acme-checks__<base64url-schema>" = "acme_orchestra.verify:Technique"
@@ -29,7 +29,7 @@ v1 = "acme_orchestra.verify:Technique"
 "acme-ideas__<base64url-schema>" = "acme_orchestra.ideas:Source"
 ```
 
-Declare one `plugin_config` entry for every plugin id in the distribution. Encode its JSON object schema as unpadded URL-safe base64 in the entry name after `<plugin-id>__`. Orchestra checks `properties`, `required`, and `additionalProperties` against the matching table in `orchestra.toml`. The entry-point value must reference a Python object. Orchestra reads the API version from the `v1` entry name and rejects missing or unsupported versions.
+Declare one `plugin_config` entry for every plugin id in the distribution. Encode its JSON object schema as unpadded URL-safe base64 in the entry name after `<plugin-id>__`. Orchestra checks `properties`, `required`, and `additionalProperties` against the matching table in `orchestra.toml`. The entry-point value must reference a Python object. Orchestra reads the API version from the `v2` entry name and rejects missing or unsupported versions.
 
 Generate the encoded config name with Python:
 

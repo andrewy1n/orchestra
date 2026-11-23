@@ -17,7 +17,7 @@ def test_plugins_list_reports_scopes_without_loading_plugins(
 
     def entry(name: str, target: str, distribution: str) -> SimpleNamespace:
         metadata_entries = (
-            SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+            SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
             SimpleNamespace(
                 name=name,
                 value="{}",

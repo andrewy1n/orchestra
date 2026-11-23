@@ -145,7 +145,7 @@ def test_execution_identity_canonical_hash_preserves_argv_boundaries() -> None:
         target="orchestra.tuner.plugins.api:UnitPlugin",
         distribution="orchestra",
         version="1.0",
-        api_version="1",
+        api_version="2",
         config_shape={},
     )
     first = compute_execution_identity(

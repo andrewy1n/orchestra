@@ -110,7 +110,7 @@ github-pr = "orchestra.conductor.landing.land:GitHubPRAdapter"
 github-actions = "orchestra.conductor.landing.github_evidence:GitHubActionsAdapter"
 
 [project.entry-points."orchestra.plugin_api"]
-v1 = "orchestra.canon.extensions:PLUGIN_API_VERSION"
+v2 = "orchestra.canon.extensions:PLUGIN_API_VERSION"
 
 [project.entry-points."orchestra.plugin_config"]
 "github-actions__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.landing.github_evidence:GitHubActionsAdapter"

@@ -138,7 +138,7 @@ def _register_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
         ("untrusted-replay", UntrustedReplayPlugin),
     ):
         metadata_entries = (
-            SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+            SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
             SimpleNamespace(name=plugin_id, value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
         )
         entries.append(

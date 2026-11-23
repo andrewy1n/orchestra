@@ -21,7 +21,7 @@ PLUGIN_GROUPS: Mapping[PluginScope, str] = {
     "conductor.land": "orchestra.conductor.land",
     "conductor.merge_evidence": "orchestra.conductor.merge_evidence",
 }
-PLUGIN_API_VERSION = "1"
+PLUGIN_API_VERSION = "2"
 PLUGIN_API_GROUP = "orchestra.plugin_api"
 PLUGIN_CONFIG_GROUP = "orchestra.plugin_config"
 
@@ -120,7 +120,7 @@ def _registrations(scope: PluginScope) -> tuple[PluginRegistration, ...]:
             raise PluginCatalogError(
                 f"plugin entry point {entry.name!r} has no distribution identity"
             )
-        api_version = _distribution_plugin_value(distribution, PLUGIN_API_GROUP, "v1")
+        api_version = _distribution_plugin_value(distribution, PLUGIN_API_GROUP, "version")
         config_shape_raw = _distribution_plugin_value(distribution, PLUGIN_CONFIG_GROUP, entry.name)
         if api_version is None:
             raise PluginCatalogError(
