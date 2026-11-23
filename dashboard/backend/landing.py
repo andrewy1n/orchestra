@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestra.conductor.landing import place_of_body
+from orchestra.conductor.landing.landing import place_of_body
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import (
     BranchState,

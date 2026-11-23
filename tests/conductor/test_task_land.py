@@ -10,8 +10,8 @@ import pytest
 from canon_support import REPO, create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task, wave
-from orchestra.conductor.evidence import EvidenceError, parse_evidence
+from orchestra.conductor.tasks import land_task, wave
+from orchestra.conductor.verification.evidence.evidence import EvidenceError, parse_evidence
 
 PHASE = "ph"
 EFFORT = "ef"

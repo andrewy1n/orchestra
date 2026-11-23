@@ -7,7 +7,7 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor.wave import WaveError, start
+from orchestra.conductor.tasks.wave import WaveError, start
 
 PHASE = "derived-executor"
 EFFORT = "executor-test"

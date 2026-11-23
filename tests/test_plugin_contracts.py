@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from orchestra.tuner.technique import (
+from orchestra.tuner.plugins.technique import (
     ReplayRequest,
     TechniqueContractError,
     TechniqueResult,
@@ -84,7 +84,7 @@ def test_selected_third_party_technique_uses_the_shared_result(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from orchestra.canon import extensions
-    from orchestra.tuner.plugins import PluginContext, dispatch_plugins
+    from orchestra.tuner.plugins.api import PluginContext, dispatch_plugins
 
     class ThirdPartyTechnique:
         def validate_config(self, config: object) -> None:
@@ -112,7 +112,7 @@ def test_selected_third_party_technique_uses_the_shared_result(
             metadata={"Name": "external-plugin"},
             version="2.0",
             entry_points=(
-                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
                 SimpleNamespace(
                     name="external",
                     value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',
@@ -170,7 +170,7 @@ def test_selected_stage_only_technique_cannot_replay(
             metadata={"Name": "stage-only-plugin"},
             version="1",
             entry_points=(
-                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
                 SimpleNamespace(
                     name="stage-only", value="{}", group=extensions.PLUGIN_CONFIG_GROUP
                 ),

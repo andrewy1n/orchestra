@@ -7,7 +7,7 @@ from canon_support import make_project, seed_effort
 from conductor_support import CLOSE_PHASE as PHASE
 from conductor_support import FakeStates, Landed, _commit, _git, fake_gh_on_path, make_landed
 
-from orchestra.conductor import close
+from orchestra.conductor.phases.progress import close
 
 
 @pytest.fixture

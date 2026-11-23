@@ -9,7 +9,9 @@ from conductor_support import FakeStates
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import close, gate, wave
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress import close
+from orchestra.conductor.tasks import wave
 
 PHASE = "ph"
 EFFORT = "ef"

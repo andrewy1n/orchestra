@@ -9,8 +9,9 @@ from test_wave_end import _world as _end_world
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject
-from orchestra.conductor import land_task, task_close, wave
-from orchestra.conductor.check import run_check
+from orchestra.conductor.tasks import land_task, wave
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.verification.check import run_check
 
 
 def _commit_in(tree: Path, name: str, text: str) -> None:

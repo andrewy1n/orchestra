@@ -17,14 +17,14 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
-from orchestra.conductor.assignment import (
+from orchestra.conductor.tasks.assignment import (
     ASSIGNMENT,
     assignments_of,
     referenced_assignment,
     referenced_work_item,
     task_assignment,
 )
-from orchestra.conductor.task_detail import (
+from orchestra.conductor.tasks.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     EXECUTION_REPORT_TYPE,
     RELATED_KINDS,
@@ -33,11 +33,13 @@ from orchestra.conductor.task_detail import (
     report_facts,
     timeline_entries,
 )
-from orchestra.score.detail_facts import ACCEPTANCE_TYPE, WORK_ITEM_TYPE, acceptance_facts
-from orchestra.score.effort import record_effort
-from orchestra.score.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    task_executor,
+from orchestra.score.facts.detail_facts import ACCEPTANCE_TYPE, WORK_ITEM_TYPE, acceptance_facts
+from orchestra.score.facts.work_item_facts import (
+    executor_task,
+    record_scope,
+    task_plan,
+    work_item_facts,
+    work_item_status,
 )
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
@@ -45,15 +47,13 @@ from orchestra.score.lookups import (
     owning_work_item,
     record_order,
 )
-from orchestra.score.work_item_facts import (
-    executor_task,
-    record_scope,
-    task_plan,
-    work_item_facts,
-    work_item_status,
+from orchestra.score.planning.effort import record_effort
+from orchestra.score.planning.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    task_executor,
 )
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2

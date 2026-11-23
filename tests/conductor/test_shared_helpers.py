@@ -270,27 +270,33 @@ def _fails_git(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 def test_r1_check_defines_parser() -> None:
-    """R1: orchestra.conductor.check defines parse_failing_node_ids."""
+    """R1: orchestra.conductor.verification.check defines parse_failing_node_ids."""
     assert _defines_function(
-        ROOT / "orchestra" / "conductor" / "check.py", "parse_failing_node_ids"
+        ROOT / "orchestra" / "conductor" / "verification" / "check.py", "parse_failing_node_ids"
     )
 
 
 def test_r2_suite_omits_parser() -> None:
-    """R2: orchestra.conductor.suite does not define parse_failing_node_ids."""
+    """R2: orchestra.conductor.verification.suite.suite does not define parse_failing_node_ids."""
     assert not _defines_function(
-        ROOT / "orchestra" / "conductor" / "suite.py", "parse_failing_node_ids"
+        ROOT / "orchestra" / "conductor" / "verification" / "suite" / "suite.py",
+        "parse_failing_node_ids",
     )
 
 
 def test_r3_check_defines_hash() -> None:
-    """R3: orchestra.conductor.check defines the helper that hashes command output."""
-    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "check.py")
+    """R3: orchestra.conductor.verification.check defines the helper that hashes command output."""
+    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "verification" / "check.py")
 
 
 def test_r4_suite_omits_hash() -> None:
-    """R4: orchestra.conductor.suite does not define a helper that hashes command output."""
-    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "suite.py") == []
+    """R4: orchestra.conductor.verification.suite.suite does not define a helper that hashes command output."""
+    assert (
+        _defined_output_hashers(
+            ROOT / "orchestra" / "conductor" / "verification" / "suite" / "suite.py"
+        )
+        == []
+    )
 
 
 def test_r5_git_only_in_git_client() -> None:
@@ -322,8 +328,11 @@ def test_r8_ssh_keygen_one_module() -> None:
 
 
 def test_r9_claim_signature(tmp_path: Path) -> None:
-    """R9: orchestra.tuner.human_claim.verify_claim_signature returns true for a valid signature."""
-    from orchestra.tuner.human_claim import canonical_payload, verify_claim_signature
+    """R9: orchestra.tuner.evidence.signing.human_claim.verify_claim_signature returns true for a valid signature."""
+    from orchestra.tuner.evidence.signing.human_claim import (
+        canonical_payload,
+        verify_claim_signature,
+    )
 
     key, blob = _generate_key(tmp_path)
     claim_id = "claim-widget"
@@ -339,7 +348,7 @@ def test_r9_claim_signature(tmp_path: Path) -> None:
 
 def test_r10_amendment_signature(tmp_path: Path) -> None:
     """R10: Amendment signature verification returns true for a valid signature."""
-    from orchestra.tuner.amendment import canonical_payload, verify_signature
+    from orchestra.tuner.evidence.signing.amendment import canonical_payload, verify_signature
 
     key, blob = _generate_key(tmp_path)
     amendment = {
@@ -362,7 +371,7 @@ def test_r10_amendment_signature(tmp_path: Path) -> None:
 
 def test_r11_attestation_signature(tmp_path: Path) -> None:
     """R11: Attestation verification returns true for a valid signature."""
-    from orchestra.tuner import attestation
+    from orchestra.tuner.evidence.signing import attestation
 
     key, blob = _generate_key(tmp_path)
     body = {
@@ -388,8 +397,13 @@ def test_r15_views_omits_getter() -> None:
 
 
 def test_r16_close_batch_omits_getter() -> None:
-    """R16: orchestra.conductor.close_batch does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "orchestra" / "conductor" / "close_batch.py") == []
+    """R16: orchestra.conductor.tasks.close.close_batch does not define a record-payload getter."""
+    assert (
+        _record_payload_getters(
+            ROOT / "orchestra" / "conductor" / "tasks" / "close" / "close_batch.py"
+        )
+        == []
+    )
 
 
 def test_r17_model_omits_getter() -> None:
@@ -414,10 +428,12 @@ def test_r20_views_reads_payload_only_through_owners() -> None:
 
 
 def test_r21_close_batch_calls_payload() -> None:
-    """R21: orchestra.conductor.close_batch calls that function."""
+    """R21: orchestra.conductor.tasks.close.close_batch calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "orchestra" / "conductor" / "close_batch.py", getters[0].__name__)
+    assert _calls_named(
+        ROOT / "orchestra" / "conductor" / "tasks" / "close" / "close_batch.py", getters[0].__name__
+    )
 
 
 def test_r22_model_reads_payload_only_through_owners() -> None:

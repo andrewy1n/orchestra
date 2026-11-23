@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from orchestra.canon import extensions
-from orchestra.conductor.land import LandingResult, LandRequest, dispatch_land
+from orchestra.conductor.landing.land import LandingResult, LandRequest, dispatch_land
 
 
 def test_landing_requires_explicit_land_table(tmp_path: Path) -> None:
@@ -47,7 +47,7 @@ def test_selected_third_party_landing_adapter_runs_without_core_allowlist(
             metadata={"Name": "external-land"},
             version="1.0",
             entry_points=(
-                SimpleNamespace(name="version", value="1", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
                 SimpleNamespace(
                     name="external-land",
                     value='{"type":"object","properties":{"region":{"type":"string"}},"required":["region"],"additionalProperties":false}',

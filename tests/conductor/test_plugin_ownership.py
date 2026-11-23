@@ -5,16 +5,22 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.review_technique import ReviewTechnique
-from orchestra.tuner import plugin_evidence as tuner_evidence
-from orchestra.tuner import plugins as tuner_plugins
-from orchestra.tuner.technique import TechniqueResult, validate_technique_result
+from orchestra.conductor.verification.review.review_technique import ReviewTechnique
+from orchestra.tuner.plugins import api as tuner_plugins
+from orchestra.tuner.plugins import plugin_evidence as tuner_evidence
+from orchestra.tuner.plugins.technique import TechniqueResult, validate_technique_result
 
 
 def test_plugin_apis_are_owned_by_their_packages() -> None:
-    assert tuner_plugins.dispatch_plugins.__module__ == "orchestra.tuner.plugins"
-    assert tuner_evidence.dispatch_signed_plugins.__module__ == "orchestra.tuner.plugin_evidence"
-    assert tuner_evidence.verify_plugin_evidence.__module__ == "orchestra.tuner.plugin_evidence"
+    assert tuner_plugins.dispatch_plugins.__module__ == "orchestra.tuner.plugins.api"
+    assert (
+        tuner_evidence.dispatch_signed_plugins.__module__
+        == "orchestra.tuner.plugins.plugin_evidence"
+    )
+    assert (
+        tuner_evidence.verify_plugin_evidence.__module__
+        == "orchestra.tuner.plugins.plugin_evidence"
+    )
 
 
 def test_review_technique_owns_validation_and_tuner_has_no_conductor_imports() -> None:
@@ -32,7 +38,7 @@ def test_review_technique_owns_validation_and_tuner_has_no_conductor_imports() -
         )
 
     source_root = Path(tuner_plugins.__file__).parent
-    tuner_files = (source_root / "plugins.py", source_root / "plugin_evidence.py")
+    tuner_files = (source_root / "api.py", source_root / "plugin_evidence.py")
     for path in tuner_files:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         imported = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
@@ -48,5 +54,8 @@ def test_review_technique_owns_validation_and_tuner_has_no_conductor_imports() -
     text = package_config.read_text(encoding="utf-8")
     assert not (package_config.parent / "orchestra" / "plugins.py").exists()
     assert not (package_config.parent / "orchestra" / "plugin_evidence.py").exists()
-    assert 'review = "orchestra.conductor.review_technique:ReviewTechnique"' in text
-    assert 'unit = "orchestra.tuner.plugins:UnitPlugin"' in text
+    assert (
+        'review = "orchestra.conductor.verification.review.review_technique:ReviewTechnique"'
+        in text
+    )
+    assert 'unit = "orchestra.tuner.plugins.api:UnitPlugin"' in text

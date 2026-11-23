@@ -8,8 +8,8 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 CONDUCTOR = Path("orchestra/conductor")
-TASK_CLOSE = CONDUCTOR / "task_close.py"
-CLOSE_BATCH = CONDUCTOR / "close_batch.py"
+TASK_CLOSE = CONDUCTOR / "tasks" / "close" / "task_close.py"
+CLOSE_BATCH = CONDUCTOR / "tasks" / "close" / "close_batch.py"
 STORE_DISCOVERY_CALLS = frozenset({"resolve_location", "find_store_root"})
 LOADER_PREFIXES = ("load_", "list_")
 LOADER_SUFFIXES = ("_loader", "_lister")
@@ -155,7 +155,7 @@ def test_r18_guard_fails_on_callable_parameter_in_a_gate(tmp_path: Path) -> None
 
 
 def test_r18_guard_accepts_signatures_without_loaders(tmp_path: Path) -> None:
-    (tmp_path / CONDUCTOR).mkdir(parents=True)
+    (tmp_path / TASK_CLOSE).parent.mkdir(parents=True)
     (tmp_path / TASK_CLOSE).write_text(
         "from pathlib import Path\n\n\n"
         "def decide_close(project, *, cwd: Path) -> None:\n    pass\n",

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.tuner.amendment import canonical_payload
+from orchestra.tuner.evidence.signing.amendment import canonical_payload
 
 VERIFY = [sys.executable, str(Path(__file__).resolve().parents[2] / "bin" / "orchestra"), "verify"]
 CLAIM = "claim-widget"
@@ -678,7 +678,7 @@ def _fixture_repo(
 
 def test_verdict_ignores_pytest_stdout() -> None:
     source = (
-        Path(__file__).resolve().parents[2] / "orchestra" / "tuner" / "verdict.py"
+        Path(__file__).resolve().parents[2] / "orchestra" / "tuner" / "evidence" / "verdict.py"
     ).read_text()
     assert "_FAILED_RE" not in source
     assert "is_assertion_level_failure" not in source

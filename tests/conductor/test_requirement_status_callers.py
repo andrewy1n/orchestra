@@ -10,10 +10,11 @@ from test_task_landing_operation import _make_closing_task, _tree
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import phase_progress, verification
-from orchestra.conductor.land_task import LandedTask
-from orchestra.conductor.requirements import release_ready, requirement_status
-from orchestra.conductor.task_landing import land_and_close
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.tasks import verification_run
+from orchestra.conductor.tasks.land_task import LandedTask
+from orchestra.conductor.tasks.task_landing import land_and_close
+from orchestra.conductor.verification.requirements import release_ready, requirement_status
 
 OLD_REVISION = "0" * 40
 
@@ -82,7 +83,7 @@ def test_closing_verification_stale_head_pass_leaves_requirement_unverified(
         evidence_result="pass",
         verdict="pass",
     )
-    run = verification.run_closing_checks(project, landed)
+    run = verification_run.run_closing_checks(project, landed)
     assert run.refusal == ""
     assert "R1" not in run.verified
 

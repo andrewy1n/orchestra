@@ -42,14 +42,14 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.composer.records import IDEA, PLACEMENT, current_placements, open_ideas
-from orchestra.conductor.activity import activity_entries
-from orchestra.conductor.assignment import ASSIGNMENT
-from orchestra.conductor.attention import LandingFact, attention_items
-from orchestra.conductor.effort_status import EffortStatus, effort_statuses
-from orchestra.conductor.landing import PROOF_PACKET
+from orchestra.conductor.landing.landing import PROOF_PACKET
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.conductor.phase_progress import phase_counts
-from orchestra.conductor.task_detail import (
+from orchestra.conductor.phases.progress.activity import activity_entries
+from orchestra.conductor.phases.progress.attention import LandingFact, attention_items
+from orchestra.conductor.phases.progress.effort_status import EffortStatus, effort_statuses
+from orchestra.conductor.phases.progress.phase_progress import phase_counts
+from orchestra.conductor.tasks.assignment import ASSIGNMENT
+from orchestra.conductor.tasks.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     EXECUTION_REPORT_TYPE,
 )
@@ -58,18 +58,14 @@ from orchestra.conductor.workspace_types import (
     INTEGRATION_REPORT_TYPE,
     RELEASE_TYPE,
 )
-from orchestra.score.detail_facts import (
+from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
     PHASE_TYPE,
     WORK_ITEM_TYPE,
 )
-from orchestra.score.effort import EFFORT, current_efforts
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
-from orchestra.score.phase import structured_phases
-from orchestra.score.requirements import SPECIFICATION
-from orchestra.score.work_item_facts import owning_task_id, record_scope
-from orchestra.score.workspace_facts import (
+from orchestra.score.facts.work_item_facts import owning_task_id, record_scope
+from orchestra.score.facts.workspace_facts import (
     CONTINUITY_QUESTION_TYPE,
     DESIGN_TYPE,
     MILESTONE_TYPE,
@@ -78,7 +74,11 @@ from orchestra.score.workspace_facts import (
     effort_summary,
     work_item_efforts,
 )
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
+from orchestra.score.planning.effort import EFFORT, current_efforts
+from orchestra.score.planning.phase import structured_phases
+from orchestra.score.planning.requirements import SPECIFICATION
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (

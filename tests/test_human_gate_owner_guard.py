@@ -6,15 +6,17 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/score/workflow_blockers.py")
+OWNER = Path("orchestra/score/workflow/workflow_blockers.py")
 ROOTS = ("orchestra", "dashboard/backend", "scripts")
 NEEDS = "needs"
 SIGNED_BY = "signed_by"
 NEEDS_VALUES = {"human", "none"}
 EXEMPT: dict[Path, str] = {
-    Path("orchestra/conductor/verification.py"): "decides signed evidence for closing verification",
     Path(
-        "orchestra/conductor/signoff.py"
+        "orchestra/conductor/tasks/verification_run.py"
+    ): "decides signed evidence for closing verification",
+    Path(
+        "orchestra/conductor/phases/workflow/signoff.py"
     ): "derives the card stage; stage derivation stays separate",
 }
 

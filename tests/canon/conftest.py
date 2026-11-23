@@ -278,7 +278,7 @@ def advance(project, record: dict, *states: str) -> dict:
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    from orchestra.tuner.amendment import canonical_payload, verify_signature
+    from orchestra.tuner.evidence.signing.amendment import canonical_payload, verify_signature
 
     manifest_path = SRC / ".tuner" / "manifest.json"
     if not manifest_path.is_file():

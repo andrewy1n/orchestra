@@ -8,7 +8,7 @@ import pytest
 from evals.seeded_defects.cases import Case
 from evals.seeded_defects.outcomes import Complete, Incomplete, IncompleteReason
 from evals.seeded_defects.scoring import Score, score_call
-from orchestra.conductor.reviewer import ParsedReviewerOutput, ReviewerFinding
+from orchestra.conductor.verification.review.reviewer import ParsedReviewerOutput, ReviewerFinding
 
 INTEGRATION = {"interfaces": "", "assumptions": "", "invariants": "", "conflicts": ""}
 

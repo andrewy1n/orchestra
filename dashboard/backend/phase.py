@@ -29,60 +29,71 @@ from dashboard.backend.task import (
 from orchestra.canon.project import Project
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.assessment_facts import assessment_facts, latest_assessments
-from orchestra.conductor.assignment import ASSIGNMENT
-from orchestra.conductor.landing import PROOF_PACKET, proof_packet
-from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
-from orchestra.conductor.release_facts import integration_result, is_release_ready, release_state
-from orchestra.conductor.requirements import UNVERIFIED, RequirementStatus, requirement_status
-from orchestra.conductor.signoff import awaiting_signoff
-from orchestra.conductor.suite_label import suite_labels
+from orchestra.conductor.landing.landing import PROOF_PACKET, proof_packet
+from orchestra.conductor.phases.progress.assessment_facts import (
+    assessment_facts,
+    latest_assessments,
+)
+from orchestra.conductor.phases.progress.phase_progress import PhaseProgress, phase_counts
+from orchestra.conductor.phases.progress.release_facts import (
+    integration_result,
+    is_release_ready,
+    release_state,
+)
+from orchestra.conductor.phases.workflow.signoff import awaiting_signoff
+from orchestra.conductor.tasks.assignment import ASSIGNMENT
+from orchestra.conductor.verification.requirements import (
+    UNVERIFIED,
+    RequirementStatus,
+    requirement_status,
+)
+from orchestra.conductor.verification.suite.suite_label import suite_labels
 from orchestra.conductor.workspace_types import (
     ASSESSMENT_TYPE,
     INTEGRATION_REPORT_TYPE,
     RELEASE_TYPE,
 )
-from orchestra.score.acceptance import read_acceptance
-from orchestra.score.detail_facts import (
+from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
     PHASE_TYPE,
     WORK_ITEM_TYPE,
 )
-from orchestra.score.elapsed import TimedTask, phase_elapsed
-from orchestra.score.lookups import (
-    current_phases,
-    live_work_items,
-)
-from orchestra.score.milestone import milestone_facts, milestone_state
-from orchestra.score.phase import Phase, current_phase_model, read_phase
-from orchestra.score.requirements import (
-    SPECIFICATION,
-    acceptance_listed_requirements,
-    acceptance_requirement_ids,
-    phase_requirements,
-)
-from orchestra.score.scope import (
-    design_decisions,
-    records_for_phase,
-    spec_requirements,
-    spec_weight,
-)
-from orchestra.score.work_item_facts import (
+from orchestra.score.facts.elapsed import TimedTask, phase_elapsed
+from orchestra.score.facts.work_item_facts import (
     decision_choice,
     record_scope,
     tasks_by_requirement,
     work_item_facts,
 )
-from orchestra.score.workspace_facts import (
+from orchestra.score.facts.workspace_facts import (
     CONSTRAINT_TYPE,
     DESIGN_TYPE,
     MILESTONE_TYPE,
     constraint_facts,
     decision_facts,
 )
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.score.lookups import (
+    current_phases,
+    live_work_items,
+)
+from orchestra.score.planning.acceptance import read_acceptance
+from orchestra.score.planning.milestone import milestone_facts, milestone_state
+from orchestra.score.planning.phase import Phase, current_phase_model, read_phase
+from orchestra.score.planning.requirements import (
+    SPECIFICATION,
+    acceptance_listed_requirements,
+    acceptance_requirement_ids,
+    phase_requirements,
+)
+from orchestra.score.planning.scope import (
+    design_decisions,
+    records_for_phase,
+    spec_requirements,
+    spec_weight,
+)
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 

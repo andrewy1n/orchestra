@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.redispatch_facts import redispatch_facts
+from orchestra.conductor.tasks.redispatch.redispatch_facts import redispatch_facts
 
 
 def _record(

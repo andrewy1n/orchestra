@@ -8,11 +8,10 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.validation import ValidationError
 from orchestra.canon.workspace import Access
-from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.cli.options import open_project, work_dir
-from orchestra.conductor.run_record import resolve_run
-from orchestra.conductor.workflow import (
+from orchestra.conductor.phases.workflow.run_record import resolve_run
+from orchestra.conductor.phases.workflow.workflow import (
     RunAction,
     RunPreview,
     WorkflowRunError,
@@ -22,9 +21,16 @@ from orchestra.conductor.workflow import (
     run_status,
     start_previewed_run,
 )
-from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
+from orchestra.conductor.phases.workflow.workflow_review import (
+    WorkflowReviewError,
+    record_step_review,
+)
+from orchestra.conductor.verification.evidence.acceptance_amendment import (
+    ROUTINE_CHECKS,
+    amend_acceptance,
+)
 from orchestra.score.lookups import current_phase, dependencies
-from orchestra.score.workflow_reviews import Authority, Step
+from orchestra.score.workflow.workflow_reviews import Authority, Step
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 

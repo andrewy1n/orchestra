@@ -9,7 +9,7 @@ from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project
 from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex, acceptance_latest
 
 STAMP = "2026-11-01T00:00:00+00:00"
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"

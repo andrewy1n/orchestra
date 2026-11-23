@@ -18,7 +18,7 @@ from pathlib import Path
 from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close_batch
+from orchestra.conductor.tasks.close import close_batch
 
 CLAIM_ID = "claim-widget"
 UNKNOWN_CLAIM_ID = "claim-not-in-manifest"
@@ -158,8 +158,8 @@ def test_claim_id_read_only_from_payload_claim(tmp_path, monkeypatch):
         recheck_calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
-    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", recheck)
 
     refused = _refusal(
         lambda: _build(
@@ -197,8 +197,8 @@ def test_empty_claim_is_not_gated(tmp_path, monkeypatch):
         recheck_calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
-    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", recheck)
 
     refused = _refusal(
         lambda: _build(
@@ -232,10 +232,10 @@ def test_verdict_runs_at_green_revision(tmp_path, monkeypatch):
         calls.append((args, kwargs))
         return {"result": "pass"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -267,11 +267,11 @@ def test_recheck_runs_for_claim(tmp_path, monkeypatch):
 
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.verdict",
+        "orchestra.tuner.evidence.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
-    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", recheck)
 
     ops = _build(
         _request(),
@@ -295,13 +295,13 @@ def test_verdict_only_failure_names_verdict(tmp_path, monkeypatch):
     _write_manifest_claim(repo)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.verdict",
+        "orchestra.tuner.evidence.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -324,13 +324,13 @@ def test_recheck_only_failure_names_recheck(tmp_path, monkeypatch):
     _write_manifest_claim(repo)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.verdict",
+        "orchestra.tuner.evidence.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -353,13 +353,13 @@ def test_both_failures_name_both(tmp_path, monkeypatch):
     _write_manifest_claim(repo)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.verdict",
+        "orchestra.tuner.evidence.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "fail"},
     )
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )
@@ -400,13 +400,13 @@ def test_unknown_claim_refuses(tmp_path, monkeypatch):
     _write_manifest_claim(repo)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.verdict",
+        "orchestra.tuner.evidence.verdict",
         "run_verdict",
         lambda *args, **kwargs: {"result": "pass"},
     )
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )

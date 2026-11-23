@@ -10,11 +10,11 @@ from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.cli.workflow_commands import (
     _preview_json,
 )
-from orchestra.conductor.phase_progress import phase_counts as phase_progress
-from orchestra.conductor.workflow import RunPreview
+from orchestra.conductor.phases.progress.phase_progress import phase_counts as phase_progress
+from orchestra.conductor.phases.workflow.workflow import RunPreview
 from orchestra.metrics.ops import tasks_of
 from orchestra.metrics.phases import build_phase_rows
-from orchestra.score.work_item_facts import owning_task_id
+from orchestra.score.facts.work_item_facts import owning_task_id
 
 
 def _project(tmp_path: Path) -> Project:

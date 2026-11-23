@@ -10,7 +10,7 @@ from pathlib import Path
 
 from orchestra.canon.project import open_store
 from orchestra.canon.workspace import Workspace
-from orchestra.conductor import close_batch
+from orchestra.conductor.tasks.close import close_batch
 
 CLAIM_ID = "claim-widget"
 CLAIM_TEXT = "widget works"
@@ -196,7 +196,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
             "runner": "orchestra",
         },
     )
-    from orchestra.tuner.binding import bind_observation
+    from orchestra.tuner.evidence.binding import bind_observation
 
     bind_observation(
         repo,

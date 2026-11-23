@@ -11,7 +11,7 @@ from dashboard.backend.landing import Landing, phase_landing
 from dashboard.backend.phase import PhaseRow
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from dashboard.backend.task import TaskRow
-from orchestra.conductor.attention import LandingFact
+from orchestra.conductor.phases.progress.attention import LandingFact
 
 PLAN_REVIEW_PREFIX = "plan-review:"
 

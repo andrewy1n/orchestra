@@ -14,7 +14,7 @@ from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.workflow_blockers import human_gates
+from orchestra.score.workflow.workflow_blockers import human_gates
 
 NOW = datetime(2026, 11, 11, 12, tzinfo=timezone.utc)
 EFFORT = "alpha"

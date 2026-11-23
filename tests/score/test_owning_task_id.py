@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import Record
-from orchestra.score.work_item_facts import owning_task_id
+from orchestra.score.facts.work_item_facts import owning_task_id
 
 
 def _task(subject: str, state: str, n: int) -> Record:

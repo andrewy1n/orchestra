@@ -192,7 +192,7 @@ def _collect_verify_help(binary: Path) -> str:
 def tuner_policy_switches() -> list[str]:
     """Work-kind, mode flag, or policy switch that encodes record-versus-bind."""
     hits: list[str] = []
-    for rel in ("orchestra/tuner/cli.py", "orchestra/tuner/evidence_kind.py"):
+    for rel in ("orchestra/tuner/cli.py", "orchestra/tuner/plugins/evidence_kind.py"):
         text = (REPO_ROOT / rel).read_text()
         for token in sorted(set(_AFF_SWITCH.findall(text))):
             hits.append(f"{rel}: {token}")

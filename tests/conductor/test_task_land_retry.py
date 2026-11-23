@@ -6,8 +6,8 @@ import pytest
 from test_task_land import PHASE, _evidence_file, _git, _world
 
 from orchestra.canon.project import Project
-from orchestra.conductor import task_close
-from orchestra.conductor.task_landing import TaskLanding, land_and_close
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.tasks.task_landing import TaskLanding, land_and_close
 
 
 class _CloseFailed(RuntimeError):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeAlias, TypedDict
 
-from orchestra.score.effort_rollup import EffortRollup
+from orchestra.score.planning.effort_rollup import EffortRollup
 
 JsonPrimitive: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]

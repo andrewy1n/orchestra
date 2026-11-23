@@ -11,8 +11,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import orchestra.tuner as tuner
-import orchestra.tuner.binding as binding
-import orchestra.tuner.observation as observation
+import orchestra.tuner.authoring.observation as observation
+import orchestra.tuner.evidence.binding as binding
 
 OBS_TYPE = "tuner:evidence-observation"
 BIND_TYPE = "tuner:evidence-binding"
@@ -157,7 +157,7 @@ def test_store_client_create_observation(tmp_path: Path, monkeypatch) -> None:
         )
     ]
     assert matched, (
-        "orchestra.tuner.observation creates an evidence-observation by calling Project.create"
+        "orchestra.tuner.authoring.observation creates an evidence-observation by calling Project.create"
     )
     assert error is None
     assert isinstance(result, dict)
@@ -171,7 +171,7 @@ def test_store_client_list_observations(tmp_path: Path, monkeypatch) -> None:
     _block_cli(monkeypatch, observation)
     result, error = _call(lambda: observation.list_observations(root))
     assert OBS_TYPE in lists, (
-        "orchestra.tuner.observation lists evidence-observations by calling Project.list"
+        "orchestra.tuner.authoring.observation lists evidence-observations by calling Project.list"
     )
     assert error is None
     assert isinstance(result, list)
@@ -203,7 +203,9 @@ def test_store_client_create_binding(tmp_path: Path, monkeypatch) -> None:
         for record in creates
         if record.get("record_type") == BIND_TYPE and _payload_matches(record, expected)
     ]
-    assert matched, "orchestra.tuner.binding creates an evidence-binding by calling Project.create"
+    assert matched, (
+        "orchestra.tuner.evidence.binding creates an evidence-binding by calling Project.create"
+    )
     assert error is None
     assert isinstance(result, dict)
     assert _payload_matches(result, expected)
@@ -216,7 +218,7 @@ def test_store_client_list_bindings(tmp_path: Path, monkeypatch) -> None:
     _block_cli(monkeypatch, binding, observation)
     result, error = _call(lambda: binding.list_bindings(root))
     assert BIND_TYPE in lists, (
-        "orchestra.tuner.binding lists evidence-bindings by calling Project.list"
+        "orchestra.tuner.evidence.binding lists evidence-bindings by calling Project.list"
     )
     assert error is None
     assert isinstance(result, list)

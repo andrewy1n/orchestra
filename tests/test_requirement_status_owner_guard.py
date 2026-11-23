@@ -6,15 +6,15 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/conductor/requirements.py")
+OWNER = Path("orchestra/conductor/verification/requirements.py")
 ROOTS = ("orchestra", "dashboard")
 STATUS_WORDS = {"verified", "unverified"}
 CONSTRUCTOR = "RequirementStatus"
 LINKAGE = "acceptance_requirement_ids"
 LINKAGE_EXEMPT: dict[Path, str] = {
-    Path("orchestra/score/requirements.py"): "defines the acceptance to requirement link",
-    Path("orchestra/score/acceptance.py"): "reads the link into the typed acceptance",
-    Path("orchestra/score/analyze.py"): "reports requirement coverage, not status",
+    Path("orchestra/score/planning/requirements.py"): "defines the acceptance to requirement link",
+    Path("orchestra/score/planning/acceptance.py"): "reads the link into the typed acceptance",
+    Path("orchestra/score/planning/analyze.py"): "reports requirement coverage, not status",
     Path("dashboard/backend/phase.py"): "lists the acceptances linked to a requirement for display",
 }
 
@@ -72,7 +72,7 @@ def test_r18_guard_fails_on_seeded_status_literal_in_dashboard(tmp_path: Path) -
 def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
     write_source(
         tmp_path / "orchestra" / "seeded_build.py",
-        "from orchestra.conductor.requirements import RequirementStatus\n"
+        "from orchestra.conductor.verification.requirements import RequirementStatus\n"
         "\n"
         "\n"
         "def build(state: str) -> object:\n"
@@ -84,7 +84,7 @@ def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
 def test_r18_guard_fails_on_seeded_requirement_acceptance_linkage(tmp_path: Path) -> None:
     write_source(
         tmp_path / "orchestra" / "conductor" / "seeded_link.py",
-        "from orchestra.score.requirements import acceptance_requirement_ids\n"
+        "from orchestra.score.planning.requirements import acceptance_requirement_ids\n"
         "\n"
         "\n"
         "def linked(acceptance: dict[str, str], requirement: str) -> bool:\n"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.activity import ActivityEntry, activity_entries
+from orchestra.conductor.phases.progress.activity import ActivityEntry, activity_entries
 
 SINCE = datetime(2026, 11, 1, 0, 0, 10, tzinfo=timezone.utc)
 STAMP = "2026-11-01T00:00:{:02d}+00:00"

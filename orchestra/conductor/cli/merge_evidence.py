@@ -7,8 +7,8 @@ import argparse
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access
-from orchestra.conductor import merge_evidence
 from orchestra.conductor.cli.options import open_project, work_dir
+from orchestra.conductor.landing import merge_evidence
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 

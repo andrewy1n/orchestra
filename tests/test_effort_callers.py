@@ -9,8 +9,8 @@ from canon_support import create, make_project
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.composer.placement import PlacementError, place
-from orchestra.score import autonomy
-from orchestra.score.effort import current_efforts
+from orchestra.score.planning import autonomy
+from orchestra.score.planning.effort import current_efforts
 
 GRANT = "Plan-review gates are preauthorized by the user."
 

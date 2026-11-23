@@ -23,6 +23,22 @@ _WHEEL_NAME = re.compile(
     r"[A-Za-z0-9_.]+-[A-Za-z0-9_.]+-[A-Za-z0-9_.]+\.whl$"
 )
 
+_PLUGIN_GROUPS = (
+    "orchestra.tuner.verify",
+    "orchestra.conductor.land",
+    "orchestra.conductor.merge_evidence",
+    "orchestra.plugin_api",
+)
+_LOAD_ENTRY_POINTS = (
+    "from importlib.metadata import entry_points\n"
+    "groups = ['canon.schemas', " + ", ".join(repr(group) for group in _PLUGIN_GROUPS) + "]\n"
+    "for group in groups:\n"
+    "    found = entry_points(group=group)\n"
+    "    assert len(found) > 0, group\n"
+    "    for entry in found:\n"
+    "        entry.load()\n"
+)
+
 _DROPPED_ENV = (
     "VIRTUAL_ENV",
     "UV_PROJECT",
@@ -214,11 +230,14 @@ def _checks(tmp: Path, venv: Path, python: Path, env: dict[str, str]) -> int:
             work,
             None,
         ),
+        ("orchestra hook-start", [str(orchestra), "hook-start"], work, None),
+        ("orchestra hook-stop", [str(orchestra), "hook-stop"], work, None),
+        ("load entry points", [str(python), "-c", _LOAD_ENTRY_POINTS], work, None),
     ]
     failed = False
     for name, command, cwd, needle in checks:
         try:
-            result = _run(command, cwd=cwd, env=env)
+            result = _run(command, cwd=cwd, env=env, stdin="{}" if "hook" in name else None)
         except OSError as exc:
             print(f"{name}: fail")
             sys.stderr.write(f"{exc}\n")
@@ -291,9 +310,12 @@ def _serves_index(server: subprocess.Popen[bytes], port: int, index: Path) -> bo
     return False
 
 
-def _run(command: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _run(
+    command: list[str], *, cwd: Path, env: dict[str, str], stdin: str | None = None
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         command,
+        input=stdin,
         cwd=cwd,
         env=env,
         capture_output=True,

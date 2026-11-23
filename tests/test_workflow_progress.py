@@ -9,16 +9,17 @@ from conductor_support import write_policy
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import phase_progress, workflow_review
-from orchestra.conductor.workflow import (
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.phases.workflow import workflow_review
+from orchestra.conductor.phases.workflow.workflow import (
     WorkflowRunError,
     next_actions,
     preview_run,
     run_status,
     start_run,
 )
-from orchestra.score.phase import current_phase_model
-from orchestra.score.workflow_reviews import Authority, Step
+from orchestra.score.planning.phase import current_phase_model
+from orchestra.score.workflow.workflow_reviews import Authority, Step
 
 EFFORT = "run-effort"
 PHASE_BODY = (

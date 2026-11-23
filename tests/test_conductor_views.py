@@ -6,7 +6,7 @@ from canon_support import create, make_project, seed_effort
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import open_phase_progress
+from orchestra.conductor.phases.progress.phase_progress import open_phase_progress
 from orchestra.stage.handoff import hook_handoff_sections
 from orchestra.views import render as views
 

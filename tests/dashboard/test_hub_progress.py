@@ -18,8 +18,8 @@ from dashboard.backend.server.app import create_app
 from dashboard.backend.snapshot import BacklogItem, EffortView, NeedsYouItem, Snapshot
 from dashboard.backend.task import TaskRow
 from orchestra.canon.project import open_store
-from orchestra.conductor.phase_progress import STAGES, PhaseProgress, StageState
-from orchestra.conductor.phase_progress import Stage as StageId
+from orchestra.conductor.phases.progress.phase_progress import STAGES, PhaseProgress, StageState
+from orchestra.conductor.phases.progress.phase_progress import Stage as StageId
 
 NOW = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
 

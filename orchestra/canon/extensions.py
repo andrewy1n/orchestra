@@ -21,7 +21,7 @@ PLUGIN_GROUPS: Mapping[PluginScope, str] = {
     "conductor.land": "orchestra.conductor.land",
     "conductor.merge_evidence": "orchestra.conductor.merge_evidence",
 }
-PLUGIN_API_VERSION = "1"
+PLUGIN_API_VERSION = "2"
 PLUGIN_API_GROUP = "orchestra.plugin_api"
 PLUGIN_CONFIG_GROUP = "orchestra.plugin_config"
 
@@ -75,7 +75,7 @@ def resolve_plugin(scope: PluginScope, plugin_id: str) -> PluginRegistration:
             if registration.descriptor.api_version != PLUGIN_API_VERSION:
                 raise PluginCatalogError(
                     f"plugin {plugin_id!r} uses unsupported API version "
-                    f"{registration.descriptor.api_version!r}"
+                    f"{registration.descriptor.api_version!r}; supported version is {PLUGIN_API_VERSION!r}"
                 )
             return registration
     raise PluginCatalogError(f"unknown {scope} plugin: {plugin_id}")
@@ -120,11 +120,11 @@ def _registrations(scope: PluginScope) -> tuple[PluginRegistration, ...]:
             raise PluginCatalogError(
                 f"plugin entry point {entry.name!r} has no distribution identity"
             )
-        api_version = _distribution_plugin_value(distribution, PLUGIN_API_GROUP, "v1")
+        api_version = _distribution_plugin_value(distribution, PLUGIN_API_GROUP, "version")
         config_shape_raw = _distribution_plugin_value(distribution, PLUGIN_CONFIG_GROUP, entry.name)
         if api_version is None:
             raise PluginCatalogError(
-                f"distribution {name!r} must declare {PLUGIN_API_GROUP}.version"
+                f"distribution {name!r} must declare a {PLUGIN_API_GROUP} entry named v{PLUGIN_API_VERSION}"
             )
         if config_shape_raw is None:
             raise PluginCatalogError(
@@ -163,13 +163,8 @@ def _distribution_plugin_value(
     if group == PLUGIN_API_GROUP:
         values = tuple(
             entry.name.removeprefix("v")
-            if entry.name.startswith("v") and entry.name[1:].isdigit()
-            else entry.value
             for entry in distribution.entry_points
-            if entry.group == group
-            and (
-                (entry.name.startswith("v") and entry.name[1:].isdigit()) or entry.name == "version"
-            )
+            if entry.group == group and entry.name.startswith("v") and entry.name[1:].isdigit()
         )
     elif group == PLUGIN_CONFIG_GROUP:
         values = tuple(

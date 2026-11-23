@@ -7,9 +7,9 @@ from canon_support import create, make_project, seed_effort
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.conductor.phase_progress import open_phase_progress
+from orchestra.conductor.phases.progress.phase_progress import open_phase_progress
 from orchestra.metrics.phases import build_phase_rows
-from orchestra.score.workflow_selection import resolve_phase_selection
+from orchestra.score.workflow.workflow_selection import resolve_phase_selection
 from orchestra.views import render as views
 
 LANDING: JsonObject = {

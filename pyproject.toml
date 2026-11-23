@@ -27,15 +27,33 @@ packages = [
     "orchestra.tools",
     "orchestra.canon",
     "orchestra.score",
+    "orchestra.score.planning",
+    "orchestra.score.workflow",
+    "orchestra.score.facts",
     "orchestra.score.schemas",
     "orchestra.composer",
     "orchestra.composer.schemas",
     "orchestra.conductor",
+    "orchestra.conductor.phases",
+    "orchestra.conductor.phases.progress",
+    "orchestra.conductor.phases.workflow",
+    "orchestra.conductor.landing",
+    "orchestra.conductor.tasks",
+    "orchestra.conductor.tasks.close",
+    "orchestra.conductor.tasks.redispatch",
+    "orchestra.conductor.verification.evidence",
+    "orchestra.conductor.verification",
+    "orchestra.conductor.verification.suite",
+    "orchestra.conductor.verification.review",
     "orchestra.conductor.briefs",
     "orchestra.conductor.cli",
     "orchestra.conductor.schemas",
     "orchestra.metrics",
     "orchestra.tuner",
+    "orchestra.tuner.plugins",
+    "orchestra.tuner.evidence",
+    "orchestra.tuner.evidence.signing",
+    "orchestra.tuner.authoring",
     "orchestra.tuner.schemas",
     "orchestra.stage",
     "orchestra.views",
@@ -81,25 +99,25 @@ tuner = "orchestra.tuner.schemas"
 composer = "orchestra.composer.schemas"
 
 [project.entry-points."orchestra.tuner.verify"]
-unit = "orchestra.tuner.plugins:UnitPlugin"
-review = "orchestra.conductor.review_technique:ReviewTechnique"
+unit = "orchestra.tuner.plugins.api:UnitPlugin"
+review = "orchestra.conductor.verification.review.review_technique:ReviewTechnique"
 
 [project.entry-points."orchestra.conductor.land"]
-none = "orchestra.conductor.land:NoneAdapter"
-github-pr = "orchestra.conductor.land:GitHubPRAdapter"
+none = "orchestra.conductor.landing.land:NoneAdapter"
+github-pr = "orchestra.conductor.landing.land:GitHubPRAdapter"
 
 [project.entry-points."orchestra.conductor.merge_evidence"]
-github-actions = "orchestra.conductor.github_evidence:GitHubActionsAdapter"
+github-actions = "orchestra.conductor.landing.github_evidence:GitHubActionsAdapter"
 
 [project.entry-points."orchestra.plugin_api"]
-v1 = "orchestra.canon.extensions:PLUGIN_API_VERSION"
+v2 = "orchestra.canon.extensions:PLUGIN_API_VERSION"
 
 [project.entry-points."orchestra.plugin_config"]
-"github-actions__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.github_evidence:GitHubActionsAdapter"
-"unit__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJydW5uZXIiOnsidHlwZSI6ImFycmF5In19LCJyZXF1aXJlZCI6WyJydW5uZXIiXX0" = "orchestra.tuner.plugins:UnitPlugin"
-"review__eyJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.review_technique:ReviewTechnique"
-"none__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.land:NoneAdapter"
-"github-pr__eyJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsInByb3BlcnRpZXMiOnsicmVtb3RlIjp7InR5cGUiOiJzdHJpbmcifSwicmVwb3NpdG9yeSI6eyJ0eXBlIjoic3RyaW5nIn19LCJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.land:GitHubPRAdapter"
+"github-actions__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.landing.github_evidence:GitHubActionsAdapter"
+"unit__eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJydW5uZXIiOnsidHlwZSI6ImFycmF5In19LCJyZXF1aXJlZCI6WyJydW5uZXIiXX0" = "orchestra.tuner.plugins.api:UnitPlugin"
+"review__eyJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.verification.review.review_technique:ReviewTechnique"
+"none__eyJ0eXBlIjoib2JqZWN0IiwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlfQ" = "orchestra.conductor.landing.land:NoneAdapter"
+"github-pr__eyJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsInByb3BlcnRpZXMiOnsicmVtb3RlIjp7InR5cGUiOiJzdHJpbmcifSwicmVwb3NpdG9yeSI6eyJ0eXBlIjoic3RyaW5nIn19LCJ0eXBlIjoib2JqZWN0In0" = "orchestra.conductor.landing.land:GitHubPRAdapter"
 
 [tool.ruff]
 line-length = 100

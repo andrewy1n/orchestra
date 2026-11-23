@@ -7,8 +7,8 @@ import sys
 
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access
-from orchestra.conductor import suite
 from orchestra.conductor.cli.options import open_project, work_dir
+from orchestra.conductor.verification.suite import suite
 from orchestra.tools.command_kit import Command, CommandError, emit_json, fail
 
 _FAILURES = (OSError, RuntimeError, StoreBindingError, ValueError)

@@ -7,7 +7,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.composer.records import current_area
-from orchestra.score.effort import current_effort
+from orchestra.score.planning.effort import current_effort
 
 PLACEMENT = "composer:placement"
 

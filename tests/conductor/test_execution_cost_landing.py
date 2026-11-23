@@ -10,10 +10,10 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.conductor import land_task
-from orchestra.conductor.check import CheckOutcome
-from orchestra.conductor.evidence import EvidenceError, parse_evidence
-from orchestra.conductor.execution_cost import new_dispatch_markers
+from orchestra.conductor.tasks import land_task
+from orchestra.conductor.tasks.execution_cost import new_dispatch_markers
+from orchestra.conductor.verification.check import CheckOutcome
+from orchestra.conductor.verification.evidence.evidence import EvidenceError, parse_evidence
 
 PHASE = "cost-phase"
 EFFORT = "cost-effort"

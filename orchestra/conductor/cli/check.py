@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 from orchestra.canon.workspace import Access
-from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.conductor.cli.options import open_project
+from orchestra.conductor.verification.check import DEFAULT_TIMEOUT_S, run_check
 from orchestra.tools.command_kit import Command, emit_json
 
 

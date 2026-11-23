@@ -4,7 +4,7 @@ import itertools
 from pathlib import Path
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     LandingPlace,
     belongs_to_phase,
     landing_place,
@@ -12,7 +12,7 @@ from orchestra.conductor.landing import (
     task_branch,
     task_worktree,
 )
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 _CLOCK = itertools.count()

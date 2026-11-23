@@ -10,8 +10,8 @@ from conductor_support import EFFORT, HEAD, PHASE, Cli, Phase, seed
 
 from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import head_evidence
-from orchestra.conductor.head_evidence import EvidenceIndex
+from orchestra.conductor.verification.evidence import head_evidence
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
 
 OTHER_HEAD = "b" * 40
 
@@ -359,7 +359,7 @@ def test_answer_shape_holding_answer_has_run_and_no_reason(phase: Phase) -> None
 
 
 def test_answer_shape_suite_naming_rule_lives_in_head_evidence() -> None:
-    from orchestra.conductor import suite
+    from orchestra.conductor.verification.suite import suite
 
     assert head_evidence.suite_subject("p1") == "p1-suite"
     assert head_evidence.suite_subject("p1-suite") == "p1-suite"

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phase_progress import phase_counts
+from orchestra.conductor.phases.progress.phase_progress import phase_counts
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GUARDED_ROOTS = ("orchestra", "dashboard")

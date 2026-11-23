@@ -7,7 +7,7 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress.phase_progress import (
     STAGES,
     AcceptanceHold,
     ExecutionVerdict,
@@ -22,7 +22,7 @@ from orchestra.conductor.phase_progress import (
     assess,
     phase_facts,
 )
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 
 READY = Readiness(True)
 PASSING = ExecutionVerdict("pass", "pass")

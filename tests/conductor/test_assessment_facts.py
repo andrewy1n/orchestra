@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.assessment_facts import (
+from orchestra.conductor.phases.progress.assessment_facts import (
     AssessmentFacts,
     AssessmentSummary,
     assessment_facts,

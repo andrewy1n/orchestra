@@ -7,7 +7,7 @@ from typing import Literal
 
 from dashboard.backend.phase import PhaseEvidence, PhaseRow
 from orchestra.canon.types import Record
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.phases.progress.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,
     HumanGateFact,
@@ -18,7 +18,7 @@ from orchestra.conductor.phase_progress import (
     VerifyFacts,
     assess,
 )
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 from orchestra.tools import Unmerged, branch_state
 
 Scenario = Literal["fresh", "gated", "verifying", "landed", "unmerged"]

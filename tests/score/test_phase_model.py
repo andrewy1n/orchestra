@@ -4,9 +4,12 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.phase import Phase, current_phase_model, read_phase
-from orchestra.score.requirements import requirement_body_problems, requirements_in_body
-from orchestra.score.workflow_reviews import light_phase_fingerprints, step_input_fingerprint
+from orchestra.score.planning.phase import Phase, current_phase_model, read_phase
+from orchestra.score.planning.requirements import requirement_body_problems, requirements_in_body
+from orchestra.score.workflow.workflow_reviews import (
+    light_phase_fingerprints,
+    step_input_fingerprint,
+)
 
 BODIES = {
     "plain": (

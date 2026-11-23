@@ -12,8 +12,8 @@ from dashboard.backend.snapshot import load_snapshot
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import requirements
-from orchestra.conductor.requirements import RequirementStatus
+from orchestra.conductor.verification import requirements
+from orchestra.conductor.verification.requirements import RequirementStatus
 
 
 def _create(

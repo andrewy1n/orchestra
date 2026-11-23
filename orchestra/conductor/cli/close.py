@@ -9,9 +9,10 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.types import JsonObject
 from orchestra.canon.workspace import Access, resolve_for_command
-from orchestra.conductor import close, close_batch
 from orchestra.conductor.cli.options import open_project, store_path, work_dir
-from orchestra.conductor.github_pr import GitHubPRError, github_client
+from orchestra.conductor.landing.github_pr import GitHubPRError, github_client
+from orchestra.conductor.phases.progress import close
+from orchestra.conductor.tasks.close import close_batch
 from orchestra.tools.command_kit import Command, CommandError, emit_json, fail
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git

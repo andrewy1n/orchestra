@@ -8,9 +8,10 @@ import test_wave_end as wave_world
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import phase_progress, wave
-from orchestra.conductor.requirements import release_ready, requirement_status
-from orchestra.conductor.suite import SuitePolicy, suite_ready_for_review
+from orchestra.conductor.phases.progress import phase_progress
+from orchestra.conductor.tasks import wave
+from orchestra.conductor.verification.requirements import release_ready, requirement_status
+from orchestra.conductor.verification.suite.suite import SuitePolicy, suite_ready_for_review
 
 _CLOCK = itertools.count()
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"

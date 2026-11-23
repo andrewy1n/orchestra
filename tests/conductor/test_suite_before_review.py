@@ -12,7 +12,7 @@ from orchestra import cli
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
-from orchestra.conductor import suite
+from orchestra.conductor.verification.suite import suite
 
 PHASE = "p1"
 

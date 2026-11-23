@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.github_pr import GitHubGh
+from orchestra.tools.github import GitHubGh
 
 PUBLIC_REPOSITORY = "cli/cli"
 PUBLIC_PULL_REQUEST = 9079

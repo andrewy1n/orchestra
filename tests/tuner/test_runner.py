@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.tuner.runner import run_tests
+from orchestra.tuner.plugins.runner import run_tests
 
 _WRITER = """\
 import json

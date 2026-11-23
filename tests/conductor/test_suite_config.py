@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from orchestra.conductor.suite import load_suite_policy
+from orchestra.conductor.verification.suite.suite import load_suite_policy
 
 
 def _write_config(root: Path, *, mode: str, command: str, gate: str) -> None:

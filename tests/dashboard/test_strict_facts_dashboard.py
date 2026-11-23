@@ -14,7 +14,7 @@ from dashboard.backend.snapshot import NeedsYouItem
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.tuner.record_facts import RecordShapeError
+from orchestra.tuner.evidence.record_facts import RecordShapeError
 
 BAD_ID = "<cr:malformed>"
 

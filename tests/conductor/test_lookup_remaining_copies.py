@@ -10,8 +10,8 @@ from dashboard.backend.records import newest_record
 from dashboard.backend.task import task_rows
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.evidence_recovery import recover_evidence
-from orchestra.conductor.requirements import requirement_status
+from orchestra.conductor.verification.evidence_recovery import recover_evidence
+from orchestra.conductor.verification.requirements import requirement_status
 
 STAMP = "2026-01-01T00:00:00+00:00"
 LATER = "2026-01-02T00:00:00+00:00"

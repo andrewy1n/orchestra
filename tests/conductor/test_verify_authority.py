@@ -17,10 +17,10 @@ from helpers import section_text, skill_text
 from skill_extraction import extract_invocations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close_batch
+from orchestra.conductor.tasks.close import close_batch
 
 SKILL = REPO_ROOT / "skills" / "verify" / "SKILL.md"
-SCRIPT = REPO_ROOT / "orchestra" / "conductor" / "close_batch.py"
+SCRIPT = REPO_ROOT / "orchestra" / "conductor" / "tasks" / "close" / "close_batch.py"
 
 
 def _check_run(record_id: str, payload: JsonObject) -> Record:

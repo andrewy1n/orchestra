@@ -8,8 +8,12 @@ import pytest
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest, acceptance_runs
-from orchestra.conductor.requirements import requirement_status
+from orchestra.conductor.verification.evidence.head_evidence import (
+    EvidenceIndex,
+    acceptance_latest,
+    acceptance_runs,
+)
+from orchestra.conductor.verification.requirements import requirement_status
 from orchestra.views import render as views
 from scripts.benchmark_cli import Fixture, build_fixture
 

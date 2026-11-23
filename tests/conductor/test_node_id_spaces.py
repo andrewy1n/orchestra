@@ -7,7 +7,7 @@ from pathlib import Path
 from canon_support import create, make_project
 
 from orchestra.canon.project import open_store
-from orchestra.conductor.check import parse_failing_node_ids, run_check
+from orchestra.conductor.verification.check import parse_failing_node_ids, run_check
 
 SPACED = "tests/test_effort_brief.py::test_r3_sections[Success measure]"
 DASHED = "tests/test_a.py::test_x[left - right]"

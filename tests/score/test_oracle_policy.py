@@ -8,7 +8,7 @@ from canon_support import create, make_project, seed_effort
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
 from orchestra.canon.validation import ValidationError
-from orchestra.score.analyze import analyze_phase
+from orchestra.score.planning.analyze import analyze_phase
 
 FREEZE: JsonObject = {
     "test_ids": ["tests/test_probe.py::test_probe"],

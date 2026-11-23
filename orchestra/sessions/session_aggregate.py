@@ -4,7 +4,7 @@ import json
 import sys
 from collections.abc import Iterable
 
-from orchestra.score.effort_rollup import effort_rollup
+from orchestra.score.planning.effort_rollup import effort_rollup
 from orchestra.sessions.session_outliers import outliers
 from orchestra.sessions.session_types import (
     JsonObject,

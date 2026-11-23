@@ -12,8 +12,8 @@ from phase_record_support import supersede_all, supersede_late
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import task_close
-from orchestra.conductor.task_close import (
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.tasks.close.task_close import (
     CloseApproval,
     CloseDecision,
     CloseRefusal,
@@ -21,7 +21,7 @@ from orchestra.conductor.task_close import (
     decide_close,
 )
 from orchestra.tools import Git
-from orchestra.tuner.manifest import DEFAULT_RUNNER
+from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 EFFORT = "ef"
 PHASE = "ph"
@@ -230,8 +230,10 @@ def _write_manifest(s: Scenario, claims: object) -> None:
 
 
 def _tuner_outcomes(monkeypatch: pytest.MonkeyPatch, verdict: str, recheck: str) -> None:
-    monkeypatch.setattr("orchestra.tuner.verdict.run_verdict", lambda *_a: {"result": verdict})
-    monkeypatch.setattr("orchestra.tuner.binding.recheck", lambda *_a: {"result": recheck})
+    monkeypatch.setattr(
+        "orchestra.tuner.evidence.verdict.run_verdict", lambda *_a: {"result": verdict}
+    )
+    monkeypatch.setattr("orchestra.tuner.evidence.binding.recheck", lambda *_a: {"result": recheck})
 
 
 def _check_scenario(
@@ -571,7 +573,7 @@ def test_r4_refuses_when_the_tuner_library_is_not_importable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     s = _scenario(tmp_path)
-    monkeypatch.setitem(sys.modules, "orchestra.tuner.oracle_red", None)
+    monkeypatch.setitem(sys.modules, "orchestra.tuner.authoring.oracle_red", None)
 
     reason = _reason(_decide(s))
 
@@ -739,7 +741,7 @@ def test_r8_refuses_claim_when_the_tuner_library_is_not_importable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     s = _claim_scenario(tmp_path)
-    monkeypatch.setitem(sys.modules, "orchestra.tuner.verdict", None)
+    monkeypatch.setitem(sys.modules, "orchestra.tuner.evidence.verdict", None)
 
     reason = _reason(_decide(s))
 
@@ -1035,7 +1037,7 @@ def test_pr_review_missing_manifest_is_refused_with_missing_text(tmp_path: Path)
 
 
 def test_pr_review_manifest_exceptions_subclass_manifest_error() -> None:
-    from orchestra.tuner import manifest
+    from orchestra.tuner.plugins import manifest
 
     assert issubclass(manifest.ManifestMissing, manifest.ManifestError)
     assert issubclass(manifest.ManifestUnreadable, manifest.ManifestError)

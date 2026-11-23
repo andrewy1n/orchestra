@@ -11,12 +11,12 @@ from canon_support import make_project, seed_effort
 from interfaces.interfaces_support import Result, invoke
 from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
-from orchestra.conductor.land import LandGateError, land_phase
+from orchestra.conductor.landing.land import LandGateError, land_phase
 from orchestra.sessions.session_report import (
     SessionReport,
     _read_all,
 )
-from orchestra.tuner.observation import open_subject_store
+from orchestra.tuner.authoring.observation import open_subject_store
 
 BINDING_ERROR = "Invalid store binding JSON"
 RAW_NO_STORE = "neither"

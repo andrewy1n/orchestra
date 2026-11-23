@@ -3,13 +3,13 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.scope import (
+from orchestra.score.facts.work_item_facts import tasks_by_requirement
+from orchestra.score.planning.scope import (
     design_decisions,
     records_for_phase,
     spec_requirements,
     spec_weight,
 )
-from orchestra.score.work_item_facts import tasks_by_requirement
 
 
 def _record(subject: str, payload: JsonObject, state: str = "active", n: int = 0) -> Record:

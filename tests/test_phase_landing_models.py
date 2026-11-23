@@ -4,14 +4,14 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     landing_proof_state,
     latest_landing,
     proof_packet,
     read_landing,
     read_proof_packet,
 )
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 SAME_TIME = "2026-11-08T10:00:00+00:00"

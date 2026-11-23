@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.requirements import (
+from orchestra.score.planning.requirements import (
     acceptance_listed_requirements,
     acceptance_requirement_ids,
     phase_requirements,

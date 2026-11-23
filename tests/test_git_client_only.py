@@ -60,8 +60,8 @@ def _called_attributes(path: Path) -> set[str]:
 
 
 def test_wave_and_close_use_primary_checkout() -> None:
-    wave = ROOT / "orchestra" / "conductor" / "wave.py"
-    close = ROOT / "orchestra" / "conductor" / "close.py"
+    wave = ROOT / "orchestra" / "conductor" / "tasks" / "wave.py"
+    close = ROOT / "orchestra" / "conductor" / "phases" / "progress" / "close.py"
     offenders = []
     for base in (ROOT / "orchestra", ROOT / "dashboard" / "backend"):
         for path in sorted(base.rglob("*.py")):

@@ -6,8 +6,9 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task, task_close, verification
-from orchestra.conductor.check import DEFAULT_TIMEOUT_S, CheckOutcome
+from orchestra.conductor.tasks import land_task, verification_run
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.verification.check import DEFAULT_TIMEOUT_S, CheckOutcome
 from orchestra.tools import Git
 
 
@@ -103,7 +104,7 @@ def test_r4_closing_runner_checks_every_active_acceptance_in_stable_order(
 ) -> None:
     project, landed = _world(tmp_path, ("true", "true"))
     order: list[str] = []
-    run_check = verification.run_check
+    run_check = verification_run.run_check
 
     def record_order(
         *,
@@ -124,7 +125,7 @@ def test_r4_closing_runner_checks_every_active_acceptance_in_stable_order(
             timeout=timeout,
         )
 
-    monkeypatch.setattr(verification, "run_check", record_order)
+    monkeypatch.setattr(verification_run, "run_check", record_order)
 
     closure = task_close.close(project, landed, frozenset())
 
@@ -248,8 +249,8 @@ def test_r9_closing_verification_refuses_untracked_source_changes(tmp_path: Path
 def test_r12_repeated_verification_reuses_check_run(tmp_path: Path) -> None:
     project, landed = _world(tmp_path)
 
-    first = verification.run_closing_checks(project, landed)
-    second = verification.run_closing_checks(project, landed)
+    first = verification_run.run_closing_checks(project, landed)
+    second = verification_run.run_closing_checks(project, landed)
 
     assert first.checks[0].check_run_id == second.checks[0].check_run_id
     assert len(project.list("tuner:check-run")) == 1
@@ -259,7 +260,7 @@ def test_interrupted_verification_resumes_at_remaining_acceptances(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     project, landed = _world(tmp_path, ("true", "true"))
-    run_check = verification.run_check
+    run_check = verification_run.run_check
     calls = 0
 
     def stop_after_first(
@@ -284,12 +285,12 @@ def test_interrupted_verification_resumes_at_remaining_acceptances(
             timeout=timeout,
         )
 
-    monkeypatch.setattr(verification, "run_check", stop_after_first)
+    monkeypatch.setattr(verification_run, "run_check", stop_after_first)
     with pytest.raises(RuntimeError, match="interrupted"):
-        verification.run_closing_checks(project, landed)
-    monkeypatch.setattr(verification, "run_check", run_check)
+        verification_run.run_closing_checks(project, landed)
+    monkeypatch.setattr(verification_run, "run_check", run_check)
 
-    resumed = verification.run_closing_checks(project, landed)
+    resumed = verification_run.run_closing_checks(project, landed)
 
     assert len(resumed.checks) == 2
     assert len(project.list("tuner:check-run")) == 2

@@ -15,7 +15,7 @@ from dashboard.backend import store
 from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
 from orchestra.canon.project import Project
-from orchestra.tuner.record_facts import RecordShapeError
+from orchestra.tuner.evidence.record_facts import RecordShapeError
 
 DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 MISSING_BUILD = (

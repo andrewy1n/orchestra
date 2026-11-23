@@ -14,10 +14,10 @@ ALLOWLIST: frozenset[str] = frozenset(
         "dashboard/frontend/e2e/serve.py",
         "installer/adapters/tail.py",
         "installer/runner.py",
-        "orchestra/conductor/check.py",
-        "orchestra/tuner/audit.py",
-        "orchestra/tuner/runner.py",
-        "orchestra/tuner/sign.py",
+        "orchestra/conductor/verification/check.py",
+        "orchestra/tuner/authoring/audit.py",
+        "orchestra/tuner/plugins/runner.py",
+        "orchestra/tuner/evidence/signing/sign.py",
         "scripts/check_lint_config.py",
         "scripts/wheel_smoke.py",
     }
@@ -123,10 +123,10 @@ def test_real_tree_matches_allowlist() -> None:
 def test_git_modules_not_allowlisted() -> None:
     migrated = {
         "orchestra/canon/git_backend.py",
-        "orchestra/conductor/gate.py",
-        "orchestra/conductor/close_batch.py",
-        "orchestra/tuner/manifest.py",
-        "orchestra/tuner/provenance.py",
+        "orchestra/conductor/landing/gate.py",
+        "orchestra/conductor/tasks/close/close_batch.py",
+        "orchestra/tuner/plugins/manifest.py",
+        "orchestra/tuner/evidence/provenance.py",
         "dashboard/backend/landing.py",
     }
     assert migrated.isdisjoint(ALLOWLIST)

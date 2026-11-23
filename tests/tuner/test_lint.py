@@ -91,7 +91,7 @@ def _commit(root: Path, message: str) -> str:
 
 def _lint():
     try:
-        return importlib.import_module("orchestra.tuner.lint")
+        return importlib.import_module("orchestra.tuner.authoring.lint")
     except ModuleNotFoundError:
         return None
 
@@ -99,7 +99,7 @@ def _lint():
 def test_lint_reports_no_assert_witness(tmp_path: Path) -> None:
     """R3: a witness with no assertion (or equivalent outcome signal) is reported."""
     lint = _lint()
-    assert lint is not None, "orchestra.tuner.lint must exist"
+    assert lint is not None, "orchestra.tuner.authoring.lint must exist"
     witness = tmp_path / "test_no_assert.py"
     witness.write_bytes(ORACLE_NO_ASSERT)
     findings = lint.find_no_assert([witness])
@@ -110,7 +110,7 @@ def test_lint_reports_no_assert_witness(tmp_path: Path) -> None:
 
 def test_lint_ignores_asserting_witness(tmp_path: Path) -> None:
     lint = _lint()
-    assert lint is not None, "orchestra.tuner.lint must exist"
+    assert lint is not None, "orchestra.tuner.authoring.lint must exist"
     witness = tmp_path / "test_with_assert.py"
     witness.write_bytes(ORACLE_ASSERT)
     findings = lint.find_no_assert([witness])
@@ -120,7 +120,7 @@ def test_lint_ignores_asserting_witness(tmp_path: Path) -> None:
 def test_lint_reports_new_skip_between_base_and_head(tmp_path: Path) -> None:
     """R4: a witness skipped at head but not at base is reported."""
     lint = _lint()
-    assert lint is not None, "orchestra.tuner.lint must exist"
+    assert lint is not None, "orchestra.tuner.authoring.lint must exist"
     root = tmp_path / "repo"
     _init(root)
     _write_tree(root, oracle=ORACLE_BASE, app=APP_GREEN)

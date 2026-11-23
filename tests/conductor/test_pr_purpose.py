@@ -8,8 +8,13 @@ from conductor_support import PHASE, Cli, Phase, _packet, _review_repo_head, see
 from test_land_sequence import FakeGh, land_through, use_adapter
 
 from orchestra.canon.types import Record
-from orchestra.conductor.github_pr import GitHubCheck, open_pull_request
-from orchestra.conductor.landing import describe_phase, pull_request_body, pull_request_title
+from orchestra.conductor.landing.github_pr import open_pull_request
+from orchestra.conductor.landing.landing import (
+    describe_phase,
+    pull_request_body,
+    pull_request_title,
+)
+from orchestra.tools.github import GitHubCheck
 
 BODY = (
     "## Problem\n\nThe loop ends at land.\n\n"
@@ -187,7 +192,7 @@ def test_rerun_updates_the_pull_request_description(tmp_path: Path) -> None:
 
 
 def test_gh_edit_updates_the_title_and_the_description(tmp_path: Path) -> None:
-    from orchestra.conductor.github_pr import GitHubGh
+    from orchestra.tools.github import GitHubGh
     from orchestra.tools.testing import scripted
 
     argv = ("gh", "pr", "edit", "7", "--title", "T", "--body-file", "-")

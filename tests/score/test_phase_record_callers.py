@@ -8,10 +8,10 @@ from phase_record_support import supersede_all, supersede_late
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.requirements import phase_requirements, phase_weight
-from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
-from orchestra.score.workflow_reviews import step_readiness
-from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
+from orchestra.score.planning.requirements import phase_requirements, phase_weight
+from orchestra.score.workflow.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.score.workflow.workflow_reviews import step_readiness
+from orchestra.score.workflow.workflow_selection import PhaseSelectionError, resolve_phase_selection
 
 PHASE = "feature"
 EFFORT = "workflow"

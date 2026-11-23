@@ -7,7 +7,7 @@ import pytest
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
+from orchestra.score.workflow.workflow_selection import PhaseSelectionError, resolve_phase_selection
 
 
 @pytest.fixture()

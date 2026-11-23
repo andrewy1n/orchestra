@@ -56,7 +56,7 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   same function get a `depends_on` edge.
 - Write scopes: declare known repository-relative paths or patterns in
   `payload.touches`. Use literals, `*`, `?`, or whole-segment `**`, such
-  as `orchestra/score/touches.py`, `tests/score/test_?.py`, or
+  as `orchestra/score/planning/touches.py`, `tests/score/test_?.py`, or
   `skills/**/SKILL.md`. An omitted or empty list means unknown scope;
   unknown scope is not empty scope. Review overlap warnings, but treat
   them as advisory. Add `depends_on` when tasks must edit the same

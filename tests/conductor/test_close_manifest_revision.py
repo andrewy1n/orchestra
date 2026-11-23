@@ -18,7 +18,7 @@ from test_task_close_decision import (
 )
 
 from orchestra.canon.types import Record
-from orchestra.tuner.manifest import DEFAULT_RUNNER
+from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 _TOML = (
     f'[verify.stages]\nphase = ["unit"]\n\n[verify.unit]\nrunner = {json.dumps(DEFAULT_RUNNER)}\n'

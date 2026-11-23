@@ -7,7 +7,7 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.workflow_blockers import (
+from orchestra.score.workflow.workflow_blockers import (
     HumanGate,
     WorkflowBlocker,
     human_gates,

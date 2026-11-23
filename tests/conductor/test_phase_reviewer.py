@@ -14,7 +14,7 @@ from orchestra.canon.types import JsonValue
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra.conductor.reviewer import (
+from orchestra.conductor.verification.review.reviewer import (
     build_finding_payload,
     build_review_check_run_payload,
     build_reviewer_brief,

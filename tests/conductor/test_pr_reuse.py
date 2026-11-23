@@ -6,14 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.github_pr import (
-    GitHubCheck,
-    GitHubGh,
+from orchestra.conductor.landing.github_pr import (
     GitHubPRError,
     GitHubPRResult,
     open_pull_request,
 )
 from orchestra.tools import Version
+from orchestra.tools.github import GitHubCheck, GitHubGh
 from orchestra.tools.testing import ScriptedRun
 
 PR_URL = "https://github.com/owner/repo/pull/42"

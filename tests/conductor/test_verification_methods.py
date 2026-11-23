@@ -8,7 +8,7 @@ from phase_record_support import supersede_all
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.conductor.close_batch import CloseRefused, build_batch
+from orchestra.conductor.tasks.close.close_batch import CloseRefused, build_batch
 
 
 def close(project: Project, request: JsonObject) -> list[JsonObject]:

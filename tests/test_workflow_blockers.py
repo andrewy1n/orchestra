@@ -7,10 +7,11 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project, open_store
-from orchestra.conductor import gate, wave
-from orchestra.conductor.phase_progress import _gates
-from orchestra.score.phase import read_phase
-from orchestra.score.workflow_blockers import phase_blockers
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress.phase_progress import _gates
+from orchestra.conductor.tasks import wave
+from orchestra.score.planning.phase import read_phase
+from orchestra.score.workflow.workflow_blockers import phase_blockers
 
 EFFORT = "blocker-effort"
 

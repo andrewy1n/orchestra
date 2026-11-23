@@ -7,11 +7,16 @@ import pytest
 from orchestra.canon.project import StoreBindingError, open_store
 from orchestra.canon.types import Record
 from orchestra.canon.validation import ValidationError
-from orchestra.tuner.binding import BindingError, active_for_claim, bind_observation, list_bindings
-from orchestra.tuner.observation import (
+from orchestra.tuner.authoring.observation import (
     maybe_record_observation,
     maybe_record_verdict_observation,
     record_observation,
+)
+from orchestra.tuner.evidence.binding import (
+    BindingError,
+    active_for_claim,
+    bind_observation,
+    list_bindings,
 )
 
 STORE_FAILURES = (

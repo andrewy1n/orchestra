@@ -4,7 +4,12 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.effort import current_effort, current_efforts, read_effort, scan_effort_records
+from orchestra.score.planning.effort import (
+    current_effort,
+    current_efforts,
+    read_effort,
+    scan_effort_records,
+)
 
 
 def _effort_record(

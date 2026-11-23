@@ -8,11 +8,11 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Access, Workspace
-from orchestra.conductor.landing import LANDING, PROOF_PACKET, latest_landing, proof_packet
+from orchestra.conductor.landing.landing import LANDING, PROOF_PACKET, latest_landing, proof_packet
 from orchestra.metrics.instants import parse_instant
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import latest_record
-from orchestra.score.phase import Phase, current_phase_model
+from orchestra.score.planning.phase import Phase, current_phase_model
 
 CHECK_RUN = "tuner:check-run"
 REPAIR_LINK = "conductor:repair-link"

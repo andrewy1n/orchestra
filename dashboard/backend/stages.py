@@ -9,8 +9,8 @@ from dashboard.backend.landing import rev_parse_token
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import phase_place
-from orchestra.conductor.phase_progress import (
+from orchestra.conductor.landing.landing import phase_place
+from orchestra.conductor.phases.progress.phase_progress import (
     STAGES,
     PhaseProgress,
     StageState,
@@ -19,7 +19,7 @@ from orchestra.conductor.phase_progress import (
     unavailable_progress,
 )
 from orchestra.score.lookups import current_phases, prepare_records
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 from orchestra.tools import ToolError
 
 _OPEN_STATES = ("planned", "in_progress")

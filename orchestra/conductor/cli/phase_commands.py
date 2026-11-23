@@ -9,10 +9,11 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.project_config import ProjectConfigError
 from orchestra.canon.workspace import Access
-from orchestra.conductor import gate
 from orchestra.conductor.cli.options import open_project, work_dir
-from orchestra.conductor.phase_analysis import analyze_in_store
-from orchestra.conductor.review_brief import build_review_brief
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress.phase_analysis import analyze_in_store
+from orchestra.conductor.verification.review.review_brief import build_review_brief
+from orchestra.conductor.verification.suite.suite import suite_refusal
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 _STORE_HELP = (
@@ -148,17 +149,18 @@ def _review_brief(args: argparse.Namespace) -> int:
             base=args.base,
             phase_head=args.phase_head,
             phase=args.phase,
+            suite_refusal=(
+                suite_refusal(project, work, args.phase, args.phase_head) if args.phase else ""
+            ),
         )
     except (OSError, RuntimeError, StoreBindingError) as exc:
         raise CommandError(str(exc)) from exc
-    if brief.refusal:
-        raise CommandError(brief.refusal)
     if args.out == "-":
-        print(brief.text, end="" if brief.text.endswith("\n") else "\n")
+        print(brief, end="" if brief.endswith("\n") else "\n")
         return 0
     destination = Path(args.out).expanduser()
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(brief.text, encoding="utf-8")
+    destination.write_text(brief, encoding="utf-8")
     print(destination)
     return 0
 

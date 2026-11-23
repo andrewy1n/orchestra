@@ -13,7 +13,7 @@ from dashboard.backend.server import service
 from dashboard.backend.server.app import create_app
 from dashboard.backend.snapshot import Snapshot
 from orchestra.canon.project import Project
-from orchestra.conductor.attention import LandingFact
+from orchestra.conductor.phases.progress.attention import LandingFact
 
 
 @dataclass

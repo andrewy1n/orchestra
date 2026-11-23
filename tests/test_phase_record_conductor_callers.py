@@ -11,10 +11,12 @@ from conductor_support import FakeStates
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor import close, gate, wave
-from orchestra.conductor.landing import LandingPlace, phase_place
-from orchestra.conductor.workflow import WorkflowRunError, step_stage
-from orchestra.score.phase import Phase
+from orchestra.conductor.landing import gate
+from orchestra.conductor.landing.landing import LandingPlace, phase_place
+from orchestra.conductor.phases.progress import close
+from orchestra.conductor.phases.workflow.workflow import WorkflowRunError, step_stage
+from orchestra.conductor.tasks import wave
+from orchestra.score.planning.phase import Phase
 
 PHASE = "ph"
 EFFORT = "ef"

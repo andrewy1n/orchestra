@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.phase import structured_phases
+from orchestra.score.planning.phase import structured_phases
 
 
 def _record(record_type: str, subject: str, payload: JsonObject, state: str, n: int) -> Record:

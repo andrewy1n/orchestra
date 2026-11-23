@@ -9,16 +9,15 @@ from typing import Literal, overload
 
 import pytest
 
-from orchestra.conductor.github_pr import (
-    GitHubCheck,
+from orchestra.conductor.landing.github_pr import (
     GitHubClient,
-    GitHubGh,
     GitHubPRError,
     GitHubPRResult,
     open_pull_request,
     wait_for_checks,
 )
-from orchestra.conductor.land import LandingCheck, dispatch_land
+from orchestra.conductor.landing.land import LandingCheck, dispatch_land
+from orchestra.tools.github import GitHubCheck, GitHubGh
 
 
 class FakeGitHub:

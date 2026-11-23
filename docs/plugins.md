@@ -20,7 +20,7 @@ acme-ci = "acme_orchestra.ci:EvidenceAdapter"
 acme-ideas = "acme_orchestra.ideas:Source"
 
 [project.entry-points."orchestra.plugin_api"]
-v1 = "acme_orchestra.verify:Technique"
+v2 = "acme_orchestra.verify:Technique"
 
 [project.entry-points."orchestra.plugin_config"]
 "acme-checks__<base64url-schema>" = "acme_orchestra.verify:Technique"
@@ -29,7 +29,7 @@ v1 = "acme_orchestra.verify:Technique"
 "acme-ideas__<base64url-schema>" = "acme_orchestra.ideas:Source"
 ```
 
-Declare one `plugin_config` entry for every plugin id in the distribution. Encode its JSON object schema as unpadded URL-safe base64 in the entry name after `<plugin-id>__`. Orchestra checks `properties`, `required`, and `additionalProperties` against the matching table in `orchestra.toml`. The entry-point value must reference a Python object. Orchestra reads the API version from the `v1` entry name and rejects missing or unsupported versions.
+Declare one `plugin_config` entry for every plugin id in the distribution. Encode its JSON object schema as unpadded URL-safe base64 in the entry name after `<plugin-id>__`. Orchestra checks `properties`, `required`, and `additionalProperties` against the matching table in `orchestra.toml`. The entry-point value must reference a Python object. Orchestra reads the API version from the `v2` entry name and rejects missing or unsupported versions.
 
 Generate the encoded config name with Python:
 
@@ -73,7 +73,7 @@ orchestra plugins list
 orchestra plugins list --scope tuner.verify --format json
 ```
 
-`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, `conductor.land`, or `conductor.merge_evidence`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `1`.
+`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, `conductor.land`, or `conductor.merge_evidence`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `2`.
 
 ## Idea-source plugins
 
@@ -117,8 +117,8 @@ Register a class that implements `VerificationTechnique` and a `run` method. The
 ```python
 from orchestra.canon.project_config import ProjectConfig
 from orchestra.canon.types import JsonObject
-from orchestra.tuner.plugins import PluginContext
-from orchestra.tuner.technique import TechniqueResult
+from orchestra.tuner.plugins.api import PluginContext
+from orchestra.tuner.plugins.technique import TechniqueResult
 
 
 class Technique:
@@ -240,7 +240,7 @@ The built-in GitHub adapter uses the authenticated `gh` CLI. `orchestra close` a
 Register a class that implements `LandAdapter.run(request)` and returns `LandingResult`:
 
 ```python
-from orchestra.conductor.land import LandRequest, LandingResult
+from orchestra.conductor.landing.land import LandRequest, LandingResult
 
 
 class Adapter:
@@ -278,7 +278,7 @@ Register a class in `orchestra.conductor.merge_evidence` that implements
 configuration. Return the PR head, required checks, and each result's
 state, checked revision, and run link when available. Use
 `EvidenceSnapshot.unresolved` when the provider cannot establish the head or
-required checks. See the [adapter types](../orchestra/conductor/merge_evidence.py).
+required checks. See the [adapter types](../orchestra/conductor/landing/merge_evidence.py).
 
 ```toml
 [merge_evidence]

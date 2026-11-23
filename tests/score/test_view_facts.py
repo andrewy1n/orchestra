@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.view_facts import (
+from orchestra.score.facts.view_facts import (
     CONSTRAINT_TYPE,
     EFFORT_TYPE,
     POSITION_TYPE,

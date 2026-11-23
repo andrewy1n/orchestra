@@ -4,8 +4,8 @@ from collections.abc import Mapping
 
 from orchestra.canon.project_config import ProjectConfig
 from orchestra.canon.types import JsonObject
-from orchestra.tuner.plugins import PluginContext
-from orchestra.tuner.technique import (
+from orchestra.tuner.plugins.api import PluginContext
+from orchestra.tuner.plugins.technique import (
     ReplayRequest,
     TechniqueResult,
     TestOutcome,

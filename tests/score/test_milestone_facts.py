@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.milestone import MilestoneFacts, milestone_facts, milestone_state
+from orchestra.score.planning.milestone import MilestoneFacts, milestone_facts, milestone_state
 
 
 def _milestone(subject: str, payload: JsonObject) -> Record:

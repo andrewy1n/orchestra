@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from orchestra.canon.types import Record
-from orchestra.tuner.oracle_red import (
+from orchestra.tuner.authoring.oracle_red import (
     _parse_failing_nodes,
     is_assertion_level_failure,
     is_assertion_level_red,

@@ -8,7 +8,10 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project_config import ProjectConfigError
 from orchestra.canon.workspace import Access, open_for_command
-from orchestra.conductor.phase_progress import PhaseProgressError, open_phase_progress
+from orchestra.conductor.phases.progress.phase_progress import (
+    PhaseProgressError,
+    open_phase_progress,
+)
 from orchestra.tools.command_kit import Command, CommandError
 from orchestra.views import render as views
 from orchestra.views.render import render_brief
