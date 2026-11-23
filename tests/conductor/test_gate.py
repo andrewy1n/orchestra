@@ -30,8 +30,7 @@ from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
-from orchestra.conductor.landing import landing
-from orchestra.conductor.phases.progress import gate
+from orchestra.conductor.landing import gate, landing
 
 OTHER_HEAD = "b" * 40
 

@@ -8,7 +8,8 @@ from test_wave_end import PHASE, _land, _world
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor.phases.progress import gate, phase_progress
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress import phase_progress
 from orchestra.conductor.tasks import land_task, wave
 
 EFFORT = "ef"

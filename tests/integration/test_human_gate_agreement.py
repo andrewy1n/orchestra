@@ -12,7 +12,7 @@ from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phases.progress import gate
+from orchestra.conductor.landing import gate
 from orchestra.views import render as views
 
 EFFORT = "alpha"

@@ -10,7 +10,8 @@ from phase_record_support import supersede_all, supersede_late
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor.phases.progress import close, gate
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress import close
 from orchestra.conductor.phases.workflow import workflow
 from orchestra.conductor.phases.workflow.workflow_review import (
     WorkflowReviewError,

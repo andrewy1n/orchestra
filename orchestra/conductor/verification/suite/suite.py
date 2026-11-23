@@ -941,3 +941,14 @@ def result_exit_code(result: SuiteResult) -> int:
     if result.result == "fail":
         return 1
     return 0
+
+
+def suite_refusal(project: Project, work: Path, phase: str, phase_head: str) -> str:
+    policy = load_suite_policy(work)
+    if not policy.run_locally:
+        return ""
+    resolved = Git(work).resolve(phase_head)
+    if resolved is None:
+        raise RuntimeError(f"cannot resolve {phase_head}")
+    check_runs = [row for row in project.list("tuner:check-run") if isinstance(row, dict)]  # pyright: ignore[reportUnnecessaryIsInstance]
+    return suite_ready_for_review(policy, check_runs, phase_slug=phase, phase_head=resolved)

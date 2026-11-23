@@ -8,6 +8,7 @@ from typing import Literal
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.landing.gate import format_missing, gate_terms_for, missing_terms
 from orchestra.conductor.landing.landing import (
     LandingProofError,
     LandingProofState,
@@ -16,7 +17,6 @@ from orchestra.conductor.landing.landing import (
     phase_place,
     proof_packet,
 )
-from orchestra.conductor.phases.progress.gate import format_missing, gate_terms_for, missing_terms
 from orchestra.conductor.verification.evidence.head_evidence import (
     EvidenceIndex,
     latest,

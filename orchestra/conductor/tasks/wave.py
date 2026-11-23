@@ -162,9 +162,8 @@ def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Rec
 def _runner_start(
     project: Project, place: LandingPlace, phase: str, item: Record, items: list[Record]
 ) -> RunnerOutcome:
-    from orchestra.conductor.tasks import land_task
+    from orchestra.conductor.tasks import land_task, verification
     from orchestra.conductor.tasks.close import task_close
-    from orchestra.conductor.verification import verification
 
     try:
         read_work_item(item)

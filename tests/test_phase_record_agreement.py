@@ -15,7 +15,7 @@ from dashboard.backend.snapshot import load_snapshot
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.workspace import Workspace
-from orchestra.conductor.landing import land
+from orchestra.conductor.landing import gate, land
 from orchestra.conductor.landing import landing as landing_module
 from orchestra.conductor.landing.landing import (
     Landing,
@@ -25,7 +25,7 @@ from orchestra.conductor.landing.landing import (
     phase_place,
     proof_packet,
 )
-from orchestra.conductor.phases.progress import close, gate, phase_progress
+from orchestra.conductor.phases.progress import close, phase_progress
 from orchestra.conductor.phases.progress.phase_progress import open_phase_progress
 from orchestra.conductor.phases.workflow import workflow
 from orchestra.conductor.phases.workflow.workflow import preview_run, run_status, start_run
