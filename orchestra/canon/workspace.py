@@ -86,6 +86,17 @@ class Workspace:
             raise StoreNotReady((self.root,)) from exc
 
 
+def resolve_for_command(
+    start: Path, access: Access, *, store: Path | None = None, refused_exit: int = 2
+) -> Workspace:
+    try:
+        workspace = Workspace.resolve(start, store, access)
+        workspace.open()
+    except StoreNotReady as error:
+        raise CommandError(not_ready_message(error, start), refused_exit) from error
+    return workspace
+
+
 def open_for_command(
     start: Path, access: Access, *, store: Path | None = None, refused_exit: int = 2
 ) -> Project:

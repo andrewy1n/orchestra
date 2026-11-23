@@ -6,7 +6,7 @@ import argparse
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.canon.workspace import Access, resolve_for_command
 from orchestra.conductor import land
 from orchestra.conductor.cli.options import store_path, work_dir
 from orchestra.conductor.github_pr import GitHubPRError, github_client
@@ -43,7 +43,7 @@ def _handle(args: argparse.Namespace) -> int:
     work = work_dir(args).resolve()
     try:
         client = github_client(work, args.remote)
-        workspace = Workspace.resolve(work, store_path(args), Access.WRITE)
+        workspace = resolve_for_command(work, Access.WRITE, store=store_path(args))
         result = land.land_phase(
             workspace,
             args.phase,
@@ -54,8 +54,6 @@ def _handle(args: argparse.Namespace) -> int:
             poll_interval_s=args.poll_interval,
             timeout_s=args.timeout,
         )
-    except StoreNotReady as exc:
-        raise CommandError(not_ready_message(exc, work)) from exc
     except land.LandGateError as exc:
         for line in exc.lines:
             fail(args, f"{args.phase}: {line}")

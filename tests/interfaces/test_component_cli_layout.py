@@ -7,6 +7,7 @@ import ast
 import importlib
 import importlib.util
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -493,3 +494,211 @@ def test_every_component_in_the_boundary_list_that_owns_verbs_has_a_cli_module()
         if component in owns_no_verbs:
             continue
         assert importlib.util.find_spec(f"orchestra.{component}.cli") is not None, component
+
+
+CLI_MODULE_FILES = (
+    *(f"orchestra/{component}/cli.py" for component in CLI_COMPONENTS if component != "conductor"),
+    *(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in sorted((REPO_ROOT / "orchestra/conductor/cli").glob("*.py"))
+    ),
+    "orchestra/views/status.py",
+    "orchestra/canon/store_commands.py",
+    "orchestra/tuner/verify_plugins.py",
+)
+CANON_PROGRAM = "orchestra/canon/cli.py"
+NAME_GUARD_FILES = tuple(path for path in CLI_MODULE_FILES if path != CANON_PROGRAM)
+STORE_NOT_READY_ALLOWED = {"orchestra/stage/hooks.py", CANON_PROGRAM}
+STORE_NOT_READY_FILES = tuple(
+    path for path in CLI_MODULE_FILES if path not in STORE_NOT_READY_ALLOWED
+)
+LEGACY_MODULE_NAMES = ("COMMANDS", "add_parsers", "PASSTHROUGH")
+
+
+def _is_command_ref(node: ast.expr) -> bool:
+    return (isinstance(node, ast.Attribute) and node.attr == "command") or (
+        isinstance(node, ast.Name) and node.id == "command"
+    )
+
+
+def _is_command_test(node: ast.expr) -> bool:
+    if not isinstance(node, ast.Compare) or not _is_command_ref(node.left):
+        return False
+    if not all(isinstance(op, (ast.Eq, ast.In)) for op in node.ops):
+        return False
+    return all(
+        isinstance(item, (ast.Constant, ast.Set, ast.Tuple, ast.List)) for item in node.comparators
+    )
+
+
+def _is_name_set(value: ast.expr | None) -> bool:
+    if isinstance(value, ast.Set):
+        return bool(value.elts) and all(isinstance(e, ast.Constant) for e in value.elts)
+    if (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id in {"frozenset", "set"}
+        and len(value.args) == 1
+    ):
+        return _is_name_set(value.args[0]) or (
+            isinstance(value.args[0], (ast.Tuple, ast.List))
+            and bool(value.args[0].elts)
+            and all(isinstance(e, ast.Constant) for e in value.args[0].elts)
+        )
+    return False
+
+
+def command_name_violations(source: str) -> list[str]:
+    tree = ast.parse(source)
+    found: list[str] = []
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_name_set(node.value):
+            found.append(f"command name set at line {node.lineno}")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and _is_command_test(node.test):
+            chained = len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If)
+            if chained and _is_command_test(node.orelse[0].test):  # type: ignore[attr-defined]
+                found.append(f"command dispatch chain at line {node.lineno}")
+        elif isinstance(node, ast.ClassDef):
+            declares_add_parser = any(
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and item.name == "add_parser"
+                for item in node.body
+            )
+            if node.name == "SubparserGroup" or declares_add_parser:
+                found.append(f"local subparser protocol {node.name} at line {node.lineno}")
+    return found
+
+
+def _catches_store_not_ready(handler: ast.ExceptHandler) -> bool:
+    def named(node: ast.expr) -> bool:
+        return (isinstance(node, ast.Name) and node.id == "StoreNotReady") or (
+            isinstance(node, ast.Attribute) and node.attr == "StoreNotReady"
+        )
+
+    caught = handler.type
+    if caught is None:
+        return False
+    if isinstance(caught, ast.Tuple):
+        return any(named(item) for item in caught.elts)
+    return named(caught)
+
+
+def store_not_ready_violations(source: str) -> list[str]:
+    return [
+        f"except StoreNotReady at line {node.lineno}"
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ExceptHandler) and _catches_store_not_ready(node)
+    ]
+
+
+def _real_violations(
+    files: tuple[str, ...], check: Callable[[str], list[str]]
+) -> dict[str, list[str]]:
+    found = {path: check((REPO_ROOT / path).read_text(encoding="utf-8")) for path in files}
+    return {path: lines for path, lines in found.items() if lines}
+
+
+def test_every_component_cli_module_exports_commands_and_no_legacy_names() -> None:
+    modules = [
+        importlib.import_module(f"orchestra.{component}.cli") for component in CLI_COMPONENTS
+    ]
+    modules.append(importlib.import_module(COMPONENT_STATUS_MODULE))
+    for module in modules:
+        assert callable(getattr(module, "commands", None)), module.__name__
+        tree = ast.parse(Path(module.__file__ or "").read_text(encoding="utf-8"))
+        top_level = {
+            target.id
+            for node in tree.body
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+            if isinstance(target, ast.Name)
+        } | {
+            node.name
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        for legacy in (*LEGACY_MODULE_NAMES, "run"):
+            assert legacy not in top_level, (module.__name__, legacy)
+            assert not hasattr(module, legacy), (module.__name__, legacy)
+
+
+def test_every_component_declares_each_command_name_exactly_once() -> None:
+    names: list[str] = []
+    for component in CLI_COMPONENTS:
+        names += [c.name for c in _commands(importlib.import_module(f"orchestra.{component}.cli"))]
+    names += [c.name for c in _commands(importlib.import_module(COMPONENT_STATUS_MODULE))]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    assert duplicated == []
+
+
+def test_name_guard_passes_on_the_real_component_cli_modules() -> None:
+    assert _real_violations(NAME_GUARD_FILES, command_name_violations) == {}
+
+
+def test_name_guard_flags_a_seeded_command_name_set() -> None:
+    seeded = 'VERBS = frozenset({"a", "b"})\nOTHER = {"x"}\n'
+    assert command_name_violations(seeded) == [
+        "command name set at line 1",
+        "command name set at line 2",
+    ]
+
+
+def test_name_guard_flags_a_seeded_dispatch_chain() -> None:
+    seeded = (
+        "def f(args):\n"
+        "    if args.command == 'a':\n        return 1\n"
+        "    elif args.command == 'b':\n        return 2\n"
+    )
+    assert command_name_violations(seeded) == ["command dispatch chain at line 2"]
+
+
+def test_name_guard_flags_a_seeded_local_subparser_protocol() -> None:
+    seeded = (
+        "from typing import Protocol\n"
+        "class SubparserGroup(Protocol):\n    def add_parser(self, name): ...\n"
+        "class Other(Protocol):\n    def add_parser(self, name): ...\n"
+    )
+    assert command_name_violations(seeded) == [
+        "local subparser protocol SubparserGroup at line 2",
+        "local subparser protocol Other at line 4",
+    ]
+
+
+def test_name_guard_ignores_a_single_command_check_and_plain_sets() -> None:
+    clean = (
+        "def f(args, names):\n    if args.command == 'a':\n        return 1\n    return 2\n"
+        "NAMES = {name for name in ()}\n"
+    )
+    assert command_name_violations(clean) == []
+
+
+def test_name_guard_flags_a_seeded_tmp_path_module(tmp_path: Path) -> None:
+    module = tmp_path / "cli.py"
+    module.write_text('VERBS = {"a"}\n', encoding="utf-8")
+    assert command_name_violations(module.read_text(encoding="utf-8")) != []
+
+
+def test_store_not_ready_guard_passes_on_the_real_component_cli_modules() -> None:
+    assert _real_violations(STORE_NOT_READY_FILES, store_not_ready_violations) == {}
+
+
+def test_store_not_ready_guard_flags_a_seeded_plain_except() -> None:
+    seeded = "try:\n    pass\nexcept StoreNotReady as exc:\n    raise\n"
+    assert store_not_ready_violations(seeded) == ["except StoreNotReady at line 3"]
+
+
+def test_store_not_ready_guard_flags_a_seeded_tuple_except() -> None:
+    seeded = "try:\n    pass\nexcept (ValueError, workspace.StoreNotReady):\n    raise\n"
+    assert store_not_ready_violations(seeded) == ["except StoreNotReady at line 3"]
+
+
+def test_store_not_ready_guard_ignores_other_handlers() -> None:
+    seeded = "try:\n    pass\nexcept (ValueError, KeyError):\n    raise\n"
+    assert store_not_ready_violations(seeded) == []
+
+
+def test_store_not_ready_guard_exempts_hooks_and_the_canon_program() -> None:
+    assert STORE_NOT_READY_ALLOWED.isdisjoint(STORE_NOT_READY_FILES)
+    for path in STORE_NOT_READY_ALLOWED:
+        assert (REPO_ROOT / path).is_file(), path

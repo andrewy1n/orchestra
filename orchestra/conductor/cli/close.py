@@ -8,7 +8,7 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.types import JsonObject
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.canon.workspace import Access, resolve_for_command
 from orchestra.conductor import close, close_batch
 from orchestra.conductor.cli.options import open_project, store_path, work_dir
 from orchestra.conductor.github_pr import GitHubPRError, github_client
@@ -108,12 +108,9 @@ def _close_batch(args: argparse.Namespace) -> int:
     argv = ["--input", args.input, "--out", args.out]
     if args.cwd is not None:
         argv.extend(["--cwd", args.cwd])
-    try:
-        return close_batch.main(
-            argv, workspace=lambda: Workspace.resolve(start, store_path(args), Access.READ)
-        )
-    except StoreNotReady as exc:
-        raise CommandError(not_ready_message(exc, start)) from exc
+    return close_batch.main(
+        argv, workspace=lambda: resolve_for_command(start, Access.READ, store=store_path(args))
+    )
 
 
 def _result_json(result: close.CloseResult) -> JsonObject:
