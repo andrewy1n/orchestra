@@ -6,7 +6,13 @@ tasks with parallel subagents, verify with TDD, checks, or findings.
 Install this repo as a plugin. It is not a template you copy into
 other projects.
 
+[Concepts](CONCEPTS.md) explains how Orchestra organizes work and what its status
+terms mean.
+
 ## Components
+
+See [Architecture](ARCHITECTURE.md) for the module map and phase walkthrough, and
+[Design](DESIGN.md) for the reasoning behind the structure.
 
 | Package | Namespace | Role |
 |---|---|---|
