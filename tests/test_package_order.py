@@ -46,7 +46,7 @@ def test_scan_accepts_a_downward_import(tmp_path: Path):
     assert package_order_violations(tmp_path / "orchestra") == []
 
 
-def test_scan_accepts_a_same_rank_sibling_import_only_within_the_package(tmp_path: Path):
+def test_scan_rejects_an_import_between_same_rank_sibling_packages(tmp_path: Path):
     _write(
         tmp_path,
         "verification/suite/a.py",
@@ -75,4 +75,33 @@ def test_tasks_close_may_not_import_redispatch(tmp_path: Path):
     assert package_order_violations(tmp_path / "orchestra") == [
         "orchestra/conductor/tasks/close/b.py:1: "
         "tasks/close imports orchestra.conductor.tasks.redispatch"
+    ]
+
+
+def test_scan_rejects_an_upward_import_spelled_from_the_conductor_root(tmp_path: Path):
+    _write(tmp_path, "verification/evidence/leak.py", "from orchestra.conductor import landing\n")
+    assert package_order_violations(tmp_path / "orchestra") == [
+        "orchestra/conductor/verification/evidence/leak.py:1: "
+        "verification/evidence imports orchestra.conductor.landing"
+    ]
+
+
+def test_scan_rejects_an_upward_import_spelled_from_a_package_name(tmp_path: Path):
+    _write(
+        tmp_path,
+        "verification/evidence/leak.py",
+        "from orchestra.conductor.verification import review\n",
+    )
+    assert package_order_violations(tmp_path / "orchestra") == [
+        "orchestra/conductor/verification/evidence/leak.py:1: "
+        "verification/evidence imports orchestra.conductor.verification.review"
+    ]
+
+
+def test_scan_rejects_a_relative_import_under_the_conductor(tmp_path: Path):
+    _write(tmp_path, "landing/a.py", "from . import b\n")
+    _write(tmp_path, "tasks/c.py", "from ..landing import x\n")
+    assert package_order_violations(tmp_path / "orchestra") == [
+        "orchestra/conductor/landing/a.py:1: relative import",
+        "orchestra/conductor/tasks/c.py:1: relative import",
     ]

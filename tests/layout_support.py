@@ -1,5 +1,6 @@
 import ast
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -78,10 +79,7 @@ def _scan_files(root: Path) -> list[Path]:
 
 
 def _py_imports(source: str) -> list[tuple[int, str]]:
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return []
+    tree = ast.parse(source)
     found: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -120,10 +118,55 @@ def old_path_imports(root: Path, moved: dict[str, list[str]]) -> list[str]:
     hits: list[str] = []
     for path in _scan_files(root):
         source = path.read_text(encoding="utf-8", errors="replace")
-        imports = _py_imports(source) if path.suffix == ".py" else _md_imports(source)
+        try:
+            imports = _py_imports(source) if path.suffix == ".py" else _md_imports(source)
+        except SyntaxError as error:
+            hits.append(f"{path.relative_to(root).as_posix()}:{error.lineno or 1}: does not parse")
+            continue
         for number, dotted in imports:
             for target in old:
                 if dotted == target or dotted.startswith(target + "."):
                     hits.append(f"{path.relative_to(root).as_posix()}:{number}: {target}")
                     break
     return sorted(set(hits))
+
+
+ENTRY_POINT_GROUPS = frozenset({"orchestra.conductor.land", "orchestra.conductor.merge_evidence"})
+TEXT_SCAN_EXCLUDED = ("evals/seeded_defects/cases/", GUARD_TEST)
+
+
+def _tracked_text(root: Path) -> list[tuple[str, str]]:
+    listing = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=root, check=True, capture_output=True
+    ).stdout
+    files = []
+    for name in sorted(listing.decode().split("\0")):
+        if not name or any(name.startswith(prefix) for prefix in TEXT_SCAN_EXCLUDED):
+            continue
+        path = root / name
+        if not path.is_file():
+            continue
+        data = path.read_bytes()
+        if b"\0" in data:
+            continue
+        files.append((name, data.decode("utf-8", errors="replace")))
+    return files
+
+
+def old_path_text_hits(root: Path, moved: dict[str, list[str]]) -> list[str]:
+    patterns = []
+    for component, names in moved.items():
+        for name in names:
+            dotted = f"orchestra.{component}.{name}"
+            if dotted in ENTRY_POINT_GROUPS:
+                continue
+            slash = f"orchestra/{component}/{name}.py"
+            patterns.append((dotted, re.compile(re.escape(dotted) + r"(?!\w)")))
+            patterns.append((slash, re.compile(re.escape(slash))))
+    hits: set[str] = set()
+    for name, text in _tracked_text(root):
+        for number, line in enumerate(text.splitlines(), 1):
+            for target, pattern in patterns:
+                if pattern.search(line):
+                    hits.add(f"{name}:{number}: {target}")
+    return sorted(hits)

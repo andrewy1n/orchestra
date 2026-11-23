@@ -67,3 +67,7 @@ def scan_package(package: Path, owners: dict[str, set[str]]) -> set[str]:
                 parts = parts[:-1]
             found |= foreign_reads(path.read_text(), component, ".".join(parts), owners)
     return found
+
+
+def load_allowlist(path: Path) -> list[str]:
+    return [line for line in path.read_text().splitlines() if line]

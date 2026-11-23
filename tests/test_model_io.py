@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests.model_io_support import PACKAGE, io_violations, undeclared_packages
 
 MODEL = "model"
@@ -103,3 +105,47 @@ def test_module_declaration_overrides_package(tmp_path: Path):
     _write(tmp_path, "score/other.py", "open('x')\n")
     found = io_violations(tmp_path, {"score": MODEL, "score/cli.py": OPERATION})
     assert found == ["score/other.py:1: calls open()"]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "p.exists()",
+        "p.is_file()",
+        "p.is_dir()",
+        "p.stat()",
+        "p.resolve()",
+        "p.samefile(q)",
+        "Path.cwd()",
+        "Path.home()",
+        "os.path.exists(p)",
+        "os.path.isfile(p)",
+        "os.path.getsize(p)",
+        "os.path.realpath(p)",
+        "from os import listdir",
+        "from os.path import exists",
+        "import io",
+        "import tempfile",
+        "import sqlite3",
+        "import glob",
+        "import fcntl",
+        "from io import StringIO",
+        "from tempfile import mkdtemp",
+    ],
+)
+def test_model_package_io_forms_are_reported(tmp_path: Path, source: str):
+    _write(tmp_path, "score/leak.py", f"import os\nfrom pathlib import Path\n{source}\n")
+    found = io_violations(tmp_path, {"score": MODEL})
+    assert [v.split(": ", 1)[0] for v in found] == ["score/leak.py:3"]
+
+
+def test_pure_os_path_string_functions_still_pass(tmp_path: Path):
+    _write(tmp_path, "score/pure.py", "import os\nx = os.path.join('a', os.path.basename('b'))\n")
+    assert io_violations(tmp_path, {"score": MODEL}) == []
+
+
+def test_store_resolve_with_arguments_is_not_path_resolve(tmp_path: Path):
+    _write(
+        tmp_path, "score/pure.py", "def f(project):\n    return project.resolve('score:run', 's')\n"
+    )
+    assert io_violations(tmp_path, {"score": MODEL}) == []

@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests.foreign_payload_support import (
     foreign_reads,
+    load_allowlist,
     owner_map,
     scan_package,
 )
@@ -22,9 +25,7 @@ ALLOWLIST = Path(__file__).with_name("foreign_payload_allowlist.txt")
 
 
 def _allowlist() -> list[str]:
-    if not ALLOWLIST.exists():
-        return []
-    return [line for line in ALLOWLIST.read_text().splitlines() if line]
+    return load_allowlist(ALLOWLIST)
 
 
 def test_foreign_payload_reads_match_frozen_allowlist():
@@ -66,3 +67,8 @@ def test_indirect_reads_are_not_followed():
     owners = {"verify_command": {"score"}}
     source = "def run(payload):\n    key = 'verify_command'\n    return payload[key]\n"
     assert foreign_reads(source, "tuner", "orchestra.tuner.seed", owners) == set()
+
+
+def test_missing_allowlist_raises(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        load_allowlist(tmp_path / "absent.txt")
