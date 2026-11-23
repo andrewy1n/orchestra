@@ -54,5 +54,5 @@ outcome. The GitHub adapter handles the provider interaction. The landing tests
 exercise the operation with a supplied client and check that a failed gate stops
 before dispatch. [Landing operation and adapter contract](orchestra/conductor/land.py) · [Landing tests](tests/conductor/test_land_sequence.py)
 
-When a change affects a boundary, a persisted contract, or an example on either
-page, update the relevant passage in the same PR.
+When a change affects a boundary, a persisted contract, or an example in Concepts,
+Architecture, or Design, update the relevant passage in the same PR.

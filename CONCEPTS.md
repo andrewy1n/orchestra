@@ -63,10 +63,11 @@ means and what should be revisited, such as the implementation or specification.
 
 A work-item can be **done** while the phase is still open. Phase verification
 checks the combined work and gathers the configured evidence, such as suite
-results and a review. The **phase gate** checks whether landing can proceed. With
-GitHub landing, Orchestra opens or updates the PR. A human merges it, and close
-then marks the phase `done`.
-[Phase progress](orchestra/conductor/phase_progress.py)
+results and a review. The **phase gate** checks whether landing can proceed. GitHub
+landing publishes the phase commit and opens or updates its PR. By default, it
+also waits for checks on that commit. A configured merge-evidence adapter evaluates
+CI separately. A human merges the PR, and close then marks the phase `done`.
+[Phase progress](orchestra/conductor/phase_progress.py) · [GitHub landing](orchestra/conductor/briefs/sections/land-github-pr.md)
 
 ## Glossary
 
@@ -79,7 +80,7 @@ then marks the phase `done`.
 | **Effort** | A continuing objective that can span several phases. |
 | **Focus** | The effort the current chat is working on. |
 | **Idea** | A proposal that can be organized in the backlog or promoted into work. |
-| **Landed** | The landing operation succeeded. With the GitHub adapter, a PR has been opened or updated. |
+| **Landed** | The landing operation reported success. With GitHub, the phase commit was published to the PR. When landing evaluates CI, success also requires acceptable check results. |
 | **Milestone** | An optional grouping of phases within an effort around one time-bounded outcome. |
 | **Phase** | A scoped outcome within an effort. Its plan connects requirements to work-items and acceptances. |
 | **Placement** | The association between an effort and its product area. |
