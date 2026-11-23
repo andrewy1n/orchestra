@@ -34,7 +34,7 @@ Phase
 A light phase keeps the requirements and approach in the phase record. A full
 phase gives the specification and design their own records. Both have spec and
 design review steps. A one-off that fits in one chat can take the incidental path
-with less planning. [Kinds](README.md#kinds) · [Phase review artifacts](orchestra/score/workflow_reviews.py)
+with less planning. [Kinds](README.md#kinds) · [Phase review artifacts](orchestra/score/workflow/workflow_reviews.py)
 
 ## How verification works
 
@@ -57,7 +57,7 @@ looks for applicable results for its acceptances and the code revision being
 evaluated. That is why a requirement can be **unverified** even when a previous
 revision passed. For structured work, an **assessment** records what the evidence
 means and what should be revisited, such as the implementation or specification.
-[Requirement status](orchestra/conductor/requirements.py) · [Lifecycle](README.md#lifecycle)
+[Requirement status](orchestra/conductor/verification/requirements.py) · [Lifecycle](README.md#lifecycle)
 
 ## When work is done
 
@@ -67,7 +67,7 @@ results and a review. The **phase gate** checks whether landing can proceed. Git
 landing publishes the phase commit and opens or updates its PR. By default, it
 also waits for checks on that commit. A configured merge-evidence adapter evaluates
 CI separately. A human merges the PR, and close then marks the phase `done`.
-[Phase progress](orchestra/conductor/phase_progress.py) · [GitHub landing](orchestra/conductor/briefs/sections/land-github-pr.md)
+[Phase progress](orchestra/conductor/phases/progress/phase_progress.py) · [GitHub landing](orchestra/conductor/briefs/sections/land-github-pr.md)
 
 ## Glossary
 
