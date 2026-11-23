@@ -23,6 +23,7 @@ def test_ci_failure_creates_repair_work_item() -> None:
     section = _repair_loop()
 
     assert "`orchestra land` exits 1 with a failed check" in section
+    assert "Repair a failed required check from `orchestra merge-evidence`" in section
     assert "Create a repair work-item" in section
     assert "each failing check passes" in section
 
@@ -50,7 +51,10 @@ def test_repair_pushes_via_land_rerun() -> None:
 
 
 def test_land_rereads_ci() -> None:
-    assert "reads CI again" in _repair_loop()
+    section = _repair_loop()
+
+    assert "`orchestra merge-evidence --phase <phase-slug>` again for the new head" in section
+    assert "Otherwise the landing adapter reads CI again" in section
 
 
 def test_repairs_follow_retry_budgets() -> None:

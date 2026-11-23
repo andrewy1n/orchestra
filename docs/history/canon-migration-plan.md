@@ -1,6 +1,7 @@
 # canon migration plan
 
-The target format is in `design/schema-modules.md`. Read it first. This plan
+This is a historical plan. Its companion schema design is available in Git
+history. This plan
 says who builds what, in which order, and how each part is proven.
 
 ## Decisions

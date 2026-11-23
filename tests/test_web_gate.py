@@ -11,7 +11,7 @@ UI = ROOT / WEB_DIR
 NPM = shutil.which("npm")
 needs_npm = pytest.mark.skipif(NPM is None, reason="npm is not on PATH")
 EXACT_VERSION = re.compile(r"^\d+\.\d+\.\d+$")
-AGENTS = ROOT / "AGENTS.md"
+AGENTS = UI / "AGENTS.md"
 
 
 def _ui_copy(tmp_path: Path) -> Path:

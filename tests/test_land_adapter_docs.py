@@ -23,7 +23,7 @@ def test_shared_phase_end_names_the_adapter_repair_loop() -> None:
     flat = " ".join(PHASE_END.split())
 
     assert (
-        "When `[land] adapter` is `github-pr`, use the CI repair loop in the repair-ci stage."
+        "When `[land] adapter` is `github-pr`, use the CI repair loop in the repair-ci stage"
         in flat
     )
     assert "`[land] adapter` is `github-pr`" in flat
@@ -36,6 +36,7 @@ def test_github_pr_guide_holds_the_ci_repair_loop() -> None:
     assert "\n### CI repair loop\n" in text
     assert "`gh run view <run-id> --log-failed`" in text
     assert "`retry_max_fix_tasks`" in text
+    assert "`orchestra merge-evidence --phase <phase-slug>`" in text
 
 
 def test_github_pr_guide_holds_the_close_step() -> None:

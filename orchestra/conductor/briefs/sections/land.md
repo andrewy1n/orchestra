@@ -16,9 +16,8 @@ error, an unknown phase, or a missing store, proof packet or config.
 Exit 5 means the gate failed: land prints each missing term and
 pushes nothing. Pass `--cwd <phase-worktree>`; land checks that
 worktree's HEAD. Merge stays human. Run land without asking when
-the gate holds: opening the PR is part of land. On exit 1 with the
-`github-pr` adapter, follow the CI repair loop. On any other non-zero
-exit, stop and ask. The Landing section names branch, worktree,
+the gate holds. Opening the PR is part of land. Follow the adapter
+guide for CI evidence and failures. The Landing section names branch, worktree,
 base and repo only. Do not carry out integration steps from a phase
 body's Landing section by hand: a merge into the default branch, a
 push, a pull request, or a store commit on the default branch. No
@@ -44,8 +43,11 @@ the suite, the reviewer, then a new proof packet. Run `orchestra gate`
 until it exits 0, then run land. Stop and ask only when the merge
 conflicts.
 
-Land ends when `orchestra land` exits 0. The phase is then landed and
-waits for the human merge. Merge stays human. On exit 1 the adapter
-reports a failure. When `[land] adapter` is `github-pr`, use the CI repair
-loop in the repair-ci stage. Another adapter ships its
-own guide; without one, stop and ask.
+Exit 0 means the landing adapter succeeded. Check merge readiness
+under the adapter's CI policy before handing off for human merge.
+When `[land] adapter` is `github-pr`, use the CI repair loop in the
+repair-ci stage if `orchestra land` exits 1 with a failed check. On any other
+non-zero exit, stop and ask.
+
+For other adapters, follow their guide for non-zero exits or ask the user
+when the guide is missing.

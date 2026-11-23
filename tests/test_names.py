@@ -11,7 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 EXEMPT_PREFIXES = (
     ".canon/",
     "docs/history/",
-    "docs/plans/monorepo-plan.md",
     "tests/test_names.py",
     "tests/test_orchestra_commands.py",
 )
