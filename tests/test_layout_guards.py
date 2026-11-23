@@ -50,7 +50,7 @@ def test_old_path_scan_skips_worktree_directories(tmp_path):
     assert old_path_imports(tmp_path, {"score": ["phase"]}) == []
 
 
-def test_composer_holds_only_its_flat_modules():
+def test_composer_flat_holds_only_its_modules():
     root = ROOT / "orchestra" / "composer"
     entries = {path.stem for path in root.iterdir() if path.name != "__pycache__"}
     assert entries == {
