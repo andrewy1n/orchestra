@@ -10,8 +10,8 @@ import pytest
 
 from evals.seeded_defects.__main__ import main
 from evals.seeded_defects.cases import Case, CaseSetError, load_case_set
-from orchestra.conductor.github_pr import GitHubGh
 from orchestra.tools import Version
+from orchestra.tools.github import GitHubGh
 from orchestra.tools.testing import ScriptedRun
 
 if sys.version_info >= (3, 11):

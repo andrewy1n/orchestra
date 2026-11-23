@@ -4,9 +4,9 @@ import pytest
 
 from orchestra.canon.types import JsonValue
 from orchestra.conductor.github_evidence import GitHubActionsAdapter
-from orchestra.conductor.github_pr import GitHubGh
 from orchestra.conductor.merge_evidence import EvidenceRequest
 from orchestra.tools import ToolError, ToolTimeoutError
+from orchestra.tools.github import GitHubGh
 
 HEAD = "a" * 40
 NEXT = "b" * 40

@@ -4,7 +4,6 @@ import re
 from dataclasses import dataclass
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.conductor.github_pr import GitHubGh
 from orchestra.conductor.merge_evidence import (
     CheckEvidence,
     CheckState,
@@ -14,6 +13,7 @@ from orchestra.conductor.merge_evidence import (
     RequiredCheck,
 )
 from orchestra.tools import ToolError, ToolTimeoutError
+from orchestra.tools.github import GitHubGh
 from orchestra.tools.github_urls import branch_rules_endpoint, pull_request_coordinates
 
 _SHA = re.compile(r"[0-9a-f]{40}")

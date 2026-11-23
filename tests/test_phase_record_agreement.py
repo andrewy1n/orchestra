@@ -17,7 +17,6 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.workspace import Workspace
 from orchestra.conductor import close, gate, land, phase_progress, wave, workflow
 from orchestra.conductor import landing as landing_module
-from orchestra.conductor.github_pr import GitHubCheck
 from orchestra.conductor.landing import (
     Landing,
     LandingPlace,
@@ -32,6 +31,7 @@ from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
 from orchestra.score import workflow_selection
 from orchestra.score.phase import Phase, current_phase_model, read_phase
+from orchestra.tools.github import GitHubCheck
 from orchestra.views import render as views
 
 EFFORT = "ef"

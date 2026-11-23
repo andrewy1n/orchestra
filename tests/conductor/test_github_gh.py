@@ -8,9 +8,9 @@ from typing import Literal, overload
 
 import pytest
 
-import orchestra.conductor.github_pr as github_pr
-from orchestra.conductor.github_pr import GitHubCheck, GitHubGh, GitHubPRError
+import orchestra.tools.github as github_tool
 from orchestra.tools import CliTool, Git, ToolError, Version
+from orchestra.tools.github import GitHubCheck, GitHubError, GitHubGh
 from orchestra.tools.testing import scripted
 
 URL = "https://github.com/acme/widgets/pull/7"
@@ -140,7 +140,7 @@ def test_no_repository_flag_when_unset(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("repository", ["widgets", "a/b/c", "/b", "a/", "", 3])
 def test_invalid_repository_raises(tmp_path: Path, repository: str | int) -> None:
-    with pytest.raises(GitHubPRError, match="owner/repository"):
+    with pytest.raises(GitHubError, match="owner/repository"):
         GitHubGh(tmp_path, adapter_config={"repository": repository})
 
 
@@ -240,7 +240,7 @@ def test_bucket_cancel_maps_to_cancelled(tmp_path: Path) -> None:
 
 
 def test_unknown_bucket_raises(tmp_path: Path) -> None:
-    with pytest.raises(GitHubPRError, match="bucket"):
+    with pytest.raises(GitHubError, match="bucket"):
         _one(tmp_path, "weird")
 
 
@@ -250,7 +250,7 @@ def test_unknown_bucket_raises(tmp_path: Path) -> None:
 )
 def test_non_list_output_raises(tmp_path: Path, output: str) -> None:
     run = scripted(GitHubGh, {CHECKS_ARGV: output})
-    with pytest.raises(GitHubPRError):
+    with pytest.raises(GitHubError):
         GitHubGh(tmp_path, run=run).checks(7)
 
 
@@ -283,7 +283,7 @@ def test_push_branch_runs_git_push_through_git_client(
 ) -> None:
     push = ("git", "push", "--set-upstream", "origin", "branch")
     run = scripted(Git, {push: ""})
-    monkeypatch.setattr(github_pr, "Git", lambda root: Git(root, run=run))
+    monkeypatch.setattr(github_tool, "Git", lambda root: Git(root, run=run))
     gh_run = scripted(GitHubGh, {})
     GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
     assert run.calls == [("git", "--version"), push]
@@ -295,9 +295,9 @@ def test_push_branch_reports_timeout_cause(tmp_path: Path, monkeypatch: pytest.M
             return subprocess.CompletedProcess(list(argv), 0, "git version 2.40.0\n", "")
         raise subprocess.TimeoutExpired(list(argv), 5.0)
 
-    monkeypatch.setattr(github_pr, "Git", lambda root: Git(root, run=timing_out))  # pyright: ignore[reportArgumentType]
+    monkeypatch.setattr(github_tool, "Git", lambda root: Git(root, run=timing_out))  # pyright: ignore[reportArgumentType]
     gh_run = scripted(GitHubGh, {})
-    with pytest.raises(GitHubPRError) as info:
+    with pytest.raises(GitHubError) as info:
         GitHubGh(tmp_path, run=gh_run).push_branch("origin", "branch")
     assert "timed out" in str(info.value)
     assert "not found" not in str(info.value)
@@ -331,5 +331,5 @@ def test_pull_request_state_passes_the_repository_flag(tmp_path: Path) -> None:
 def test_pull_request_state_rejects_an_unexpected_shape(tmp_path: Path) -> None:
     run = scripted(GitHubGh, {PR_STATE_ARGV: json.dumps({"state": "MERGED"})})
 
-    with pytest.raises(GitHubPRError, match="unexpected shape"):
+    with pytest.raises(GitHubError, match="unexpected shape"):
         GitHubGh(tmp_path, run=run).pull_request_state(7)

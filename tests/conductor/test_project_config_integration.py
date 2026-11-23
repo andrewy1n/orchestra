@@ -10,7 +10,7 @@ import pytest
 import orchestra.cli as cli
 from orchestra.canon.project_config import DEFAULT_RUNNER, load_project_config_at_revision
 from orchestra.conductor import land
-from orchestra.conductor.github_pr import GitHubCheck
+from orchestra.tools.github import GitHubCheck
 from orchestra.tuner import plugins
 
 
