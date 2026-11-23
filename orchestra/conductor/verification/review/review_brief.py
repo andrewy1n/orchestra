@@ -27,8 +27,16 @@ def load_review_records(project: Project) -> list[Record]:
 
 
 def build_review_brief(
-    project: Project, work: Path, *, base: str, phase_head: str, phase: str | None
+    project: Project,
+    work: Path,
+    *,
+    base: str,
+    phase_head: str,
+    phase: str | None,
+    suite_refusal: str,
 ) -> str:
+    if suite_refusal:
+        raise RuntimeError(suite_refusal)
     records = load_review_records(project)
     phase_diff = reviewer.git_phase_diff(work, base=base, phase_head=phase_head)
     return reviewer.build_reviewer_brief(

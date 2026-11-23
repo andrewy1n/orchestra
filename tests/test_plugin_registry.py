@@ -9,7 +9,7 @@ import orchestra.canon.extensions as extensions
 
 def _entry_point(name: str, target: str, distribution: str) -> SimpleNamespace:
     metadata_entries = (
-        SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
         SimpleNamespace(name=name, value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
     )
     return SimpleNamespace(
@@ -123,7 +123,9 @@ def test_resolve_requires_an_api_version_marker(monkeypatch: pytest.MonkeyPatch)
     )
     _install_entries(monkeypatch, {"orchestra.tuner.verify": (plugin,)})
 
-    with pytest.raises(extensions.PluginCatalogError, match=r"must declare orchestra\.plugin_api"):
+    with pytest.raises(
+        extensions.PluginCatalogError, match=r"must declare a orchestra\.plugin_api entry"
+    ):
         extensions.resolve_plugin("tuner.verify", "plugin")
 
 
@@ -132,7 +134,7 @@ def test_plugin_config_shape_checks_required_fields_and_types(
 ) -> None:
     plugin = _entry_point("plugin", "plugin:Plugin", "plugin")
     plugin.dist.entry_points = (
-        SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
         SimpleNamespace(
             name="plugin",
             value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',

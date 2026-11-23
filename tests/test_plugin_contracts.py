@@ -112,7 +112,7 @@ def test_selected_third_party_technique_uses_the_shared_result(
             metadata={"Name": "external-plugin"},
             version="2.0",
             entry_points=(
-                SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
                 SimpleNamespace(
                     name="external",
                     value='{"type":"object","properties":{"mode":{"type":"string"}},"required":["mode"],"additionalProperties":false}',
@@ -170,7 +170,7 @@ def test_selected_stage_only_technique_cannot_replay(
             metadata={"Name": "stage-only-plugin"},
             version="1",
             entry_points=(
-                SimpleNamespace(name="version", value="2", group=extensions.PLUGIN_API_GROUP),
+                SimpleNamespace(name="v2", value="module:obj", group=extensions.PLUGIN_API_GROUP),
                 SimpleNamespace(
                     name="stage-only", value="{}", group=extensions.PLUGIN_CONFIG_GROUP
                 ),

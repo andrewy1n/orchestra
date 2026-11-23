@@ -73,7 +73,7 @@ orchestra plugins list
 orchestra plugins list --scope tuner.verify --format json
 ```
 
-`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, `conductor.land`, or `conductor.merge_evidence`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `1`.
+`list_plugins(scope)` filters by `composer.ideas`, `tuner.verify`, `conductor.land`, or `conductor.merge_evidence`. `resolve_plugin(scope, plugin_id)` loads only the selected entry point. Orchestra rejects duplicate ids in one scope and API versions other than `2`.
 
 ## Idea-source plugins
 

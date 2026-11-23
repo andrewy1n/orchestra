@@ -10,8 +10,8 @@ from orchestra.canon.index import RecordIndex
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.verification.check import RUNNER
-from orchestra.conductor.verification.evidence.oracle_freeze import parse_freeze
 from orchestra.score.lookups import current_phase, owning_work_item, record_order
+from orchestra.score.planning.oracle_policy import parse_freeze
 from orchestra.tuner.authoring.oracle_red import is_assertion_level_red
 from orchestra.tuner.plugins.manifest import (
     ManifestError,

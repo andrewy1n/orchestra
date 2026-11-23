@@ -11,8 +11,8 @@ from typing import Protocol
 
 from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.landing.landing import pull_request_body
-from orchestra.tools import Git, ToolError, ToolNotFoundError
-from orchestra.tools.github import GitHubCheck, GitHubError, GitHubGh
+from orchestra.tools import Git, ToolError
+from orchestra.tools.github import GitHubCheck, GitHubError, GitHubGh, git_error_message
 
 
 @dataclass(frozen=True)
@@ -77,7 +77,7 @@ def open_pull_request(
         head_sha = git.head()
         dirty = git.status_porcelain()
     except ToolError as error:
-        raise GitHubPRError(_git_error_message(error)) from error
+        raise GitHubPRError(git_error_message(error)) from error
     if dirty:
         raise GitHubPRError("the phase branch must be clean before opening a pull request")
 
@@ -167,9 +167,3 @@ def _tool_error_message(error: ToolError) -> str:
 def _final_result(checks: Sequence[GitHubCheck]) -> str:
     failed = any(check.conclusion not in ("success", "neutral", "skipped") for check in checks)
     return "fail" if failed else "success"
-
-
-def _git_error_message(error: ToolError) -> str:
-    if isinstance(error, ToolNotFoundError):
-        return "git executable not found"
-    return error.stderr.strip() or str(error)

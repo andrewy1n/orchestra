@@ -2,7 +2,7 @@ from tests.layout_support import ROOT, layout_problems, parse_map
 
 VERIFICATION = parse_map(
     {
-        "verification.evidence": "head_evidence revision oracle_freeze acceptance_amendment evidence",
+        "verification.evidence": "head_evidence revision acceptance_amendment evidence",
         "verification": "check policy requirements evidence_recovery",
         "verification.suite": "suite suite_label suite_worker",
         "verification.review": "reviewer review_technique review_brief",

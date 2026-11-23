@@ -162,7 +162,7 @@ def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Rec
 def _runner_start(
     project: Project, place: LandingPlace, phase: str, item: Record, items: list[Record]
 ) -> RunnerOutcome:
-    from orchestra.conductor.tasks import land_task, verification
+    from orchestra.conductor.tasks import land_task, verification_run
     from orchestra.conductor.tasks.close import task_close
 
     try:
@@ -223,7 +223,7 @@ def _runner_start(
     landed = land_task.LandedTask(
         item["subject"], phase, "", revision, report["id"], (), "pass", "pass"
     )
-    run = verification.run_closing_checks(project, landed)
+    run = verification_run.run_closing_checks(project, landed)
     closure = task_close.close(project, landed, run.verified, verification=run)
     checks = tuple(
         {

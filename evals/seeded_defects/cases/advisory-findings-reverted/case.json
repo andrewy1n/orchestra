@@ -3,7 +3,7 @@
   "revision": "ed8eb0a1efabb6fb5ee2ab886fef5b481b752d24",
   "kind": "synthetic-defect",
   "expected_files": [
-    "orchestra/conductor/verification/review/reviewer.py"
+    "orchestra/conductor/reviewer.py"
   ],
   "expected_requirement_ids": [],
   "diff_bytes": 29261,

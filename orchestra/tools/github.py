@@ -29,7 +29,7 @@ class GitHubCheck:
     conclusion: str | None
 
 
-def _git_error_message(error: ToolError) -> str:
+def git_error_message(error: ToolError) -> str:
     if isinstance(error, ToolNotFoundError):
         return "git executable not found"
     return error.stderr.strip() or str(error)
@@ -65,7 +65,7 @@ class GitHubGh(CliTool):
         if repository is not None and (
             not isinstance(repository, str) or not _REPOSITORY.fullmatch(repository)
         ):
-            raise GitHubError("land.config.repository must use owner/repository format")
+            raise GitHubError("repository must use owner/repository format")
         self._repository: str | None = repository
 
     def push_branch(self, remote: str, branch: str) -> None:
@@ -73,9 +73,7 @@ class GitHubGh(CliTool):
         try:
             Git(self.root).push(remote, branch)
         except ToolError as error:
-            raise GitHubError(
-                _git_error_message(error), error.argv, error.returncode, ""
-            ) from error
+            raise GitHubError(git_error_message(error), error.argv, error.returncode, "") from error
 
     def _repository_flags(self) -> list[str]:
         return ["-R", self._repository] if self._repository else []

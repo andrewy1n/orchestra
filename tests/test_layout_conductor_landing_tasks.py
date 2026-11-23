@@ -3,7 +3,7 @@ from tests.layout_support import ROOT, layout_problems, parse_map
 SLICE = parse_map(
     {
         "landing": "landing gate land record_scan github_pr github_evidence merge_evidence",
-        "tasks": "wave land_task task_landing task_detail assignment execution_cost verification",
+        "tasks": "wave land_task task_landing task_detail assignment execution_cost verification_run",
         "tasks.close": "task_close close_batch",
         "tasks.redispatch": "task_redispatch redispatch_facts",
     }

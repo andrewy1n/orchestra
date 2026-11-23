@@ -21,7 +21,9 @@ EXAMPLE = ROOT / "examples" / "third-party-plugins"
 
 def _plugin(api_version: str) -> SimpleNamespace:
     metadata_entries = (
-        SimpleNamespace(name="version", value=api_version, group=extensions.PLUGIN_API_GROUP),
+        SimpleNamespace(
+            name=f"v{api_version}", value="module:obj", group=extensions.PLUGIN_API_GROUP
+        ),
         SimpleNamespace(name="demo", value="{}", group=extensions.PLUGIN_CONFIG_GROUP),
     )
     return SimpleNamespace(

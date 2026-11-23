@@ -143,22 +143,18 @@ def _review_brief(args: argparse.Namespace) -> int:
     work = work_dir(args)
     project = open_project(args, work, Access.READ)
     try:
-        refusal = suite_refusal(project, work, args.phase, args.phase_head) if args.phase else ""
-        brief = (
-            ""
-            if refusal
-            else build_review_brief(
-                project,
-                work,
-                base=args.base,
-                phase_head=args.phase_head,
-                phase=args.phase,
-            )
+        brief = build_review_brief(
+            project,
+            work,
+            base=args.base,
+            phase_head=args.phase_head,
+            phase=args.phase,
+            suite_refusal=(
+                suite_refusal(project, work, args.phase, args.phase_head) if args.phase else ""
+            ),
         )
     except (OSError, RuntimeError, StoreBindingError) as exc:
         raise CommandError(str(exc)) from exc
-    if refusal:
-        raise CommandError(refusal)
     if args.out == "-":
         print(brief, end="" if brief.endswith("\n") else "\n")
         return 0

@@ -7,7 +7,7 @@ from test_task_land import _evidence_file, _git
 from test_task_land_close import _state, _world
 
 from orchestra.canon.project import Project
-from orchestra.conductor.tasks import land_task, verification
+from orchestra.conductor.tasks import land_task, verification_run
 from orchestra.conductor.tasks.close.task_close import CODE_DONE, CODE_FAILED, CODE_PENDING_HUMAN
 from orchestra.conductor.tasks.task_landing import TaskLanding, land_and_close
 
@@ -165,13 +165,13 @@ def test_r15_a_closing_task_runs_phase_closing_checks_before_closure(
     project, repo = _world(tmp_path)
     _make_closing_task(project)
     states: list[str] = []
-    real = verification.run_closing_checks
+    real = verification_run.run_closing_checks
 
-    def spy(asked: Project, landed: land_task.LandedTask) -> verification.VerificationRun:
+    def spy(asked: Project, landed: land_task.LandedTask) -> verification_run.VerificationRun:
         states.append(_state(asked))
         return real(asked, landed)
 
-    monkeypatch.setattr(verification, "run_closing_checks", spy)
+    monkeypatch.setattr(verification_run, "run_closing_checks", spy)
     landing = _land(project, repo, tmp_path)
     assert states == ["in_progress"]
     assert landing.closure.state == "done"
