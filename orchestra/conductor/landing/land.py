@@ -10,6 +10,7 @@ from orchestra.canon.extensions import PluginCatalogError, resolve_plugin, valid
 from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject
 from orchestra.canon.workspace import Workspace
+from orchestra.conductor.landing import gate
 from orchestra.conductor.landing.github_pr import GitHubClient, GitHubPRError, open_pull_request
 from orchestra.conductor.landing.landing import (
     LANDING,
@@ -18,7 +19,6 @@ from orchestra.conductor.landing.landing import (
     proof_packet,
     pull_request_title,
 )
-from orchestra.conductor.phases.progress import gate
 from orchestra.score.planning.phase import current_phase_model
 from orchestra.tools import Git
 

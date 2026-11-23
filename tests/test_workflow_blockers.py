@@ -7,7 +7,7 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project, open_store
-from orchestra.conductor.phases.progress import gate
+from orchestra.conductor.landing import gate
 from orchestra.conductor.phases.progress.phase_progress import _gates
 from orchestra.conductor.tasks import wave
 from orchestra.score.planning.phase import read_phase

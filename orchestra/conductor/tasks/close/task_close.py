@@ -21,7 +21,7 @@ from orchestra.score.planning.oracle_policy import OraclePolicy, resolve_oracle_
 from orchestra.tools import Git, ToolError
 
 if TYPE_CHECKING:
-    from orchestra.conductor.verification.verification import VerificationRun
+    from orchestra.conductor.tasks.verification import VerificationRun
 
 CODE_DONE = 0
 CODE_FAILED = 1
@@ -837,7 +837,7 @@ def close(
     item = land_task.in_progress_item(project, landed.task)
     tree = Path(item.write_root or project.project_root)
     if wave.is_closing_task(project.records(), landed.phase, item.record):
-        from orchestra.conductor.verification.verification import run_closing_checks
+        from orchestra.conductor.tasks.verification import run_closing_checks
 
         result = verification if verification is not None else run_closing_checks(project, landed)
         if result.refusal:

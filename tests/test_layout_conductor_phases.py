@@ -2,7 +2,7 @@ from tests.layout_support import ROOT, layout_problems, parse_map
 
 SLICE = parse_map(
     {
-        "phases.progress": "phase_progress gate close phase_analysis effort_status release_facts attention activity assessment_facts",
+        "phases.progress": "phase_progress close phase_analysis effort_status release_facts attention activity assessment_facts",
         "phases.workflow": "workflow workflow_review signoff run_record",
     }
 )

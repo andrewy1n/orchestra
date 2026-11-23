@@ -21,7 +21,8 @@ from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.phases.progress import gate, phase_progress
+from orchestra.conductor.landing import gate
+from orchestra.conductor.phases.progress import phase_progress
 from orchestra.conductor.tasks import wave
 from orchestra.conductor.verification.requirements import (
     RequirementState,
