@@ -8,7 +8,6 @@ import sys
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Protocol
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.errors import StoreError
@@ -16,12 +15,12 @@ from orchestra.canon.project import Project, StoreBindingError, open_store
 from orchestra.canon.sync import init_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.canon.validation import ValidationError
-from orchestra.canon.workspace import Access, StoreNotReady, Workspace, not_ready_message
+from orchestra.canon.workspace import Access, open_for_command
+from orchestra.tools.command_kit import Command, CommandError, emit_json
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
 
 STORE_SCHEMAS = ("score", "conductor", "tuner")
-REFUSED_EXIT = 2
 
 
 @dataclass(frozen=True)
@@ -42,61 +41,6 @@ Scanner = Callable[[Sequence[Record]], list[StoreFinding]]
 Recoverer = Callable[[Project, bool], RecoveryOutcome]
 
 
-class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
-
-
-def add_store_parser(sub: SubparserGroup, scan: Scanner, recover: Recoverer) -> None:
-    store = sub.add_parser(
-        "store",
-        help="Open the bound store and read or write it through the library",
-    )
-    store_sub = store.add_subparsers(dest="action", required=True)
-    store_path = store_sub.add_parser(
-        "path",
-        help="Print the resolved store path for a directory",
-    )
-    store_path.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_path.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the resolved root, store, and binding as JSON",
-    )
-    store_scan = store_sub.add_parser(
-        "scan",
-        help="Report phase, landing and proof packet records the typed readers reject",
-    )
-    store_scan.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_scan.add_argument("--json", action="store_true", help="Print one JSON object per finding")
-    store_scan.set_defaults(scan=scan)
-    store_recover = store_sub.add_parser(
-        "recover-evidence", help="Inventory legacy evidence and recover attributable proof"
-    )
-    store_recover.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_recover.add_argument("--apply", action="store_true", help="Apply recoverable changes")
-    store_recover.set_defaults(recover=recover)
-    store_run = store_sub.add_parser(
-        "run",
-        help="Run a library read or write against the opened store",
-    )
-    store_run.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_run.add_argument(
-        "args",
-        nargs=argparse.REMAINDER,
-        help="library arguments, after '--'",
-    )
-    store_ensure = store_sub.add_parser(
-        "ensure",
-        help="Create the store with the score, conductor, and tuner schemas when absent",
-    )
-    store_ensure.add_argument("--cwd", default=None, help="Directory (default: cwd)")
-    store_ensure.add_argument(
-        "--json",
-        action="store_true",
-        help="Print the created paths and store readiness as JSON",
-    )
-
-
 def _cwd(args: argparse.Namespace) -> Path:
     return Path(args.cwd).expanduser() if args.cwd else Path.cwd()
 
@@ -110,10 +54,6 @@ def _checkout_root(directory: Path) -> Path:
         if error.returncode is None or type(error) is not ToolError:
             raise
         return directory.resolve()
-
-
-def _print_json(payload: object) -> None:
-    print(json.dumps(payload, indent=2))
 
 
 def _flag_values(argv: list[str]) -> dict[str, list[str]]:
@@ -169,22 +109,13 @@ def dispatch_store(project: Project, argv: list[str]) -> tuple[object, int]:
     raise ValueError(f"unsupported store operation {verb!r}")
 
 
-def _open(start: Path, access: Access) -> Project:
-    return Workspace.resolve(start, access=access).open()
-
-
 def run_store_path(args: argparse.Namespace) -> int:
-    start = _cwd(args)
     try:
-        project = _open(start, Access.READ)
-    except StoreNotReady as exc:
-        print(f"orchestra store path: {not_ready_message(exc, start)}", file=sys.stderr)
-        return REFUSED_EXIT
+        project = open_for_command(_cwd(args), Access.READ)
     except (OSError, StoreBindingError) as exc:
-        print(f"orchestra store path: {exc}", file=sys.stderr)
-        return REFUSED_EXIT
+        raise CommandError(str(exc)) from exc
     if args.json:
-        _print_json(
+        emit_json(
             {
                 "root": str(project.project_root),
                 "store": str(project.store_path),
@@ -197,15 +128,11 @@ def run_store_path(args: argparse.Namespace) -> int:
 
 
 def run_store_scan(args: argparse.Namespace, scan: Scanner) -> int:
-    start = _cwd(args)
+    project = open_for_command(_cwd(args), Access.READ)
     try:
-        findings = scan(_open(start, Access.READ).records())
-    except StoreNotReady as exc:
-        print(f"orchestra store scan: {not_ready_message(exc, start)}", file=sys.stderr)
-        return REFUSED_EXIT
+        findings = scan(project.records())
     except (OSError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra store scan: {exc}", file=sys.stderr)
-        return REFUSED_EXIT
+        raise CommandError(str(exc)) from exc
     for finding in findings:
         if args.json:
             print(json.dumps(asdict(finding)))
@@ -215,17 +142,13 @@ def run_store_scan(args: argparse.Namespace, scan: Scanner) -> int:
 
 
 def run_store_recover(args: argparse.Namespace, recover: Recoverer) -> int:
-    start = _cwd(args)
     access = Access.WRITE if args.apply else Access.READ
+    project = open_for_command(_cwd(args), access)
     try:
-        outcome = recover(_open(start, access), bool(args.apply))
-    except StoreNotReady as exc:
-        print(f"orchestra store recover-evidence: {not_ready_message(exc, start)}", file=sys.stderr)
-        return REFUSED_EXIT
+        outcome = recover(project, bool(args.apply))
     except (OSError, StoreBindingError, StoreError, ValidationError) as exc:
-        print(f"orchestra store recover-evidence: {exc}", file=sys.stderr)
-        return REFUSED_EXIT
-    _print_json(outcome.report)
+        raise CommandError(str(exc)) from exc
+    emit_json(outcome.report)
     return 1 if outcome.fresh_proof_required else 0
 
 
@@ -234,18 +157,12 @@ def run_store_run(args: argparse.Namespace) -> int:
     if argv and argv[0] == "--":
         argv = argv[1:]
     if not argv:
-        print("orchestra store run: needs library arguments", file=sys.stderr)
-        return REFUSED_EXIT
-    start = _cwd(args)
+        raise CommandError("needs library arguments")
+    project = open_for_command(_cwd(args), Access.WRITE)
     try:
-        project = _open(start, Access.WRITE)
         payload, code = dispatch_store(project, argv)
-    except StoreNotReady as exc:
-        print(f"orchestra store run: {not_ready_message(exc, start)}", file=sys.stderr)
-        return REFUSED_EXIT
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        print(f"orchestra store run: {exc}", file=sys.stderr)
-        return REFUSED_EXIT
+        raise CommandError(str(exc)) from exc
     text = payload if isinstance(payload, str) else json.dumps(payload)
     print(text, end="" if text.endswith("\n") else "\n")
     return code
@@ -259,15 +176,13 @@ def run_store_ensure(args: argparse.Namespace) -> int:
     except StoreBindingError:
         project = None
     except OSError as exc:
-        print(f"orchestra store ensure: {exc}", file=sys.stderr)
-        return REFUSED_EXIT
+        raise CommandError(str(exc)) from exc
     if project is None:
         try:
             init_store(open_backend(artifacts), list(STORE_SCHEMAS))
             project = open_store(root)
         except (OSError, StoreError, StoreBindingError) as exc:
-            print(f"orchestra store ensure: {exc}", file=sys.stderr)
-            return REFUSED_EXIT
+            raise CommandError(str(exc)) from exc
     payload = {
         "root": str(root),
         "artifacts": str(artifacts),
@@ -275,19 +190,89 @@ def run_store_ensure(args: argparse.Namespace) -> int:
         "store_ready": True,
     }
     if args.json:
-        _print_json(payload)
+        emit_json(payload)
     else:
         print(payload["store"])
     return 0
 
 
-def run_store(args: argparse.Namespace) -> int:
-    if args.action == "recover-evidence":
-        return run_store_recover(args, args.recover)
-    if args.action == "path":
-        return run_store_path(args)
-    if args.action == "run":
-        return run_store_run(args)
-    if args.action == "scan":
-        return run_store_scan(args, args.scan)
-    return run_store_ensure(args)
+def _add_cwd(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--cwd", default=None, help="Directory (default: cwd)")
+
+
+def _configure_path(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the resolved root, store, and binding as JSON",
+    )
+
+
+def _configure_scan(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--json", action="store_true", help="Print one JSON object per finding")
+
+
+def _configure_recover(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument("--apply", action="store_true", help="Apply recoverable changes")
+
+
+def _configure_run(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument(
+        "args",
+        nargs=argparse.REMAINDER,
+        help="library arguments, after '--'",
+    )
+
+
+def _configure_ensure(parser: argparse.ArgumentParser) -> None:
+    _add_cwd(parser)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the created paths and store readiness as JSON",
+    )
+
+
+def commands(*, scan: Scanner, recover: Recoverer) -> list[Command]:
+    return [
+        Command(
+            "store",
+            "Open the bound store and read or write it through the library",
+            children=(
+                Command(
+                    "path",
+                    "Print the resolved store path for a directory",
+                    _configure_path,
+                    run_store_path,
+                ),
+                Command(
+                    "scan",
+                    "Report phase, landing and proof packet records the typed readers reject",
+                    _configure_scan,
+                    lambda args: run_store_scan(args, scan),
+                ),
+                Command(
+                    "recover-evidence",
+                    "Inventory legacy evidence and recover attributable proof",
+                    _configure_recover,
+                    lambda args: run_store_recover(args, recover),
+                ),
+                Command(
+                    "run",
+                    "Run a library read or write against the opened store",
+                    _configure_run,
+                    run_store_run,
+                ),
+                Command(
+                    "ensure",
+                    "Create the store with the score, conductor, and tuner schemas when absent",
+                    _configure_ensure,
+                    run_store_ensure,
+                ),
+            ),
+        )
+    ]

@@ -81,7 +81,7 @@ def test_slot_checker_flags_a_seeded_registry() -> None:
 
 def _canon_adder(sub: SubparserGroup) -> None:
     scan, recover = stage_cli.store_operations()
-    canon_cli.add_parsers(sub, scan=scan, recover=recover)
+    command_kit.mount(sub, canon_cli.commands(scan=scan, recover=recover))
 
 
 def _conductor_adder(sub: SubparserGroup) -> None:
@@ -134,8 +134,8 @@ def _needed(order: str, verb: str) -> bool:
 
 
 CASES = [
-    (["store", "scan"], canon_cli.run, "store"),
-    (["store", "recover-evidence"], canon_cli.run, "store"),
+    (["store", "scan"], command_kit.run, "store"),
+    (["store", "recover-evidence"], command_kit.run, "store"),
     (["wave", "start", PHASE], command_kit.run, "wave"),
 ]
 
@@ -162,7 +162,7 @@ def test_store_scan_runs_in_any_parser_build_order(order: str, shared_world: Pat
     if not _needed(order, "store"):
         pytest.skip("component not built in this order")
     args = _parse(ORDERS[order], ["store", "scan"])
-    code, _, err = _run(canon_cli.run, args, shared_world)
+    code, _, err = _run(command_kit.run, args, shared_world)
     assert code == 0, err
 
 
@@ -173,7 +173,7 @@ def test_store_recover_evidence_runs_in_any_parser_build_order(
     if not _needed(order, "store"):
         pytest.skip("component not built in this order")
     args = _parse(ORDERS[order], ["store", "recover-evidence"])
-    code, _, err = _run(canon_cli.run, args, shared_world)
+    code, _, err = _run(command_kit.run, args, shared_world)
     assert code == 0, err
 
 
@@ -194,20 +194,18 @@ def test_parser_built_twice_in_one_process_still_runs_every_verb(
     _parse(both, ["store", "scan"])
     scan = _parse(both, ["store", "scan"])
     again = _parse(ORDERS["reversed"], ["wave", "start", PHASE])
-    assert _run(canon_cli.run, scan, shared_world)[0] == 0
+    assert _run(command_kit.run, scan, shared_world)[0] == 0
     assert _run(command_kit.run, again, fresh_world)[0] == 0
 
 
 FRESH_SCRIPT = """
 import sys
 from orchestra import cli
-from orchestra.canon import cli as canon_cli
 from orchestra.tools import command_kit
 
 parser = cli._build_parser()
 args = parser.parse_args(sys.argv[1:])
-run = canon_cli.run if args.command == "store" else command_kit.run
-sys.exit(run(args))
+sys.exit(command_kit.run(args))
 """
 
 

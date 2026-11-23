@@ -182,19 +182,14 @@ def _commands(module: ModuleType) -> list[command_kit.Command]:
 
 
 def _declared_verbs(module: ModuleType) -> set[str]:
-    if hasattr(module, "commands"):
-        return {command.name for command in _commands(module)}
-    return set(module.COMMANDS)
+    return {command.name for command in _commands(module)}
 
 
 def _registered_verbs(component_cli: str) -> set[str]:
     module = importlib.import_module(component_cli)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    if hasattr(module, "commands"):
-        command_kit.mount(sub, _commands(module))
-    else:
-        module.add_parsers(sub, **_injected(component_cli))
+    command_kit.mount(sub, _commands(module))
     return set(sub.choices)
 
 
@@ -302,8 +297,8 @@ def test_views_root_cli_does_not_import_the_old_modules(attribute: str) -> None:
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT_CLI_SOURCE = Path(root_cli.__file__).read_text(encoding="utf-8")
-ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "_mount", "main", "<lambda>"}
-ROOT_ALLOWED_KIT_IMPORTS = {"orchestra.tools.command_kit", "orchestra.tools.command_kit.Command"}
+ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "main"}
+ROOT_ALLOWED_KIT_IMPORTS = {"orchestra.tools.command_kit"}
 ROOT_OPTION_CALLS = {"add_argument", "add_argument_group", "add_mutually_exclusive_group"}
 ROOT_REGISTER_CALLS = {"add_parsers", "add_parser", "commands"}
 CLI_COMPONENTS = (
@@ -366,26 +361,20 @@ def root_composes_violations(source: str) -> list[str]:
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             if node.func.attr in ROOT_OPTION_CALLS:
                 found.append(f"option definition {node.func.attr} at line {node.lineno}")
-    registered: set[str] = set()
-    dispatched: set[str] = set()
-    kit_mounted: set[str] = set()
+    mounted: set[str] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
         owner = node.func.value
         if node.func.attr in ROOT_REGISTER_CALLS:
-            if isinstance(owner, ast.Name) and owner.id in aliases:
-                registered.add(owner.id)
-                if node.func.attr == "commands":
-                    kit_mounted.add(owner.id)
+            if node.func.attr == "commands" and isinstance(owner, ast.Name) and owner.id in aliases:
+                mounted.add(owner.id)
             else:
                 found.append(f"verb registered outside a component at line {node.lineno}")
         elif node.func.attr == "run" and isinstance(owner, ast.Name) and owner.id in aliases:
-            dispatched.add(owner.id)
-    for alias in sorted(registered - dispatched - kit_mounted):
-        found.append(f"verbs of {alias} are not dispatched through {alias}.run")
-    for alias in sorted(dispatched - registered):
-        found.append(f"{alias}.run is dispatched but {alias} registers no parsers")
+            found.append(f"{owner.id}.run is called by the root at line {node.lineno}")
+    for alias in sorted(set(aliases) - mounted):
+        found.append(f"{alias} is imported but its commands are not mounted")
     return found
 
 
@@ -424,11 +413,21 @@ def test_root_composes_checker_flags_a_seeded_root_owned_verb() -> None:
     )
 
 
-def test_root_composes_checker_flags_a_verb_that_skips_its_component_run() -> None:
-    seeded = ROOT_CLI_SOURCE.replace("return canon_cli.run(args)", "return 0")
-    assert (
-        "verbs of canon_cli are not dispatched through canon_cli.run"
-        in root_composes_violations(seeded)
+def test_root_composes_checker_flags_a_component_that_is_not_mounted() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "    command_kit.mount(sub, canon_cli.commands(scan=scan, recover=recover))\n", ""
+    )
+    assert "canon_cli is imported but its commands are not mounted" in root_composes_violations(
+        seeded
+    )
+
+
+def test_root_composes_checker_flags_a_component_run_call() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "return command_kit.run(args, extra)", "return canon_cli.run(args)"
+    )
+    assert any(
+        "canon_cli.run is called by the root" in line for line in root_composes_violations(seeded)
     )
 
 
@@ -436,22 +435,16 @@ def _own_registered_verbs(module_name: str) -> set[str]:
     module = importlib.import_module(module_name)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    if hasattr(module, "commands"):
-        command_kit.mount(sub, _commands(module))
-    else:
-        module.add_parsers(sub, **_injected(module_name))
+    command_kit.mount(sub, _commands(module))
     return set(sub.choices)
 
 
-def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> None:
+def test_every_component_has_a_cli_module_with_the_contract() -> None:
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        if hasattr(module, "commands"):
-            assert _commands(module), component
-            continue
-        assert callable(getattr(module, "add_parsers", None)), component
-        assert module.COMMANDS, component
-        assert callable(module.run), component
+        assert _commands(module), component
+        for legacy in ("add_parsers", "COMMANDS", "run"):
+            assert not hasattr(module, legacy), (component, legacy)
 
 
 def test_every_component_registers_exactly_its_own_commands() -> None:
