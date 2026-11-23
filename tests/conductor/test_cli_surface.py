@@ -24,7 +24,7 @@ from orchestra import cli
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import open_store
 from orchestra.canon.workspace import Workspace
-from orchestra.conductor import suite
+from orchestra.conductor.verification.suite import suite
 
 # Every runtime call a skill makes must be one of these named commands.
 HELP_PATHS = [
@@ -134,7 +134,8 @@ def test_review_brief_smoke(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(Workspace, "resolve", lambda *_args, **_kwargs: _Location())
     monkeypatch.setattr(
-        "orchestra.conductor.reviewer.git_phase_diff", lambda *a, **k: "+reviewed line"
+        "orchestra.conductor.verification.review.reviewer.git_phase_diff",
+        lambda *a, **k: "+reviewed line",
     )
 
     code, out, err = run(
@@ -255,7 +256,8 @@ def test_suite_start_smoke(tmp_path, monkeypatch, capsys):
         started_monotonic=time.monotonic(),
     )
     monkeypatch.setattr(
-        "orchestra.conductor.suite.start_suite_background", lambda **kwargs: started
+        "orchestra.conductor.verification.suite.suite.start_suite_background",
+        lambda **kwargs: started,
     )
     code, out, err = run(["suite", "start", "--cwd", str(work), "--phase", "p1"], capsys)
     assert code == 0, err

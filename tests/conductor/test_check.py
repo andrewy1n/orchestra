@@ -15,7 +15,7 @@ from conftest import REPO_ROOT, git, run_cli
 
 from orchestra.canon.project import open_store
 from orchestra.conductor.close_batch import build_batch
-from orchestra.conductor.policy import (
+from orchestra.conductor.verification.policy import (
     dirty_pass_decision,
     manual_refuse_message,
     map_process_outcome,

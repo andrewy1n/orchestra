@@ -9,8 +9,8 @@ import pytest
 
 
 def test_reviewer_and_suite_import():
-    import orchestra.conductor.reviewer
-    import orchestra.conductor.suite  # noqa: F401
+    import orchestra.conductor.verification.review.reviewer
+    import orchestra.conductor.verification.suite.suite  # noqa: F401
 
 
 def test_tier2_module_raises_import_error():

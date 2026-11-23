@@ -15,13 +15,13 @@ from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import land_task, wave
 from orchestra.conductor.model_types import PlanningPayload, planning_payload
-from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
+from orchestra.conductor.verification.evidence.oracle_freeze import parse_freeze, parse_hashes
 from orchestra.score.lookups import current_phase, latest_record, record_order
 from orchestra.score.planning.oracle_policy import OraclePolicy, resolve_oracle_policy
 from orchestra.tools import Git, ToolError
 
 if TYPE_CHECKING:
-    from orchestra.conductor.verification import VerificationRun
+    from orchestra.conductor.verification.verification import VerificationRun
 
 CODE_DONE = 0
 CODE_FAILED = 1
@@ -837,7 +837,7 @@ def close(
     item = land_task.in_progress_item(project, landed.task)
     tree = Path(item.write_root or project.project_root)
     if wave.is_closing_task(project.records(), landed.phase, item.record):
-        from orchestra.conductor.verification import run_closing_checks
+        from orchestra.conductor.verification.verification import run_closing_checks
 
         result = verification if verification is not None else run_closing_checks(project, landed)
         if result.refusal:

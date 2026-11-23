@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.requirements import RequirementStatus, requirement_status
+from orchestra.conductor.verification.requirements import RequirementStatus, requirement_status
 
 PHASE = "p"
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"

@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 
 from evals.seeded_defects.cases import DEFECT_KINDS, Case
 from evals.seeded_defects.outcomes import Complete, Outcome
-from orchestra.conductor.reviewer import ReviewerFinding
+from orchestra.conductor.verification.review.reviewer import ReviewerFinding
 
 
 @dataclass(frozen=True)

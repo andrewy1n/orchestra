@@ -10,7 +10,7 @@ import pytest
 
 from orchestra.canon.extensions import resolve_plugin
 from orchestra.canon.project_config import PluginName, StageName
-from orchestra.conductor.review_technique import ReviewTechnique
+from orchestra.conductor.verification.review.review_technique import ReviewTechnique
 from orchestra.tuner.plugins import api as plugins
 
 

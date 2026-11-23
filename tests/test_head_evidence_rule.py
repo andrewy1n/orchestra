@@ -1,4 +1,4 @@
-"""Only orchestra/conductor/head_evidence.py decides a check-run pass from result and revision."""
+"""Only orchestra/conductor/verification/evidence/head_evidence.py decides a check-run pass from result and revision."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_DIRS = ("orchestra", "dashboard/backend")
-OWNER = "orchestra/conductor/head_evidence.py"
+OWNER = "orchestra/conductor/verification/evidence/head_evidence.py"
 
 SEEDED_COPY = """
 def passes_at_head(run: dict[str, dict[str, str]], head: str) -> bool:

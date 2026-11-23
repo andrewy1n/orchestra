@@ -17,7 +17,7 @@ from conftest import git, make_git_repo
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import close, gate, workflow_review
-from orchestra.conductor.check import run_check
+from orchestra.conductor.verification.check import run_check
 from orchestra.tools import Git
 
 CLOSE_PHASE = "p1"

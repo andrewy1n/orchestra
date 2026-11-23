@@ -6,7 +6,7 @@ from datetime import datetime
 
 from orchestra.canon.types import Record
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.conductor.requirements import is_verified, requirement_status
+from orchestra.conductor.verification.requirements import is_verified, requirement_status
 from orchestra.score.lookups import current_phases, latest_record, record_order
 from orchestra.score.planning.phase import read_phase
 from orchestra.score.workflow.workflow_blockers import human_gates

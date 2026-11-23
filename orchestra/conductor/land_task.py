@@ -8,13 +8,13 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.check import run_check
-from orchestra.conductor.evidence import evidence_body, parse_evidence
 from orchestra.conductor.execution_cost import (
     ExecutionCostError,
     landing_cost_fields,
     utc_now,
 )
+from orchestra.conductor.verification.check import run_check
+from orchestra.conductor.verification.evidence.evidence import evidence_body, parse_evidence
 from orchestra.conductor.wave import is_closing_task, task_acceptances
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.work_item import WorkItem, current_work_item

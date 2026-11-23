@@ -10,10 +10,10 @@ ROOTS = ("orchestra/conductor", "orchestra/score", "dashboard/backend")
 PICKS = {"max", "min", "sorted"}
 COMPARE_EXEMPT: dict[Path, str] = {
     Path(
-        "orchestra/conductor/check.py"
+        "orchestra/conductor/verification/check.py"
     ): "matches same-second runs on purpose and requires them to agree",
     Path(
-        "orchestra/conductor/evidence_recovery.py"
+        "orchestra/conductor/verification/evidence_recovery.py"
     ): "bounds a red run by its acceptance, not a pick",
 }
 

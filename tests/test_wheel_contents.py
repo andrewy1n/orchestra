@@ -346,7 +346,7 @@ def test_r9_canon_import() -> None:
 
 
 def test_r10_suite_import() -> None:
-    """R10: Importing `orchestra.cli` raises `ModuleNotFoundError` when `orchestra.conductor.suite` cannot be imported."""
+    """R10: Importing `orchestra.cli` raises `ModuleNotFoundError` when `orchestra.conductor.verification.suite.suite` cannot be imported."""
     proc = subprocess.run(
         [
             sys.executable,
@@ -354,7 +354,7 @@ def test_r10_suite_import() -> None:
             "-c",
             _BLOCKED_CLI_IMPORT,
             str(REPO_ROOT),
-            "orchestra.conductor.suite",
+            "orchestra.conductor.verification.suite.suite",
         ],
         capture_output=True,
         text=True,
@@ -363,7 +363,7 @@ def test_r10_suite_import() -> None:
 
 
 def test_r11_check_import() -> None:
-    """R11: Importing `orchestra.cli` raises `ModuleNotFoundError` when `orchestra.conductor.check` cannot be imported."""
+    """R11: Importing `orchestra.cli` raises `ModuleNotFoundError` when `orchestra.conductor.verification.check` cannot be imported."""
     proc = subprocess.run(
         [
             sys.executable,
@@ -371,7 +371,7 @@ def test_r11_check_import() -> None:
             "-c",
             _BLOCKED_CLI_IMPORT,
             str(REPO_ROOT),
-            "orchestra.conductor.check",
+            "orchestra.conductor.verification.check",
         ],
         capture_output=True,
         text=True,

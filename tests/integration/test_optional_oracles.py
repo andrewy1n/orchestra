@@ -22,7 +22,7 @@ from orchestra.canon import record
 from orchestra.canon.project import Project
 from orchestra.canon.sqlite_backend import SqliteBackend
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.requirements import release_ready
+from orchestra.conductor.verification.requirements import release_ready
 
 
 def _cli(root: Path, *args: str) -> subprocess.CompletedProcess[str]:

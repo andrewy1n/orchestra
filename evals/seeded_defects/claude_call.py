@@ -9,7 +9,7 @@ from pathlib import Path
 
 from evals.seeded_defects.cases import Case
 from evals.seeded_defects.trees import build_case_tree
-from orchestra.conductor.reviewer import (
+from orchestra.conductor.verification.review.reviewer import (
     ParsedReviewerOutput,
     ReviewerRecord,
     build_reviewer_brief,

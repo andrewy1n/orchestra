@@ -1,6 +1,6 @@
-diff --git a/orchestra/conductor/reviewer.py b/orchestra/conductor/reviewer.py
---- a/orchestra/conductor/reviewer.py
-+++ b/orchestra/conductor/reviewer.py
+diff --git a/orchestra/conductor/verification/review/reviewer.py b/orchestra/conductor/verification/review/reviewer.py
+--- a/orchestra/conductor/verification/review/reviewer.py
++++ b/orchestra/conductor/verification/review/reviewer.py
 @@ -245,54 +235,8 @@ def _strip_fence(text: str) -> str:
      return stripped
  

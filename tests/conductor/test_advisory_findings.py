@@ -9,7 +9,7 @@ from conductor_support import PHASE, Phase, seed
 from test_gate import _orchestra
 
 from orchestra.canon.types import JsonValue
-from orchestra.conductor import reviewer
+from orchestra.conductor.verification.review import reviewer
 
 ROOT = Path(__file__).resolve().parents[2]
 

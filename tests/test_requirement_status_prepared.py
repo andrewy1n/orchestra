@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.requirements import requirement_status
+from orchestra.conductor.verification.requirements import requirement_status
 from orchestra.score.lookups import prepare_records
 
 PHASE = "p"

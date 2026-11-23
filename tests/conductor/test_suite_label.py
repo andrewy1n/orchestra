@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.suite_label import suite_labels, suite_status_label
+from orchestra.conductor.verification.suite.suite_label import suite_labels, suite_status_label
 
 
 def _check(

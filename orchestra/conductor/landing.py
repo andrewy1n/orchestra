@@ -13,7 +13,7 @@ from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.fields import optional_text, required_int, required_text
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.verification.evidence.revision import revision_matches
 from orchestra.score.lookups import corrected_ids, latest_record
 from orchestra.score.planning.phase import Phase
 

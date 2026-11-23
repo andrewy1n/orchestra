@@ -26,13 +26,15 @@ RECORDS = [
 def repo(tmp_path: Path) -> Path:
     path = tmp_path / "source"
     (path / "agents").mkdir(parents=True)
-    (path / "orchestra" / "conductor").mkdir(parents=True)
+    (path / "orchestra" / "conductor" / "verification" / "review").mkdir(parents=True)
     git(path, "init", "-q", "-b", "main")
     git(path, "config", "user.email", "t@example.com")
     git(path, "config", "user.name", "t")
     (path / "a.txt").write_text("one\n")
     (path / "agents" / "reviewer.md").write_text("prompt v1\n")
-    (path / "orchestra" / "conductor" / "reviewer.py").write_text("X = 1\n")
+    (path / "orchestra" / "conductor" / "verification" / "review" / "reviewer.py").write_text(
+        "X = 1\n"
+    )
     git(path, "add", "-A")
     git(path, "commit", "-qm", "base")
     (path / "a.txt").write_text("one\ntwo\n")

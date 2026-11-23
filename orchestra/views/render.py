@@ -25,8 +25,8 @@ from orchestra.conductor.effort_status import EffortStatus
 from orchestra.conductor.effort_status import effort_statuses as _effort_statuses
 from orchestra.conductor.landing import PROOF_PACKET, place_of_body
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
-from orchestra.conductor.requirements import RequirementIndex, requirement_status
 from orchestra.conductor.task_detail import ASSIGNMENT_AMENDMENT_TYPE
+from orchestra.conductor.verification.requirements import RequirementIndex, requirement_status
 from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,

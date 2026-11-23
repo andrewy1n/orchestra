@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from heapq import merge
 
 from orchestra.canon.types import Record
-from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.verification.evidence.acceptance_amendment import COMMAND_AMENDMENT_KEY
+from orchestra.conductor.verification.evidence.revision import revision_matches
 from orchestra.score.lookups import (
     cached_object,
     check_run_criteria,

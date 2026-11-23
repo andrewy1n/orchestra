@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from orchestra.conductor.reviewer import ParsedReviewerOutput
+from orchestra.conductor.verification.review.reviewer import ParsedReviewerOutput
 
 IncompleteReason = Literal["failed", "usage_limit", "unparsable"]
 

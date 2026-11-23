@@ -15,10 +15,10 @@ from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import wave
 from orchestra.conductor.cli import wave_commands
-from orchestra.conductor.evidence import EVIDENCE_SCHEMA
 from orchestra.conductor.land_task import LandedTask
 from orchestra.conductor.task_close import Closure
 from orchestra.conductor.task_landing import TaskLanding
+from orchestra.conductor.verification.evidence.evidence import EVIDENCE_SCHEMA
 
 PHASE = "ph"
 EFFORT = "ef"

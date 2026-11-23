@@ -15,8 +15,8 @@ from canon_support import make_project
 from conftest import git, make_git_repo
 
 from orchestra.cli import _build_parser
-from orchestra.conductor import suite, suite_worker
-from orchestra.conductor.suite import (
+from orchestra.conductor.verification.suite import suite, suite_worker
+from orchestra.conductor.verification.suite.suite import (
     SuitePolicy,
     SuiteResult,
     SuiteStart,

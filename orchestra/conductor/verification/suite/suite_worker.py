@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import IO
 
 from orchestra.canon.types import JsonValue
-from orchestra.conductor.suite import (
+from orchestra.conductor.verification.suite.suite import (
     atomic_write_suite_json,
     read_suite_json_object,
     suite_worktree_matches,

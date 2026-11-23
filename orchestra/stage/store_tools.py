@@ -8,8 +8,8 @@ from orchestra.canon.project import Project
 from orchestra.canon.store_commands import RecoveryOutcome, StoreFinding
 from orchestra.canon.types import Record
 from orchestra.composer.records import scan_composer_records
-from orchestra.conductor.evidence_recovery import recover_evidence
 from orchestra.conductor.record_scan import scan_phase_records
+from orchestra.conductor.verification.evidence_recovery import recover_evidence
 from orchestra.score.planning.effort import scan_effort_records
 
 

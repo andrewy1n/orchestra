@@ -21,10 +21,11 @@ from pathlib import Path
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import head_evidence, suite
-from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.conductor.landing import LandingPlace, phase_place
-from orchestra.conductor.suite import SuitePolicy
+from orchestra.conductor.verification.evidence import head_evidence
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
+from orchestra.conductor.verification.suite import suite
+from orchestra.conductor.verification.suite.suite import SuitePolicy
 from orchestra.score.lookups import closing_work_item
 from orchestra.score.planning.phase import Phase, current_phase_model
 from orchestra.score.workflow.workflow_blockers import (

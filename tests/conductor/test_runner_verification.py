@@ -6,8 +6,9 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task, task_close, verification
-from orchestra.conductor.check import DEFAULT_TIMEOUT_S, CheckOutcome
+from orchestra.conductor import land_task, task_close
+from orchestra.conductor.verification import verification
+from orchestra.conductor.verification.check import DEFAULT_TIMEOUT_S, CheckOutcome
 from orchestra.tools import Git
 
 

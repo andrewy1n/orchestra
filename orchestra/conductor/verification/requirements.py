@@ -5,7 +5,7 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     current_phases,

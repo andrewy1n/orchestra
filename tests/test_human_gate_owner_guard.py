@@ -12,7 +12,9 @@ NEEDS = "needs"
 SIGNED_BY = "signed_by"
 NEEDS_VALUES = {"human", "none"}
 EXEMPT: dict[Path, str] = {
-    Path("orchestra/conductor/verification.py"): "decides signed evidence for closing verification",
+    Path(
+        "orchestra/conductor/verification/verification.py"
+    ): "decides signed evidence for closing verification",
     Path(
         "orchestra/conductor/signoff.py"
     ): "derives the card stage; stage derivation stays separate",

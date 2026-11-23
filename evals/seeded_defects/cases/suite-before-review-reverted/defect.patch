@@ -1,6 +1,6 @@
-diff --git a/orchestra/conductor/suite.py b/orchestra/conductor/suite.py
---- a/orchestra/conductor/suite.py
-+++ b/orchestra/conductor/suite.py
+diff --git a/orchestra/conductor/verification/suite/suite.py b/orchestra/conductor/verification/suite/suite.py
+--- a/orchestra/conductor/verification/suite/suite.py
++++ b/orchestra/conductor/verification/suite/suite.py
 @@ -545,36 +545,6 @@ def suite_pass_at_head(
      return False
  

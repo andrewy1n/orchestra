@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.acceptance_amendment import COMMAND_AMENDMENT_KEY
-from orchestra.conductor.head_evidence import EvidenceIndex
+from orchestra.conductor.verification.evidence.acceptance_amendment import COMMAND_AMENDMENT_KEY
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
 from orchestra.score.lookups import cached_object, prepare_records
 
 

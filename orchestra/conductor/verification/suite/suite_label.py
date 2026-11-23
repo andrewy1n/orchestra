@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from orchestra.canon.types import Record
-from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND, EvidenceIndex, suite_subject
+from orchestra.conductor.verification.evidence.head_evidence import (
+    SUITE_EVIDENCE_KIND,
+    EvidenceIndex,
+    suite_subject,
+)
 from orchestra.score.lookups import latest_record
 from orchestra.tuner.evidence.record_facts import check_run_facts
 

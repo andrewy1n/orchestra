@@ -8,15 +8,7 @@ from typing import Literal
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import suite
 from orchestra.conductor.gate import format_missing, gate_terms_for, missing_terms
-from orchestra.conductor.head_evidence import (
-    EvidenceIndex,
-    latest,
-    latest_review,
-    review_at_head,
-    suite_check_runs,
-)
 from orchestra.conductor.landing import (
     LandingProofError,
     LandingProofState,
@@ -25,7 +17,19 @@ from orchestra.conductor.landing import (
     phase_place,
     proof_packet,
 )
-from orchestra.conductor.requirements import UNVERIFIED, is_verified, requirement_status
+from orchestra.conductor.verification.evidence.head_evidence import (
+    EvidenceIndex,
+    latest,
+    latest_review,
+    review_at_head,
+    suite_check_runs,
+)
+from orchestra.conductor.verification.requirements import (
+    UNVERIFIED,
+    is_verified,
+    requirement_status,
+)
+from orchestra.conductor.verification.suite import suite
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     closing_work_item,

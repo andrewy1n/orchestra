@@ -22,7 +22,11 @@ from orchestra.canon import record as record_mod
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor import gate, phase_progress, wave
-from orchestra.conductor.requirements import RequirementState, release_ready, requirement_status
+from orchestra.conductor.verification.requirements import (
+    RequirementState,
+    release_ready,
+    requirement_status,
+)
 
 EFFORT = "ef"
 MIX = "mix"

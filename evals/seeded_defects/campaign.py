@@ -14,7 +14,7 @@ from evals.seeded_defects.outcomes import Complete, Incomplete, Outcome
 from evals.seeded_defects.scoring import score_call
 from orchestra.tools import RunFn
 
-PROMPT_FILES = ("agents/reviewer.md", "orchestra/conductor/reviewer.py")
+PROMPT_FILES = ("agents/reviewer.md", "orchestra/conductor/verification/review/reviewer.py")
 _CHECK_AFTER = 3
 CASE_FILES = ("case.json", "defect.patch", "records.json", "baseline.json")
 

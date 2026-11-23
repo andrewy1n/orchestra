@@ -27,15 +27,21 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
-from orchestra.conductor.check import (
+from orchestra.conductor.verification.check import (
     OUTPUT_BODY_CHARS,
     RUNNER,
     output_sha256,
     parse_failing_node_ids,
 )
-from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND as EVIDENCE_KIND
-from orchestra.conductor.head_evidence import EvidenceIndex, suite_at_head, suite_subject
-from orchestra.conductor.policy import dirty_pass_decision, map_process_outcome
+from orchestra.conductor.verification.evidence.head_evidence import (
+    SUITE_EVIDENCE_KIND as EVIDENCE_KIND,
+)
+from orchestra.conductor.verification.evidence.head_evidence import (
+    EvidenceIndex,
+    suite_at_head,
+    suite_subject,
+)
+from orchestra.conductor.verification.policy import dirty_pass_decision, map_process_outcome
 from orchestra.tools import CliTool, Git, ToolError
 
 METHOD = "check"
@@ -592,7 +598,7 @@ def start_suite_background(
                     [
                         sys.executable,
                         "-m",
-                        "orchestra.conductor.suite_worker",
+                        "orchestra.conductor.verification.suite.suite_worker",
                         str(paths["request_path"]),
                         str(lifecycle_fd),
                     ],

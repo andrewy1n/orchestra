@@ -270,27 +270,33 @@ def _fails_git(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 def test_r1_check_defines_parser() -> None:
-    """R1: orchestra.conductor.check defines parse_failing_node_ids."""
+    """R1: orchestra.conductor.verification.check defines parse_failing_node_ids."""
     assert _defines_function(
-        ROOT / "orchestra" / "conductor" / "check.py", "parse_failing_node_ids"
+        ROOT / "orchestra" / "conductor" / "verification" / "check.py", "parse_failing_node_ids"
     )
 
 
 def test_r2_suite_omits_parser() -> None:
-    """R2: orchestra.conductor.suite does not define parse_failing_node_ids."""
+    """R2: orchestra.conductor.verification.suite.suite does not define parse_failing_node_ids."""
     assert not _defines_function(
-        ROOT / "orchestra" / "conductor" / "suite.py", "parse_failing_node_ids"
+        ROOT / "orchestra" / "conductor" / "verification" / "suite" / "suite.py",
+        "parse_failing_node_ids",
     )
 
 
 def test_r3_check_defines_hash() -> None:
-    """R3: orchestra.conductor.check defines the helper that hashes command output."""
-    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "check.py")
+    """R3: orchestra.conductor.verification.check defines the helper that hashes command output."""
+    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "verification" / "check.py")
 
 
 def test_r4_suite_omits_hash() -> None:
-    """R4: orchestra.conductor.suite does not define a helper that hashes command output."""
-    assert _defined_output_hashers(ROOT / "orchestra" / "conductor" / "suite.py") == []
+    """R4: orchestra.conductor.verification.suite.suite does not define a helper that hashes command output."""
+    assert (
+        _defined_output_hashers(
+            ROOT / "orchestra" / "conductor" / "verification" / "suite" / "suite.py"
+        )
+        == []
+    )
 
 
 def test_r5_git_only_in_git_client() -> None:

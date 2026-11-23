@@ -14,7 +14,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
 from orchestra.conductor.model_types import PlanningPayload
-from orchestra.conductor.policy import (
+from orchestra.conductor.verification.policy import (
     dirty_pass_decision,
     manual_refuse_message,
     map_process_outcome,

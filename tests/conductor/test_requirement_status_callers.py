@@ -10,10 +10,11 @@ from test_task_landing_operation import _make_closing_task, _tree
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import phase_progress, verification
+from orchestra.conductor import phase_progress
 from orchestra.conductor.land_task import LandedTask
-from orchestra.conductor.requirements import release_ready, requirement_status
 from orchestra.conductor.task_landing import land_and_close
+from orchestra.conductor.verification import verification
+from orchestra.conductor.verification.requirements import release_ready, requirement_status
 
 OLD_REVISION = "0" * 40
 

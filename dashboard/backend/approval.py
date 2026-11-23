@@ -18,7 +18,7 @@ from dashboard.backend.gates import PLAN_REVIEW_PREFIX, plan_review_slug
 from dashboard.backend.snapshot import EffortView, NeedsYouItem
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.revision import revision_matches
+from orchestra.conductor.verification.evidence.revision import revision_matches
 from orchestra.score.facts.detail_facts import ACCEPTANCE_TYPE, acceptance_facts
 from orchestra.score.workflow.workflow_blockers import CHECK_RUN_TYPE, FINDING_TYPE
 from orchestra.tools.errors import ToolError

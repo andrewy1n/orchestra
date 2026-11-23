@@ -138,13 +138,15 @@ def yes(message: str) -> bool:
 def repo(tmp_path: Path) -> Path:
     path = tmp_path / "source"
     (path / "agents").mkdir(parents=True)
-    (path / "orchestra" / "conductor").mkdir(parents=True)
+    (path / "orchestra" / "conductor" / "verification" / "review").mkdir(parents=True)
     git(path, "init", "-q", "-b", "main")
     git(path, "config", "user.email", "t@example.com")
     git(path, "config", "user.name", "t")
     (path / "a.txt").write_text("one\n")
     (path / "agents" / "reviewer.md").write_text("prompt v1\n")
-    (path / "orchestra" / "conductor" / "reviewer.py").write_text("X = 1\n")
+    (path / "orchestra" / "conductor" / "verification" / "review" / "reviewer.py").write_text(
+        "X = 1\n"
+    )
     git(path, "add", "-A")
     git(path, "commit", "-qm", "base")
     (path / "a.txt").write_text("one\ntwo\n")
@@ -237,7 +239,9 @@ def test_records_case_set_hash_changes_with_a_frozen_record(
 def test_prompt_commit_is_last_commit_touching_either_prompt_file(
     repo: Path, cases: Path, tmp_path: Path
 ) -> None:
-    (repo / "orchestra" / "conductor" / "reviewer.py").write_text("X = 2\n")
+    (repo / "orchestra" / "conductor" / "verification" / "review" / "reviewer.py").write_text(
+        "X = 2\n"
+    )
     git(repo, "commit", "-qam", "change reviewer module")
     expected = git(repo, "rev-parse", "HEAD")
     campaign = tmp_path / "camp"
@@ -388,7 +392,9 @@ def test_invalid_case_set_stops_before_any_call(repo: Path, cases: Path, tmp_pat
     assert saved(campaign) == []
 
 
-@pytest.mark.parametrize("path", ["agents/reviewer.md", "orchestra/conductor/reviewer.py"])
+@pytest.mark.parametrize(
+    "path", ["agents/reviewer.md", "orchestra/conductor/verification/review/reviewer.py"]
+)
 def test_refused_when_reviewer_prompt_file_is_dirty(
     repo: Path, cases: Path, tmp_path: Path, path: str
 ) -> None:

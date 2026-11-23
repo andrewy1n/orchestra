@@ -15,7 +15,7 @@ from conftest import REPO_ROOT
 
 sys.path.insert(0, str(REPO_ROOT))
 
-from orchestra.conductor.suite import (
+from orchestra.conductor.verification.suite.suite import (
     EVIDENCE_KIND,
     METHOD,
     SuitePolicy,

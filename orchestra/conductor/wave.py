@@ -16,9 +16,7 @@ from orchestra.canon.project_config import (
     load_project_config,
 )
 from orchestra.canon.types import DerivedValues, Record
-from orchestra.conductor.check import run_check
 from orchestra.conductor.execution_cost import new_dispatch_markers
-from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.conductor.landing import (
     LandingPlace,
     parse_landing,
@@ -26,6 +24,8 @@ from orchestra.conductor.landing import (
     task_branch,
     task_worktree,
 )
+from orchestra.conductor.verification.check import run_check
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.lookups import (
     acceptances_of,
     closing_work_item,
@@ -162,7 +162,8 @@ def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Rec
 def _runner_start(
     project: Project, place: LandingPlace, phase: str, item: Record, items: list[Record]
 ) -> RunnerOutcome:
-    from orchestra.conductor import land_task, task_close, verification
+    from orchestra.conductor import land_task, task_close
+    from orchestra.conductor.verification import verification
 
     try:
         read_work_item(item)

@@ -8,10 +8,13 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.validation import ValidationError
 from orchestra.canon.workspace import Access
-from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.run_record import resolve_run
+from orchestra.conductor.verification.evidence.acceptance_amendment import (
+    ROUTINE_CHECKS,
+    amend_acceptance,
+)
 from orchestra.conductor.workflow import (
     RunAction,
     RunPreview,

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.suite import load_suite_policy
+from orchestra.conductor.verification.suite.suite import load_suite_policy
 
 
 def test_suite_policy_reads_project_config(tmp_path: Path) -> None:

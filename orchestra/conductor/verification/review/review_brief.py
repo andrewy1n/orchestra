@@ -8,7 +8,8 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor import reviewer, suite
+from orchestra.conductor.verification.review import reviewer
+from orchestra.conductor.verification.suite import suite
 from orchestra.tools.git import Git
 
 

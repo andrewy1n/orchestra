@@ -6,7 +6,7 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/conductor/requirements.py")
+OWNER = Path("orchestra/conductor/verification/requirements.py")
 ROOTS = ("orchestra", "dashboard")
 STATUS_WORDS = {"verified", "unverified"}
 CONSTRUCTOR = "RequirementStatus"
@@ -72,7 +72,7 @@ def test_r18_guard_fails_on_seeded_status_literal_in_dashboard(tmp_path: Path) -
 def test_r18_guard_fails_on_seeded_status_constructor(tmp_path: Path) -> None:
     write_source(
         tmp_path / "orchestra" / "seeded_build.py",
-        "from orchestra.conductor.requirements import RequirementStatus\n"
+        "from orchestra.conductor.verification.requirements import RequirementStatus\n"
         "\n"
         "\n"
         "def build(state: str) -> object:\n"

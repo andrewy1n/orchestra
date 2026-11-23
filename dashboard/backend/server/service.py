@@ -31,7 +31,7 @@ from dashboard.backend.snapshot import (
 from dashboard.backend.stages import refs_fingerprint
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
-from orchestra.conductor.requirements import is_verified
+from orchestra.conductor.verification.requirements import is_verified
 
 CachedResponse = (
     schemas.AreasResponse

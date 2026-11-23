@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
-from orchestra.conductor.requirements import RequirementStatus, all_verified
+from orchestra.conductor.verification.requirements import RequirementStatus, all_verified
 
 
 def _text(record: Record, key: str) -> str:

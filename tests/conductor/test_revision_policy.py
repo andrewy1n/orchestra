@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from orchestra.conductor.reviewer import (
+from orchestra.conductor.verification.evidence.revision import revision_matches
+from orchestra.conductor.verification.review.reviewer import (
     revision_matches as reviewer_match,
 )
-from orchestra.conductor.revision import revision_matches
 
 
 @pytest.mark.parametrize(

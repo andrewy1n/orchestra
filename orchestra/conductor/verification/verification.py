@@ -6,8 +6,8 @@ from pathlib import Path
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import land_task, wave
-from orchestra.conductor.check import run_check
-from orchestra.conductor.requirements import requirement_status, verified_requirements
+from orchestra.conductor.verification.check import run_check
+from orchestra.conductor.verification.requirements import requirement_status, verified_requirements
 from orchestra.score.lookups import record_order
 from orchestra.tools import Git, ToolError
 
