@@ -7,13 +7,16 @@ import ast
 import importlib
 import importlib.util
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from test_boundaries import COMPONENTS
 
 import orchestra.cli as root_cli
+from orchestra.tools import command_kit
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -175,11 +178,19 @@ def _injected(module_name: str) -> dict[str, object]:
     return {}
 
 
+def _commands(module: ModuleType) -> list[command_kit.Command]:
+    return module.commands(**_injected(module.__name__))
+
+
+def _declared_verbs(module: ModuleType) -> set[str]:
+    return {command.name for command in _commands(module)}
+
+
 def _registered_verbs(component_cli: str) -> set[str]:
     module = importlib.import_module(component_cli)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    module.add_parsers(sub, **_injected(component_cli))
+    command_kit.mount(sub, _commands(module))
     return set(sub.choices)
 
 
@@ -205,14 +216,13 @@ def test_conductor_workflow_cli_module_is_gone_from_the_root_package() -> None:
 
 def test_conductor_workflow_is_a_conductor_command() -> None:
     conductor_cli = importlib.import_module("orchestra.conductor.cli")
-    assert "workflow" in conductor_cli.COMMANDS
+    assert "workflow" in _declared_verbs(conductor_cli)
 
 
 @pytest.mark.parametrize("group", LIGHT_COMPONENTS, ids=[group.name for group in LIGHT_COMPONENTS])
 def test_light_components_cli_owns_its_commands_and_runs_them(group: Group) -> None:
     module = importlib.import_module(group.component_cli)
-    assert set(group.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(group.verbs) == _declared_verbs(module)
 
 
 def test_light_components_metrics_cli_module_is_gone_from_the_root_package() -> None:
@@ -225,8 +235,8 @@ EXCLUSIVE = [g for g in TUNER_CANON_STAGE if g is not TUNER_CANON_STAGE_CONDUCTO
 @pytest.mark.parametrize("group", EXCLUSIVE, ids=[group.name for group in EXCLUSIVE])
 def test_tuner_canon_stage_cli_owns_its_commands_and_runs_them(group: Group) -> None:
     module = importlib.import_module(group.component_cli)
-    assert set(group.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(group.verbs) == _declared_verbs(module)
+    assert hasattr(module, "commands") or callable(module.run)
 
 
 @pytest.mark.parametrize(
@@ -250,22 +260,20 @@ def test_tuner_canon_stage_root_cli_defines_no_cmd_handlers() -> None:
 
 def test_tuner_canon_stage_conductor_cli_owns_check() -> None:
     module = importlib.import_module("orchestra.conductor.cli")
-    assert "check" in module.COMMANDS
+    assert "check" in _declared_verbs(module)
 
 
 def test_views_cli_owns_its_commands_and_runs_them() -> None:
     module = importlib.import_module(VIEWS.component_cli)
-    assert set(VIEWS.verbs) == set(module.COMMANDS)
-    assert callable(module.run)
+    assert set(VIEWS.verbs) == _declared_verbs(module)
 
 
 def test_views_status_registers_status_where_it_lives() -> None:
     module = importlib.import_module("orchestra.views.status")
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    module.add_parser(sub)
+    command_kit.mount(sub, module.commands())
     assert "status" in sub.choices
-    assert callable(module.run)
 
 
 def test_views_is_a_package_not_a_module_file() -> None:
@@ -291,8 +299,9 @@ def test_views_root_cli_does_not_import_the_old_modules(attribute: str) -> None:
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT_CLI_SOURCE = Path(root_cli.__file__).read_text(encoding="utf-8")
 ROOT_ALLOWED_FUNCTIONS = {"_build_parser", "main"}
+ROOT_ALLOWED_KIT_IMPORTS = {"orchestra.tools.command_kit"}
 ROOT_OPTION_CALLS = {"add_argument", "add_argument_group", "add_mutually_exclusive_group"}
-ROOT_REGISTER_CALLS = {"add_parsers", "add_parser"}
+ROOT_REGISTER_CALLS = {"add_parsers", "add_parser", "commands"}
 CLI_COMPONENTS = (
     "conductor",
     "composer",
@@ -338,6 +347,8 @@ def root_composes_violations(source: str) -> list[str]:
         ):
             for alias in node.names:
                 module = f"{node.module}.{alias.name}"
+                if module in ROOT_ALLOWED_KIT_IMPORTS:
+                    continue
                 if (alias.asname or alias.name) not in aliases or aliases[
                     alias.asname or alias.name
                 ] != module:
@@ -351,23 +362,20 @@ def root_composes_violations(source: str) -> list[str]:
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             if node.func.attr in ROOT_OPTION_CALLS:
                 found.append(f"option definition {node.func.attr} at line {node.lineno}")
-    registered: set[str] = set()
-    dispatched: set[str] = set()
+    mounted: set[str] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
         owner = node.func.value
         if node.func.attr in ROOT_REGISTER_CALLS:
-            if isinstance(owner, ast.Name) and owner.id in aliases:
-                registered.add(owner.id)
+            if node.func.attr == "commands" and isinstance(owner, ast.Name) and owner.id in aliases:
+                mounted.add(owner.id)
             else:
                 found.append(f"verb registered outside a component at line {node.lineno}")
         elif node.func.attr == "run" and isinstance(owner, ast.Name) and owner.id in aliases:
-            dispatched.add(owner.id)
-    for alias in sorted(registered - dispatched):
-        found.append(f"verbs of {alias} are not dispatched through {alias}.run")
-    for alias in sorted(dispatched - registered):
-        found.append(f"{alias}.run is dispatched but {alias} registers no parsers")
+            found.append(f"{owner.id}.run is called by the root at line {node.lineno}")
+    for alias in sorted(set(aliases) - mounted):
+        found.append(f"{alias} is imported but its commands are not mounted")
     return found
 
 
@@ -406,11 +414,21 @@ def test_root_composes_checker_flags_a_seeded_root_owned_verb() -> None:
     )
 
 
-def test_root_composes_checker_flags_a_verb_that_skips_its_component_run() -> None:
-    seeded = ROOT_CLI_SOURCE.replace("return score_cli.run(args)", "return 0")
-    assert (
-        "verbs of score_cli are not dispatched through score_cli.run"
-        in root_composes_violations(seeded)
+def test_root_composes_checker_flags_a_component_that_is_not_mounted() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "    command_kit.mount(sub, canon_cli.commands(scan=scan, recover=recover))\n", ""
+    )
+    assert "canon_cli is imported but its commands are not mounted" in root_composes_violations(
+        seeded
+    )
+
+
+def test_root_composes_checker_flags_a_component_run_call() -> None:
+    seeded = ROOT_CLI_SOURCE.replace(
+        "return command_kit.run(args, extra)", "return canon_cli.run(args)"
+    )
+    assert any(
+        "canon_cli.run is called by the root" in line for line in root_composes_violations(seeded)
     )
 
 
@@ -418,25 +436,22 @@ def _own_registered_verbs(module_name: str) -> set[str]:
     module = importlib.import_module(module_name)
     parser = argparse.ArgumentParser(prog="orchestra")
     sub = parser.add_subparsers(dest="command")
-    register = getattr(module, "add_parsers", None) or module.add_parser
-    register(sub, **_injected(module_name))
+    command_kit.mount(sub, _commands(module))
     return set(sub.choices)
 
 
-def test_every_component_with_commands_has_a_cli_module_with_the_contract() -> None:
+def test_every_component_has_a_cli_module_with_the_contract() -> None:
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        assert callable(
-            getattr(module, "add_parsers", None) or getattr(module, "add_parser", None)
-        ), component
-        assert module.COMMANDS, component
-        assert callable(module.run), component
+        assert _commands(module), component
+        for legacy in ("add_parsers", "COMMANDS", "run"):
+            assert not hasattr(module, legacy), (component, legacy)
 
 
 def test_every_component_registers_exactly_its_own_commands() -> None:
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        assert _own_registered_verbs(f"orchestra.{component}.cli") == set(module.COMMANDS), (
+        assert _own_registered_verbs(f"orchestra.{component}.cli") == _declared_verbs(module), (
             component
         )
 
@@ -445,7 +460,7 @@ def test_every_component_verb_is_registered_by_one_component_only() -> None:
     owners: dict[str, list[str]] = {}
     for component in CLI_COMPONENTS:
         module = importlib.import_module(f"orchestra.{component}.cli")
-        for verb in module.COMMANDS:
+        for verb in _declared_verbs(module):
             owners.setdefault(verb, []).append(component)
     owners.setdefault("status", []).append("views.status")
     assert {verb: names for verb, names in owners.items() if len(names) > 1} == {}
@@ -458,7 +473,7 @@ def test_every_component_command_union_covers_every_root_parser_verb() -> None:
     built = set(actions[0].choices)
     union = {"verify", "status"}
     for component in CLI_COMPONENTS:
-        union |= set(importlib.import_module(f"orchestra.{component}.cli").COMMANDS)
+        union |= _declared_verbs(importlib.import_module(f"orchestra.{component}.cli"))
     assert built <= union
     assert union <= built
 
@@ -479,3 +494,211 @@ def test_every_component_in_the_boundary_list_that_owns_verbs_has_a_cli_module()
         if component in owns_no_verbs:
             continue
         assert importlib.util.find_spec(f"orchestra.{component}.cli") is not None, component
+
+
+CLI_MODULE_FILES = (
+    *(f"orchestra/{component}/cli.py" for component in CLI_COMPONENTS if component != "conductor"),
+    *(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in sorted((REPO_ROOT / "orchestra/conductor/cli").glob("*.py"))
+    ),
+    "orchestra/views/status.py",
+    "orchestra/canon/store_commands.py",
+    "orchestra/tuner/verify_plugins.py",
+)
+CANON_PROGRAM = "orchestra/canon/cli.py"
+NAME_GUARD_FILES = tuple(path for path in CLI_MODULE_FILES if path != CANON_PROGRAM)
+STORE_NOT_READY_ALLOWED = {"orchestra/stage/hooks.py", CANON_PROGRAM}
+STORE_NOT_READY_FILES = tuple(
+    path for path in CLI_MODULE_FILES if path not in STORE_NOT_READY_ALLOWED
+)
+LEGACY_MODULE_NAMES = ("COMMANDS", "add_parsers", "PASSTHROUGH")
+
+
+def _is_command_ref(node: ast.expr) -> bool:
+    return (isinstance(node, ast.Attribute) and node.attr == "command") or (
+        isinstance(node, ast.Name) and node.id == "command"
+    )
+
+
+def _is_command_test(node: ast.expr) -> bool:
+    if not isinstance(node, ast.Compare) or not _is_command_ref(node.left):
+        return False
+    if not all(isinstance(op, (ast.Eq, ast.In)) for op in node.ops):
+        return False
+    return all(
+        isinstance(item, (ast.Constant, ast.Set, ast.Tuple, ast.List)) for item in node.comparators
+    )
+
+
+def _is_name_set(value: ast.expr | None) -> bool:
+    if isinstance(value, ast.Set):
+        return bool(value.elts) and all(isinstance(e, ast.Constant) for e in value.elts)
+    if (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id in {"frozenset", "set"}
+        and len(value.args) == 1
+    ):
+        return _is_name_set(value.args[0]) or (
+            isinstance(value.args[0], (ast.Tuple, ast.List))
+            and bool(value.args[0].elts)
+            and all(isinstance(e, ast.Constant) for e in value.args[0].elts)
+        )
+    return False
+
+
+def command_name_violations(source: str) -> list[str]:
+    tree = ast.parse(source)
+    found: list[str] = []
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_name_set(node.value):
+            found.append(f"command name set at line {node.lineno}")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If) and _is_command_test(node.test):
+            chained = len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If)
+            if chained and _is_command_test(node.orelse[0].test):  # type: ignore[attr-defined]
+                found.append(f"command dispatch chain at line {node.lineno}")
+        elif isinstance(node, ast.ClassDef):
+            declares_add_parser = any(
+                isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and item.name == "add_parser"
+                for item in node.body
+            )
+            if node.name == "SubparserGroup" or declares_add_parser:
+                found.append(f"local subparser protocol {node.name} at line {node.lineno}")
+    return found
+
+
+def _catches_store_not_ready(handler: ast.ExceptHandler) -> bool:
+    def named(node: ast.expr) -> bool:
+        return (isinstance(node, ast.Name) and node.id == "StoreNotReady") or (
+            isinstance(node, ast.Attribute) and node.attr == "StoreNotReady"
+        )
+
+    caught = handler.type
+    if caught is None:
+        return False
+    if isinstance(caught, ast.Tuple):
+        return any(named(item) for item in caught.elts)
+    return named(caught)
+
+
+def store_not_ready_violations(source: str) -> list[str]:
+    return [
+        f"except StoreNotReady at line {node.lineno}"
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ExceptHandler) and _catches_store_not_ready(node)
+    ]
+
+
+def _real_violations(
+    files: tuple[str, ...], check: Callable[[str], list[str]]
+) -> dict[str, list[str]]:
+    found = {path: check((REPO_ROOT / path).read_text(encoding="utf-8")) for path in files}
+    return {path: lines for path, lines in found.items() if lines}
+
+
+def test_every_component_cli_module_exports_commands_and_no_legacy_names() -> None:
+    modules = [
+        importlib.import_module(f"orchestra.{component}.cli") for component in CLI_COMPONENTS
+    ]
+    modules.append(importlib.import_module(COMPONENT_STATUS_MODULE))
+    for module in modules:
+        assert callable(getattr(module, "commands", None)), module.__name__
+        tree = ast.parse(Path(module.__file__ or "").read_text(encoding="utf-8"))
+        top_level = {
+            target.id
+            for node in tree.body
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+            if isinstance(target, ast.Name)
+        } | {
+            node.name
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        for legacy in (*LEGACY_MODULE_NAMES, "run"):
+            assert legacy not in top_level, (module.__name__, legacy)
+            assert not hasattr(module, legacy), (module.__name__, legacy)
+
+
+def test_every_component_declares_each_command_name_exactly_once() -> None:
+    names: list[str] = []
+    for component in CLI_COMPONENTS:
+        names += [c.name for c in _commands(importlib.import_module(f"orchestra.{component}.cli"))]
+    names += [c.name for c in _commands(importlib.import_module(COMPONENT_STATUS_MODULE))]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    assert duplicated == []
+
+
+def test_name_guard_passes_on_the_real_component_cli_modules() -> None:
+    assert _real_violations(NAME_GUARD_FILES, command_name_violations) == {}
+
+
+def test_name_guard_flags_a_seeded_command_name_set() -> None:
+    seeded = 'VERBS = frozenset({"a", "b"})\nOTHER = {"x"}\n'
+    assert command_name_violations(seeded) == [
+        "command name set at line 1",
+        "command name set at line 2",
+    ]
+
+
+def test_name_guard_flags_a_seeded_dispatch_chain() -> None:
+    seeded = (
+        "def f(args):\n"
+        "    if args.command == 'a':\n        return 1\n"
+        "    elif args.command == 'b':\n        return 2\n"
+    )
+    assert command_name_violations(seeded) == ["command dispatch chain at line 2"]
+
+
+def test_name_guard_flags_a_seeded_local_subparser_protocol() -> None:
+    seeded = (
+        "from typing import Protocol\n"
+        "class SubparserGroup(Protocol):\n    def add_parser(self, name): ...\n"
+        "class Other(Protocol):\n    def add_parser(self, name): ...\n"
+    )
+    assert command_name_violations(seeded) == [
+        "local subparser protocol SubparserGroup at line 2",
+        "local subparser protocol Other at line 4",
+    ]
+
+
+def test_name_guard_ignores_a_single_command_check_and_plain_sets() -> None:
+    clean = (
+        "def f(args, names):\n    if args.command == 'a':\n        return 1\n    return 2\n"
+        "NAMES = {name for name in ()}\n"
+    )
+    assert command_name_violations(clean) == []
+
+
+def test_name_guard_flags_a_seeded_tmp_path_module(tmp_path: Path) -> None:
+    module = tmp_path / "cli.py"
+    module.write_text('VERBS = {"a"}\n', encoding="utf-8")
+    assert command_name_violations(module.read_text(encoding="utf-8")) != []
+
+
+def test_store_not_ready_guard_passes_on_the_real_component_cli_modules() -> None:
+    assert _real_violations(STORE_NOT_READY_FILES, store_not_ready_violations) == {}
+
+
+def test_store_not_ready_guard_flags_a_seeded_plain_except() -> None:
+    seeded = "try:\n    pass\nexcept StoreNotReady as exc:\n    raise\n"
+    assert store_not_ready_violations(seeded) == ["except StoreNotReady at line 3"]
+
+
+def test_store_not_ready_guard_flags_a_seeded_tuple_except() -> None:
+    seeded = "try:\n    pass\nexcept (ValueError, workspace.StoreNotReady):\n    raise\n"
+    assert store_not_ready_violations(seeded) == ["except StoreNotReady at line 3"]
+
+
+def test_store_not_ready_guard_ignores_other_handlers() -> None:
+    seeded = "try:\n    pass\nexcept (ValueError, KeyError):\n    raise\n"
+    assert store_not_ready_violations(seeded) == []
+
+
+def test_store_not_ready_guard_exempts_hooks_and_the_canon_program() -> None:
+    assert STORE_NOT_READY_ALLOWED.isdisjoint(STORE_NOT_READY_FILES)
+    for path in STORE_NOT_READY_ALLOWED:
+        assert (REPO_ROOT / path).is_file(), path

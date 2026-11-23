@@ -38,13 +38,7 @@ from orchestra.canon.query import (
     summarize,
 )
 from orchestra.canon.schema import SchemaError, TypeDef
-from orchestra.canon.store_commands import (
-    Recoverer,
-    Scanner,
-    SubparserGroup,
-    add_store_parser,
-    run_store,
-)
+from orchestra.canon.store_commands import commands as commands
 from orchestra.canon.sync import add_namespace, init_store, sync_store
 from orchestra.canon.transfer import export_ops, import_ops
 from orchestra.canon.types import (
@@ -989,17 +983,6 @@ def _dispatch(argv: list[str] | None = None) -> int:
     if args.func is None:
         raise RuntimeError("command handler was not configured")
     return args.func(args)
-
-
-COMMANDS = frozenset({"store"})
-
-
-def add_parsers(sub: SubparserGroup, *, scan: Scanner, recover: Recoverer) -> None:
-    add_store_parser(sub, scan, recover)
-
-
-def run(args: argparse.Namespace) -> int:
-    return run_store(args)
 
 
 def main(argv: list[str] | None = None) -> int:

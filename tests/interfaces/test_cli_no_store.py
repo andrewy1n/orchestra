@@ -10,7 +10,7 @@ from interfaces.interfaces_support import invoke
 
 NO_STORE = "No artifact store for"
 REFUSAL_CODE = 2
-VIEWS_REFUSAL_CODE = 1
+VIEWS_REFUSAL_CODE = 2
 MINIMAL_CONFIG = (
     '[verify.stages]\ntask = ["unit"]\nphase = ["unit"]\nmilestone = ["unit"]\n\n'
     '[verify.unit]\nrunner = ["true", "{tests}", "{report}"]\n'
@@ -68,13 +68,13 @@ CONDUCTOR_WORKFLOW = [
 ]
 
 LIGHT_COMPONENTS = [
-    (("idea", "A thing"), 1),
-    (("place", "alpha", "beta"), 1),
+    (("idea", "A thing"), 2),
+    (("place", "alpha", "beta"), 2),
     (("effort", "autonomy", "alpha", "gated"), 2),
     (("effort", "autonomy", "--migrate"), 2),
-    (("metrics", "phases"), 1),
-    (("metrics", "repairs", "--since", "2020-01-01"), 1),
-    (("metrics", "compare", "p1"), 1),
+    (("metrics", "phases"), 2),
+    (("metrics", "repairs", "--since", "2020-01-01"), 2),
+    (("metrics", "compare", "p1"), 2),
 ]
 
 TUNER_CANON_STAGE = [
@@ -85,12 +85,12 @@ TUNER_CANON_STAGE = [
     (("store", "recover-evidence"), 2),
     (("store", "run", "--", "list", "--type", "score:effort"), 2),
     (("verify", "trail"), 2),
-    (("verify", "recheck", "--claim", "X"), 1),
+    (("verify", "recheck", "--claim", "X"), 2),
     (
         ("verify", "bind", "--observation", "o", "--claim", "X", "--base", "a", "--head", "b"),
-        1,
+        2,
     ),
-    (("verify", "unbind", "--id", "x"), 1),
+    (("verify", "unbind", "--id", "x"), 2),
 ]
 
 VIEWS = [
@@ -191,3 +191,15 @@ def test_tuner_canon_stage_store_ensure_creates_the_store_instead_of_refusing(
     assert result.code == 0, result.err
     assert "store_not_ready" not in result.out + result.err
     assert (bare_dir / ".canon").is_dir()
+
+
+def test_check_without_store_exits_4(bare_dir: Path) -> None:
+    from orchestra.conductor import cli as conductor_cli
+
+    commands = getattr(conductor_cli, "commands", None)
+    assert commands is not None
+    assert "check" in [command.name for command in commands(render_brief=lambda *_: "")]
+    result = invoke("orchestra", ["check", "--acceptance", "x"], bare_dir)
+    assert result.code == 4, result.err
+    assert result.err.startswith("orchestra check:")
+    assert "store_not_ready:" in result.err

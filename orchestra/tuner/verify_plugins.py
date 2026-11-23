@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from orchestra.tools import command_kit
+from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tuner.manifest import ManifestError
 from orchestra.tuner.plugin_evidence import dispatch_signed_plugins
 from orchestra.tuner.plugins import PluginContext
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="orchestra verify plugins",
-        description="Run configured built-in plugins and emit signed evidence.",
-    )
+def _configure(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--cwd", default=None, help="Repository root (default: process cwd)")
     parser.add_argument("--stage", choices=("task", "phase", "milestone"), required=True)
     parser.add_argument("--revision", default="HEAD", help="Target commit (default: HEAD)")
@@ -28,8 +25,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Structured reviewer output path, or - to read it from stdin",
     )
     parser.add_argument("--key", required=True, help="SSH private key path for signing")
-    args = parser.parse_args(argv)
 
+
+def _handle(args: argparse.Namespace) -> int:
     work = Path(args.cwd) if args.cwd else Path.cwd()
     try:
         reviewer_output = None
@@ -48,7 +46,27 @@ def main(argv: list[str] | None = None) -> int:
             key_path=args.key,
         )
     except (OSError, ValueError, ManifestError) as exc:
-        print(exc, file=sys.stderr)
-        return 2
-    print(json.dumps([asdict(item) for item in evidence], separators=(",", ":")))
+        raise CommandError(str(exc), 2) from exc
+    command_kit.emit_json([asdict(item) for item in evidence], compact=True)
     return 0 if all(item.result == "pass" for item in evidence) else 1
+
+
+def command() -> Command:
+    return Command(
+        "plugins",
+        "Run configured built-in plugins and emit signed evidence",
+        configure=_configure,
+        handle=_handle,
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="orchestra verify plugins",
+        description="Run configured built-in plugins and emit signed evidence.",
+    )
+    _configure(parser)
+    args = parser.parse_args(argv)
+    args.handler = _handle
+    args.command_path = ("verify", "plugins")
+    return command_kit.run(args)

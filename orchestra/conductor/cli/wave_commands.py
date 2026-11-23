@@ -10,58 +10,32 @@ from pathlib import Path
 from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.types import Record
-from orchestra.canon.workspace import Access, StoreNotReady
+from orchestra.canon.workspace import Access
 from orchestra.conductor import land_task, task_redispatch, wave
-from orchestra.conductor.cli.workspace import (
-    command_dir,
-    not_ready_message,
-    print_json,
-    resolve_workspace,
-)
+from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.conductor.redispatch_facts import redispatch_facts
 from orchestra.conductor.task_landing import land_and_close
 from orchestra.score.work_item import WorkItemShapeError
+from orchestra.tools.command_kit import Command, CommandError, emit_json, fail
 from orchestra.tools.git import Git
 
 BriefRenderer = Callable[[str, list[Record]], str]
 
 
-def run_wave(args: argparse.Namespace) -> int:
-    if args.action == "start":
-        return _wave_start(args)
-    if args.action == "resolve":
-        return _wave_resolve(args)
-    return _wave_end(args)
-
-
-def run_task(args: argparse.Namespace) -> int:
-    if args.action == "redispatch":
-        return _task_redispatch(args)
-    return _task_land(args)
-
-
-def _wave_start(args: argparse.Namespace) -> int:
-    render_brief: BriefRenderer = args.render_brief
-    start = command_dir(args)
+def _wave_start(args: argparse.Namespace, render_brief: BriefRenderer) -> int:
+    start = work_dir(args)
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
-        project = workspace.open()
         repo = Git(start).primary_checkout()
         result = wave.start(project, repo, args.phase, Git(start).root())
         records = project.records()
         briefs = {t.task: render_brief(t.task, records) for t in result.tasks}
-    except StoreNotReady as exc:
-        print(
-            f"orchestra wave start: {args.phase}: {not_ready_message(exc, start)}", file=sys.stderr
-        )
-        return 2
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave start: {args.phase}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.phase}: {exc}") from exc
     if args.json:
         if result.runner is not None:
-            print_json(
+            emit_json(
                 {
                     "phase": result.phase,
                     "wave": result.wave,
@@ -74,7 +48,7 @@ def _wave_start(args: argparse.Namespace) -> int:
                 }
             )
             return result.exit_code
-        print_json(
+        emit_json(
             {
                 "phase": result.phase,
                 "wave": result.wave,
@@ -106,18 +80,14 @@ def _wave_start(args: argparse.Namespace) -> int:
 
 
 def _wave_end(args: argparse.Namespace) -> int:
-    start = command_dir(args)
+    start = work_dir(args)
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
-        result = wave.end(workspace.open(), Git(start).primary_checkout(), args.phase)
-    except StoreNotReady as exc:
-        print(f"orchestra wave end: {args.phase}: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 2
+        result = wave.end(project, Git(start).primary_checkout(), args.phase)
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave end: {args.phase}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.phase}: {exc}") from exc
     if args.json:
-        print_json(
+        emit_json(
             {
                 "phase": result.phase,
                 "merged": list(result.merged),
@@ -137,23 +107,14 @@ def _wave_end(args: argparse.Namespace) -> int:
 
 
 def _wave_resolve(args: argparse.Namespace) -> int:
-    start = command_dir(args)
+    start = work_dir(args)
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
-        result = wave.resolve(
-            workspace.open(), Git(start).primary_checkout(), args.phase, args.task
-        )
-    except StoreNotReady as exc:
-        print(
-            f"orchestra wave resolve: {args.phase}: {not_ready_message(exc, start)}",
-            file=sys.stderr,
-        )
-        return 2
+        result = wave.resolve(project, Git(start).primary_checkout(), args.phase, args.task)
     except (wave.WaveError, OSError, RuntimeError, StoreBindingError, StoreError) as exc:
-        print(f"orchestra wave resolve: {args.phase}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.phase}: {exc}") from exc
     if args.json:
-        print_json(
+        emit_json(
             {
                 "phase": result.phase,
                 "task": result.task,
@@ -165,25 +126,21 @@ def _wave_resolve(args: argparse.Namespace) -> int:
     elif result.ready:
         print(f"resolved {result.task}: merge commit {result.commit}")
     for reason in result.refusals:
-        print(f"orchestra wave resolve: {args.phase}: {reason}", file=sys.stderr)
+        fail(args, f"{args.phase}: {reason}")
     return result.exit_code
 
 
 def _task_land(args: argparse.Namespace) -> int:
     if args.schema:
-        print_json(EVIDENCE_SCHEMA)
+        emit_json(EVIDENCE_SCHEMA)
         return 0
     if not args.task or not args.evidence:
-        print("orchestra task land: a task and --evidence are required", file=sys.stderr)
-        return 2
-    start = command_dir(args)
+        raise CommandError("a task and --evidence are required")
+    start = work_dir(args)
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
         repo = Git(start).primary_checkout()
-        landing = land_and_close(workspace.open(), repo, args.task, Path(args.evidence))
-    except StoreNotReady as exc:
-        print(f"orchestra task land: {args.task}: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 2
+        landing = land_and_close(project, repo, args.task, Path(args.evidence))
     except (
         EvidenceError,
         land_task.LandError,
@@ -194,11 +151,10 @@ def _task_land(args: argparse.Namespace) -> int:
         StoreError,
         WorkItemShapeError,
     ) as exc:
-        print(f"orchestra task land: {args.task}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.task}: {exc}") from exc
     landed, closure = landing.landed, landing.closure
     if args.json:
-        print_json(
+        emit_json(
             {
                 "task": landed.task,
                 "commit": landed.commit,
@@ -221,18 +177,12 @@ def _task_land(args: argparse.Namespace) -> int:
 
 
 def _task_redispatch(args: argparse.Namespace) -> int:
-    start = command_dir(args)
+    start = work_dir(args)
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
         record = task_redispatch.redispatch(
-            workspace.open(), args.task, expected_revision=args.expected_revision
+            project, args.task, expected_revision=args.expected_revision
         )
-    except StoreNotReady as exc:
-        print(
-            f"orchestra task redispatch: {args.task}: {not_ready_message(exc, start)}",
-            file=sys.stderr,
-        )
-        return 2
     except (
         StaleWriteError,
         task_redispatch.RedispatchError,
@@ -241,11 +191,10 @@ def _task_redispatch(args: argparse.Namespace) -> int:
         StoreBindingError,
         StoreError,
     ) as exc:
-        print(f"orchestra task redispatch: {args.task}: {exc}", file=sys.stderr)
-        return 2
+        raise CommandError(f"{args.task}: {exc}") from exc
     facts = redispatch_facts(record)
     if args.json:
-        print_json(
+        emit_json(
             {
                 "task": facts.task,
                 "revision": facts.revision,
@@ -259,3 +208,85 @@ def _task_redispatch(args: argparse.Namespace) -> int:
     else:
         print(f"redispatched {facts.task} (attempt {facts.attempts})")
     return 0
+
+
+def _configure_wave_start(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("phase", help="Phase slug")
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _configure_wave_resolve(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("phase", help="Phase slug")
+    parser.add_argument("task", help="Task slug whose merge conflicted")
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _configure_task_redispatch(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("task", help="Work-item subject")
+    parser.add_argument(
+        "--expected-revision", required=True, help="Exact current work-item revision"
+    )
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _configure_task_land(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("task", nargs="?", help="Work-item subject")
+    parser.add_argument("--evidence", default=None, help="Evidence JSON file")
+    parser.add_argument("--schema", action="store_true", help="Print the evidence JSON schema")
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def commands(render_brief: BriefRenderer) -> list[Command]:
+    return [
+        Command(
+            "wave",
+            "Start and end the waves of a phase",
+            children=(
+                Command(
+                    "start",
+                    "Cut task branches and worktrees for the next ready wave and mark it "
+                    "in progress",
+                    configure=_configure_wave_start,
+                    handle=lambda args: _wave_start(args, render_brief),
+                ),
+                Command(
+                    "end",
+                    "Merge each passing task branch into the phase branch in task-slug order",
+                    configure=_configure_wave_start,
+                    handle=_wave_end,
+                ),
+                Command(
+                    "resolve",
+                    "Finish a conflicted task merge once both tasks' work is kept",
+                    configure=_configure_wave_resolve,
+                    handle=_wave_resolve,
+                ),
+            ),
+        ),
+        Command(
+            "task",
+            "Manage one task",
+            children=(
+                Command(
+                    "redispatch",
+                    "Start a new measured dispatch for an in-progress task",
+                    configure=_configure_task_redispatch,
+                    handle=_task_redispatch,
+                ),
+                Command(
+                    "land",
+                    "Commit a task worktree, record its evidence, run its checks, close it",
+                    configure=_configure_task_land,
+                    handle=_task_land,
+                ),
+            ),
+        ),
+    ]

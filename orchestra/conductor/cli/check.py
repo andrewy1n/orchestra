@@ -3,27 +3,16 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import Protocol
 
-from orchestra.canon.workspace import Access, StoreNotReady
+from orchestra.canon.workspace import Access
 from orchestra.conductor.check import DEFAULT_TIMEOUT_S, run_check
-from orchestra.conductor.cli.workspace import not_ready_message, resolve_workspace
-
-STORE_NOT_READY_EXIT = 4
-
-
-class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+from orchestra.conductor.cli.options import open_project
+from orchestra.tools.command_kit import Command, emit_json
 
 
-def add_check_parser(sub: SubparserGroup) -> None:
-    check = sub.add_parser(
-        "check",
-        help="Run an acceptance verify_command and write an tuner:check-run",
-    )
+def _configure(check: argparse.ArgumentParser) -> None:
     check.add_argument("--acceptance", required=True, help="Acceptance record id")
     check.add_argument(
         "--cwd",
@@ -57,18 +46,9 @@ def add_check_parser(sub: SubparserGroup) -> None:
     )
 
 
-def run_check_command(args: argparse.Namespace) -> int:
+def _handle(args: argparse.Namespace) -> int:
     work = Path(args.cwd) if args.cwd else Path.cwd()
-    try:
-        workspace = resolve_workspace(args.store, Path.cwd(), Access.WRITE)
-    except StoreNotReady as exc:
-        print(f"orchestra check: {not_ready_message(exc, Path.cwd())}", file=sys.stderr)
-        return STORE_NOT_READY_EXIT
-    try:
-        project = workspace.open()
-    except StoreNotReady as exc:
-        print(f"orchestra check: {not_ready_message(exc, Path.cwd())}", file=sys.stderr)
-        return STORE_NOT_READY_EXIT
+    project = open_project(args, Path.cwd(), Access.WRITE, refused_exit=4)
     outcome = run_check(
         acceptance_id=args.acceptance,
         cwd=work,
@@ -78,17 +58,25 @@ def run_check_command(args: argparse.Namespace) -> int:
         timeout=args.timeout,
     )
     if outcome.record is not None:
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "op": "check",
-                    "record": outcome.record,
-                    "reused": outcome.reused,
-                },
-                indent=2,
-            )
+        emit_json(
+            {
+                "ok": True,
+                "op": "check",
+                "record": outcome.record,
+                "reused": outcome.reused,
+            }
         )
     if outcome.message:
         print(outcome.message, file=sys.stderr)
     return outcome.exit_code
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "check",
+            "Run an acceptance verify_command and write an tuner:check-run",
+            configure=_configure,
+            handle=_handle,
+        )
+    ]

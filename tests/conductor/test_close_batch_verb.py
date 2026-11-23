@@ -406,4 +406,4 @@ def test_r14_refuses_with_exit_2_when_no_store_resolves(
     code, out, err = _close_batch(tmp_path, capsys, _check_request(store))
 
     assert (code, out) == (2, "")
-    assert err.startswith("close refused: ")
+    assert err.startswith("orchestra close-batch: store_not_ready:")

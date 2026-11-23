@@ -429,8 +429,10 @@ def test_cli_view_without_store_fails_cleanly(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.delenv("CANON_STORE", raising=False)
     monkeypatch.chdir(tmp_path)
-    assert cli.main(["handoff"]) == 1
-    assert "No artifact store" in capsys.readouterr().err
+    assert cli.main(["handoff"]) == 2
+    err = capsys.readouterr().err
+    assert err.startswith("orchestra handoff: store_not_ready:")
+    assert "No artifact store" in err
 
 
 def test_r11_cli_handoff_keeps_ids_latest_proof_and_backlog(project, monkeypatch, capsys):

@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import argparse
-import json
-import sys
-from typing import TYPE_CHECKING
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, StoreBindingError
 from orchestra.canon.validation import ValidationError
-from orchestra.canon.workspace import Access, StoreNotReady
+from orchestra.canon.workspace import Access
 from orchestra.conductor.acceptance_amendment import ROUTINE_CHECKS, amend_acceptance
 from orchestra.conductor.briefs.render import render_skill_brief
-from orchestra.conductor.cli.workspace import command_dir, not_ready_message, resolve_workspace
+from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.run_record import resolve_run
 from orchestra.conductor.workflow import (
     RunAction,
@@ -28,62 +25,64 @@ from orchestra.conductor.workflow import (
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
 from orchestra.score.lookups import current_phase, dependencies
 from orchestra.score.workflow_reviews import Authority, Step
-
-if TYPE_CHECKING:
-    from orchestra.conductor.cli.parsers import SubparserGroup
+from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 
-def add_workflow_parser(sub: SubparserGroup) -> None:
-    parser = sub.add_parser("workflow", help="Preview and resume built-in workflow playbooks")
-    actions = parser.add_subparsers(dest="action", required=True)
+def _add_read_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory used to resolve the store")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
-    for action in ("preview", "start"):
-        command = actions.add_parser(action, help=f"{action.capitalize()} a selected workflow")
-        command.add_argument("effort", help="Effort slug")
-        command.add_argument("selector", help="Phase slug, ordinal, range, or comma-separated list")
-        command.add_argument(
-            "operation",
-            choices=(
-                "phase",
-                "prepare",
-                "deliver",
-                "spec",
-                "design",
-                "tasks",
-                "execute",
-                "verify",
-                "land",
-            ),
-            help="Built-in playbook or one workflow step",
-        )
-        command.add_argument("--json", action="store_true", help="Print one JSON object")
-        command.add_argument("--cwd", default=None, help="Directory used to resolve the store")
-        command.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
-        if action == "start":
-            command.add_argument(
-                "--snapshot-token",
-                required=True,
-                help="Snapshot token from a prior workflow preview",
-            )
 
-    status = actions.add_parser("status", help="Show current run progress")
+def _configure_preview(command: argparse.ArgumentParser) -> None:
+    command.add_argument("effort", help="Effort slug")
+    command.add_argument("selector", help="Phase slug, ordinal, range, or comma-separated list")
+    command.add_argument(
+        "operation",
+        choices=(
+            "phase",
+            "prepare",
+            "deliver",
+            "spec",
+            "design",
+            "tasks",
+            "execute",
+            "verify",
+            "land",
+        ),
+        help="Built-in playbook or one workflow step",
+    )
+    command.add_argument("--json", action="store_true", help="Print one JSON object")
+    command.add_argument("--cwd", default=None, help="Directory used to resolve the store")
+    command.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _configure_start(command: argparse.ArgumentParser) -> None:
+    _configure_preview(command)
+    command.add_argument(
+        "--snapshot-token",
+        required=True,
+        help="Snapshot token from a prior workflow preview",
+    )
+
+
+def _configure_status(status: argparse.ArgumentParser) -> None:
     status.add_argument("run", help="Run subject or record id")
     _add_read_options(status)
 
-    next_parser = actions.add_parser("next", help="Show safe next actions for a run")
+
+def _configure_next(next_parser: argparse.ArgumentParser) -> None:
     next_parser.add_argument("run", help="Run subject or record id")
     next_parser.add_argument(
         "--no-brief", action="store_true", help="Omit the step brief from ready actions"
     )
     _add_read_options(next_parser)
 
-    brief = actions.add_parser(
-        "brief",
-        help="Print the brief for one phase step",
-        description=(
-            "Print the brief for one phase step. The brief equals the next brief for the same "
-            "store state, except in a prepare run, whose barrier next applies and brief does not."
-        ),
+
+def _configure_brief(brief: argparse.ArgumentParser) -> None:
+    brief.description = (
+        "Print the brief for one phase step. The brief equals the next brief for the same "
+        "store state, except in a prepare run, whose barrier next applies and brief does not."
     )
     brief.add_argument("phase", nargs="?", help="Phase slug")
     brief.add_argument(
@@ -94,7 +93,8 @@ def add_workflow_parser(sub: SubparserGroup) -> None:
     brief.add_argument("--skill", help="Print the brief for a skill instead of a phase step")
     _add_read_options(brief)
 
-    review = actions.add_parser("review", help="Record a workflow step review")
+
+def _configure_review(review: argparse.ArgumentParser) -> None:
     review.add_argument("phase", help="Phase slug")
     review.add_argument("step", choices=("spec", "design", "tasks", "execute", "verify"))
     review.add_argument("--artifact", required=True, help="Reviewed artifact record id")
@@ -106,7 +106,8 @@ def add_workflow_parser(sub: SubparserGroup) -> None:
     review.add_argument("--basis", required=True, help="Approval or review basis")
     _add_read_options(review)
 
-    amend = actions.add_parser("amend-check", help="Apply a parent-approved verification change")
+
+def _configure_amend(amend: argparse.ArgumentParser) -> None:
     amend.add_argument("acceptance", help="Active acceptance record id")
     amend.add_argument("--expected-revision", required=True, help="Exact acceptance revision")
     amend.add_argument("--basis", required=True, help="Reason and evidence for the change")
@@ -114,12 +115,6 @@ def add_workflow_parser(sub: SubparserGroup) -> None:
     changes.add_argument("--equivalent-command", help="Command that runs the same checks")
     changes.add_argument("--routine-check", choices=ROUTINE_CHECKS, help="Change TDD to check")
     _add_read_options(amend)
-
-
-def _add_read_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--json", action="store_true", help="Print one JSON object")
-    parser.add_argument("--cwd", default=None, help="Directory used to resolve the store")
-    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
 
 
 def _step(operation: str) -> Step | None:
@@ -168,19 +163,19 @@ def _action_json(action: RunAction, *, with_brief: bool = True) -> dict[str, str
     return output
 
 
-def _fail(action: str, subject: str, error: Exception) -> int:
-    print(f"orchestra workflow {action}: {subject}: {error}", file=sys.stderr)
-    return 2
+def _open(args: argparse.Namespace, access: Access) -> Project:
+    return open_project(args, work_dir(args), access)
 
 
-def _preview_command(project: Project, args: argparse.Namespace) -> int:
+def _preview_command(args: argparse.Namespace) -> int:
+    project = _open(args, Access.READ)
     try:
         preview = _preview(project, args)
         output = _preview_json(project, preview)
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        return _fail("preview", args.effort, exc)
+        raise CommandError(f"{args.effort}: {exc}") from exc
     if args.json:
-        print(json.dumps(output, indent=2))
+        emit_json(output)
     else:
         print(f"{preview.operation}: {', '.join(preview.phases)}")
         print(f"steps: {', '.join(preview.requested_steps)}")
@@ -188,21 +183,23 @@ def _preview_command(project: Project, args: argparse.Namespace) -> int:
     return 0
 
 
-def _start_command(project: Project, args: argparse.Namespace) -> int:
+def _start_command(args: argparse.Namespace) -> int:
+    project = _open(args, Access.WRITE)
     try:
         preview = _preview(project, args)
         run = start_previewed_run(project, preview, args.snapshot_token)
         output = {"preview": _preview_json(project, preview), "run": run}
     except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        return _fail("start", args.effort, exc)
+        raise CommandError(f"{args.effort}: {exc}") from exc
     if args.json:
-        print(json.dumps(output, indent=2))
+        emit_json(output)
     else:
         print(f"started {run['subject']}: {', '.join(preview.phases)}")
     return 0
 
 
-def _status_command(project: Project, args: argparse.Namespace, *, actions_only: bool) -> int:
+def _status_command(args: argparse.Namespace, *, actions_only: bool) -> int:
+    project = _open(args, Access.READ)
     with_brief = actions_only and not args.no_brief
     try:
         if actions_only:
@@ -232,9 +229,9 @@ def _status_command(project: Project, args: argparse.Namespace, *, actions_only:
         WorkflowRunError,
         ValueError,
     ) as exc:
-        return _fail("next" if actions_only else "status", args.run, exc)
+        raise CommandError(f"{args.run}: {exc}") from exc
     if args.json:
-        print(json.dumps(output, indent=2))
+        emit_json(output)
     else:
         print(f"{output.get('status', 'next')}: {args.run}")
         for action in run_actions:
@@ -242,7 +239,20 @@ def _status_command(project: Project, args: argparse.Namespace, *, actions_only:
     return 0
 
 
-def _brief_command(project: Project, args: argparse.Namespace) -> int:
+def _status(args: argparse.Namespace) -> int:
+    return _status_command(args, actions_only=False)
+
+
+def _next(args: argparse.Namespace) -> int:
+    return _status_command(args, actions_only=True)
+
+
+def _brief(args: argparse.Namespace) -> int:
+    if args.skill is not None:
+        return _skill_brief_command(args)
+    if args.phase is None or args.step is None:
+        raise CommandError("arguments: give --skill or both phase and step")
+    project = _open(args, Access.READ)
     try:
         action = phase_step_action(project, args.phase, args.step)
     except (
@@ -253,20 +263,21 @@ def _brief_command(project: Project, args: argparse.Namespace) -> int:
         WorkflowRunError,
         ValueError,
     ) as exc:
-        return _fail("brief", args.phase, exc)
+        raise CommandError(f"{args.phase}: {exc}") from exc
     if action.state != "ready":
-        return _fail("brief", args.phase, WorkflowRunError(action.reason))
+        raise CommandError(f"{args.phase}: {action.reason}")
     if args.json:
-        print(json.dumps(_action_json(action), indent=2))
+        emit_json(_action_json(action))
     else:
         print(action.brief)
     return 0
 
 
-def _review_command(project: Project, args: argparse.Namespace) -> int:
+def _review(args: argparse.Namespace) -> int:
+    project = _open(args, Access.WRITE)
     step = _step(args.step)
     if step is None:
-        return _fail("review", args.phase, WorkflowReviewError("unsupported workflow step"))
+        raise CommandError(f"{args.phase}: unsupported workflow step")
     authority: Authority = args.authority
     try:
         artifact = project.get(args.artifact)
@@ -286,10 +297,10 @@ def _review_command(project: Project, args: argparse.Namespace) -> int:
         WorkflowReviewError,
         ValueError,
     ) as exc:
-        return _fail("review", args.phase, exc)
+        raise CommandError(f"{args.phase}: {exc}") from exc
     output = {"review": review}
     if args.json:
-        print(json.dumps(output, indent=2))
+        emit_json(output)
     else:
         print(f"{review['subject']}: reviewed {step}")
     return 0
@@ -297,75 +308,86 @@ def _review_command(project: Project, args: argparse.Namespace) -> int:
 
 def _skill_brief_command(args: argparse.Namespace) -> int:
     if args.phase is not None or args.step is not None:
-        return _fail("brief", "--skill", ValueError("takes no phase or step"))
+        raise CommandError("--skill: takes no phase or step")
     try:
         text = render_skill_brief(args.skill)
     except ValueError as exc:
-        return _fail("brief", args.skill, exc)
+        raise CommandError(f"{args.skill}: {exc}") from exc
     if args.json:
-        print(json.dumps({"skill": args.skill, "brief": text}, indent=2))
+        emit_json({"skill": args.skill, "brief": text})
         return 0
     print(text)
     return 0
 
 
-def _access(action: str) -> Access:
-    if action in ("start", "review", "amend-check"):
-        return Access.WRITE
-    return Access.READ
-
-
-def _subject(args: argparse.Namespace) -> str:
-    match args.action:
-        case "preview" | "start":
-            return args.effort
-        case "status" | "next":
-            return args.run
-        case "brief" | "review":
-            return args.phase or "arguments"
-        case _:
-            return args.acceptance
-
-
-def run_workflow(args: argparse.Namespace) -> int:
-    if args.action == "brief":
-        if args.skill is not None:
-            return _skill_brief_command(args)
-        if args.phase is None or args.step is None:
-            return _fail("brief", "arguments", ValueError("give --skill or both phase and step"))
-    start = command_dir(args)
+def _amend(args: argparse.Namespace) -> int:
+    project = _open(args, Access.WRITE)
     try:
-        project = resolve_workspace(args.store, start, _access(args.action)).open()
-    except StoreNotReady as exc:
-        print(
-            f"orchestra workflow {args.action}: {_subject(args)}: {not_ready_message(exc, start)}",
-            file=sys.stderr,
+        record = amend_acceptance(
+            project,
+            args.acceptance,
+            expected_revision=args.expected_revision,
+            basis=args.basis,
+            equivalent_command=args.equivalent_command,
+            routine_check=args.routine_check,
         )
-        return 2
-    except (OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        return _fail(args.action, "store", exc)
-    if args.action == "preview":
-        return _preview_command(project, args)
-    if args.action == "start":
-        return _start_command(project, args)
-    if args.action == "status":
-        return _status_command(project, args, actions_only=False)
-    if args.action == "next":
-        return _status_command(project, args, actions_only=True)
-    if args.action == "brief":
-        return _brief_command(project, args)
-    if args.action == "amend-check":
-        try:
-            record = amend_acceptance(
-                project,
-                args.acceptance,
-                expected_revision=args.expected_revision,
-                basis=args.basis,
-                equivalent_command=args.equivalent_command,
-                routine_check=args.routine_check,
-            )
-        except (OSError, RuntimeError, StoreError, ValidationError, ValueError) as exc:
-            return _fail(args.action, args.acceptance, exc)
-        print(json.dumps(record, indent=2) if args.json else record["id"])
-        return 0
-    return _review_command(project, args)
+    except (OSError, RuntimeError, StoreError, ValidationError, ValueError) as exc:
+        raise CommandError(f"{args.acceptance}: {exc}") from exc
+    if args.json:
+        emit_json(record)
+    else:
+        print(record["id"])
+    return 0
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "workflow",
+            "Preview and resume built-in workflow playbooks",
+            children=(
+                Command(
+                    "preview",
+                    "Preview a selected workflow",
+                    configure=_configure_preview,
+                    handle=_preview_command,
+                ),
+                Command(
+                    "start",
+                    "Start a selected workflow",
+                    configure=_configure_start,
+                    handle=_start_command,
+                ),
+                Command(
+                    "status",
+                    "Show current run progress",
+                    configure=_configure_status,
+                    handle=_status,
+                ),
+                Command(
+                    "next",
+                    "Show safe next actions for a run",
+                    configure=_configure_next,
+                    handle=_next,
+                ),
+                Command(
+                    "brief",
+                    "Print the brief for one phase step",
+                    configure=_configure_brief,
+                    handle=_brief,
+                ),
+                Command(
+                    "review",
+                    "Record a workflow step review",
+                    configure=_configure_review,
+                    handle=_review,
+                ),
+                Command(
+                    "amend-check",
+                    "Apply a parent-approved verification change",
+                    configure=_configure_amend,
+                    handle=_amend,
+                ),
+            ),
+        )
+    ]

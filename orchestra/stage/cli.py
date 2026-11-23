@@ -1,23 +1,13 @@
 from __future__ import annotations
 
 import argparse
-from typing import Protocol
 
 from orchestra.canon.store_commands import Recoverer, Scanner
 from orchestra.stage import store_tools
-
-COMMANDS = frozenset({"hook-start", "hook-stop", "install"})
-
-
-class SubparserGroup(Protocol):
-    def add_parser(self, name: str, *, help: str) -> argparse.ArgumentParser: ...
+from orchestra.tools.command_kit import Command
 
 
-def _add_install_parser(sub: SubparserGroup) -> None:
-    install = sub.add_parser(
-        "install",
-        help="Install orchestra payload for one or more agent hosts",
-    )
+def _configure_install(install: argparse.ArgumentParser) -> None:
     install.add_argument(
         "--only",
         action="append",
@@ -92,23 +82,50 @@ def store_operations() -> tuple[Scanner, Recoverer]:
     return store_tools.scan, store_tools.recover
 
 
-def add_parsers(sub: SubparserGroup) -> None:
-    _add_install_parser(sub)
-    for name, text in (
-        ("hook-start", "SessionStart hook: inject the handoff"),
-        ("hook-stop", "Stop hook: block on validation errors new this session"),
-    ):
-        hook = sub.add_parser(name, help=text)
-        mode = hook.add_mutually_exclusive_group()
-        mode.add_argument("--claude", action="store_true", help="Claude Code output")
-        mode.add_argument("--cursor", action="store_true", help="Plain output (default)")
+def _configure_hook(hook: argparse.ArgumentParser) -> None:
+    mode = hook.add_mutually_exclusive_group()
+    mode.add_argument("--claude", action="store_true", help="Claude Code output")
+    mode.add_argument("--cursor", action="store_true", help="Plain output (default)")
 
 
-def run(args: argparse.Namespace) -> int:
-    if args.command == "install":
-        from orchestra.stage.install import main as install_main
+def _install(args: argparse.Namespace) -> int:
+    from orchestra.stage.install import main as install_main
 
-        return install_main(args)
+    return install_main(args)
+
+
+def _hook(name: str, args: argparse.Namespace) -> int:
     from orchestra.stage import hooks
 
-    return hooks.run(args.command, hooks.CLAUDE if args.claude else hooks.CURSOR)
+    return hooks.run(name, hooks.CLAUDE if args.claude else hooks.CURSOR)
+
+
+def _hook_start(args: argparse.Namespace) -> int:
+    return _hook("hook-start", args)
+
+
+def _hook_stop(args: argparse.Namespace) -> int:
+    return _hook("hook-stop", args)
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "install",
+            "Install orchestra payload for one or more agent hosts",
+            configure=_configure_install,
+            handle=_install,
+        ),
+        Command(
+            "hook-start",
+            "SessionStart hook: inject the handoff",
+            configure=_configure_hook,
+            handle=_hook_start,
+        ),
+        Command(
+            "hook-stop",
+            "Stop hook: block on validation errors new this session",
+            configure=_configure_hook,
+            handle=_hook_stop,
+        ),
+    ]

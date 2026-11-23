@@ -3,30 +3,38 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
-from orchestra.canon.workspace import Access, StoreNotReady
+from orchestra.canon.workspace import Access
 from orchestra.conductor import merge_evidence
-from orchestra.conductor.cli.workspace import (
-    command_dir,
-    not_ready_message,
-    print_json,
-    resolve_workspace,
-)
+from orchestra.conductor.cli.options import open_project, work_dir
+from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 
-def run_merge_evidence(args: argparse.Namespace) -> int:
-    start = command_dir(args).resolve()
+def _configure(evidence: argparse.ArgumentParser) -> None:
+    evidence.add_argument("--phase", required=True, help="Phase slug")
+    evidence.add_argument("--cwd", default=None, help="Working directory (default: process cwd)")
+    evidence.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _handle(args: argparse.Namespace) -> int:
+    start = work_dir(args).resolve()
+    project = open_project(args, start, Access.WRITE)
     try:
-        workspace = resolve_workspace(args.store, start, Access.WRITE)
-        result = merge_evidence.refresh_recommendation(workspace.open(), args.phase)
-    except StoreNotReady as exc:
-        print(f"orchestra merge-evidence: {not_ready_message(exc, start)}", file=sys.stderr)
-        return 2
+        result = merge_evidence.refresh_recommendation(project, args.phase)
     except (LookupError, OSError, RuntimeError, StoreBindingError, StoreError, ValueError) as exc:
-        print(f"orchestra merge-evidence: {exc}", file=sys.stderr)
-        return 2
-    print_json(result)
+        raise CommandError(str(exc)) from exc
+    emit_json(result)
     return 0 if result["recommendation"] == "ready" else 1
+
+
+def commands() -> list[Command]:
+    return [
+        Command(
+            "merge-evidence",
+            "Refresh the CI evidence and show the merge recommendation",
+            configure=_configure,
+            handle=_handle,
+        )
+    ]
