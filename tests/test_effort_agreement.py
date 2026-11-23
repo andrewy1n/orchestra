@@ -21,7 +21,7 @@ from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.attention import ATTENTION_ORDER
-from orchestra.score.effort import current_effort
+from orchestra.score.planning.effort import current_effort
 
 PHASE_BODY = "## Problem\n\np\n\n## Approach\n\na\n\n## Exit criteria\n\ne"
 SPEC_BODY = "\n\n".join(

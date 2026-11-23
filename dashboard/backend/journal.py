@@ -22,13 +22,13 @@ from orchestra.conductor.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     FAILED_ATTEMPT_TYPE,
 )
-from orchestra.score.continuity import question_scope
-from orchestra.score.detail_facts import PHASE_TYPE, WORK_ITEM_TYPE
-from orchestra.score.effort import EFFORT, current_efforts, record_effort
+from orchestra.score.facts.detail_facts import PHASE_TYPE, WORK_ITEM_TYPE
+from orchestra.score.facts.work_item_facts import record_scope
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
-from orchestra.score.phase import phase_title
-from orchestra.score.work_item_facts import record_scope
-from orchestra.score.workflow_blockers import (
+from orchestra.score.planning.effort import EFFORT, current_efforts, record_effort
+from orchestra.score.planning.phase import phase_title
+from orchestra.score.workflow.continuity import question_scope
+from orchestra.score.workflow.workflow_blockers import (
     FINDING_TYPE,
     QUESTION_TYPE,
     is_open_finding,

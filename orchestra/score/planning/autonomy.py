@@ -10,7 +10,7 @@ from typing import Literal
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.score.effort import Effort, current_effort, current_efforts
+from orchestra.score.planning.effort import Effort, current_effort, current_efforts
 
 LEVELS = ("gated", "auto-plan", "auto-phases")
 

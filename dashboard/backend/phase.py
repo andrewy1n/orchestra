@@ -42,44 +42,44 @@ from orchestra.conductor.workspace_types import (
     INTEGRATION_REPORT_TYPE,
     RELEASE_TYPE,
 )
-from orchestra.score.acceptance import read_acceptance
-from orchestra.score.detail_facts import (
+from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
     PHASE_TYPE,
     WORK_ITEM_TYPE,
 )
-from orchestra.score.elapsed import TimedTask, phase_elapsed
-from orchestra.score.lookups import (
-    current_phases,
-    live_work_items,
-)
-from orchestra.score.milestone import milestone_facts, milestone_state
-from orchestra.score.phase import Phase, current_phase_model, read_phase
-from orchestra.score.requirements import (
-    SPECIFICATION,
-    acceptance_listed_requirements,
-    acceptance_requirement_ids,
-    phase_requirements,
-)
-from orchestra.score.scope import (
-    design_decisions,
-    records_for_phase,
-    spec_requirements,
-    spec_weight,
-)
-from orchestra.score.work_item_facts import (
+from orchestra.score.facts.elapsed import TimedTask, phase_elapsed
+from orchestra.score.facts.work_item_facts import (
     decision_choice,
     record_scope,
     tasks_by_requirement,
     work_item_facts,
 )
-from orchestra.score.workspace_facts import (
+from orchestra.score.facts.workspace_facts import (
     CONSTRAINT_TYPE,
     DESIGN_TYPE,
     MILESTONE_TYPE,
     constraint_facts,
     decision_facts,
+)
+from orchestra.score.lookups import (
+    current_phases,
+    live_work_items,
+)
+from orchestra.score.planning.acceptance import read_acceptance
+from orchestra.score.planning.milestone import milestone_facts, milestone_state
+from orchestra.score.planning.phase import Phase, current_phase_model, read_phase
+from orchestra.score.planning.requirements import (
+    SPECIFICATION,
+    acceptance_listed_requirements,
+    acceptance_requirement_ids,
+    phase_requirements,
+)
+from orchestra.score.planning.scope import (
+    design_decisions,
+    records_for_phase,
+    spec_requirements,
+    spec_weight,
 )
 from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
 from orchestra.tuner.record_facts import check_run_facts

@@ -17,8 +17,12 @@ from orchestra.conductor.execution_cost import (
 )
 from orchestra.conductor.wave import is_closing_task, task_acceptances
 from orchestra.score.lookups import live_work_items
-from orchestra.score.work_item import WorkItem, current_work_item
-from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
+from orchestra.score.planning.work_item import WorkItem, current_work_item
+from orchestra.score.workflow.workflow_blockers import (
+    WorkflowBlockerError,
+    blocked_tasks,
+    phase_blockers,
+)
 from orchestra.tools import Git
 
 

@@ -17,7 +17,7 @@ from orchestra.conductor import land_task, wave
 from orchestra.conductor.model_types import PlanningPayload, planning_payload
 from orchestra.conductor.oracle_freeze import parse_freeze, parse_hashes
 from orchestra.score.lookups import current_phase, latest_record, record_order
-from orchestra.score.oracle_policy import OraclePolicy, resolve_oracle_policy
+from orchestra.score.planning.oracle_policy import OraclePolicy, resolve_oracle_policy
 from orchestra.tools import Git, ToolError
 
 if TYPE_CHECKING:

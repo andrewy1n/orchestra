@@ -9,7 +9,7 @@ import pytest
 from orchestra.canon.derive import attach_derived_all
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.score.analyze import Report, analyze_phase
+from orchestra.score.planning.analyze import Report, analyze_phase
 
 
 @pytest.fixture()

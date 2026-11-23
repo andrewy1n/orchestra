@@ -19,7 +19,7 @@ def test_planning_mechanics_explains_touch_scope_rules() -> None:
     )
 
     assert "repository-relative paths or patterns in `payload.touches`" in source
-    assert "`orchestra/score/touches.py`" in source
+    assert "`orchestra/score/planning/touches.py`" in source
     assert "`tests/score/test_?.py`" in source
     assert "`skills/**/SKILL.md`" in source
     assert "unknown scope is not empty scope" in source

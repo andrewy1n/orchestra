@@ -32,7 +32,7 @@
   {
     "record_type": "work-item",
     "subject": "fix-empty-requirements",
-    "body": "## Description\n\nA full-phase acceptance with `requirements: []` fails `orchestra analyze` with `full-phase-multi-requirement`, and `acceptance_requirement_ids` ignores its `requirement`. An empty list names no requirement, so it must act as absent.\n\n## Approach\n\nIn `orchestra/score/requirements.py` read `requirements` only when it is a non-empty list. In `orchestra/score/analyze.py` flag `full-phase-multi-requirement` only when more than one id is named or `requirements` is non-empty. Add tests to `tests/test_light_analyze.py`.\n",
+    "body": "## Description\n\nA full-phase acceptance with `requirements: []` fails `orchestra analyze` with `full-phase-multi-requirement`, and `acceptance_requirement_ids` ignores its `requirement`. An empty list names no requirement, so it must act as absent.\n\n## Approach\n\nIn `orchestra/score/planning/requirements.py` read `requirements` only when it is a non-empty list. In `orchestra/score/planning/analyze.py` flag `full-phase-multi-requirement` only when more than one id is named or `requirements` is non-empty. Add tests to `tests/test_light_analyze.py`.\n",
     "title": "Treat an empty requirements list as none"
   },
   {

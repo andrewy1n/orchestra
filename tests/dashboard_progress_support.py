@@ -18,7 +18,7 @@ from orchestra.conductor.phase_progress import (
     VerifyFacts,
     assess,
 )
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 from orchestra.tools import Unmerged, branch_state
 
 Scenario = Literal["fresh", "gated", "verifying", "landed", "unmerged"]

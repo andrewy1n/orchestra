@@ -10,7 +10,7 @@ import pytest
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.validation import ValidationError
-from orchestra.score.touches import TouchPattern, overlap, validate_touches
+from orchestra.score.planning.touches import TouchPattern, overlap, validate_touches
 
 
 @pytest.fixture()

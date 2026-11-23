@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from dashboard.backend import store
 from orchestra.canon.project import Project
 from orchestra.canon.types import DerivedValues, Record
-from orchestra.score.effort import record_effort
 from orchestra.score.lookups import latest_record
+from orchestra.score.planning.effort import record_effort
 
 CHECK_RESULT = {"pass": "passed", "fail": "failed"}
 INACTIVE_STATES = ("superseded", "retracted")

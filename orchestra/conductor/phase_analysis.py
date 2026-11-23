@@ -11,8 +11,8 @@ from orchestra.canon.project_config import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     load_project_config,
 )
-from orchestra.score.analyze import Report, analyze_phase
 from orchestra.score.lookups import current_phase
+from orchestra.score.planning.analyze import Report, analyze_phase
 
 
 def analyze_in_store(project: Project, root: Path, phase: str, stage: str) -> Report | None:

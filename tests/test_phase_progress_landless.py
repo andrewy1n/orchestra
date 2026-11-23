@@ -28,7 +28,7 @@ from orchestra.conductor.phase_progress import (
     assess,
 )
 from orchestra.conductor.workflow import step_stage
-from orchestra.score.phase import current_phase_model, read_phase
+from orchestra.score.planning.phase import current_phase_model, read_phase
 from orchestra.tools import Unmerged
 
 READY = Readiness(True)

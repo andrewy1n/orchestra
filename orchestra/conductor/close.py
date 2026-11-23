@@ -18,7 +18,7 @@ from orchestra.conductor.landing import (
     task_branch,
     task_worktree,
 )
-from orchestra.score.phase import Phase, current_phase_model
+from orchestra.score.planning.phase import Phase, current_phase_model
 from orchestra.tools import Git, ToolError
 
 

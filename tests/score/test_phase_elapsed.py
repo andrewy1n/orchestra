@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from orchestra.score.elapsed import Elapsed, TimedTask, phase_elapsed
+from orchestra.score.facts.elapsed import Elapsed, TimedTask, phase_elapsed
 
 
 def _task(key: str, wave: int | None, executor: str, estimate: int | None) -> TimedTask:

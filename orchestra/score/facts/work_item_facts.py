@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonValue, Record
-from orchestra.score.executor import ExecutorTask
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
+from orchestra.score.planning.executor import ExecutorTask
 
 
 @dataclass(frozen=True)

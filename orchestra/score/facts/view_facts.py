@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonValue, Record
-from orchestra.score.workspace_facts import CONSTRAINT_TYPE, POSITION_TYPE
+from orchestra.score.facts.workspace_facts import CONSTRAINT_TYPE, POSITION_TYPE
 
 EFFORT_TYPE = "score:effort"
 RUN_TYPE = "score:run"

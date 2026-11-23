@@ -26,7 +26,6 @@ from orchestra.conductor.landing import (
     task_branch,
     task_worktree,
 )
-from orchestra.score.executor import ExecutorTask, ExecutorWaveError, wave_executor
 from orchestra.score.lookups import (
     acceptances_of,
     closing_work_item,
@@ -35,9 +34,14 @@ from orchestra.score.lookups import (
     live_work_items,
     record_order,
 )
-from orchestra.score.phase import Phase, read_phase
-from orchestra.score.work_item import WorkItemShapeError, read_work_item
-from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
+from orchestra.score.planning.executor import ExecutorTask, ExecutorWaveError, wave_executor
+from orchestra.score.planning.phase import Phase, read_phase
+from orchestra.score.planning.work_item import WorkItemShapeError, read_work_item
+from orchestra.score.workflow.workflow_blockers import (
+    WorkflowBlockerError,
+    blocked_tasks,
+    phase_blockers,
+)
 from orchestra.tools import Git, ToolError
 
 

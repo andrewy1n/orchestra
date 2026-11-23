@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import Record
 from orchestra.conductor.landing import LANDING, PROOF_PACKET, read_landing, read_proof_packet
-from orchestra.score.acceptance import read_acceptance
 from orchestra.score.lookups import corrected_ids, current_phases
-from orchestra.score.phase import read_phase
-from orchestra.score.requirements import SPECIFICATION, read_requirements
+from orchestra.score.planning.acceptance import read_acceptance
+from orchestra.score.planning.phase import read_phase
+from orchestra.score.planning.requirements import SPECIFICATION, read_requirements
 from orchestra.tuner.records import (
     read_check_run,
     read_evidence_binding,

@@ -29,8 +29,8 @@ from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.conductor.workflow import preview_run, run_status, start_run
 from orchestra.metrics import phases as metrics_phases
 from orchestra.metrics.phases import build_phase_rows
-from orchestra.score import workflow_selection
-from orchestra.score.phase import Phase, current_phase_model, read_phase
+from orchestra.score.planning.phase import Phase, current_phase_model, read_phase
+from orchestra.score.workflow import workflow_selection
 from orchestra.tools.github import GitHubCheck
 from orchestra.views import render as views
 

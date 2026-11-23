@@ -10,7 +10,7 @@ from orchestra.canon.types import Record
 from orchestra.composer.records import scan_composer_records
 from orchestra.conductor.evidence_recovery import recover_evidence
 from orchestra.conductor.record_scan import scan_phase_records
-from orchestra.score.effort import scan_effort_records
+from orchestra.score.planning.effort import scan_effort_records
 
 
 def scan(records: Sequence[Record]) -> list[StoreFinding]:

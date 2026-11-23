@@ -4,7 +4,7 @@ from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.score.lookups import current_phase, live_work_items, owning_work_item
-from orchestra.score.oracle_policy import resolve_oracle_policy
+from orchestra.score.planning.oracle_policy import resolve_oracle_policy
 
 ROUTINE_CHECKS = ("documentation", "packaging", "final-verification")
 COMMAND_AMENDMENT_KEY = "amended_verify_command_for"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.continuity import question_answer_operation
-from orchestra.score.detail_facts import ACCEPTANCE_TYPE, acceptance_facts
+from orchestra.score.facts.detail_facts import ACCEPTANCE_TYPE, acceptance_facts
+from orchestra.score.workflow.continuity import question_answer_operation
 
 
 def _record(record_type: str, payload: JsonObject, subject: str = "s") -> Record:

@@ -19,7 +19,7 @@ from orchestra.conductor.landing import (
     proof_packet,
     pull_request_title,
 )
-from orchestra.score.phase import current_phase_model
+from orchestra.score.planning.phase import current_phase_model
 from orchestra.tools import Git
 
 

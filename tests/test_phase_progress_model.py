@@ -22,7 +22,7 @@ from orchestra.conductor.phase_progress import (
     assess,
     phase_facts,
 )
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 
 READY = Readiness(True)
 PASSING = ExecutionVerdict("pass", "pass")

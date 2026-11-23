@@ -8,8 +8,8 @@ from conductor_support import write_policy
 from orchestra.canon.project import Project
 from orchestra.conductor import phase_progress, workflow_review
 from orchestra.conductor.workflow import RunAction, next_actions, preview_run, start_run
-from orchestra.score.phase import current_phase_model
-from orchestra.score.workflow_reviews import Step
+from orchestra.score.planning.phase import current_phase_model
+from orchestra.score.workflow.workflow_reviews import Step
 
 EFFORT = "run-effort"
 BODY = (

@@ -6,7 +6,7 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/score/workflow_blockers.py")
+OWNER = Path("orchestra/score/workflow/workflow_blockers.py")
 ROOTS = ("orchestra", "dashboard/backend", "scripts")
 NEEDS = "needs"
 SIGNED_BY = "signed_by"

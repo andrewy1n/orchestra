@@ -6,17 +6,17 @@ from typing import Literal
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import EvidenceIndex, acceptance_latest
-from orchestra.score.acceptance import Acceptance, read_acceptance
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     current_phases,
     latest_record,
     record_order,
 )
-from orchestra.score.requirements import (
+from orchestra.score.planning.acceptance import Acceptance, read_acceptance
+from orchestra.score.planning.requirements import (
     requirements_in_body,
 )
-from orchestra.score.workflow_blockers import is_signed
+from orchestra.score.workflow.workflow_blockers import is_signed
 
 RequirementState = Literal["verified", "failed", "unverified"]
 UNVERIFIED: RequirementState = "unverified"

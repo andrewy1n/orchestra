@@ -26,8 +26,8 @@ from orchestra.conductor.head_evidence import EvidenceIndex
 from orchestra.conductor.landing import LandingPlace, phase_place
 from orchestra.conductor.suite import SuitePolicy
 from orchestra.score.lookups import closing_work_item
-from orchestra.score.phase import Phase, current_phase_model
-from orchestra.score.workflow_blockers import (
+from orchestra.score.planning.phase import Phase, current_phase_model
+from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     is_signed,
     latest_manual_check,

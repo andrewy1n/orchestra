@@ -7,29 +7,29 @@ from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import JsonValue, Record
-from orchestra.score.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    ExecutorTask,
-    ExecutorWaveError,
-    wave_executor,
-)
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     current_phase,
     dependencies,
     records_of_type,
 )
-from orchestra.score.oracle_policy import resolve_oracle_policy
-from orchestra.score.plan_shape import plan_shape_warnings
-from orchestra.score.requirements import (
+from orchestra.score.planning.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    ExecutorTask,
+    ExecutorWaveError,
+    wave_executor,
+)
+from orchestra.score.planning.oracle_policy import resolve_oracle_policy
+from orchestra.score.planning.plan_shape import plan_shape_warnings
+from orchestra.score.planning.requirements import (
     acceptance_requirement_ids,
     phase_requirements,
     phase_weight,
     requirement_body_problems,
     requirements_in_body,
 )
-from orchestra.score.touches import TouchPattern, overlap, validate_touches
-from orchestra.score.workflow_reviews import has_blocking_behavior_question
+from orchestra.score.planning.touches import TouchPattern, overlap, validate_touches
+from orchestra.score.workflow.workflow_reviews import has_blocking_behavior_question
 
 MARKER = "[NEEDS CLARIFICATION"
 _CODE_SPAN = re.compile(r"`[^`]*`")

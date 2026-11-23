@@ -19,7 +19,7 @@ from orchestra.conductor.phase_progress import (
     unavailable_progress,
 )
 from orchestra.score.lookups import current_phases, prepare_records
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 from orchestra.tools import ToolError
 
 _OPEN_STATES = ("planned", "in_progress")

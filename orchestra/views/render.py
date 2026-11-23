@@ -27,19 +27,13 @@ from orchestra.conductor.landing import PROOF_PACKET, place_of_body
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
 from orchestra.conductor.requirements import RequirementIndex, requirement_status
 from orchestra.conductor.task_detail import ASSIGNMENT_AMENDMENT_TYPE
-from orchestra.score.detail_facts import (
+from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
     PHASE_TYPE,
     WORK_ITEM_TYPE,
 )
-from orchestra.score.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    task_executor,
-)
-from orchestra.score.lookups import current_phases
-from orchestra.score.requirements import phase_requirements, requirement_lines
-from orchestra.score.view_facts import (
+from orchestra.score.facts.view_facts import (
     CONSTRAINT_TYPE,
     EFFORT_TYPE,
     POSITION_TYPE,
@@ -47,14 +41,20 @@ from orchestra.score.view_facts import (
     in_effort,
     is_closed,
 )
-from orchestra.score.work_item_facts import (
+from orchestra.score.facts.work_item_facts import (
     decision_choice,
     executor_task,
     record_scope,
     work_item_facts,
 )
-from orchestra.score.workflow_blockers import QUESTION_TYPE, human_gates
-from orchestra.score.workspace_facts import DESIGN_TYPE
+from orchestra.score.facts.workspace_facts import DESIGN_TYPE
+from orchestra.score.lookups import current_phases
+from orchestra.score.planning.executor import (
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    task_executor,
+)
+from orchestra.score.planning.requirements import phase_requirements, requirement_lines
+from orchestra.score.workflow.workflow_blockers import QUESTION_TYPE, human_gates
 from orchestra.tools import Merged, Unmerged, branch_state
 from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
 from orchestra.tuner.record_facts import RecordShapeError, check_run_facts

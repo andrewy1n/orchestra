@@ -14,7 +14,7 @@ from orchestra.conductor.phase_progress import (
     VerifyFacts,
     assess,
 )
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 from orchestra.tools import Absent, BranchState, Merged, ReadFailed, Unmerged
 
 READY = Readiness(True)

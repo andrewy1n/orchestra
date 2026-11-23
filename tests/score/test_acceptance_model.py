@@ -4,8 +4,8 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.acceptance import Acceptance, read_acceptance
-from orchestra.score.requirements import (
+from orchestra.score.planning.acceptance import Acceptance, read_acceptance
+from orchestra.score.planning.requirements import (
     Requirement,
     acceptance_requirement_ids,
     read_requirements,

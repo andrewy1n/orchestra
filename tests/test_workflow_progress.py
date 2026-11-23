@@ -17,8 +17,8 @@ from orchestra.conductor.workflow import (
     run_status,
     start_run,
 )
-from orchestra.score.phase import current_phase_model
-from orchestra.score.workflow_reviews import Authority, Step
+from orchestra.score.planning.phase import current_phase_model
+from orchestra.score.workflow.workflow_reviews import Authority, Step
 
 EFFORT = "run-effort"
 PHASE_BODY = (

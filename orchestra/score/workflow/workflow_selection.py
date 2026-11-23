@@ -10,7 +10,7 @@ from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.index import RecordIndex
 from orchestra.canon.types import Record
 from orchestra.score.lookups import current_phases
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 
 _RANGE = re.compile(r"^(\d+)-(\d+)$")
 

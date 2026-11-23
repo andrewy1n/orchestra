@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from orchestra.canon.types import Record
-from orchestra.score.effort import record_effort
+from orchestra.score.facts.work_item_facts import record_scope
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item, record_order
-from orchestra.score.work_item_facts import record_scope
+from orchestra.score.planning.effort import record_effort
 from orchestra.tuner.record_facts import CheckRunFacts, check_run_facts
 
 _INACTIVE = ("superseded", "retracted")

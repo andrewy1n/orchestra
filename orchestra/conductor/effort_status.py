@@ -6,8 +6,8 @@ from typing import Literal
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import Record
-from orchestra.score.effort import current_efforts
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, current_phases, live_work_items
+from orchestra.score.planning.effort import current_efforts
 
 EffortStatus = Literal["closed", "finished", "dormant", "live"]
 

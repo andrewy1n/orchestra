@@ -10,8 +10,8 @@ from dashboard.backend.snapshot import NeedsYouItem
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue
-from orchestra.score.continuity import question_answer_operation
-from orchestra.score.workflow_blockers import (
+from orchestra.score.workflow.continuity import question_answer_operation
+from orchestra.score.workflow.workflow_blockers import (
     CHECK_RUN_TYPE,
     CLEARS,
     FINDING_TYPE,

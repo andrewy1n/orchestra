@@ -4,9 +4,9 @@ from collections.abc import Sequence
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.score.analyze import analyze_phase
 from orchestra.score.lookups import current_phase, record_order
-from orchestra.score.workflow_reviews import (
+from orchestra.score.planning.analyze import analyze_phase
+from orchestra.score.workflow.workflow_reviews import (
     Authority,
     Step,
     WorkflowReviewError,

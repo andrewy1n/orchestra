@@ -14,7 +14,7 @@ from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor import close, gate, wave
 from orchestra.conductor.landing import LandingPlace, phase_place
 from orchestra.conductor.workflow import WorkflowRunError, step_stage
-from orchestra.score.phase import Phase
+from orchestra.score.planning.phase import Phase
 
 PHASE = "ph"
 EFFORT = "ef"

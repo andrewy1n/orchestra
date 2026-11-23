@@ -7,7 +7,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.fields import optional_blank_text, optional_text_list, required_text
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.requirements import acceptance_requirement_ids
+from orchestra.score.planning.requirements import acceptance_requirement_ids
 
 
 @dataclass(frozen=True)

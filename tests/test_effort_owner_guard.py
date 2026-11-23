@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parent.parent
 ROOTS = ("orchestra", "dashboard")
 OWNERS = frozenset(
     {
-        Path("orchestra/score/effort.py"),
+        Path("orchestra/score/planning/effort.py"),
         Path("orchestra/composer/records.py"),
         Path("orchestra/conductor/effort_status.py"),
         Path("orchestra/conductor/attention.py"),

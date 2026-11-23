@@ -4,7 +4,7 @@ from collections.abc import Collection, Mapping
 
 from orchestra.canon.types import Record
 from orchestra.conductor.phase_progress import PhaseProgress
-from orchestra.score.view_facts import (
+from orchestra.score.facts.view_facts import (
     ConstraintLine,
     effort_constraint_lines,
     effort_position_stamps,

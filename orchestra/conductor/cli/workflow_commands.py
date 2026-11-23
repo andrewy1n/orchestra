@@ -24,7 +24,7 @@ from orchestra.conductor.workflow import (
 )
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
 from orchestra.score.lookups import current_phase, dependencies
-from orchestra.score.workflow_reviews import Authority, Step
+from orchestra.score.workflow.workflow_reviews import Authority, Step
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 

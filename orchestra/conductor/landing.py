@@ -15,7 +15,7 @@ from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.revision import revision_matches
 from orchestra.score.lookups import corrected_ids, latest_record
-from orchestra.score.phase import Phase
+from orchestra.score.planning.phase import Phase
 
 LANDING = "conductor:landing"
 PROOF_PACKET = "conductor:proof-packet"

@@ -58,18 +58,14 @@ from orchestra.conductor.workspace_types import (
     INTEGRATION_REPORT_TYPE,
     RELEASE_TYPE,
 )
-from orchestra.score.detail_facts import (
+from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
     PHASE_TYPE,
     WORK_ITEM_TYPE,
 )
-from orchestra.score.effort import EFFORT, current_efforts
-from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
-from orchestra.score.phase import structured_phases
-from orchestra.score.requirements import SPECIFICATION
-from orchestra.score.work_item_facts import owning_task_id, record_scope
-from orchestra.score.workspace_facts import (
+from orchestra.score.facts.work_item_facts import owning_task_id, record_scope
+from orchestra.score.facts.workspace_facts import (
     CONTINUITY_QUESTION_TYPE,
     DESIGN_TYPE,
     MILESTONE_TYPE,
@@ -78,6 +74,10 @@ from orchestra.score.workspace_facts import (
     effort_summary,
     work_item_efforts,
 )
+from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
+from orchestra.score.planning.effort import EFFORT, current_efforts
+from orchestra.score.planning.phase import structured_phases
+from orchestra.score.planning.requirements import SPECIFICATION
 from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
 
 RECENT = timedelta(hours=24)

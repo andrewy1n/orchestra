@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.score.work_item import (
+from orchestra.score.planning.work_item import (
     WorkItem,
     WorkItemShapeError,
     current_work_item,

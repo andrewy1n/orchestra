@@ -12,10 +12,14 @@ from orchestra.conductor import phase_progress
 from orchestra.conductor.landing import LandingProofError
 from orchestra.conductor.phase_progress import PhaseProgress, PhaseProgressError, assess
 from orchestra.score.lookups import live_work_items
-from orchestra.score.phase import Phase, current_phase_model
-from orchestra.score.workflow_blockers import WorkflowBlockerError, blocked_tasks, phase_blockers
-from orchestra.score.workflow_reviews import Step, step_readiness
-from orchestra.score.workflow_selection import PhaseSelectionError, resolve_phase_selection
+from orchestra.score.planning.phase import Phase, current_phase_model
+from orchestra.score.workflow.workflow_blockers import (
+    WorkflowBlockerError,
+    blocked_tasks,
+    phase_blockers,
+)
+from orchestra.score.workflow.workflow_reviews import Step, step_readiness
+from orchestra.score.workflow.workflow_selection import PhaseSelectionError, resolve_phase_selection
 
 Operation = Literal["phase", "prepare", "deliver", "single-step"]
 ActionState = Literal["ready", "blocked"]

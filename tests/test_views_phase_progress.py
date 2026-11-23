@@ -22,7 +22,7 @@ from orchestra.conductor.phase_progress import (
     VerifyFacts,
     assess,
 )
-from orchestra.score.phase import Phase, read_phase
+from orchestra.score.planning.phase import Phase, read_phase
 from orchestra.stage.handoff import hook_handoff_sections
 from orchestra.tools import BranchState, Git, Unmerged
 from orchestra.views import render as views

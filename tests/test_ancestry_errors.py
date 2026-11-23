@@ -16,7 +16,7 @@ from conftest import REPO_ROOT, git
 from orchestra.canon.project import Project
 from orchestra.conductor import close_batch, wave
 from orchestra.conductor.landing import phase_place
-from orchestra.score.phase import read_phase
+from orchestra.score.planning.phase import read_phase
 from orchestra.tools import Git
 from orchestra.tuner.manifest import Claim, Manifest
 from orchestra.tuner.provenance import AFTER, check_provenance

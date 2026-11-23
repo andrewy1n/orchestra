@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.score.workspace_facts import (
+from orchestra.score.facts.workspace_facts import (
     ConstraintFacts,
     DecisionFacts,
     EffortSummary,

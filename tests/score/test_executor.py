@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from orchestra.score.executor import (
+from orchestra.score.planning.executor import (
     SIZE_BANDS,
     ExecutorTask,
     ExecutorWaveError,

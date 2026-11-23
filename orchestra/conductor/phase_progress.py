@@ -26,8 +26,6 @@ from orchestra.conductor.landing import (
     proof_packet,
 )
 from orchestra.conductor.requirements import UNVERIFIED, is_verified, requirement_status
-from orchestra.score.analyze import analyze_phase
-from orchestra.score.effort import current_effort
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
     closing_work_item,
@@ -37,9 +35,11 @@ from orchestra.score.lookups import (
     record_order,
 )
 from orchestra.score.lookups import dependencies as item_dependencies
-from orchestra.score.phase import Phase, read_phase
-from orchestra.score.workflow_blockers import WorkflowBlockerError, phase_blockers
-from orchestra.score.workflow_reviews import Step, step_readiness
+from orchestra.score.planning.analyze import analyze_phase
+from orchestra.score.planning.effort import current_effort
+from orchestra.score.planning.phase import Phase, read_phase
+from orchestra.score.workflow.workflow_blockers import WorkflowBlockerError, phase_blockers
+from orchestra.score.workflow.workflow_reviews import Step, step_readiness
 from orchestra.tools import Absent, BranchState, Git, Merged, ReadFailed, Unmerged, branch_state
 
 Stage = Literal["spec", "design", "tasks", "execute", "verify", "land", "close"]

@@ -98,7 +98,7 @@ sys.path[:] = [
 ]
 before = list(sys.path)
 try:
-    from orchestra.score import effort_rollup
+    from orchestra.score.planning import effort_rollup
 except Exception as exc:
     sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
     raise SystemExit(1)

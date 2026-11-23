@@ -8,7 +8,7 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access, open_for_command
-from orchestra.score import autonomy
+from orchestra.score.planning import autonomy
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
 
