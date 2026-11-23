@@ -8,7 +8,7 @@ from test_execution_cost_dispatch import START as DISPATCH_START
 from test_execution_cost_dispatch import _item, _repo
 from test_execution_cost_landing import START, _evidence_file, _report, _world
 
-from orchestra.conductor import execution_cost, land_task, wave
+from orchestra.conductor.tasks import execution_cost, land_task, wave
 
 
 def test_dispatch_started_at_is_recorded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

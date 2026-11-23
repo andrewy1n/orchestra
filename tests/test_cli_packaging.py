@@ -292,7 +292,7 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
     assert "Traceback" not in install.stderr
 
     module = subprocess.run(
-        [sys.executable, "-c", "import orchestra.cli, orchestra.conductor.close_batch"],
+        [sys.executable, "-c", "import orchestra.cli, orchestra.conductor.tasks.close.close_batch"],
         cwd=str(elsewhere),
         env=env,
         capture_output=True,
@@ -304,7 +304,9 @@ def test_cli_standalone_without_checkout(installed, tmp_path):
         [
             sys.executable,
             "-c",
-            ("import orchestra.conductor.task_close as cb\nprint(cb.assertion_level_red({}))\n"),
+            (
+                "import orchestra.conductor.tasks.close.task_close as cb\nprint(cb.assertion_level_red({}))\n"
+            ),
         ],
         cwd=str(elsewhere),
         env=env,

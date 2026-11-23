@@ -8,7 +8,8 @@ import test_wave_end as wave_world
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import phase_progress, wave
+from orchestra.conductor import phase_progress
+from orchestra.conductor.tasks import wave
 from orchestra.conductor.verification.requirements import release_ready, requirement_status
 from orchestra.conductor.verification.suite.suite import SuitePolicy, suite_ready_for_review
 

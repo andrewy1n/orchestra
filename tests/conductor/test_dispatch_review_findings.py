@@ -12,7 +12,7 @@ from test_task_land import EVIDENCE, PHASE, _evidence_file, _git, _land_cli, _wo
 from test_wave_end import _world as _end_world
 
 from orchestra.canon.project import open_store
-from orchestra.conductor import land_task, wave
+from orchestra.conductor.tasks import land_task, wave
 from orchestra.conductor.verification.check import run_check
 from orchestra.tools.git import Git
 

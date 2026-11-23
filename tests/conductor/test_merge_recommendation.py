@@ -9,8 +9,8 @@ from canon_support import create, make_project, seed_effort
 from orchestra.canon.extensions import PluginRegistration
 from orchestra.canon.project import Project
 from orchestra.cli import main
-from orchestra.conductor.github_evidence import GitHubActionsAdapter
-from orchestra.conductor.merge_evidence import (
+from orchestra.conductor.landing.github_evidence import GitHubActionsAdapter
+from orchestra.conductor.landing.merge_evidence import (
     CheckEvidence,
     CheckState,
     EvidenceRequest,

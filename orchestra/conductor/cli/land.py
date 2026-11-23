@@ -7,9 +7,9 @@ import argparse
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access, resolve_for_command
-from orchestra.conductor import land
 from orchestra.conductor.cli.options import store_path, work_dir
-from orchestra.conductor.github_pr import GitHubPRError, github_client
+from orchestra.conductor.landing import land
+from orchestra.conductor.landing.github_pr import GitHubPRError, github_client
 from orchestra.tools.command_kit import Command, CommandError, emit_json, fail
 
 GATE_FAILED_EXIT = 5

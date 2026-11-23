@@ -13,8 +13,9 @@ from close_store_support import commit_claim_manifest
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject
-from orchestra.conductor import land_task, task_close
-from orchestra.conductor.task_close import CloseApproval, CloseRefusal, CriterionRequest
+from orchestra.conductor.tasks import land_task
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.tasks.close.task_close import CloseApproval, CloseRefusal, CriterionRequest
 
 PHASE = "ph"
 EFFORT = "ef"
@@ -40,7 +41,7 @@ def _git(root: Path, *args: str) -> None:
 
 
 def _world(tmp_path: Path, acceptance: JsonObject | None = None) -> tuple[Project, Path]:
-    from orchestra.conductor import wave
+    from orchestra.conductor.tasks import wave
 
     project = make_project(tmp_path)
     _git(tmp_path, "config", "user.email", "t@example.com")

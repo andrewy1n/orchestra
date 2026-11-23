@@ -19,13 +19,13 @@ from orchestra.composer.idea_facts import (
     is_open_backlog_idea,
     is_roadmap_idea,
 )
-from orchestra.conductor.assignment import task_assignment
 from orchestra.conductor.attention import AttentionItem, LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus
 from orchestra.conductor.effort_status import effort_statuses as _effort_statuses
-from orchestra.conductor.landing import PROOF_PACKET, place_of_body
+from orchestra.conductor.landing.landing import PROOF_PACKET, place_of_body
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
-from orchestra.conductor.task_detail import ASSIGNMENT_AMENDMENT_TYPE
+from orchestra.conductor.tasks.assignment import task_assignment
+from orchestra.conductor.tasks.task_detail import ASSIGNMENT_AMENDMENT_TYPE
 from orchestra.conductor.verification.requirements import RequirementIndex, requirement_status
 from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,

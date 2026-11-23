@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from orchestra.canon import extensions
-from orchestra.conductor.land import LandingResult, LandRequest, dispatch_land
+from orchestra.conductor.landing.land import LandingResult, LandRequest, dispatch_land
 
 
 def test_landing_requires_explicit_land_table(tmp_path: Path) -> None:

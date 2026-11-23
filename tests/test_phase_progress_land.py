@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import LandingProofState
+from orchestra.conductor.landing.landing import LandingProofState
 from orchestra.conductor.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,

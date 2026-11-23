@@ -9,7 +9,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.types import Record
 from orchestra.conductor import phase_progress
-from orchestra.conductor.landing import LandingProofError
+from orchestra.conductor.landing.landing import LandingProofError
 from orchestra.conductor.phase_progress import PhaseProgress, PhaseProgressError, assess
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.phase import Phase, current_phase_model

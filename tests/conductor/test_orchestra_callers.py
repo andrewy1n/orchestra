@@ -14,7 +14,7 @@ from pathlib import Path
 from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import Record
-from orchestra.conductor import close_batch
+from orchestra.conductor.tasks.close import close_batch
 
 ROOT = Path(__file__).resolve().parents[2]
 CANON_ROOT = ROOT / "orchestra" / "canon"

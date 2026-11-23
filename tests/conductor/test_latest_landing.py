@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import latest_landing
+from orchestra.conductor.landing.landing import latest_landing
 
 
 def _landing(phase: str, result: str, recorded_at: str, write_order: int = 0) -> Record:

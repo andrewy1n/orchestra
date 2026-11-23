@@ -8,8 +8,12 @@ from conductor_support import PHASE, Cli, Phase, _packet, _review_repo_head, see
 from test_land_sequence import FakeGh, land_through, use_adapter
 
 from orchestra.canon.types import Record
-from orchestra.conductor.github_pr import open_pull_request
-from orchestra.conductor.landing import describe_phase, pull_request_body, pull_request_title
+from orchestra.conductor.landing.github_pr import open_pull_request
+from orchestra.conductor.landing.landing import (
+    describe_phase,
+    pull_request_body,
+    pull_request_title,
+)
 from orchestra.tools.github import GitHubCheck
 
 BODY = (

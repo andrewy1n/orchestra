@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.conductor.merge_evidence import (
+from orchestra.conductor.landing.merge_evidence import (
     CheckEvidence,
     CheckState,
     EvidenceError,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from orchestra.canon import record_payload
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.assignment import failed_attempt
+from orchestra.conductor.tasks.assignment import failed_attempt
 from orchestra.score.facts.detail_facts import DECISION_TYPE
 from orchestra.score.facts.work_item_facts import decision_choice
 from orchestra.tuner.evidence.evidence_facts import FINDING_TYPE, OBSERVATION_TYPE

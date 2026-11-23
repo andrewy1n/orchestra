@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.conductor.github_pr import (
+from orchestra.conductor.landing.github_pr import (
     GitHubPRError,
     GitHubPRResult,
     open_pull_request,

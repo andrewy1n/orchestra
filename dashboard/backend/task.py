@@ -17,14 +17,14 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
-from orchestra.conductor.assignment import (
+from orchestra.conductor.tasks.assignment import (
     ASSIGNMENT,
     assignments_of,
     referenced_assignment,
     referenced_work_item,
     task_assignment,
 )
-from orchestra.conductor.task_detail import (
+from orchestra.conductor.tasks.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     EXECUTION_REPORT_TYPE,
     RELATED_KINDS,

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from test_execution_cost_landing import START, _evidence_file, _report, _world
 
-from orchestra.conductor import land_task
+from orchestra.conductor.tasks import land_task
 
 
 def test_r8_duplicate_landing_reuses_report_when_elapsed_time_changes(

@@ -13,11 +13,11 @@ from canon_support import REPO, create, make_project
 from orchestra import cli
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonValue, Record
-from orchestra.conductor import wave
 from orchestra.conductor.cli import wave_commands
-from orchestra.conductor.land_task import LandedTask
-from orchestra.conductor.task_close import Closure
-from orchestra.conductor.task_landing import TaskLanding
+from orchestra.conductor.tasks import wave
+from orchestra.conductor.tasks.close.task_close import Closure
+from orchestra.conductor.tasks.land_task import LandedTask
+from orchestra.conductor.tasks.task_landing import TaskLanding
 from orchestra.conductor.verification.evidence.evidence import EVIDENCE_SCHEMA
 
 PHASE = "ph"

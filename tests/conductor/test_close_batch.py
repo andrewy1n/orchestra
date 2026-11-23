@@ -28,7 +28,7 @@ from conftest import REPO_ROOT, build_store
 
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor import close_batch, task_close
+from orchestra.conductor.tasks.close import close_batch, task_close
 from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 CheckRunLoader = Callable[[str], Record]
@@ -1369,7 +1369,7 @@ _CLOSE_LIBRARY_MODULES = frozenset(
 
 
 def _close_batch_tuner_imports() -> list[tuple[int, str, bool]]:
-    path = REPO_ROOT / "orchestra" / "conductor" / "task_close.py"
+    path = REPO_ROOT / "orchestra" / "conductor" / "tasks" / "close" / "task_close.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: list[tuple[int, str, bool]] = []
 

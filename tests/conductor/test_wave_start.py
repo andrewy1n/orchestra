@@ -10,7 +10,7 @@ import pytest
 from canon_support import REPO, create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor import wave
+from orchestra.conductor.tasks import wave
 
 PHASE = "ph"
 EFFORT = "ef"

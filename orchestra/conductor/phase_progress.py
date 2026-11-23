@@ -9,7 +9,7 @@ from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.gate import format_missing, gate_terms_for, missing_terms
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     LandingProofError,
     LandingProofState,
     landing_proof_state,

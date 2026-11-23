@@ -11,8 +11,8 @@ from conftest import git
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Workspace
 from orchestra.cli import main as cli_main
-from orchestra.conductor import land
-from orchestra.conductor.github_pr import GitHubPRError
+from orchestra.conductor.landing import land
+from orchestra.conductor.landing.github_pr import GitHubPRError
 from orchestra.tools import Git
 from orchestra.tools.github import GitHubCheck
 

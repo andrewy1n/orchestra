@@ -14,7 +14,7 @@ from conductor_support import _commit_all, _seed_acceptance
 from conftest import REPO_ROOT, git, run_cli
 
 from orchestra.canon.project import open_store
-from orchestra.conductor.close_batch import build_batch
+from orchestra.conductor.tasks.close.close_batch import build_batch
 from orchestra.conductor.verification.policy import (
     dirty_pass_decision,
     manual_refuse_message,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from orchestra.conductor.land import LandingResult, LandRequest
+from orchestra.conductor.landing.land import LandingResult, LandRequest
 
 
 class Adapter:

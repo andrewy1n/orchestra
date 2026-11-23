@@ -18,7 +18,7 @@ from pathlib import Path
 from close_store_support import build_in_store, commit_claim_manifest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import close_batch
+from orchestra.conductor.tasks.close import close_batch
 
 CLAIM_ID = "claim-widget"
 UNKNOWN_CLAIM_ID = "claim-not-in-manifest"

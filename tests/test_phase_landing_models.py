@@ -4,7 +4,7 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     landing_proof_state,
     latest_landing,
     proof_packet,

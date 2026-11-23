@@ -10,7 +10,7 @@ from canon_support import REPO
 from test_wave_end import PHASE, _git, _land, _world
 
 from orchestra.canon.project import Project
-from orchestra.conductor import wave
+from orchestra.conductor.tasks import wave
 
 
 def _conflict(tmp_path: Path) -> tuple[Project, Path, Path]:

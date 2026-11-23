@@ -10,7 +10,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     LANDING,
     LandingPlace,
     latest_landing,

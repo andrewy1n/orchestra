@@ -3,7 +3,7 @@ from __future__ import annotations
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.execution_cost import new_dispatch_markers
+from orchestra.conductor.tasks.execution_cost import new_dispatch_markers
 from orchestra.score.lookups import live_work_items, record_order
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,

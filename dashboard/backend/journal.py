@@ -11,14 +11,14 @@ from orchestra.canon.payload_view import payload_items
 from orchestra.canon.project import Project
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
-from orchestra.conductor.assignment import (
+from orchestra.conductor.tasks.assignment import (
     ASSIGNMENT,
     FailedAttempt,
     failed_attempt,
     referenced_assignment,
     referenced_work_item,
 )
-from orchestra.conductor.task_detail import (
+from orchestra.conductor.tasks.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     FAILED_ATTEMPT_TYPE,
 )

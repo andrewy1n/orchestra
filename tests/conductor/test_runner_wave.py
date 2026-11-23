@@ -6,7 +6,7 @@ import pytest
 from canon_support import create, make_project
 
 from orchestra.canon.project import Project
-from orchestra.conductor import wave
+from orchestra.conductor.tasks import wave
 from orchestra.tools import Git
 
 PHASE = "runner-phase"

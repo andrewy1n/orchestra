@@ -9,7 +9,8 @@ from canon_support import create, make_project
 
 from orchestra.canon.errors import StaleWriteError
 from orchestra.canon.project import Project
-from orchestra.conductor import execution_cost, task_redispatch, wave
+from orchestra.conductor.tasks import execution_cost, wave
+from orchestra.conductor.tasks.redispatch import task_redispatch
 
 PHASE = "cost-phase"
 EFFORT = "cost-effort"

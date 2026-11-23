@@ -11,7 +11,8 @@ from canon_support import REPO, create, make_project
 
 from orchestra.canon import record as canon_record
 from orchestra.canon.project import Project, open_store
-from orchestra.conductor import gate, land_task, wave
+from orchestra.conductor import gate
+from orchestra.conductor.tasks import land_task, wave
 from orchestra.conductor.verification.check import run_check
 from orchestra.conductor.verification.evidence.acceptance_amendment import amend_acceptance
 

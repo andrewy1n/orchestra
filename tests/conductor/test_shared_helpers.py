@@ -397,8 +397,13 @@ def test_r15_views_omits_getter() -> None:
 
 
 def test_r16_close_batch_omits_getter() -> None:
-    """R16: orchestra.conductor.close_batch does not define a record-payload getter."""
-    assert _record_payload_getters(ROOT / "orchestra" / "conductor" / "close_batch.py") == []
+    """R16: orchestra.conductor.tasks.close.close_batch does not define a record-payload getter."""
+    assert (
+        _record_payload_getters(
+            ROOT / "orchestra" / "conductor" / "tasks" / "close" / "close_batch.py"
+        )
+        == []
+    )
 
 
 def test_r17_model_omits_getter() -> None:
@@ -423,10 +428,12 @@ def test_r20_views_reads_payload_only_through_owners() -> None:
 
 
 def test_r21_close_batch_calls_payload() -> None:
-    """R21: orchestra.conductor.close_batch calls that function."""
+    """R21: orchestra.conductor.tasks.close.close_batch calls that function."""
     getters = _canon_record_payload_getters()
     assert len(getters) == 1
-    assert _calls_named(ROOT / "orchestra" / "conductor" / "close_batch.py", getters[0].__name__)
+    assert _calls_named(
+        ROOT / "orchestra" / "conductor" / "tasks" / "close" / "close_batch.py", getters[0].__name__
+    )
 
 
 def test_r22_model_reads_payload_only_through_owners() -> None:

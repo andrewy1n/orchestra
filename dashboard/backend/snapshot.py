@@ -43,13 +43,13 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.composer.records import IDEA, PLACEMENT, current_placements, open_ideas
 from orchestra.conductor.activity import activity_entries
-from orchestra.conductor.assignment import ASSIGNMENT
 from orchestra.conductor.attention import LandingFact, attention_items
 from orchestra.conductor.effort_status import EffortStatus, effort_statuses
-from orchestra.conductor.landing import PROOF_PACKET
+from orchestra.conductor.landing.landing import PROOF_PACKET
 from orchestra.conductor.model_types import planning_payload as record_payload
 from orchestra.conductor.phase_progress import phase_counts
-from orchestra.conductor.task_detail import (
+from orchestra.conductor.tasks.assignment import ASSIGNMENT
+from orchestra.conductor.tasks.task_detail import (
     ASSIGNMENT_AMENDMENT_TYPE,
     EXECUTION_REPORT_TYPE,
 )

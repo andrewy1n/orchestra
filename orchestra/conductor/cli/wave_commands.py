@@ -11,10 +11,11 @@ from orchestra.canon.errors import StaleWriteError, StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Access
-from orchestra.conductor import land_task, task_redispatch, wave
 from orchestra.conductor.cli.options import open_project, work_dir
-from orchestra.conductor.redispatch_facts import redispatch_facts
-from orchestra.conductor.task_landing import land_and_close
+from orchestra.conductor.tasks import land_task, wave
+from orchestra.conductor.tasks.redispatch import task_redispatch
+from orchestra.conductor.tasks.redispatch.redispatch_facts import redispatch_facts
+from orchestra.conductor.tasks.task_landing import land_and_close
 from orchestra.conductor.verification.evidence.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.score.planning.work_item import WorkItemShapeError
 from orchestra.tools.command_kit import Command, CommandError, emit_json, fail

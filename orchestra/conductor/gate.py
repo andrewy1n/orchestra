@@ -21,7 +21,7 @@ from pathlib import Path
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import LandingPlace, phase_place
+from orchestra.conductor.landing.landing import LandingPlace, phase_place
 from orchestra.conductor.verification.evidence import head_evidence
 from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
 from orchestra.conductor.verification.suite import suite

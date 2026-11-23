@@ -9,7 +9,7 @@ from dashboard.backend.landing import rev_parse_token
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
-from orchestra.conductor.landing import phase_place
+from orchestra.conductor.landing.landing import phase_place
 from orchestra.conductor.phase_progress import (
     STAGES,
     PhaseProgress,

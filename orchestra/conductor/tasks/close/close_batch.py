@@ -47,7 +47,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.canon.workspace import Workspace
 from orchestra.conductor.model_types import planning_payload as record_payload
-from orchestra.conductor.task_close import (
+from orchestra.conductor.tasks.close.task_close import (
     RUNNER_METHODS,
     CloseRefusal,
     CloseRefused,

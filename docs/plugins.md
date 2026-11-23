@@ -240,7 +240,7 @@ The built-in GitHub adapter uses the authenticated `gh` CLI. `orchestra close` a
 Register a class that implements `LandAdapter.run(request)` and returns `LandingResult`:
 
 ```python
-from orchestra.conductor.land import LandRequest, LandingResult
+from orchestra.conductor.landing.land import LandRequest, LandingResult
 
 
 class Adapter:
@@ -278,7 +278,7 @@ Register a class in `orchestra.conductor.merge_evidence` that implements
 configuration. Return the PR head, required checks, and each result's
 state, checked revision, and run link when available. Use
 `EvidenceSnapshot.unresolved` when the provider cannot establish the head or
-required checks. See the [adapter types](../orchestra/conductor/merge_evidence.py).
+required checks. See the [adapter types](../orchestra/conductor/landing/merge_evidence.py).
 
 ```toml
 [merge_evidence]

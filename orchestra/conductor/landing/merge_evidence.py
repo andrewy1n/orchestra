@@ -10,7 +10,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import gate
-from orchestra.conductor.landing import latest_landing, phase_place, proof_packet
+from orchestra.conductor.landing.landing import latest_landing, phase_place, proof_packet
 from orchestra.score.planning.phase import Phase, current_phase_model
 from orchestra.tools import Git
 

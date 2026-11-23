@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from orchestra.canon.types import JsonValue
-from orchestra.conductor.github_evidence import GitHubActionsAdapter
-from orchestra.conductor.merge_evidence import EvidenceRequest
+from orchestra.conductor.landing.github_evidence import GitHubActionsAdapter
+from orchestra.conductor.landing.merge_evidence import EvidenceRequest
 from orchestra.tools import ToolError, ToolTimeoutError
 from orchestra.tools.github import GitHubGh
 

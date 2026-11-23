@@ -16,7 +16,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import StoreNotReady, Workspace
-from orchestra.conductor.wave import closing_task
+from orchestra.conductor.tasks.wave import closing_task
 from orchestra.metrics.ops import belongs_to, count_operations, tasks_of
 from orchestra.score.lookups import current_phase
 from orchestra.tools import Git

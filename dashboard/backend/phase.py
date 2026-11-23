@@ -30,11 +30,11 @@ from orchestra.canon.project import Project
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.assessment_facts import assessment_facts, latest_assessments
-from orchestra.conductor.assignment import ASSIGNMENT
-from orchestra.conductor.landing import PROOF_PACKET, proof_packet
+from orchestra.conductor.landing.landing import PROOF_PACKET, proof_packet
 from orchestra.conductor.phase_progress import PhaseProgress, phase_counts
 from orchestra.conductor.release_facts import integration_result, is_release_ready, release_state
 from orchestra.conductor.signoff import awaiting_signoff
+from orchestra.conductor.tasks.assignment import ASSIGNMENT
 from orchestra.conductor.verification.requirements import (
     UNVERIFIED,
     RequirementStatus,

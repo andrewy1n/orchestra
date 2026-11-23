@@ -1,6 +1,6 @@
-diff --git a/orchestra/conductor/wave.py b/orchestra/conductor/wave.py
---- a/orchestra/conductor/wave.py
-+++ b/orchestra/conductor/wave.py
+diff --git a/orchestra/conductor/tasks/wave.py b/orchestra/conductor/tasks/wave.py
+--- a/orchestra/conductor/tasks/wave.py
++++ b/orchestra/conductor/tasks/wave.py
 @@ -286,123 +277,3 @@ def end(project: Project, repo: Path, phase: str) -> WaveEnd:
              return WaveEnd(phase, tuple(merged), tuple(skipped), task, question["id"])
          merged.append(task)
@@ -73,7 +73,7 @@ diff --git a/orchestra/conductor/wave.py b/orchestra/conductor/wave.py
 -def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
 -    phase_rec = phase_record(project.records(), phase)
 -    tree = repo / ".worktrees" / phase
--    from orchestra.conductor.land_task import acceptances_for
+-    from orchestra.conductor.tasks.land_task import acceptances_for
 -
 -    refusals = _guard_refusals(project, phase_rec, phase, task, tree)
 -    if refusals:

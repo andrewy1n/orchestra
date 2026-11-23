@@ -16,7 +16,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.workspace import Access, StoreNotReady, Workspace
 from orchestra.conductor import close
-from orchestra.conductor.github_pr import github_client
+from orchestra.conductor.landing.github_pr import github_client
 from orchestra.conductor.phase_progress import open_phase_progress
 from orchestra.stage.handoff import hook_constraints, hook_handoff_sections
 from orchestra.tools.git import Git

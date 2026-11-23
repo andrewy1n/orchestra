@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 from orchestra.canon.project_config import load_project_config
-from orchestra.conductor.landing import pull_request_body
+from orchestra.conductor.landing.landing import pull_request_body
 from orchestra.tools import Git, ToolError, ToolNotFoundError
 from orchestra.tools.github import GitHubCheck, GitHubError, GitHubGh
 

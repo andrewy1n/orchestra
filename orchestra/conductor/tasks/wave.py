@@ -16,14 +16,14 @@ from orchestra.canon.project_config import (
     load_project_config,
 )
 from orchestra.canon.types import DerivedValues, Record
-from orchestra.conductor.execution_cost import new_dispatch_markers
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     LandingPlace,
     parse_landing,
     phase_place,
     task_branch,
     task_worktree,
 )
+from orchestra.conductor.tasks.execution_cost import new_dispatch_markers
 from orchestra.conductor.verification.check import run_check
 from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex, acceptance_latest
 from orchestra.score.lookups import (
@@ -162,7 +162,8 @@ def _integrated(place: LandingPlace, phase: str, item: Record, records: list[Rec
 def _runner_start(
     project: Project, place: LandingPlace, phase: str, item: Record, items: list[Record]
 ) -> RunnerOutcome:
-    from orchestra.conductor import land_task, task_close
+    from orchestra.conductor.tasks import land_task
+    from orchestra.conductor.tasks.close import task_close
     from orchestra.conductor.verification import verification
 
     try:
@@ -561,7 +562,7 @@ def resolve(project: Project, repo: Path, phase: str, task: str) -> WaveResolve:
     phase_rec = _phase(project.records(), phase)
     place = phase_place(phase_rec, repo)
     tree = place.worktree
-    from orchestra.conductor.land_task import acceptances_for
+    from orchestra.conductor.tasks.land_task import acceptances_for
 
     refusals = _guard_refusals(project, phase_rec, phase, task, tree)
     if refusals:

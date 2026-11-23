@@ -10,7 +10,9 @@ from phase_record_support import supersede_all, supersede_late
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
-from orchestra.conductor import close, gate, land_task, task_close, wave, workflow
+from orchestra.conductor import close, gate, workflow
+from orchestra.conductor.tasks import land_task, wave
+from orchestra.conductor.tasks.close import task_close
 from orchestra.conductor.workflow_review import WorkflowReviewError, record_step_review
 
 PHASE = "ph"

@@ -10,7 +10,7 @@ from orchestra import cli
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor import phase_progress
-from orchestra.conductor.landing import LandingProofState
+from orchestra.conductor.landing.landing import LandingProofState
 from orchestra.conductor.phase_progress import (
     AcceptanceHold,
     ExecutionVerdict,

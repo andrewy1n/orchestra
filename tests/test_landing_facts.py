@@ -4,7 +4,7 @@ import itertools
 from pathlib import Path
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.landing import (
     LandingPlace,
     belongs_to_phase,
     landing_place,

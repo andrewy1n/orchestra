@@ -6,7 +6,7 @@ from pathlib import Path
 from helpers import write_source
 
 REPO = Path(__file__).resolve().parent.parent
-OWNER = Path("orchestra/conductor/landing.py")
+OWNER = Path("orchestra/conductor/landing/landing.py")
 ROOTS = ("orchestra", "dashboard/backend", "scripts")
 WORKTREES = ".worktrees"
 BRANCH_PREFIXES = ("phase/", "task/")

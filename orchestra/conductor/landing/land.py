@@ -11,8 +11,8 @@ from orchestra.canon.project_config import ProjectConfig, load_project_config
 from orchestra.canon.types import JsonObject
 from orchestra.canon.workspace import Workspace
 from orchestra.conductor import gate
-from orchestra.conductor.github_pr import GitHubClient, GitHubPRError, open_pull_request
-from orchestra.conductor.landing import (
+from orchestra.conductor.landing.github_pr import GitHubClient, GitHubPRError, open_pull_request
+from orchestra.conductor.landing.landing import (
     LANDING,
     describe_phase,
     landing_payload,

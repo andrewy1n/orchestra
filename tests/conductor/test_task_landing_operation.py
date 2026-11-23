@@ -7,9 +7,9 @@ from test_task_land import _evidence_file, _git
 from test_task_land_close import _state, _world
 
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task
-from orchestra.conductor.task_close import CODE_DONE, CODE_FAILED, CODE_PENDING_HUMAN
-from orchestra.conductor.task_landing import TaskLanding, land_and_close
+from orchestra.conductor.tasks import land_task
+from orchestra.conductor.tasks.close.task_close import CODE_DONE, CODE_FAILED, CODE_PENDING_HUMAN
+from orchestra.conductor.tasks.task_landing import TaskLanding, land_and_close
 from orchestra.conductor.verification import verification
 
 

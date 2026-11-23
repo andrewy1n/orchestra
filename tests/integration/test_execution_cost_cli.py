@@ -10,7 +10,7 @@ from canon_support import create, make_project
 
 from orchestra.canon.project import Project
 from orchestra.cli import main as cli_main
-from orchestra.conductor import execution_cost, land_task
+from orchestra.conductor.tasks import execution_cost, land_task
 
 PHASE = "cost-phase"
 EFFORT = "cost-effort"

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestra.canon.project import Project
-from orchestra.conductor import land_task, task_close
+from orchestra.conductor.tasks import land_task
+from orchestra.conductor.tasks.close import task_close
 from orchestra.conductor.verification.requirements import requirement_status, verified_requirements
 
 

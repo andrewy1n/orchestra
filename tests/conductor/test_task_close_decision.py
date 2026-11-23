@@ -12,8 +12,8 @@ from phase_record_support import supersede_all, supersede_late
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
-from orchestra.conductor import task_close
-from orchestra.conductor.task_close import (
+from orchestra.conductor.tasks.close import task_close
+from orchestra.conductor.tasks.close.task_close import (
     CloseApproval,
     CloseDecision,
     CloseRefusal,
