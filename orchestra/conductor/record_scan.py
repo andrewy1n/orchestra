@@ -10,7 +10,7 @@ from orchestra.score.lookups import corrected_ids, current_phases
 from orchestra.score.planning.acceptance import read_acceptance
 from orchestra.score.planning.phase import read_phase
 from orchestra.score.planning.requirements import SPECIFICATION, read_requirements
-from orchestra.tuner.records import (
+from orchestra.tuner.evidence.records import (
     read_check_run,
     read_evidence_binding,
     read_finding,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from orchestra.canon.types import JsonValue
-from orchestra.tuner.sign import verify as verify_signed
+from orchestra.tuner.evidence.signing.sign import verify as verify_signed
 
 
 def canonical_payload(amendment: Mapping[str, JsonValue]) -> bytes:

@@ -22,7 +22,7 @@ from orchestra.score.lookups import (
     record_order,
     same_prepared_source,
 )
-from orchestra.tuner.records import CheckRun, read_check_run
+from orchestra.tuner.evidence.records import CheckRun, read_check_run
 
 CHECK_RUN_TYPE = "tuner:check-run"
 RUNNER = "orchestra"

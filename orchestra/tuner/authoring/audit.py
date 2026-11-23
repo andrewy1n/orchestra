@@ -13,14 +13,14 @@ from pathlib import Path
 
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tools.git import Git
-from orchestra.tuner.manifest import (
+from orchestra.tuner.authoring.observation import maybe_record_observation
+from orchestra.tuner.plugins.manifest import (
     DEFAULT_RUNNER,
     ManifestError,
     load_manifest,
     resolve_commit,
 )
-from orchestra.tuner.observation import maybe_record_observation
-from orchestra.tuner.technique import replay_at_revision
+from orchestra.tuner.plugins.technique import replay_at_revision
 
 HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 

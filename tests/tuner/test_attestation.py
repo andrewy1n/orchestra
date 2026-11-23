@@ -22,7 +22,7 @@ CLAIM_ID = "claim-widget"
 
 def _attestation():
     try:
-        return importlib.import_module("orchestra.tuner.attestation")
+        return importlib.import_module("orchestra.tuner.evidence.signing.attestation")
     except ModuleNotFoundError:
         return None
 
@@ -81,7 +81,7 @@ def test_emit_signed_attestation_includes_commit_manifest_runner_and_claims(
     """R1: emit produces an SSH-signed attestation whose payload includes commit,
     manifest hash, runner digest, and per-claim results."""
     mod = _attestation()
-    assert mod is not None, "orchestra.tuner.attestation must exist"
+    assert mod is not None, "orchestra.tuner.evidence.signing.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     body = _verdict_body(
@@ -124,7 +124,7 @@ def test_emit_signed_attestation_includes_commit_manifest_runner_and_claims(
 def test_verify_rejects_bad_signature(tmp_path: Path) -> None:
     """R2: verify rejects an attestation whose signature does not verify."""
     mod = _attestation()
-    assert mod is not None, "orchestra.tuner.attestation must exist"
+    assert mod is not None, "orchestra.tuner.evidence.signing.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(), key_path=key)
@@ -142,7 +142,7 @@ def test_verify_rejects_bad_signature(tmp_path: Path) -> None:
 def test_verify_rejects_tampered_payload(tmp_path: Path) -> None:
     """R2: changing bind fields after signing fails verify under the allowlist."""
     mod = _attestation()
-    assert mod is not None, "orchestra.tuner.attestation must exist"
+    assert mod is not None, "orchestra.tuner.evidence.signing.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(), key_path=key)
@@ -160,7 +160,7 @@ def test_verify_rejects_tampered_payload(tmp_path: Path) -> None:
 def test_verify_rejects_wrong_commit(tmp_path: Path) -> None:
     """R3: a well-signed attestation for commit A fails when checked as B."""
     mod = _attestation()
-    assert mod is not None, "orchestra.tuner.attestation must exist"
+    assert mod is not None, "orchestra.tuner.evidence.signing.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(_verdict_body(commit=COMMIT_A), key_path=key)
@@ -177,7 +177,7 @@ def test_verify_rejects_wrong_commit(tmp_path: Path) -> None:
 def test_verify_rejects_bind_mismatch_on_manifest_hash(tmp_path: Path) -> None:
     """R3: a well-signed attestation fails when the presented manifest hash differs."""
     mod = _attestation()
-    assert mod is not None, "orchestra.tuner.attestation must exist"
+    assert mod is not None, "orchestra.tuner.evidence.signing.attestation must exist"
     key, blob = _generate_key(tmp_path)
     allow = _allowlist("ci", blob)
     signed = mod.emit(

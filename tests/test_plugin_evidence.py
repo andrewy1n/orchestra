@@ -11,9 +11,10 @@ import pytest
 from orchestra.canon.extensions import PluginDescriptor, compute_execution_identity
 from orchestra.canon.project_config import DEFAULT_RUNNER
 from orchestra.cli import main as orchestra_main
-from orchestra.tuner import plugins, verify_plugins
-from orchestra.tuner.manifest import runner_digest
-from orchestra.tuner.plugin_evidence import (
+from orchestra.tuner import verify_plugins
+from orchestra.tuner.plugins import api as plugins
+from orchestra.tuner.plugins.manifest import runner_digest
+from orchestra.tuner.plugins.plugin_evidence import (
     NAMESPACE,
     _execution_identity,
     canonical_payload,
@@ -141,7 +142,7 @@ def test_execution_identity_canonical_hash_preserves_argv_boundaries() -> None:
     descriptor = PluginDescriptor(
         scope="tuner.verify",
         plugin_id="unit",
-        target="orchestra.tuner.plugins:UnitPlugin",
+        target="orchestra.tuner.plugins.api:UnitPlugin",
         distribution="orchestra",
         version="1.0",
         api_version="1",
@@ -202,7 +203,7 @@ def test_core_checks_identity_before_signing(tmp_path: Path) -> None:
 
 
 def test_plugin_payload_uses_v2_and_binds_execution_identity() -> None:
-    from orchestra.tuner.plugin_evidence import PluginEvidence
+    from orchestra.tuner.plugins.plugin_evidence import PluginEvidence
 
     evidence = PluginEvidence(
         plugin_id="unit",

@@ -4,7 +4,7 @@ import pytest
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import JsonObject, Record
-from orchestra.tuner.records import (
+from orchestra.tuner.evidence.records import (
     CheckRun,
     EvidenceBinding,
     Finding,

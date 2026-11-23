@@ -6,9 +6,9 @@ from pathlib import Path
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, OperationResult, Record
-from orchestra.tuner.manifest import ManifestError
-from orchestra.tuner.observation import open_subject_store, store_usable
-from orchestra.tuner.verdict import run_verdict
+from orchestra.tuner.authoring.observation import open_subject_store, store_usable
+from orchestra.tuner.evidence.verdict import run_verdict
+from orchestra.tuner.plugins.manifest import ManifestError
 
 _BIND_TYPE = "tuner:evidence-binding"
 _INACTIVE = frozenset({"retired", "superseded", "inactive", "unbound", "withdrawn"})

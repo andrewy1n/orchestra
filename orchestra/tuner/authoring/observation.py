@@ -10,7 +10,7 @@ from typing import TypeGuard
 from orchestra.canon.project import NoArtifactStoreError, Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.canon.workspace import Access, StoreNotReady, Workspace
-from orchestra.tuner.manifest import merge_base, resolve_commit
+from orchestra.tuner.plugins.manifest import merge_base, resolve_commit
 
 _OBS_TYPE = "tuner:evidence-observation"
 

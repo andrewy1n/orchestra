@@ -17,7 +17,7 @@ from orchestra.score.workflow.workflow_blockers import (
     FINDING_TYPE,
     QUESTION_TYPE,
 )
-from orchestra.tuner.evidence_facts import (
+from orchestra.tuner.evidence.evidence_facts import (
     check_sign_operation,
     finding_accept_operation,
     plan_rejection_operation,

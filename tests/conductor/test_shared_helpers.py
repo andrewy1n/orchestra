@@ -322,8 +322,11 @@ def test_r8_ssh_keygen_one_module() -> None:
 
 
 def test_r9_claim_signature(tmp_path: Path) -> None:
-    """R9: orchestra.tuner.human_claim.verify_claim_signature returns true for a valid signature."""
-    from orchestra.tuner.human_claim import canonical_payload, verify_claim_signature
+    """R9: orchestra.tuner.evidence.signing.human_claim.verify_claim_signature returns true for a valid signature."""
+    from orchestra.tuner.evidence.signing.human_claim import (
+        canonical_payload,
+        verify_claim_signature,
+    )
 
     key, blob = _generate_key(tmp_path)
     claim_id = "claim-widget"
@@ -339,7 +342,7 @@ def test_r9_claim_signature(tmp_path: Path) -> None:
 
 def test_r10_amendment_signature(tmp_path: Path) -> None:
     """R10: Amendment signature verification returns true for a valid signature."""
-    from orchestra.tuner.amendment import canonical_payload, verify_signature
+    from orchestra.tuner.evidence.signing.amendment import canonical_payload, verify_signature
 
     key, blob = _generate_key(tmp_path)
     amendment = {
@@ -362,7 +365,7 @@ def test_r10_amendment_signature(tmp_path: Path) -> None:
 
 def test_r11_attestation_signature(tmp_path: Path) -> None:
     """R11: Attestation verification returns true for a valid signature."""
-    from orchestra.tuner import attestation
+    from orchestra.tuner.evidence.signing import attestation
 
     key, blob = _generate_key(tmp_path)
     body = {

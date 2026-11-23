@@ -16,7 +16,7 @@ from orchestra.sessions.session_report import (
     SessionReport,
     _read_all,
 )
-from orchestra.tuner.observation import open_subject_store
+from orchestra.tuner.authoring.observation import open_subject_store
 
 BINDING_ERROR = "Invalid store binding JSON"
 RAW_NO_STORE = "neither"

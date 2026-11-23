@@ -78,7 +78,7 @@ from orchestra.score.lookups import LIVE_WORK_ITEM_STATES
 from orchestra.score.planning.effort import EFFORT, current_efforts
 from orchestra.score.planning.phase import structured_phases
 from orchestra.score.planning.requirements import SPECIFICATION
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE
 
 RECENT = timedelta(hours=24)
 NEEDS_ORDER = (

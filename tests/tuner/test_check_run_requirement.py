@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 
 def _run(extra: JsonObject) -> Record:

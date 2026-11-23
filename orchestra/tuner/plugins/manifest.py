@@ -199,7 +199,7 @@ def _parse_claim(raw: JsonValue, index: int) -> Claim:
         raise ManifestError(f"claims[{index}].tests must be a list of node ids")
     if not isinstance(hashes, dict):
         raise ManifestError(f"claims[{index}].oracle_hashes must be an object")
-    from orchestra.tuner.evidence_kind import DEFAULT_KIND, KINDS
+    from orchestra.tuner.plugins.evidence_kind import DEFAULT_KIND, KINDS
 
     kind = raw.get("evidence_kind", DEFAULT_KIND)
     if not isinstance(kind, str) or kind not in KINDS:

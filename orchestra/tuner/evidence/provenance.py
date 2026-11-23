@@ -11,7 +11,7 @@ from pathlib import Path
 
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git, GitResult
-from orchestra.tuner.manifest import (
+from orchestra.tuner.plugins.manifest import (
     ALLOWLIST_PATH,
     MANIFEST_PATH,
     Claim,

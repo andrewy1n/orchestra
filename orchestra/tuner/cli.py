@@ -14,16 +14,19 @@ from orchestra.canon.workspace import Access, open_for_command
 from orchestra.tools import command_kit
 from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tuner import verify_plugins
-from orchestra.tuner.attestation import emit, verify
-from orchestra.tuner.audit import AuditError, AuditTrailError, run_audit
-from orchestra.tuner.authoring import AuthoringError, add_claim, freeze
-from orchestra.tuner.binding import BindingError, bind_observation, recheck, unbind
-from orchestra.tuner.evidence_kind import TEMPLATES
-from orchestra.tuner.lint import find_claim_findings, find_new_skips, find_no_assert
-from orchestra.tuner.manifest import ManifestError
-from orchestra.tuner.observation import list_observations, maybe_record_verdict_observation
-from orchestra.tuner.oracle_red import is_assertion_level_red
-from orchestra.tuner.verdict import run_verdict
+from orchestra.tuner.authoring.audit import AuditError, AuditTrailError, run_audit
+from orchestra.tuner.authoring.authoring import AuthoringError, add_claim, freeze
+from orchestra.tuner.authoring.lint import find_claim_findings, find_new_skips, find_no_assert
+from orchestra.tuner.authoring.observation import (
+    list_observations,
+    maybe_record_verdict_observation,
+)
+from orchestra.tuner.authoring.oracle_red import is_assertion_level_red
+from orchestra.tuner.evidence.binding import BindingError, bind_observation, recheck, unbind
+from orchestra.tuner.evidence.signing.attestation import emit, verify
+from orchestra.tuner.evidence.verdict import run_verdict
+from orchestra.tuner.plugins.evidence_kind import TEMPLATES
+from orchestra.tuner.plugins.manifest import ManifestError
 
 __all__ = ["commands", "main"]
 

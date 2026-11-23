@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from orchestra.tuner.technique import (
+from orchestra.tuner.plugins.technique import (
     ReplayRequest,
     TechniqueContractError,
     TechniqueResult,
@@ -84,7 +84,7 @@ def test_selected_third_party_technique_uses_the_shared_result(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from orchestra.canon import extensions
-    from orchestra.tuner.plugins import PluginContext, dispatch_plugins
+    from orchestra.tuner.plugins.api import PluginContext, dispatch_plugins
 
     class ThirdPartyTechnique:
         def validate_config(self, config: object) -> None:

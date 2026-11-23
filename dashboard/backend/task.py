@@ -52,8 +52,8 @@ from orchestra.score.planning.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     task_executor,
 )
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 TASK_ORDER = ("running", "ready", "waiting", "done", "withdrawn")
 DEFAULT_RETRY_MAX_REDISPATCHES = 2

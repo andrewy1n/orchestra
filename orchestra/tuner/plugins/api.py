@@ -20,9 +20,9 @@ from orchestra.canon.project_config import (
     load_project_config_at_revision,
 )
 from orchestra.canon.types import JsonObject
-from orchestra.tuner.manifest import resolve_commit, runner_digest
-from orchestra.tuner.runner import run_tests
-from orchestra.tuner.technique import (
+from orchestra.tuner.plugins.manifest import resolve_commit, runner_digest
+from orchestra.tuner.plugins.runner import run_tests
+from orchestra.tuner.plugins.technique import (
     ReplayRequest,
     TechniqueResult,
     VerificationTechnique,

@@ -343,7 +343,7 @@ def assertion_level_red(record: Record) -> bool:
     import tuner. A missing import raises OracleAdapterUnavailable.
     """
     try:
-        from orchestra.tuner.oracle_red import is_assertion_level_red
+        from orchestra.tuner.authoring.oracle_red import is_assertion_level_red
     except ImportError as exc:
         raise OracleAdapterUnavailable(
             "tuner is not importable; close-batch needs tuner to "
@@ -436,7 +436,7 @@ def _tuner_not_importable(claim_id: str) -> CloseRefused:
 
 def _claim_ids_at_revision(cwd: Path, revision: str, claim_id: str) -> set[str]:
     try:
-        from orchestra.tuner.manifest import (
+        from orchestra.tuner.plugins.manifest import (
             ManifestError,
             ManifestMissing,
             ManifestUnreadable,
@@ -467,8 +467,8 @@ def _run_tuner_claim_gate(claim_id: str, *, cwd: Path, revision: str) -> None:
     tuner. A missing import raises an error that names tuner.
     """
     try:
-        from orchestra.tuner.binding import recheck
-        from orchestra.tuner.verdict import run_verdict
+        from orchestra.tuner.evidence.binding import recheck
+        from orchestra.tuner.evidence.verdict import run_verdict
     except ImportError as exc:
         raise _tuner_not_importable(claim_id) from exc
     failed: list[str] = []

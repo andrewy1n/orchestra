@@ -29,7 +29,7 @@ from conftest import REPO_ROOT, build_store
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor import close_batch, task_close
-from orchestra.tuner.manifest import DEFAULT_RUNNER
+from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 CheckRunLoader = Callable[[str], Record]
 AcceptanceLoader = Callable[[str], Record]
@@ -1360,7 +1360,11 @@ def test_cli_assertion_level_refuses_import_only_oracle_red(
 
 CLAIM_ID = "claim-widget"
 _CLOSE_LIBRARY_MODULES = frozenset(
-    {"orchestra.tuner.oracle_red", "orchestra.tuner.verdict", "orchestra.tuner.binding"}
+    {
+        "orchestra.tuner.authoring.oracle_red",
+        "orchestra.tuner.evidence.verdict",
+        "orchestra.tuner.evidence.binding",
+    }
 )
 
 
@@ -1482,10 +1486,10 @@ def test_claim_gate_binds_verdict_to_green_close_revision(tmp_path, monkeypatch)
         verdict_revisions.append(revision)
         return {"result": "pass"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", verdict)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *_args, **_kwargs: {"result": "pass"},
     )
@@ -1519,10 +1523,10 @@ def test_claim_gate_uses_payload_claim_not_task_subject(tmp_path, monkeypatch):
         seen.extend(claim_ids)
         return {"result": "fail"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "pass"},
     )
@@ -1553,8 +1557,8 @@ def test_claim_gate_ignores_payload_claim_id(tmp_path, monkeypatch):
         recheck_seen.append(claim_id)
         return {"result": "fail"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
-    _patch_tuner(monkeypatch, "orchestra.tuner.binding", "recheck", recheck)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", recheck)
 
     def load_acceptance(_aid: str) -> Record:
         return _record(
@@ -1584,10 +1588,10 @@ def test_claim_gate_skips_empty_claim_even_when_subject_is_a_claim(tmp_path, mon
         seen.extend(claim_ids)
         return {"result": "fail"}
 
-    _patch_tuner(monkeypatch, "orchestra.tuner.verdict", "run_verdict", run_verdict)
+    _patch_tuner(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", run_verdict)
     _patch_tuner(
         monkeypatch,
-        "orchestra.tuner.binding",
+        "orchestra.tuner.evidence.binding",
         "recheck",
         lambda *args, **kwargs: {"result": "fail"},
     )

@@ -17,9 +17,9 @@ from test_oracle_red import (
 from test_verdict import APP_GREEN, APP_RED, CLAIM, VERIFY, _repo
 
 import orchestra.tuner.cli as cli_mod
+from orchestra.tuner.authoring.oracle_red import is_assertion_level_red
 from orchestra.tuner.cli import main
-from orchestra.tuner.oracle_red import is_assertion_level_red
-from orchestra.tuner.verdict import run_verdict
+from orchestra.tuner.evidence.verdict import run_verdict
 
 
 def _tuner_assertion_red(record: dict) -> subprocess.CompletedProcess[str]:
@@ -81,9 +81,9 @@ def _arm_store_spy(monkeypatch) -> list[str]:
         monkeypatch.setattr(project_mod.Project, "list", spy_method("list"))
         monkeypatch.setattr(project_mod.Project, "get", spy_method("get"))
 
-    import orchestra.tuner.binding as binding_mod
-    import orchestra.tuner.observation as observation_mod
-    import orchestra.tuner.verdict as verdict_mod
+    import orchestra.tuner.authoring.observation as observation_mod
+    import orchestra.tuner.evidence.binding as binding_mod
+    import orchestra.tuner.evidence.verdict as verdict_mod
 
     for module in (verdict_mod, observation_mod, binding_mod, cli_mod):
         if hasattr(module, "open_store"):

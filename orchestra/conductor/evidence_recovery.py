@@ -12,8 +12,13 @@ from orchestra.canon.types import JsonObject, Record, get_list, get_string
 from orchestra.conductor.check import RUNNER
 from orchestra.conductor.oracle_freeze import parse_freeze
 from orchestra.score.lookups import current_phase, owning_work_item, record_order
-from orchestra.tuner.manifest import ManifestError, hash_oracle_files, load_manifest, resolve_commit
-from orchestra.tuner.oracle_red import is_assertion_level_red
+from orchestra.tuner.authoring.oracle_red import is_assertion_level_red
+from orchestra.tuner.plugins.manifest import (
+    ManifestError,
+    hash_oracle_files,
+    load_manifest,
+    resolve_commit,
+)
 
 
 class RecoveryReport(TypedDict):

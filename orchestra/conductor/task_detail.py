@@ -8,8 +8,8 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.assignment import failed_attempt
 from orchestra.score.facts.detail_facts import DECISION_TYPE
 from orchestra.score.facts.work_item_facts import decision_choice
-from orchestra.tuner.evidence_facts import FINDING_TYPE, OBSERVATION_TYPE
-from orchestra.tuner.record_facts import check_run_facts, finding_facts, observation_text
+from orchestra.tuner.evidence.evidence_facts import FINDING_TYPE, OBSERVATION_TYPE
+from orchestra.tuner.evidence.record_facts import check_run_facts, finding_facts, observation_text
 
 ASSIGNMENT_AMENDMENT_TYPE = "conductor:assignment-amendment"
 EXECUTION_REPORT_TYPE = "conductor:execution-report"

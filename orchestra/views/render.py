@@ -56,8 +56,8 @@ from orchestra.score.planning.executor import (
 from orchestra.score.planning.requirements import phase_requirements, requirement_lines
 from orchestra.score.workflow.workflow_blockers import QUESTION_TYPE, human_gates
 from orchestra.tools import Merged, Unmerged, branch_state
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
-from orchestra.tuner.record_facts import RecordShapeError, check_run_facts
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
+from orchestra.tuner.evidence.record_facts import RecordShapeError, check_run_facts
 
 FAILING_RESULT_VALUES = frozenset({"fail", "failed", "error"})
 SUPPRESSED_FIELDS = frozenset({"subject", "owner"})

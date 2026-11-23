@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestra.tuner.manifest import (
+from orchestra.tuner.plugins.manifest import (
     DEFAULT_RUNNER,
     ManifestError,
     frozen_support_files,
@@ -239,7 +239,7 @@ def test_missing_manifest_raises(tmp_path: Path) -> None:
 
 
 def test_manifest_runner_absent_is_pytest_template(repo: dict[str, Path | str]) -> None:
-    from orchestra.tuner.manifest import DEFAULT_RUNNER
+    from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
     root = repo["root"]
     assert isinstance(root, Path)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from orchestra.tuner.manifest import DEFAULT_RUNNER
+from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 KINDS = ("unit", "integration", "interaction")
 DEFAULT_KIND = "unit"

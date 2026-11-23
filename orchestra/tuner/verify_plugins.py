@@ -9,9 +9,9 @@ from pathlib import Path
 
 from orchestra.tools import command_kit
 from orchestra.tools.command_kit import Command, CommandError
-from orchestra.tuner.manifest import ManifestError
-from orchestra.tuner.plugin_evidence import dispatch_signed_plugins
-from orchestra.tuner.plugins import PluginContext
+from orchestra.tuner.plugins.api import PluginContext
+from orchestra.tuner.plugins.manifest import ManifestError
+from orchestra.tuner.plugins.plugin_evidence import dispatch_signed_plugins
 
 
 def _configure(parser: argparse.ArgumentParser) -> None:

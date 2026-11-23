@@ -10,7 +10,11 @@ TUNER_ROOT = ROOT / "orchestra" / "tuner"
 SCAN_DIRS = ("orchestra", "dashboard")
 FORBIDDEN = frozenset({"aa", "aa_resolve", "check", "policy", "verdict"})
 CLOSE_LIBRARY_MODULES = frozenset(
-    {"orchestra.tuner.oracle_red", "orchestra.tuner.verdict", "orchestra.tuner.binding"}
+    {
+        "orchestra.tuner.authoring.oracle_red",
+        "orchestra.tuner.evidence.verdict",
+        "orchestra.tuner.evidence.binding",
+    }
 )
 
 
@@ -99,18 +103,18 @@ def test_task_close_tuner_import_is_function_local():
 def test_import_scan_rejects_module_level_and_allows_function_local(tmp_path):
     sample = tmp_path / "task_close.py"
     sample.write_text(
-        "import orchestra.tuner.verdict\n"
+        "import orchestra.tuner.evidence.verdict\n"
         "def close():\n"
-        "    from orchestra.tuner.binding import recheck\n"
-        "    from orchestra.tuner.oracle_red import is_assertion_level_red\n"
-        "    from orchestra.tuner.verdict import run_verdict\n",
+        "    from orchestra.tuner.evidence.binding import recheck\n"
+        "    from orchestra.tuner.authoring.oracle_red import is_assertion_level_red\n"
+        "    from orchestra.tuner.evidence.verdict import run_verdict\n",
         encoding="utf-8",
     )
     # Parse the sample with the same visitor by pointing it at a temp file.
-    # Module-level `import orchestra.tuner.verdict` is not a close-function import.
+    # Module-level `import orchestra.tuner.evidence.verdict` is not a close-function import.
     imports = _imported_modules(sample)
     module_level = [module for _, module, local in imports if not local]
     function_local = [module for _, module, local in imports if local]
-    assert "orchestra.tuner.verdict" in module_level
+    assert "orchestra.tuner.evidence.verdict" in module_level
     assert set(function_local) >= CLOSE_LIBRARY_MODULES
     assert not any(_allowed_close_import(sample, module, False) for module in module_level)

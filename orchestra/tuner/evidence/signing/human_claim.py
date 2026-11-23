@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from orchestra.tuner.sign import verify
+from orchestra.tuner.evidence.signing.sign import verify
 
 NAMESPACE = "tuner-claim"
 

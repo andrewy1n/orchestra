@@ -82,7 +82,7 @@ jobs:
           import hashlib, json, subprocess, sys
           from pathlib import Path
           sys.path.insert(0, ".")
-          from orchestra.tuner.manifest import load_manifest, resolve_commit, runner_digest
+          from orchestra.tuner.plugins.manifest import load_manifest, resolve_commit, runner_digest
           fixture = Path("""${{ steps.ctx.outputs.fixture }}""")
           sha = subprocess.check_output(["git", "-C", str(fixture), "rev-parse", "HEAD"], text=True).strip()
           verdict = json.load(open("verdict.raw.json"))

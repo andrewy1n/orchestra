@@ -196,7 +196,7 @@ def _repository(directory: Path) -> tuple[Path, dict]:
             "runner": "orchestra",
         },
     )
-    from orchestra.tuner.binding import bind_observation
+    from orchestra.tuner.evidence.binding import bind_observation
 
     bind_observation(
         repo,

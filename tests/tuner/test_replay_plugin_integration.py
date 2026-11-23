@@ -12,10 +12,10 @@ import pytest
 from orchestra.canon import extensions
 from orchestra.canon.project_config import DEFAULT_RUNNER, ProjectConfig
 from orchestra.canon.types import JsonObject, get_object, get_string
-from orchestra.tuner.audit import run_audit
-from orchestra.tuner.lint import find_new_skips
-from orchestra.tuner.technique import ReplayRequest, TechniqueResult, replay_at_revision
-from orchestra.tuner.verdict import run_verdict
+from orchestra.tuner.authoring.audit import run_audit
+from orchestra.tuner.authoring.lint import find_new_skips
+from orchestra.tuner.evidence.verdict import run_verdict
+from orchestra.tuner.plugins.technique import ReplayRequest, TechniqueResult, replay_at_revision
 
 CLAIM = "claim-replay-plugin"
 NODE = "tests/test_plugin.py::test_plugin"

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TypeAlias
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tuner.manifest import MANIFEST_PATH
+from orchestra.tuner.plugins.manifest import MANIFEST_PATH
 
 _JsonKey: TypeAlias = str | int | float | bool | None
 

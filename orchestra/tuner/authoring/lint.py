@@ -11,8 +11,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from orchestra.tools.git import Git
-from orchestra.tuner.manifest import MANIFEST_PATH, load_manifest, resolve_commit
-from orchestra.tuner.technique import replay_at_revision
+from orchestra.tuner.plugins.manifest import MANIFEST_PATH, load_manifest, resolve_commit
+from orchestra.tuner.plugins.technique import replay_at_revision
 
 
 def find_no_assert(paths: Sequence[Path | str]) -> list[str]:

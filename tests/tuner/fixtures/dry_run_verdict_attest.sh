@@ -18,7 +18,7 @@ python3 - <<PY
 import hashlib, json, sys
 from pathlib import Path
 sys.path.insert(0, "$ROOT")
-from orchestra.tuner.manifest import load_manifest, resolve_commit, runner_digest
+from orchestra.tuner.plugins.manifest import load_manifest, resolve_commit, runner_digest
 
 fixture = Path("$FIXTURE")
 sha = "$SHA"

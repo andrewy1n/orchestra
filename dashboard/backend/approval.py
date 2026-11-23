@@ -23,8 +23,8 @@ from orchestra.score.facts.detail_facts import ACCEPTANCE_TYPE, acceptance_facts
 from orchestra.score.workflow.workflow_blockers import CHECK_RUN_TYPE, FINDING_TYPE
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
-from orchestra.tuner.evidence_facts import finding_basis
-from orchestra.tuner.record_facts import check_run_facts, finding_facts
+from orchestra.tuner.evidence.evidence_facts import finding_basis
+from orchestra.tuner.evidence.record_facts import check_run_facts, finding_facts
 
 NOTE_REQUIRED_ACTIONS = frozenset({ACTION_REJECT, ACTION_ACCEPT})
 

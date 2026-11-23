@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from orchestra.tuner.amendment import authorize, canonical_payload
+from orchestra.tuner.evidence.signing.amendment import authorize, canonical_payload
 
 
 def _generate_key(directory: Path, name: str) -> tuple[Path, str]:

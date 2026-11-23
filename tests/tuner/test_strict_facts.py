@@ -7,8 +7,8 @@ import pytest
 
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.tuner import schemas
-from orchestra.tuner.evidence_facts import finding_basis
-from orchestra.tuner.record_facts import (
+from orchestra.tuner.evidence.evidence_facts import finding_basis
+from orchestra.tuner.evidence.record_facts import (
     RecordShapeError,
     check_run_facts,
     finding_facts,

@@ -73,7 +73,7 @@ def _disable_ci_for_partial_type_probes(
 @pytest.fixture(scope="session", autouse=True)
 def _preimport_tuner_binding():
     """Let binding capture the real run_verdict before any test patches it."""
-    import orchestra.tuner.binding  # noqa: F401
+    import orchestra.tuner.evidence.binding  # noqa: F401
 
 
 def run_cli(

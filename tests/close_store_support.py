@@ -15,7 +15,7 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.close_batch import CloseRequestError, build_batch
 from orchestra.conductor.task_close import CloseRefused
 from orchestra.tools import Git
-from orchestra.tuner.manifest import DEFAULT_RUNNER
+from orchestra.tuner.plugins.manifest import DEFAULT_RUNNER
 
 RecordSource = Callable[[str], Record]
 AmendmentSource = Callable[[str], list[Record]]

@@ -455,7 +455,7 @@ def test_r5(tmp_path, monkeypatch):
     """R5: close_batch calls is_assertion_level_red and does not start aff for that check."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "orchestra.tuner.oracle_red", "is_assertion_level_red", calls)
+    _spy(monkeypatch, "orchestra.tuner.authoring.oracle_red", "is_assertion_level_red", calls)
     _patch_tuner(monkeypatch, started)
     request, acceptance = _oracle_request()
     with contextlib.suppress(close_batch.CloseRefused):
@@ -475,8 +475,8 @@ def test_r6(tmp_path, monkeypatch):
     """R6: close_batch calls run_verdict for a manifest claim and does not start aff."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "orchestra.tuner.verdict", "run_verdict", calls)
-    _spy(monkeypatch, "orchestra.tuner.binding", "recheck", [])
+    _spy(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", calls)
+    _spy(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", [])
     _patch_tuner(monkeypatch, started)
     _write_manifest(tmp_path)
     _run_claim_close(tmp_path)
@@ -489,8 +489,8 @@ def test_r7(tmp_path, monkeypatch):
     """R7: close_batch calls recheck for a manifest claim and does not start aff."""
     calls: list = []
     started: list[list[str]] = []
-    _spy(monkeypatch, "orchestra.tuner.verdict", "run_verdict", [])
-    _spy(monkeypatch, "orchestra.tuner.binding", "recheck", calls)
+    _spy(monkeypatch, "orchestra.tuner.evidence.verdict", "run_verdict", [])
+    _spy(monkeypatch, "orchestra.tuner.evidence.binding", "recheck", calls)
     _patch_tuner(monkeypatch, started)
     _write_manifest(tmp_path)
     _run_claim_close(tmp_path)

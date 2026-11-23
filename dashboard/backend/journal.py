@@ -34,8 +34,8 @@ from orchestra.score.workflow.workflow_blockers import (
     is_open_finding,
     is_open_question,
 )
-from orchestra.tuner.evidence_facts import OBSERVATION_TYPE
-from orchestra.tuner.record_facts import FindingFacts, finding_facts, observation_text
+from orchestra.tuner.evidence.evidence_facts import OBSERVATION_TYPE
+from orchestra.tuner.evidence.record_facts import FindingFacts, finding_facts, observation_text
 
 JOURNAL_TYPES = (
     FAILED_ATTEMPT_TYPE,

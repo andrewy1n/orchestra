@@ -6,7 +6,7 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.signoff import awaiting_signoff
 from orchestra.conductor.suite_label import suite_labels, suite_status_label
 from orchestra.conductor.task_detail import related_text, timeline_entries
-from orchestra.tuner.record_facts import RecordShapeError
+from orchestra.tuner.evidence.record_facts import RecordShapeError
 
 REQUIRED = ("criterion_id", "revision", "result", "method", "signed_by")
 

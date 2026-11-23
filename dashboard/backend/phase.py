@@ -81,8 +81,8 @@ from orchestra.score.planning.scope import (
     spec_requirements,
     spec_weight,
 )
-from orchestra.tuner.evidence_facts import CHECK_RUN_TYPE
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 LIVE_PHASE_STATES = ("planned", "in_progress", "done")
 

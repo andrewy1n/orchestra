@@ -147,7 +147,7 @@ STORE_RESOLUTION_EXEMPT: dict[str, str] = {
     "orchestra/canon/store_commands.py": "store ensure bootstraps a store that does not exist yet",
     "orchestra/canon/cli.py": "canon init bootstraps stores and --store names a store directory",
     "orchestra/conductor/land_task.py": ".canon is a git pathspec, not store resolution",
-    "orchestra/tuner/audit.py": ".canon is a path prefix, not store resolution",
+    "orchestra/tuner/authoring/audit.py": ".canon is a path prefix, not store resolution",
     "scripts/api_schema.py": "builds an unbound Project for schema generation",
     "scripts/benchmark_cli.py": "builds a fixture store and env for child processes",
 }

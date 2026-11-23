@@ -22,11 +22,16 @@ from orchestra.canon.project_config import (
 )
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tools.git import Git
-from orchestra.tuner.manifest import ManifestError, load_allowlist, resolve_commit, runner_digest
-from orchestra.tuner.plugins import PluginContext, PluginResult, dispatch_plugins
-from orchestra.tuner.sign import sign
-from orchestra.tuner.sign import verify as verify_signature
-from orchestra.tuner.technique import (
+from orchestra.tuner.evidence.signing.sign import sign
+from orchestra.tuner.evidence.signing.sign import verify as verify_signature
+from orchestra.tuner.plugins.api import PluginContext, PluginResult, dispatch_plugins
+from orchestra.tuner.plugins.manifest import (
+    ManifestError,
+    load_allowlist,
+    resolve_commit,
+    runner_digest,
+)
+from orchestra.tuner.plugins.technique import (
     TechniqueResult,
     VerificationTechnique,
     validate_technique_result,

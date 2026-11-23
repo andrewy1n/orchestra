@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from orchestra.canon.types import Record
 from orchestra.conductor.head_evidence import SUITE_EVIDENCE_KIND, EvidenceIndex, suite_subject
 from orchestra.score.lookups import latest_record
-from orchestra.tuner.record_facts import check_run_facts
+from orchestra.tuner.evidence.record_facts import check_run_facts
 
 LEGACY_TIER2_SUBJECT_SUFFIX = "-tier2"
 SUITE_RUNNING_MARKER = "suite-running"

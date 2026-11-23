@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from orchestra.canon.types import JsonObject, JsonValue
-from orchestra.tuner.sign import sign
-from orchestra.tuner.sign import verify as verify_signed
+from orchestra.tuner.evidence.signing.sign import sign
+from orchestra.tuner.evidence.signing.sign import verify as verify_signed
 
 NAMESPACE = "tuner-verdict"
 

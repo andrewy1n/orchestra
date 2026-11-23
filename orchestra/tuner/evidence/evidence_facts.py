@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from orchestra.canon.types import JsonValue, Record
-from orchestra.tuner.record_facts import required_text
+from orchestra.tuner.evidence.record_facts import required_text
 
 CHECK_RUN_TYPE = "tuner:check-run"
 FINDING_TYPE = "tuner:finding"

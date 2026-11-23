@@ -15,10 +15,11 @@ from pathlib import Path
 
 from orchestra.canon.types import JsonObject, JsonValue
 from orchestra.tools.git import Git
-from orchestra.tuner.amendment import authorize
-from orchestra.tuner.evidence_kind import kind_allows_runner
-from orchestra.tuner.human_claim import verify_claim_signature
-from orchestra.tuner.manifest import (
+from orchestra.tuner.evidence.provenance import check_provenance
+from orchestra.tuner.evidence.signing.amendment import authorize
+from orchestra.tuner.evidence.signing.human_claim import verify_claim_signature
+from orchestra.tuner.plugins.evidence_kind import kind_allows_runner
+from orchestra.tuner.plugins.manifest import (
     Claim,
     Manifest,
     frozen_support_files,
@@ -29,8 +30,7 @@ from orchestra.tuner.manifest import (
     resolve_commit,
     runner_digest,
 )
-from orchestra.tuner.provenance import check_provenance
-from orchestra.tuner.technique import (
+from orchestra.tuner.plugins.technique import (
     TestOutcome,
     replay_at_revision,
     replay_identity_at_revision,

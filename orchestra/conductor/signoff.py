@@ -6,7 +6,7 @@ from orchestra.canon.types import Record
 from orchestra.score.facts.work_item_facts import record_scope
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item, record_order
 from orchestra.score.planning.effort import record_effort
-from orchestra.tuner.record_facts import CheckRunFacts, check_run_facts
+from orchestra.tuner.evidence.record_facts import CheckRunFacts, check_run_facts
 
 _INACTIVE = ("superseded", "retracted")
 

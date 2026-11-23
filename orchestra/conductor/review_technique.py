@@ -3,8 +3,8 @@ from __future__ import annotations
 from orchestra.canon.project_config import ProjectConfig
 from orchestra.canon.types import JsonObject
 from orchestra.conductor.reviewer import validate_reviewer_output
-from orchestra.tuner.plugins import PluginContext
-from orchestra.tuner.technique import TechniqueResult
+from orchestra.tuner.plugins.api import PluginContext
+from orchestra.tuner.plugins.technique import TechniqueResult
 
 
 class ReviewTechnique:
