@@ -19,6 +19,7 @@ from orchestra.score.planning.requirements import (
 from orchestra.score.workflow.workflow_blockers import is_signed
 
 RequirementState = Literal["verified", "failed", "unverified"]
+VERIFIED: RequirementState = "verified"
 UNVERIFIED: RequirementState = "unverified"
 
 _WORK_ITEM = "score:work-item"

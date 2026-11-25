@@ -7,9 +7,14 @@ from typing import Literal
 from orchestra.canon.types import Record
 from orchestra.conductor.verification.evidence import head_evidence
 from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
+from orchestra.conductor.verification.requirements import (
+    UNVERIFIED,
+    VERIFIED,
+    RequirementState,
+)
 from orchestra.score.planning.standing_constraint import RECORD_TYPE
 
-Outcome = Literal["verified", "violated", "unverified"]
+Outcome = RequirementState | Literal["violated"]
 
 
 @dataclass(frozen=True)
@@ -70,9 +75,9 @@ def standing_constraint_status(
             continue
         answer = head_evidence.criterion_runner_at_head(index, criterion_id(pinned_id), head)
         run = answer.run
-        outcome: Outcome = "unverified"
+        outcome: Outcome = UNVERIFIED
         if run is not None:
-            outcome = "verified" if answer.holds else "violated"
+            outcome = VERIFIED if answer.holds else "violated"
         outcomes.append(
             ConstraintOutcome(
                 name=pinned["subject"],
