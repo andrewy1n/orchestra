@@ -4,7 +4,10 @@
    specification, its review, the phase, decisions, constraints, assessments,
    and relevant code. Refuse to design when no current approved specification
    exists. Route back to spec when the contract is missing or stale.
-2. Research relevant code and current technical facts before asking the user
+2. Name the areas the design touches. Run
+   `orchestra workflow brief {phase} design --area <area>` for each area
+   (repeat `--area`). Read the listed standing constraints and follow them.
+   Research relevant code and current technical facts before asking the user
    about preferences. Apply the shared intent Q&A. Ask about only choices that
    change architecture, interfaces, recovery, cost, or risk.
 3. Present two or three viable approaches when real alternatives exist. Offer
@@ -29,7 +32,9 @@ canon create --type score:decision \
 ```
 
 7. Create or supersede the phase `score:design`. Its payload `decisions` lists
-   the decision subjects. Its body has `## Architecture`, `## Interfaces`,
+   the decision subjects. Its payload `standing_constraints` lists the record
+   ids of the applicable standing constraints that the brief shows; omit it
+   when none apply. Its body has `## Architecture`, `## Interfaces`,
    `## Decisions`, `## Invariants`, `## Assumptions`, `## Tradeoffs`, and
    `## Risks`. Include every section. Write `none` when a section has no
    content. Keep a light phase compact.

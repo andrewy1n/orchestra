@@ -97,6 +97,12 @@ def _configure_brief(brief: argparse.ArgumentParser) -> None:
         choices=("spec", "design", "tasks", "execute", "verify", "land"),
     )
     brief.add_argument("--skill", help="Print the brief for a skill instead of a phase step")
+    brief.add_argument(
+        "--area",
+        action="append",
+        default=[],
+        help="Area the design touches; repeat to name several (design step only)",
+    )
     _add_read_options(brief)
 
 
@@ -260,7 +266,7 @@ def _brief(args: argparse.Namespace) -> int:
         raise CommandError("arguments: give --skill or both phase and step")
     project = _open(args, Access.READ)
     try:
-        action = phase_step_action(project, args.phase, args.step)
+        action = phase_step_action(project, args.phase, args.step, args.area)
     except (
         OSError,
         RuntimeError,

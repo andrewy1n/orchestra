@@ -501,6 +501,13 @@
           "list": {
             "ref": "score:decision"
           }
+        },
+        "standing_constraints": {
+          "list": {
+            "ref": "score:standing-constraint",
+            "pin": true
+          },
+          "optional": true
         }
       },
       "sections": [
