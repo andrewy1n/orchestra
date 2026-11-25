@@ -198,6 +198,12 @@ def acceptance_runner_at_head(index: EvidenceIndex, acceptance: Record, head: st
     return Answer(True, deciding)
 
 
+def criterion_runner_at_head(index: EvidenceIndex, criterion: str, head: str | None) -> Answer:
+    owned = [run for run in index.check_runs if _text(run, "criterion_id") == criterion]
+    runner_runs = [run for run in owned if _text(run, "runner") == RUNNER]
+    return _decide(latest(_at_head(runner_runs, head)), "runner check-run", head)
+
+
 def review_check_runs(index: EvidenceIndex, phase_slug: str, effort: str) -> list[Record]:
     subject = phase_slug + REVIEW_SUBJECT_SUFFIX
     return [
