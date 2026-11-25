@@ -31,6 +31,7 @@ from orchestra.conductor.phases.progress.phase_progress import PhaseProgress, ph
 from orchestra.conductor.tasks.assignment import task_assignment
 from orchestra.conductor.tasks.task_detail import ASSIGNMENT_AMENDMENT_TYPE
 from orchestra.conductor.verification.requirements import RequirementIndex, requirement_status
+from orchestra.conductor.verification.standing_constraints import standing_constraint_status
 from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
@@ -443,7 +444,8 @@ def _phase_derived_lines(
     progress = phase_counts(records, phase)
     statuses = requirement_status(records, phase, index=requirement_index)
     stage_text = _stage_text(stage)
-    if progress.total == 0 and not statuses and not stage_text:
+    constraints = standing_constraint_status(records, phase, None)
+    if progress.total == 0 and not statuses and not constraints and not stage_text:
         return []
     lines: list[str] = []
     if progress.total:
@@ -457,6 +459,21 @@ def _phase_derived_lines(
         for requirement, status in statuses.items():
             suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
             lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
+        lines.append("")
+    if constraints:
+        lines.append("### Standing constraints")
+        for constraint in constraints:
+            row = f"- **{constraint.name}** ({constraint.area}): {constraint.outcome}"
+            row += f" _(pinned: {constraint.pinned_id})_"
+            if constraint.check_run_id:
+                row += f" _(check-run: {constraint.check_run_id})_"
+            if constraint.newer_id:
+                row += f" _(newer version: {constraint.newer_id})_"
+            if constraint.outcome == "violated":
+                first = constraint.evidence.strip().splitlines()
+                if first:
+                    row += f": {first[0]}"
+            lines.append(row)
         lines.append("")
     if stage_text:
         lines += ["### Stage", f"- {stage_text}", ""]

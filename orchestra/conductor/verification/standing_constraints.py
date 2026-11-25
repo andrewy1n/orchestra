@@ -59,7 +59,7 @@ def _evidence(run: Record) -> str:
 
 
 def standing_constraint_status(
-    records: Sequence[Record], phase: str, head: str
+    records: Sequence[Record], phase: str, head: str | None
 ) -> list[ConstraintOutcome]:
     index = EvidenceIndex(records)
     by_id = {record["id"]: record for record in records}
