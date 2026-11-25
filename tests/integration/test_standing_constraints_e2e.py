@@ -187,6 +187,14 @@ def test_constraint_without_evidence_at_new_revision_is_unverified(tmp_path: Pat
     assert OFFENDING in at_a[0].evidence
     assert [(o.name, o.outcome, o.check_run_id) for o in at_b] == [(NAME, "unverified", None)]
 
+    view = _orchestra(store, "view", "verification")
+
+    assert view.returncode == 0, view.stdout + view.stderr
+    block = view.stdout.split("### Standing constraints\n", 1)[1]
+    assert f"- **{NAME}** (payments): unverified" in block
+    assert "violated" not in block
+    assert revision_b[:7] in block
+
     revised = project.supersede(
         constraint["id"],
         payload={"area": "payments", "rule": f"{RULE} Tests are exempt.", "check": "true"},
@@ -196,3 +204,39 @@ def test_constraint_without_evidence_at_new_revision_is_unverified(tmp_path: Pat
     assert [(o.pinned_id, o.newer_id, o.outcome) for o in after] == [
         (constraint["id"], revised["id"], "violated")
     ]
+
+
+def test_readopted_constraint_version_is_unverified_until_checked_at_revision(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "repo"
+    project, constraint, _ = _scenario(store)
+    revised = project.supersede(
+        constraint["id"],
+        payload={
+            "area": "payments",
+            "rule": f"{RULE} Tests are exempt.",
+            "check": "python3 scan_stripe.py",
+        },
+    )["record"]
+    design = next(r for r in open_store(store).records() if r["record_type"] == "score:design")
+    project.supersede(
+        design["id"],
+        payload={**design["payload"], "standing_constraints": [revised["id"]]},
+    )
+
+    before = _orchestra(store, "view", "verification")
+
+    assert before.returncode == 0, before.stdout + before.stderr
+    block = before.stdout.split("### Standing constraints\n", 1)[1]
+    assert f"- **{NAME}** (payments): unverified" in block
+    assert revised["id"] in block
+
+    checked = _orchestra(store, "check", "--standing-constraint", NAME, "--phase", PHASE)
+    assert checked.returncode == 1, checked.stdout + checked.stderr
+
+    after = _orchestra(store, "view", "verification")
+
+    block = after.stdout.split("### Standing constraints\n", 1)[1]
+    assert f"- **{NAME}** (payments): violated" in block
+    assert revised["id"] in block

@@ -163,3 +163,19 @@ def test_superseded_declaration_shows_newer_version() -> None:
     assert f"- **{NAME}** (payments): verified" in block
     assert old["id"] in block
     assert f" _(newer version: {newer['id']})_" in block
+
+
+def test_constraint_at_other_revision_reads_unverified_in_view() -> None:
+    constraint = _constraint()
+    run = _constraint_run(constraint, "pass")
+    records = [*_requirement_records(), constraint, _design(constraint), run]
+
+    at_a = _block(render_view(VERIFICATION, records, head="abc"))
+    at_b = _block(render_view(VERIFICATION, records, head="def"))
+
+    assert f"- **{NAME}** (payments): verified" in at_a
+    assert run["id"] in at_a
+    assert "abc" in at_a
+    assert f"- **{NAME}** (payments): unverified" in at_b
+    assert run["id"] not in at_b
+    assert "def" in at_b

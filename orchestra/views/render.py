@@ -439,12 +439,13 @@ def _phase_derived_lines(
     effort: str | None = None,
     requirement_index: RequirementIndex | None = None,
     stage: PhaseProgress | None = None,
+    head: str | None = None,
 ) -> list[str]:
     records = _effort_pool(records, effort)
     progress = phase_counts(records, phase)
     statuses = requirement_status(records, phase, index=requirement_index)
     stage_text = _stage_text(stage)
-    constraints = standing_constraint_status(records, phase, None)
+    constraints = standing_constraint_status(records, phase, head)
     if progress.total == 0 and not statuses and not constraints and not stage_text:
         return []
     lines: list[str] = []
@@ -465,6 +466,8 @@ def _phase_derived_lines(
         for constraint in constraints:
             row = f"- **{constraint.name}** ({constraint.area}): {constraint.outcome}"
             row += f" _(pinned: {constraint.pinned_id})_"
+            if head:
+                row += f" _(at {head[:7]})_"
             if constraint.check_run_id:
                 row += f" _(check-run: {constraint.check_run_id})_"
             if constraint.newer_id:
@@ -593,6 +596,7 @@ def group_lines(
     requirement_index: RequirementIndex | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
     status: str | None = None,
+    head: str | None = None,
 ) -> list[str]:
     progress = progress or {}
     lines = [f"## {name}" if status is None else f"## {name} ({status})", ""]
@@ -615,7 +619,9 @@ def group_lines(
             lines.append(_record_line(record, role, bits, link))
         lines.append("")
     if view.show_phase_derived:
-        lines += _phase_derived_lines(records, name, effort, requirement_index, progress.get(name))
+        lines += _phase_derived_lines(
+            records, name, effort, requirement_index, progress.get(name), head
+        )
     return lines
 
 
@@ -666,6 +672,7 @@ def render_view(
     landing: Mapping[str, LandingFact] | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
     root: Path | None = None,
+    head: str | None = None,
 ) -> str:
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
     if view.name == "plan":
@@ -704,6 +711,7 @@ def render_view(
             requirement_index=requirement_index,
             progress=progress,
             status=labels.get(name),
+            head=head,
         )
         if name in labels:
             items = attention_items(records, name, landing or {})
@@ -712,7 +720,9 @@ def render_view(
                 lines += [_attention_lines(i) for i in items if i.kind == kind]
                 lines.append("")
     if groups and view.phase_derived_section:
-        lines += _phase_section_lines(groups, records, effort, requirement_index, progress or {})
+        lines += _phase_section_lines(
+            groups, records, effort, requirement_index, progress or {}, head
+        )
     return "\n".join(lines)
 
 
@@ -722,6 +732,7 @@ def _phase_section_lines(
     effort: str | None,
     requirement_index: RequirementIndex | None,
     progress: Mapping[str, PhaseProgress],
+    head: str | None = None,
 ) -> list[str]:
     phases = sorted(
         {
@@ -735,7 +746,7 @@ def _phase_section_lines(
     lines: list[str] = []
     for phase in phases:
         derived = _phase_derived_lines(
-            records, phase, effort, requirement_index, progress.get(phase)
+            records, phase, effort, requirement_index, progress.get(phase), head
         )
         if derived:
             lines += [f"## Phase {phase}", "", *derived]
