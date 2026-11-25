@@ -6,6 +6,7 @@ import hashlib
 import re
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,14 @@ from orchestra.conductor.verification.policy import (
     manual_refuse_message,
     map_process_outcome,
 )
+from orchestra.conductor.verification.standing_constraints import (
+    criterion_id,
+    pinned_constraint_ids,
+)
+from orchestra.score.planning.standing_constraint import (
+    RECORD_TYPE as STANDING_CONSTRAINT,
+)
+from orchestra.score.planning.standing_constraint import read_standing_constraint
 from orchestra.tools import Git
 
 RUNNER = "orchestra"
@@ -206,6 +215,105 @@ def run_check(
             message="Acceptance has an empty verify_command; nothing to run.",
         )
 
+    return _execute(
+        verify_command,
+        work=work,
+        project=project,
+        allow_dirty=allow_dirty,
+        timeout=timeout,
+        criterion=acceptance["id"],
+        subject=acceptance.get("subject") or acceptance["id"],
+        effort=payload.get("effort") or "",
+        method=method,
+        provenance_revision=acceptance["revision"],
+        informed_by=[acceptance["id"], *([execution_report] if execution_report else [])],
+        extra=_acceptance_extra(payload),
+        reuse=lambda revision, result: _find_identical_check_run(
+            project, acceptance=acceptance, revision=revision, result=result
+        ),
+    )
+
+
+def _acceptance_extra(payload: PlanningPayload) -> JsonObject:
+    extra: JsonObject = {}
+    if payload.get("requirement"):
+        extra["requirement"] = payload["requirement"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
+    if payload.get("evidence_kind"):
+        extra["evidence_kind"] = payload["evidence_kind"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
+    return extra
+
+
+def run_standing_constraint_check(
+    *,
+    name: str,
+    phase: str,
+    cwd: Path,
+    project: Project,
+    allow_dirty: bool = False,
+    timeout: float = DEFAULT_TIMEOUT_S,
+) -> CheckOutcome:
+    records = project.records()
+    pinned = None
+    effort = ""
+    for design in records:
+        if (
+            design["record_type"] == "score:design"
+            and design["lifecycle_state"] == "active"
+            and design["payload"].get("phase") == phase
+        ):
+            effort = str(design["payload"].get("effort") or effort)
+    for pinned_id in pinned_constraint_ids(records, phase):
+        candidate = next((r for r in records if r["id"] == pinned_id), None)
+        if (
+            candidate is not None
+            and candidate["record_type"] == STANDING_CONSTRAINT
+            and candidate["subject"] == name
+        ):
+            pinned = candidate
+            break
+    if pinned is None:
+        return CheckOutcome(
+            exit_code=4,
+            stdout="",
+            message=f"Standing constraint {name!r} is not pinned by phase {phase!r}.",
+        )
+    try:
+        constraint = read_standing_constraint(pinned)
+    except StoreError as exc:
+        return CheckOutcome(exit_code=4, stdout="", message=str(exc))
+    return _execute(
+        constraint.check,
+        work=cwd.resolve(),
+        project=project,
+        allow_dirty=allow_dirty,
+        timeout=timeout,
+        criterion=criterion_id(pinned["id"]),
+        subject=f"{name}-check",
+        effort=effort,
+        method="check",
+        provenance_revision=pinned["revision"],
+        informed_by=[],
+        extra={},
+        reuse=lambda _revision, _result: None,
+    )
+
+
+def _execute(
+    verify_command: str,
+    *,
+    work: Path,
+    project: Project,
+    allow_dirty: bool,
+    timeout: float,
+    criterion: str,
+    subject: str,
+    effort: str,
+    method: str,
+    provenance_revision: str,
+    informed_by: list[str],
+    extra: JsonObject,
+    reuse: Callable[[str, str], Record | None],
+) -> CheckOutcome:
     try:
         head = Git(work).head()
         dirty = git_is_dirty(work)
@@ -235,12 +343,7 @@ def run_check(
 
     if decision.revision != "dirty":
         try:
-            existing = _find_identical_check_run(
-                project,
-                acceptance=acceptance,
-                revision=decision.revision,
-                result=result,
-            )
+            existing = reuse(decision.revision, result)
         except (StoreError, OSError) as exc:
             return CheckOutcome(exit_code=4, stdout="", message=str(exc))
         if existing is not None:
@@ -254,10 +357,10 @@ def run_check(
             )
 
     check_payload: JsonObject = {
-        "criterion_id": acceptance["id"],
+        "criterion_id": criterion,
         "revision": decision.revision,
         "result": result,
-        "effort": payload.get("effort") or "",
+        "effort": effort,
         "method": method,
         "signed_by": "",
         "runner": RUNNER,
@@ -268,10 +371,7 @@ def run_check(
         check_payload["exit_code"] = exit_code
     if decision.diff_sha256:
         check_payload["diff_sha256"] = decision.diff_sha256
-    if payload.get("requirement"):
-        check_payload["requirement"] = payload["requirement"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
-    if payload.get("evidence_kind"):
-        check_payload["evidence_kind"] = payload["evidence_kind"]  # pyright: ignore[reportTypedDictNotRequiredAccess]  # The truthy field check establishes presence.
+    check_payload.update(extra)
     if result == "fail":
         failing_nodes = parse_failing_node_ids(output)
         if failing_nodes:
@@ -279,19 +379,16 @@ def run_check(
             failing_node_values.extend(failing_nodes)
             check_payload["failing_node_ids"] = failing_node_values
 
-    informed_by = [acceptance["id"]]
-    if execution_report:
-        informed_by.append(execution_report)
     informed_by_values: list[JsonValue] = [*informed_by]
     check_payload["informed_by"] = informed_by_values
 
     try:
         record = project.create(
             record_type="tuner:check-run",
-            subject=acceptance.get("subject") or acceptance["id"],
+            subject=subject,
             payload=check_payload,
             body=_body_tail(output),
-            provenance={"acceptance_revision": acceptance["revision"]},
+            provenance={"acceptance_revision": provenance_revision},
         )
     except (StoreError, ValidationError, OSError) as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))

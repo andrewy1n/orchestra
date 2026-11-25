@@ -895,7 +895,13 @@ TUNER_CANON_STAGE = [
     orchestra("store_ensure_success", "bare", 0, "store", "ensure", "--json", out=()),
     orchestra("store_ensure_idempotent", "shared", 0, "store", "ensure", out="{root}/.canon\n"),
     orchestra("check_no_store", "bare", 4, "check", "--acceptance", "nope", err=NO_STORE),
-    orchestra("check_missing_acceptance", "shared", 2, "check", err=ARGS_REQUIRED),
+    orchestra(
+        "check_missing_acceptance",
+        "shared",
+        2,
+        "check",
+        err="one of the arguments --acceptance --standing-constraint is required",
+    ),
     orchestra("install_list_success", "bare", 0, "install", "--list", out="ID "),
     orchestra("sessions_aggregate_success", "bare", 0, "sessions", "aggregate", out=()),
     orchestra(

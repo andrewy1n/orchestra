@@ -73,6 +73,8 @@ ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
         "--allow-dirty",
         "--cwd",
         "--execution-report",
+        "--phase",
+        "--standing-constraint",
         "--store",
         "--timeout",
     ),

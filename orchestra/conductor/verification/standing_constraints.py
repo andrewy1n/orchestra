@@ -27,7 +27,7 @@ def criterion_id(constraint_id: str) -> str:
     return f"standing-constraint:{constraint_id}"
 
 
-def _pinned_ids(records: Sequence[Record], phase: str) -> list[str]:
+def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
     ids: list[str] = []
     for record in records:
         if (
@@ -64,7 +64,7 @@ def standing_constraint_status(
     index = EvidenceIndex(records)
     by_id = {record["id"]: record for record in records}
     outcomes: list[ConstraintOutcome] = []
-    for pinned_id in _pinned_ids(records, phase):
+    for pinned_id in pinned_constraint_ids(records, phase):
         pinned = by_id.get(pinned_id)
         if pinned is None or pinned["record_type"] != RECORD_TYPE:
             continue
