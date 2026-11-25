@@ -13,6 +13,7 @@ from orchestra.conductor.phases.progress.phase_progress import (
     open_phase_progress,
 )
 from orchestra.tools.command_kit import Command, CommandError
+from orchestra.tools.errors import ToolError
 from orchestra.views import render as views
 from orchestra.views.render import render_brief
 
@@ -44,8 +45,9 @@ def _handoff(args: argparse.Namespace) -> int:
             landing=views.landing_facts(records, project.project_root),
             progress=open_phase_progress(project, records),
             root=project.project_root,
+            head_of=views.phase_head_of(records, project.project_root),
         )
-    except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError) as exc:
+    except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError, ToolError) as exc:
         raise CommandError(str(exc), 1) from exc
     print(text)
     return 0
@@ -63,8 +65,9 @@ def _view(args: argparse.Namespace) -> int:
             landing=None,
             progress=open_phase_progress(project, records),
             root=project.project_root,
+            head_of=views.phase_head_of(records, project.project_root),
         )
-    except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError) as exc:
+    except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError, ToolError) as exc:
         raise CommandError(str(exc), 1) from exc
     print(text)
     return 0

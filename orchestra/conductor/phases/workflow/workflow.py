@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Literal
 from uuid import uuid4
@@ -17,6 +18,7 @@ from orchestra.conductor.phases.progress.phase_progress import (
 )
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.phase import Phase, current_phase_model
+from orchestra.score.planning.standing_constraint import applicable, declared_areas
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     blocked_tasks,
@@ -362,11 +364,47 @@ def _with_brief(project: Project, action: RunAction) -> RunAction:
     return replace(action, brief=text)
 
 
-def phase_step_action(project: Project, phase: str, step: Step) -> RunAction:
+def _constraints_section(records: list[Record], areas: Sequence[str]) -> str:
+    entries: list[str] = []
+    seen: set[str] = set()
+    for area in dict.fromkeys(areas):
+        found = applicable(records, area)
+        if not found:
+            entries.append(f"No standing constraints for area `{area}`.")
+        for constraint in found:
+            if constraint.id in seen:
+                continue
+            seen.add(constraint.id)
+            entries.append(
+                f"### {constraint.name}\n"
+                f"**area**: {constraint.area}; **version**: {constraint.id}\n\n"
+                f"**rule**: {constraint.rule}\n\n"
+                f"**basis**: {constraint.basis}"
+            )
+    if not areas:
+        known = declared_areas(records)
+        if known:
+            entries.append(
+                "No `--area` given, so no standing constraints are listed. "
+                f"Areas with constraints: {', '.join(known)}."
+            )
+    if not entries:
+        return ""
+    return "## Applicable standing constraints\n\n" + "\n\n".join(entries)
+
+
+def phase_step_action(
+    project: Project, phase: str, step: Step, areas: Sequence[str] = ()
+) -> RunAction:
     records = project.records()
     current = _current_phase(records, phase)
     action = _action_for(project, records, current, step, _progress(project, records, current))
-    return _with_brief(project, action)
+    action = _with_brief(project, action)
+    if step == "design" and action.state == "ready":
+        section = _constraints_section(records, areas)
+        if section:
+            action = replace(action, brief=f"{action.brief.rstrip()}\n\n{section}\n")
+    return action
 
 
 def _all_actions(

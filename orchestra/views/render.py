@@ -19,7 +19,7 @@ from orchestra.composer.idea_facts import (
     is_open_backlog_idea,
     is_roadmap_idea,
 )
-from orchestra.conductor.landing.landing import PROOF_PACKET, place_of_body
+from orchestra.conductor.landing.landing import PROOF_PACKET, phase_place, place_of_body
 from orchestra.conductor.phases.progress.attention import (
     AttentionItem,
     LandingFact,
@@ -31,6 +31,10 @@ from orchestra.conductor.phases.progress.phase_progress import PhaseProgress, ph
 from orchestra.conductor.tasks.assignment import task_assignment
 from orchestra.conductor.tasks.task_detail import ASSIGNMENT_AMENDMENT_TYPE
 from orchestra.conductor.verification.requirements import RequirementIndex, requirement_status
+from orchestra.conductor.verification.standing_constraints import (
+    pinned_constraint_ids,
+    standing_constraint_status,
+)
 from orchestra.score.facts.detail_facts import (
     ACCEPTANCE_TYPE,
     DECISION_TYPE,
@@ -57,9 +61,11 @@ from orchestra.score.planning.executor import (
     DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     task_executor,
 )
+from orchestra.score.planning.phase import current_phase_model
 from orchestra.score.planning.requirements import phase_requirements, requirement_lines
 from orchestra.score.workflow.workflow_blockers import QUESTION_TYPE, human_gates
 from orchestra.tools import Merged, Unmerged, branch_state
+from orchestra.tools.git import Git
 from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE, FINDING_TYPE, OBSERVATION_TYPE
 from orchestra.tuner.evidence.record_facts import RecordShapeError, check_run_facts
 
@@ -426,6 +432,20 @@ def _assignment_bits(
     return bits
 
 
+HeadOf = Callable[[str], str | None]
+
+
+def phase_head_of(records: list[Record], root: Path) -> HeadOf:
+    def head_of(phase: str) -> str | None:
+        model = current_phase_model(phase, records)
+        if model is None:
+            return None
+        place = phase_place(model, root)
+        return Git(place.repo).resolve(place.branch)
+
+    return head_of
+
+
 def _effort_pool(records: list[Record], effort: str | None) -> list[Record]:
     if effort is None:
         return records
@@ -438,12 +458,15 @@ def _phase_derived_lines(
     effort: str | None = None,
     requirement_index: RequirementIndex | None = None,
     stage: PhaseProgress | None = None,
+    head_of: HeadOf | None = None,
 ) -> list[str]:
     records = _effort_pool(records, effort)
     progress = phase_counts(records, phase)
     statuses = requirement_status(records, phase, index=requirement_index)
     stage_text = _stage_text(stage)
-    if progress.total == 0 and not statuses and not stage_text:
+    head = head_of(phase) if head_of is not None and pinned_constraint_ids(records, phase) else None
+    constraints = standing_constraint_status(records, phase, head)
+    if progress.total == 0 and not statuses and not constraints and not stage_text:
         return []
     lines: list[str] = []
     if progress.total:
@@ -457,6 +480,23 @@ def _phase_derived_lines(
         for requirement, status in statuses.items():
             suffix = f" _(assessment: {status.assessment_id})_" if status.assessment_id else ""
             lines.append(f"- **{requirement}**: {status.assessed or status.status}{suffix}")
+        lines.append("")
+    if constraints:
+        lines.append("### Standing constraints")
+        for constraint in constraints:
+            row = f"- **{constraint.name}** ({constraint.area}): {constraint.outcome}"
+            row += f" _(pinned: {constraint.pinned_id})_"
+            if head:
+                row += f" _(at {head[:7]})_"
+            if constraint.check_run_id:
+                row += f" _(check-run: {constraint.check_run_id})_"
+            if constraint.newer_id:
+                row += f" _(newer version: {constraint.newer_id})_"
+            if constraint.outcome == "violated":
+                first = constraint.evidence.strip().splitlines()
+                if first:
+                    row += f": {first[0]}"
+            lines.append(row)
         lines.append("")
     if stage_text:
         lines += ["### Stage", f"- {stage_text}", ""]
@@ -576,6 +616,7 @@ def group_lines(
     requirement_index: RequirementIndex | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
     status: str | None = None,
+    head_of: HeadOf | None = None,
 ) -> list[str]:
     progress = progress or {}
     lines = [f"## {name}" if status is None else f"## {name} ({status})", ""]
@@ -598,7 +639,9 @@ def group_lines(
             lines.append(_record_line(record, role, bits, link))
         lines.append("")
     if view.show_phase_derived:
-        lines += _phase_derived_lines(records, name, effort, requirement_index, progress.get(name))
+        lines += _phase_derived_lines(
+            records, name, effort, requirement_index, progress.get(name), head_of
+        )
     return lines
 
 
@@ -649,6 +692,7 @@ def render_view(
     landing: Mapping[str, LandingFact] | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
     root: Path | None = None,
+    head_of: HeadOf | None = None,
 ) -> str:
     budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
     if view.name == "plan":
@@ -687,6 +731,7 @@ def render_view(
             requirement_index=requirement_index,
             progress=progress,
             status=labels.get(name),
+            head_of=head_of,
         )
         if name in labels:
             items = attention_items(records, name, landing or {})
@@ -695,7 +740,9 @@ def render_view(
                 lines += [_attention_lines(i) for i in items if i.kind == kind]
                 lines.append("")
     if groups and view.phase_derived_section:
-        lines += _phase_section_lines(groups, records, effort, requirement_index, progress or {})
+        lines += _phase_section_lines(
+            groups, records, effort, requirement_index, progress or {}, head_of
+        )
     return "\n".join(lines)
 
 
@@ -705,6 +752,7 @@ def _phase_section_lines(
     effort: str | None,
     requirement_index: RequirementIndex | None,
     progress: Mapping[str, PhaseProgress],
+    head_of: HeadOf | None = None,
 ) -> list[str]:
     phases = sorted(
         {
@@ -718,7 +766,7 @@ def _phase_section_lines(
     lines: list[str] = []
     for phase in phases:
         derived = _phase_derived_lines(
-            records, phase, effort, requirement_index, progress.get(phase)
+            records, phase, effort, requirement_index, progress.get(phase), head_of
         )
         if derived:
             lines += [f"## Phase {phase}", "", *derived]
