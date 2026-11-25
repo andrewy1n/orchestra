@@ -48,3 +48,13 @@ def applicable(records: Sequence[Record], area: str) -> list[StandingConstraint]
         if record["record_type"] == RECORD_TYPE and record["lifecycle_state"] == "active"
     )
     return [constraint for constraint in declared if constraint.area == area]
+
+
+def declared_areas(records: Sequence[Record]) -> list[str]:
+    return sorted(
+        {
+            read_standing_constraint(record).area
+            for record in records
+            if record["record_type"] == RECORD_TYPE and record["lifecycle_state"] == "active"
+        }
+    )

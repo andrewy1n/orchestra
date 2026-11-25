@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.types import Record
 from orchestra.conductor.verification.evidence import head_evidence
 from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
@@ -72,12 +73,17 @@ def standing_constraint_status(
     for pinned_id in pinned_constraint_ids(records, phase):
         pinned = by_id.get(pinned_id)
         if pinned is None or pinned["record_type"] != RECORD_TYPE:
-            continue
-        answer = head_evidence.criterion_runner_at_head(index, criterion_id(pinned_id), head)
-        run = answer.run
+            raise RecordShapeError(
+                pinned_id, "standing_constraints", "pin does not resolve to a standing constraint"
+            )
+        run: Record | None = None
+        reason = "no revision to check against"
         outcome: Outcome = UNVERIFIED
-        if run is not None:
-            outcome = VERIFIED if answer.holds else "violated"
+        if head is not None:
+            answer = head_evidence.criterion_runner_at_head(index, criterion_id(pinned_id), head)
+            run, reason = answer.run, answer.reason
+            if run is not None:
+                outcome = VERIFIED if answer.holds else "violated"
         outcomes.append(
             ConstraintOutcome(
                 name=pinned["subject"],
@@ -85,7 +91,7 @@ def standing_constraint_status(
                 pinned_id=pinned_id,
                 outcome=outcome,
                 check_run_id=run["id"] if run is not None else None,
-                evidence=_evidence(run) if run is not None else answer.reason,
+                evidence=_evidence(run) if run is not None else reason,
                 newer_id=_newer_id(records, pinned),
             )
         )

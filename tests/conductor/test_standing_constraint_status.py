@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from canon_support import make_project
 
+from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.verification.standing_constraints import (
@@ -57,8 +59,8 @@ def _seed(root: Path) -> tuple[Project, Record]:
     return project, constraint
 
 
-def _pin(project: Project, constraint_id: str) -> None:
-    project.create(
+def _pin(project: Project, constraint_id: str) -> Record:
+    return project.create(
         record_type="score:design",
         subject="refunds-design",
         payload={
@@ -180,3 +182,26 @@ def test_superseded_declaration_names_newer_and_old_pin_keeps_its_evidence(
     assert outcomes[0].outcome == "violated"
     assert outcomes[0].check_run_id == failed["id"]
     assert OFFENDING in outcomes[0].evidence
+
+
+def test_pin_that_resolves_to_no_constraint_raises(tmp_path: Path) -> None:
+    project, constraint = _seed(tmp_path)
+    design = _pin(project, constraint["id"])
+    broken: Record = {
+        **design,
+        "payload": {**design["payload"], "standing_constraints": ["<score:standing-constraint:x>"]},
+    }
+    records = [r for r in project.records() if r["id"] != design["id"]] + [broken]
+
+    with pytest.raises(RecordShapeError, match="does not resolve to a standing constraint"):
+        standing_constraint_status(records, PHASE, HEAD)
+
+
+def test_no_head_reads_every_constraint_unverified(tmp_path: Path) -> None:
+    project, constraint = _seed(tmp_path)
+    _pin(project, constraint["id"])
+    _run(project, constraint["id"], "pass")
+
+    outcomes = standing_constraint_status(project.records(), PHASE, None)
+
+    assert [(o.outcome, o.check_run_id) for o in outcomes] == [("unverified", None)]

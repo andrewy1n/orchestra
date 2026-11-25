@@ -104,14 +104,15 @@ def test_naming_payments_for_refunds_surfaces_the_stripe_rule(
     assert constraint_id in section
 
 
-def test_area_without_a_rule_adds_no_section(
+def test_area_without_a_rule_names_no_rules(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _seed(tmp_path)
 
     brief = _design_brief(tmp_path, capsys, "shipping")
 
-    assert "Applicable standing constraints" not in brief
+    assert "No standing constraints for area `shipping`." in brief
+    assert RULE not in brief
 
 
 def test_design_record_accepts_pinned_standing_constraints(tmp_path: Path) -> None:
@@ -130,3 +131,24 @@ def test_design_record_accepts_pinned_standing_constraints(tmp_path: Path) -> No
     )
 
     assert design["payload"]["standing_constraints"] == [constraint_id]
+
+
+def test_area_without_a_rule_says_so(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _seed(tmp_path)
+
+    brief = _design_brief(tmp_path, capsys, "paymnets")
+
+    assert "No standing constraints for area `paymnets`." in brief
+    assert RULE not in brief
+
+
+def test_missing_area_lists_the_areas_that_have_constraints(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _seed(tmp_path)
+
+    brief = _design_brief(tmp_path, capsys)
+
+    assert "No `--area` given" in brief
+    assert "Areas with constraints: payments." in brief
+    assert RULE not in brief

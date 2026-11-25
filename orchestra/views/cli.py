@@ -14,7 +14,6 @@ from orchestra.conductor.phases.progress.phase_progress import (
 )
 from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tools.errors import ToolError
-from orchestra.tools.git import Git
 from orchestra.views import render as views
 from orchestra.views.render import render_brief
 
@@ -34,10 +33,6 @@ def _configure_brief(brief: argparse.ArgumentParser) -> None:
     brief.add_argument("subject", help="Work-item subject")
 
 
-def _head() -> str | None:
-    return Git(Path.cwd()).resolve("HEAD")
-
-
 def _handoff(args: argparse.Namespace) -> int:
     project = open_for_command(Path.cwd(), Access.READ)
     try:
@@ -50,7 +45,7 @@ def _handoff(args: argparse.Namespace) -> int:
             landing=views.landing_facts(records, project.project_root),
             progress=open_phase_progress(project, records),
             root=project.project_root,
-            head=_head(),
+            head_of=views.phase_head_of(records, project.project_root),
         )
     except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError, ToolError) as exc:
         raise CommandError(str(exc), 1) from exc
@@ -70,7 +65,7 @@ def _view(args: argparse.Namespace) -> int:
             landing=None,
             progress=open_phase_progress(project, records),
             root=project.project_root,
-            head=_head(),
+            head_of=views.phase_head_of(records, project.project_root),
         )
     except (StoreError, views.ViewError, ProjectConfigError, PhaseProgressError, ToolError) as exc:
         raise CommandError(str(exc), 1) from exc

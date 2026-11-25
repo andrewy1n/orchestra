@@ -70,6 +70,10 @@ def _orchestra(store: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _set_phase_branch(store: Path) -> None:
+    subprocess.run(["git", "branch", "-f", f"phase/{PHASE}", "HEAD"], cwd=store, check=True)
+
+
 def _declare_rule(project: Project) -> Record:
     return project.create(
         record_type="score:standing-constraint",
@@ -147,6 +151,7 @@ def _scenario(root: Path) -> tuple[Project, Record, str]:
     (store / "scan_stripe.py").write_text(SCANNER)
     (store / ".gitignore").write_text(".canon/canon.db*\n")
     revision = _commit_all(store, "seed refunds")
+    _set_phase_branch(store)
 
     passed = _orchestra(store, "check", "--acceptance", acceptance["id"])
     assert passed.returncode == 0, passed.stdout + passed.stderr
@@ -177,6 +182,7 @@ def test_constraint_without_evidence_at_new_revision_is_unverified(tmp_path: Pat
     project, constraint, revision_a = _scenario(store)
     (store / "NOTES.md").write_text("later change\n")
     revision_b = _commit_all(store, "later change")
+    _set_phase_branch(store)
     assert revision_b != revision_a
 
     records = open_store(store).records()

@@ -18,7 +18,7 @@ from orchestra.conductor.phases.progress.phase_progress import (
 )
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.phase import Phase, current_phase_model
-from orchestra.score.planning.standing_constraint import applicable
+from orchestra.score.planning.standing_constraint import applicable, declared_areas
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     blocked_tasks,
@@ -367,8 +367,11 @@ def _with_brief(project: Project, action: RunAction) -> RunAction:
 def _constraints_section(records: list[Record], areas: Sequence[str]) -> str:
     entries: list[str] = []
     seen: set[str] = set()
-    for area in areas:
-        for constraint in applicable(records, area):
+    for area in dict.fromkeys(areas):
+        found = applicable(records, area)
+        if not found:
+            entries.append(f"No standing constraints for area `{area}`.")
+        for constraint in found:
             if constraint.id in seen:
                 continue
             seen.add(constraint.id)
@@ -377,6 +380,13 @@ def _constraints_section(records: list[Record], areas: Sequence[str]) -> str:
                 f"**area**: {constraint.area}; **version**: {constraint.id}\n\n"
                 f"**rule**: {constraint.rule}\n\n"
                 f"**basis**: {constraint.basis}"
+            )
+    if not areas:
+        known = declared_areas(records)
+        if known:
+            entries.append(
+                "No `--area` given, so no standing constraints are listed. "
+                f"Areas with constraints: {', '.join(known)}."
             )
     if not entries:
         return ""

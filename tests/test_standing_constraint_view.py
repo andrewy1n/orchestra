@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import itertools
+import subprocess
+from pathlib import Path
 
 from orchestra.canon.types import JsonObject, Record
-from orchestra.views.render import VERIFICATION, render_view
+from orchestra.views.render import VERIFICATION, phase_head_of, render_view
 
 PHASE = "refunds"
 NAME = "stripe-sdk-isolation"
@@ -103,7 +105,7 @@ def _constraint_run(constraint: Record, result: str, body: str | None = None) ->
 
 
 def _view(records: list[Record]) -> str:
-    return render_view(VERIFICATION, records)
+    return render_view(VERIFICATION, records, head_of=lambda _phase: "abc")
 
 
 def _block(text: str) -> str:
@@ -170,8 +172,8 @@ def test_constraint_at_other_revision_reads_unverified_in_view() -> None:
     run = _constraint_run(constraint, "pass")
     records = [*_requirement_records(), constraint, _design(constraint), run]
 
-    at_a = _block(render_view(VERIFICATION, records, head="abc"))
-    at_b = _block(render_view(VERIFICATION, records, head="def"))
+    at_a = _block(render_view(VERIFICATION, records, head_of=lambda _phase: "abc"))
+    at_b = _block(render_view(VERIFICATION, records, head_of=lambda _phase: "def"))
 
     assert f"- **{NAME}** (payments): verified" in at_a
     assert run["id"] in at_a
@@ -179,3 +181,82 @@ def test_constraint_at_other_revision_reads_unverified_in_view() -> None:
     assert f"- **{NAME}** (payments): unverified" in at_b
     assert run["id"] not in at_b
     assert "def" in at_b
+
+
+def test_head_is_not_resolved_when_no_constraint_is_pinned() -> None:
+    calls: list[str] = []
+
+    def head_of(phase: str) -> str | None:
+        calls.append(phase)
+        return "abc"
+
+    render_view(VERIFICATION, [*_requirement_records(), _constraint()], head_of=head_of)
+
+    assert calls == []
+
+
+def test_head_is_resolved_for_the_phase_that_pins_constraints() -> None:
+    constraint = _constraint()
+    calls: list[str] = []
+
+    def head_of(phase: str) -> str | None:
+        calls.append(phase)
+        return "abc"
+
+    render_view(
+        VERIFICATION, [*_requirement_records(), constraint, _design(constraint)], head_of=head_of
+    )
+
+    assert calls == [PHASE]
+
+
+def _git(repo: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return done.stdout.strip()
+
+
+def test_phase_head_is_the_phase_branch_tip_not_the_checkout_head(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-b", "main")
+    (tmp_path / "a.txt").write_text("a")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "base")
+    _git(tmp_path, "checkout", "-b", f"phase/{PHASE}")
+    (tmp_path / "b.txt").write_text("b")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "phase work")
+    phase_tip = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "main")
+    phase = _record(
+        "score:phase",
+        PHASE,
+        {"title": PHASE, "ordinal": 1, "effort": "e"},
+        "active",
+        "## Problem\nx\n",
+    )
+
+    head_of = phase_head_of([phase], tmp_path)
+
+    assert head_of(PHASE) == phase_tip
+    assert head_of(PHASE) != _git(tmp_path, "rev-parse", "HEAD")
+
+
+def test_phase_head_is_none_before_the_phase_branch_exists(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-b", "main")
+    (tmp_path / "a.txt").write_text("a")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "base")
+    phase = _record(
+        "score:phase",
+        PHASE,
+        {"title": PHASE, "ordinal": 1, "effort": "e"},
+        "active",
+        "## Problem\nx\n",
+    )
+
+    assert phase_head_of([phase], tmp_path)(PHASE) is None
