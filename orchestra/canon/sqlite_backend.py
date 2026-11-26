@@ -182,6 +182,8 @@ class SqliteBackend:
     @contextlib.contextmanager
     def transaction(self) -> Generator[None, None, None]:
         self._require_writable()
+        if self._read_connection.get() is not None:
+            raise StoreError("cannot write inside a read snapshot")
         if self._active is not None:
             name = "nested_" + uuid.uuid4().hex
             connection = self._active

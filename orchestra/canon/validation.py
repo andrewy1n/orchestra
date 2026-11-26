@@ -351,6 +351,8 @@ def validate_store(
     errors: list[str] = []
     if backend is None and store_root is not None:
         backend = open_backend(store_root)
+    if backend is not None and records is not None:
+        raise ValueError("records cannot be supplied when validating a live store")
     with backend.read_transaction() if backend is not None else nullcontext():
         if records is None and backend is not None:
             records = list(backend.iter_records(errors=errors))

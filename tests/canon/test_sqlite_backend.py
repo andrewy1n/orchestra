@@ -15,6 +15,7 @@ from orchestra.canon.migrate import apply_steps
 from orchestra.canon.project import Project
 from orchestra.canon.revision import with_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
+from orchestra.canon.validation import validate_store
 
 
 @pytest.fixture
@@ -188,6 +189,24 @@ def test_validate_reports_materialized_record_that_disagrees_with_operations(
     assert sqlite_project.validate() == [
         f"{record['id']}: materialized record differs from op fold"
     ]
+
+
+def test_read_transaction_rejects_writes_on_the_same_backend(sqlite_project: Project) -> None:
+    backend = open_backend(sqlite_project.store_path)
+    with (
+        backend.read_transaction(),
+        pytest.raises(StoreError, match="cannot write inside a read snapshot"),
+        backend.transaction(),
+    ):
+        pytest.fail("a write transaction started inside a read snapshot")
+
+
+def test_validate_rejects_external_records_with_a_live_backend(sqlite_project: Project) -> None:
+    store = open_backend(sqlite_project.store_path)
+    schemas = sqlite_project.schemas()
+    assert validate_store(schemas, []) == []
+    with pytest.raises(ValueError, match="records cannot be supplied when validating a live store"):
+        validate_store(schemas, [], backend=store)
 
 
 def test_backup_refuses_invalid_retention_and_active_write(
