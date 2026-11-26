@@ -54,8 +54,11 @@ def _path_sources() -> list[tuple[str, str]]:
     return sources
 
 
-def discover() -> dict[str, InstalledModule]:
+def discover(*, include_path_overrides: bool = True) -> dict[str, InstalledModule]:
+    """Find installed modules and optionally apply local schema path overrides."""
     installed = _collect(_read_source(entry) for entry in _entry_points())
+    if not include_path_overrides:
+        return installed
     return installed | _collect(_path_sources())
 
 
