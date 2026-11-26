@@ -97,3 +97,18 @@ def test_roadmap_no_statement_says_so_and_shows_none(store, cli):
 def test_roadmap_no_statement_and_no_items_still_says_so(store, cli):
     text = roadmap(store)
     assert "No product statement" in text
+
+
+def test_overview_is_one_per_project_not_per_area(store, cli):
+    _create_area(cli, "dashboard")
+    _create_area(cli, "cli")
+    _statement(cli)
+    _item(cli, "ships-now", "current")
+    _item(cli, "comes-later", "planned")
+    text = roadmap(store)
+    assert text.count(PURPOSE) == 1
+    assert text.count("## Capabilities") == 1
+    assert text.count("## Goals") == 1
+    assert text.index("## Goals") < text.index("## dashboard")
+    assert "Title ships-now" in text[text.index("## Capabilities") : text.index("## Goals")]
+    assert "Title comes-later" in text[text.index("## Goals") : text.index("## cli")]
