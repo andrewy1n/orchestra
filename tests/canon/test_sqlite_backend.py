@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,7 @@ import pytest
 from orchestra.canon.backend import open_backend
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
+from orchestra.canon.revision import with_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
 
 
@@ -84,6 +87,61 @@ def test_nested_write_failure_does_not_poison_outer_transaction(
         )
     assert sqlite_project.get(record["id"]) == changed
     assert sqlite_project.validate() == []
+
+
+def test_validate_uses_one_snapshot_during_concurrent_write(
+    sqlite_project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = sqlite_project.create(
+        record_type="alpha:task", subject="task", payload={"title": "Original"}
+    )
+    writer = open_backend(sqlite_project.store_path)
+    original_connect = SqliteBackend._connect
+    committed = False
+
+    def write_before_reading_ops(statement: str) -> None:
+        nonlocal committed
+        if statement == "SELECT DISTINCT record_id FROM ops ORDER BY record_id" and not committed:
+            writer.write_record(
+                {**record, "payload": {"title": "Updated"}},
+                expected_revision=record["revision"],
+                archive_prior=record,
+            )
+            committed = True
+
+    def connect(self: SqliteBackend) -> sqlite3.Connection:
+        connection = original_connect(self)
+        if self is not writer:
+            connection.set_trace_callback(write_before_reading_ops)
+        return connection
+
+    monkeypatch.setattr(SqliteBackend, "_connect", connect)
+    errors = sqlite_project.validate()
+    assert committed, "the writer must commit before validation reads operation history"
+    assert errors == []
+
+
+def test_validate_reports_materialized_record_that_disagrees_with_operations(
+    sqlite_project: Project,
+) -> None:
+    record = sqlite_project.create(
+        record_type="alpha:task", subject="task", payload={"title": "Original"}
+    )
+    changed = with_revision({**record, "payload": {"title": "Untracked update"}})
+    with closing(sqlite3.connect(sqlite_project.store_path / "canon.db")) as connection, connection:
+        connection.execute(
+            "UPDATE records SET revision=?, payload_json=?, record_json=? WHERE record_id=?",
+            (
+                changed["revision"],
+                json.dumps(changed["payload"]),
+                json.dumps(changed),
+                record["id"],
+            ),
+        )
+
+    assert sqlite_project.validate() == [
+        f"{record['id']}: materialized record differs from op fold"
+    ]
 
 
 def test_backup_refuses_invalid_retention_and_active_write(
