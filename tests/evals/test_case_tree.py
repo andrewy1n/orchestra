@@ -162,6 +162,16 @@ def test_control_and_defect_trees_have_same_construction(
     assert git(control, "for-each-ref").count("\n") == git(defect, "for-each-ref").count("\n")
 
 
+def test_tree_disables_automatic_git_maintenance(source: SourceRepo, tmp_path: Path) -> None:
+    source_config = git(source.path, "config", "--local", "--list")
+    tree = build_case_tree(source.path, source.landing, None, tmp_path / "tree")
+
+    case_config = git(tree, "config", "--local", "--list").splitlines()
+    assert "maintenance.auto=false" in case_config
+    assert "gc.auto=0" in case_config
+    assert git(source.path, "config", "--local", "--list") == source_config
+
+
 def test_tree_does_not_alter_source_repo(
     source: SourceRepo, defect_patch: Path, tmp_path: Path
 ) -> None:

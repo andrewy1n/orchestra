@@ -39,15 +39,6 @@ jobs:
       - name: Install Orchestra plugin entry points
         run: python3 -m pip install --user --no-deps -e .
 
-      - name: Resolve fixture and claim
-        id: ctx
-        run: |
-          FIXTURE="${{ github.event.inputs.fixture_cwd || 'tests/tuner/fixtures/verdict-repo' }}"
-          CLAIM="${{ github.event.inputs.claim_id || 'claim-widget' }}"
-          echo "fixture=$FIXTURE" >> "$GITHUB_OUTPUT"
-          echo "claim=$CLAIM" >> "$GITHUB_OUTPUT"
-          test -d "$FIXTURE" || echo "::warning::fixture path $FIXTURE missing; attest-core/fixture setup must provide it"
-
       - name: Mint fixture signing key and allowlist
         run: |
           set -euo pipefail
@@ -67,23 +58,25 @@ jobs:
 
       - name: Run orchestra verify verdict
         id: verdict
+        env:
+          FIXTURE: ${{ github.event.inputs.fixture_cwd || 'tests/tuner/fixtures/verdict-repo' }}
+          CLAIM: ${{ github.event.inputs.claim_id || 'claim-widget' }}
         run: |
           set -euo pipefail
-          FIXTURE="${{ steps.ctx.outputs.fixture }}"
           SHA=$(git -C "$FIXTURE" rev-parse HEAD)
           BASE=$(git -C "$FIXTURE" rev-parse HEAD~1)
           bin/orchestra verify verdict \
-            --cwd "$FIXTURE" \
+            --cwd="$FIXTURE" \
             --base "$BASE" \
             --at "$SHA" \
-            "${{ steps.ctx.outputs.claim }}" \
+            -- "$CLAIM" \
             | tee verdict.raw.json
           python3 - <<'PY'
-          import hashlib, json, subprocess, sys
+          import hashlib, json, os, subprocess, sys
           from pathlib import Path
           sys.path.insert(0, ".")
           from orchestra.tuner.plugins.manifest import load_manifest, resolve_commit, runner_digest
-          fixture = Path("""${{ steps.ctx.outputs.fixture }}""")
+          fixture = Path(os.environ["FIXTURE"])
           sha = subprocess.check_output(["git", "-C", str(fixture), "rev-parse", "HEAD"], text=True).strip()
           verdict = json.load(open("verdict.raw.json"))
           blob = subprocess.check_output(["git", "-C", str(fixture), "show", f"{sha}:.tuner/manifest.json"])
@@ -111,12 +104,15 @@ jobs:
           test -s attestation.json
 
       - name: Verify attestation
+        env:
+          COMMIT: ${{ steps.verdict.outputs.sha }}
+          MANIFEST_HASH: ${{ steps.verdict.outputs.manifest_hash }}
         run: |
           set -euo pipefail
           bin/orchestra verify attest verify \
             --allowlist "$ATTEST_ALLOWLIST" \
-            --commit "${{ steps.verdict.outputs.sha }}" \
-            --manifest-hash "${{ steps.verdict.outputs.manifest_hash }}" \
+            --commit "$COMMIT" \
+            --manifest-hash "$MANIFEST_HASH" \
             --input attestation.json
 
       - name: Upload attestation

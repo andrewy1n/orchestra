@@ -17,7 +17,7 @@ from evals.seeded_defects.cases import DEFECT_KINDS, DEFECT_TYPES, KINDS
 from evals.seeded_defects.trees import build_case_tree
 from orchestra.canon.project import open_store
 from orchestra.canon.types import JsonValue, Record
-from orchestra.tools import Git, RunFn
+from orchestra.tools import Git, RunFn, ToolError
 
 SubParsers: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 COMMAND_TIMEOUT_SECONDS = 600
@@ -243,7 +243,7 @@ def _scaffold(args: argparse.Namespace) -> None:
 def run(args: argparse.Namespace, run: RunFn, confirm: Callable[[str], bool]) -> int:
     try:
         _scaffold(args)
-    except (ScaffoldError, OSError, subprocess.CalledProcessError) as exc:
+    except (ScaffoldError, ToolError, OSError, subprocess.CalledProcessError) as exc:
         print(f"scaffold: {exc}", file=sys.stderr)
         return 1
     return 0

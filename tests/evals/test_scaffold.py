@@ -14,6 +14,7 @@ from evals.seeded_defects import scaffold_cmd
 from evals.seeded_defects.cases import load_case_set
 from evals.seeded_defects.trees import build_case_tree
 from orchestra.canon.project import open_store
+from orchestra.tools.git import Git, GitResult
 
 PHASE = "demo"
 PASSING = "test -f feature.txt"
@@ -140,6 +141,21 @@ def record_count(env: Env) -> int:
 
 def folder(env: Env) -> Path:
     return env.cases / "case-1"
+
+
+def test_scaffold_reports_git_clone_failure(
+    env: Env, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    original = Git.run
+
+    def run_git(self: Git, *args: str, input: str | None = None) -> GitResult:
+        if args and args[0] == "clone":
+            return GitResult(128, "", "cannot create scratch checkout")
+        return original(self, *args, input=input)
+
+    monkeypatch.setattr(Git, "run", run_git)
+    assert scaffold(env, "control") == 1
+    assert "scaffold:" in capsys.readouterr().err
 
 
 def test_freezes_phase_records_as_reviewer_list(env: Env) -> None:
