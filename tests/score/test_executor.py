@@ -11,13 +11,13 @@ from orchestra.score.planning.executor import (
 )
 
 
-@pytest.mark.parametrize("size", ["XS", "S"])
-def test_r2_small_single_task_runs_inline(size: str) -> None:
+@pytest.mark.parametrize("size", ["XS", "S", "M", None])
+def test_r2_single_task_up_to_medium_runs_inline(size: str | None) -> None:
     assert wave_executor([ExecutorTask("small", size=size)]) == "inline"
 
 
-@pytest.mark.parametrize("size", ["M", "L", "XL", None])
-def test_r3_large_or_unsized_single_task_runs_as_subagent(size: str | None) -> None:
+@pytest.mark.parametrize("size", ["L", "XL"])
+def test_r3_large_single_task_runs_as_subagent(size: str) -> None:
     assert wave_executor([ExecutorTask("large", size=size)]) == "subagent"
 
 
@@ -51,9 +51,9 @@ def test_r6_missing_size_counts_as_medium() -> None:
 def test_r7_missing_estimate_uses_size_band_upper_bound() -> None:
     tasks = [ExecutorTask("s", size="S"), ExecutorTask("xs", size="XS", estimate_minutes=0)]
 
-    assert SIZE_BANDS["S"][1] == 10
-    assert wave_executor(tasks, small_wave_budget_minutes=10) == "inline"
-    assert wave_executor(tasks, small_wave_budget_minutes=9) == "subagent"
+    assert SIZE_BANDS["S"][1] == 5
+    assert wave_executor(tasks, small_wave_budget_minutes=5) == "inline"
+    assert wave_executor(tasks, small_wave_budget_minutes=4) == "subagent"
 
 
 def test_r8_default_small_wave_budget_is_fifteen_minutes() -> None:
@@ -105,3 +105,43 @@ def test_r13_redispatch_keeps_first_executor_after_wave_changes() -> None:
 
     assert task_executor(dispatched) == "subagent"
     assert wave_executor([dispatched, new_small_task]) == "subagent"
+
+
+def test_lone_task_at_threshold_runs_inline() -> None:
+    task = ExecutorTask("lone", size="M", estimate_minutes=10)
+
+    assert wave_executor([task]) == "inline"
+
+
+def test_lone_task_above_threshold_runs_as_subagent() -> None:
+    task = ExecutorTask("lone", size="S", estimate_minutes=11)
+
+    assert wave_executor([task]) == "subagent"
+
+
+def test_lone_task_default_threshold_is_ten_minutes() -> None:
+    from orchestra.canon.project_config import DEFAULT_LONE_TASK_INLINE_MINUTES
+
+    assert DEFAULT_LONE_TASK_INLINE_MINUTES == 10
+    task = ExecutorTask("lone", size="L", estimate_minutes=10)
+    assert task_executor(task) == "inline"
+
+
+def test_lone_task_keyword_moves_threshold() -> None:
+    task = ExecutorTask("lone", size="S", estimate_minutes=5)
+
+    assert wave_executor([task], lone_task_inline_minutes=4) == "subagent"
+    assert wave_executor([task], lone_task_inline_minutes=5) == "inline"
+
+
+def test_lone_task_override_subagent_beats_small_estimate() -> None:
+    task = ExecutorTask("lone", size="XS", estimate_minutes=4, executor="subagent")
+
+    assert wave_executor([task]) == "subagent"
+    assert task_executor(task) == "subagent"
+
+
+def test_lone_task_override_inline_beats_large_estimate() -> None:
+    task = ExecutorTask("lone", size="XL", estimate_minutes=30, executor="inline")
+
+    assert wave_executor([task]) == "inline"

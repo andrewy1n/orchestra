@@ -14,6 +14,7 @@ from orchestra.tools.git import Git
 
 CONFIG_PATH = "orchestra.toml"
 DEFAULT_SMALL_WAVE_BUDGET_MINUTES = 15
+DEFAULT_LONE_TASK_INLINE_MINUTES = 10
 StageName = Literal["task", "phase", "milestone"]
 PluginName = str
 SUITE_MODES = ("none", "smoke", "full", "external")

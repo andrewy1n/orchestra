@@ -6,17 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from orchestra.canon.project_config import DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+from orchestra.canon.project_config import (
+    DEFAULT_LONE_TASK_INLINE_MINUTES,
+    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+)
+from orchestra.score.planning.plan_shape import SIZE_BANDS
 
 Executor = Literal["inline", "subagent"]
 TaskSize = Literal["XS", "S", "M", "L", "XL"]
-SIZE_BANDS: dict[TaskSize, tuple[int, int]] = {
-    "XS": (2, 5),
-    "S": (5, 10),
-    "M": (8, 15),
-    "L": (15, 25),
-    "XL": (25, 40),
-}
 _SMALL_SIZES = ("XS", "S")
 
 
@@ -38,17 +35,23 @@ def task_executor(
     wave_tasks: Sequence[ExecutorTask] | None = None,
     *,
     small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    lone_task_inline_minutes: int = DEFAULT_LONE_TASK_INLINE_MINUTES,
 ) -> Executor:
     """Return the dispatched executor, override, or prediction for the task wave."""
     if task.assignee in ("inline", "subagent"):
         return task.assignee
-    return wave_executor(wave_tasks or [task], small_wave_budget_minutes=small_wave_budget_minutes)
+    return wave_executor(
+        wave_tasks or [task],
+        small_wave_budget_minutes=small_wave_budget_minutes,
+        lone_task_inline_minutes=lone_task_inline_minutes,
+    )
 
 
 def wave_executor(
     tasks: Sequence[ExecutorTask],
     *,
     small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    lone_task_inline_minutes: int = DEFAULT_LONE_TASK_INLINE_MINUTES,
 ) -> Executor:
     """Choose one executor for a wave, honoring assignments and explicit overrides."""
     if not tasks:
@@ -70,7 +73,7 @@ def wave_executor(
             return "subagent"
 
     if len(tasks) == 1:
-        return _single_task_prediction(tasks[0])
+        return _single_task_prediction(tasks[0], lone_task_inline_minutes)
     if all(_size(task.size) in _SMALL_SIZES for task in tasks):
         total = sum(_estimate(task) for task in tasks)
         if total <= small_wave_budget_minutes:
@@ -92,8 +95,8 @@ def _fixed_executor(task: ExecutorTask) -> Executor | None:
     return None
 
 
-def _single_task_prediction(task: ExecutorTask) -> Executor:
-    return "inline" if _size(task.size) in _SMALL_SIZES else "subagent"
+def _single_task_prediction(task: ExecutorTask, lone_task_inline_minutes: int) -> Executor:
+    return "inline" if _estimate(task) <= lone_task_inline_minutes else "subagent"
 
 
 def _size(value: str | None) -> TaskSize:
