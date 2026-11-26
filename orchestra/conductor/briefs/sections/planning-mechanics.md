@@ -70,6 +70,8 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   M 5–10, L 10–20, XL 20–40. Dispatch derives the executor from wave
   size, estimates, and project settings. A written `executor` is an
   optional `inline` or `subagent` override.
+  Recent measured minutes per size:
+{measured_sizes}
   Phase body records session shape (`one sitting` | `more than one`),
   human stops, collision notes, `## Proof`, and `## Landing` (branch
   `phase/{phase}`, worktree `<repo>/.worktrees/{phase}`,

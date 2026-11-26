@@ -4,6 +4,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import load_project_config
 from orchestra.conductor.briefs.render import BriefContext
+from orchestra.conductor.briefs.size_medians import measured_size_lines
 from orchestra.conductor.phases.workflow.workflow import step_stage
 from orchestra.score.planning.phase import current_phase_model
 
@@ -26,4 +27,5 @@ def brief_context(project: Project, phase: str, step: str) -> BriefContext:
         stage=stage,
         adapter=_adapter(project),
         weight=model.weight or "full",
+        measured_sizes="\n".join(measured_size_lines(records)),
     )
