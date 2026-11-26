@@ -27,6 +27,8 @@ function recordedFor(url: URL): Recorded | undefined {
 			return RECORDED.areas;
 		case "/api/product":
 			return RECORDED.product;
+		case "/api/architecture":
+			return RECORDED.architecture;
 		case "/api/hub":
 			return RECORDED.hub;
 		case "/api/phase":
@@ -62,6 +64,11 @@ const enc = encodeURIComponent;
 const SCREENS: ReadonlyArray<{ name: string; hash: string; text: string }> = [
 	{ name: "Hub", hash: "", text: "Active phases" },
 	{ name: "ProductIndex", hash: "#/areas", text: "Invoices." },
+	{
+		name: "Architecture",
+		hash: "#/architecture",
+		text: "No component exists.",
+	},
 	{ name: "Area", hash: "#/area/billing", text: "No efforts in this area." },
 	{ name: "Home", hash: "#/effort/alpha", text: "ship alpha" },
 	{ name: "Journal", hash: "#/journal/alpha", text: "port-choice" },
@@ -177,6 +184,7 @@ describe("dashboard components mount against the recorded HTTP bodies", () => {
 			"snapshot",
 			"areas",
 			"product",
+			"architecture",
 			"hub",
 			"phase",
 			"task",

@@ -186,6 +186,201 @@
         "title": "Approval",
         "type": "object"
       },
+      "ArchitectureArea": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureComponent"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "components"
+        ],
+        "title": "ArchitectureArea",
+        "type": "object"
+      },
+      "ArchitectureComponent": {
+        "properties": {
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureConstraint"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "interfaces": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Interfaces",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "responsibility": {
+            "title": "Responsibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "responsibility",
+          "interfaces",
+          "decisions",
+          "constraints"
+        ],
+        "title": "ArchitectureComponent",
+        "type": "object"
+      },
+      "ArchitectureConstraint": {
+        "properties": {
+          "check": {
+            "title": "Check",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "rule",
+          "check",
+          "outcome",
+          "version",
+          "revision"
+        ],
+        "title": "ArchitectureConstraint",
+        "type": "object"
+      },
+      "ArchitectureDecision": {
+        "properties": {
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "rationale",
+          "status"
+        ],
+        "title": "ArchitectureDecision",
+        "type": "object"
+      },
+      "ArchitectureInterface": {
+        "properties": {
+          "connects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Connects",
+            "type": "array"
+          },
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureConstraint"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provides": {
+            "title": "Provides",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provides",
+          "connects",
+          "decisions",
+          "constraints"
+        ],
+        "title": "ArchitectureInterface",
+        "type": "object"
+      },
+      "ArchitectureResponse": {
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "interfaces": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureInterface"
+            },
+            "title": "Interfaces",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "areas",
+          "interfaces"
+        ],
+        "title": "ArchitectureResponse",
+        "type": "object"
+      },
       "AreaIdea": {
         "properties": {
           "area": {
@@ -2468,6 +2663,124 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/architecture": {
+      "get": {
+        "operationId": "architecture_api_architecture_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area"
+            }
+          },
+          {
+            "in": "query",
+            "name": "component",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Component"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interface",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interface"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Revision",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Architecture"
+      }
+    },
     "/api/areas": {
       "get": {
         "operationId": "areas_api_areas_get",

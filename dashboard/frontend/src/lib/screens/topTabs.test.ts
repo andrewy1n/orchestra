@@ -119,27 +119,33 @@ describe("top tabs", () => {
 		}));
 	}
 
-	it("R1 the top bar has a Work tab and a Product tab", async () => {
+	it("R1 the top bar has a Work, a Product and an Architecture tab", async () => {
 		await mountApp("");
 		expect(tabs().map(({ label, href }) => ({ label, href }))).toEqual([
 			{ label: "Work", href: "#/" },
 			{ label: "Product", href: "#/areas" },
+			{ label: "Architecture", href: "#/architecture" },
 		]);
 	});
 
 	it("R1 the Work tab is current on the hub", async () => {
 		await mountApp("");
-		expect(tabs().map((tab) => tab.current)).toEqual([true, false]);
+		expect(tabs().map((tab) => tab.current)).toEqual([true, false, false]);
 	});
 
 	it("R1 the Product tab is current on the areas page and below it", async () => {
 		await mountApp("#/areas");
-		expect(tabs().map((tab) => tab.current)).toEqual([false, true]);
+		expect(tabs().map((tab) => tab.current)).toEqual([false, true, false]);
 		unmount(mounted as ReturnType<typeof mount>);
 		mounted = undefined;
 		document.body.innerHTML = "";
 		await mountApp("#/effort/dashboard");
-		expect(tabs().map((tab) => tab.current)).toEqual([false, true]);
+		expect(tabs().map((tab) => tab.current)).toEqual([false, true, false]);
+	});
+
+	it("the Architecture tab is current on the architecture page", async () => {
+		await mountApp("#/architecture");
+		expect(tabs().map((tab) => tab.current)).toEqual([false, false, true]);
 	});
 
 	it("R1 the hub has no breadcrumb and no Areas link of its own", async () => {

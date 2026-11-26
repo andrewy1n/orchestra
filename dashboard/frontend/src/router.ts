@@ -9,6 +9,7 @@
 export type RouteName =
 	| "home"
 	| "areas"
+	| "architecture"
 	| "task"
 	| "phase"
 	| "requirement"
@@ -31,6 +32,7 @@ export interface Route {
 const NAMES: ReadonlySet<string> = new Set<RouteName>([
 	"home",
 	"areas",
+	"architecture",
 	"task",
 	"phase",
 	"requirement",
@@ -80,4 +82,13 @@ export function areaSubject(route: Route): string {
 /** Name of an `#/effort/<name>` route, or an empty string. */
 export function effortName(route: Route): string {
 	return route.name === "effort" ? (route.parts[1] ?? "") : "";
+}
+
+/** Scope of an `#/architecture/<area|component|interface>/<name>` route. */
+export function architectureScope(
+	route: Route,
+): { kind: string; name: string } | null {
+	if (route.name !== "architecture") return null;
+	const [, kind, name] = route.parts;
+	return kind && name ? { kind, name } : null;
 }

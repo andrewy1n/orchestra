@@ -14,6 +14,7 @@ from pydantic import TypeAdapter
 from dashboard.backend import store
 from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
+from orchestra.canon.errors import RecordShapeError as CanonShapeError
 from orchestra.canon.project import Project
 from orchestra.tuner.evidence.record_facts import RecordShapeError
 
@@ -62,6 +63,21 @@ def create_app(target: Project) -> FastAPI:
     @app.get("/api/product", response_model=schemas.ProductResponse, responses=ERRORS)
     def product() -> schemas.ProductResponse:
         return reader.product()
+
+    @app.get("/api/architecture", response_model=schemas.ArchitectureResponse, responses=ERRORS)
+    def architecture(
+        area: str | None = Query(None),
+        component: str | None = Query(None),
+        interface: str | None = Query(None),
+        revision: str = Query(""),
+    ) -> schemas.ArchitectureResponse:
+        scopes = [s for s in (area, component, interface) if s is not None]
+        if len(scopes) > 1:
+            raise WriteError("use at most one of area, component, interface", 400)
+        try:
+            return reader.architecture(scopes[0] if scopes else None, revision)
+        except CanonShapeError as exc:
+            raise WriteError(str(exc), 404) from exc
 
     @app.get("/api/hub", response_model=schemas.HubResponse, responses=ERRORS)
     def hub() -> schemas.HubResponse:
