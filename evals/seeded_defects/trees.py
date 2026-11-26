@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from orchestra.tools.git import Git
+
 _IDENTITY = ("-c", "user.name=case-tree", "-c", "user.email=case-tree@example.invalid")
 
 
@@ -35,10 +37,17 @@ def _apply(repo: Path, diff: bytes) -> None:
 
 
 def build_case_tree(source_repo: Path, landing_commit: str, patch: Path | None, dest: Path) -> Path:
-    subprocess.run(
-        ["git", "clone", "--quiet", "--no-hardlinks", str(source_repo), str(dest)],
-        check=True,
-        capture_output=True,
+    # Maintenance can outlive Git commands and race removal of the temporary clone.
+    Git(source_repo).text(
+        "clone",
+        "--quiet",
+        "--no-hardlinks",
+        "--config",
+        "maintenance.auto=false",
+        "--config",
+        "gc.auto=0",
+        str(source_repo.resolve()),
+        str(dest.resolve()),
     )
     landing = _git_ok(dest, "rev-parse", f"{landing_commit}^{{commit}}")
     parent = _git_ok(dest, "rev-parse", f"{landing}^")
