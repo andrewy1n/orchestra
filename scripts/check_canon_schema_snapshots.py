@@ -1,60 +1,55 @@
-"""Check the repository's Canon schema snapshots from the checkout root."""
+"""Check the installed Canon schemas against the repository snapshot and pin files."""
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+from orchestra.canon.errors import StoreError
+from orchestra.canon.metadata import MetadataFiles
+from orchestra.canon.modules import discover
+from orchestra.canon.schema import SchemaError
+from orchestra.canon.types import get_object
 
 
-def _check_snapshot(namespace: str, package: object) -> str | None:
-    if not isinstance(package, str) or not all(part.isidentifier() for part in package.split(".")):
-        return f"{namespace}: invalid schema package {package!r} in pyproject.toml"
+def _check_snapshots(metadata: MetadataFiles) -> list[str]:
+    installed = discover()
+    if not installed:
+        raise SchemaError("no installed Canon schema modules found")
+    pins = get_object(metadata.load_config(), "schemas")
+    if pins is None:
+        raise StoreError("config.json schemas must be an object")
+    snapshots = {path.stem for path in metadata.schemas_dir.glob("*.json")}
+    failures = [
+        f"{namespace}: schema is pinned or snapshotted but has no installed module"
+        for namespace in sorted((pins.keys() | snapshots) - installed.keys())
+    ]
+    for namespace, module in sorted(installed.items()):
+        snapshot_path = metadata.snapshot_path(namespace)
+        snapshot = metadata.read_snapshot(namespace)
+        if snapshot is None:
+            failures.append(f"{namespace}: missing schema snapshot {snapshot_path}")
+        elif snapshot != module.text:
+            failures.append(
+                f"{namespace}: stale schema snapshot {snapshot_path} differs from {module.source}"
+            )
 
-    snapshot = Path(".canon", "schemas", f"{namespace}.json")
-    shipped = Path(*package.split(".")) / f"{namespace}.json"
-    try:
-        snapshot_text = snapshot.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return f"{namespace}: missing schema snapshot {snapshot}"
-    except (OSError, UnicodeError) as exc:
-        return f"{namespace}: cannot read schema snapshot {snapshot}: {exc}"
-    try:
-        shipped_text = shipped.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        return f"{namespace}: cannot read shipped schema {shipped}: {exc}"
-
-    if snapshot_text != shipped_text:
-        return f"{namespace}: stale schema snapshot {snapshot} differs from {shipped}"
-    return None
+        if namespace not in pins:
+            failures.append(f"{namespace}: missing schema pin in {metadata.config_path()}")
+        elif pins[namespace] != module.version:
+            failures.append(
+                f"{namespace}: installed schema is {module.version}, "
+                f"config.json pins {pins[namespace]}"
+            )
+    return failures
 
 
 def main() -> int:
     try:
-        with Path("pyproject.toml").open("rb") as manifest:
-            schemas = tomllib.load(manifest)["project"]["entry-points"]["canon.schemas"]
-    except (OSError, ValueError) as exc:
-        print(f"cannot read pyproject.toml: {exc}", file=sys.stderr)
+        failures = _check_snapshots(MetadataFiles(Path(".canon")))
+    except (OSError, UnicodeError, StoreError, SchemaError) as exc:
+        print(exc, file=sys.stderr)
         return 1
-    except (KeyError, TypeError):
-        schemas = None
-
-    if not isinstance(schemas, dict) or not schemas:
-        print(
-            'pyproject.toml must register schemas in [project.entry-points."canon.schemas"]',
-            file=sys.stderr,
-        )
-        return 1
-
-    failures = [
-        error
-        for namespace, package in sorted(schemas.items())
-        if (error := _check_snapshot(namespace, package)) is not None
-    ]
     for failure in failures:
         print(failure, file=sys.stderr)
     return int(bool(failures))
