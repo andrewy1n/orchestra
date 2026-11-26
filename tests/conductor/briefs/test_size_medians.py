@@ -9,7 +9,6 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.cli import main
 from orchestra.conductor.phases.workflow.workflow_review import record_step_review
-from orchestra.score.workflow.workflow_reviews import Step
 
 EFFORT = "sizing-effort"
 PHASE = "sizing"
@@ -38,11 +37,23 @@ DESIGN_BODY = (
 )
 
 
-def _approve(project: Project, step: Step, artifact: Record) -> None:
+def _approve_spec(project: Project, artifact: Record) -> None:
     record_step_review(
         project,
         phase=PHASE,
-        step=step,
+        step="spec",
+        artifact=artifact,
+        authority="user-approval",
+        basis="Approved.",
+        source_reviews=[],
+    )
+
+
+def _approve_design(project: Project, artifact: Record) -> None:
+    record_step_review(
+        project,
+        phase=PHASE,
+        step="design",
         artifact=artifact,
         authority="user-approval",
         basis="Approved.",
@@ -69,14 +80,14 @@ def _seed(root: Path) -> Project:
         payload={"weight": "full", "phase": PHASE, "effort": EFFORT, "requirements": ["R1"]},
         body=SPEC_BODY,
     )
-    _approve(project, "spec", specification)
+    _approve_spec(project, specification)
     design = project.create(
         record_type="score:design",
         subject="sizing-design",
         payload={"phase": PHASE, "effort": EFFORT, "decisions": []},
         body=DESIGN_BODY,
     )
-    _approve(project, "design", design)
+    _approve_design(project, design)
     return project
 
 

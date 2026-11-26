@@ -10,7 +10,7 @@
       "depends_on": [],
       "effort": "beta",
       "estimate_minutes": null,
-      "executor": "subagent",
+      "executor": "inline",
       "id": "<score:work-item:b-task>",
       "phase": "b-one",
       "related": [],

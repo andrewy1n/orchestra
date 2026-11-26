@@ -24,7 +24,7 @@
           "attempts": 0,
           "depends_on": [],
           "estimate_minutes": null,
-          "executor": "subagent",
+          "executor": "inline",
           "id": "<score:work-item:b-task>",
           "last_record_at": null,
           "phase": "b-one",

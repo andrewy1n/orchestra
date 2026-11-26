@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from statistics import median
 
 from orchestra.canon.types import Record
+from orchestra.score.lookups import record_order
 
 SIZES = ("XS", "S", "M", "L", "XL")
 REPORT_LIMIT = 100
@@ -26,7 +27,7 @@ def measured_size_lines(records: Sequence[Record]) -> tuple[str, ...]:
             if record["record_type"] == "conductor:execution-report"
             and _numeric(record["payload"].get("duration_s"))
         ),
-        key=lambda record: record["recorded_at"],
+        key=record_order,
         reverse=True,
     )[:REPORT_LIMIT]
     minutes: dict[str, list[float]] = {size: [] for size in SIZES}
