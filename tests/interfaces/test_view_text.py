@@ -115,6 +115,8 @@ _No goals._
 
 """
 
+ARCHITECTURE = "No component exists.\n"
+
 CASES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("handoff", ("handoff",), HANDOFF),
     ("handoff_effort", ("handoff", "--effort", "alpha"), HANDOFF),
@@ -123,6 +125,7 @@ CASES: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("view_status", ("view", "status"), STATUS),
     ("view_verification", ("view", "verification"), VERIFICATION),
     ("view_roadmap", ("view", "roadmap"), ROADMAP),
+    ("view_architecture_empty", ("view", "architecture"), ARCHITECTURE),
 )
 
 

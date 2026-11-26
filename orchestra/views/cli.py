@@ -7,6 +7,7 @@ from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project_config import ProjectConfigError
+from orchestra.canon.types import Record
 from orchestra.canon.workspace import Access, open_for_command
 from orchestra.conductor.phases.progress.phase_progress import (
     PhaseProgressError,
@@ -14,7 +15,9 @@ from orchestra.conductor.phases.progress.phase_progress import (
 )
 from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tools.errors import ToolError
+from orchestra.tools.git import Git
 from orchestra.views import render as views
+from orchestra.views.architecture import architecture_view, render_architecture
 from orchestra.views.render import render_brief
 
 __all__ = ["commands", "render_brief"]
@@ -25,8 +28,14 @@ def _configure_handoff(handoff: argparse.ArgumentParser) -> None:
 
 
 def _configure_view(view: argparse.ArgumentParser) -> None:
-    view.add_argument("name", choices=("plan", "status", "verification", "roadmap"))
+    view.add_argument("name", choices=("plan", "status", "verification", "roadmap", "architecture"))
     view.add_argument("--effort", default=None, help="Limit to one effort slug")
+    view.add_argument("--area", default=None, help="Architecture: limit to one area")
+    view.add_argument("--component", default=None, help="Architecture: limit to one component")
+    view.add_argument("--interface", default=None, help="Architecture: limit to one interface")
+    view.add_argument(
+        "--revision", default=None, help="Architecture: revision for constraint outcomes"
+    )
 
 
 def _configure_brief(brief: argparse.ArgumentParser) -> None:
@@ -53,10 +62,22 @@ def _handoff(args: argparse.Namespace) -> int:
     return 0
 
 
+def _architecture(args: argparse.Namespace, root: Path, records: list[Record]) -> str:
+    scopes = [s for s in (args.area, args.component, args.interface) if s is not None]
+    if len(scopes) > 1:
+        raise CommandError("use at most one of --area, --component, --interface", 2)
+    revision = args.revision or Git(root).head()
+    scope = scopes[0] if scopes else None
+    return render_architecture(architecture_view(records, scope, revision))
+
+
 def _view(args: argparse.Namespace) -> int:
     project = open_for_command(Path.cwd(), Access.READ)
     try:
         records = views.load_records(project)
+        if args.name == "architecture":
+            print(_architecture(args, project.project_root, records))
+            return 0
         text = views.render_view(
             views.VIEWS[args.name],
             records,
