@@ -12,7 +12,11 @@ from orchestra.score.lookups import latest_record
 IDEA = "composer:idea"
 AREA = "composer:area"
 PLACEMENT = "composer:placement"
+PRODUCT = "composer:product"
+PRODUCT_ITEM = "composer:product-item"
+PRODUCT_SUBJECT = "product"
 
+_ITEM_STATUSES = ("current", "planned")
 _DEAD_STATES = ("superseded", "retracted")
 
 
@@ -47,6 +51,21 @@ class ComposerScanFinding:
     record_type: str
     field: str
     message: str
+
+
+@dataclass(frozen=True)
+class Product:
+    purpose: str
+    audience: str
+    record: Record
+
+
+@dataclass(frozen=True)
+class ProductItem:
+    title: str
+    description: str
+    status: str
+    record: Record
 
 
 def _idea_text(record: Record) -> str:
@@ -98,6 +117,28 @@ def read_placement(record: Record) -> Placement:
     return Placement(effort=record["subject"], area=required_text(record, payload, "area"))
 
 
+def read_product(record: Record) -> Product:
+    payload = record_payload(record)
+    return Product(
+        purpose=required_text(record, payload, "purpose"),
+        audience=required_text(record, payload, "audience"),
+        record=record,
+    )
+
+
+def read_product_item(record: Record) -> ProductItem:
+    payload = record_payload(record)
+    status = required_text(record, payload, "status")
+    if status not in _ITEM_STATUSES:
+        raise RecordShapeError(record["id"], "status", "must be current or planned")
+    return ProductItem(
+        title=required_text(record, payload, "title"),
+        description=required_text(record, payload, "description"),
+        status=status,
+        record=record,
+    )
+
+
 def _live(records: Sequence[Record], record_type: str) -> list[Record]:
     return [
         record
@@ -109,6 +150,27 @@ def _live(records: Sequence[Record], record_type: str) -> list[Record]:
 def current_area(records: Sequence[Record], subject: str) -> Area | None:
     record = latest_record(r for r in _live(records, AREA) if r["subject"] == subject)
     return read_area(record) if record is not None else None
+
+
+def current_product(records: Sequence[Record]) -> Product | None:
+    statements = _live(records, PRODUCT)
+    for record in statements:
+        if record["subject"] != PRODUCT_SUBJECT:
+            raise RecordShapeError(
+                record["id"], "subject", f"a product statement must use subject {PRODUCT_SUBJECT}"
+            )
+    if len(statements) > 1:
+        raise RecordShapeError(
+            statements[-1]["id"],
+            "subject",
+            f"{len(statements)} live product statements exist; keep one",
+        )
+    return read_product(statements[0]) if statements else None
+
+
+def current_product_items(records: Sequence[Record]) -> list[ProductItem]:
+    items = [read_product_item(record) for record in _live(records, PRODUCT_ITEM)]
+    return sorted(items, key=lambda item: (item.record["subject"], item.record["id"]))
 
 
 def current_placements(records: Sequence[Record]) -> dict[str, str]:
@@ -143,7 +205,13 @@ def home_area(idea: Idea, placements: Mapping[str, str]) -> str:
 
 
 def scan_composer_records(records: Sequence[Record]) -> list[ComposerScanFinding]:
-    readers = {IDEA: read_idea, AREA: read_area, PLACEMENT: read_placement}
+    readers = {
+        IDEA: read_idea,
+        AREA: read_area,
+        PLACEMENT: read_placement,
+        PRODUCT: read_product,
+        PRODUCT_ITEM: read_product_item,
+    }
     findings: list[ComposerScanFinding] = []
     for record in records:
         reader = readers.get(record["record_type"])
@@ -157,4 +225,8 @@ def scan_composer_records(records: Sequence[Record]) -> list[ComposerScanFinding
                     error.record_id, record["record_type"], error.field, error.message
                 )
             )
+    try:
+        current_product(records)
+    except RecordShapeError as error:
+        findings.append(ComposerScanFinding(error.record_id, PRODUCT, error.field, error.message))
     return findings

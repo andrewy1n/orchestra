@@ -142,6 +142,24 @@ class AreasResponse(RootModel[list[AreaView]]):
     pass
 
 
+class ProductStatement(Model):
+    purpose: str
+    audience: str
+
+
+class ProductEntry(Model):
+    subject: str
+    title: str
+    description: str
+    status: str
+
+
+class ProductResponse(Model):
+    statement: ProductStatement | None
+    capabilities: list[ProductEntry]
+    goals: list[ProductEntry]
+
+
 class Stage(Model):
     id: str
     state: str

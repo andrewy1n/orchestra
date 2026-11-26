@@ -725,6 +725,7 @@ CASES: dict[str, Callable[[dict], tuple[str, str, dict, dict | None]]] = {
         "/api/needs", effort="alpha", id=_id("conductor:integration-report", "route-phase-report")
     ),
     "hub": _get("/api/hub"),
+    "product-minimal": _get("/api/product"),
     "areas-rich": _get("/api/areas"),
     "areas-minimal": _get("/api/areas"),
     "backlog-with-phase": _get("/api/backlog", effort="alpha", id=_id("composer:idea", "park-me")),

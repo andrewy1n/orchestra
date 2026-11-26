@@ -21,6 +21,7 @@
   import { bindOverlay, overlay } from "$lib/state/overlay.svelte";
   import { bindPhase } from "$lib/state/phase.svelte";
   import { bindPolling, bindSnapshotPolling, polling } from "$lib/state/polling.svelte";
+  import { bindProduct } from "$lib/state/product.svelte";
   import { navigation } from "$lib/state/route.svelte";
   import { effortName } from "./router";
   import { applyTheme, loadTheme, saveTheme, type Theme, toggle } from "./theme";
@@ -30,6 +31,7 @@
   bindPolling();
   bindJournal();
   bindAreas();
+  bindProduct();
   bindHub();
   bindOverlay();
   bindPhase();
