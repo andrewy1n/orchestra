@@ -293,3 +293,45 @@ def test_no_component_through_orchestra_view_command(tmp_path: Path) -> None:
 
     assert result.code == 0, result.err
     assert result.out == "No component exists.\n"
+
+
+def _interface_scope_project(root: Path) -> Project:
+    project = _project(root)
+    _component(project, "records")
+    _component(project, "views", area="interfaces")
+    _interface(project, "record-api", ["records", "views"])
+    _decision(project, "versioned-api", ["record-api"], rationale="Clients pin versions.")
+    _constraint(project, "adapters-only", ["record-api"])
+    return project
+
+
+def test_interface_scope_lists_interface_decision_constraint_and_components(
+    tmp_path: Path,
+) -> None:
+    project = _interface_scope_project(tmp_path)
+
+    text = _text(project, "record-api")
+
+    assert "Serves record-api callers." in text
+    assert "versioned-api" in text
+    assert "Clients pin versions." in text
+    assert "adapters-only" in text
+    assert "Only adapters touch the store." in text
+    assert "records" in text
+    assert "views" in text
+    assert "No component exists." not in text
+
+
+def test_interface_scope_through_orchestra_view_command(tmp_path: Path) -> None:
+    project = _committed_project(tmp_path)
+    _component(project, "records")
+    _interface(project, "record-api", ["records"])
+    _decision(project, "versioned-api", ["record-api"], rationale="Clients pin versions.")
+
+    result = invoke("orchestra", ["view", "architecture", "--interface", "record-api"], tmp_path)
+
+    assert result.code == 0, result.err
+    assert "Serves record-api callers." in result.out
+    assert "**versioned-api**: Clients pin versions." in result.out
+    assert "records" in result.out
+    assert "No component exists." not in result.out

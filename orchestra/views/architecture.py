@@ -139,7 +139,8 @@ def _constraint_lines(node: JsonObject) -> list[str]:
 
 def render_architecture(view: JsonObject) -> str:
     areas = _items(view["areas"])
-    if not areas:
+    interfaces = _items(view["interfaces"])
+    if not areas and not interfaces:
         return NO_COMPONENT
     lines = ["# Architecture", ""]
     for area in areas:
@@ -150,7 +151,6 @@ def render_architecture(view: JsonObject) -> str:
             if isinstance(connecting, list) and connecting:
                 lines.append("- interfaces: " + ", ".join(str(n) for n in connecting))
             lines += _decision_lines(component) + _constraint_lines(component) + [""]
-    interfaces = _items(view["interfaces"])
     if interfaces:
         lines += ["## Interfaces", ""]
     for interface in interfaces:
