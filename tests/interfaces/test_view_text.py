@@ -87,6 +87,18 @@ VERIFICATION = f"""# Project Verification
 ROADMAP = f"""# Project Roadmap
 
 {BANNER}
+## Product
+
+_No product statement._
+
+## Capabilities
+
+_No capabilities._
+
+## Goals
+
+_No goals._
+
 ## dashboard
 
 ### Area
