@@ -233,7 +233,7 @@ DASHBOARD_TASK_DECIDERS: dict[str, tuple[str, ...]] = {
     "task.py": (
         "check_from",
         "latest_checks",
-        "configured_small_wave_budget",
+        "configured_executor_settings",
         "_assigned_at",
         "_task_assignments",
         "_last_record_at",
