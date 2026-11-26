@@ -1,6 +1,6 @@
 {
   "namespace": "composer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "types": {
     "area": {
       "purpose": "A named, long-lived product area",
@@ -49,6 +49,36 @@
         "source": {
           "type": "string",
           "optional": true
+        }
+      }
+    },
+    "product": {
+      "purpose": "The one statement of what the product is for and who it serves",
+      "lifecycle": "current",
+      "fields": {
+        "purpose": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        }
+      }
+    },
+    "product-item": {
+      "purpose": "One capability that exists now or one goal planned for the product",
+      "lifecycle": "current",
+      "fields": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "current",
+            "planned"
+          ]
         }
       }
     }
