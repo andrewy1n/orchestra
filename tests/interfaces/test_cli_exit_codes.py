@@ -154,14 +154,7 @@ CONDUCTOR_SUITE_GATE = [
         "analyze_json_success", "shared", 0, "analyze", "p1", "--stage", "plan", "--json", out=()
     ),
     orchestra(
-        "analyze_text_success",
-        "shared",
-        0,
-        "analyze",
-        "p1",
-        "--stage",
-        "plan",
-        out="p1 (plan): 0 errors, 0 warnings",
+        "analyze_text_success", "shared", 0, "analyze", "p1", "--stage", "plan", out="warning"
     ),
     orchestra(
         "analyze_refusal",

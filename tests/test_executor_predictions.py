@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from canon_support import create, make_project, seed_effort
 
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import ProjectConfigError
 from orchestra.views import render as views
 
 
@@ -118,14 +117,13 @@ def test_plan_reloads_predictions_after_wave_membership_changes(
     assert "executor: predicted subagent" in _plan(project, monkeypatch)
 
 
-def test_plan_reports_missing_project_config(
+def test_plan_uses_default_settings_when_project_config_is_missing(
     project: Project, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     project.project_root.joinpath("orchestra.toml").unlink()
-    _task(project, "small", size="XS")
+    _task(project, "small", size="XS", estimate_minutes=1)
 
-    with pytest.raises(ProjectConfigError, match="required project config is missing"):
-        _plan(project, monkeypatch)
+    assert "executor: predicted inline" in _plan(project, monkeypatch)
 
 
 def test_lone_task_estimate_within_default_threshold_is_inline(

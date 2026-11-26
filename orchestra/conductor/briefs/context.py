@@ -27,5 +27,5 @@ def brief_context(project: Project, phase: str, step: str) -> BriefContext:
         stage=stage,
         adapter=_adapter(project),
         weight=model.weight or "full",
-        measured_sizes="\n".join(measured_size_lines(records)),
+        measured_sizes="\n".join(f"  {line}" for line in measured_size_lines(records)),
     )

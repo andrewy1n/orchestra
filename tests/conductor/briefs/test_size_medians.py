@@ -131,8 +131,8 @@ def _tasks_brief(root: Path, capsys: pytest.CaptureFixture[str]) -> str:
 
 def _line(brief: str, size: str) -> str:
     for line in brief.splitlines():
-        if line.startswith(f"- {size}: "):
-            return line
+        if line.strip().startswith(f"- {size}: "):
+            return line.strip()
     raise AssertionError(f"no measured line for {size}")
 
 
@@ -191,3 +191,52 @@ def test_no_data_for_sizes_without_a_measured_report(
     assert _line(brief, "XS") == "- XS: no data"
     assert _line(brief, "XL") == "- XL: no data"
     assert _line(brief, "S") == "- S: 3.0 min median, 1 sample"
+
+
+def test_a_retried_task_counts_once_by_its_latest_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _seed(tmp_path)
+    _item(project, "retried", "S")
+    _report(project, "retried", 120)
+    _report(project, "retried", 600)
+
+    brief = _tasks_brief(tmp_path, capsys)
+
+    assert _line(brief, "S") == "- S: 10.0 min median, 1 sample"
+
+
+def test_reports_for_unsized_work_do_not_use_up_the_report_limit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = _seed(tmp_path)
+    _item(project, "sized", "S")
+    _report(project, "sized", 180)
+    for index in range(101):
+        project.create(
+            record_type="score:work-item",
+            subject=f"unsized-{index}",
+            payload={
+                "title": "unsized",
+                "phase": PHASE,
+                "kind": "deliver",
+                "assignee": "agent",
+                "effort": EFFORT,
+            },
+            body="## Description\n\nd",
+        )
+        _report(project, f"unsized-{index}", 60 + index)
+
+    brief = _tasks_brief(tmp_path, capsys)
+
+    assert _line(brief, "S") == "- S: 3.0 min median, 1 sample"
+
+
+def test_measured_lines_are_indented_inside_their_bullet(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _seed(tmp_path)
+
+    brief = _tasks_brief(tmp_path, capsys)
+
+    assert "\n  - XS: no data\n" in brief

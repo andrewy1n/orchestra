@@ -17,7 +17,7 @@
       ],
       "effort": "alpha",
       "estimate_minutes": null,
-      "executor": "inline",
+      "executor": "subagent",
       "id": "<score:work-item:task-next>",
       "phase": "p-work",
       "related": [],

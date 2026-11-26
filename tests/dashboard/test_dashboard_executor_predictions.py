@@ -9,7 +9,6 @@ from canon_support import create, make_project, seed_effort
 
 from dashboard.backend.snapshot import load_snapshot
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import ProjectConfigError
 from orchestra.views import render as views
 
 
@@ -116,12 +115,11 @@ def test_dashboard_ignores_historical_assignee_and_honors_override(project: Proj
     assert _tasks(project)["historical"].executor == "inline"
 
 
-def test_dashboard_reports_missing_project_config(project: Project) -> None:
+def test_dashboard_uses_default_settings_when_project_config_is_missing(project: Project) -> None:
     project.project_root.joinpath("orchestra.toml").unlink()
-    _task(project, "small", size="XS")
+    _task(project, "small", size="XS", estimate_minutes=1)
 
-    with pytest.raises(ProjectConfigError, match="required project config is missing"):
-        load_snapshot(project)
+    assert _tasks(project)["small"].executor == "inline"
 
 
 def test_lone_task_estimate_within_default_threshold_is_inline(project: Project) -> None:

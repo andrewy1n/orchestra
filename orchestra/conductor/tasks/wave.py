@@ -10,11 +10,10 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import (
-    CONFIG_PATH,
     DEFAULT_EXECUTOR_SETTINGS,
     ExecutorSettings,
     ProjectConfigError,
-    load_project_config,
+    executor_settings_at,
 )
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.landing.landing import (
@@ -301,11 +300,8 @@ def _optional_integer(value: object) -> int | None:
 
 
 def _executor_settings(project: Project) -> ExecutorSettings:
-    config_path = project.project_root / CONFIG_PATH
-    if not config_path.exists() and not config_path.is_symlink():
-        return DEFAULT_EXECUTOR_SETTINGS
     try:
-        return load_project_config(project.project_root).executor_settings
+        return executor_settings_at(project.project_root)
     except ProjectConfigError as exc:
         raise WaveError(str(exc)) from exc
 

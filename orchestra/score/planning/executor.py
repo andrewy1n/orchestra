@@ -58,6 +58,8 @@ def wave_executor(
         raise ExecutorWaveError("cannot choose an executor for an empty wave")
     if type(small_wave_budget_minutes) is not int or small_wave_budget_minutes < 0:
         raise ExecutorWaveError("small-wave budget must be a non-negative integer")
+    if type(lone_task_inline_minutes) is not int or lone_task_inline_minutes < 0:
+        raise ExecutorWaveError("lone-task inline threshold must be a non-negative integer")
 
     fixed = [(task, _fixed_executor(task)) for task in tasks]
     assigned = [(task, executor) for task, executor in fixed if executor is not None]
@@ -96,6 +98,8 @@ def _fixed_executor(task: ExecutorTask) -> Executor | None:
 
 
 def _single_task_prediction(task: ExecutorTask, lone_task_inline_minutes: int) -> Executor:
+    if task.estimate_minutes is None:
+        return "subagent"
     return "inline" if _estimate(task) <= lone_task_inline_minutes else "subagent"
 
 

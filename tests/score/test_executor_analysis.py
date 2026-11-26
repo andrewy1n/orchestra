@@ -83,7 +83,7 @@ def test_analyzer_uses_only_planned_members_for_override_prediction() -> None:
         _record(
             "score:work-item",
             "planned-small",
-            {"phase": "p", "size": "XS", "executor": "inline"},
+            {"phase": "p", "size": "XS", "estimate_minutes": 1, "executor": "inline"},
             state="planned",
             wave=1,
         ),

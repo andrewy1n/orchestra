@@ -697,7 +697,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
                 tasks,
                 effort_acceptances,
                 effort_checks,
-                settings=configured_executor_settings(target, tasks),
+                settings=configured_executor_settings(target),
             )
         ),
         None,
@@ -776,7 +776,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
                 tasks,
                 list_records(target, ASSIGNMENT),
                 phases=[record],
-                settings=configured_executor_settings(target, tasks),
+                settings=configured_executor_settings(target),
             )
             if t.phase == phase_subject
         ],
@@ -862,7 +862,7 @@ def load_requirement_detail(
             for row in task_rows(
                 traced,
                 assignments,
-                settings=configured_executor_settings(target, traced),
+                settings=configured_executor_settings(target),
             )
             if row.phase == phase
         ),

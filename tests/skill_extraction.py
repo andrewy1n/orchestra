@@ -60,7 +60,7 @@ def _parse_chunk(chunk: str) -> dict:
     pm = _PAYLOAD_RE.search(chunk)
     if pm:
         try:
-            payload = json.loads(pm.group(1))
+            payload = json.loads(re.sub(r":\s*<[a-z ]+>", ":0", pm.group(1)))
         except json.JSONDecodeError:
             payload = None
     match = _INVOCATION_START_RE.match(chunk)

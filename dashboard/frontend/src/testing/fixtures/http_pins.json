@@ -300,7 +300,7 @@
 						"attempts": 0,
 						"depends_on": [],
 						"estimate_minutes": null,
-						"executor": "inline",
+						"executor": "subagent",
 						"id": "<score:work-item:t-one>",
 						"last_record_at": null,
 						"phase": "p-one",
@@ -318,6 +318,14 @@
 				"title": "first phase"
 			},
 			"tabs": ["overview", "spec", "design", "decisions", "evidence", "tasks"]
+		},
+		"status": 200
+	},
+	"product": {
+		"body": {
+			"capabilities": [],
+			"goals": [],
+			"statement": null
 		},
 		"status": 200
 	},
@@ -379,7 +387,7 @@
 						"attempts": 0,
 						"depends_on": [],
 						"estimate_minutes": null,
-						"executor": "inline",
+						"executor": "subagent",
 						"id": "<score:work-item:t-one>",
 						"last_record_at": null,
 						"phase": "p-one",
@@ -511,7 +519,7 @@
 							"attempts": 0,
 							"depends_on": [],
 							"estimate_minutes": null,
-							"executor": "inline",
+							"executor": "subagent",
 							"id": "<score:work-item:t-one>",
 							"last_record_at": null,
 							"phase": "p-one",
@@ -555,7 +563,7 @@
 				"depends_on": [],
 				"effort": "alpha",
 				"estimate_minutes": null,
-				"executor": "inline",
+				"executor": "subagent",
 				"id": "<score:work-item:t-one>",
 				"phase": "p-one",
 				"related": [],

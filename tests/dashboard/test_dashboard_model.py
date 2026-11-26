@@ -2496,10 +2496,10 @@ def test_estimate_view_row_fields(store, cli, defs):
     assert (rows["blank"].size, rows["blank"].estimate_minutes, rows["blank"].executor) == (
         "",
         None,
-        "inline",
+        "subagent",
     )
     assert rows["null"].estimate_minutes is None
-    assert rows["null"].executor == "inline"
+    assert rows["null"].executor == "subagent"
 
     phase: Record = {
         "id": "phase-est",
@@ -2575,7 +2575,7 @@ def test_estimate_view_row_fields(store, cli, defs):
 def test_estimate_view_blank_executor(store, cli, defs):
     task = _work_item(cli, defs, "alpha", "blank-task", "p-one")
     detail = task_mod.load_task_detail(_target(store), task["id"])
-    assert detail.executor == "inline"
+    assert detail.executor == "subagent"
     assert detail.size == ""
     assert detail.estimate_minutes is None
 

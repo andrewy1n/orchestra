@@ -13,7 +13,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.project_config import (
     DEFAULT_EXECUTOR_SETTINGS,
     ExecutorSettings,
-    load_project_config,
+    executor_settings_at,
 )
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
@@ -698,7 +698,7 @@ def render_view(
 ) -> str:
     settings = DEFAULT_EXECUTOR_SETTINGS
     if view.name == "plan":
-        settings = load_project_config(root or Path.cwd()).executor_settings
+        settings = executor_settings_at(root or Path.cwd())
     requirement_index = (
         RequirementIndex(_effort_pool(records, effort))
         if view.show_phase_derived or view.phase_derived_section

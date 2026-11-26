@@ -506,7 +506,7 @@ def _load_snapshot(
 ) -> Snapshot:
     progress = load_phase_progress(target, token)
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
-    settings = configured_executor_settings(target, listed[WORK_ITEM_TYPE])
+    settings = configured_executor_settings(target)
     goals = [
         effort.record
         for effort in current_efforts(listed[EFFORT]).values()
@@ -680,7 +680,7 @@ def load_work_snapshot(
         type_records = listed.get(record["record_type"])
         if type_records is not None:
             type_records.append(record)
-    settings = configured_executor_settings(target, listed[WORK_ITEM_TYPE])
+    settings = configured_executor_settings(target)
     grouped = {record_type: records_by_effort(rows) for record_type, rows in listed.items()}
     structured = structured_phases(listed[SPECIFICATION], listed[PHASE_TYPE])
     goals = [

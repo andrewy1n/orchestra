@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from helpers import skill_text
 from skill_extraction import extract_invocations
@@ -25,13 +26,20 @@ def _work_item_payloads(text: str) -> list[dict]:
 
 
 def test_templates_leave_size_and_estimate_blank():
-    for skill in ("tasks", "execute"):
-        payloads = _work_item_payloads(skill_text(skill))
-        for payload in payloads:
-            if "size" in payload or "estimate_minutes" in payload:
-                assert not re.fullmatch(r"XS|S|M|L|XL", str(payload.get("size")))
-                assert type(payload.get("estimate_minutes")) is not int
-    assert _work_item_payloads(_text())
+    sections = Path(__file__).resolve().parents[1] / "orchestra/conductor/briefs/sections"
+    filled = [
+        path.name
+        for path in sorted(sections.glob("*.md"))
+        if re.search(
+            r'"size":"(XS|S|M|L|XL)"|"estimate_minutes":\s*"?\d',
+            path.read_text(encoding="utf-8"),
+        )
+    ]
+
+    assert filled == []
+    assert '"size":"<size>","estimate_minutes":<minutes>' in (
+        sections / "task-shapes.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_every_work_item_records_size_and_estimate_minutes():
@@ -50,3 +58,14 @@ def test_brief_bands_match_size_bands():
 def test_sitting_shape_stays_on_the_phase_body():
     text = _flat(_text())
     assert "Phase body records session shape (`one sitting` | `more than one`)" in text
+
+
+def test_template_estimate_placeholder_is_not_a_quoted_string():
+    sections = Path(__file__).resolve().parents[1] / "orchestra/conductor/briefs/sections"
+    quoted = [
+        path.name
+        for path in sorted(sections.glob("*.md"))
+        if '"estimate_minutes":"<minutes>"' in path.read_text(encoding="utf-8")
+    ]
+
+    assert quoted == []

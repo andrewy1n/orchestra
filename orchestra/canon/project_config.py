@@ -301,3 +301,10 @@ def _is_string_list(value: object) -> TypeGuard[list[str]]:
         isinstance(item, str)
         for item in value  # pyright: ignore[reportUnknownVariableType]  # TOML parser values are dynamic until validated.
     )
+
+
+def executor_settings_at(root: Path | str) -> ExecutorSettings:
+    path = Path(root) / CONFIG_PATH
+    if not path.exists() and not path.is_symlink():
+        return DEFAULT_EXECUTOR_SETTINGS
+    return load_project_config(root).executor_settings

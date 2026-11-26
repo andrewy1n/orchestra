@@ -13,7 +13,7 @@ from orchestra.score.planning.executor import (
 
 @pytest.mark.parametrize("size", ["XS", "S", "M", None])
 def test_r2_single_task_up_to_medium_runs_inline(size: str | None) -> None:
-    assert wave_executor([ExecutorTask("small", size=size)]) == "inline"
+    assert wave_executor([ExecutorTask("small", size=size, estimate_minutes=5)]) == "inline"
 
 
 @pytest.mark.parametrize("size", ["L", "XL"])
@@ -145,3 +145,25 @@ def test_lone_task_override_inline_beats_large_estimate() -> None:
     task = ExecutorTask("lone", size="XL", estimate_minutes=30, executor="inline")
 
     assert wave_executor([task]) == "inline"
+
+
+@pytest.mark.parametrize("size", ["XS", "S", "M", "L", None])
+def test_lone_task_without_estimate_runs_as_subagent(size: str | None) -> None:
+    task = ExecutorTask("lone", size=size)
+
+    assert wave_executor([task]) == "subagent"
+    assert task_executor(task) == "subagent"
+
+
+def test_lone_task_without_estimate_still_honors_a_written_executor() -> None:
+    task = ExecutorTask("lone", size="M", executor="inline")
+
+    assert wave_executor([task]) == "inline"
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "10"])
+def test_wave_executor_rejects_invalid_lone_task_threshold(value: object) -> None:
+    task = ExecutorTask("lone", size="S", estimate_minutes=4)
+
+    with pytest.raises(ExecutorWaveError, match="lone-task"):
+        wave_executor([task], lone_task_inline_minutes=value)  # pyright: ignore[reportArgumentType]

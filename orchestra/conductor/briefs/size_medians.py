@@ -17,8 +17,10 @@ def _numeric(value: object) -> bool:
 def measured_size_lines(records: Sequence[Record]) -> tuple[str, ...]:
     sizes = {
         record["subject"]: record["payload"].get("size")
-        for record in records
-        if record["record_type"] == "score:work-item"
+        for record in sorted(
+            (record for record in records if record["record_type"] == "score:work-item"),
+            key=record_order,
+        )
     }
     reports = sorted(
         (
@@ -29,12 +31,18 @@ def measured_size_lines(records: Sequence[Record]) -> tuple[str, ...]:
         ),
         key=record_order,
         reverse=True,
-    )[:REPORT_LIMIT]
+    )
     minutes: dict[str, list[float]] = {size: [] for size in SIZES}
+    seen: set[str] = set()
     for report in reports:
-        size = sizes.get(str(report["payload"].get("work_item")))
-        if size in minutes:
-            minutes[str(size)].append(float(report["payload"]["duration_s"]) / 60)  # pyright: ignore[reportArgumentType]
+        if len(seen) == REPORT_LIMIT:
+            break
+        item = str(report["payload"].get("work_item"))
+        size = sizes.get(item)
+        if size not in minutes or item in seen:
+            continue
+        seen.add(item)
+        minutes[str(size)].append(float(report["payload"]["duration_s"]) / 60)  # pyright: ignore[reportArgumentType]
     lines: list[str] = []
     for size in SIZES:
         values = minutes[size]

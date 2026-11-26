@@ -15,10 +15,9 @@ from dashboard.backend.records import (
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import (
-    CONFIG_PATH,
     DEFAULT_EXECUTOR_SETTINGS,
     ExecutorSettings,
-    load_project_config,
+    executor_settings_at,
 )
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
@@ -235,15 +234,8 @@ def retry_max_redispatches(body: str) -> int:
     return run_fact_int(body, "retry_max_redispatches", DEFAULT_RETRY_MAX_REDISPATCHES)
 
 
-def configured_executor_settings(target: Project, records: list[Record]) -> ExecutorSettings:
-    planned = [record for record in records if record.get("lifecycle_state") == "planned"]
-    config_path = target.project_root / CONFIG_PATH
-    has_config = config_path.exists() or config_path.is_symlink()
-    if not any(task_plan(record).size in ("XS", "S") for record in planned) and not has_config:
-        return DEFAULT_EXECUTOR_SETTINGS
-    if not planned:
-        return DEFAULT_EXECUTOR_SETTINGS
-    return load_project_config(target.project_root).executor_settings
+def configured_executor_settings(target: Project) -> ExecutorSettings:
+    return executor_settings_at(target.project_root)
 
 
 def assigned_to(record: Record, assignments: list[Record]) -> tuple[str, str]:
@@ -513,7 +505,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         for row in task_rows(
             efforts,
             effort_assignments,
-            settings=configured_executor_settings(target, efforts),
+            settings=configured_executor_settings(target),
         )
     }
     by_subject = {row.subject: row for row in rows.values()}
