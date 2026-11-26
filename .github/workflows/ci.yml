@@ -221,3 +221,10 @@ jobs:
         working-directory: dashboard/frontend
       - run: npm run e2e
         working-directory: dashboard/frontend
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-traces
+          path: dashboard/frontend/test-results/**/trace.zip
+          if-no-files-found: ignore
