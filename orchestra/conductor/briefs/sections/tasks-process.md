@@ -18,7 +18,7 @@
    settings. Add `executor` only as an explicit `inline` or `subagent`
    override. Explicit overrides in one wave must agree. Every task in one
    wave uses the same resolved executor.
-   Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40.
+   Guidance: XS 1–2, S 2–5, M 5–10, L 10–20, XL 20–40.
    Phase body records session shape (`one sitting` | `more than one`), human
    stops, and shared areas. Use focused tasks and reserve whole-phase verification
    for the final task.

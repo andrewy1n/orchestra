@@ -88,29 +88,29 @@ def test_estimate_below_the_size_band_is_reported() -> None:
 
 
 def test_small_subagent_task_alone_in_its_wave_has_no_retired_warning() -> None:
-    task = _item("a", executor="subagent", size="S", estimate_minutes=6)
+    task = _item("a", executor="subagent", size="S", estimate_minutes=4)
     assert _shape(task) == set()
 
 
 def test_missing_executor_has_no_small_subagent_warning() -> None:
-    task = _item("a", size="XS", estimate_minutes=3)
+    task = _item("a", size="XS", estimate_minutes=2)
     assert _shape(task) == set()
 
 
 def test_small_inline_task_alone_in_its_wave_is_not_reported() -> None:
-    task = _item("a", executor="inline", size="S", estimate_minutes=6)
+    task = _item("a", executor="inline", size="S", estimate_minutes=4)
     assert _shape(task) == set()
 
 
 def test_small_subagent_tasks_that_share_a_wave_have_no_retired_warning() -> None:
-    a = _item("a", executor="subagent", size="S", estimate_minutes=6)
-    b = _item("b", executor="subagent", size="S", estimate_minutes=6)
+    a = _item("a", executor="subagent", size="S", estimate_minutes=4)
+    b = _item("b", executor="subagent", size="S", estimate_minutes=4)
     assert _shape(a, b) == set()
 
 
 def test_small_subagent_task_behind_a_dependency_has_no_retired_warning() -> None:
     a = _item("a", executor="inline", size="M", estimate_minutes=10)
-    b = _item("b", executor="subagent", size="S", estimate_minutes=6, depends_on=["a"])
+    b = _item("b", executor="subagent", size="S", estimate_minutes=4, depends_on=["a"])
     c = _item("c", executor="inline", size="M", estimate_minutes=10, depends_on=["b"])
     assert _shape(a, b, c) == set()
 
@@ -118,7 +118,7 @@ def test_small_subagent_task_behind_a_dependency_has_no_retired_warning() -> Non
 def test_closing_verification_task_is_not_reported_as_solo() -> None:
     a, b = _pair()
     closing = _item(
-        "verify-p", executor="subagent", size="S", estimate_minutes=6, depends_on=["a", "b"]
+        "verify-p", executor="subagent", size="S", estimate_minutes=4, depends_on=["a", "b"]
     )
     assert _shape(a, b, closing) == set()
 
@@ -137,3 +137,13 @@ def test_dependency_cycle_does_not_hang_the_analysis() -> None:
 def test_shape_warnings_are_plan_stage_only() -> None:
     task = _item("a", executor="subagent", size="XL", estimate_minutes=90)
     assert _shape(task, stage="close") == set()
+
+
+def test_medium_task_above_its_band_warns() -> None:
+    task = _item("a", executor="inline", size="M", estimate_minutes=12)
+    assert _shape(task) == {("estimate-outside-size-band", "a")}
+
+
+def test_medium_task_inside_its_band_is_silent() -> None:
+    task = _item("a", executor="inline", size="M", estimate_minutes=8)
+    assert _shape(task) == set()

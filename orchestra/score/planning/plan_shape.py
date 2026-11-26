@@ -6,11 +6,11 @@ from typing import NamedTuple
 from orchestra.canon.types import Record
 
 SIZE_BANDS: dict[str, tuple[int, int]] = {
-    "XS": (2, 5),
-    "S": (5, 10),
-    "M": (8, 15),
-    "L": (15, 25),
-    "XL": (25, 40),
+    "XS": (1, 2),
+    "S": (2, 5),
+    "M": (5, 10),
+    "L": (10, 20),
+    "XL": (20, 40),
 }
 MAX_REQUIREMENTS = 4
 

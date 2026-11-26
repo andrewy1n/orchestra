@@ -131,7 +131,7 @@ exhausted, use the budget-exhaustion Needs-you path above
 ```bash
 canon create --type score:work-item \
   --subject "fix-<failing-area>" \
-  --payload '{"title":"Fix <failing area>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"<same mode as phase wave>","size":"S","estimate_minutes":8,"requirements":["<id>"],"decisions":["<decision-subject>"]}' \
+  --payload '{"title":"Fix <failing area>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","executor":"<same mode as phase wave>","size":"<size>","estimate_minutes":"<minutes>","requirements":["<id>"],"decisions":["<decision-subject>"]}' \
   --body "## Description
 
 Fix the failure that blocked closing verification.

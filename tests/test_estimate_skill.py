@@ -7,8 +7,6 @@ import re
 from helpers import skill_text
 from skill_extraction import extract_invocations
 
-SIZES = {"XS", "S", "M", "L", "XL"}
-
 
 def _text() -> str:
     return skill_text("tasks")
@@ -26,22 +24,27 @@ def _work_item_payloads(text: str) -> list[dict]:
     ]
 
 
-def test_write_size_and_estimate_minutes_on_every_work_item():
-    raw = _text()
-    text = _flat(raw)
-    payloads = _work_item_payloads(raw)
-    assert payloads
-    for payload in payloads:
-        assert payload["size"] in SIZES
-        minutes = payload["estimate_minutes"]
-        assert type(minutes) is int
-        assert 0 <= minutes < 25
+def test_templates_leave_size_and_estimate_blank():
+    for skill in ("tasks", "execute"):
+        payloads = _work_item_payloads(skill_text(skill))
+        for payload in payloads:
+            if "size" in payload or "estimate_minutes" in payload:
+                assert not re.fullmatch(r"XS|S|M|L|XL", str(payload.get("size")))
+                assert type(payload.get("estimate_minutes")) is not int
+    assert _work_item_payloads(_text())
+
+
+def test_every_work_item_records_size_and_estimate_minutes():
+    text = _flat(_text())
     assert "Every new work-item includes `size` and `estimate_minutes`." in text
     assert (
         "`size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded)"
         in text
     )
-    assert "Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40." in text
+
+
+def test_brief_bands_match_size_bands():
+    assert "Guidance: XS 1–2, S 2–5, M 5–10, L 10–20, XL 20–40." in _flat(_text())
 
 
 def test_sitting_shape_stays_on_the_phase_body():

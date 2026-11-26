@@ -32,7 +32,7 @@ Put the Description in `body` of the batch line.
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"<size>","estimate_minutes":"<minutes>","requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -84,7 +84,7 @@ the same function are dependent: the later one lists the earlier one in
 ```bash
 canon create --type score:work-item \
   --subject "<task-slug>" \
-  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
+  --payload '{"title":"<short title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"<size>","estimate_minutes":"<minutes>","requirements":["R1","R2"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<prerequisite-task-slug>"]}' \
   --body "## Description
 
 R1: <observable behavior>
@@ -115,7 +115,7 @@ Use distinct exit requirements, such as R3 and R4 below. Do not attach a downstr
 ```bash
 canon create --type score:work-item \
   --subject "verify-{phase}" \
-  --payload '{"title":"Verify <phase title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"M","estimate_minutes":10,"requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
+  --payload '{"title":"Verify <phase title>","phase":"{phase}","kind":"deliver","assignee":"","effort":"{effort}","size":"<size>","estimate_minutes":"<minutes>","requirements":["R3","R4"],"decisions":["<decision-a>","<decision-b>"],"depends_on":["<task-slug-1>","<task-slug-2>"]}' \
   --body "## Description
 
 Prove the phase exit criteria hold together: run the integration
