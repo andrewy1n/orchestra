@@ -29,6 +29,13 @@ class ConstraintOutcome:
     newer_id: str | None
 
 
+@dataclass(frozen=True)
+class ConstraintResult:
+    outcome: Outcome
+    version: str
+    revision: str
+
+
 def criterion_id(constraint_id: str) -> str:
     return f"standing-constraint:{constraint_id}"
 
@@ -96,3 +103,19 @@ def standing_constraint_status(
             )
         )
     return outcomes
+
+
+def constraint_outcomes(
+    records: Sequence[Record], constraint_ids: Sequence[str], revision: str
+) -> list[ConstraintResult]:
+    index = EvidenceIndex(records)
+    results: list[ConstraintResult] = []
+    for constraint_id in constraint_ids:
+        answer = head_evidence.criterion_runner_at_head(
+            index, criterion_id(constraint_id), revision
+        )
+        outcome: Outcome = UNVERIFIED
+        if answer.run is not None:
+            outcome = VERIFIED if answer.holds else "violated"
+        results.append(ConstraintResult(outcome, constraint_id, revision))
+    return results
