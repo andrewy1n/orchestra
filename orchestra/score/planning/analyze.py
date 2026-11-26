@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import TypeAlias
 
 from orchestra.canon.index import RecordIndex
+from orchestra.canon.project_config import DEFAULT_EXECUTOR_SETTINGS, ExecutorSettings
 from orchestra.canon.types import JsonValue, Record
 from orchestra.score.lookups import (
     LIVE_WORK_ITEM_STATES,
@@ -14,7 +15,6 @@ from orchestra.score.lookups import (
     records_of_type,
 )
 from orchestra.score.planning.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     ExecutorTask,
     ExecutorWaveError,
     wave_executor,
@@ -114,7 +114,7 @@ def analyze_phase(
     records: Sequence[RecordData],
     phase: str,
     stage: str = "plan",
-    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
 ) -> Report:
     if stage not in ("spec", "design", "plan", "close"):
         raise ValueError(f"unknown analysis stage {stage!r}")
@@ -226,7 +226,11 @@ def analyze_phase(
         for wave_items in items_by_wave.values():
             tasks = [_executor_task(item) for item in wave_items]
             try:
-                wave_executor(tasks, small_wave_budget_minutes=small_wave_budget_minutes)
+                wave_executor(
+                    tasks,
+                    small_wave_budget_minutes=settings.small_wave_budget_minutes,
+                    lone_task_inline_minutes=settings.lone_task_inline_minutes,
+                )
                 prediction = wave_executor(
                     [
                         ExecutorTask(
@@ -237,7 +241,8 @@ def analyze_phase(
                         )
                         for task in tasks
                     ],
-                    small_wave_budget_minutes=small_wave_budget_minutes,
+                    small_wave_budget_minutes=settings.small_wave_budget_minutes,
+                    lone_task_inline_minutes=settings.lone_task_inline_minutes,
                 )
             except ExecutorWaveError as exc:
                 add("error", "executor-wave-invalid", phase, str(exc))

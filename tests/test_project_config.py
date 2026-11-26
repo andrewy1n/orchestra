@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from orchestra.canon.project_config import (
+    DEFAULT_LONE_TASK_INLINE_MINUTES,
     DEFAULT_RUNNER,
     ProjectConfigError,
     load_project_config,
@@ -169,3 +170,30 @@ def test_runner_argv_is_loaded_from_requested_commit(tmp_path: Path) -> None:
         "{tests}",
         "--junitxml={report}",
     )
+
+
+def test_lone_task_inline_minutes_defaults_to_constant(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(_config_text(), encoding="utf-8")
+
+    assert (
+        load_project_config(tmp_path).lone_task_inline_minutes == DEFAULT_LONE_TASK_INLINE_MINUTES
+    )
+
+
+def test_lone_task_inline_minutes_loads_from_execute_config(tmp_path: Path) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        _config_text() + "\n[execute]\nlone_task_inline_minutes = 5\n", encoding="utf-8"
+    )
+
+    assert load_project_config(tmp_path).lone_task_inline_minutes == 5
+
+
+@pytest.mark.parametrize("value", ["true", "-1", "1.5", '"10"'])
+def test_lone_task_inline_minutes_invalid_value_is_rejected(tmp_path: Path, value: str) -> None:
+    (tmp_path / "orchestra.toml").write_text(
+        _config_text() + f"\n[execute]\nlone_task_inline_minutes = {value}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ProjectConfigError, match="lone_task_inline_minutes"):
+        load_project_config(tmp_path)

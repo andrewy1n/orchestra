@@ -14,7 +14,12 @@ from dashboard.backend.records import (
 )
 from dashboard.backend.store import ModelError
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import load_project_config
+from orchestra.canon.project_config import (
+    CONFIG_PATH,
+    DEFAULT_EXECUTOR_SETTINGS,
+    ExecutorSettings,
+    load_project_config,
+)
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import Record
 from orchestra.conductor.tasks.assignment import (
@@ -48,10 +53,7 @@ from orchestra.score.lookups import (
     record_order,
 )
 from orchestra.score.planning.effort import record_effort
-from orchestra.score.planning.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    task_executor,
-)
+from orchestra.score.planning.executor import task_executor
 from orchestra.tuner.evidence.evidence_facts import CHECK_RUN_TYPE
 from orchestra.tuner.evidence.record_facts import check_run_facts
 
@@ -233,14 +235,15 @@ def retry_max_redispatches(body: str) -> int:
     return run_fact_int(body, "retry_max_redispatches", DEFAULT_RETRY_MAX_REDISPATCHES)
 
 
-def configured_small_wave_budget(target: Project, records: list[Record]) -> int:
-    requires_budget = any(
-        record.get("lifecycle_state") == "planned" and task_plan(record).size in ("XS", "S")
-        for record in records
-    )
-    if not requires_budget:
-        return DEFAULT_SMALL_WAVE_BUDGET_MINUTES
-    return load_project_config(target.project_root).small_wave_budget_minutes
+def configured_executor_settings(target: Project, records: list[Record]) -> ExecutorSettings:
+    planned = [record for record in records if record.get("lifecycle_state") == "planned"]
+    config_path = target.project_root / CONFIG_PATH
+    has_config = config_path.exists() or config_path.is_symlink()
+    if not any(task_plan(record).size in ("XS", "S") for record in planned) and not has_config:
+        return DEFAULT_EXECUTOR_SETTINGS
+    if not planned:
+        return DEFAULT_EXECUTOR_SETTINGS
+    return load_project_config(target.project_root).executor_settings
 
 
 def assigned_to(record: Record, assignments: list[Record]) -> tuple[str, str]:
@@ -290,7 +293,7 @@ def task_rows(
     checks: list[Record] | None = None,
     phases: list[Record] | None = None,
     *,
-    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
 ) -> list[TaskRow]:
     by_subject = {record["subject"]: record for record in sorted(records, key=recorded_at)}
     assignments = assignments or []
@@ -348,7 +351,8 @@ def task_rows(
                 executor=task_executor(
                     task_facts,
                     [executor_task(member) for member in wave_task_records] or [task_facts],
-                    small_wave_budget_minutes=small_wave_budget_minutes,
+                    small_wave_budget_minutes=settings.small_wave_budget_minutes,
+                    lone_task_inline_minutes=settings.lone_task_inline_minutes,
                 ),
                 last_record_at=last_record_at,
                 attempts=plan.attempts,
@@ -509,7 +513,7 @@ def load_task_detail(target: Project, work_item_id: str) -> TaskDetail:
         for row in task_rows(
             efforts,
             effort_assignments,
-            small_wave_budget_minutes=configured_small_wave_budget(target, efforts),
+            settings=configured_executor_settings(target, efforts),
         )
     }
     by_subject = {row.subject: row for row in rows.values()}

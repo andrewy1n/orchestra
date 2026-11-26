@@ -20,6 +20,7 @@ from orchestra.canon import project as project_mod
 from orchestra.canon import record as record_mod
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import DEFAULT_EXECUTOR_SETTINGS, ExecutorSettings
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.phases.progress.phase_progress import PhaseProgress
 
@@ -184,7 +185,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
         checks: list[Record] | None = None,
         phases: list[Record] | None = None,
         *,
-        small_wave_budget_minutes: int = 15,
+        settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
     ) -> list[TaskRow]:
         assert all(record["payload"].get("phase") in ("active",) for record in records)
         return original_tasks(
@@ -194,7 +195,7 @@ def test_work_request_avoids_full_snapshot_and_finished_phase_work(
             reports,
             checks,
             phases,
-            small_wave_budget_minutes=small_wave_budget_minutes,
+            settings=settings,
         )
 
     def evidence(

@@ -35,6 +35,15 @@ class ProjectConfigError(ValueError):
 
 
 @dataclass(frozen=True)
+class ExecutorSettings:
+    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    lone_task_inline_minutes: int = DEFAULT_LONE_TASK_INLINE_MINUTES
+
+
+DEFAULT_EXECUTOR_SETTINGS = ExecutorSettings()
+
+
+@dataclass(frozen=True)
 class SuiteConfig:
     mode: str
     command: str
@@ -55,6 +64,11 @@ class ProjectConfig:
     small_wave_budget_minutes: int
     merge_evidence_adapter: str | None = None
     merge_evidence_config: JsonObject = field(default_factory=dict)
+    lone_task_inline_minutes: int = DEFAULT_LONE_TASK_INLINE_MINUTES
+
+    @property
+    def executor_settings(self) -> ExecutorSettings:
+        return ExecutorSettings(self.small_wave_budget_minutes, self.lone_task_inline_minutes)
 
 
 def load_project_config(root: Path | str) -> ProjectConfig:
@@ -108,6 +122,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
     land_value = root.get("land")
     execute = _table(root.get("execute", {}), "execute")
     small_wave_budget_minutes = _parse_small_wave_budget(execute)
+    lone_task_inline_minutes = _parse_lone_task_inline(execute)
     evidence_adapter, evidence_config = _parse_merge_evidence(root.get("merge_evidence"))
     return ProjectConfig(
         stages=stages,
@@ -122,6 +137,7 @@ def _parse_project_config(text: str, *, source: str) -> ProjectConfig:
         small_wave_budget_minutes=small_wave_budget_minutes,
         merge_evidence_adapter=evidence_adapter,
         merge_evidence_config=evidence_config,
+        lone_task_inline_minutes=lone_task_inline_minutes,
     )
 
 
@@ -244,6 +260,13 @@ def _parse_small_wave_budget(execute: Mapping[str, object]) -> int:
     value = execute.get("small_wave_budget_minutes", DEFAULT_SMALL_WAVE_BUDGET_MINUTES)
     if type(value) is not int or value < 0:
         raise ProjectConfigError("execute.small_wave_budget_minutes must be a non-negative integer")
+    return value
+
+
+def _parse_lone_task_inline(execute: Mapping[str, object]) -> int:
+    value = execute.get("lone_task_inline_minutes", DEFAULT_LONE_TASK_INLINE_MINUTES)
+    if type(value) is not int or value < 0:
+        raise ProjectConfigError("execute.lone_task_inline_minutes must be a non-negative integer")
     return value
 
 
