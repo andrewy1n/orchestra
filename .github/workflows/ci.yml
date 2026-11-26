@@ -219,12 +219,14 @@ jobs:
         working-directory: dashboard/frontend
       - run: npx playwright install --with-deps chromium
         working-directory: dashboard/frontend
-      - run: npm run e2e
+      - id: e2e
+        run: npm run e2e
         working-directory: dashboard/frontend
       - name: Upload Playwright traces
-        if: failure()
+        if: failure() && steps.e2e.outcome == 'failure'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: playwright-traces
           path: dashboard/frontend/test-results/**/trace.zip
-          if-no-files-found: ignore
+          if-no-files-found: error
+          retention-days: 14
