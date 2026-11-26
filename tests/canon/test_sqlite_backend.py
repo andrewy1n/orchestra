@@ -11,6 +11,7 @@ import pytest
 
 from orchestra.canon.backend import open_backend
 from orchestra.canon.errors import StoreError
+from orchestra.canon.migrate import apply_steps
 from orchestra.canon.project import Project
 from orchestra.canon.revision import with_revision
 from orchestra.canon.sqlite_backend import SqliteBackend
@@ -118,6 +119,51 @@ def test_validate_uses_one_snapshot_during_concurrent_write(
     monkeypatch.setattr(SqliteBackend, "_connect", connect)
     errors = sqlite_project.validate()
     assert committed, "the writer must commit before validation reads operation history"
+    assert errors == []
+
+
+def test_validate_uses_matching_event_audit_snapshot_during_concurrent_rewrite(
+    sqlite_project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sqlite_project.create(record_type="alpha:task", subject="task", payload={"title": "Task"})
+    event = sqlite_project.create(
+        record_type="alpha:log",
+        subject="task",
+        payload={"task": "task", "message": "Original"},
+    )
+    writer = open_backend(sqlite_project.store_path)
+    original_connect = SqliteBackend._connect
+    rewritten = 0
+
+    def rewrite_before_integrity_check(statement: str) -> None:
+        nonlocal rewritten
+        if statement == "PRAGMA integrity_check" and rewritten == 0:
+            with writer.transaction():
+                rewritten = apply_steps(
+                    writer,
+                    [{"map_enum": {"alpha:log.message": {"Original": "Rewritten"}}}],
+                    {
+                        "namespace": "alpha",
+                        "types": {
+                            "task": {},
+                            "log": {"fields": {"message": {"enum": ["Rewritten"]}}},
+                        },
+                    },
+                )
+
+    def connect(self: SqliteBackend) -> sqlite3.Connection:
+        connection = original_connect(self)
+        if self is not writer:
+            connection.set_trace_callback(rewrite_before_integrity_check)
+        return connection
+
+    monkeypatch.setattr(SqliteBackend, "_connect", connect)
+    errors = sqlite_project.validate()
+    assert rewritten == 1
+    updated = writer.read_record(event["record_type"], event["id"])
+    assert not writer.history_exists(event["record_type"], event["id"], event["revision"])
+    assert writer.history_exists(updated["record_type"], updated["id"], updated["revision"])
+    assert sqlite_project.validate() == []
     assert errors == []
 
 

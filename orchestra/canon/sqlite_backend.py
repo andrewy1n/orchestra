@@ -8,6 +8,7 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Generator, Iterator
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -102,6 +103,9 @@ class SqliteBackend:
         self.db_path = data_root / "canon.db"
         self._metadata = MetadataFiles(config_root)
         self._active: sqlite3.Connection | None = None
+        self._read_connection = ContextVar[sqlite3.Connection | None](
+            "canon_sqlite_read_connection", default=None
+        )
         if self._metadata.has_config() and not read_only:
             self._initialize_database()
 
@@ -154,14 +158,26 @@ class SqliteBackend:
 
     @contextlib.contextmanager
     def _reader(self) -> Generator[sqlite3.Connection, None, None]:
-        if self._active is not None:
-            yield self._active
+        connection = self._active or self._read_connection.get()
+        if connection is not None:
+            yield connection
         else:
-            connection = self._connect()
-            try:
+            with contextlib.closing(self._connect()) as connection:
                 yield connection
+
+    @contextlib.contextmanager
+    def read_transaction(self) -> Generator[None, None, None]:
+        """Keep reads on one snapshot, including when already in a transaction."""
+        if self._active is not None or self._read_connection.get() is not None:
+            yield
+            return
+        with contextlib.closing(self._connect()) as connection:
+            connection.execute("BEGIN")
+            token = self._read_connection.set(connection)
+            try:
+                yield
             finally:
-                connection.close()
+                self._read_connection.reset(token)
 
     @contextlib.contextmanager
     def transaction(self) -> Generator[None, None, None]:
@@ -472,17 +488,14 @@ class SqliteBackend:
         with self._reader() as connection:
             return self._chain(connection, record_id)
 
-    def _chains(self, connection: sqlite3.Connection) -> list[tuple[str, list[StoredOp]]]:
-        return [
-            (row[0], self._chain(connection, row[0]))
-            for row in connection.execute(
-                "SELECT DISTINCT record_id FROM ops ORDER BY record_id"
-            ).fetchall()
-        ]
-
     def iter_chains(self) -> Iterator[tuple[str, list[StoredOp]]]:
         with self._reader() as connection:
-            chains = self._chains(connection)
+            chains = [
+                (row[0], self._chain(connection, row[0]))
+                for row in connection.execute(
+                    "SELECT DISTINCT record_id FROM ops ORDER BY record_id"
+                ).fetchall()
+            ]
         yield from chains
 
     def import_op(self, record_type: str, record_id: str, op: StoredOp) -> None:
@@ -512,14 +525,11 @@ class SqliteBackend:
             )
 
     def check_integrity(self, errors: list[str], *, immutability: bool = True) -> None:
-        with self._reader() as connection:
-            if not connection.in_transaction:
-                connection.execute("BEGIN")
+        with self.read_transaction(), self._reader() as connection:
             for row in connection.execute("PRAGMA integrity_check"):
                 if row[0] != "ok":
                     errors.append(f"SQLite integrity: {row[0]}")
             rows = connection.execute("SELECT * FROM records").fetchall()
-            live_keys = {(row[1], row[0]) for row in rows}
             records: dict[str, Record] = {}
             for row in rows:
                 try:
@@ -540,7 +550,7 @@ class SqliteBackend:
                         errors.append(f"{row[0]}: materialized record differs from stored content")
                 except (ValueError, KeyError, TypeError) as exc:
                     errors.append(f"{row[0]}: malformed materialized record: {exc}")
-            for record_id, ops in self._chains(connection):
+            for record_id, ops in self.iter_chains():
                 if fold(ops) != records.pop(record_id, None):
                     errors.append(f"{record_id}: materialized record differs from op fold")
             for record_id in records:
@@ -556,11 +566,8 @@ class SqliteBackend:
                         or compute_revision(snapshot) != revision
                     ):
                         errors.append(f"{record_id}: history tamper detected")
-                    if archived:
-                        record_type = snapshot["record_type"]
-                        self._validate_key(record_type, record_id)
-                        if (record_type, record_id) not in live_keys:
-                            errors.append(f"{record_id}: history snapshot has no live record")
+                    if archived and not self.record_exists(snapshot["record_type"], record_id):
+                        errors.append(f"{record_id}: history snapshot has no live record")
                 except (ValueError, KeyError, TypeError) as exc:
                     errors.append(f"{record_id}: malformed history snapshot: {exc}")
 
