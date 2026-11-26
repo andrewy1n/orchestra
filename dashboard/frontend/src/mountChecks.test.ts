@@ -25,6 +25,8 @@ function recordedFor(url: URL): Recorded | undefined {
 			return RECORDED.snapshot;
 		case "/api/areas":
 			return RECORDED.areas;
+		case "/api/product":
+			return RECORDED.product;
 		case "/api/hub":
 			return RECORDED.hub;
 		case "/api/phase":
@@ -174,6 +176,7 @@ describe("dashboard components mount against the recorded HTTP bodies", () => {
 			"token",
 			"snapshot",
 			"areas",
+			"product",
 			"hub",
 			"phase",
 			"task",

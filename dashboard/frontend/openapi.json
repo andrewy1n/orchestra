@@ -1495,6 +1495,87 @@
         "title": "PhaseSummary",
         "type": "object"
       },
+      "ProductEntry": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "title",
+          "description",
+          "status"
+        ],
+        "title": "ProductEntry",
+        "type": "object"
+      },
+      "ProductResponse": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/ProductEntry"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/ProductEntry"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductStatement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "statement",
+          "capabilities",
+          "goals"
+        ],
+        "title": "ProductResponse",
+        "type": "object"
+      },
+      "ProductStatement": {
+        "properties": {
+          "audience": {
+            "title": "Audience",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "audience"
+        ],
+        "title": "ProductStatement",
+        "type": "object"
+      },
       "Progress": {
         "properties": {
           "blockers": {
@@ -2341,13 +2422,6 @@
       },
       "ValidationError": {
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
           "loc": {
             "items": {
               "anyOf": [
@@ -2876,6 +2950,54 @@
           }
         },
         "summary": "Phase"
+      }
+    },
+    "/api/product": {
+      "get": {
+        "operationId": "product_api_product_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Product"
       }
     },
     "/api/record": {

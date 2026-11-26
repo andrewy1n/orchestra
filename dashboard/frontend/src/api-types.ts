@@ -108,6 +108,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/product": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product */
+        get: operations["product_api_product_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/record": {
         parameters: {
             query?: never;
@@ -718,6 +735,32 @@ export interface components {
             /** Verified */
             verified: number | null;
         };
+        /** ProductEntry */
+        ProductEntry: {
+            /** Description */
+            description: string;
+            /** Status */
+            status: string;
+            /** Subject */
+            subject: string;
+            /** Title */
+            title: string;
+        };
+        /** ProductResponse */
+        ProductResponse: {
+            /** Capabilities */
+            capabilities: components["schemas"]["ProductEntry"][];
+            /** Goals */
+            goals: components["schemas"]["ProductEntry"][];
+            statement: components["schemas"]["ProductStatement"] | null;
+        };
+        /** ProductStatement */
+        ProductStatement: {
+            /** Audience */
+            audience: string;
+            /** Purpose */
+            purpose: string;
+        };
         /** Progress */
         Progress: {
             blockers: components["schemas"]["BlockerSummary"];
@@ -1004,10 +1047,6 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -1059,6 +1098,9 @@ export type PhaseDetail = components['schemas']['PhaseDetail'];
 export type PhaseEvidence = components['schemas']['PhaseEvidence'];
 export type PhaseResponse = components['schemas']['PhaseResponse'];
 export type PhaseSummary = components['schemas']['PhaseSummary'];
+export type ProductEntry = components['schemas']['ProductEntry'];
+export type ProductResponse = components['schemas']['ProductResponse'];
+export type ProductStatement = components['schemas']['ProductStatement'];
 export type Progress = components['schemas']['Progress'];
 export type ProofView = components['schemas']['ProofView'];
 export type RecordResponse = components['schemas']['RecordResponse'];
@@ -1499,6 +1541,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_api_product_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };
