@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
-from orchestra.canon.fields import optional_blank_text, required_text
-from orchestra.canon.types import Record
+from orchestra.canon.fields import optional_blank_text, optional_text_list, required_text
+from orchestra.canon.types import JsonObject, Record
 from orchestra.score.lookups import latest_record
 
 IDEA = "composer:idea"
@@ -15,8 +15,12 @@ PLACEMENT = "composer:placement"
 PRODUCT = "composer:product"
 PRODUCT_ITEM = "composer:product-item"
 PRODUCT_SUBJECT = "product"
+COMPONENT = "composer:component"
+INTERFACE = "composer:interface"
+ARCHITECTURE_DECISION = "composer:architecture-decision"
 
 _ITEM_STATUSES = ("current", "planned")
+_DECISION_STATUSES = ("accepted", "proposed")
 _DEAD_STATES = ("superseded", "retracted")
 
 
@@ -68,6 +72,32 @@ class ProductItem:
     record: Record
 
 
+@dataclass(frozen=True)
+class Component:
+    name: str
+    area: str
+    responsibility: str
+    record: Record
+
+
+@dataclass(frozen=True)
+class Interface:
+    name: str
+    provides: str
+    connects: tuple[str, ...]
+    record: Record
+
+
+@dataclass(frozen=True)
+class ArchitectureDecision:
+    title: str
+    rationale: str
+    status: str
+    affects: tuple[str, ...]
+    enforced_by: tuple[str, ...]
+    record: Record
+
+
 def _idea_text(record: Record) -> str:
     for line in (record.get("body") or "").splitlines():
         stripped = line.strip()
@@ -76,17 +106,37 @@ def _idea_text(record: Record) -> str:
     return record["subject"]
 
 
-def _scope(body: str) -> str:
+def _section(body: str, name: str) -> str:
     lines: list[str] = []
     inside = False
     for line in body.splitlines():
         if line.startswith("## "):
             if inside:
                 break
-            inside = line[3:].strip().lower() == "scope"
+            inside = line[3:].strip().lower() == name
         elif inside:
             lines.append(line)
     return "\n".join(lines).strip()
+
+
+def _scope(body: str) -> str:
+    return _section(body, "scope")
+
+
+def _required_section(record: Record, name: str) -> str:
+    text = _section(record.get("body") or "", name.lower())
+    if not text:
+        raise RecordShapeError(record["id"], "body", f"needs a non-empty ## {name} section")
+    return text
+
+
+def _required_list(record: Record, payload: JsonObject, field: str) -> tuple[str, ...]:
+    if field not in payload:
+        raise RecordShapeError(record["id"], field, "is required")
+    values = optional_text_list(record, payload, field)
+    if not values:
+        raise RecordShapeError(record["id"], field, "must not be empty")
+    return values
 
 
 def read_idea(record: Record) -> Idea:
@@ -135,6 +185,41 @@ def read_product_item(record: Record) -> ProductItem:
         title=required_text(record, payload, "title"),
         description=required_text(record, payload, "description"),
         status=status,
+        record=record,
+    )
+
+
+def read_component(record: Record) -> Component:
+    payload = record_payload(record)
+    return Component(
+        name=record["subject"],
+        area=required_text(record, payload, "area"),
+        responsibility=_required_section(record, "Responsibility"),
+        record=record,
+    )
+
+
+def read_interface(record: Record) -> Interface:
+    payload = record_payload(record)
+    return Interface(
+        name=record["subject"],
+        provides=_required_section(record, "Provides"),
+        connects=_required_list(record, payload, "connects"),
+        record=record,
+    )
+
+
+def read_architecture_decision(record: Record) -> ArchitectureDecision:
+    payload = record_payload(record)
+    status = required_text(record, payload, "status")
+    if status not in _DECISION_STATUSES:
+        raise RecordShapeError(record["id"], "status", "must be accepted or proposed")
+    return ArchitectureDecision(
+        title=record["subject"],
+        rationale=_required_section(record, "Rationale"),
+        status=status,
+        affects=_required_list(record, payload, "affects"),
+        enforced_by=optional_text_list(record, payload, "enforced_by"),
         record=record,
     )
 
