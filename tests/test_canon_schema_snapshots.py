@@ -7,7 +7,7 @@ import pytest
 
 from orchestra.canon.config import new_config
 from orchestra.canon.metadata import MetadataFiles
-from orchestra.canon.modules import discover
+from orchestra.canon.modules import PATH_ENV, discover
 from orchestra.tools import CliTool, ToolError
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +37,7 @@ def metadata(tmp_path: Path) -> MetadataFiles:
 
 @pytest.fixture(autouse=True)
 def installed_modules(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("CANON_SCHEMA_PATH", raising=False)
+    monkeypatch.delenv(PATH_ENV, raising=False)
 
 
 def test_checked_in_schema_snapshots_match_shipped_schemas() -> None:
@@ -108,3 +108,17 @@ def test_schema_without_installed_module_fails(
     assert (
         "orphan: schema is pinned or snapshotted but has no installed module" in error.value.stderr
     )
+
+
+def test_local_schema_override_cannot_hide_stale_snapshot(
+    tmp_path: Path, metadata: MetadataFiles, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    snapshot = metadata.snapshot_path(_NAMESPACE)
+    snapshot.write_text(snapshot.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    monkeypatch.setenv(PATH_ENV, str(snapshot))
+
+    with pytest.raises(ToolError) as error:
+        _SnapshotCheck(tmp_path).check()
+
+    assert error.value.returncode == 1
+    assert "stale schema snapshot .canon/schemas/composer.json" in error.value.stderr

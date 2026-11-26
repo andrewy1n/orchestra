@@ -13,7 +13,7 @@ from orchestra.canon.types import get_object
 
 
 def _check_snapshots(metadata: MetadataFiles) -> list[str]:
-    installed = discover()
+    installed = discover(include_path_overrides=False)
     if not installed:
         raise SchemaError("no installed Canon schema modules found")
     pins = get_object(metadata.load_config(), "schemas")
