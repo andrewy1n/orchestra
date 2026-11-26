@@ -19,6 +19,12 @@ from orchestra.composer.idea_facts import (
     is_open_backlog_idea,
     is_roadmap_idea,
 )
+from orchestra.composer.records import (
+    PRODUCT,
+    ProductItem,
+    current_product,
+    current_product_items,
+)
 from orchestra.conductor.landing.landing import PROOF_PACKET, phase_place, place_of_body
 from orchestra.conductor.phases.progress.attention import (
     AttentionItem,
@@ -120,6 +126,7 @@ class View:
     effort_status: bool = False
     phase_derived_section: bool = False
     tally_type: str | None = None
+    product_overview: bool = False
 
 
 GOAL = Role("goal", EFFORT_TYPE, ("goal", "kind"), _all(_state("active"), _not_closed))
@@ -281,6 +288,7 @@ ROADMAP = View(
     ),
     group_by="area",
     group_default="untriaged",
+    product_overview=True,
 )
 
 VIEWS = {v.name: v for v in (HANDOFF, PLAN, VERIFICATION, STATUS, ROADMAP)}
@@ -683,6 +691,39 @@ def _attention_lines(item: AttentionItem) -> str:
     return f"- **{item.subject}**{text} _(id: {item.record_id})_"
 
 
+def _item_lines(heading: str, empty: str, items: list[ProductItem]) -> list[str]:
+    lines = [f"## {heading}", ""]
+    if not items:
+        return [*lines, empty, ""]
+    lines += [f"- **{i.title}** ({i.status}): {i.description}" for i in items]
+    return [*lines, ""]
+
+
+def _product_lines(records: list[Record]) -> list[str]:
+    lines = ["## Product", ""]
+    product = current_product(records)
+    if product is None:
+        lines += ["_No product statement._", ""]
+    else:
+        lines += [product.purpose, "", f"Audience: {product.audience}", ""]
+        statements = [
+            r
+            for r in records
+            if r["record_type"] == PRODUCT and r["subject"] == "product" and _state("active")(r)
+        ]
+        if len(statements) > 1:
+            lines += [
+                f"_Warning: {len(statements)} product statements exist; showing the newest._",
+                "",
+            ]
+    items = current_product_items(records)
+    lines += _item_lines(
+        "Capabilities", "_No capabilities._", [i for i in items if i.status == "current"]
+    )
+    lines += _item_lines("Goals", "_No goals._", [i for i in items if i.status == "planned"])
+    return lines
+
+
 def render_view(
     view: View,
     records: list[Record],
@@ -717,6 +758,8 @@ def render_view(
         "> Derived view — not authoritative. Edit underlying records, not this file.",
         "",
     ]
+    if view.product_overview:
+        lines += _product_lines(records)
     if not groups:
         lines += ["_No matching records._", ""]
     for name in sorted(groups, key=_group_sort_key(view.order_by, records)):
