@@ -104,12 +104,15 @@ jobs:
           test -s attestation.json
 
       - name: Verify attestation
+        env:
+          COMMIT: ${{ steps.verdict.outputs.sha }}
+          MANIFEST_HASH: ${{ steps.verdict.outputs.manifest_hash }}
         run: |
           set -euo pipefail
           bin/orchestra verify attest verify \
             --allowlist "$ATTEST_ALLOWLIST" \
-            --commit "${{ steps.verdict.outputs.sha }}" \
-            --manifest-hash "${{ steps.verdict.outputs.manifest_hash }}" \
+            --commit "$COMMIT" \
+            --manifest-hash "$MANIFEST_HASH" \
             --input attestation.json
 
       - name: Upload attestation
