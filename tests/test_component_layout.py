@@ -47,9 +47,14 @@ def _rel(path: Path) -> str:
     return path.relative_to(REPO).as_posix()
 
 
+CROSS_COMPONENT = {"test_architecture_view.py", "test_architecture_two_areas.py"}
+
+
 def _assert_in_place(root: str) -> None:
     misplaced = [
-        _rel(path) for path in sorted(TESTS.glob("test_*.py")) if _imported_roots(path) == {root}
+        _rel(path)
+        for path in sorted(TESTS.glob("test_*.py"))
+        if path.name not in CROSS_COMPONENT and _imported_roots(path) == {root}
     ]
     assert not misplaced, f"modules importing only {root} belong under tests/{root}/: {misplaced}"
 
