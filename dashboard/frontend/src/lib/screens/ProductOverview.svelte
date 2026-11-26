@@ -22,7 +22,11 @@
   </div>
 {/snippet}
 
-{#if product.overview}
+{#if product.error}
+  <section class="product-overview" data-product-overview>
+    <p class="empty-note" role="alert" data-product-error>{product.error}</p>
+  </section>
+{:else if product.overview}
   <section class="product-overview" data-product-overview>
     {#if product.overview.statement}
       <div data-product-statement>

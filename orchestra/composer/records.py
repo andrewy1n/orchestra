@@ -14,6 +14,7 @@ AREA = "composer:area"
 PLACEMENT = "composer:placement"
 PRODUCT = "composer:product"
 PRODUCT_ITEM = "composer:product-item"
+PRODUCT_SUBJECT = "product"
 
 _ITEM_STATUSES = ("current", "planned")
 _DEAD_STATES = ("superseded", "retracted")
@@ -152,8 +153,19 @@ def current_area(records: Sequence[Record], subject: str) -> Area | None:
 
 
 def current_product(records: Sequence[Record]) -> Product | None:
-    record = latest_record(r for r in _live(records, PRODUCT) if r["subject"] == "product")
-    return read_product(record) if record is not None else None
+    statements = _live(records, PRODUCT)
+    for record in statements:
+        if record["subject"] != PRODUCT_SUBJECT:
+            raise RecordShapeError(
+                record["id"], "subject", f"a product statement must use subject {PRODUCT_SUBJECT}"
+            )
+    if len(statements) > 1:
+        raise RecordShapeError(
+            statements[-1]["id"],
+            "subject",
+            f"{len(statements)} live product statements exist; keep one",
+        )
+    return read_product(statements[0]) if statements else None
 
 
 def current_product_items(records: Sequence[Record]) -> list[ProductItem]:
@@ -213,4 +225,8 @@ def scan_composer_records(records: Sequence[Record]) -> list[ComposerScanFinding
                     error.record_id, record["record_type"], error.field, error.message
                 )
             )
+    try:
+        current_product(records)
+    except RecordShapeError as error:
+        findings.append(ComposerScanFinding(error.record_id, PRODUCT, error.field, error.message))
     return findings

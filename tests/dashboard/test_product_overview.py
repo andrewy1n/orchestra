@@ -62,7 +62,7 @@ def test_r7_overview_lists_statement_first_then_capabilities_and_goals(store, cl
     _item(cli, "live-roadmap", "Live roadmap", "Shows work as it stands.", "current")
     _item(cli, "export", "Export", "Share the roadmap as a file.", "planned")
     body = _product(store)
-    assert list(body)[0] == "statement"
+    assert next(iter(body)) == "statement"
     assert body["statement"]["purpose"] == "Keep work verifiable."
     assert body["statement"]["audience"] == "Teams shipping with agents."
     assert [item["subject"] for item in body["capabilities"]] == ["live-roadmap"]
@@ -96,9 +96,7 @@ def test_r7_a_superseded_item_never_shows(store, cli):
         "--expected-revision",
         "@current",
         "--payload",
-        json.dumps(
-            {"title": "Export", "description": "Share it as a file.", "status": "current"}
-        ),
+        json.dumps({"title": "Export", "description": "Share it as a file.", "status": "current"}),
     )
     assert result.returncode == 0, result.stderr
     body = _product(store)
@@ -127,3 +125,12 @@ def test_r7_load_product_returns_the_record_text_unchanged(store, cli):
     assert [(e.title, e.description, e.status) for e in overview.capabilities] == [
         ("Live roadmap", "Shows work as it stands.", "current")
     ]
+
+
+def test_r7_a_statement_with_the_wrong_subject_fails_the_endpoint_loudly(store, cli):
+    _statement(cli, "One.", "Teams.")
+    _create(cli, "composer:product", "elsewhere", {"purpose": "Two.", "audience": "Teams."})
+    response = TestClient(create_app(open_store(store)), raise_server_exceptions=False).get(
+        "/api/product"
+    )
+    assert response.status_code == 500

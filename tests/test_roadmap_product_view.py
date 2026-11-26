@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from test_roadmap_view import _create_area, roadmap
+from test_roadmap_view import _create_area, roadmap, run_orchestra
 
 PURPOSE = "Keep delivery work legible"
 AUDIENCE = "maintainers of small teams"
@@ -112,3 +112,10 @@ def test_overview_is_one_per_project_not_per_area(store, cli):
     assert text.index("## Goals") < text.index("## dashboard")
     assert "Title ships-now" in text[text.index("## Capabilities") : text.index("## Goals")]
     assert "Title comes-later" in text[text.index("## Goals") : text.index("## cli")]
+
+
+def test_roadmap_fails_loudly_for_a_statement_with_the_wrong_subject(store, cli):
+    _create(cli, "composer:product", "elsewhere", {"purpose": PURPOSE, "audience": AUDIENCE})
+    result = run_orchestra(store, "view", "roadmap")
+    assert result.returncode != 0
+    assert "subject product" in result.stdout + result.stderr

@@ -57,7 +57,7 @@ async function settle() {
 	flushSync();
 }
 
-async function mountApp(body: ProductResponse) {
+async function mountApp(body: ProductResponse, productStatus = 200) {
 	const snapshot = {
 		token: "tok-1",
 		generated_at: "2026-01-01T00:00:00Z",
@@ -68,7 +68,11 @@ async function mountApp(body: ProductResponse) {
 		vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
 			if (url.includes("/api/token")) return json({ token: "tok-1" });
-			if (url.includes("/api/product")) return json(body);
+			if (url.includes("/api/product")) {
+				return productStatus === 200
+					? json(body)
+					: new Response("record failed", { status: productStatus });
+			}
 			if (url.includes("/api/areas")) return json([]);
 			if (url.includes("/api/journal")) return json({ open: [], rest: [] });
 			return json(snapshot);
@@ -118,5 +122,12 @@ describe("product overview", () => {
 			document.querySelector("[data-product-no-statement]"),
 		).not.toBeNull();
 		expect(document.querySelector("[data-statement-purpose]")).toBeNull();
+	});
+
+	it("shows the error and no stale overview when the fetch fails", async () => {
+		await mountApp(overview, 500);
+		expect(document.querySelector("[data-product-error]")).not.toBeNull();
+		expect(document.querySelector("[data-statement-purpose]")).toBeNull();
+		expect(document.querySelector("[data-product-section]")).toBeNull();
 	});
 });

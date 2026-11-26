@@ -20,7 +20,6 @@ from orchestra.composer.idea_facts import (
     is_roadmap_idea,
 )
 from orchestra.composer.records import (
-    PRODUCT,
     ProductItem,
     current_product,
     current_product_items,
@@ -706,16 +705,6 @@ def _product_lines(records: list[Record]) -> list[str]:
         lines += ["_No product statement._", ""]
     else:
         lines += [product.purpose, "", f"Audience: {product.audience}", ""]
-        statements = [
-            r
-            for r in records
-            if r["record_type"] == PRODUCT and r["subject"] == "product" and _state("active")(r)
-        ]
-        if len(statements) > 1:
-            lines += [
-                f"_Warning: {len(statements)} product statements exist; showing the newest._",
-                "",
-            ]
     items = current_product_items(records)
     lines += _item_lines(
         "Capabilities", "_No capabilities._", [i for i in items if i.status == "current"]

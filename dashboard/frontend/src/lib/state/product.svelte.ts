@@ -46,6 +46,7 @@ export function bindProduct() {
 			.catch((err: unknown) => {
 				if (cancelled) return;
 				product.loaded = true;
+				product.overview = null;
 				product.error = err instanceof Error ? err.message : String(err);
 			});
 		return () => {
