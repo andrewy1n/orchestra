@@ -8,6 +8,7 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Generator, Iterator
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -102,6 +103,9 @@ class SqliteBackend:
         self.db_path = data_root / "canon.db"
         self._metadata = MetadataFiles(config_root)
         self._active: sqlite3.Connection | None = None
+        self._read_connection = ContextVar[sqlite3.Connection | None](
+            "canon_sqlite_read_connection", default=None
+        )
         if self._metadata.has_config() and not read_only:
             self._initialize_database()
 
@@ -154,18 +158,32 @@ class SqliteBackend:
 
     @contextlib.contextmanager
     def _reader(self) -> Generator[sqlite3.Connection, None, None]:
-        if self._active is not None:
-            yield self._active
+        connection = self._active or self._read_connection.get()
+        if connection is not None:
+            yield connection
         else:
-            connection = self._connect()
-            try:
+            with contextlib.closing(self._connect()) as connection:
                 yield connection
+
+    @contextlib.contextmanager
+    def read_transaction(self) -> Generator[None, None, None]:
+        """Keep reads on one snapshot, including when already in a transaction."""
+        if self._active is not None or self._read_connection.get() is not None:
+            yield
+            return
+        with contextlib.closing(self._connect()) as connection:
+            connection.execute("BEGIN")
+            token = self._read_connection.set(connection)
+            try:
+                yield
             finally:
-                connection.close()
+                self._read_connection.reset(token)
 
     @contextlib.contextmanager
     def transaction(self) -> Generator[None, None, None]:
         self._require_writable()
+        if self._read_connection.get() is not None:
+            raise StoreError("cannot write inside a read snapshot")
         if self._active is not None:
             name = "nested_" + uuid.uuid4().hex
             connection = self._active
@@ -509,7 +527,7 @@ class SqliteBackend:
             )
 
     def check_integrity(self, errors: list[str], *, immutability: bool = True) -> None:
-        with self._reader() as connection:
+        with self.read_transaction(), self._reader() as connection:
             for row in connection.execute("PRAGMA integrity_check"):
                 if row[0] != "ok":
                     errors.append(f"SQLite integrity: {row[0]}")

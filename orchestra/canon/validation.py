@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from contextlib import nullcontext
 from pathlib import Path
 
 from orchestra.canon.backend import Backend, open_backend
@@ -350,18 +351,21 @@ def validate_store(
     errors: list[str] = []
     if backend is None and store_root is not None:
         backend = open_backend(store_root)
-    if records is None and backend is not None:
-        records = list(backend.iter_records(errors=errors))
-    records = records or []
-    index = RecordIndex(records)
-    for record in records:
-        errors.extend(record_errors(schemas, record, index))
-    _current_errors(records, schemas, errors)
-    _supersede_errors(records, schemas, index, errors)
-    _correct_errors(records, index, errors)
-    if backend is not None:
-        backend.check_integrity(errors, immutability=immutability)
-        validate_append_only_history(backend, records, schemas, errors)
+    if backend is not None and records is not None:
+        raise ValueError("records cannot be supplied when validating a live store")
+    with backend.read_transaction() if backend is not None else nullcontext():
+        if records is None and backend is not None:
+            records = list(backend.iter_records(errors=errors))
+        records = records or []
+        index = RecordIndex(records)
+        for record in records:
+            errors.extend(record_errors(schemas, record, index))
+        _current_errors(records, schemas, errors)
+        _supersede_errors(records, schemas, index, errors)
+        _correct_errors(records, index, errors)
+        if backend is not None:
+            backend.check_integrity(errors, immutability=immutability)
+            validate_append_only_history(backend, records, schemas, errors)
     return errors
 
 
