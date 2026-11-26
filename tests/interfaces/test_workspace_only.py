@@ -137,6 +137,7 @@ def test_views_bare_nested_dir_is_store_not_ready_with_every_searched_parent(
 
 
 WORKSPACE_MODULE = "orchestra/canon/workspace.py"
+SCHEMA_SNAPSHOT_CHECK = "scripts/check_canon_schema_snapshots.py"
 SCANNED_ROOTS = ("orchestra", "dashboard", "scripts")
 RESOLVING_NAMES = {"resolve_location", "open_store", "bound_store_path"}
 STORE_STRINGS = {"ORCHESTRA_STORE", "CANON_STORE", ".canon"}
@@ -150,6 +151,7 @@ STORE_RESOLUTION_EXEMPT: dict[str, str] = {
     "orchestra/tuner/authoring/audit.py": ".canon is a path prefix, not store resolution",
     "scripts/api_schema.py": "builds an unbound Project for schema generation",
     "scripts/benchmark_cli.py": "builds a fixture store and env for child processes",
+    SCHEMA_SNAPSHOT_CHECK: "reads versioned schema snapshots at a fixed checkout path",
 }
 
 
@@ -218,6 +220,11 @@ def test_workspace_only_no_module_outside_workspace_resolves_the_store() -> None
         if relative not in STORE_RESOLUTION_EXEMPT
     }
     assert offenders == {}
+
+
+def test_schema_snapshot_check_only_uses_the_checkout_metadata_path() -> None:
+    hits = store_resolution_hits(REPO_ROOT / SCHEMA_SNAPSHOT_CHECK)
+    assert {kind for _, kind in hits} == {"'.canon'"}
 
 
 def test_workspace_only_exempt_list_only_names_current_offenders() -> None:

@@ -59,6 +59,10 @@ def create_app(target: Project) -> FastAPI:
     def areas() -> schemas.AreasResponse:
         return reader.areas()
 
+    @app.get("/api/product", response_model=schemas.ProductResponse, responses=ERRORS)
+    def product() -> schemas.ProductResponse:
+        return reader.product()
+
     @app.get("/api/hub", response_model=schemas.HubResponse, responses=ERRORS)
     def hub() -> schemas.HubResponse:
         return reader.hub()

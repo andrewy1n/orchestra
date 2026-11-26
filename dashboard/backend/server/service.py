@@ -9,7 +9,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from typing import TypeVar
 
-from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, store
+from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, product, store
 from dashboard.backend.gates import landing_facts
 from dashboard.backend.phase import (
     PhaseRow,
@@ -35,6 +35,7 @@ from orchestra.conductor.verification.requirements import is_verified
 
 CachedResponse = (
     schemas.AreasResponse
+    | schemas.ProductResponse
     | schemas.PhaseResponse
     | schemas.TaskResponse
     | schemas.JournalResponse
@@ -254,6 +255,16 @@ class Reader:
                     ]
                 ),
                 schemas.AreasResponse,
+            )
+
+    def product(self) -> schemas.ProductResponse:
+        with self.cache.request():
+            return self.cache.remember(
+                ("product",),
+                lambda: schemas.ProductResponse.model_validate(
+                    product.load_product(self.read_target), from_attributes=True
+                ),
+                schemas.ProductResponse,
             )
 
     def hub(self) -> schemas.HubResponse:

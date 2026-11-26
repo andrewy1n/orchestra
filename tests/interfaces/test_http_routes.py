@@ -237,6 +237,7 @@ CASES: dict[str, tuple[str, Callable[[Seed], dict[str, str]]]] = {
     "token": ("/api/token", lambda _l: {}),
     "snapshot": ("/api/snapshot", lambda _l: {}),
     "areas": ("/api/areas", lambda _l: {}),
+    "product": ("/api/product", lambda _l: {}),
     "hub": ("/api/hub", lambda _l: {}),
     "phase": ("/api/phase", lambda _l: {"effort": "alpha", "phase": "p-one"}),
     "task": ("/api/task", lambda labels: {"id": _id_of(labels, "score:work-item:t-one")}),

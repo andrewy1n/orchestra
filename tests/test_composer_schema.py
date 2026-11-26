@@ -157,7 +157,7 @@ def test_module_version(tmp_path: Path):
     _, _, initialized = _init_store_with_composer(tmp_path)
     schemas = initialized.get("schemas")
     assert isinstance(schemas, dict)
-    assert schemas.get("composer") == "1.1.0"
+    assert schemas.get("composer") == "1.2.0"
 
 
 def test_area_scope(tmp_path: Path):

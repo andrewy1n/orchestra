@@ -321,6 +321,14 @@
 		},
 		"status": 200
 	},
+	"product": {
+		"body": {
+			"capabilities": [],
+			"goals": [],
+			"statement": null
+		},
+		"status": 200
+	},
 	"record": {
 		"body": {
 			"record": {
