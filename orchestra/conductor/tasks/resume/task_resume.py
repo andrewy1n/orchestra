@@ -30,7 +30,7 @@ class ResumeReport:
 
 
 def holders(worktree: Path) -> list[str]:
-    return Lsof(worktree).holders(worktree)
+    return Lsof(worktree.parent).holders(worktree)
 
 
 def _work_item(project: Project, task: str) -> Record:

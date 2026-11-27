@@ -30,7 +30,9 @@ class Lsof(CliTool):
             raise ToolTimeoutError(
                 f"{argv[0]} timed out after {self._timeout}s", argv, None, ""
             ) from error
-        if result.returncode == 1 and not result.stdout and not result.stderr.strip():
+        if result.returncode == 1 and result.stdout:
+            return _parse(result.stdout)
+        if result.returncode == 1 and not result.stderr.strip():
             return []
         if result.returncode != 0:
             raise ToolError(
