@@ -30,6 +30,8 @@ def place(project: Project, effort: str, area: str) -> Record:
             return project.create(record_type=PLACEMENT, subject=effort, payload=payload)
         if current.get("lifecycle_state") != "active":
             return project.create(record_type=PLACEMENT, subject=effort, payload=payload)
+        if current["payload"].get("area") == area:
+            return current
         return project.supersede(current["id"], payload=payload)["record"]
     except (StoreError, ValidationError) as exc:
         raise PlacementError(str(exc)) from exc

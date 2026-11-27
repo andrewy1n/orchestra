@@ -119,6 +119,16 @@ def test_place_moves_existing_placement(store, cli):
     assert [record["payload"]["area"] for record in superseded] == ["billing"]
 
 
+def test_place_same_area_again_keeps_the_active_placement(store, cli):
+    _create_effort(cli, "alpha")
+    _create_area(cli, "billing")
+    _placed(store, "alpha", "billing")
+    first = _placements(cli, "alpha")
+    _placed(store, "alpha", "billing")
+    assert _placements(cli, "alpha") == first
+    assert _placements(cli, "alpha", state="superseded") == []
+
+
 def test_place_leaves_one_active_after_move(store, cli):
     _create_effort(cli, "alpha")
     _create_area(cli, "billing")

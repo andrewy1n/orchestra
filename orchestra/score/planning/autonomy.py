@@ -89,6 +89,8 @@ def set_autonomy(project: Project, effort: str, level: str) -> Record:
     if level not in LEVELS:
         raise AutonomyError(f"autonomy must be one of {', '.join(LEVELS)}")
     goal = _effort(project, effort)
+    if goal.autonomy == level:
+        return goal.record
     return project.supersede(goal.id, record_type="score:effort", payload={"autonomy": level})[
         "record"
     ]
