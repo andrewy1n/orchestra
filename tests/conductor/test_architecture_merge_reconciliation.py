@@ -9,7 +9,6 @@ from interfaces.interfaces_support import invoke
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonValue, Record
-from orchestra.composer.architecture import current_architecture
 from orchestra.conductor.cli import close as close_cli
 from orchestra.tools import Git
 
@@ -127,9 +126,10 @@ def test_applies_both_changes_after_merge_and_retry_is_idempotent(change: Change
     change.pull_request.state = "MERGED"
     result = invoke("orchestra", ["close", "--phase", "stripe"], root)
     assert result.code == 0, result.err
-    model = current_architecture(project.records())
-    assert model.areas["payments"][0].decisions[0].rationale == "Adopt Stripe."
-    updated = model.constraints["imports"]
+    architecture = invoke("orchestra", ["view", "architecture", "--component", "gateway"], root)
+    assert architecture.code == 0, architecture.err
+    assert "Adopt Stripe." in architecture.out
+    updated = project.resolve("score:standing-constraint", "imports")
     assert updated["payload"]["rule"] == "Allow the Stripe adapter."
     assert project.get(change.baseline["id"])["payload"]["rule"] == "Use the current adapter."
     result = invoke("orchestra", ["close", "--phase", "stripe"], root)
@@ -183,9 +183,11 @@ def test_retired_constraint_is_removed_from_current_model_but_the_pin_resolves(
     change.pull_request.state = "MERGED"
     result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
     assert result.code == 0, result.err
-    model = current_architecture(project.records())
-    assert model.constraints == {}
-    assert model.areas["payments"][0].constraints == ()
+    architecture = invoke(
+        "orchestra", ["view", "architecture", "--component", "gateway"], project.project_root
+    )
+    assert architecture.code == 0, architecture.err
+    assert "constraint **imports**" not in architecture.out
     assert project.get(change.baseline["id"])["payload"]["rule"] == "Use the current adapter."
 
 

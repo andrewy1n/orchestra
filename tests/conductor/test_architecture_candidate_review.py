@@ -6,6 +6,7 @@ import pytest
 from canon_support import make_project, seed_effort
 from interfaces.interfaces_support import invoke
 
+from orchestra.canon.project import open_store
 from orchestra.canon.types import Record
 from orchestra.tools import Git
 
@@ -94,3 +95,24 @@ def test_candidate_evidence_matches_rule_and_commit(
     git = Git(root)
     git.text("commit", "--allow-empty", "-qm", "Different candidate")
     assert "stripe-imports: unverified" in _review(root, base, git.head())
+
+
+def test_candidate_evidence_refuses_changes_during_the_check(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, base, head, rule = candidate
+    project = open_store(root)
+    updated_rule = project.correct(rule["id"], payload={"check": "touch check-output.txt"})[
+        "record"
+    ]
+    proposal = project.resolve("composer:architecture-proposal", "stripe")
+    project.supersede(proposal["id"], payload={"constraints": [updated_rule["id"]]})
+    check = invoke(
+        "orchestra",
+        ["check", "--proposed-constraint", updated_rule["id"], "--phase", "stripe"],
+        root,
+    )
+    assert check.code == 3
+    assert "changed during the proposed constraint check" in check.err
+    assert project.list("tuner:check-run") == []
+    assert "stripe-imports: unverified" in _review(root, base, head)

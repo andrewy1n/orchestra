@@ -24,6 +24,7 @@ from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
     pinned_constraint_ids,
 )
+from orchestra.score.planning.phase import current_phase_model
 from orchestra.score.planning.standing_constraint import (
     RECORD_TYPE as STANDING_CONSTRAINT,
 )
@@ -294,23 +295,20 @@ def run_proposed_constraint_check(
     records = project.records()
     try:
         pinned = reader(records, phase, change_id)
-        phase_record = project.resolve("score:phase", phase)
+        phase_model = current_phase_model(phase, records)
     except StoreError as exc:
         return CheckOutcome(4, "", str(exc))
-    if pinned is None:
+    if pinned is None or phase_model is None:
         return CheckOutcome(4, "", f"No checkable proposed constraint {change_id!r} for {phase!r}.")
-    if git_is_dirty(cwd):
-        return CheckOutcome(
-            3, "", "A proposed constraint check requires a clean candidate worktree."
-        )
     return _run_constraint(
         pinned,
         pinned["subject"],
-        str(phase_record["payload"]["effort"]),
+        phase_model.effort,
         cwd,
         project,
         False,
         timeout,
+        require_clean_revision=True,
     )
 
 
@@ -322,6 +320,8 @@ def _run_constraint(
     project: Project,
     allow_dirty: bool,
     timeout: float,
+    *,
+    require_clean_revision: bool = False,
 ) -> CheckOutcome:
     try:
         constraint = read_standing_constraint(pinned)
@@ -341,6 +341,7 @@ def _run_constraint(
         informed_by=[],
         extra={},
         reuse=lambda _revision, _result: None,
+        require_clean_revision=require_clean_revision,
     )
 
 
@@ -359,10 +360,15 @@ def _execute(
     informed_by: list[str],
     extra: JsonObject,
     reuse: Callable[[str, str], Record | None],
+    require_clean_revision: bool = False,
 ) -> CheckOutcome:
     try:
         head = Git(work).head()
         dirty = git_is_dirty(work)
+        if require_clean_revision and dirty:
+            return CheckOutcome(
+                3, "", "A proposed constraint check requires a clean candidate worktree."
+            )
         diff_digest = git_diff_sha256(work) if dirty else None
     except RuntimeError as exc:
         return CheckOutcome(exit_code=4, stdout="", message=str(exc))
@@ -372,6 +378,15 @@ def _execute(
         cwd=work,
         timeout=timeout,
     )
+    if require_clean_revision:
+        try:
+            changed = Git(work).head() != head or git_is_dirty(work)
+        except RuntimeError as exc:
+            return CheckOutcome(4, "", str(exc))
+        if changed:
+            return CheckOutcome(
+                3, "", "The candidate worktree changed during the proposed constraint check."
+            )
     # shell=True: a missing binary often yields exit 127 rather than FileNotFoundError
     if exit_code == 127:
         missing = True

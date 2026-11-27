@@ -108,6 +108,8 @@ def test_composer_flat_holds_only_its_modules():
     assert entries == {
         "__init__",
         "architecture",
+        "architecture_proposal",
+        "architecture_reconciliation",
         "cli",
         "idea",
         "idea_facts",

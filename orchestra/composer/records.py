@@ -78,6 +78,7 @@ class Component:
     area: str
     responsibility: str
     record: Record
+    module_prefixes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -196,6 +197,7 @@ def read_component(record: Record) -> Component:
         area=required_text(record, payload, "area"),
         responsibility=_required_section(record, "Responsibility"),
         record=record,
+        module_prefixes=optional_text_list(record, payload, "module_prefixes"),
     )
 
 

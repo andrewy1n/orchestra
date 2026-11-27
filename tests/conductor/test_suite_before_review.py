@@ -58,6 +58,9 @@ def run_brief(
     runs: Sequence[Record],
 ) -> tuple[int, str, str]:
     class _Project:
+        def records(self) -> list[Record]:
+            return list(runs)
+
         def list(self, record_type: str) -> list[Record]:
             return list(runs) if record_type == "tuner:check-run" else []
 

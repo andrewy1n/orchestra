@@ -113,6 +113,15 @@ def standing_constraint_status(
     return outcomes
 
 
+def proposed_constraint_outcome(
+    index: EvidenceIndex, rule_id: str, rule_revision: str, revision: str
+) -> Outcome:
+    answer = head_evidence.versioned_criterion_runner_at_head(
+        index, criterion_id(rule_id), revision, rule_revision
+    )
+    return UNVERIFIED if answer.run is None else _run_outcome(answer.holds, answer.run)
+
+
 def constraint_outcomes(
     records: Sequence[Record], constraint_ids: Sequence[str], revision: str
 ) -> list[ConstraintResult]:

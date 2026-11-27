@@ -5,15 +5,11 @@ from collections.abc import Iterator, Sequence
 from importlib.util import resolve_name
 from pathlib import Path, PurePosixPath
 
-from orchestra.canon.fields import optional_text_list
 from orchestra.canon.types import Record
-from orchestra.composer.architecture_proposal import ConstraintChange, proposal_for_phase
-from orchestra.composer.records import COMPONENT
-from orchestra.conductor.verification.evidence.head_evidence import (
-    EvidenceIndex,
-    criterion_runner_at_head,
-)
-from orchestra.conductor.verification.standing_constraints import criterion_id
+from orchestra.composer.architecture_proposal import proposal_for_phase
+from orchestra.composer.records import COMPONENT, read_component
+from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
+from orchestra.conductor.verification.standing_constraints import proposed_constraint_outcome
 from orchestra.tools import Git
 
 Edge = tuple[str, str]
@@ -38,7 +34,8 @@ def _prefixes(records: Sequence[Record]) -> dict[str, str]:
     for record in records:
         if record["record_type"] != COMPONENT or record["lifecycle_state"] != "active":
             continue
-        for prefix in optional_text_list(record, record["payload"], "module_prefixes"):
+        component = read_component(record)
+        for prefix in component.module_prefixes:
             if prefix in prefixes and prefixes[prefix] != record["subject"]:
                 raise ValueError(f"Multiple components declare module prefix {prefix!r}.")
             prefixes[prefix] = record["subject"]
@@ -96,7 +93,7 @@ def _edges(git: Git, revision: str, prefixes: dict[str, str]) -> set[Edge]:
             continue
         for target in _imports(tree, package):
             owner = _component(target, prefixes)
-            if source != owner:
+            if source != owner or source is None:
                 edges.add(
                     (
                         source or f"unresolved module {module}",
@@ -104,25 +101,6 @@ def _edges(git: Git, revision: str, prefixes: dict[str, str]) -> set[Edge]:
                     )
                 )
     return edges
-
-
-def _evidence(records: Sequence[Record], change: ConstraintChange, head: str) -> str:
-    relevant = [
-        record
-        for record in records
-        if record["record_type"] == "tuner:check-run"
-        and record["payload"].get("revision") == head
-        and isinstance(provenance := record.get("provenance"), dict)
-        and provenance.get("acceptance_revision") == change.record["revision"]
-    ]
-    answer = criterion_runner_at_head(
-        EvidenceIndex(relevant), criterion_id(change.record["id"]), head
-    )
-    if answer.run is None:
-        return "unverified"
-    return {"pass": "verified", "fail": "violated"}.get(
-        str(answer.run["payload"]["result"]), "inconclusive"
-    )
 
 
 def architecture_review(
@@ -146,23 +124,25 @@ def architecture_review(
         f"ADR {proposal.adr} affects {', '.join(proposal.affects)}.",
         proposal.rationale,
     ]
+    evidence = EvidenceIndex(project_records)
     for change in proposal.constraints:
         lines.append(
             f"- {change.operation.capitalize()} constraint {change.subject} ({change.record['id']})"
         )
         if change.operation != "retire":
-            status = _evidence(project_records, change, candidate)
+            status = proposed_constraint_outcome(
+                evidence, change.record["id"], change.record["revision"], candidate
+            )
             lines.append(f"  - {change.subject}: {status}. {change.payload['rule']}")
         lines.append(f"  - {change.basis}")
     lines.extend(("", "## Observed component dependency changes", ""))
     prefixes = _prefixes(project_records)
-    if prefixes:
-        before = _edges(git, baseline, prefixes)
-        after = _edges(git, candidate, prefixes)
-        lines.extend(f"- Added: {a} → {b}" for a, b in sorted(after - before))
-        lines.extend(f"- Removed: {a} → {b}" for a, b in sorted(before - after))
-        if before == after:
-            lines.append("No dependency changes observed.")
-    else:
+    if not prefixes:
         lines.append("No component module mappings declared.")
+    before = _edges(git, baseline, prefixes)
+    after = _edges(git, candidate, prefixes)
+    lines.extend(f"- Added: {a} → {b}" for a, b in sorted(after - before))
+    lines.extend(f"- Removed: {a} → {b}" for a, b in sorted(before - after))
+    if before == after:
+        lines.append("No dependency changes observed.")
     return "\n".join(lines) + "\n"
