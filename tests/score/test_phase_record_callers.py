@@ -62,7 +62,7 @@ def test_r13_phase_requirements_read_current_phase(project: Project) -> None:
 
 def test_r13_all_superseded_phase_not_found(project: Project) -> None:
     phase = _phase(project, weight="light", body=LIGHT_BODY)
-    supersede_all(project, phase, payload=_payload(weight="light"))
+    supersede_all(project, phase, payload=_payload(weight="light", title="Feature again"))
     records = project.records()
 
     assert phase_weight(records, PHASE) == "full"
@@ -76,7 +76,9 @@ def test_r13_all_superseded_phase_not_found(project: Project) -> None:
 
 def test_r13_selection_reads_current_phase(project: Project) -> None:
     phase = _phase(project, weight="full", body=FULL_BODY)
-    current, _ = supersede_late(project, phase, payload=_payload(weight="full"))
+    current, _ = supersede_late(
+        project, phase, payload=_payload(weight="full", title="Feature again")
+    )
 
     selection = resolve_phase_selection(project.records(), EFFORT, PHASE)
 

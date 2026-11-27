@@ -54,7 +54,7 @@ def test_empty_string_and_empty_list_are_not_checked(project):
 
 def test_reference_to_a_superseded_subject_resolves_to_its_successor(project):
     task = make_task(project, "t")
-    project.supersede(task["id"])
+    project.supersede(task["id"], payload={"owner": "ann"})
     assert log(project)
 
 
