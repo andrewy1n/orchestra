@@ -245,7 +245,15 @@ def test_expected_revision(ready):
         "update", "--id", task["id"], "--set", 'owner="bob"', "--expected-revision", "@current"
     )
     assert current["record"]["payload"]["owner"] == "bob"
-    outdated = ready("supersede", "--id", task["id"], "--expected-revision", task["revision"])
+    outdated = ready(
+        "supersede",
+        "--id",
+        task["id"],
+        "--set",
+        'owner="ann"',
+        "--expected-revision",
+        task["revision"],
+    )
     assert outdated.code == 2
     assert ready.ok("get", "--id", task["id"])["lifecycle_state"] == "planned"
 
@@ -257,7 +265,8 @@ def test_every_write_command_reports_the_store_it_wrote_to(ready, project):
     assert (
         ready.ok("update", "--id", task["record"]["id"], "--set", 'owner="ann"')["store"] == store
     )
-    assert ready.ok("supersede", "--type", "task", "--subject", "t")["store"] == store
+    superseded = ready.ok("supersede", "--type", "task", "--subject", "t", "--set", 'owner="bob"')
+    assert superseded["store"] == store
     log = ready.ok(
         "create", "--type", "log", "--subject", "t", "--payload", '{"task": "t", "message": "m"}'
     )
@@ -359,7 +368,7 @@ def test_apply_update_supersede_correct_by_id(ready, project):
                 "expected_revision": "@current",
             },
             {"op": "correct", "id": log["id"], "payload": {"message": "n"}},
-            {"op": "supersede", "id": task["id"]},
+            {"op": "supersede", "id": task["id"], "payload": {"owner": "bob"}},
         ]
     )
     out = ready("apply", "--file", "-", stdin=ndjson).json

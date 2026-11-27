@@ -18,7 +18,7 @@ from orchestra.canon.errors import (
     StoreNotInitializedError,
 )
 from orchestra.canon.index import SUPERSEDED, RecordIndex
-from orchestra.canon.record import base_record, now
+from orchestra.canon.record import base_record, normalize_body, now
 from orchestra.canon.schema import SchemaError, SchemaSet, TypeDef
 from orchestra.canon.types import (
     DerivedValues,
@@ -617,6 +617,12 @@ def _supersede_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Mut
         provenance=old.get("provenance"),
         recorded_at=stamp,
     )
+    unchanged_body = normalize_body(successor["body"]) == normalize_body(old.get("body") or "")
+    if successor["payload"] == (old.get("payload") or {}) and unchanged_body:
+        raise ValidationError(
+            f"supersede of {old['id']} ({old['subject']}) changes nothing; "
+            "the payload and body equal the active revision"
+        )
     index = RecordIndex(store.iter_records())
     _require_one_active(type_def, index, successor, ignore=old["id"])
     validate_record(schemas, successor, index)
