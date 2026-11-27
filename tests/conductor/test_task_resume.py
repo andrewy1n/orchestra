@@ -87,6 +87,7 @@ def _pass_at(project: Project, acceptance_id: str, revision: str) -> None:
             "method": "check",
             "effort": EFFORT,
             "revision": revision,
+            "runner": "orchestra",
             "signed_by": "",
         },
     )

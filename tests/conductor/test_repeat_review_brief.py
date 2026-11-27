@@ -47,6 +47,7 @@ def review_run(revision: str, result: str = "fail", criterion: str = f"{PHASE}-r
             "revision": revision,
             "result": result,
             "method": "review",
+            "signed_by": "",
             "evidence_kind": "review",
         },
         body=FINDING_TEXT,

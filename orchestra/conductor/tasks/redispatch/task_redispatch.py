@@ -7,11 +7,17 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.tasks.execution_cost import new_dispatch_markers
 from orchestra.conductor.tasks.redispatch.failure_key import failure_key
-from orchestra.score.lookups import live_work_items, record_order
+from orchestra.score.facts.work_item_facts import failure_attempts
+from orchestra.score.lookups import current_phase, live_work_items, record_order
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     blocked_tasks,
     phase_blockers,
+)
+from orchestra.tuner.evidence.record_facts import (
+    RecordShapeError,
+    check_run_facts,
+    check_run_failing_nodes,
 )
 
 DEFAULT_MAX_REDISPATCHES = 2
@@ -24,34 +30,26 @@ class RedispatchError(ValueError):
 
 
 def _max_redispatches(records: list[Record], phase: object) -> int:
-    for record in records:
-        if (
-            record["record_type"] == "score:phase"
-            and record["subject"] == phase
-            and record["lifecycle_state"] != "superseded"
-        ):
-            facts = _RUN_FACTS.search(record.get("body") or "")
-            found = _BUDGET_LINE.search(facts.group(1)) if facts else None
-            if found:
-                return int(found.group(1))
-    return DEFAULT_MAX_REDISPATCHES
+    record = current_phase(phase, records) if isinstance(phase, str) else None
+    facts = _RUN_FACTS.search(record.get("body") or "") if record else None
+    found = _BUDGET_LINE.search(facts.group(1)) if facts else None
+    return int(found.group(1)) if found else DEFAULT_MAX_REDISPATCHES
 
 
 def latest_failure_key(records: list[Record], task: str) -> str | None:
-    failing = [
-        record
-        for record in records
-        if record["record_type"] == "tuner:check-run"
-        and record["subject"] == task
-        and record_payload(record).get("result") == "fail"
-    ]
+    failing: list[Record] = []
+    for record in records:
+        if record["record_type"] != "tuner:check-run" or record["subject"] != task:
+            continue
+        try:
+            if check_run_facts(record).result == "fail":
+                failing.append(record)
+        except RecordShapeError as exc:
+            raise RedispatchError(str(exc)) from exc
     if not failing:
         return None
-    payload = record_payload(max(failing, key=record_order))
-    criterion = payload.get("criterion_id")
-    nodes = payload.get("failing_node_ids")
-    node_ids = [n for n in nodes if isinstance(n, str)] if isinstance(nodes, list) else []
-    return failure_key(criterion if isinstance(criterion, str) else "", node_ids)
+    latest = max(failing, key=record_order)
+    return failure_key(check_run_facts(latest).criterion_id, list(check_run_failing_nodes(latest)))
 
 
 def redispatch(project: Project, task: str, *, expected_revision: str) -> Record:
@@ -83,15 +81,14 @@ def redispatch(project: Project, task: str, *, expected_revision: str) -> Record
     updates: JsonObject = {"attempts": attempts + 1}
     key = latest_failure_key(records, task)
     if key is not None:
-        counts = payload.get("failure_attempts")
-        failure_attempts: JsonObject = dict(counts) if isinstance(counts, dict) else {}
-        used = failure_attempts.get(key, 0)
+        counts = failure_attempts(item)
+        used = counts.get(key, 0)
         if not isinstance(used, int) or isinstance(used, bool) or used < 0:
             raise RedispatchError(f"task {task!r} has invalid failure_attempts")
         if used >= _max_redispatches(records, phase):
             raise RedispatchError(f"task {task!r} used its re-dispatch budget for failure {key}")
-        failure_attempts[key] = used + 1
-        updates["failure_attempts"] = failure_attempts
+        counts[key] = used + 1
+        updates["failure_attempts"] = counts
     markers = new_dispatch_markers()
     updates["dispatch_id"] = markers.dispatch_id
     updates["dispatch_started_at"] = markers.dispatch_started_at

@@ -57,6 +57,13 @@ def check_run_facts(record: Record) -> CheckRunFacts:
     )
 
 
+def check_run_failing_nodes(record: Record) -> tuple[str, ...]:
+    value = record_payload(record).get("failing_node_ids")
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
+
+
 def finding_facts(record: Record) -> FindingFacts:
     return FindingFacts(claim=required_text(record, "claim"), needs=required_text(record, "needs"))
 

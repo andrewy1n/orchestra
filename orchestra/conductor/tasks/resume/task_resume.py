@@ -7,7 +7,10 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.conductor.landing.landing import phase_place
+from orchestra.conductor.verification.evidence import head_evidence
 from orchestra.score.lookups import record_order
+from orchestra.score.planning.phase import current_phase_model
 from orchestra.tools import Git
 from orchestra.tools.errors import ToolError
 from orchestra.tools.lsof import Lsof
@@ -53,19 +56,13 @@ def _text(record: Record, key: str) -> str:
 
 
 def _pending(project: Project, task: str, head: str) -> tuple[str, ...]:
-    passed = {
-        _text(run, "criterion_id")
-        for run in project.list("tuner:check-run")
-        if run["subject"] == task
-        and _text(run, "result") == "pass"
-        and _text(run, "revision") == head
-    }
+    index = head_evidence.EvidenceIndex(project.records())
     return tuple(
         acceptance["id"]
         for acceptance in project.list("score:acceptance")
         if _belongs(acceptance, task)
         and acceptance["lifecycle_state"] == "active"
-        and acceptance["id"] not in passed
+        and not head_evidence.acceptance_runner_at_head(index, acceptance, head).holds
     )
 
 
@@ -101,9 +98,11 @@ def resume(project: Project, task: str, *, list_processes: ProcessLister = holde
     try:
         dirty = bool(git.status_porcelain().strip())
         head = git.head()
-        phase = _text(item, "phase")
-        base = f"phase/{phase}"
-        ahead = int(git.text("rev-list", "--count", f"{base}..HEAD")) if phase else 0
+        phase = current_phase_model(_text(item, "phase"), project.records())
+        ahead = 0
+        if phase is not None:
+            base = phase_place(phase, git.primary_checkout()).branch
+            ahead = int(git.text("rev-list", "--count", f"{base}..HEAD"))
     except (ToolError, ValueError) as error:
         raise ResumeError(f"cannot read the worktree {worktree}: {error}") from error
     pending = _pending(project, task, head)

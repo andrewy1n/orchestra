@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.tuner.evidence.record_facts import RecordShapeError, check_run_facts
 
 LANDING_PREFIX = "orchestra/conductor/landing/"
 SKIPPED_DIRS = frozenset({".git", ".worktrees", ".venv", "venv", "node_modules", "__pycache__"})
@@ -18,12 +19,12 @@ def prior_failed_review(project: Project, phase: str) -> Record | None:
     criterion = f"{phase}-review"
     latest: Record | None = None
     for row in project.list("tuner:check-run"):
-        payload = record_payload(row)
-        if payload.get("criterion_id") != criterion:
+        try:
+            facts = check_run_facts(row)
+        except RecordShapeError:
             continue
-        if payload.get("result") != "fail" or not payload.get("revision"):
-            continue
-        latest = row
+        if facts.criterion_id == criterion and facts.result == "fail" and facts.revision:
+            latest = row
     return latest
 
 
