@@ -17,6 +17,7 @@ PATHS = {
 
 ALLOWED = {
     "current": {"active": {"superseded"}},
+    "retirable": {"active": {"retired", "superseded"}, "retired": set(), "superseded": set()},
     "staged": {
         "planned": {"in_progress", "withdrawn", "superseded"},
         "in_progress": {"done", "withdrawn", "superseded"},
@@ -42,6 +43,7 @@ ALLOWED = {
 
 INITIAL = {
     "current": "active",
+    "retirable": "active",
     "staged": "planned",
     "event": "recorded",
     "question": "open",

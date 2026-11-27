@@ -1,4 +1,4 @@
-"""The five built-in lifecycles."""
+"""The built-in lifecycles."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ class Lifecycle:
 
 LIFECYCLES: dict[str, Lifecycle] = {
     "current": Lifecycle("current", "active", {"active": ("superseded",)}),
+    "retirable": Lifecycle("retirable", "active", {"active": ("retired", "superseded")}),
     "staged": Lifecycle(
         "staged",
         "planned",
