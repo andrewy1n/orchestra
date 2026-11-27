@@ -66,10 +66,12 @@ for the focus, use `init` first (`engage` if kind/focus unset).
   an integration check through the real entry point (not whole-tree
   pilot tests). `evaluate` only with a binary gate; incidental never.
 - Every work-item has `## Approach`, `size` (`XS`|`S`|`M`|`L`|`XL`),
-  and `estimate_minutes` (agent wall-clock, not padded): XS 2–5, S 5–10,
-  M 8–15, L 15–25, XL 25–40. Dispatch derives the executor from wave
+  and `estimate_minutes` (agent wall-clock, not padded): XS 1–2, S 2–5,
+  M 5–10, L 10–20, XL 20–40. Dispatch derives the executor from wave
   size, estimates, and project settings. A written `executor` is an
   optional `inline` or `subagent` override.
+  Recent measured minutes per size:
+{measured_sizes}
   Phase body records session shape (`one sitting` | `more than one`),
   human stops, collision notes, `## Proof`, and `## Landing` (branch
   `phase/{phase}`, worktree `<repo>/.worktrees/{phase}`,

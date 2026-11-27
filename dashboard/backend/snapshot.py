@@ -36,7 +36,7 @@ from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import change_token
 from dashboard.backend.task import (
     TaskRow,
-    configured_small_wave_budget,
+    configured_executor_settings,
     task_rows,
 )
 from orchestra.canon.project import Project
@@ -506,7 +506,7 @@ def _load_snapshot(
 ) -> Snapshot:
     progress = load_phase_progress(target, token)
     listed = _list_all(target, _SNAPSHOT_TYPES, token)
-    small_wave_budget_minutes = configured_small_wave_budget(target, listed[WORK_ITEM_TYPE])
+    settings = configured_executor_settings(target)
     goals = [
         effort.record
         for effort in current_efforts(listed[EFFORT]).values()
@@ -587,7 +587,7 @@ def _load_snapshot(
             effort_acceptances,
             effort_checks,
             evidence_by_phase,
-            small_wave_budget_minutes=small_wave_budget_minutes,
+            settings=settings,
         )
         check_stamps = _max_check_stamp_by_phase(effort_tasks, effort_checks)
         phase_rows = [
@@ -628,7 +628,7 @@ def _load_snapshot(
                     listed[EXECUTION_REPORT_TYPE],
                     effort_checks,
                     phases.get(effort, []),
-                    small_wave_budget_minutes=small_wave_budget_minutes,
+                    settings=settings,
                 ),
                 needs_you=_needs_you(every_record, effort, effort_tasks, landing),
                 activity=activity.get(effort, []),
@@ -680,7 +680,7 @@ def load_work_snapshot(
         type_records = listed.get(record["record_type"])
         if type_records is not None:
             type_records.append(record)
-    small_wave_budget_minutes = configured_small_wave_budget(target, listed[WORK_ITEM_TYPE])
+    settings = configured_executor_settings(target)
     grouped = {record_type: records_by_effort(rows) for record_type, rows in listed.items()}
     structured = structured_phases(listed[SPECIFICATION], listed[PHASE_TYPE])
     goals = [
@@ -772,7 +772,7 @@ def load_work_snapshot(
                 phases=rows,
                 tasks=task_rows(
                     active_tasks,
-                    small_wave_budget_minutes=small_wave_budget_minutes,
+                    settings=settings,
                 ),
                 needs_you=_needs_you(every_record, effort, tasks, {}),
                 backlog=_backlog_items(grouped[IDEA].get(effort, [])),

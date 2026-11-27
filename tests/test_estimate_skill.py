@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from helpers import skill_text
 from skill_extraction import extract_invocations
-
-SIZES = {"XS", "S", "M", "L", "XL"}
 
 
 def _text() -> str:
@@ -26,24 +25,47 @@ def _work_item_payloads(text: str) -> list[dict]:
     ]
 
 
-def test_write_size_and_estimate_minutes_on_every_work_item():
-    raw = _text()
-    text = _flat(raw)
-    payloads = _work_item_payloads(raw)
-    assert payloads
-    for payload in payloads:
-        assert payload["size"] in SIZES
-        minutes = payload["estimate_minutes"]
-        assert type(minutes) is int
-        assert 0 <= minutes < 25
+def test_templates_leave_size_and_estimate_blank():
+    sections = Path(__file__).resolve().parents[1] / "orchestra/conductor/briefs/sections"
+    filled = [
+        path.name
+        for path in sorted(sections.glob("*.md"))
+        if re.search(
+            r'"size":"(XS|S|M|L|XL)"|"estimate_minutes":\s*"?\d',
+            path.read_text(encoding="utf-8"),
+        )
+    ]
+
+    assert filled == []
+    assert '"size":"<size>","estimate_minutes":<minutes>' in (
+        sections / "task-shapes.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_every_work_item_records_size_and_estimate_minutes():
+    text = _flat(_text())
     assert "Every new work-item includes `size` and `estimate_minutes`." in text
     assert (
         "`size` (`XS`|`S`|`M`|`L`|`XL`) and `estimate_minutes` (agent wall-clock, not padded)"
         in text
     )
-    assert "Guidance: XS 2–5, S 5–10, M 8–15, L 15–25, XL 25–40." in text
+
+
+def test_brief_bands_match_size_bands():
+    assert "Guidance: XS 1–2, S 2–5, M 5–10, L 10–20, XL 20–40." in _flat(_text())
 
 
 def test_sitting_shape_stays_on_the_phase_body():
     text = _flat(_text())
     assert "Phase body records session shape (`one sitting` | `more than one`)" in text
+
+
+def test_template_estimate_placeholder_is_not_a_quoted_string():
+    sections = Path(__file__).resolve().parents[1] / "orchestra/conductor/briefs/sections"
+    quoted = [
+        path.name
+        for path in sorted(sections.glob("*.md"))
+        if '"estimate_minutes":"<minutes>"' in path.read_text(encoding="utf-8")
+    ]
+
+    assert quoted == []

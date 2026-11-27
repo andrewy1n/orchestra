@@ -10,7 +10,11 @@ from pathlib import Path
 
 from orchestra.canon.field_values import field_value, integer_field, named_fields
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import load_project_config
+from orchestra.canon.project_config import (
+    DEFAULT_EXECUTOR_SETTINGS,
+    ExecutorSettings,
+    executor_settings_at,
+)
 from orchestra.canon.sections import body_sections
 from orchestra.canon.types import JsonValue, Record
 from orchestra.composer.idea_facts import (
@@ -62,10 +66,7 @@ from orchestra.score.facts.work_item_facts import (
 )
 from orchestra.score.facts.workspace_facts import DESIGN_TYPE
 from orchestra.score.lookups import current_phases
-from orchestra.score.planning.executor import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
-    task_executor,
-)
+from orchestra.score.planning.executor import task_executor
 from orchestra.score.planning.phase import current_phase_model
 from orchestra.score.planning.requirements import phase_requirements, requirement_lines
 from orchestra.score.workflow.workflow_blockers import QUESTION_TYPE, human_gates
@@ -384,7 +385,7 @@ def _group_sort_key(
 def _executor_bits(
     record: Record,
     records: list[Record],
-    small_wave_budget_minutes: int,
+    settings: ExecutorSettings,
 ) -> list[str]:
     phase = record_scope(record).phase
     wave = _derived_value(record, "wave")
@@ -409,7 +410,8 @@ def _executor_bits(
     mode = task_executor(
         task,
         [executor_task(candidate) for candidate in members] or [task],
-        small_wave_budget_minutes=small_wave_budget_minutes,
+        small_wave_budget_minutes=settings.small_wave_budget_minutes,
+        lone_task_inline_minutes=settings.lone_task_inline_minutes,
     )
     planned = (
         record.get("lifecycle_state") == "planned"
@@ -423,7 +425,7 @@ def _executor_bits(
 def _assignment_bits(
     record: Record,
     records: list[Record],
-    small_wave_budget_minutes: int,
+    settings: ExecutorSettings,
     show_executor: bool,
 ) -> list[str]:
     if record["record_type"] != WORK_ITEM_TYPE:
@@ -435,7 +437,7 @@ def _assignment_bits(
     if assignment is not None and assignment.write_root:
         bits.append(f"write root: {assignment.write_root}")
     if show_executor:
-        bits.extend(_executor_bits(record, records, small_wave_budget_minutes))
+        bits.extend(_executor_bits(record, records, settings))
     return bits
 
 
@@ -523,7 +525,7 @@ def _status_bits(
     view: View,
     tally: list[Record],
     records: list[Record],
-    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
 ) -> list[str]:
     bits: list[str] = []
     if view.show_lifecycle_state:
@@ -537,7 +539,7 @@ def _status_bits(
             _assignment_bits(
                 record,
                 records,
-                small_wave_budget_minutes,
+                settings,
                 show_executor=view.name == "plan",
             )
         )
@@ -619,7 +621,7 @@ def group_lines(
     *,
     link: bool = True,
     effort: str | None = None,
-    budget: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
     requirement_index: RequirementIndex | None = None,
     progress: Mapping[str, PhaseProgress] | None = None,
     status: str | None = None,
@@ -638,7 +640,7 @@ def group_lines(
             continue
         lines.append(f"### {_title(role.name)}")
         for record in items:
-            bits = _status_bits(record, view, tally, records, budget)
+            bits = _status_bits(record, view, tally, records, settings)
             if role.name == "pending-phase-close":
                 stage_text = _stage_text(progress.get(record["subject"]))
                 if stage_text:
@@ -724,9 +726,9 @@ def render_view(
     root: Path | None = None,
     head_of: HeadOf | None = None,
 ) -> str:
-    budget = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    settings = DEFAULT_EXECUTOR_SETTINGS
     if view.name == "plan":
-        budget = load_project_config(root or Path.cwd()).small_wave_budget_minutes
+        settings = executor_settings_at(root or Path.cwd())
     requirement_index = (
         RequirementIndex(_effort_pool(records, effort))
         if view.show_phase_derived or view.phase_derived_section
@@ -759,7 +761,7 @@ def render_view(
             tally,
             records,
             effort=effort,
-            budget=budget,
+            settings=settings,
             requirement_index=requirement_index,
             progress=progress,
             status=labels.get(name),

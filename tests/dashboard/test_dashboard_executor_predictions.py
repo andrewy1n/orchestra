@@ -9,7 +9,6 @@ from canon_support import create, make_project, seed_effort
 
 from dashboard.backend.snapshot import load_snapshot
 from orchestra.canon.project import Project
-from orchestra.canon.project_config import ProjectConfigError
 from orchestra.views import render as views
 
 
@@ -29,11 +28,13 @@ def _task(project: Project, subject: str, **extra: object):
     )
 
 
-def _config(project: Project, budget: int = 15) -> None:
+def _config(project: Project, budget: int = 15, lone: int | None = None) -> None:
     source = Path(__file__).resolve().parents[2] / "orchestra.toml"
     text = source.read_text(encoding="utf-8")
+    lone_line = "" if lone is None else f"lone_task_inline_minutes = {lone}\n"
     project.project_root.joinpath("orchestra.toml").write_text(
-        f"{text}\n[execute]\nsmall_wave_budget_minutes = {budget}\n", encoding="utf-8"
+        f"{text}\n[execute]\nsmall_wave_budget_minutes = {budget}\n{lone_line}",
+        encoding="utf-8",
     )
 
 
@@ -114,9 +115,21 @@ def test_dashboard_ignores_historical_assignee_and_honors_override(project: Proj
     assert _tasks(project)["historical"].executor == "inline"
 
 
-def test_dashboard_reports_missing_project_config(project: Project) -> None:
+def test_dashboard_uses_default_settings_when_project_config_is_missing(project: Project) -> None:
     project.project_root.joinpath("orchestra.toml").unlink()
-    _task(project, "small", size="XS")
+    _task(project, "small", size="XS", estimate_minutes=1)
 
-    with pytest.raises(ProjectConfigError, match="required project config is missing"):
-        load_snapshot(project)
+    assert _tasks(project)["small"].executor == "inline"
+
+
+def test_lone_task_estimate_within_default_threshold_is_inline(project: Project) -> None:
+    _task(project, "lone", size="M", estimate_minutes=8)
+
+    assert _tasks(project)["lone"].executor == "inline"
+
+
+def test_lone_task_estimate_above_configured_threshold_is_subagent(project: Project) -> None:
+    _config(project, lone=5)
+    _task(project, "lone", size="M", estimate_minutes=8)
+
+    assert _tasks(project)["lone"].executor == "subagent"

@@ -10,10 +10,10 @@ from pathlib import Path
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.project_config import (
-    CONFIG_PATH,
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    DEFAULT_EXECUTOR_SETTINGS,
+    ExecutorSettings,
     ProjectConfigError,
-    load_project_config,
+    executor_settings_at,
 )
 from orchestra.canon.types import DerivedValues, Record
 from orchestra.conductor.landing.landing import (
@@ -269,7 +269,7 @@ def select_wave(
 
 
 def check_executors(
-    items: list[Record], small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+    items: list[Record], settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS
 ) -> str:
     tasks = [
         ExecutorTask(
@@ -282,7 +282,11 @@ def check_executors(
         for item in items
     ]
     try:
-        return wave_executor(tasks, small_wave_budget_minutes=small_wave_budget_minutes)
+        return wave_executor(
+            tasks,
+            small_wave_budget_minutes=settings.small_wave_budget_minutes,
+            lone_task_inline_minutes=settings.lone_task_inline_minutes,
+        )
     except ExecutorWaveError as exc:
         raise WaveError(str(exc)) from exc
 
@@ -295,12 +299,9 @@ def _optional_integer(value: object) -> int | None:
     return value if type(value) is int else None
 
 
-def _small_wave_budget(project: Project) -> int:
-    config_path = project.project_root / CONFIG_PATH
-    if not config_path.exists() and not config_path.is_symlink():
-        return DEFAULT_SMALL_WAVE_BUDGET_MINUTES
+def _executor_settings(project: Project) -> ExecutorSettings:
     try:
-        return load_project_config(project.project_root).small_wave_budget_minutes
+        return executor_settings_at(project.project_root)
     except ProjectConfigError as exc:
         raise WaveError(str(exc)) from exc
 
@@ -387,7 +388,7 @@ def start(project: Project, repo: Path, phase: str, workdir: Path | None = None)
         outcome = _runner_start(project, place, phase, closer, items)
         return WaveStart(phase, None, (), "runner", outcome)
     wave, chosen = select_wave(records, derived, phase, blocked=frozenset(blocked))
-    executor = check_executors(chosen, _small_wave_budget(project))
+    executor = check_executors(chosen, _executor_settings(project))
     prepared: list[tuple[Record, str, str]] = []
     for item in chosen:
         if landing:

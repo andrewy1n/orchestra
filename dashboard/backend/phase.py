@@ -16,17 +16,17 @@ from dashboard.backend.records import (
 from dashboard.backend.stages import load_phase_progress
 from dashboard.backend.store import ModelError, current_token
 from dashboard.backend.task import (
-    DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
     AcceptanceRow,
     CheckRun,
     RelatedRecord,
     TaskRow,
     check_from,
-    configured_small_wave_budget,
+    configured_executor_settings,
     latest_checks,
     task_rows,
 )
 from orchestra.canon.project import Project
+from orchestra.canon.project_config import DEFAULT_EXECUTOR_SETTINGS, ExecutorSettings
 from orchestra.canon.sections import body_section_ci
 from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.landing.landing import PROOF_PACKET, proof_packet
@@ -258,7 +258,7 @@ def phase_rows(
     checks: list[Record] | None = None,
     evidence_by_phase: dict[str, PhaseEvidence] | None = None,
     *,
-    small_wave_budget_minutes: int = DEFAULT_SMALL_WAVE_BUDGET_MINUTES,
+    settings: ExecutorSettings = DEFAULT_EXECUTOR_SETTINGS,
 ) -> list[PhaseRow]:
     evidence_by_phase = evidence_by_phase or {}
     suite_runs = suite_labels(checks or [])
@@ -274,7 +274,7 @@ def phase_rows(
         elapsed = phase_elapsed(
             [
                 TimedTask(row.id, row.wave, row.estimate_minutes, row.executor)
-                for row in task_rows(members, small_wave_budget_minutes=small_wave_budget_minutes)
+                for row in task_rows(members, settings=settings)
             ]
         )
         progress = phase_counts(members, phase.subject)
@@ -697,7 +697,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
                 tasks,
                 effort_acceptances,
                 effort_checks,
-                small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
+                settings=configured_executor_settings(target),
             )
         ),
         None,
@@ -776,7 +776,7 @@ def load_phase_detail(target: Project, effort: str, phase_subject: str) -> Phase
                 tasks,
                 list_records(target, ASSIGNMENT),
                 phases=[record],
-                small_wave_budget_minutes=configured_small_wave_budget(target, tasks),
+                settings=configured_executor_settings(target),
             )
             if t.phase == phase_subject
         ],
@@ -862,7 +862,7 @@ def load_requirement_detail(
             for row in task_rows(
                 traced,
                 assignments,
-                small_wave_budget_minutes=configured_small_wave_budget(target, traced),
+                settings=configured_executor_settings(target),
             )
             if row.phase == phase
         ),

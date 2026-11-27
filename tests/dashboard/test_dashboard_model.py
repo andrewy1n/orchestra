@@ -2491,7 +2491,7 @@ def test_estimate_view_row_fields(store, cli, defs):
     assert (rows["zero"].size, rows["zero"].estimate_minutes, rows["zero"].executor) == (
         "",
         0,
-        "subagent",
+        "inline",
     )
     assert (rows["blank"].size, rows["blank"].estimate_minutes, rows["blank"].executor) == (
         "",

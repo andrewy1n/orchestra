@@ -14,6 +14,7 @@ class BriefContext:
     stage: str | None
     adapter: str
     weight: str
+    measured_sizes: str = ""
 
 
 @dataclass(frozen=True)
@@ -133,7 +134,11 @@ def render_brief(
     sections = (STEP_TABLE if table is None else table).get(ctx.step, ())
     parts = [_read(s.name, source).strip() for s in sections if _selected(s, ctx)]
     text = "\n\n".join(parts)
-    return text.replace("{phase}", ctx.phase).replace("{effort}", ctx.effort)
+    return (
+        text.replace("{phase}", ctx.phase)
+        .replace("{effort}", ctx.effort)
+        .replace("{measured_sizes}", ctx.measured_sizes)
+    )
 
 
 def render_skill_brief(skill: str) -> str:
@@ -141,4 +146,11 @@ def render_skill_brief(skill: str) -> str:
     if sections is None:
         raise ValueError(f"unknown skill {skill!r}; valid skills: {', '.join(SKILL_TABLE)}")
     text = "\n\n".join(_read(s.name, None).strip() for s in sections)
-    return text.replace("{phase}", "<phase-slug>").replace("{effort}", "<effort-slug>")
+    return (
+        text.replace("{phase}", "<phase-slug>")
+        .replace("{effort}", "<effort-slug>")
+        .replace(
+            "{measured_sizes}",
+            "Run `orchestra workflow brief <phase> tasks` to see measured minutes per size.",
+        )
+    )
