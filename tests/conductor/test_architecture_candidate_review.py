@@ -191,3 +191,32 @@ def test_candidate_evidence_ignores_mismatched_provenance(
         provenance={"acceptance_revision": revision} if revision is not None else None,
     )
     assert "stripe-imports: unverified" in _review(root, base, head)
+
+
+@pytest.mark.parametrize("mask", ["sparse", "assume-unchanged", "skip-worktree"])
+def test_candidate_evidence_refuses_an_incomplete_checkout(
+    candidate: tuple[Path, str, str, Record], mask: str
+) -> None:
+    root, _, _, rule = candidate
+    project = open_store(root)
+    git = Git(root)
+    if mask == "sparse":
+        git.text("sparse-checkout", "set", "--no-cone", "/payments.py")
+        assert not (root / "stripe_adapter.py").exists()
+        command = "test ! -e stripe_adapter.py"
+    else:
+        git.text("update-index", f"--{mask}", "--", "stripe_adapter.py")
+        (root / "stripe_adapter.py").write_text("allowed\n")
+        command = "grep -qx allowed stripe_adapter.py"
+    assert git.status_porcelain() == ""
+    updated_rule = project.correct(rule["id"], payload={"check": command})["record"]
+    proposal = project.resolve("composer:architecture-proposal", "stripe")
+    project.supersede(proposal["id"], payload={"constraints": [updated_rule["id"]]})
+    check = invoke(
+        "orchestra",
+        ["check", "--proposed-constraint", updated_rule["id"], "--phase", "stripe"],
+        root,
+    )
+    assert check.code == 3
+    assert "requires a complete candidate checkout" in check.err
+    assert project.list("tuner:check-run") == []

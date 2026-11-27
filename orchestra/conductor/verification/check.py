@@ -56,6 +56,11 @@ def git_is_dirty(cwd: Path, *, all_untracked: bool = False) -> bool:
     return bool(result.stdout.strip())
 
 
+def _candidate_has_hidden_paths(git: Git) -> bool:
+    entries = git.text("ls-files", "-v", "-z").split("\0")
+    return any(entry and (entry[0] == "S" or entry[0].islower()) for entry in entries)
+
+
 def git_diff_sha256(cwd: Path) -> str:
     """Hash of staged+unstaged diff plus untracked file paths (stable enough for flagging)."""
     git = Git(cwd)
@@ -363,12 +368,17 @@ def _execute(
     reuse: Callable[[str, str], Record | None],
     require_clean_revision: bool = False,
 ) -> CheckOutcome:
+    git = Git(work)
     try:
-        head = Git(work).head()
+        head = git.head()
         dirty = git_is_dirty(work, all_untracked=require_clean_revision)
         if require_clean_revision and dirty:
             return CheckOutcome(
                 3, "", "A proposed constraint check requires a clean candidate worktree."
+            )
+        if require_clean_revision and _candidate_has_hidden_paths(git):
+            return CheckOutcome(
+                3, "", "A proposed constraint check requires a complete candidate checkout."
             )
         diff_digest = git_diff_sha256(work) if dirty else None
     except RuntimeError as exc:
@@ -381,7 +391,11 @@ def _execute(
     )
     if require_clean_revision:
         try:
-            changed = Git(work).head() != head or git_is_dirty(work, all_untracked=True)
+            changed = (
+                git.head() != head
+                or git_is_dirty(work, all_untracked=True)
+                or _candidate_has_hidden_paths(git)
+            )
         except RuntimeError as exc:
             return CheckOutcome(4, "", str(exc))
         if changed:
