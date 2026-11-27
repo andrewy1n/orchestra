@@ -48,10 +48,10 @@ class Term:
 
 
 def _differing_from_base(git: Git, head: str, base: str, paths: list[str]) -> list[str]:
-    merge_base = git.run("merge-base", head, base)
-    if merge_base.returncode != 0:
+    try:
+        fork = git.merge_base(head, base)
+    except ToolError:
         return paths
-    fork = merge_base.stdout.strip()
     if fork == head:
         return paths
     diff = git.run("diff", "--name-only", "--no-renames", "-z", f"{fork}..{head}")
