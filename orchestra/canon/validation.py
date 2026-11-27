@@ -46,6 +46,8 @@ def _scalar_ok(kind: JsonValue, value: JsonValue) -> bool:
         return isinstance(value, int) and not isinstance(value, bool)
     if kind == "number":
         return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if kind == "object":
+        return isinstance(value, dict)
     return isinstance(value, bool)
 
 

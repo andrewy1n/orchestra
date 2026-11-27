@@ -18,7 +18,7 @@ FIELD_NAME = re.compile(r"^[a-z_][a-z0-9_]*$")
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
 TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
-SCALARS = ("string", "integer", "number", "boolean")
+SCALARS = ("string", "integer", "number", "boolean", "object")
 MIGRATION_KEYS = {"from", "to", "rename_type", "rename_field", "map_enum", "drop_field"}
 DEPENDS_ON = "depends_on"
 

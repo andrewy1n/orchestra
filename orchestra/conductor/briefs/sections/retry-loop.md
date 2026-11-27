@@ -33,16 +33,28 @@ fixing a failed check; do not dispatch it to an agent.
 
 Defaults (override in the phase body's run facts):
 
-- `retry_max_redispatches`: 2 re-dispatches per task
+- `retry_max_redispatches`: 2 re-dispatches per distinct failure
 - `retry_time_multiplier`: 2 (stop when cumulative executor time
   ≥ 2× `estimate_minutes` when set; count or time, whichever first)
 - `retry_max_fix_tasks`: 3 fix work-items created for the phase
+
+A distinct failure is the latest failing `tuner:check-run` of the task,
+keyed by a sha256 over its sorted failing criterion ids and sorted failing node ids.
+Two failures are distinct when either set differs. `orchestra task redispatch`
+increments `failure_attempts[<key>]` next to `attempts` and refuses a failure whose
+count has reached `retry_max_redispatches`. It prints the failure key. A new
+distinct failure keeps its own budget after another failure used its budget up.
+Set `retry_max_redispatches: <n>` under `## Run facts` in the phase body.
 
 Omit a key → use the default. If cumulative time cannot be computed
 from execution-report timestamps, use re-dispatch count
 only. `attempts` is that count (absent → 0).
 
-When a per-task or per-phase fix-task budget is exhausted, do not
+When a repair changes a requirement, a public contract, or a frozen test,
+open a blocking `retry:<task-slug>` question instead of re-dispatching. Do not
+re-dispatch until the human answers.
+
+When a per-failure or per-phase fix-task budget is exhausted, do not
 re-dispatch. Open Needs you and stop selecting it:
 
 ```bash

@@ -194,10 +194,12 @@ def _task_redispatch(args: argparse.Namespace) -> int:
     ) as exc:
         raise CommandError(f"{args.task}: {exc}") from exc
     facts = redispatch_facts(record)
+    key = task_redispatch.latest_failure_key(project.records(), args.task)
     if args.json:
         emit_json(
             {
                 "task": facts.task,
+                "failure_key": key,
                 "revision": facts.revision,
                 "attempts": facts.attempts,
                 "dispatch_id": facts.dispatch_id,
@@ -207,7 +209,8 @@ def _task_redispatch(args: argparse.Namespace) -> int:
             }
         )
     else:
-        print(f"redispatched {facts.task} (attempt {facts.attempts})")
+        suffix = f", failure {key}" if key else ""
+        print(f"redispatched {facts.task} (attempt {facts.attempts}{suffix})")
     return 0
 
 
