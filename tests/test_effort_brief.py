@@ -144,7 +144,7 @@ def test_r5_module_version_is_2_3_0():
     assert _module()["version"] == "2.3.0"
 
 
-def test_r6_sync_moves_the_snapshot_to_2_2_0(synced_store):
+def test_r6_sync_moves_the_snapshot_to_2_3_0(synced_store):
     root, sync = synced_store
     assert sync.returncode == 0, _output(sync)
     assert _snapshot(root)["version"] == "2.3.0"
