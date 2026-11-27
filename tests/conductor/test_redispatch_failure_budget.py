@@ -51,11 +51,11 @@ def _world(tmp_path: Path, run_facts: str = "") -> Project:
     return project
 
 
-def _fail(project: Project, criterion: str, nodes: list[str]) -> None:
+def _fail(project: Project, criterion: str, nodes: list[str], subject: str = TASK) -> None:
     create(
         project,
         "tuner:check-run",
-        TASK,
+        subject,
         {
             "criterion_id": criterion,
             "result": "fail",
@@ -187,3 +187,15 @@ def test_phase_run_facts_can_raise_the_failure_budget(tmp_path: Path) -> None:
     retried = _retry(project)
 
     assert retried["payload"]["failure_attempts"] == {failure_key("crit", NODES_A): 3}
+
+
+def test_failures_of_a_suffixed_acceptance_count_against_the_failure_budget(
+    tmp_path: Path,
+) -> None:
+    project = _world(tmp_path)
+    _fail(project, "crit", NODES_A, subject=f"{TASK}-snapshots")
+    _retry(project)
+    _retry(project)
+    with pytest.raises(RedispatchError):
+        _retry(project)
+    assert _counts(project)[failure_key("crit", NODES_A)] == 2

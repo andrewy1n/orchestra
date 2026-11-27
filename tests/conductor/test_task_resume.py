@@ -205,3 +205,9 @@ def test_resume_leaves_attempts_unchanged(tmp_path: Path) -> None:
     after = record_payload(project.resolve("score:work-item", TASK))
     assert after["attempts"] == before["attempts"] == 1
     assert after["dispatch_id"] == before["dispatch_id"]
+
+
+def test_resume_refusal_hints_at_a_blocking_question(tmp_path: Path) -> None:
+    project = _world(tmp_path)
+    with pytest.raises(ResumeError, match=f"retry:{TASK}"):
+        resume(project, TASK, list_processes=lambda _: ["claude (pid 4242)"])

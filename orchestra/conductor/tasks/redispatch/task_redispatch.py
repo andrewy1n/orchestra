@@ -8,7 +8,12 @@ from orchestra.canon.types import JsonObject, Record
 from orchestra.conductor.tasks.execution_cost import new_dispatch_markers
 from orchestra.conductor.tasks.redispatch.failure_key import failure_key
 from orchestra.score.facts.work_item_facts import failure_attempts
-from orchestra.score.lookups import current_phase, live_work_items, record_order
+from orchestra.score.lookups import (
+    current_phase,
+    live_work_items,
+    owning_work_item,
+    record_order,
+)
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     blocked_tasks,
@@ -37,9 +42,17 @@ def _max_redispatches(records: list[Record], phase: object) -> int:
 
 
 def latest_failure_key(records: list[Record], task: str) -> str | None:
+    items = [
+        record
+        for record in records
+        if record["record_type"] == "score:work-item" and record["lifecycle_state"] != "superseded"
+    ]
     failing: list[Record] = []
     for record in records:
-        if record["record_type"] != "tuner:check-run" or record["subject"] != task:
+        if record["record_type"] != "tuner:check-run":
+            continue
+        owner = owning_work_item(record["subject"], items)
+        if owner is None or owner["subject"] != task:
             continue
         try:
             if check_run_facts(record).result == "fail":

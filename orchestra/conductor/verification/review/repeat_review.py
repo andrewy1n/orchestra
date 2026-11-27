@@ -102,7 +102,11 @@ def needs_expansion(repo: Path, changed: Sequence[str]) -> bool:
     if any(_is_schema_snapshot(path) or path.startswith(LANDING_PREFIX) for path in changed):
         return True
     callers = _callers_by_module(repo, _changed_modules(changed))
-    return any(len({path.split("/", 1)[0] for path in paths}) > 1 for paths in callers.values())
+    return any(
+        len({path.split("/", 1)[0] for path in paths if "tests" not in PurePosixPath(path).parts})
+        > 1
+        for paths in callers.values()
+    )
 
 
 def changed_paths(diff: str) -> list[str]:

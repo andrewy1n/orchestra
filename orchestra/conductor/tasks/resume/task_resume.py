@@ -22,6 +22,10 @@ class ResumeError(ValueError):
     pass
 
 
+def _hint(task: str) -> str:
+    return f"; open a blocking continuity-question with scope retry:{task} and do not resume"
+
+
 @dataclass(frozen=True)
 class ResumeReport:
     task: str
@@ -86,14 +90,14 @@ def resume(project: Project, task: str, *, list_processes: ProcessLister = holde
     if dispatch_id and reports:
         raise ResumeError(
             f"task {task!r} has an execution report for dispatch {dispatch_id}; "
-            "the executor finished"
+            f"the executor finished{_hint(task)}"
         )
     try:
         running = list_processes(path)
     except (OSError, ToolError) as error:
-        raise ResumeError(f"cannot prove the dispatch is inactive: {error}") from error
+        raise ResumeError(f"cannot prove the dispatch is inactive: {error}{_hint(task)}") from error
     if running:
-        raise ResumeError(f"{', '.join(running)} holds the worktree {worktree}")
+        raise ResumeError(f"{', '.join(running)} holds the worktree {worktree}{_hint(task)}")
     git = Git(path)
     try:
         dirty = bool(git.status_porcelain().strip())

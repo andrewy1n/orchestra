@@ -179,6 +179,13 @@ def test_needs_expansion_false_for_module_with_callers_in_one_package(repo: Path
     assert repeat_review.needs_expansion(repo, ["lib/local.py"]) is False
 
 
+def test_needs_expansion_ignores_test_importers(repo: Path) -> None:
+    write(repo, "lib/local.py", "X = 1\n")
+    write(repo, "app/uses_local.py", "from lib import local\n")
+    write(repo, "tests/test_local.py", "from lib import local\n")
+    assert repeat_review.needs_expansion(repo, ["lib/local.py"]) is False
+
+
 def test_needs_expansion_for_schema_snapshot(repo: Path) -> None:
     assert repeat_review.needs_expansion(repo, ["orchestra/schemas/score.json"]) is True
 
