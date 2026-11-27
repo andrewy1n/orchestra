@@ -198,7 +198,11 @@ def test_check_without_store_exits_4(bare_dir: Path) -> None:
 
     commands = getattr(conductor_cli, "commands", None)
     assert commands is not None
-    assert "check" in [command.name for command in commands(render_brief=lambda *_: "")]
+    architecture = conductor_cli.ArchitectureChanges(
+        review=lambda *_: "", proposed_constraint=lambda *_: None, reconcile=lambda *_: False
+    )
+    registered = commands(render_brief=lambda *_: "", architecture=architecture)
+    assert "check" in [command.name for command in registered]
     result = invoke("orchestra", ["check", "--acceptance", "x"], bare_dir)
     assert result.code == 4, result.err
     assert result.err.startswith("orchestra check:")

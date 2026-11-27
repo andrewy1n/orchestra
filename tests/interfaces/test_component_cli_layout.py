@@ -16,6 +16,7 @@ import pytest
 from test_boundaries import COMPONENTS
 
 import orchestra.cli as root_cli
+from orchestra.conductor.cli import ArchitectureChanges
 from orchestra.tools import command_kit
 
 if sys.version_info >= (3, 11):
@@ -174,7 +175,14 @@ def _injected(module_name: str) -> dict[str, object]:
     if module_name == "orchestra.canon.cli":
         return {"scan": lambda _records: [], "recover": lambda _project, _apply: None}
     if module_name == "orchestra.conductor.cli":
-        return {"render_brief": lambda _subject, _records: ""}
+        return {
+            "render_brief": lambda _subject, _records: "",
+            "architecture": ArchitectureChanges(
+                review=lambda *_: "",
+                proposed_constraint=lambda *_: None,
+                reconcile=lambda *_: False,
+            ),
+        }
     return {}
 
 
