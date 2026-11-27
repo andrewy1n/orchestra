@@ -17,6 +17,7 @@ from orchestra.conductor.phases.progress.phase_progress import (
 from orchestra.tools.command_kit import Command, CommandError
 from orchestra.tools.errors import ToolError
 from orchestra.tools.git import Git
+from orchestra.views import architecture_proposal as architecture_proposal
 from orchestra.views import render as views
 from orchestra.views.architecture import architecture_view, render_architecture
 from orchestra.views.render import render_brief

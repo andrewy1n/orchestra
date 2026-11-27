@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.verification.review import reviewer
+
+ArchitectureReview = Callable[[Sequence[Record], Path, str, str, str], str]
 
 
 def load_review_records(project: Project) -> list[Record]:
@@ -34,15 +37,20 @@ def build_review_brief(
     phase_head: str,
     phase: str | None,
     suite_refusal: str,
+    architecture_review: ArchitectureReview | None = None,
 ) -> str:
     if suite_refusal:
         raise RuntimeError(suite_refusal)
     records = load_review_records(project)
     phase_diff = reviewer.git_phase_diff(work, base=base, phase_head=phase_head)
-    return reviewer.build_reviewer_brief(
+    brief = reviewer.build_reviewer_brief(
         records=records,
         phase_diff=phase_diff,
         base=base,
         phase_head=phase_head,
         phase=phase,
     )
+    if phase is None or architecture_review is None:
+        return brief
+    architecture = architecture_review(project.records(), work, phase, base, phase_head)
+    return f"{brief.rstrip()}\n\n{architecture}" if architecture else brief

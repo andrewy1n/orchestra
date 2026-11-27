@@ -13,19 +13,26 @@ from orchestra.conductor.cli import (
     workflow_commands,
 )
 from orchestra.conductor.cli.wave_commands import BriefRenderer
+from orchestra.conductor.verification.check import ProposedConstraintReader
+from orchestra.conductor.verification.review.review_brief import ArchitectureReview
 from orchestra.tools.command_kit import Command
 
 __all__ = ["BriefRenderer", "commands"]
 
 
-def commands(*, render_brief: BriefRenderer) -> list[Command]:
+def commands(
+    *,
+    render_brief: BriefRenderer,
+    architecture_review: ArchitectureReview | None = None,
+    proposed_constraint: ProposedConstraintReader | None = None,
+) -> list[Command]:
     return [
-        *check.commands(),
+        *check.commands(proposed_constraint),
         *workflow_commands.commands(),
         *wave_commands.commands(render_brief),
         *land.commands(),
         *merge_evidence.commands(),
         *close.commands(),
-        *phase_commands.commands(),
+        *phase_commands.commands(architecture_review),
         *suite_commands.commands(),
     ]

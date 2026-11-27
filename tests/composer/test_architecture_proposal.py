@@ -91,7 +91,7 @@ def test_constraint_operations_pin_add_revision_and_retirement(project: Project)
             body="## Basis\nKeep payment integrations isolated.",
         )
         changes.append(record["id"])
-    _proposal(project, constraints=changes)
+    _proposal(project, constraints=[*changes])
     result = proposal_for_phase(project.records(), "stripe")
     assert result is not None
     assert [(change.operation, change.subject) for change in result.constraints] == [

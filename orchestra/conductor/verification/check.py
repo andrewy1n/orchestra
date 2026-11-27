@@ -6,7 +6,7 @@ import hashlib
 import re
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +29,8 @@ from orchestra.score.planning.standing_constraint import (
 )
 from orchestra.score.planning.standing_constraint import read_standing_constraint
 from orchestra.tools import Git
+
+ProposedConstraintReader = Callable[[Sequence[Record], str, str], Record | None]
 
 RUNNER = "orchestra"
 DEFAULT_TIMEOUT_S = 600.0
@@ -277,6 +279,50 @@ def run_standing_constraint_check(
             stdout="",
             message=f"Standing constraint {name!r} is not pinned by phase {phase!r}.",
         )
+    return _run_constraint(pinned, name, effort, cwd, project, allow_dirty, timeout)
+
+
+def run_proposed_constraint_check(
+    *,
+    change_id: str,
+    phase: str,
+    cwd: Path,
+    project: Project,
+    reader: ProposedConstraintReader,
+    timeout: float = DEFAULT_TIMEOUT_S,
+) -> CheckOutcome:
+    records = project.records()
+    try:
+        pinned = reader(records, phase, change_id)
+        phase_record = project.resolve("score:phase", phase)
+    except StoreError as exc:
+        return CheckOutcome(4, "", str(exc))
+    if pinned is None:
+        return CheckOutcome(4, "", f"No checkable proposed constraint {change_id!r} for {phase!r}.")
+    if git_is_dirty(cwd):
+        return CheckOutcome(
+            3, "", "A proposed constraint check requires a clean candidate worktree."
+        )
+    return _run_constraint(
+        pinned,
+        pinned["subject"],
+        str(phase_record["payload"]["effort"]),
+        cwd,
+        project,
+        False,
+        timeout,
+    )
+
+
+def _run_constraint(
+    pinned: Record,
+    name: str,
+    effort: str,
+    cwd: Path,
+    project: Project,
+    allow_dirty: bool,
+    timeout: float,
+) -> CheckOutcome:
     try:
         constraint = read_standing_constraint(pinned)
     except StoreError as exc:

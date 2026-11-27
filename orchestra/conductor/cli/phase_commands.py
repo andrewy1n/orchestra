@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
@@ -12,7 +13,10 @@ from orchestra.canon.workspace import Access
 from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.landing import gate
 from orchestra.conductor.phases.progress.phase_analysis import analyze_in_store
-from orchestra.conductor.verification.review.review_brief import build_review_brief
+from orchestra.conductor.verification.review.review_brief import (
+    ArchitectureReview,
+    build_review_brief,
+)
 from orchestra.conductor.verification.suite.suite import suite_refusal
 from orchestra.tools.command_kit import Command, CommandError, emit_json
 
@@ -139,7 +143,7 @@ def _gate(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
-def _review_brief(args: argparse.Namespace) -> int:
+def _review_brief(args: argparse.Namespace, architecture_review: ArchitectureReview | None) -> int:
     work = work_dir(args)
     project = open_project(args, work, Access.READ)
     try:
@@ -149,11 +153,12 @@ def _review_brief(args: argparse.Namespace) -> int:
             base=args.base,
             phase_head=args.phase_head,
             phase=args.phase,
+            architecture_review=architecture_review,
             suite_refusal=(
                 suite_refusal(project, work, args.phase, args.phase_head) if args.phase else ""
             ),
         )
-    except (OSError, RuntimeError, StoreBindingError) as exc:
+    except (OSError, RuntimeError, StoreError, ValueError) as exc:
         raise CommandError(str(exc)) from exc
     if args.out == "-":
         print(brief, end="" if brief.endswith("\n") else "\n")
@@ -165,14 +170,14 @@ def _review_brief(args: argparse.Namespace) -> int:
     return 0
 
 
-def commands() -> list[Command]:
+def commands(architecture_review: ArchitectureReview | None = None) -> list[Command]:
     return [
         Command(
             "review-brief",
             "Build the phase-end reviewer brief from allowed store records "
             "and git diff <base>..<phase-head>",
             configure=_configure_review_brief,
-            handle=_review_brief,
+            handle=partial(_review_brief, architecture_review=architecture_review),
         ),
         Command(
             "analyze",

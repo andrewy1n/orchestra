@@ -88,6 +88,12 @@
       "fields": {
         "area": {
           "type": "string"
+        },
+        "module_prefixes": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
         }
       },
       "sections": [
@@ -233,6 +239,25 @@
       "sections": [
         "Basis"
       ]
+    },
+    "architecture-approval": {
+      "purpose": "Human approval of one architecture proposal version and candidate commit",
+      "lifecycle": "event",
+      "fields": {
+        "proposal": {
+          "ref": "composer:architecture-proposal",
+          "pin": true
+        },
+        "proposal_revision": {
+          "type": "string"
+        },
+        "candidate": {
+          "type": "string"
+        },
+        "approved_by": {
+          "type": "string"
+        }
+      }
     }
   },
   "migrations": []
