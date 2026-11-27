@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Literal
 from uuid import uuid4
@@ -29,6 +29,7 @@ from orchestra.score.workflow.workflow_selection import PhaseSelectionError, res
 
 Operation = Literal["phase", "prepare", "deliver", "single-step"]
 ActionState = Literal["ready", "blocked"]
+ProjectContext = Callable[[Sequence[Record], str, str], str]
 
 _VERSION = "1"
 _PHASE_STEPS: tuple[Step, ...] = ("spec", "design", "tasks", "execute", "verify", "land")
@@ -394,16 +395,38 @@ def _constraints_section(records: list[Record], areas: Sequence[str]) -> str:
 
 
 def phase_step_action(
-    project: Project, phase: str, step: Step, areas: Sequence[str] = ()
+    project: Project,
+    phase: str,
+    step: Step,
+    areas: Sequence[str] = (),
+    *,
+    project_context: ProjectContext | None = None,
+    component: str = "",
+    interface: str = "",
 ) -> RunAction:
     records = project.records()
     current = _current_phase(records, phase)
     action = _action_for(project, records, current, step, _progress(project, records, current))
     action = _with_brief(project, action)
-    if step == "design" and action.state == "ready":
-        section = _constraints_section(records, areas)
-        if section:
-            action = replace(action, brief=f"{action.brief.rstrip()}\n\n{section}\n")
+    if action.state != "ready":
+        return action
+    sections = [action.brief.rstrip()]
+    if step == "spec" and areas and project_context is not None:
+        sections.extend(project_context(records, "product", area) for area in dict.fromkeys(areas))
+    if step == "design":
+        if project_context is not None:
+            if component:
+                sections.append(project_context(records, "component", component))
+            elif interface:
+                sections.append(project_context(records, "interface", interface))
+            else:
+                sections.extend(
+                    project_context(records, "area", area) for area in dict.fromkeys(areas)
+                )
+        if not component and not interface:
+            sections.append(_constraints_section(records, areas))
+    if any(sections[1:]):
+        return replace(action, brief="\n\n".join(section for section in sections if section) + "\n")
     return action
 
 

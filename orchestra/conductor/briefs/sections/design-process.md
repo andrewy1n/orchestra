@@ -6,7 +6,8 @@
    exists. Route back to spec when the contract is missing or stale.
 2. Name the areas the design touches. Run
    `orchestra workflow brief {phase} design --area <area>` for each area
-   (repeat `--area`). Read the listed standing constraints and follow them.
+   (repeat `--area`). Use `--component` or `--interface` for a narrower scope.
+   Read the relevant architecture and follow the listed standing constraints.
    Research relevant code and current technical facts before asking the user
    about preferences. Apply the shared intent Q&A. Ask about only choices that
    change architecture, interfaces, recovery, cost, or risk.

@@ -20,9 +20,10 @@ from orchestra.tools.git import Git
 from orchestra.views import architecture_proposal as architecture_proposal
 from orchestra.views import render as views
 from orchestra.views.architecture import architecture_view, render_architecture
+from orchestra.views.project_context import project_context
 from orchestra.views.render import render_brief
 
-__all__ = ["commands", "render_brief"]
+__all__ = ["commands", "project_context", "render_brief"]
 
 
 def _configure_handoff(handoff: argparse.ArgumentParser) -> None:

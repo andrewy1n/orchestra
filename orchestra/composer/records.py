@@ -70,6 +70,7 @@ class ProductItem:
     description: str
     status: str
     record: Record
+    area: str | None = None
 
 
 @dataclass(frozen=True)
@@ -187,6 +188,7 @@ def read_product_item(record: Record) -> ProductItem:
         description=required_text(record, payload, "description"),
         status=status,
         record=record,
+        area=optional_blank_text(record, payload, "area"),
     )
 
 
