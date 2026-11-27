@@ -900,7 +900,7 @@ TUNER_CANON_STAGE = [
         "shared",
         2,
         "check",
-        err="one of the arguments --acceptance --standing-constraint is required",
+        err="one of the arguments --acceptance --standing-constraint --proposed-constraint is required",
     ),
     orchestra("install_list_success", "bare", 0, "install", "--list", out="ID "),
     orchestra("sessions_aggregate_success", "bare", 0, "sessions", "aggregate", out=()),

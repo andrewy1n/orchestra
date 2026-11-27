@@ -100,7 +100,9 @@ class Landed:
         return FakeStates(state, head or self.head)
 
     def close(self, states: FakeStates) -> close.CloseResult:
-        return close.close_phase(self.project, self.repo, CLOSE_PHASE, states)
+        return close.close_phase(
+            self.project, self.repo, CLOSE_PHASE, states, reconcile_architecture=lambda *_: False
+        )
 
 
 def make_landed(tmp_path: Path, *, shared_repo: bool = False) -> Landed:

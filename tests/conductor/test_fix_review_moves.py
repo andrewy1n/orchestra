@@ -72,6 +72,7 @@ def test_review_brief_is_refused_without_ready_suite() -> None:
             base="a",
             phase_head="b",
             phase="p",
+            architecture_review=lambda *_: "",
             suite_refusal="suite not ready",
         )
 

@@ -74,6 +74,7 @@ ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
         "--cwd",
         "--execution-report",
         "--phase",
+        "--proposed-constraint",
         "--standing-constraint",
         "--store",
         "--timeout",

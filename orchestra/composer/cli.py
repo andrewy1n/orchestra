@@ -8,6 +8,7 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access, open_for_command
+from orchestra.composer import architecture_change as architecture_change
 from orchestra.composer.idea import IdeaError, capture
 from orchestra.composer.placement import PlacementError, place
 from orchestra.tools.command_kit import Command, CommandError

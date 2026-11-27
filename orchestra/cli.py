@@ -34,7 +34,17 @@ def _build_parser() -> argparse.ArgumentParser:
     command_kit.mount(sub, metrics_cli.commands())
     command_kit.mount(sub, tuner_cli.commands())
     command_kit.mount(sub, sessions_cli.commands())
-    command_kit.mount(sub, conductor_cli.commands(render_brief=views_cli.render_brief))
+    command_kit.mount(
+        sub,
+        conductor_cli.commands(
+            render_brief=views_cli.render_brief,
+            architecture=conductor_cli.ArchitectureChanges(
+                review=views_cli.architecture_proposal.architecture_review,
+                proposed_constraint=composer_cli.architecture_change.proposed_constraint,
+                reconcile=composer_cli.architecture_change.reconcile_architecture,
+            ),
+        ),
+    )
     command_kit.mount(sub, score_cli.commands())
     command_kit.mount(sub, canon_cli.commands(scan=scan, recover=recover))
     command_kit.mount(sub, composer_cli.commands())

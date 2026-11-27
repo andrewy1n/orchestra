@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -10,6 +11,7 @@ from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.canon.validation import ValidationError
 from orchestra.conductor.landing.landing import (
     LANDING,
     LandingPlace,
@@ -20,6 +22,8 @@ from orchestra.conductor.landing.landing import (
 )
 from orchestra.score.planning.phase import Phase, current_phase_model
 from orchestra.tools import Git, ToolError
+
+ReconcileArchitecture = Callable[[Project, str, str], bool]
 
 
 class CloseError(RuntimeError):
@@ -85,6 +89,8 @@ def close_phase(
     phase: str,
     states: PullRequestStates,
     cwd: Path | None = None,
+    *,
+    reconcile_architecture: ReconcileArchitecture,
 ) -> CloseResult:
     landing = latest_landing(project.records(), phase)
     if landing is None:
@@ -101,7 +107,12 @@ def close_phase(
     if refusals:
         message = f"pull request {number} is MERGED; close refused"
         return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
-    actions = _apply(project, place, current, number, head_sha)
+    actions: tuple[str, ...] = ()
+    if current.record["lifecycle_state"] != "done" and reconcile_architecture(
+        project, phase, head_sha
+    ):
+        actions = ("reconciled approved architecture changes",)
+    actions += _apply(project, place, current, number, head_sha)
     if actions:
         message = f"pull request {number} is MERGED; phase {phase} closed"
     else:
@@ -137,7 +148,12 @@ def pending_close(project: Project, repo: Path, phase: str) -> bool:
 
 
 def close_all(
-    project: Project, repo: Path, states: PullRequestStates, cwd: Path | None = None
+    project: Project,
+    repo: Path,
+    states: PullRequestStates,
+    cwd: Path | None = None,
+    *,
+    reconcile_architecture: ReconcileArchitecture,
 ) -> tuple[CloseResult | str, ...]:
     """Close every landed phase that still has work to close; a failure becomes a message."""
     results: list[CloseResult | str] = []
@@ -145,8 +161,25 @@ def close_all(
         try:
             if not pending_close(project, repo, phase):
                 continue
-            results.append(close_phase(project, repo, phase, states, cwd))
-        except (CloseError, StoreError, ToolError, RuntimeError, OSError, ValueError) as error:
+            results.append(
+                close_phase(
+                    project,
+                    repo,
+                    phase,
+                    states,
+                    cwd,
+                    reconcile_architecture=reconcile_architecture,
+                )
+            )
+        except (
+            CloseError,
+            StoreError,
+            ToolError,
+            RuntimeError,
+            OSError,
+            ValueError,
+            ValidationError,
+        ) as error:
             results.append(f"{phase}: {error}")
     return tuple(results)
 

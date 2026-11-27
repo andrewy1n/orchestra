@@ -180,6 +180,57 @@ class Git(CliTool):
     def branch_tip(self, name: str) -> str | None:
         return self.resolve(f"refs/heads/{name}")
 
+    def read_blobs(self, object_ids: Sequence[str]) -> dict[str, bytes]:
+        if not object_ids:
+            return {}
+        self._check_version()
+        if any(
+            len(oid) not in (40, 64) or set(oid) - set("0123456789abcdef") for oid in object_ids
+        ):
+            raise ValueError("Expected full Git object IDs")
+        argv = [self.executable, "cat-file", "--batch"]
+        try:
+            result = self._run(
+                argv,
+                cwd=self._cwd,
+                input=("\n".join(object_ids) + "\n").encode("ascii"),
+                timeout=self._timeout,
+                capture_output=True,
+                text=False,
+                check=False,
+                env=self._env,
+            )
+        except OSError as error:
+            raise ToolError(f"cannot read Git blobs: {error}", argv, None, "") from error
+        except subprocess.TimeoutExpired as error:
+            raise ToolError("reading Git blobs timed out", argv, None, "") from error
+        if result.returncode != 0:
+            raise ToolError(
+                "cannot read Git blobs",
+                argv,
+                result.returncode,
+                result.stderr.decode(errors="replace"),
+            )
+        blobs: dict[str, bytes] = {}
+        offset = 0
+        for oid in object_ids:
+            end = result.stdout.find(b"\n", offset)
+            header = result.stdout[offset:end].split()
+            if (
+                end < 0
+                or len(header) != 3
+                or header[:2] != [oid.encode("ascii"), b"blob"]
+                or not header[2].isdigit()
+            ):
+                raise ValueError(f"Git did not return blob {oid}")
+            offset = end + 1
+            end = offset + int(header[2])
+            if result.stdout[end : end + 1] != b"\n":
+                raise ValueError(f"Git returned a truncated blob {oid}")
+            blobs[oid] = result.stdout[offset:end]
+            offset = end + 1
+        return blobs
+
     def show_bytes(self, revision: str, path: str) -> bytes | None:
         self._check_version()
         argv: Sequence[str] = [self.executable, "show", f"{revision}:{path}"]

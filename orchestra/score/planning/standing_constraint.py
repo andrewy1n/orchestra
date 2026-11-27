@@ -41,11 +41,17 @@ def read_standing_constraint(record: Record) -> StandingConstraint:
     )
 
 
+def is_current_constraint(record: Record) -> bool:
+    return (
+        record["record_type"] == RECORD_TYPE
+        and record["lifecycle_state"] == "active"
+        and record["payload"].get("retired") is not True
+    )
+
+
 def applicable(records: Sequence[Record], area: str) -> list[StandingConstraint]:
     declared = (
-        read_standing_constraint(record)
-        for record in records
-        if record["record_type"] == RECORD_TYPE and record["lifecycle_state"] == "active"
+        read_standing_constraint(record) for record in records if is_current_constraint(record)
     )
     return [constraint for constraint in declared if constraint.area == area]
 
@@ -55,6 +61,6 @@ def declared_areas(records: Sequence[Record]) -> list[str]:
         {
             read_standing_constraint(record).area
             for record in records
-            if record["record_type"] == RECORD_TYPE and record["lifecycle_state"] == "active"
+            if is_current_constraint(record)
         }
     )

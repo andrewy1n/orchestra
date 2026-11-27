@@ -85,7 +85,17 @@ def _canon_adder(sub: SubparserGroup) -> None:
 
 
 def _conductor_adder(sub: SubparserGroup) -> None:
-    command_kit.mount(sub, conductor_cli.commands(render_brief=views_cli.render_brief))
+    command_kit.mount(
+        sub,
+        conductor_cli.commands(
+            render_brief=views_cli.render_brief,
+            architecture=conductor_cli.ArchitectureChanges(
+                review=lambda *_: "",
+                proposed_constraint=lambda *_: None,
+                reconcile=lambda *_: False,
+            ),
+        ),
+    )
 
 
 def _stage_adder(sub: SubparserGroup) -> None:

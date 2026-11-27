@@ -98,9 +98,13 @@ def test_close_leaves_an_open_pull_request_alone(merged: Landed) -> None:
 def test_close_all_closes_each_merged_phase_once(merged: Landed) -> None:
     states = merged.states("MERGED")
 
-    first = close.close_all(merged.project, merged.repo, states)
+    first = close.close_all(
+        merged.project, merged.repo, states, reconcile_architecture=lambda *_: False
+    )
     calls = states.calls
-    second = close.close_all(merged.project, merged.repo, states)
+    second = close.close_all(
+        merged.project, merged.repo, states, reconcile_architecture=lambda *_: False
+    )
 
     assert [item.phase for item in first if not isinstance(item, str)] == [PHASE]
     assert not merged.phase_tree.exists()
@@ -113,7 +117,9 @@ def test_close_all_reports_a_failed_phase_and_goes_on(merged: Landed) -> None:
         def pull_request_state(self, number: int) -> tuple[str, str]:
             raise close.CloseError(f"gh failed for {number}")
 
-    results = close.close_all(merged.project, merged.repo, Broken())
+    results = close.close_all(
+        merged.project, merged.repo, Broken(), reconcile_architecture=lambda *_: False
+    )
 
     assert results == (f"{PHASE}: gh failed for 7",)
     assert merged.phase_tree.is_dir()

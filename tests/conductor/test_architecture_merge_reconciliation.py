@@ -1,0 +1,324 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+import pytest
+from canon_support import make_project, seed_effort
+from interfaces.interfaces_support import invoke
+
+from orchestra.canon.project import Project
+from orchestra.canon.types import JsonValue, Record
+from orchestra.conductor.cli import close as close_cli
+from orchestra.tools import Git
+
+
+@dataclass
+class PullRequest:
+    head: str
+    state: str = "OPEN"
+
+    def pull_request_state(self, number: int) -> tuple[str, str]:
+        assert number == 7
+        return self.state, self.head
+
+
+@dataclass
+class Change:
+    project: Project
+    pull_request: PullRequest
+    baseline: Record
+    proposal: Record
+
+
+@pytest.fixture
+def change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Change:
+    project = make_project(tmp_path)
+    seed_effort(project, "payments", "stripe")
+    project.create(
+        record_type="composer:component",
+        subject="gateway",
+        payload={"area": "payments"},
+        body="## Responsibility\nProcess payments.",
+    )
+    baseline = project.create(
+        record_type="score:standing-constraint",
+        subject="imports",
+        payload={
+            "area": "payments",
+            "rule": "Use the current adapter.",
+            "check": "true",
+            "targets": ["gateway"],
+        },
+        body="## Basis\nKeep integration isolated.",
+    )
+    choice = project.create(
+        record_type="composer:architecture-decision",
+        subject="processor",
+        payload={"status": "accepted", "affects": ["gateway"], "enforced_by": ["imports"]},
+        body="## Rationale\nUse the original processor.",
+    )
+    proposed_rule = project.create(
+        record_type="composer:constraint-change",
+        subject="stripe-imports",
+        payload={
+            "operation": "revise",
+            "constraint": "imports",
+            "base_constraint": baseline["id"],
+            "base_constraint_revision": baseline["revision"],
+            "area": "payments",
+            "rule": "Allow the Stripe adapter.",
+            "check": "true",
+            "targets": ["gateway"],
+        },
+        body="## Basis\nKeep integration isolated.",
+    )
+    proposal = project.create(
+        record_type="composer:architecture-proposal",
+        subject="stripe",
+        payload={
+            "phase": "stripe",
+            "status": "pending",
+            "adr": "processor",
+            "base_adr": choice["id"],
+            "base_adr_revision": choice["revision"],
+            "affects": ["gateway"],
+            "enforced_by": ["imports"],
+            "constraints": [proposed_rule["id"]],
+        },
+        body="## Rationale\nAdopt Stripe.",
+    )
+    git = Git(tmp_path)
+    head = git.head()
+    project.create(
+        record_type="conductor:landing",
+        subject="stripe",
+        payload={
+            "phase": "stripe",
+            "number": 7,
+            "url": "https://example.com/pr/7",
+            "head_sha": head,
+            "result": "success",
+        },
+    )
+    project.create(
+        record_type="composer:architecture-approval",
+        subject="stripe",
+        payload={
+            "proposal": proposal["id"],
+            "proposal_revision": proposal["revision"],
+            "candidate": head,
+            "approved_by": "maintainer",
+        },
+    )
+    pull_request = PullRequest(head)
+    monkeypatch.setattr(close_cli, "github_client", lambda _repo: pull_request)
+    return Change(project, pull_request, baseline, proposal)
+
+
+def test_applies_both_changes_after_merge_and_retry_is_idempotent(change: Change) -> None:
+    project = change.project
+    root = project.project_root
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    architecture = invoke("orchestra", ["view", "architecture", "--component", "gateway"], root)
+    assert architecture.code == 0, architecture.err
+    assert "Adopt Stripe." in architecture.out
+    updated = project.resolve("score:standing-constraint", "imports")
+    assert updated["payload"]["rule"] == "Allow the Stripe adapter."
+    assert project.get(change.baseline["id"])["payload"]["rule"] == "Use the current adapter."
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    assert project.resolve("score:standing-constraint", "imports")["id"] == updated["id"]
+    assert len(project.list("composer:architecture-decision")) == 2
+
+
+def test_changed_baseline_refuses_the_entire_proposal(change: Change) -> None:
+    project = change.project
+    project.supersede(change.baseline["id"], payload={"rule": "A different change landed."})
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
+    assert result.code != 0
+    assert "requires refreshed review" in result.err
+    assert len(project.list("composer:architecture-decision")) == 1
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+
+
+def _approve_revision(change: Change, **payload: JsonValue) -> None:
+    project = change.project
+    revision = project.supersede(change.proposal["id"], payload=payload)["record"]
+    project.create(
+        record_type="composer:architecture-approval",
+        subject="stripe",
+        payload={
+            "proposal": revision["id"],
+            "proposal_revision": revision["revision"],
+            "candidate": change.pull_request.head,
+            "approved_by": "maintainer",
+        },
+    )
+
+
+def test_retired_constraint_is_removed_from_current_model_but_the_pin_resolves(
+    change: Change,
+) -> None:
+    project = change.project
+    retirement = project.create(
+        record_type="composer:constraint-change",
+        subject="retire-imports",
+        payload={
+            "operation": "retire",
+            "constraint": "imports",
+            "base_constraint": change.baseline["id"],
+            "base_constraint_revision": change.baseline["revision"],
+        },
+        body="## Basis\nReplace the old import strategy.",
+    )
+    _approve_revision(change, enforced_by=[], constraints=[retirement["id"]])
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
+    assert result.code == 0, result.err
+    architecture = invoke(
+        "orchestra", ["view", "architecture", "--component", "gateway"], project.project_root
+    )
+    assert architecture.code == 0, architecture.err
+    assert "constraint **imports**" not in architecture.out
+    assert project.get(change.baseline["id"])["payload"]["rule"] == "Use the current adapter."
+
+
+def test_failed_write_rolls_back_earlier_constraint_revision(change: Change) -> None:
+    project = change.project
+    invalid = project.create(
+        record_type="composer:constraint-change",
+        subject="invalid-change",
+        payload={
+            "operation": "add",
+            "constraint": "invalid constraint subject",
+            "area": "payments",
+            "rule": "Allow valid imports.",
+            "check": "true",
+        },
+        body="## Basis\nIsolate integrations.",
+    )
+    current_changes = change.proposal["payload"]["constraints"]
+    assert isinstance(current_changes, list)
+    _approve_revision(change, constraints=[*current_changes, invalid["id"]])
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
+    assert result.code != 0
+    assert "subject must be a non-empty slug" in result.err
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+    assert project.list("composer:architecture-reconciliation") == []
+
+
+@pytest.mark.parametrize("changed,recovery", [("candidate", "approve"), ("proposal", "withdraw")])
+def test_stale_approval_preserves_the_merged_model(
+    change: Change, changed: str, recovery: str
+) -> None:
+    project = change.project
+    root = project.project_root
+    if changed == "candidate":
+        git = Git(root)
+        git.text("commit", "--allow-empty", "-qm", "Advance the candidate")
+        change.pull_request.head = git.head()
+    else:
+        project.update(change.proposal["id"], body="## Rationale\nChange the proposal in place.")
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code != 0
+    assert change.proposal["id"] in result.err
+    assert change.pull_request.head in result.err
+    assert "withdraw" in result.err
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+    architecture = invoke("orchestra", ["view", "architecture", "--component", "gateway"], root)
+    assert architecture.code == 0, architecture.err
+    assert "Use the original processor." in architecture.out
+    assert "Use the current adapter." in architecture.out
+    assert project.list("composer:architecture-reconciliation") == []
+
+    proposal = project.resolve("composer:architecture-proposal", "stripe")
+    if recovery == "approve":
+        project.create(
+            record_type="composer:architecture-approval",
+            subject="stripe",
+            payload={
+                "proposal": proposal["id"],
+                "proposal_revision": proposal["revision"],
+                "candidate": change.pull_request.head,
+                "approved_by": "maintainer",
+            },
+        )
+    else:
+        project.supersede(proposal["id"], payload={"status": "withdrawn"})
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "done"
+    assert len(project.list("composer:architecture-reconciliation")) == (recovery == "approve")
+
+
+def test_retirement_refuses_when_another_accepted_adr_still_depends_on_rule(change: Change) -> None:
+    project = change.project
+    project.create(
+        record_type="composer:architecture-decision",
+        subject="audit-boundary",
+        payload={"status": "accepted", "affects": ["gateway"], "enforced_by": ["imports"]},
+        body="## Rationale\nPreserve the audit boundary.",
+    )
+    retirement = project.create(
+        record_type="composer:constraint-change",
+        subject="retire-imports",
+        payload={
+            "operation": "retire",
+            "constraint": "imports",
+            "base_constraint": change.baseline["id"],
+            "base_constraint_revision": change.baseline["revision"],
+        },
+        body="## Basis\nReplace the initial strategy.",
+    )
+    _approve_revision(change, enforced_by=[], constraints=[retirement["id"]])
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
+    assert result.code != 0
+    assert "audit-boundary" in result.err and "Cannot retire imports" in result.err
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+
+
+def test_session_start_refuses_stale_proposal_then_reconciles(
+    change: Change, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = change.project
+    root = project.project_root
+    proposal = project.update(
+        change.proposal["id"], body="## Rationale\nAdopt Stripe behind the payment gateway."
+    )
+    change.pull_request.state = "MERGED"
+    monkeypatch.setattr("orchestra.stage.hooks.github_client", lambda _repo: change.pull_request)
+    args = ["hook-start", "--cursor"]
+    data = json.dumps({"cwd": str(root)})
+    result = invoke("orchestra", args, root, stdin=data)
+    assert result.code == 0, result.err
+    assert "pending without approval" in result.out
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+    project.create(
+        record_type="composer:architecture-approval",
+        subject="stripe",
+        payload={
+            "proposal": proposal["id"],
+            "proposal_revision": proposal["revision"],
+            "candidate": change.pull_request.head,
+            "approved_by": "maintainer",
+        },
+    )
+    result = invoke("orchestra", args, root, stdin=data)
+    assert result.code == 0, result.err
+    assert "Closed phase stripe" in result.out
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "done"
+    assert project.resolve("score:standing-constraint", "imports")["id"] != change.baseline["id"]

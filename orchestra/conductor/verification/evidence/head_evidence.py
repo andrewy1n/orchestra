@@ -204,6 +204,21 @@ def criterion_runner_at_head(index: EvidenceIndex, criterion: str, head: str | N
     return _decide(latest(_at_head(runner_runs, head)), "runner check-run", head)
 
 
+def versioned_criterion_runner_at_head(
+    index: EvidenceIndex, criterion: str, head: str, source_revision: str
+) -> Answer:
+    runs = [
+        run
+        for run in index.check_runs
+        if _text(run, "criterion_id") == criterion
+        and _text(run, "runner") == RUNNER
+        and _text(run, "revision") == head
+        and isinstance(provenance := run.get("provenance"), dict)
+        and provenance.get("acceptance_revision") == source_revision
+    ]
+    return _decide(latest(runs), "runner check-run", head)
+
+
 def review_check_runs(index: EvidenceIndex, phase_slug: str, effort: str) -> list[Record]:
     subject = phase_slug + REVIEW_SUBJECT_SUFFIX
     return [
