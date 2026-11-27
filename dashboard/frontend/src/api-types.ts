@@ -318,6 +318,8 @@ export interface components {
         ArchitectureConstraint: {
             /** Check */
             check: string;
+            /** Constraint Id */
+            constraint_id: string;
             /** Name */
             name: string;
             /** Outcome */
@@ -326,8 +328,6 @@ export interface components {
             revision: string;
             /** Rule */
             rule: string;
-            /** Version */
-            version: string;
         };
         /** ArchitectureDecision */
         ArchitectureDecision: {

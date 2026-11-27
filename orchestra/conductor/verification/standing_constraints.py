@@ -15,7 +15,9 @@ from orchestra.conductor.verification.requirements import (
 )
 from orchestra.score.planning.standing_constraint import RECORD_TYPE
 
-Outcome = RequirementState | Literal["violated"]
+VIOLATED = "violated"
+INCONCLUSIVE = "inconclusive"
+Outcome = RequirementState | Literal["violated", "inconclusive"]
 
 
 @dataclass(frozen=True)
@@ -32,8 +34,14 @@ class ConstraintOutcome:
 @dataclass(frozen=True)
 class ConstraintResult:
     outcome: Outcome
-    version: str
+    constraint_id: str
     revision: str
+
+
+def _run_outcome(holds: bool, run: Record) -> Outcome:
+    if holds:
+        return VERIFIED
+    return VIOLATED if run["payload"].get("result") == "fail" else INCONCLUSIVE
 
 
 def criterion_id(constraint_id: str) -> str:
@@ -116,6 +124,6 @@ def constraint_outcomes(
         )
         outcome: Outcome = UNVERIFIED
         if answer.run is not None:
-            outcome = VERIFIED if answer.holds else "violated"
+            outcome = _run_outcome(answer.holds, answer.run)
         results.append(ConstraintResult(outcome, constraint_id, revision))
     return results

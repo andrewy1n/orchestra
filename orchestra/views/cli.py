@@ -9,6 +9,7 @@ from orchestra.canon.errors import StoreError
 from orchestra.canon.project_config import ProjectConfigError
 from orchestra.canon.types import Record
 from orchestra.canon.workspace import Access, open_for_command
+from orchestra.composer.architecture import SCOPE_KINDS, Scope
 from orchestra.conductor.phases.progress.phase_progress import (
     PhaseProgressError,
     open_phase_progress,
@@ -63,12 +64,15 @@ def _handoff(args: argparse.Namespace) -> int:
 
 
 def _architecture(args: argparse.Namespace, root: Path, records: list[Record]) -> str:
-    scopes = [s for s in (args.area, args.component, args.interface) if s is not None]
-    if len(scopes) > 1:
+    given = [
+        Scope(kind, name)
+        for kind, name in zip(SCOPE_KINDS, (args.area, args.component, args.interface), strict=True)
+        if name is not None
+    ]
+    if len(given) > 1:
         raise CommandError("use at most one of --area, --component, --interface", 2)
     revision = args.revision or Git(root).head()
-    scope = scopes[0] if scopes else None
-    return render_architecture(architecture_view(records, scope, revision))
+    return render_architecture(architecture_view(records, given[0] if given else None, revision))
 
 
 def _view(args: argparse.Namespace) -> int:

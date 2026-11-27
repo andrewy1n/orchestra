@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.server.app import create_app
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.composer.architecture import Scope
 from orchestra.conductor.verification.standing_constraints import criterion_id
 from orchestra.views.architecture import architecture_view, render_architecture
 
@@ -228,7 +229,7 @@ def test_api_content_equals_cli_content_for_each_scope(
     api = _api(project, param, scope)
 
     assert render_architecture(api).rstrip("\n") == cli.rstrip("\n")
-    assert api == architecture_view(project.records(), scope, HEAD)
+    assert api == architecture_view(project.records(), Scope(param, scope), HEAD)
 
 
 @pytest.mark.parametrize(("param", "scope"), SCOPES)

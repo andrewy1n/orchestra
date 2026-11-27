@@ -44,7 +44,7 @@ const view: ArchitectureResponse = {
 							rule: "Only adapters touch the store.",
 							check: "scripts/check-adapters",
 							outcome: "unverified",
-							version: "1",
+							constraint_id: "1",
 							revision: "a".repeat(40),
 						},
 					],

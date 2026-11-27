@@ -255,6 +255,10 @@
             "title": "Check",
             "type": "string"
           },
+          "constraint_id": {
+            "title": "Constraint Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -270,10 +274,6 @@
           "rule": {
             "title": "Rule",
             "type": "string"
-          },
-          "version": {
-            "title": "Version",
-            "type": "string"
           }
         },
         "required": [
@@ -281,7 +281,7 @@
           "rule",
           "check",
           "outcome",
-          "version",
+          "constraint_id",
           "revision"
         ],
         "title": "ArchitectureConstraint",

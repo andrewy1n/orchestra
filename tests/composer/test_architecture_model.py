@@ -8,6 +8,8 @@ from orchestra.composer.architecture import (
     Architecture,
     Component,
     Interface,
+    Scope,
+    UnknownScopeError,
     current_architecture,
     query_architecture,
 )
@@ -271,7 +273,7 @@ def test_missing_target_when_superseded_target_only_raises() -> None:
 def test_missing_error_also_raised_by_scoped_query() -> None:
     records = [_component("records"), _decision("Typed", ["ghost"], record_id="dec-1")]
     with pytest.raises(RecordShapeError):
-        query_architecture(records, "records")
+        query_architecture(records, Scope("component", "records"))
 
 
 def test_missing_decision_names_nothing_raises() -> None:
@@ -313,7 +315,7 @@ def test_model_carries_accepted_with_rationale_and_proposed_marked() -> None:
 
 def test_scope_by_area_returns_only_that_area() -> None:
     records = [_component("a", "one"), _component("b", "two")]
-    model = query_architecture(records, "one")
+    model = query_architecture(records, Scope("area", "one"))
     assert isinstance(model, Architecture)
     assert list(model.areas) == ["one"]
 
@@ -325,7 +327,7 @@ def test_scope_by_component_returns_that_component_and_its_decisions() -> None:
         _decision("DA", ["a"]),
         _decision("DB", ["b"]),
     ]
-    model = query_architecture(records, "a")
+    model = query_architecture(records, Scope("component", "a"))
     assert _titles(_component_of(model, "a")) == ["DA"]
     with pytest.raises(AssertionError):
         _component_of(model, "b")
@@ -340,7 +342,7 @@ def test_scope_by_interface_returns_connected_component_names() -> None:
         _decision("DI", ["api"]),
         _constraint("k", targets=["api"]),
     ]
-    model = query_architecture(records, "api")
+    model = query_architecture(records, Scope("interface", "api"))
     interface = _interface_of(model, "api")
     assert interface.connects == ("a", "b")
     assert _titles(interface) == ["DI"]
@@ -354,9 +356,15 @@ def test_scope_decision_shows_under_every_scope_it_names() -> None:
         _interface("api", ["a"]),
         _decision("Shared", ["a", "b", "api"]),
     ]
-    assert _titles(_component_of(query_architecture(records, "a"), "a")) == ["Shared"]
-    assert _titles(_component_of(query_architecture(records, "b"), "b")) == ["Shared"]
-    assert _titles(_interface_of(query_architecture(records, "api"), "api")) == ["Shared"]
+    assert _titles(_component_of(query_architecture(records, Scope("component", "a")), "a")) == [
+        "Shared"
+    ]
+    assert _titles(_component_of(query_architecture(records, Scope("component", "b")), "b")) == [
+        "Shared"
+    ]
+    assert _titles(
+        _interface_of(query_architecture(records, Scope("interface", "api")), "api")
+    ) == ["Shared"]
 
 
 def test_scope_none_returns_whole_model_with_components_and_interfaces() -> None:
@@ -391,5 +399,30 @@ def test_enforced_by_union_of_targets_and_decision_constraints_on_interface() ->
 
 
 def test_scope_unknown_name_raises() -> None:
-    with pytest.raises(RecordShapeError):
-        query_architecture([_component("a")], "ghost")
+    with pytest.raises(UnknownScopeError):
+        query_architecture([_component("a")], Scope("component", "ghost"))
+
+
+def test_scope_keeps_its_kind_when_an_area_and_a_component_share_a_name() -> None:
+    records = [_component("api", "billing"), _component("b", "api")]
+    by_area = query_architecture(records, Scope("area", "api"))
+    by_component = query_architecture(records, Scope("component", "api"))
+    assert list(by_area.areas) == ["api"]
+    assert [c.name for c in by_area.areas["api"]] == ["b"]
+    assert list(by_component.areas) == ["billing"]
+
+
+def test_scope_of_the_wrong_kind_raises() -> None:
+    records = [_component("a", "one"), _interface("api", ["a"])]
+    for scope in (Scope("area", "a"), Scope("component", "one"), Scope("component", "api")):
+        with pytest.raises(UnknownScopeError):
+            query_architecture(records, scope)
+
+
+def test_proposed_decision_does_not_make_its_constraint_apply() -> None:
+    records = [
+        _component("records"),
+        _constraint("by-decision"),
+        _decision("Maybe", ["records"], status="proposed", enforced_by=["by-decision"]),
+    ]
+    assert _component_of(current_architecture(records), "records").constraints == ()

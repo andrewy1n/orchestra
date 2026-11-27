@@ -19,9 +19,20 @@ from orchestra.composer.records import (
 from orchestra.composer.records import Component as ComponentRecord
 from orchestra.composer.records import Interface as InterfaceRecord
 from orchestra.score.lookups import latest_record
+from orchestra.score.planning.standing_constraint import RECORD_TYPE as STANDING_CONSTRAINT
 
-STANDING_CONSTRAINT = "score:standing-constraint"
 _DEAD_STATES = ("superseded", "retracted")
+SCOPE_KINDS = ("area", "component", "interface")
+
+
+class UnknownScopeError(RecordShapeError):
+    pass
+
+
+@dataclass(frozen=True)
+class Scope:
+    kind: str
+    name: str
 
 
 @dataclass(frozen=True)
@@ -54,6 +65,7 @@ class Interface:
 class Architecture:
     areas: dict[str, tuple[Component, ...]]
     interfaces: tuple[Interface, ...]
+    constraints: dict[str, Record]
 
 
 def _current(records: Sequence[Record], record_type: str) -> list[Record]:
@@ -82,7 +94,8 @@ def _constraints_for(
 ) -> tuple[str, ...]:
     names = {constraint for constraint, hit in targets.items() if name in hit}
     for decision in decisions:
-        names.update(decision.enforced_by)
+        if decision.status == "accepted":
+            names.update(decision.enforced_by)
     return tuple(sorted(names))
 
 
@@ -140,6 +153,7 @@ def _build(records: Sequence[Record]) -> Architecture:
     return Architecture(
         areas={area: tuple(items) for area, items in sorted(areas.items())},
         interfaces=tuple(interface_view(i) for i in interfaces),
+        constraints={r["subject"]: r for r in constraint_records},
     )
 
 
@@ -147,17 +161,19 @@ def current_architecture(records: Sequence[Record]) -> Architecture:
     return _build(records)
 
 
-def query_architecture(records: Sequence[Record], scope: str | None = None) -> Architecture:
+def query_architecture(records: Sequence[Record], scope: Scope | None = None) -> Architecture:
     model = _build(records)
     if scope is None:
         return model
-    for items in model.areas.values():
-        for component in items:
-            if component.name == scope:
-                return Architecture({component.area: (component,)}, ())
-    for interface in model.interfaces:
-        if interface.name == scope:
-            return Architecture({}, (interface,))
-    if scope in model.areas:
-        return Architecture({scope: model.areas[scope]}, ())
-    raise RecordShapeError(scope, "scope", "names no area, component or interface")
+    if scope.kind == "area" and scope.name in model.areas:
+        return Architecture({scope.name: model.areas[scope.name]}, (), model.constraints)
+    if scope.kind == "component":
+        for items in model.areas.values():
+            for component in items:
+                if component.name == scope.name:
+                    return Architecture({component.area: (component,)}, (), model.constraints)
+    if scope.kind == "interface":
+        for interface in model.interfaces:
+            if interface.name == scope.name:
+                return Architecture({}, (interface,), model.constraints)
+    raise UnknownScopeError(scope.name, "scope", f"names no {scope.kind}")

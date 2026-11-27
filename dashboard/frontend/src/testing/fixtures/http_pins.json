@@ -52,7 +52,7 @@
 	},
 	"error-architecture-unknown-scope": {
 		"body": {
-			"error": "record nope: field scope: names no area, component or interface"
+			"error": "record nope: field scope: names no component"
 		},
 		"status": 404
 	},

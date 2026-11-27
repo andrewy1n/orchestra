@@ -4,30 +4,16 @@ from collections.abc import Sequence
 
 from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.composer.architecture import (
-    STANDING_CONSTRAINT,
     Component,
     Decision,
     Interface,
-    current_architecture,
+    Scope,
     query_architecture,
 )
 from orchestra.conductor.verification.standing_constraints import constraint_outcomes
-from orchestra.score.lookups import latest_record
 from orchestra.score.planning.standing_constraint import read_standing_constraint
 
 NO_COMPONENT = "No component exists."
-_DEAD_STATES = ("superseded", "retracted")
-
-
-def _constraint_records(records: Sequence[Record]) -> dict[str, Record]:
-    by_name: dict[str, list[Record]] = {}
-    for record in records:
-        if record["record_type"] == STANDING_CONSTRAINT and (
-            record["lifecycle_state"] not in _DEAD_STATES
-        ):
-            by_name.setdefault(record["subject"], []).append(record)
-    latest = {name: latest_record(group) for name, group in by_name.items()}
-    return {name: record for name, record in latest.items() if record is not None}
 
 
 def _decision(decision: Decision) -> JsonObject:
@@ -52,7 +38,7 @@ def _constraints(
                 "rule": declared.rule,
                 "check": declared.check,
                 "outcome": result.outcome,
-                "version": result.version,
+                "constraint_id": result.constraint_id,
                 "revision": result.revision,
             }
         )
@@ -91,12 +77,13 @@ def _interface(
 
 
 def architecture_view(
-    records: Sequence[Record], scope: str | None = None, revision: str = ""
+    records: Sequence[Record], scope: Scope | None = None, revision: str = ""
 ) -> JsonObject:
     model = query_architecture(records, scope)
-    by_name = _constraint_records(records)
+    connected = model if scope is None else query_architecture(records)
+    by_name = model.constraints
     connecting: dict[str, list[str]] = {}
-    for interface in current_architecture(records).interfaces:
+    for interface in connected.interfaces:
         for name in interface.connects:
             connecting.setdefault(name, []).append(interface.name)
     areas: list[JsonValue] = [
@@ -117,8 +104,13 @@ def architecture_view(
 
 def _items(value: JsonValue) -> list[JsonObject]:
     if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
+        raise TypeError("architecture view field is not a list")
+    items: list[JsonObject] = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise TypeError("architecture view item is not an object")
+        items.append(item)
+    return items
 
 
 def _decision_lines(node: JsonObject) -> list[str]:
@@ -132,7 +124,7 @@ def _decision_lines(node: JsonObject) -> list[str]:
 def _constraint_lines(node: JsonObject) -> list[str]:
     return [
         f"- constraint **{c['name']}**: {c['rule']}; check: {c['check']}; "
-        f"outcome: {c['outcome']}; version: {c['version']}; revision: {c['revision']}"
+        f"outcome: {c['outcome']}; constraint id: {c['constraint_id']}; revision: {c['revision']}"
         for c in _items(node["constraints"])
     ]
 

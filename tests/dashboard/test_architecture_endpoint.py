@@ -17,6 +17,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from dashboard.backend.architecture import load_architecture
 from dashboard.backend.server.app import create_app
 from orchestra.canon.project import Project
+from orchestra.composer.architecture import Scope
 from orchestra.views.architecture import architecture_view, render_architecture
 
 HEAD = "a" * 40
@@ -94,7 +95,9 @@ def test_r11_endpoint_json_equals_architecture_view_for_the_full_query(tmp_path)
 )
 def test_r11_endpoint_json_equals_architecture_view_for_each_scope(tmp_path, param, scope):
     project = _project(tmp_path)
-    assert _body(project, **{param: scope}) == architecture_view(project.records(), scope, HEAD)
+    assert _body(project, **{param: scope}) == architecture_view(
+        project.records(), Scope(param, scope), HEAD
+    )
 
 
 def test_r11_endpoint_content_renders_to_the_cli_text(tmp_path):
@@ -138,6 +141,24 @@ def test_r11_more_than_one_scope_is_rejected(tmp_path):
 
 def test_r11_load_architecture_returns_the_shared_view(tmp_path):
     project = _project(tmp_path)
-    assert load_architecture(project, "records", HEAD) == architecture_view(
-        project.records(), "records", HEAD
+    assert load_architecture(project, Scope("component", "records"), HEAD) == architecture_view(
+        project.records(), Scope("component", "records"), HEAD
     )
+
+
+def test_r11_scope_of_the_wrong_kind_is_not_found(tmp_path):
+    response = _get(_project(tmp_path), area="records")
+    assert response.status_code == 404
+
+
+def test_r11_malformed_store_fails_with_a_server_error(tmp_path):
+    project = _project(tmp_path)
+    project.create(
+        record_type="composer:architecture-decision",
+        subject="dangling",
+        payload={"status": "accepted", "affects": ["ghost"]},
+        body="## Rationale\nNames nothing real.\n",
+    )
+    response = _get(project)
+    assert response.status_code == 500
+    assert "ghost" in response.json()["error"]

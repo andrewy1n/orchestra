@@ -16,6 +16,7 @@ from dashboard.backend.server import schemas
 from dashboard.backend.server.service import Reader, WriteError
 from orchestra.canon.errors import RecordShapeError as CanonShapeError
 from orchestra.canon.project import Project
+from orchestra.composer.architecture import SCOPE_KINDS, Scope, UnknownScopeError
 from orchestra.tuner.evidence.record_facts import RecordShapeError
 
 DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
@@ -71,13 +72,19 @@ def create_app(target: Project) -> FastAPI:
         interface: str | None = Query(None),
         revision: str = Query(""),
     ) -> schemas.ArchitectureResponse:
-        scopes = [s for s in (area, component, interface) if s is not None]
-        if len(scopes) > 1:
+        given = [
+            Scope(kind, name)
+            for kind, name in zip(SCOPE_KINDS, (area, component, interface), strict=True)
+            if name is not None
+        ]
+        if len(given) > 1:
             raise WriteError("use at most one of area, component, interface", 400)
         try:
-            return reader.architecture(scopes[0] if scopes else None, revision)
-        except CanonShapeError as exc:
+            return reader.architecture(given[0] if given else None, revision)
+        except UnknownScopeError as exc:
             raise WriteError(str(exc), 404) from exc
+        except CanonShapeError as exc:
+            raise WriteError(str(exc), 500) from exc
 
     @app.get("/api/hub", response_model=schemas.HubResponse, responses=ERRORS)
     def hub() -> schemas.HubResponse:

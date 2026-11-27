@@ -8,6 +8,7 @@ from interfaces.interfaces_support import invoke
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
+from orchestra.composer.architecture import Scope
 from orchestra.conductor.verification.standing_constraints import criterion_id
 from orchestra.views.architecture import architecture_view, render_architecture
 
@@ -90,7 +91,7 @@ def _run(project: Project, constraint: Record, result: str) -> Record:
     )
 
 
-def _text(project: Project, scope: str | None = None) -> str:
+def _text(project: Project, scope: Scope | None = None) -> str:
     view = architecture_view(project.records(), scope, HEAD)
     return render_architecture(view)
 
@@ -212,7 +213,7 @@ def test_lists_only_scoped_component_when_scope_given(tmp_path: Path) -> None:
     _component(project, "records")
     _component(project, "views", area="interfaces")
 
-    text = _text(project, "views")
+    text = _text(project, Scope("component", "views"))
 
     assert "views" in text
     assert "records" not in text
@@ -310,7 +311,7 @@ def test_interface_scope_lists_interface_decision_constraint_and_components(
 ) -> None:
     project = _interface_scope_project(tmp_path)
 
-    text = _text(project, "record-api")
+    text = _text(project, Scope("interface", "record-api"))
 
     assert "Serves record-api callers." in text
     assert "versioned-api" in text

@@ -41,6 +41,7 @@ from dashboard.backend.snapshot import (
 from dashboard.backend.stages import refs_fingerprint
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
+from orchestra.composer.architecture import Scope
 from orchestra.conductor.verification.requirements import is_verified
 
 CachedResponse = (
@@ -277,7 +278,7 @@ class Reader:
                 schemas.ProductResponse,
             )
 
-    def architecture(self, scope: str | None, revision: str) -> schemas.ArchitectureResponse:
+    def architecture(self, scope: Scope | None, revision: str) -> schemas.ArchitectureResponse:
         with self.cache.request():
             return schemas.ArchitectureResponse.model_validate(
                 architecture.load_architecture(self.read_target, scope, revision)

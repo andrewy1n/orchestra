@@ -139,7 +139,17 @@ def test_each_result_carries_the_queried_revision(tmp_path: Path) -> None:
 
     results = constraint_outcomes(project.records(), [first["id"], second["id"]], OTHER_HEAD)
 
-    assert [(r.version, r.outcome, r.revision) for r in results] == [
+    assert [(r.constraint_id, r.outcome, r.revision) for r in results] == [
         (first["id"], "verified", OTHER_HEAD),
         (second["id"], "unverified", OTHER_HEAD),
     ]
+
+
+def test_check_run_that_is_neither_pass_nor_fail_is_inconclusive(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    constraint = _constraint(project)
+    _run(project, constraint["id"], "blocked")
+
+    results = constraint_outcomes(project.records(), [constraint["id"]], HEAD)
+
+    assert results == [ConstraintResult("inconclusive", constraint["id"], HEAD)]

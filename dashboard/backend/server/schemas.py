@@ -171,7 +171,7 @@ class ArchitectureConstraint(Model):
     rule: str
     check: str
     outcome: str
-    version: str
+    constraint_id: str
     revision: str
 
 
