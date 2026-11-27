@@ -121,3 +121,11 @@ def test_set_autonomy_to_the_current_level_keeps_the_record(tmp_path: Path) -> N
     again = autonomy.set_autonomy(project, "alpha", "auto-plan")
     assert again["id"] == first["id"]
     assert again["revision"] == first["revision"]
+
+
+def test_set_autonomy_gated_on_an_unset_effort_keeps_the_record(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    create(project, "score:effort", "alpha", {"goal": "g", "kind": "deliver"})
+    before = project.resolve("score:effort", "alpha")
+    again = autonomy.set_autonomy(project, "alpha", "gated")
+    assert again["revision"] == before["revision"]
