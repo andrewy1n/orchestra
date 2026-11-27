@@ -29,6 +29,25 @@ The unique closing task in a phase with Landing uses runner checks
 instead of an executor. Retry it with `orchestra wave start` after
 fixing a failed check; do not dispatch it to an agent.
 
+## Resume an interrupted task
+
+An `in_progress` task whose executor stopped before it reported evidence
+has no failing check-run, so it is not a retry. Run:
+
+```bash
+orchestra task resume <task-slug>
+```
+
+The command reads the task worktree and its commits, and it lists the
+processes that hold the worktree with `lsof`. It resumes only when no
+process holds the worktree and no execution report exists for the
+dispatch id. Otherwise it exits non-zero: open a blocking
+`continuity-question` with `scope` `retry:<task-slug>` and do not
+resume. When it succeeds, it names the first unfinished step:
+`implement`, `land`, `check`, or `close`. Do the named step. A resume
+never changes `attempts`. Count a retry only when you attempt another
+repair with `orchestra task redispatch`.
+
 ## Budget (hard backstop)
 
 Defaults (override in the phase body's run facts):

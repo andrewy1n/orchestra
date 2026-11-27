@@ -15,6 +15,7 @@ from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.tasks import land_task, wave
 from orchestra.conductor.tasks.redispatch import task_redispatch
 from orchestra.conductor.tasks.redispatch.redispatch_facts import redispatch_facts
+from orchestra.conductor.tasks.resume import task_resume
 from orchestra.conductor.tasks.task_landing import land_and_close
 from orchestra.conductor.verification.evidence.evidence import EVIDENCE_SCHEMA, EvidenceError
 from orchestra.score.planning.work_item import WorkItemShapeError
@@ -214,6 +215,37 @@ def _task_redispatch(args: argparse.Namespace) -> int:
     return 0
 
 
+def _task_resume(args: argparse.Namespace) -> int:
+    start = work_dir(args)
+    project = open_project(args, start, Access.READ)
+    try:
+        report = task_resume.resume(project, args.task)
+    except (
+        task_resume.ResumeError,
+        OSError,
+        RuntimeError,
+        StoreBindingError,
+        StoreError,
+    ) as exc:
+        raise CommandError(f"{args.task}: {exc}") from exc
+    if args.json:
+        emit_json(
+            {
+                "task": report.task,
+                "worktree": report.worktree,
+                "step": report.step,
+                "commits_ahead": report.commits_ahead,
+                "dirty": report.dirty,
+                "pending_acceptances": list(report.pending_acceptances),
+            }
+        )
+    else:
+        print(f"resume {report.task} at step {report.step}")
+        for acceptance in report.pending_acceptances:
+            print(f"  run check for {acceptance}")
+    return 0
+
+
 def _configure_wave_start(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("phase", help="Phase slug")
     parser.add_argument("--json", action="store_true", help="Print one JSON object")
@@ -234,6 +266,13 @@ def _configure_task_redispatch(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--expected-revision", required=True, help="Exact current work-item revision"
     )
+    parser.add_argument("--json", action="store_true", help="Print one JSON object")
+    parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
+    parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
+
+
+def _configure_task_resume(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("task", help="Work-item subject")
     parser.add_argument("--json", action="store_true", help="Print one JSON object")
     parser.add_argument("--cwd", default=None, help="Directory inside the repo (default: cwd)")
     parser.add_argument("--store", default=None, metavar="DIR", help="Store repo root")
@@ -284,6 +323,12 @@ def commands(render_brief: BriefRenderer) -> list[Command]:
                     "Start a new measured dispatch for an in-progress task",
                     configure=_configure_task_redispatch,
                     handle=_task_redispatch,
+                ),
+                Command(
+                    "resume",
+                    "Name the first unfinished step of an in-progress task with no live executor",
+                    configure=_configure_task_resume,
+                    handle=_task_resume,
                 ),
                 Command(
                     "land",
