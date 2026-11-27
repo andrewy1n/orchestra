@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/architecture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Architecture */
+        get: operations["architecture_api_architecture_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/areas": {
         parameters: {
             query?: never;
@@ -276,6 +293,72 @@ export interface components {
         Approval: {
             /** Confirm Choices */
             confirm_choices: components["schemas"]["ConfirmChoice"][];
+        };
+        /** ArchitectureArea */
+        ArchitectureArea: {
+            /** Components */
+            components: components["schemas"]["ArchitectureComponent"][];
+            /** Name */
+            name: string;
+        };
+        /** ArchitectureComponent */
+        ArchitectureComponent: {
+            /** Constraints */
+            constraints: components["schemas"]["ArchitectureConstraint"][];
+            /** Decisions */
+            decisions: components["schemas"]["ArchitectureDecision"][];
+            /** Interfaces */
+            interfaces: string[];
+            /** Name */
+            name: string;
+            /** Responsibility */
+            responsibility: string;
+        };
+        /** ArchitectureConstraint */
+        ArchitectureConstraint: {
+            /** Check */
+            check: string;
+            /** Constraint Id */
+            constraint_id: string;
+            /** Name */
+            name: string;
+            /** Outcome */
+            outcome: string;
+            /** Revision */
+            revision: string;
+            /** Rule */
+            rule: string;
+        };
+        /** ArchitectureDecision */
+        ArchitectureDecision: {
+            /** Rationale */
+            rationale: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
+        /** ArchitectureInterface */
+        ArchitectureInterface: {
+            /** Connects */
+            connects: string[];
+            /** Constraints */
+            constraints: components["schemas"]["ArchitectureConstraint"][];
+            /** Decisions */
+            decisions: components["schemas"]["ArchitectureDecision"][];
+            /** Name */
+            name: string;
+            /** Provides */
+            provides: string;
+        };
+        /** ArchitectureResponse */
+        ArchitectureResponse: {
+            /** Areas */
+            areas: components["schemas"]["ArchitectureArea"][];
+            /** Interfaces */
+            interfaces: components["schemas"]["ArchitectureInterface"][];
+            /** Revision */
+            revision: string;
         };
         /** AreaIdea */
         AreaIdea: {
@@ -1071,6 +1154,12 @@ export type AgentAssignment = components['schemas']['AgentAssignment'];
 export type AgentReport = components['schemas']['AgentReport'];
 export type AgentWork = components['schemas']['AgentWork'];
 export type Approval = components['schemas']['Approval'];
+export type ArchitectureArea = components['schemas']['ArchitectureArea'];
+export type ArchitectureComponent = components['schemas']['ArchitectureComponent'];
+export type ArchitectureConstraint = components['schemas']['ArchitectureConstraint'];
+export type ArchitectureDecision = components['schemas']['ArchitectureDecision'];
+export type ArchitectureInterface = components['schemas']['ArchitectureInterface'];
+export type ArchitectureResponse = components['schemas']['ArchitectureResponse'];
 export type AreaIdea = components['schemas']['AreaIdea'];
 export type AreaView = components['schemas']['AreaView'];
 export type AreasResponse = components['schemas']['AreasResponse'];
@@ -1126,6 +1215,67 @@ export type TokenResponse = components['schemas']['TokenResponse'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type $defs = Record<string, never>;
 export interface operations {
+    architecture_api_architecture_get: {
+        parameters: {
+            query?: {
+                area?: string | null;
+                component?: string | null;
+                interface?: string | null;
+                revision?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArchitectureResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     areas_api_areas_get: {
         parameters: {
             query?: never;

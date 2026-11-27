@@ -13,7 +13,7 @@ from interfaces.interfaces_support import ENTRY_POINTS
 ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
     "": (),
     "handoff": ("--effort",),
-    "view": ("--effort",),
+    "view": ("--area", "--component", "--effort", "--interface", "--revision"),
     "brief": (),
     "hook-start": ("--claude", "--cursor"),
     "hook-stop": ("--claude", "--cursor"),

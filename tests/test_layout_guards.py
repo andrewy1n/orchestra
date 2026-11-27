@@ -107,6 +107,7 @@ def test_composer_flat_holds_only_its_modules():
     entries = {path.stem for path in root.iterdir() if path.name != "__pycache__"}
     assert entries == {
         "__init__",
+        "architecture",
         "cli",
         "idea",
         "idea_facts",

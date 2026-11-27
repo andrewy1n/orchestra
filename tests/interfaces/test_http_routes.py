@@ -234,6 +234,12 @@ def _id_of(labels: Seed, label: str) -> str:
 
 
 CASES: dict[str, tuple[str, Callable[[Seed], dict[str, str]]]] = {
+    "architecture": ("/api/architecture", lambda _l: {"revision": "a" * 40}),
+    "error-architecture-unknown-scope": ("/api/architecture", lambda _l: {"component": "nope"}),
+    "error-architecture-two-scopes": (
+        "/api/architecture",
+        lambda _l: {"area": "x", "component": "y"},
+    ),
     "token": ("/api/token", lambda _l: {}),
     "snapshot": ("/api/snapshot", lambda _l: {}),
     "areas": ("/api/areas", lambda _l: {}),

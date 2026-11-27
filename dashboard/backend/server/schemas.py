@@ -160,6 +160,48 @@ class ProductResponse(Model):
     goals: list[ProductEntry]
 
 
+class ArchitectureDecision(Model):
+    title: str
+    rationale: str
+    status: str
+
+
+class ArchitectureConstraint(Model):
+    name: str
+    rule: str
+    check: str
+    outcome: str
+    constraint_id: str
+    revision: str
+
+
+class ArchitectureComponent(Model):
+    name: str
+    responsibility: str
+    interfaces: list[str]
+    decisions: list[ArchitectureDecision]
+    constraints: list[ArchitectureConstraint]
+
+
+class ArchitectureArea(Model):
+    name: str
+    components: list[ArchitectureComponent]
+
+
+class ArchitectureInterface(Model):
+    name: str
+    provides: str
+    connects: list[str]
+    decisions: list[ArchitectureDecision]
+    constraints: list[ArchitectureConstraint]
+
+
+class ArchitectureResponse(Model):
+    revision: str
+    areas: list[ArchitectureArea]
+    interfaces: list[ArchitectureInterface]
+
+
 class Stage(Model):
     id: str
     state: str

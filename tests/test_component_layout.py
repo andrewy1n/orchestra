@@ -47,6 +47,14 @@ def _rel(path: Path) -> str:
     return path.relative_to(REPO).as_posix()
 
 
+CROSS_COMPONENT = {"test_architecture_view.py", "test_architecture_two_areas.py"}
+
+
+def test_cross_component_exemptions_exist():
+    missing = sorted(name for name in CROSS_COMPONENT if not (TESTS / name).is_file())
+    assert not missing, f"exempted modules are missing from tests/: {missing}"
+
+
 def _assert_in_place(root: str) -> None:
     misplaced = [
         _rel(path) for path in sorted(TESTS.glob("test_*.py")) if _imported_roots(path) == {root}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Architecture from "$lib/screens/Architecture.svelte";
   import Area from "$lib/screens/Area.svelte";
   import Breadcrumb from "$lib/screens/Breadcrumb.svelte";
   import ConfirmModal from "$lib/screens/ConfirmModal.svelte";
@@ -43,12 +44,7 @@
       routePhase(navigation.route, polling.snapshot?.efforts ?? []) !== null,
   );
   const railLevel = $derived(
-    railItems(
-      navigation.route,
-      polling.snapshot,
-      areas.items,
-      polling.selectedEffort,
-    ).level,
+    railItems(navigation.route, polling.snapshot, areas.items, polling.selectedEffort).level,
   );
 
   $effect(() => {
@@ -113,6 +109,8 @@
         <Hub />
       {:else if navigation.route.name === "areas"}
         <ProductIndex />
+      {:else if navigation.route.name === "architecture"}
+        <Architecture />
       {:else if navigation.route.name === "area"}
         <Area />
       {:else if onPhasePage}

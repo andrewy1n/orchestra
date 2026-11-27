@@ -1,4 +1,12 @@
 {
+	"architecture": {
+		"body": {
+			"areas": [],
+			"interfaces": [],
+			"revision": "<token>"
+		},
+		"status": 200
+	},
 	"areas": {
 		"body": [
 			{
@@ -35,6 +43,18 @@
 			}
 		},
 		"status": 200
+	},
+	"error-architecture-two-scopes": {
+		"body": {
+			"error": "use at most one of area, component, interface"
+		},
+		"status": 400
+	},
+	"error-architecture-unknown-scope": {
+		"body": {
+			"error": "record nope: field scope: names no component"
+		},
+		"status": 404
 	},
 	"error-backlog-unknown": {
 		"body": {

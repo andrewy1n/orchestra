@@ -9,7 +9,17 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from typing import TypeVar
 
-from dashboard.backend import approval, areas, backlog, dismiss, hub, journal, product, store
+from dashboard.backend import (
+    approval,
+    architecture,
+    areas,
+    backlog,
+    dismiss,
+    hub,
+    journal,
+    product,
+    store,
+)
 from dashboard.backend.gates import landing_facts
 from dashboard.backend.phase import (
     PhaseRow,
@@ -31,6 +41,7 @@ from dashboard.backend.snapshot import (
 from dashboard.backend.stages import refs_fingerprint
 from dashboard.backend.task import load_task_detail
 from orchestra.canon.project import Project
+from orchestra.composer.architecture import Scope
 from orchestra.conductor.verification.requirements import is_verified
 
 CachedResponse = (
@@ -265,6 +276,12 @@ class Reader:
                     product.load_product(self.read_target), from_attributes=True
                 ),
                 schemas.ProductResponse,
+            )
+
+    def architecture(self, scope: Scope | None, revision: str) -> schemas.ArchitectureResponse:
+        with self.cache.request():
+            return schemas.ArchitectureResponse.model_validate(
+                architecture.load_architecture(self.read_target, scope, revision)
             )
 
     def hub(self) -> schemas.HubResponse:
