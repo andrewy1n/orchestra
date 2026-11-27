@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from orchestra.canon import record_payload
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, Record
@@ -30,6 +31,8 @@ def place(project: Project, effort: str, area: str) -> Record:
             return project.create(record_type=PLACEMENT, subject=effort, payload=payload)
         if current.get("lifecycle_state") != "active":
             return project.create(record_type=PLACEMENT, subject=effort, payload=payload)
+        if record_payload(current).get("area") == area:
+            return current
         return project.supersede(current["id"], payload=payload)["record"]
     except (StoreError, ValidationError) as exc:
         raise PlacementError(str(exc)) from exc
