@@ -7,7 +7,7 @@ from canon_support import make_project, seed_effort
 
 from orchestra.canon.project import Project
 from orchestra.canon.types import JsonObject, JsonValue, Record
-from orchestra.composer.architecture_proposal import proposal_for_phase
+from orchestra.composer.architecture_change import proposal_for_phase
 
 
 @pytest.fixture

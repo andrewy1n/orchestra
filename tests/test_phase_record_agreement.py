@@ -413,7 +413,13 @@ def _through_gate(rig: Rig) -> None:
 
 
 def _through_close(rig: Rig) -> None:
-    result = close.close_phase(rig.project, rig.root, PHASE, MergedStates(rig.head))
+    result = close.close_phase(
+        rig.project,
+        rig.root,
+        PHASE,
+        MergedStates(rig.head),
+        reconcile_architecture=lambda *_: False,
+    )
     rig.picks.add("landing", LANDING_NUMBERS[result.number])
 
 

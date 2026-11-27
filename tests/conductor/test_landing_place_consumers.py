@@ -215,7 +215,13 @@ def test_r14_close_and_wave_use_the_worktree_and_branch_the_landing_section_name
         },
     )
 
-    result = close.close_phase(world.project, world.repo, PHASE, FakeStates("MERGED", tip))
+    result = close.close_phase(
+        world.project,
+        world.repo,
+        PHASE,
+        FakeStates("MERGED", tip),
+        reconcile_architecture=lambda *_: False,
+    )
 
     assert result.ready, result.refusals
     assert not world.tree.exists()
@@ -246,7 +252,13 @@ def test_r14_close_refuses_when_the_named_worktree_has_uncommitted_changes(
         },
     )
 
-    result = close.close_phase(world.project, world.repo, PHASE, FakeStates("MERGED", tip))
+    result = close.close_phase(
+        world.project,
+        world.repo,
+        PHASE,
+        FakeStates("MERGED", tip),
+        reconcile_architecture=lambda *_: False,
+    )
 
     assert not result.ready
     assert any(str(world.tree) in reason for reason in result.refusals)
@@ -271,7 +283,13 @@ def test_r14_close_refuses_when_the_named_branch_tip_differs_from_the_merged_hea
         },
     )
 
-    result = close.close_phase(world.project, world.repo, PHASE, FakeStates("MERGED", "a" * 40))
+    result = close.close_phase(
+        world.project,
+        world.repo,
+        PHASE,
+        FakeStates("MERGED", "a" * 40),
+        reconcile_architecture=lambda *_: False,
+    )
 
     assert not result.ready
     assert any(f"branch {BRANCH} tip" in reason for reason in result.refusals)

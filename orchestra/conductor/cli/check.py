@@ -67,11 +67,11 @@ def _configure(check: argparse.ArgumentParser) -> None:
     )
 
 
-def _handle(args: argparse.Namespace, reader: ProposedConstraintReader | None) -> int:
+def _handle(args: argparse.Namespace, reader: ProposedConstraintReader) -> int:
     work = Path(args.cwd) if args.cwd else Path.cwd()
     project = open_project(args, Path.cwd(), Access.WRITE, refused_exit=4)
     if args.proposed_constraint:
-        if not args.phase or reader is None or args.allow_dirty:
+        if not args.phase or args.allow_dirty:
             print("--proposed-constraint requires --phase and a clean candidate", file=sys.stderr)
             return 4
         outcome = run_proposed_constraint_check(
@@ -117,7 +117,7 @@ def _handle(args: argparse.Namespace, reader: ProposedConstraintReader | None) -
     return outcome.exit_code
 
 
-def commands(reader: ProposedConstraintReader | None = None) -> list[Command]:
+def commands(reader: ProposedConstraintReader) -> list[Command]:
     return [
         Command(
             "check",

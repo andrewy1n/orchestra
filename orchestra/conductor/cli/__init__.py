@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from orchestra.conductor.cli import (
     check,
     close,
@@ -21,20 +23,25 @@ from orchestra.tools.command_kit import Command
 __all__ = ["BriefRenderer", "commands"]
 
 
+@dataclass(frozen=True)
+class ArchitectureChanges:
+    review: ArchitectureReview
+    proposed_constraint: ProposedConstraintReader
+    reconcile: ReconcileArchitecture
+
+
 def commands(
     *,
     render_brief: BriefRenderer,
-    architecture_review: ArchitectureReview | None = None,
-    proposed_constraint: ProposedConstraintReader | None = None,
-    reconcile_architecture: ReconcileArchitecture | None = None,
+    architecture: ArchitectureChanges,
 ) -> list[Command]:
     return [
-        *check.commands(proposed_constraint),
+        *check.commands(architecture.proposed_constraint),
         *workflow_commands.commands(),
         *wave_commands.commands(render_brief),
         *land.commands(),
         *merge_evidence.commands(),
-        *close.commands(reconcile_architecture),
-        *phase_commands.commands(architecture_review),
+        *close.commands(architecture.reconcile),
+        *phase_commands.commands(architecture.review),
         *suite_commands.commands(),
     ]

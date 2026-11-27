@@ -143,7 +143,7 @@ def _gate(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
-def _review_brief(args: argparse.Namespace, architecture_review: ArchitectureReview | None) -> int:
+def _review_brief(args: argparse.Namespace, architecture_review: ArchitectureReview) -> int:
     work = work_dir(args)
     project = open_project(args, work, Access.READ)
     try:
@@ -170,7 +170,7 @@ def _review_brief(args: argparse.Namespace, architecture_review: ArchitectureRev
     return 0
 
 
-def commands(architecture_review: ArchitectureReview | None = None) -> list[Command]:
+def commands(architecture_review: ArchitectureReview) -> list[Command]:
     return [
         Command(
             "review-brief",

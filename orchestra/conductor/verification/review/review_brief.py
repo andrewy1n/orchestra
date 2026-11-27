@@ -37,7 +37,7 @@ def build_review_brief(
     phase_head: str,
     phase: str | None,
     suite_refusal: str,
-    architecture_review: ArchitectureReview | None = None,
+    architecture_review: ArchitectureReview,
 ) -> str:
     if suite_refusal:
         raise RuntimeError(suite_refusal)
@@ -50,7 +50,7 @@ def build_review_brief(
         phase_head=phase_head,
         phase=phase,
     )
-    if phase is None or architecture_review is None:
+    if phase is None:
         return brief
     architecture = architecture_review(project.records(), work, phase, base, phase_head)
     return f"{brief.rstrip()}\n\n{architecture}" if architecture else brief

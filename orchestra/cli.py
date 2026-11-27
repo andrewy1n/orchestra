@@ -38,9 +38,11 @@ def _build_parser() -> argparse.ArgumentParser:
         sub,
         conductor_cli.commands(
             render_brief=views_cli.render_brief,
-            architecture_review=views_cli.architecture_proposal.architecture_review,
-            proposed_constraint=views_cli.architecture_proposal.proposed_constraint,
-            reconcile_architecture=composer_cli.reconcile_architecture,
+            architecture=conductor_cli.ArchitectureChanges(
+                review=views_cli.architecture_proposal.architecture_review,
+                proposed_constraint=composer_cli.architecture_change.proposed_constraint,
+                reconcile=composer_cli.architecture_change.reconcile_architecture,
+            ),
         ),
     )
     command_kit.mount(sub, score_cli.commands())

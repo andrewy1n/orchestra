@@ -216,8 +216,10 @@ def test_failed_write_rolls_back_earlier_constraint_revision(change: Change) -> 
     assert project.list("composer:architecture-reconciliation") == []
 
 
-@pytest.mark.parametrize("changed", ["candidate", "proposal"])
-def test_stale_approval_preserves_the_merged_model(change: Change, changed: str) -> None:
+@pytest.mark.parametrize("changed,recovery", [("candidate", "approve"), ("proposal", "withdraw")])
+def test_stale_approval_preserves_the_merged_model(
+    change: Change, changed: str, recovery: str
+) -> None:
     project = change.project
     root = project.project_root
     if changed == "candidate":
@@ -228,9 +230,60 @@ def test_stale_approval_preserves_the_merged_model(change: Change, changed: str)
         project.update(change.proposal["id"], body="## Rationale\nChange the proposal in place.")
     change.pull_request.state = "MERGED"
     result = invoke("orchestra", ["close", "--phase", "stripe"], root)
-    assert result.code == 0, result.err
+    assert result.code != 0
+    assert change.proposal["id"] in result.err
+    assert change.pull_request.head in result.err
+    assert "withdraw" in result.err
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
     architecture = invoke("orchestra", ["view", "architecture", "--component", "gateway"], root)
     assert architecture.code == 0, architecture.err
     assert "Use the original processor." in architecture.out
     assert "Use the current adapter." in architecture.out
     assert project.list("composer:architecture-reconciliation") == []
+
+    proposal = project.resolve("composer:architecture-proposal", "stripe")
+    if recovery == "approve":
+        project.create(
+            record_type="composer:architecture-approval",
+            subject="stripe",
+            payload={
+                "proposal": proposal["id"],
+                "proposal_revision": proposal["revision"],
+                "candidate": change.pull_request.head,
+                "approved_by": "maintainer",
+            },
+        )
+    else:
+        project.supersede(proposal["id"], payload={"status": "withdrawn"})
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "done"
+    assert len(project.list("composer:architecture-reconciliation")) == (recovery == "approve")
+
+
+def test_retirement_refuses_when_another_accepted_adr_still_depends_on_rule(change: Change) -> None:
+    project = change.project
+    project.create(
+        record_type="composer:architecture-decision",
+        subject="audit-boundary",
+        payload={"status": "accepted", "affects": ["gateway"], "enforced_by": ["imports"]},
+        body="## Rationale\nPreserve the audit boundary.",
+    )
+    retirement = project.create(
+        record_type="composer:constraint-change",
+        subject="retire-imports",
+        payload={
+            "operation": "retire",
+            "constraint": "imports",
+            "base_constraint": change.baseline["id"],
+            "base_constraint_revision": change.baseline["revision"],
+        },
+        body="## Basis\nReplace the initial strategy.",
+    )
+    _approve_revision(change, enforced_by=[], constraints=[retirement["id"]])
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], project.project_root)
+    assert result.code != 0
+    assert "audit-boundary" in result.err and "Cannot retire imports" in result.err
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"

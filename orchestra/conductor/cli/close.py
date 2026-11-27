@@ -65,9 +65,7 @@ def _configure_close_batch(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _close(
-    args: argparse.Namespace, reconcile_architecture: close.ReconcileArchitecture | None
-) -> int:
+def _close(args: argparse.Namespace, reconcile_architecture: close.ReconcileArchitecture) -> int:
     if bool(args.phase) == bool(args.all):
         raise CommandError("pass exactly one of --phase and --all")
     work = work_dir(args).resolve()
@@ -148,7 +146,7 @@ def _result_json(result: close.CloseResult) -> JsonObject:
     }
 
 
-def commands(reconcile_architecture: close.ReconcileArchitecture | None = None) -> list[Command]:
+def commands(reconcile_architecture: close.ReconcileArchitecture) -> list[Command]:
     return [
         Command(
             "close-batch",

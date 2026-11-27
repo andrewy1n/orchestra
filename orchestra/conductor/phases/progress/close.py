@@ -90,7 +90,7 @@ def close_phase(
     states: PullRequestStates,
     cwd: Path | None = None,
     *,
-    reconcile_architecture: ReconcileArchitecture | None = None,
+    reconcile_architecture: ReconcileArchitecture,
 ) -> CloseResult:
     landing = latest_landing(project.records(), phase)
     if landing is None:
@@ -108,10 +108,8 @@ def close_phase(
         message = f"pull request {number} is MERGED; close refused"
         return CloseResult(phase, number, url, state, head_sha, False, refusals, message)
     actions: tuple[str, ...] = ()
-    if (
-        current.record["lifecycle_state"] != "done"
-        and reconcile_architecture is not None
-        and reconcile_architecture(project, phase, head_sha)
+    if current.record["lifecycle_state"] != "done" and reconcile_architecture(
+        project, phase, head_sha
     ):
         actions = ("reconciled approved architecture changes",)
     actions += _apply(project, place, current, number, head_sha)
@@ -155,7 +153,7 @@ def close_all(
     states: PullRequestStates,
     cwd: Path | None = None,
     *,
-    reconcile_architecture: ReconcileArchitecture | None = None,
+    reconcile_architecture: ReconcileArchitecture,
 ) -> tuple[CloseResult | str, ...]:
     """Close every landed phase that still has work to close; a failure becomes a message."""
     results: list[CloseResult | str] = []

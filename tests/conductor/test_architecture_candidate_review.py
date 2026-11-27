@@ -55,7 +55,8 @@ def candidate(tmp_path: Path) -> tuple[Path, str, str, Record]:
     git.text("switch", "-c", "candidate")
     (tmp_path / "payments.py").write_text("import stripe_adapter\nimport unknown_vendor\n")
     (tmp_path / "stripe_adapter.py").write_text("")
-    git.text("add", "payments.py", "stripe_adapter.py")
+    (tmp_path / "helpers.py").write_text("")
+    git.text("add", "payments.py", "stripe_adapter.py", "helpers.py")
     git.text("commit", "-qm", "Add adapter dependencies")
     return tmp_path, baseline, git.head(), rule
 
@@ -78,7 +79,8 @@ def test_dependency_changes_are_shown_beside_proposal(
     assert "## Proposed architecture changes" in brief
     assert "Authorize the Stripe adapter." in brief
     assert "Added: gateway → adapter" in brief
-    assert "Added: gateway → unresolved module unknown_vendor" in brief
+    assert "Unmapped first-party modules helpers" in brief
+    assert "unknown_vendor" not in brief.split("## Observed component dependency changes", 1)[1]
 
 
 def test_candidate_evidence_matches_rule_and_commit(
@@ -220,3 +222,62 @@ def test_candidate_evidence_refuses_an_incomplete_checkout(
     assert check.code == 3
     assert "requires a complete candidate checkout" in check.err
     assert project.list("tuner:check-run") == []
+
+
+def test_duplicate_module_prefix_refuses_review(candidate: tuple[Path, str, str, Record]) -> None:
+    root, base, head, _ = candidate
+    project = open_store(root)
+    adapter = project.resolve("composer:component", "adapter")
+    project.supersede(adapter["id"], payload={"module_prefixes": ["payments"]})
+    result = invoke(
+        "orchestra",
+        ["review-brief", "--phase", "stripe", "--base", base, "--phase-head", head],
+        root,
+    )
+    assert result.code != 0
+    assert "Multiple components declare module prefix 'payments'" in result.err
+
+
+@pytest.mark.parametrize("source", ["def broken(\n", "from ... import unknown\n"])
+def test_mapped_source_parse_or_import_failure_is_reported(
+    candidate: tuple[Path, str, str, Record], source: str
+) -> None:
+    root, _, base, _ = candidate
+    git = Git(root)
+    (root / "payments.py").write_text(source)
+    git.text("add", "payments.py")
+    git.text("commit", "-qm", "Add invalid mapped source")
+    result = invoke("orchestra", ["review-brief", "--phase", "stripe", "--base", base], root)
+    assert result.code != 0
+    assert f"Cannot analyze imports in payments.py at {git.head()}" in result.err
+
+
+def test_conventional_src_layout_resolves_packages(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, _, _, _ = candidate
+    git = Git(root)
+    git.text("rm", "payments.py", "stripe_adapter.py")
+    git.text("commit", "-qm", "Remove root-level packages")
+    base = git.head()
+    (root / "src").mkdir()
+    (root / "src" / "payments.py").write_text("import stripe_adapter\n")
+    (root / "src" / "stripe_adapter.py").write_bytes(b"# source with no newline")
+    git.text("add", "src")
+    git.text("commit", "-qm", "Use conventional src layout")
+    assert "Added: gateway → adapter" in _review(root, base, git.head())
+
+
+def test_no_prefixes_skips_dependency_analysis(candidate: tuple[Path, str, str, Record]) -> None:
+    root, base, _, _ = candidate
+    project = open_store(root)
+    for name in ("gateway", "adapter"):
+        component = project.resolve("composer:component", name)
+        project.supersede(component["id"], payload={"module_prefixes": []})
+    git = Git(root)
+    (root / "payments.py").write_text("def broken(\n")
+    git.text("add", "payments.py")
+    git.text("commit", "-qm", "Add unmapped source")
+    brief = _review(root, base, git.head())
+    assert "No component module mappings declared." in brief
+    assert "Added:" not in brief.split("## Observed component dependency changes", 1)[1]
