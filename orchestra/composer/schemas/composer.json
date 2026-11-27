@@ -1,6 +1,6 @@
 {
   "namespace": "composer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "types": {
     "area": {
       "purpose": "A named, long-lived product area",
@@ -132,6 +132,106 @@
       },
       "sections": [
         "Rationale"
+      ]
+    },
+    "architecture-proposal": {
+      "purpose": "A versioned ADR and constraint proposal for one phase",
+      "lifecycle": "current",
+      "fields": {
+        "phase": {
+          "ref": "score:phase"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "withdrawn"
+          ]
+        },
+        "adr": {
+          "type": "string"
+        },
+        "affects": {
+          "list": {
+            "ref": [
+              "composer:component",
+              "composer:interface"
+            ]
+          }
+        },
+        "enforced_by": {
+          "list": {
+            "type": "string"
+          },
+          "optional": true
+        },
+        "base_adr": {
+          "ref": "composer:architecture-decision",
+          "pin": true,
+          "optional": true
+        },
+        "base_adr_revision": {
+          "type": "string",
+          "optional": true
+        },
+        "constraints": {
+          "list": {
+            "ref": "composer:constraint-change",
+            "pin": true
+          },
+          "optional": true
+        }
+      },
+      "sections": [
+        "Rationale"
+      ]
+    },
+    "constraint-change": {
+      "purpose": "An immutable candidate addition, revision, or retirement of a standing constraint",
+      "lifecycle": "event",
+      "fields": {
+        "operation": {
+          "enum": [
+            "add",
+            "revise",
+            "retire"
+          ]
+        },
+        "constraint": {
+          "type": "string"
+        },
+        "base_constraint": {
+          "ref": "score:standing-constraint",
+          "pin": true,
+          "optional": true
+        },
+        "base_constraint_revision": {
+          "type": "string",
+          "optional": true
+        },
+        "area": {
+          "type": "string",
+          "optional": true
+        },
+        "rule": {
+          "type": "string",
+          "optional": true
+        },
+        "check": {
+          "type": "string",
+          "optional": true
+        },
+        "targets": {
+          "list": {
+            "ref": [
+              "composer:component",
+              "composer:interface"
+            ]
+          },
+          "optional": true
+        }
+      },
+      "sections": [
+        "Basis"
       ]
     }
   },
