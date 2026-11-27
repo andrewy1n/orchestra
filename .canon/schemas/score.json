@@ -197,6 +197,10 @@
           "type": "integer",
           "optional": true
         },
+        "failure_attempts": {
+          "type": "object",
+          "optional": true
+        },
         "write_root": {
           "type": "string",
           "optional": true
