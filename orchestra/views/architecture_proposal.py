@@ -62,4 +62,11 @@ def architecture_review(
         lines.append("No component dependency changes observed.")
     if dependencies.unmapped:
         lines.append("Unmapped first-party modules " + ", ".join(dependencies.unmapped))
+    for label, imports in (
+        ("Added", dependencies.unmapped_imports_added),
+        ("Removed", dependencies.unmapped_imports_removed),
+    ):
+        if imports:
+            affected = ", ".join(f"{source} imports {module}" for source, module in imports)
+            lines.append(f"{label} imports of unmapped first-party modules ({affected})")
     return "\n".join(lines) + "\n"

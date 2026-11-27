@@ -281,3 +281,16 @@ def test_no_prefixes_skips_dependency_analysis(candidate: tuple[Path, str, str, 
     brief = _review(root, base, git.head())
     assert "No component module mappings declared." in brief
     assert "Added:" not in brief.split("## Observed component dependency changes", 1)[1]
+
+
+def test_review_identifies_new_import_of_existing_unmapped_module(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, _, base, _ = candidate
+    git = Git(root)
+    (root / "payments.py").write_text("import stripe_adapter\nimport helpers\n")
+    git.text("add", "payments.py")
+    git.text("commit", "-qm", "Import a local helper and remove an external import")
+    brief = _review(root, base, git.head()).split("## Observed component dependency changes", 1)[1]
+    assert "Added imports of unmapped first-party modules (gateway imports helpers)" in brief
+    assert "unknown_vendor" not in brief

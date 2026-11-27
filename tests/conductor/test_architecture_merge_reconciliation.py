@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -287,3 +288,37 @@ def test_retirement_refuses_when_another_accepted_adr_still_depends_on_rule(chan
     assert "audit-boundary" in result.err and "Cannot retire imports" in result.err
     assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
     assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+
+
+def test_session_start_refuses_stale_proposal_then_reconciles(
+    change: Change, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = change.project
+    root = project.project_root
+    proposal = project.update(
+        change.proposal["id"], body="## Rationale\nAdopt Stripe behind the payment gateway."
+    )
+    change.pull_request.state = "MERGED"
+    monkeypatch.setattr("orchestra.stage.hooks.github_client", lambda _repo: change.pull_request)
+    args = ["hook-start", "--cursor"]
+    data = json.dumps({"cwd": str(root)})
+    result = invoke("orchestra", args, root, stdin=data)
+    assert result.code == 0, result.err
+    assert "pending without approval" in result.out
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "planned"
+    assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
+    project.create(
+        record_type="composer:architecture-approval",
+        subject="stripe",
+        payload={
+            "proposal": proposal["id"],
+            "proposal_revision": proposal["revision"],
+            "candidate": change.pull_request.head,
+            "approved_by": "maintainer",
+        },
+    )
+    result = invoke("orchestra", args, root, stdin=data)
+    assert result.code == 0, result.err
+    assert "Closed phase stripe" in result.out
+    assert project.resolve("score:phase", "stripe")["lifecycle_state"] == "done"
+    assert project.resolve("score:standing-constraint", "imports")["id"] != change.baseline["id"]

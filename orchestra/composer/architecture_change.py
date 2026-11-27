@@ -379,6 +379,8 @@ class DependencyChanges:
     added: tuple[Edge, ...]
     removed: tuple[Edge, ...]
     unmapped: tuple[str, ...]
+    unmapped_imports_added: tuple[Edge, ...]
+    unmapped_imports_removed: tuple[Edge, ...]
     has_mappings: bool
 
 
@@ -410,18 +412,26 @@ def _edges(
     blobs: dict[str, bytes],
     revision: str,
     prefixes: dict[str, str],
-) -> set[Edge]:
+    unmapped: set[str],
+) -> tuple[set[Edge], set[Edge]]:
     edges: set[Edge] = set()
+    unresolved: set[Edge] = set()
     for name, (blob, package, source) in modules.items():
         try:
             tree = ast.parse(blobs[blob], filename=name)
             for target in _imports(tree, package):
                 owner = _component(target, prefixes)
-                if owner is not None and owner != source:
-                    edges.add((source, owner))
+                if owner is not None:
+                    if owner != source:
+                        edges.add((source, owner))
+                    continue
+                while target and target not in unmapped:
+                    target = target.rpartition(".")[0]
+                if target:
+                    unresolved.add((source, target))
         except (SyntaxError, ValueError) as error:
             raise ValueError(f"Cannot analyze imports in {name} at {revision}: {error}") from error
-    return edges
+    return edges, unresolved
 
 
 def dependency_changes(
@@ -433,19 +443,21 @@ def dependency_changes(
         raise ValueError("Architecture review requires a resolvable base and candidate commit.")
     prefixes = _prefixes(records)
     if not prefixes:
-        return DependencyChanges(baseline, candidate, (), (), (), False)
+        return DependencyChanges(baseline, candidate, (), (), (), (), (), False)
     before, old_unmapped = _snapshot(git, baseline, prefixes)
     after, new_unmapped = _snapshot(git, candidate, prefixes)
     blobs = git.read_blobs(
         tuple(dict.fromkeys(row[0] for row in (*before.values(), *after.values())))
     )
-    old_edges = _edges(before, blobs, baseline, prefixes)
-    new_edges = _edges(after, blobs, candidate, prefixes)
+    old_edges, old_unmapped_imports = _edges(before, blobs, baseline, prefixes, old_unmapped)
+    new_edges, new_unmapped_imports = _edges(after, blobs, candidate, prefixes, new_unmapped)
     return DependencyChanges(
         baseline,
         candidate,
         tuple(sorted(new_edges - old_edges)),
         tuple(sorted(old_edges - new_edges)),
         tuple(sorted(old_unmapped | new_unmapped)),
+        tuple(sorted(new_unmapped_imports - old_unmapped_imports)),
+        tuple(sorted(old_unmapped_imports - new_unmapped_imports)),
         True,
     )
