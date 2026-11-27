@@ -29,7 +29,9 @@ def _commit(root: Path, name: str) -> str:
     return _git(root, "rev-parse", "HEAD")
 
 
-def _world(tmp_path: Path, *, dispatch_id: str = "dispatch-1") -> Project:
+def _world(
+    tmp_path: Path, *, dispatch_id: str | None = "dispatch-1", phase: str = PHASE
+) -> Project:
     project = make_project(tmp_path)
     exclude = tmp_path / ".git" / "info" / "exclude"
     exclude.write_text(exclude.read_text() + "\n.canon/\n")
@@ -43,12 +45,12 @@ def _world(tmp_path: Path, *, dispatch_id: str = "dispatch-1") -> Project:
         TASK,
         {
             "title": TASK,
-            "phase": PHASE,
+            "phase": phase,
             "kind": "deliver",
             "assignee": "subagent",
             "effort": EFFORT,
             "write_root": str(tmp_path),
-            "dispatch_id": dispatch_id,
+            **({"dispatch_id": dispatch_id} if dispatch_id else {}),
             "dispatch_started_at": "2026-01-01T00:00:00Z",
             "attempts": 1,
         },
@@ -211,3 +213,35 @@ def test_resume_refusal_hints_at_a_blocking_question(tmp_path: Path) -> None:
     project = _world(tmp_path)
     with pytest.raises(ResumeError, match=f"retry:{TASK}"):
         resume(project, TASK, list_processes=lambda _: ["claude (pid 4242)"])
+
+
+def test_resume_ignores_acceptances_of_a_sibling_task_with_a_shared_prefix(tmp_path: Path) -> None:
+    project = _world(tmp_path)
+    create(
+        project,
+        "score:work-item",
+        f"{TASK}-two",
+        {"title": "Sibling", "phase": PHASE, "kind": "deliver", "assignee": "", "effort": EFFORT},
+        "## Description\n\nDo it.\n\n## Approach\n\nJust do it.",
+    )
+    _acceptance(project, f"{TASK}-two-proof")
+    own = _acceptance(project, TASK)
+    head = _commit(tmp_path, "work.txt")
+    _pass_at(project, own, head)
+
+    report = resume(project, TASK, list_processes=_idle)
+
+    assert report.step == "close"
+    assert report.pending_acceptances == ()
+
+
+def test_resume_refuses_when_the_task_has_no_dispatch_id(tmp_path: Path) -> None:
+    project = _world(tmp_path, dispatch_id=None)
+    with pytest.raises(ResumeError, match=f"dispatch.*retry:{TASK}"):
+        resume(project, TASK, list_processes=_idle)
+
+
+def test_resume_refuses_when_the_task_has_no_phase(tmp_path: Path) -> None:
+    project = _world(tmp_path, phase="")
+    with pytest.raises(ResumeError, match=f"phase.*retry:{TASK}"):
+        resume(project, TASK, list_processes=_idle)

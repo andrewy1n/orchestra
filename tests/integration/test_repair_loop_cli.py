@@ -107,6 +107,14 @@ def _payload(project: Project) -> JsonObject:
     return project.resolve("score:work-item", TASK)["payload"]
 
 
+def _counts(project: Project) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event in project.list("conductor:redispatch-attempt"):
+        key = str(event["payload"]["failure_key"])
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def test_rerun_consumes_no_repair_attempt(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -118,25 +126,26 @@ def test_rerun_consumes_no_repair_attempt(
     code, _, err = _invoke(root, ["check", "--acceptance", acceptance, "--allow-dirty"], capsys)
     assert code != 0, err
     assert _payload(project).get("attempts", 0) == 0
-    assert not _payload(project).get("failure_attempts")
+    assert _counts(project) == {}
 
     _, first = _redispatch(project, root, capsys)
     key = first["failure_key"]
     assert first["attempts"] == 1
     assert key
-    assert _payload(project)["failure_attempts"] == {key: 1}
+    assert _counts(project) == {key: 1}
 
     _invoke(root, ["check", "--acceptance", acceptance, "--allow-dirty"], capsys)
     payload = _payload(project)
     assert payload["attempts"] == 1
-    assert payload["failure_attempts"] == {key: 1}
+    assert _counts(project) == {key: 1}
 
     _, second = _redispatch(project, root, capsys)
     assert second["failure_key"] == key
     assert second["attempts"] == 2
-    assert _payload(project)["failure_attempts"] == {key: 2}
+    assert _counts(project) == {key: 2}
 
     before = _payload(project)
+    events_before = _counts(project)
     code, out, err = _invoke(root, ["task", "resume", TASK, "--json"], capsys)
     if shutil.which("lsof") is None:
         pytest.skip("lsof is not installed")
@@ -144,7 +153,7 @@ def test_rerun_consumes_no_repair_attempt(
     assert json.loads(out)["task"] == TASK
     after = _payload(project)
     assert after["attempts"] == before["attempts"]
-    assert after["failure_attempts"] == before["failure_attempts"]
+    assert _counts(project) == events_before
 
 
 def _orchestra(store: Path, *args: str, cwd: Path) -> subprocess.CompletedProcess[str]:

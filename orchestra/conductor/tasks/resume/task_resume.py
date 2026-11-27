@@ -9,7 +9,7 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.landing.landing import phase_place
 from orchestra.conductor.verification.evidence import head_evidence
-from orchestra.score.lookups import record_order
+from orchestra.score.lookups import owning_work_item, record_order
 from orchestra.score.planning.phase import current_phase_model
 from orchestra.tools import Git
 from orchestra.tools.errors import ToolError
@@ -60,19 +60,25 @@ def _text(record: Record, key: str) -> str:
 
 
 def _pending(project: Project, task: str, head: str) -> tuple[str, ...]:
-    index = head_evidence.EvidenceIndex(project.records())
+    records = project.records()
+    index = head_evidence.EvidenceIndex(records)
+    items = [
+        record
+        for record in records
+        if record["record_type"] == "score:work-item" and record["lifecycle_state"] != "superseded"
+    ]
     return tuple(
         acceptance["id"]
         for acceptance in project.list("score:acceptance")
-        if _belongs(acceptance, task)
-        and acceptance["lifecycle_state"] == "active"
+        if acceptance["lifecycle_state"] == "active"
+        and _owner(acceptance, items) == task
         and not head_evidence.acceptance_runner_at_head(index, acceptance, head).holds
     )
 
 
-def _belongs(acceptance: Record, task: str) -> bool:
-    subject = acceptance["subject"]
-    return subject == task or subject.startswith(f"{task}-")
+def _owner(acceptance: Record, items: list[Record]) -> str | None:
+    owner = owning_work_item(acceptance["subject"], items)
+    return owner["subject"] if owner is not None else None
 
 
 def resume(project: Project, task: str, *, list_processes: ProcessLister = holders) -> ResumeReport:
@@ -82,12 +88,20 @@ def resume(project: Project, task: str, *, list_processes: ProcessLister = holde
         raise ResumeError(f"task {task!r} has no write_root")
     path = Path(worktree)
     dispatch_id = _text(item, "dispatch_id")
+    if not dispatch_id:
+        raise ResumeError(
+            f"task {task!r} has no dispatch id, so no dispatch can be proven inactive{_hint(task)}"
+        )
+    phase_slug = _text(item, "phase")
+    phase = current_phase_model(phase_slug, project.records()) if phase_slug else None
+    if phase is None:
+        raise ResumeError(f"task {task!r} has no known phase{_hint(task)}")
     reports = [
         report
         for report in project.list("conductor:execution-report")
         if report["subject"] == task and _text(report, "dispatch_id") == dispatch_id
     ]
-    if dispatch_id and reports:
+    if reports:
         raise ResumeError(
             f"task {task!r} has an execution report for dispatch {dispatch_id}; "
             f"the executor finished{_hint(task)}"
@@ -102,11 +116,8 @@ def resume(project: Project, task: str, *, list_processes: ProcessLister = holde
     try:
         dirty = bool(git.status_porcelain().strip())
         head = git.head()
-        phase = current_phase_model(_text(item, "phase"), project.records())
-        ahead = 0
-        if phase is not None:
-            base = phase_place(phase, git.primary_checkout()).branch
-            ahead = int(git.text("rev-list", "--count", f"{base}..HEAD"))
+        base = phase_place(phase, git.primary_checkout()).branch
+        ahead = int(git.text("rev-list", "--count", f"{base}..HEAD"))
     except (ToolError, ValueError) as error:
         raise ResumeError(f"cannot read the worktree {worktree}: {error}") from error
     pending = _pending(project, task, head)

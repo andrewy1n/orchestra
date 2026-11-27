@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from orchestra.canon import record_payload
-from orchestra.canon.types import JsonObject, JsonValue, Record
+from orchestra.canon.types import JsonValue, Record
 from orchestra.score.lookups import LIVE_WORK_ITEM_STATES, owning_work_item
 from orchestra.score.planning.executor import ExecutorTask
 
@@ -123,8 +123,3 @@ def owning_task_id(subject: str, tasks: Sequence[Record]) -> str:
     live = [task for task in tasks if task["lifecycle_state"] in LIVE_WORK_ITEM_STATES]
     owner = owning_work_item(subject, live)
     return owner["id"] if owner else ""
-
-
-def failure_attempts(record: Record) -> JsonObject:
-    value = record_payload(record).get("failure_attempts")
-    return dict(value) if isinstance(value, dict) else {}

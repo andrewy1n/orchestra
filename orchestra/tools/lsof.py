@@ -12,7 +12,7 @@ class Lsof(CliTool):
     executable = "lsof"
 
     def holders(self, directory: Path) -> list[str]:
-        argv = [self.executable, "-F", "pc", "+D", str(directory)]
+        argv = [self.executable, "-w", "-F", "pc", "+D", str(directory)]
         try:
             result = self._run(
                 argv,

@@ -6,31 +6,29 @@ import ast
 from collections.abc import Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
-from orchestra.canon import record_payload
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.score.lookups import record_order
 from orchestra.tuner.evidence.record_facts import RecordShapeError, check_run_facts
 
 LANDING_PREFIX = "orchestra/conductor/landing/"
+PRODUCT_ROOT = "orchestra"
 SKIPPED_DIRS = frozenset({".git", ".worktrees", ".venv", "venv", "node_modules", "__pycache__"})
 
 
 def prior_failed_review(project: Project, phase: str) -> Record | None:
     criterion = f"{phase}-review"
-    latest: Record | None = None
+    failed: list[Record] = []
     for row in project.list("tuner:check-run"):
+        if row["subject"] != criterion:
+            continue
         try:
             facts = check_run_facts(row)
-        except RecordShapeError:
-            continue
+        except RecordShapeError as error:
+            raise RuntimeError(f"malformed review check-run {row['id']}: {error}") from error
         if facts.criterion_id == criterion and facts.result == "fail" and facts.revision:
-            latest = row
-    return latest
-
-
-def prior_findings(project: Project, phase: str) -> list[Record]:
-    rows = project.list("tuner:finding")
-    return [row for row in rows if record_payload(row).get("phase") == phase]
+            failed.append(row)
+    return max(failed, key=record_order) if failed else None
 
 
 def _module_names(path: str) -> list[str]:
@@ -44,12 +42,8 @@ def _module_names(path: str) -> list[str]:
 
 
 def _imports(source: str) -> set[str]:
-    try:
-        tree = ast.parse(source)
-    except (SyntaxError, ValueError):
-        return set()
     found: set[str] = set()
-    for node in ast.walk(tree):
+    for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
             found.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
@@ -65,27 +59,39 @@ def _python_files(repo: Path) -> Iterator[Path]:
             yield path
 
 
-def _callers_by_module(repo: Path, modules: set[str]) -> dict[str, list[str]]:
-    callers: dict[str, list[str]] = {module: [] for module in modules}
+def _scan(repo: Path) -> tuple[dict[str, set[str]], list[str]]:
+    imports: dict[str, set[str]] = {}
+    unscanned: list[str] = []
     for path in _python_files(repo):
         relative = path.relative_to(repo).as_posix()
         try:
-            imported = _imports(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError):
-            continue
-        for module in modules:
-            if module in imported and relative not in _module_names_paths(module):
-                callers[module].append(relative)
-    return callers
+            imports[relative] = _imports(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, SyntaxError, ValueError):
+            unscanned.append(relative)
+    return imports, unscanned
 
 
-def _module_names_paths(module: str) -> set[str]:
+def unscanned_files(repo: Path) -> list[str]:
+    return _scan(repo)[1]
+
+
+def _module_paths(module: str) -> set[str]:
     base = module.replace(".", "/")
     return {f"{base}.py", f"{base}/__init__.py"}
 
 
 def _changed_modules(changed: Sequence[str]) -> set[str]:
     return {name for path in changed for name in _module_names(path)}
+
+
+def _callers_by_module(repo: Path, modules: set[str]) -> dict[str, list[str]]:
+    imports, _ = _scan(repo)
+    callers: dict[str, list[str]] = {module: [] for module in modules}
+    for relative, imported in imports.items():
+        for module in modules:
+            if module in imported and relative not in _module_paths(module):
+                callers[module].append(relative)
+    return callers
 
 
 def affected_callers(repo: Path, changed: Sequence[str]) -> list[str]:
@@ -98,20 +104,19 @@ def _is_schema_snapshot(path: str) -> bool:
     return pure.suffix == ".json" and "schemas" in pure.parts[:-1]
 
 
+def package_of(path: str) -> str:
+    parts = PurePosixPath(path).parts
+    head = parts[0] if parts else ""
+    if head == PRODUCT_ROOT and len(parts) > 2:
+        return "/".join(parts[:2])
+    return head
+
+
 def needs_expansion(repo: Path, changed: Sequence[str]) -> bool:
     if any(_is_schema_snapshot(path) or path.startswith(LANDING_PREFIX) for path in changed):
         return True
     callers = _callers_by_module(repo, _changed_modules(changed))
     return any(
-        len({path.split("/", 1)[0] for path in paths if "tests" not in PurePosixPath(path).parts})
-        > 1
+        len({package_of(path) for path in paths if "tests" not in PurePosixPath(path).parts}) > 1
         for paths in callers.values()
     )
-
-
-def changed_paths(diff: str) -> list[str]:
-    paths: list[str] = []
-    for line in diff.splitlines():
-        if line.startswith("+++ b/"):
-            paths.append(line[len("+++ b/") :])
-    return paths

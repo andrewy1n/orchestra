@@ -10,7 +10,7 @@ LIFECYCLES = {"current", "staged", "event", "question", "claim", "retirable"}
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
 TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
 FIELD_KEYS = {"type", "enum", "ref", "list", "pin", "optional"}
-SCALARS = {"string", "integer", "number", "boolean", "object"}
+SCALARS = {"string", "integer", "number", "boolean"}
 
 
 def _module_paths():

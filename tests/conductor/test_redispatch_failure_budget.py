@@ -9,10 +9,11 @@ from canon_support import create, make_project
 
 from orchestra.canon import record_payload
 from orchestra.canon.project import Project
-from orchestra.canon.types import JsonObject, Record, get_object
+from orchestra.canon.types import JsonValue, Record
 from orchestra.conductor.tasks.redispatch import task_redispatch
 from orchestra.conductor.tasks.redispatch.failure_key import failure_key
 from orchestra.conductor.tasks.redispatch.task_redispatch import RedispatchError
+from orchestra.tuner.evidence.record_facts import RecordShapeError, check_run_failing_nodes
 
 PHASE = "budget-phase"
 EFFORT = "budget-effort"
@@ -73,12 +74,14 @@ def _retry(project: Project):
     return task_redispatch.redispatch(project, TASK, expected_revision=item["revision"])
 
 
-def _counts_of(record: Record) -> JsonObject:
-    return get_object(record_payload(record), "failure_attempts") or {}
-
-
-def _counts(project: Project) -> JsonObject:
-    return _counts_of(project.resolve("score:work-item", TASK))
+def _counts(project: Project) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event in project.list("conductor:redispatch-attempt"):
+        payload = record_payload(event)
+        if payload.get("work_item") == TASK:
+            key = str(payload.get("failure_key"))
+            counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 def test_failure_key_is_a_sha256_hex_digest() -> None:
@@ -109,7 +112,7 @@ def test_redispatch_counts_attempts_under_the_failure_key(tmp_path: Path) -> Non
 
     key = failure_key("crit", NODES_A)
     assert retried["payload"]["attempts"] == 1
-    assert retried["payload"]["failure_attempts"] == {key: 1}
+    assert _counts(project) == {key: 1}
 
 
 def test_redispatch_refuses_the_same_failure_after_the_default_budget(tmp_path: Path) -> None:
@@ -164,9 +167,9 @@ def test_a_new_failure_redispatches_after_another_exhausted_its_budget(tmp_path:
         _retry(project)
     _fail(project, "crit", NODES_B)
 
-    retried = _retry(project)
+    _retry(project)
 
-    assert _counts_of(retried)[failure_key("crit", NODES_B)] == 1
+    assert _counts(project)[failure_key("crit", NODES_B)] == 1
 
 
 def test_phase_run_facts_override_the_failure_budget(tmp_path: Path) -> None:
@@ -184,9 +187,9 @@ def test_phase_run_facts_can_raise_the_failure_budget(tmp_path: Path) -> None:
     _retry(project)
     _retry(project)
 
-    retried = _retry(project)
+    _retry(project)
 
-    assert retried["payload"]["failure_attempts"] == {failure_key("crit", NODES_A): 3}
+    assert _counts(project) == {failure_key("crit", NODES_A): 3}
 
 
 def test_failures_of_a_suffixed_acceptance_count_against_the_failure_budget(
@@ -199,3 +202,80 @@ def test_failures_of_a_suffixed_acceptance_count_against_the_failure_budget(
     with pytest.raises(RedispatchError):
         _retry(project)
     assert _counts(project)[failure_key("crit", NODES_A)] == 2
+
+
+def test_a_redispatch_records_one_typed_event_with_the_new_dispatch_id(tmp_path: Path) -> None:
+    project = _world(tmp_path)
+    _fail(project, "crit", NODES_A)
+
+    retried = _retry(project)
+
+    events = project.list("conductor:redispatch-attempt")
+    assert len(events) == 1
+    payload = record_payload(events[0])
+    assert payload["work_item"] == TASK
+    assert payload["effort"] == EFFORT
+    assert payload["failure_key"] == failure_key("crit", NODES_A)
+    assert payload["dispatch_id"] == record_payload(retried)["dispatch_id"]
+
+
+def test_a_refused_redispatch_writes_no_event(tmp_path: Path) -> None:
+    project = _world(tmp_path)
+    _fail(project, "crit", NODES_A)
+    _retry(project)
+    _retry(project)
+    with pytest.raises(RedispatchError):
+        _retry(project)
+
+    assert len(project.list("conductor:redispatch-attempt")) == 2
+
+
+def test_redispatch_without_a_failing_check_run_stops_at_the_attempt_budget(
+    tmp_path: Path,
+) -> None:
+    project = _world(tmp_path)
+    _retry(project)
+    _retry(project)
+
+    with pytest.raises(RedispatchError, match="budget"):
+        _retry(project)
+
+    assert project.resolve("score:work-item", TASK)["payload"]["attempts"] == 2
+
+
+def test_a_malformed_run_fact_budget_raises(tmp_path: Path) -> None:
+    project = _world(tmp_path, "\n\n## Run facts\n\nretry_max_redispatches: two\n")
+    _fail(project, "crit", NODES_A)
+
+    with pytest.raises(RedispatchError, match="retry_max_redispatches"):
+        _retry(project)
+
+
+def _check_run_with_nodes(value: JsonValue) -> Record:
+    return {
+        "id": "rec-run",
+        "record_type": "tuner:check-run",
+        "subject": TASK,
+        "payload": {"failing_node_ids": value},
+        "body": "",
+        "lifecycle_state": "recorded",
+        "relationships": {},
+        "revision": "sha256:0",
+        "recorded_at": "2026-11-27T00:00:00+00:00",
+    }
+
+
+def test_failing_node_ids_that_are_not_a_list_raise() -> None:
+    with pytest.raises(RecordShapeError):
+        check_run_failing_nodes(_check_run_with_nodes("tests/test_a.py::test_one"))
+
+
+def test_failing_node_ids_with_a_non_string_item_raise() -> None:
+    with pytest.raises(RecordShapeError):
+        check_run_failing_nodes(_check_run_with_nodes(["tests/test_a.py::test_one", 7]))
+
+
+def test_failing_node_ids_that_are_absent_give_no_nodes() -> None:
+    record = _check_run_with_nodes([])
+    record["payload"] = {}
+    assert check_run_failing_nodes(record) == ()

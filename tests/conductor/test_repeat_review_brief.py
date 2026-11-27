@@ -11,6 +11,7 @@ from orchestra.conductor.verification.review.review_brief import build_review_br
 
 PHASE = "p1"
 FINDING_TEXT = "PRIOR-FINDING-MARKER handler skips the permission check"
+UNRELATED_FINDING = "UNRELATED-FINDING-MARKER retry budget exhausted"
 EXEC_MARKER = "EXEC-REPORT-MARKER"
 ASSESS_MARKER = "ASSESSMENT-MARKER"
 ASSIGN_MARKER = "ASSIGNMENT-MARKER"
@@ -293,3 +294,88 @@ def test_repeat_brief_does_not_expand_for_single_package_module(repo: Path) -> N
     text = brief(repo, project_with(review_run(reviewed)), base=base, head=head)
     assert "## Prior review" in text
     assert "## Expanded review" not in text
+
+
+def test_repeat_brief_leaves_out_findings_that_are_not_from_the_failed_review(
+    repo: Path,
+) -> None:
+    base, reviewed, head = repaired(repo, "tools/unrelated.py", "import sys\n")
+    project = project_with(review_run(reviewed))
+    project.rows.setdefault("tuner:finding", []).append(
+        record(
+            "tuner:finding",
+            "retry-budget",
+            {"claim": UNRELATED_FINDING, "phase": PHASE, "needs": "human"},
+            UNRELATED_FINDING,
+        )
+    )
+    text = brief(repo, project, base=base, head=head)
+    assert UNRELATED_FINDING not in text
+    assert FINDING_TEXT in section_of(text, "## Prior review")
+
+
+def test_repeat_brief_counts_a_deleted_module_in_affected_callers(repo: Path) -> None:
+    base = commit(repo, "base")
+    reviewed = commit_change(repo, "reviewed.txt", "reviewed\n", "reviewed")
+    (repo / "lib" / "shared.py").unlink()
+    head = commit(repo, "delete the shared module")
+    text = brief(repo, project_with(review_run(reviewed)), base=base, head=head)
+    assert "app/main.py" in section_of(text, "## Affected callers")
+    assert "## Expanded review" in text
+
+
+def orchestra_shaped(root: Path, importers: list[str]) -> None:
+    write(root, "orchestra/__init__.py", "")
+    write(root, "orchestra/conductor/__init__.py", "")
+    write(root, "orchestra/tuner/__init__.py", "")
+    write(root, "orchestra/conductor/shared.py", "X = 1\n")
+    for path in importers:
+        write(root, path, "from orchestra.conductor import shared\n")
+
+
+def test_needs_expansion_for_a_module_imported_from_two_orchestra_packages(repo: Path) -> None:
+    orchestra_shaped(repo, ["orchestra/conductor/a.py", "orchestra/tuner/b.py"])
+    assert repeat_review.needs_expansion(repo, ["orchestra/conductor/shared.py"]) is True
+
+
+def test_needs_expansion_false_when_importers_share_one_orchestra_package(repo: Path) -> None:
+    orchestra_shaped(repo, ["orchestra/conductor/a.py", "orchestra/conductor/c.py"])
+    assert repeat_review.needs_expansion(repo, ["orchestra/conductor/shared.py"]) is False
+
+
+def test_prior_failed_review_raises_on_a_malformed_review_check_run() -> None:
+    bad = record(
+        "tuner:check-run",
+        f"{PHASE}-review",
+        {"criterion_id": f"{PHASE}-review", "result": "fail"},
+        "broken",
+    )
+    project = FakeProject({"tuner:check-run": [bad]})
+    with pytest.raises(RuntimeError, match="malformed"):
+        repeat_review.prior_failed_review(project, PHASE)  # pyright: ignore[reportArgumentType]
+
+
+def test_prior_failed_review_ignores_a_malformed_check_run_of_another_subject() -> None:
+    other = record("tuner:check-run", "other-task", {"result": "fail"}, "broken")
+    project = FakeProject({"tuner:check-run": [other]})
+    assert repeat_review.prior_failed_review(project, PHASE) is None  # pyright: ignore[reportArgumentType]
+
+
+def test_unscanned_files_lists_python_files_that_cannot_be_parsed_or_read(repo: Path) -> None:
+    write(repo, "app/broken.py", "def (:\n")
+    (repo / "app" / "binary.py").write_bytes(b"\xff\xfe\x00")
+    assert repeat_review.unscanned_files(repo) == ["app/binary.py", "app/broken.py"]
+
+
+def test_repeat_brief_lists_unscanned_files(repo: Path) -> None:
+    write(repo, "app/broken.py", "def (:\n")
+    base, reviewed, head = repaired(repo, "lib/shared.py", "VALUE = 2\n")
+    text = brief(repo, project_with(review_run(reviewed)), base=base, head=head)
+    assert "app/broken.py" in section_of(text, "## Unscanned files")
+
+
+def test_first_review_brief_has_no_unscanned_files_section(repo: Path) -> None:
+    write(repo, "app/broken.py", "def (:\n")
+    base, reviewed, head = repaired(repo, "lib/shared.py", "VALUE = 2\n")
+    text = brief(repo, project_with(review_run(reviewed, result="pass")), base=base, head=head)
+    assert "## Unscanned files" not in text

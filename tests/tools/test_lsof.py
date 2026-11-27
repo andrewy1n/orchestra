@@ -40,3 +40,9 @@ def test_holders_fails_on_an_exit_code_above_one() -> None:
 def test_holders_fails_when_lsof_is_missing() -> None:
     with pytest.raises(ToolError):
         Lsof(WORK, run=FakeRun(raises=FileNotFoundError("lsof"))).holders(WORK)
+
+
+def test_holders_asks_lsof_to_suppress_warnings() -> None:
+    run = FakeRun(returncode=1)
+    Lsof(WORK, run=run).holders(WORK)
+    assert "-w" in run.argv

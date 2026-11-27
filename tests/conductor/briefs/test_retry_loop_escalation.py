@@ -20,9 +20,8 @@ def _text() -> str:
 def test_retry_loop_states_the_per_failure_budget() -> None:
     text = _text()
     assert "per distinct failure" in text
-    assert "failure_attempts" in text
-    assert "failing criterion ids" in text
-    assert "failing node ids" in text
+    assert "conductor:redispatch-attempt" in text
+    assert "failing criterion id and its sorted failing node ids" in text
 
 
 def test_retry_loop_keeps_the_fix_task_ceiling() -> None:
